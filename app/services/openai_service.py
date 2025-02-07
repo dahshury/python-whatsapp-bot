@@ -8,7 +8,17 @@ import logging
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_ASSISTANT_ID = os.getenv("OPENAI_ASSISTANT_ID")
-client = OpenAI(api_key=OPENAI_API_KEY)
+import ssl
+import certifi
+import httpx
+from openai import OpenAI
+
+ssl_context = ssl.create_default_context()
+ssl_context.load_verify_locations(certifi.where())
+
+http_client = httpx.Client(verify=ssl_context)
+
+client = OpenAI(api_key=OPENAI_API_KEY, http_client=http_client)
 
 
 def upload_file(path):

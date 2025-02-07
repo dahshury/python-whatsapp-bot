@@ -14,6 +14,8 @@ ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 RECIPIENT_WAID = os.getenv("RECIPIENT_WAID")
 PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 VERSION = os.getenv("VERSION")
+print(VERSION)
+print(PHONE_NUMBER_ID)
 
 APP_ID = os.getenv("APP_ID")
 APP_SECRET = os.getenv("APP_SECRET")
