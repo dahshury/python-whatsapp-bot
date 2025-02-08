@@ -90,13 +90,14 @@ def webhook_post():
 
 @webhook_blueprint.route('/download/shelf', methods=['GET'])
 def download_shelf():
+    
     shelf_base = "threads_db"
     possible_extensions = ['', '.db', '.dat', '.dir', '.bak']
     files_to_zip = []
 
     # Use os.getcwd() if that's where the shelve files are created.
     base_dir = os.getcwd()
-
+    logging.info(f"current base_dir is: {base_dir}")
     for ext in possible_extensions:
         filename = os.path.join(base_dir, shelf_base + ext)
         if os.path.exists(filename):
