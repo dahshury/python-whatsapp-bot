@@ -76,6 +76,7 @@ def process_text_for_whatsapp(text):
 
 
 def process_whatsapp_message(body):
+    response = None
     wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
 
@@ -99,7 +100,6 @@ def process_whatsapp_message(body):
     
     if response:
         data = get_text_message_input(wa_id, response)
-
         send_message(data)
 
 
