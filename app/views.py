@@ -1,6 +1,6 @@
 import logging
 import json
-
+import shelve
 from flask import Blueprint, request, jsonify, current_app, send_file
 
 from .decorators.security import signature_required
@@ -88,31 +88,24 @@ def webhook_get():
 def webhook_post():
     return handle_message()
 
-@webhook_blueprint.route('/download/shelf', methods=['GET'])
-def download_shelf():
-    
-    shelf_base = "threads_db"
-    possible_extensions = ['', '.db', '.dat', '.dir', '.bak']
-    files_to_zip = []
+@webhook_blueprint.route('/download/', methods=['GET'])
+def download_json():
+    # Open the shelve database in read-only mode.
+    # Make sure "threads_db" is the same base name used in your application.
+    with shelve.open("threads_db", flag="r") as db:
+        # Convert the shelve data to a standard dictionary.
+        # Note: shelve keys are strings and values are your stored objects.
+        data = dict(db)
 
-    # Use os.getcwd() if that's where the shelve files are created.
-    base_dir = os.getcwd()
-    logging.info(f"current base_dir is: {base_dir}")
-    for ext in possible_extensions:
-        filename = os.path.join(base_dir, shelf_base + ext)
-        if os.path.exists(filename):
-            files_to_zip.append(filename)
+    # Serialize the data to JSON with indentation for readability.
+    json_data = json.dumps(data, indent=4)
 
-    if not files_to_zip:
-        return "No shelf database found", 404
+    # Define a temporary filename (stored relative to the app's root).
+    temp_json_filename = os.path.join(current_app.root_path, "threads_db.json")
 
-    zip_filename = os.path.join(base_dir, "threads_db.zip")
+    # Write the JSON string to the file.
+    with open(temp_json_filename, "w") as f:
+        f.write(json_data)
 
-    with zipfile.ZipFile(zip_filename, 'w') as zipf:
-        for file in files_to_zip:
-            zipf.write(file, arcname=os.path.basename(file))
-
-    if not os.path.exists(zip_filename):
-        return "ZIP file could not be created", 500
-
-    return send_file(zip_filename, as_attachment=True)
+    # Use Flask's send_file to serve the JSON file as an attachment.
+    return send_file(temp_json_filename, as_attachment=True)
