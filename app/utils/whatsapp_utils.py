@@ -14,6 +14,15 @@ def log_http_response(response):
 
 
 def get_text_message_input(recipient, text):
+    """
+    Generate a JSON string for sending a text message via WhatsApp.
+    Args:
+        recipient (str): The recipient's phone number in international format.
+        text (str): The text message to be sent.
+    Returns:
+        str: A JSON string formatted for the WhatsApp API.
+    """
+    
     return json.dumps(
         {
             "messaging_product": "whatsapp",
@@ -31,6 +40,19 @@ def get_text_message_input(recipient, text):
 
 
 def send_message(data):
+    """
+    Sends a message using the WhatsApp API.
+    Args:
+        data (dict): The message payload to be sent in JSON format.
+    Returns:
+        Response: A Flask response object containing the status and message.
+        If the request is successful, returns the response from the WhatsApp API.
+        If a timeout occurs, returns a JSON response with status "error" and message "Request timed out" with HTTP status code 408.
+        If a general request exception occurs, returns a JSON response with status "error" and message "Failed to send message" with HTTP status code 500.
+    Raises:
+        requests.HTTPError: If the HTTP request returned an unsuccessful status code.
+    """
+    
     headers = {
         "Content-type": "application/json",
         "Authorization": f"Bearer {current_app.config['ACCESS_TOKEN']}",
@@ -76,6 +98,20 @@ def process_text_for_whatsapp(text):
 
 
 def process_whatsapp_message(body):
+    """
+    Processes an incoming WhatsApp message and generates an appropriate response.
+    Args:
+        body (dict): The incoming message payload from WhatsApp webhook.
+    Returns:
+        None
+    The function extracts the WhatsApp ID and name of the sender from the message payload.
+    It then attempts to extract the text body of the message. If the message contains text,
+    it generates a response using the `generate_response` function and processes it for WhatsApp.
+    If the message is of type 'audio' or 'image', it sends a predefined response indicating
+    that only text messages can be processed. Finally, it sends the generated response back
+    to the sender using the `send_message` function.
+    """
+    
     response = None
     wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]

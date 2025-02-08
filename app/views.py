@@ -1,7 +1,6 @@
-import logging
 import json
-
-from flask import Blueprint, request, jsonify, current_app
+import logging
+from flask import Blueprint, request, jsonify, current_app, Response
 
 from .decorators.security import signature_required
 from .utils.whatsapp_utils import (
@@ -87,3 +86,38 @@ def webhook_post():
     return handle_message()
 
 
+@webhook_blueprint.route("/chats", methods=["GET"])
+def chats():
+    """
+    This endpoint embeds the Streamlit app in an iframe.
+    When a user visits domain/chats, they will see the Streamlit interface.
+    Make sure that the Streamlit app is running (for example, on http://localhost:8501).
+    """
+    # The iframe source URL points to where your Streamlit app is hosted.
+    html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Chats - Streamlit App</title>
+        <style>
+            /* Make sure the iframe takes full viewport */
+            html, body {
+                margin: 0;
+                padding: 0;
+                height: 100%;
+                overflow: hidden;
+            }
+            iframe {
+                border: none;
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <iframe src="http://localhost:8501" title="Streamlit Chats"></iframe>
+    </body>
+    </html>
+    """
+    return html
