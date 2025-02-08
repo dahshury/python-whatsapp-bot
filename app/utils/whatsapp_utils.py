@@ -83,9 +83,9 @@ def process_whatsapp_message(body):
     try:
         message_body = message["text"]["body"]
     except Exception as e:
-        message_body = None
         logging.info(f"Incoming message contains: {message_body}, Can't process user's message type.")
-
+        message_body = None
+        
     # # TODO: implement custom function here
     # response = generate_response(message_body)
 
