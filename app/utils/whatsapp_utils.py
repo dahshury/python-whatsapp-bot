@@ -80,15 +80,21 @@ def process_whatsapp_message(body):
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
 
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    message_body = message["text"]["body"]
+    try:
+        message_body = message["text"]["body"]
+    except Exception as e:
+        message_body = None
+        logging.error("Can't process user's message type.")
 
     # # TODO: implement custom function here
     # response = generate_response(message_body)
 
     # OpenAI Integration
-    response = generate_response(message_body, wa_id, name)
-    response = process_text_for_whatsapp(response)
-
+    if message_body:
+        response = generate_response(message_body, wa_id, name)
+        response = process_text_for_whatsapp(response)
+    else:
+        response = process_text_for_whatsapp("عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية.")
     # data = get_text_message_input(current_app.config["RECIPIENT_WAID"], response)
     data = get_text_message_input(wa_id, response)
 
