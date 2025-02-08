@@ -93,12 +93,14 @@ def process_whatsapp_message(body):
     if message_body:
         response = generate_response(message_body, wa_id, name)
         response = process_text_for_whatsapp(response)
-    else:
+    elif message['type'] in ['audio', 'image']:
         response = process_text_for_whatsapp("عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية.")
     # data = get_text_message_input(current_app.config["RECIPIENT_WAID"], response)
-    data = get_text_message_input(wa_id, response)
+    
+    if response:
+        data = get_text_message_input(wa_id, response)
 
-    send_message(data)
+        send_message(data)
 
 
 def is_valid_whatsapp_message(body):
