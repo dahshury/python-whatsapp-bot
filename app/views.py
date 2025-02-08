@@ -90,34 +90,28 @@ def webhook_post():
 
 @webhook_blueprint.route('/download/shelf', methods=['GET'])
 def download_shelf():
-    # Define the base name for the shelve files
     shelf_base = "threads_db"
-    # List possible file extensions for shelve databases
     possible_extensions = ['', '.db', '.dat', '.dir', '.bak']
     files_to_zip = []
 
-    # Check for each potential file
+    # Use os.getcwd() if that's where the shelve files are created.
+    base_dir = os.getcwd()
+
     for ext in possible_extensions:
-        filename = os.path.join(current_app.root_path, shelf_base + ext)
+        filename = os.path.join(base_dir, shelf_base + ext)
         if os.path.exists(filename):
             files_to_zip.append(filename)
 
     if not files_to_zip:
         return "No shelf database found", 404
 
-    # Define a full absolute path for the zip file
-    zip_filename = os.path.join(current_app.root_path, "threads_db.zip")
+    zip_filename = os.path.join(base_dir, "threads_db.zip")
 
-    # Create the ZIP archive
     with zipfile.ZipFile(zip_filename, 'w') as zipf:
         for file in files_to_zip:
-            # Add each file with its basename so that the zip archive is clean
             zipf.write(file, arcname=os.path.basename(file))
 
-    # Verify the file exists before sending
     if not os.path.exists(zip_filename):
         return "ZIP file could not be created", 500
 
-    # Send the file as an attachment
     return send_file(zip_filename, as_attachment=True)
-
