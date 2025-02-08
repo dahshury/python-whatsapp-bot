@@ -1,13 +1,15 @@
 import logging
 import json
 
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_file
 
 from .decorators.security import signature_required
 from .utils.whatsapp_utils import (
     process_whatsapp_message,
     is_valid_whatsapp_message,
 )
+import os
+import zipfile
 
 webhook_blueprint = Blueprint("webhook", __name__)
 
@@ -86,4 +88,32 @@ def webhook_get():
 def webhook_post():
     return handle_message()
 
+@webhook_blueprint.route('/download/shelf', methods=['GET'])
+def download_shelf():
+    # Base name of the shelve database files
+    shelf_base = "threads_db"
+
+    # Depending on the underlying dbm implementation, the shelve may create files with these extensions.
+    possible_extensions = ['', '.db', '.dat', '.dir', '.bak']
+    files_to_zip = []
+
+    # Collect all files that exist with the given base name and extensions.
+    for ext in possible_extensions:
+        filename = shelf_base + ext
+        if os.path.exists(filename):
+            files_to_zip.append(filename)
+
+    if not files_to_zip:
+        return "No shelf database found", 404
+
+    # Define the name of the zip file that will be created
+    zip_filename = "threads_db.zip"
+
+    # Create the ZIP archive and add the shelve files to it.
+    with zipfile.ZipFile(zip_filename, 'w') as zipf:
+        for file in files_to_zip:
+            zipf.write(file)
+
+    # Return the zip file as an attachment.
+    return send_file(zip_filename, as_attachment=True)
 
