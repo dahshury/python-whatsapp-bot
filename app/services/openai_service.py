@@ -82,12 +82,14 @@ def run_assistant(thread, name):
     messages = client.beta.threads.messages.list(thread_id=thread.id)
     # Extract the date and time as HH:MM from the ISO 8601 timestamp
     iso_timestamp = messages.data[0].created_at
-    dt = datetime.datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
-    date_str = dt.strftime("%Y-%m-%d")
-    time_str = dt.strftime("%H:%M")
+    print(iso_timestamp)
+    logging.error(iso_timestamp)
+    # dt = datetime.datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+    # date_str = dt.strftime("%Y-%m-%d")
+    # time_str = dt.strftime("%H:%M")
     new_message = messages.data[0].content[0].text.value
-    logging.info(f"Generated message: {new_message}")
-    return new_message, date_str, time_str
+    # logging.info(f"Generated message: {new_message}")
+    return new_message, "25-11-2025", "temp"
 
 def parse_timestamp(timestamp):
     # timestamp = int(timestamp)
