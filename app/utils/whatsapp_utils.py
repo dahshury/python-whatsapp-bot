@@ -112,6 +112,7 @@ def process_whatsapp_message(body):
         
     # OpenAI Integration
     if message_body:
+        logging.info(f"inc_body: {body}")
         response = generate_response(message_body, wa_id, name, timestamp)
         response = process_text_for_whatsapp(response)
     elif message['type'] in ['audio', 'image']:
