@@ -24,13 +24,22 @@ def get_text_message_input(recipient, text):
         }
     )
 
-
-# def generate_response(response):
-#     # Return text in uppercase
-#     return response.upper()
-
-
 def send_message(data):
+    """
+    Sends a message using the WhatsApp API.
+    This function sends a message to a specified phone number using the WhatsApp API provided by Facebook. 
+    It constructs the necessary headers and URL, and handles potential exceptions that may occur during the request.
+    Args:
+        data (dict): The message payload to be sent in JSON format.
+    Returns:
+        Response: If the request is successful, returns the response object from the requests library.
+        tuple: If an error occurs, returns a tuple containing a JSON response and an HTTP status code.
+            - On timeout, returns ({"status": "error", "message": "Request timed out"}, 408).
+            - On other request exceptions, returns ({"status": "error", "message": "Failed to send message"}, 500).
+    Raises:
+        requests.HTTPError: If the HTTP request returned an unsuccessful status code.
+    """
+    
     headers = {
         "Content-type": "application/json",
         "Authorization": f"Bearer {current_app.config['ACCESS_TOKEN']}",
@@ -79,24 +88,20 @@ def process_whatsapp_message(body):
     response = None
     wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
-
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
+    # timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]
     try:
         message_body = message["text"]["body"]
     except Exception as e:
         logging.info(f"Incoming message contains: {message}, Can't process user's message type.")
         message_body = None
         
-    # # TODO: implement custom function here
-    # response = generate_response(message_body)
-
     # OpenAI Integration
     if message_body:
         response = generate_response(message_body, wa_id, name)
         response = process_text_for_whatsapp(response)
     elif message['type'] in ['audio', 'image']:
         response = process_text_for_whatsapp("عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية.")
-    # data = get_text_message_input(current_app.config["RECIPIENT_WAID"], response)
     
     if response:
         data = get_text_message_input(wa_id, response)

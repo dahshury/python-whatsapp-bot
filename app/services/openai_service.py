@@ -64,7 +64,7 @@ def store_thread(wa_id, thread_id):
         threads_shelf[wa_id] = {'thread_id': thread_id, 'conversation': []}
         threads_shelf.sync()  # Ensure the data is written to disk
         
-def append_message(wa_id, role, message):
+def append_message(wa_id, role, message, timestamp=None):
     """
     Append a message to the conversation history for the given WhatsApp ID.
     The conversation is stored as a list of dictionaries, each containing the role and message text.
@@ -77,17 +77,6 @@ def append_message(wa_id, role, message):
             # If no conversation exists, create a new entry with no thread_id and one message
             threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message}]}
         threads_shelf.sync()  # Flush changes to disk
-
-def get_conversation(wa_id):
-    """
-    Retrieve the full conversation history for the given WhatsApp ID.
-    Returns a list of message dictionaries or an empty list if none exists.
-    """
-    with shelve.open("threads_db") as threads_shelf:
-        entry = threads_shelf.get(wa_id, None)
-        if entry:
-            return entry.get('conversation', [])
-        return []
     
 def run_assistant(thread, name):
     # Retrieve the Assistant
