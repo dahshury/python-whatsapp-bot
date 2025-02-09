@@ -1,0 +1,26 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main  # Adjust if you want to deploy from a different branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy via SSH using appleboy/ssh-action
+        uses: appleboy/ssh-action@v0.8.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          # Optionally, disable strict host checking (not recommended for production)
+          # known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          script: |
+            cd /home/ubuntu/python-whatsapp-bot
+            ./deploy.sh
