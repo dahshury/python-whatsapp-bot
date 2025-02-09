@@ -4,6 +4,8 @@ from dotenv import load_dotenv
 import os
 import time
 import logging
+import datetime
+from zoneinfo import ZoneInfo  # Requires Python 3.9+
 
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -64,7 +66,7 @@ def store_thread(wa_id, thread_id):
         threads_shelf[wa_id] = {'thread_id': thread_id, 'conversation': []}
         threads_shelf.sync()  # Ensure the data is written to disk
         
-def append_message(wa_id, role, message, timestamp=None):
+def append_message(wa_id, role, message, date_str, time_str):
     """
     Append a message to the conversation history for the given WhatsApp ID.
     The conversation is stored as a list of dictionaries, each containing the role and message text.
@@ -72,10 +74,10 @@ def append_message(wa_id, role, message, timestamp=None):
     with shelve.open("threads_db", writeback=True) as threads_shelf:
         if wa_id in threads_shelf:
             # Append to the existing conversation list
-            threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message})
+            threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message, 'date':date_str, time:time_str})
         else:
             # If no conversation exists, create a new entry with no thread_id and one message
-            threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message}]}
+            threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message, 'date':date_str, time:time_str}]}
         threads_shelf.sync()  # Flush changes to disk
     
 def run_assistant(thread, name):
@@ -98,11 +100,29 @@ def run_assistant(thread, name):
 
     # Retrieve the Messages
     messages = client.beta.threads.messages.list(thread_id=thread.id)
+    # Extract the date and time as HH:MM from the ISO 8601 timestamp
+    iso_timestamp = messages.data[0].created_at
+    dt = datetime.datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
+    date_str = dt.strftime("%Y-%m-%d")
+    time_str = dt.strftime("%H:%M")
     new_message = messages.data[0].content[0].text.value
     logging.info(f"Generated message: {new_message}")
-    return new_message
+    return new_message, date_str, time_str
 
-def generate_response(message_body, wa_id, name):
+def parse_timestamp(timestamp):
+    timestamp = int(timestamp)
+
+    # 2. Create a timezone-aware datetime object in UTC
+    dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    
+    # 3. Convert the UTC datetime to Saudi Arabia time using ZoneInfo
+    saudi_timezone = ZoneInfo("Asia/Riyadh")
+    dt_saudi = dt_utc.astimezone(saudi_timezone)
+    date_str = dt_saudi.strftime("%Y-%m-%d")
+    time_str = dt_saudi.strftime("%H:%M")
+    return date_str, time_str
+
+def generate_response(message_body, wa_id, name, timestamp):
     """
     Generate a response from the assistant and save the conversation.
     This function:
@@ -113,6 +133,7 @@ def generate_response(message_body, wa_id, name):
       5. Appends the assistant's response to the conversation.
     """
     # Check if a thread exists for this WhatsApp ID
+    date_str, time_str = parse_timestamp(timestamp)
     thread_id = check_if_thread_exists(wa_id)
     if thread_id is None:
         logging.info(f"Creating new thread for {name} with wa_id {wa_id}")
@@ -125,7 +146,7 @@ def generate_response(message_body, wa_id, name):
         thread = client.beta.threads.retrieve(thread_id)
     
     # Append the user's message to the conversation history
-    append_message(wa_id, 'user', message_body)
+    append_message(wa_id, 'user', message_body, date_str, time_str)
     
     # Add the user's message to the thread (if needed by your API)
     message = client.beta.threads.messages.create(
@@ -135,9 +156,9 @@ def generate_response(message_body, wa_id, name):
     )
     
     # Run the assistant to generate a response (this function polls until the response is ready)
-    new_message = run_assistant(thread, name)
+    new_message, assistant_date_str, assistant_time_str = run_assistant(thread, name)
     
     # Append the assistant's response to the conversation history
-    append_message(wa_id, 'assistant', new_message)
+    append_message(wa_id, 'assistant', new_message, assistant_date_str, assistant_time_str)
     
     return new_message

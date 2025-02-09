@@ -85,11 +85,25 @@ def process_text_for_whatsapp(text):
 
 
 def process_whatsapp_message(body):
+    """
+    Processes an incoming WhatsApp message and generates an appropriate response.
+    Args:
+        body (dict): The incoming message payload from WhatsApp webhook.
+    Returns:
+        None
+    The function extracts the WhatsApp ID, name, message, and timestamp from the incoming message payload.
+    It attempts to process the message body text. If the message body is present, it generates a response
+    using OpenAI integration and processes the text for WhatsApp. If the message type is audio or image,
+    it sends a predefined response indicating that only text messages can be processed.
+    The generated response is then sent back to the user via WhatsApp.
+    """
+    
     response = None
     wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    # timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]
+    timestamp = body["entry"][0]["changes"][0]["value"]["statuses"][0]["timestamp"]
+    
     try:
         message_body = message["text"]["body"]
     except Exception as e:
@@ -98,7 +112,7 @@ def process_whatsapp_message(body):
         
     # OpenAI Integration
     if message_body:
-        response = generate_response(message_body, wa_id, name)
+        response = generate_response(message_body, wa_id, name, timestamp)
         response = process_text_for_whatsapp(response)
     elif message['type'] in ['audio', 'image']:
         response = process_text_for_whatsapp("عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية.")
