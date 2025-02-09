@@ -52,11 +52,11 @@ def append_message(wa_id, role, message, date_str, time_str):
     with shelve.open("threads_db", writeback=True) as threads_shelf:
         if wa_id in threads_shelf:
             # Append to the existing conversation list
-            threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message, 'date':date_str, time:time_str})
+            threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message, 'date':date_str, 'time':time_str})
             # threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message})
         else:
             # If no conversation exists, create a new entry with no thread_id and one message
-            threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message, 'date':date_str, time:time_str}]}
+            threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message, 'date':date_str, 'time':time_str}]}
             # threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message}]}
         threads_shelf.sync()  # Flush changes to disk
     
