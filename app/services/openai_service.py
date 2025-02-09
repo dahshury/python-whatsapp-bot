@@ -88,16 +88,16 @@ def run_assistant(thread, name):
     return new_message, date_str, time_str
 
 def parse_timestamp(timestamp):
-    timestamp = int(timestamp)
+    # timestamp = int(timestamp)
 
-    # 2. Create a timezone-aware datetime object in UTC
-    dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    # # 2. Create a timezone-aware datetime object in UTC
+    # dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
     
-    # 3. Convert the UTC datetime to Saudi Arabia time using ZoneInfo
-    saudi_timezone = ZoneInfo("Asia/Riyadh")
-    dt_saudi = dt_utc.astimezone(saudi_timezone)
-    date_str = dt_saudi.strftime("%Y-%m-%d")
-    time_str = dt_saudi.strftime("%H:%M")
+    # # 3. Convert the UTC datetime to Saudi Arabia time using ZoneInfo
+    # saudi_timezone = ZoneInfo("Asia/Riyadh")
+    # dt_saudi = dt_utc.astimezone(saudi_timezone)
+    # date_str = dt_saudi.strftime("%Y-%m-%d")
+    # time_str = dt_saudi.strftime("%H:%M")
     return "2025-02-08", "03:37"
 
 def generate_response(message_body, wa_id, name, timestamp):
