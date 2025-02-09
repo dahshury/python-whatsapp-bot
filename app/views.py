@@ -2,7 +2,6 @@ import logging
 import json
 import shelve
 from flask import Blueprint, request, jsonify, current_app, send_file
-from services.openai_service import check_if_thread_exists
 from .decorators.security import signature_required
 from .utils.whatsapp_utils import (
     process_whatsapp_message,
