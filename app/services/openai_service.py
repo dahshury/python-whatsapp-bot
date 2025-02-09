@@ -52,12 +52,12 @@ def append_message(wa_id, role, message, date_str, time_str):
     with shelve.open("threads_db", writeback=True) as threads_shelf:
         if wa_id in threads_shelf:
             # Append to the existing conversation list
-            # threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message, 'date':date_str, time:time_str})
-            threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message})
+            threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message, 'date':date_str, time:time_str})
+            # threads_shelf[wa_id]['conversation'].append({'role': role, 'message': message})
         else:
             # If no conversation exists, create a new entry with no thread_id and one message
-            # threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message, 'date':date_str, time:time_str}]}
-            threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message}]}
+            threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message, 'date':date_str, time:time_str}]}
+            # threads_shelf[wa_id] = {'thread_id': None, 'conversation': [{'role': role, 'message': message}]}
         threads_shelf.sync()  # Flush changes to disk
     
 def run_assistant(thread, name):
@@ -80,29 +80,21 @@ def run_assistant(thread, name):
 
     # Retrieve the Messages
     messages = client.beta.threads.messages.list(thread_id=thread.id)
-    # Extract the date and time as HH:MM from the ISO 8601 timestamp
-    iso_timestamp = messages.data[0].created_at
-    print(iso_timestamp)
-    logging.error(iso_timestamp)
-    # dt = datetime.datetime.fromisoformat(iso_timestamp.replace("Z", "+00:00"))
-    # date_str = dt.strftime("%Y-%m-%d")
-    # time_str = dt.strftime("%H:%M")
+    date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
     new_message = messages.data[0].content[0].text.value
-    # logging.info(f"Generated message: {new_message}")
-    return new_message, "25-11-2025", "temp"
+    logging.info(f"Generated message: {new_message}")
+    return new_message, date_str, time_str
 
-def parse_timestamp(timestamp):
-    # timestamp = int(timestamp)
-
-    # # 2. Create a timezone-aware datetime object in UTC
-    # dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
-    
-    # # 3. Convert the UTC datetime to Saudi Arabia time using ZoneInfo
-    # saudi_timezone = ZoneInfo("Asia/Riyadh")
-    # dt_saudi = dt_utc.astimezone(saudi_timezone)
-    # date_str = dt_saudi.strftime("%Y-%m-%d")
-    # time_str = dt_saudi.strftime("%H:%M")
-    return "2025-02-08", "03:37"
+def parse_unix_timestamp(timestamp):
+    timestamp = int(timestamp)
+    # 2. Create a timezone-aware datetime object in UTC
+    dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
+    # 3. Convert the UTC datetime to Saudi Arabia time using ZoneInfo
+    saudi_timezone = ZoneInfo("Asia/Riyadh")
+    dt_saudi = dt_utc.astimezone(saudi_timezone)
+    date_str = dt_saudi.strftime("%Y-%m-%d")
+    time_str = dt_saudi.strftime("%H:%M")
+    return date_str, time_str
 
 def generate_response(message_body, wa_id, name, timestamp):
     """
@@ -115,7 +107,7 @@ def generate_response(message_body, wa_id, name, timestamp):
       5. Appends the assistant's response to the conversation.
     """
     # Check if a thread exists for this WhatsApp ID
-    date_str, time_str = parse_timestamp(timestamp)
+    date_str, time_str = parse_unix_timestamp(timestamp)
     thread_id = check_if_thread_exists(wa_id)
     if thread_id is None:
         logging.info(f"Creating new thread for {name} with wa_id {wa_id}")
