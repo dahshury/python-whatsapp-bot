@@ -2,7 +2,7 @@ import logging
 import json
 import shelve
 from flask import Blueprint, request, jsonify, current_app, send_file
-
+from services.openai_service import check_if_thread_exists
 from .decorators.security import signature_required
 from .utils.whatsapp_utils import (
     process_whatsapp_message,
@@ -90,6 +90,7 @@ def webhook_post():
 
 @webhook_blueprint.route('/download/', methods=['GET'])
 def download_json():
+    
     # Open the shelve database in read-only mode.
     # Make sure "threads_db" is the same base name used in your application.
     with shelve.open("threads_db", flag="r") as db:
@@ -98,7 +99,7 @@ def download_json():
         data = dict(db)
 
     # Serialize the data to JSON with indentation for readability.
-    json_data = json.dumps(data, indent=4)
+    json_data = json.dumps(data, indent=4, ensure_ascii=False)
 
     # Define a temporary filename (stored relative to the app's root).
     temp_json_filename = os.path.join(current_app.root_path, "threads_db.json")
