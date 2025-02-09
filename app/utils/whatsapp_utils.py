@@ -102,8 +102,7 @@ def process_whatsapp_message(body):
     wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    timestamp = body["entry"][0]["changes"][0]["value"].get("statuses", [{}])[0].get("timestamp", None)
-    print(body)
+    
     try:
         message_body = message["text"]["body"]
     except Exception as e:
@@ -112,12 +111,11 @@ def process_whatsapp_message(body):
         
     # OpenAI Integration
     if message_body:
-        logging.info(f"inc_body: {body}")
+        timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
         response = generate_response(message_body, wa_id, name, timestamp)
         response = process_text_for_whatsapp(response)
     elif message['type'] in ['audio', 'image']:
         response = process_text_for_whatsapp("عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية.")
-    
     if response:
         data = get_text_message_input(wa_id, response)
         send_message(data)
