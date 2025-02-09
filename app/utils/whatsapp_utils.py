@@ -103,7 +103,7 @@ def process_whatsapp_message(body):
     name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
     timestamp = body["entry"][0]["changes"][0]["value"].get("statuses", [{}])[0].get("timestamp", None)
-    
+    print(body)
     try:
         message_body = message["text"]["body"]
     except Exception as e:
