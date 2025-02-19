@@ -1,3 +1,4 @@
+threads_db.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -89,3 +90,5 @@ target/
 
 # Exlcude the database file
 .db
+
+/private

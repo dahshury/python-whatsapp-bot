@@ -1,14 +1,18 @@
 import logging
 import json
 import shelve
-from flask import Blueprint, request, jsonify, current_app, send_file
+from flask import Blueprint, request, jsonify, current_app, send_file, Response
 from .decorators.security import signature_required
 from .utils.whatsapp_utils import (
     process_whatsapp_message,
     is_valid_whatsapp_message,
 )
+from dotenv import load_dotenv
 import os
-import zipfile
+
+load_dotenv()
+username = os.getenv("APP_ID")
+password = os.getenv("APP_SECRET")
 
 webhook_blueprint = Blueprint("webhook", __name__)
 
@@ -87,14 +91,35 @@ def webhook_get():
 def webhook_post():
     return handle_message()
 
+# Define the credentials you want to require
+AUTH_USERNAME = "admin"      # Replace with your desired username
+AUTH_PASSWORD = "secretpass" # Replace with your desired password
+
+def check_auth(username, password):
+    """
+    Check if a username/password combination is valid.
+    """
+    return username == AUTH_USERNAME and password == AUTH_PASSWORD
+
+def authenticate():
+    """
+    Sends a 401 response that enables basic auth.
+    """
+    return Response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
 @webhook_blueprint.route('/download/', methods=['GET'])
 def download_json():
-    
+    # Check for valid basic authentication credentials.
+    auth = request.authorization
+    if not auth or not check_auth(auth.username, auth.password):
+        return authenticate()
+
     # Open the shelve database in read-only mode.
-    # Make sure "threads_db" is the same base name used in your application.
     with shelve.open("threads_db", flag="r") as db:
         # Convert the shelve data to a standard dictionary.
-        # Note: shelve keys are strings and values are your stored objects.
         data = dict(db)
 
     # Serialize the data to JSON with indentation for readability.
