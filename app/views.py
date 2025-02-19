@@ -11,8 +11,7 @@ from dotenv import load_dotenv
 import os
 
 load_dotenv()
-username = os.getenv("APP_ID")
-password = os.getenv("APP_SECRET")
+
 
 webhook_blueprint = Blueprint("webhook", __name__)
 
@@ -91,15 +90,14 @@ def webhook_get():
 def webhook_post():
     return handle_message()
 
-# Define the credentials you want to require
-AUTH_USERNAME = "admin"      # Replace with your desired username
-AUTH_PASSWORD = "secretpass" # Replace with your desired password
+USERNAME = os.getenv("APP_ID")
+AUTH_PASSWORD = os.getenv("APP_SECRET")
 
 def check_auth(username, password):
     """
     Check if a username/password combination is valid.
     """
-    return username == AUTH_USERNAME and password == AUTH_PASSWORD
+    return username == USERNAME and password == AUTH_PASSWORD
 
 def authenticate():
     """
