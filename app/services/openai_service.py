@@ -31,12 +31,6 @@ def get_lock(wa_id):
     """
     if wa_id not in global_locks:
         global_locks[wa_id] = asyncio.Lock()
-        # Record in the shelve that a lock exists for this user.
-        with shelve.open("threads_db", writeback=True) as threads_shelf:
-            if "locks" not in threads_shelf:
-                threads_shelf["locks"] = {}
-            threads_shelf["locks"][wa_id] = True
-            threads_shelf.sync()
     return global_locks[wa_id]
 
 def check_if_thread_exists(wa_id):
@@ -88,18 +82,22 @@ def run_assistant(thread, name, timeout=60):
     """
     assistant = client.beta.assistants.retrieve(OPENAI_ASSISTANT_ID)
     start_time = time.time()
-    run = client.beta.threads.runs.create(
+    run = client.beta.threads.runs.create_and_poll(
         thread_id=thread.id,
         assistant_id=assistant.id,
     )
-    
+
     # Poll until the run status is no longer queued or in_progress
     while run.status in ["queued", "in_progress"]:
-        # Break out if polling takes too long
         if time.time() - start_time > timeout:
-            logging.error(f"Run timed out for {name}")
+            logging.error(f"Run timed out for {name}. Status: {run.status}, Last Error: {run.last_error}")
+            client.beta.threads.runs.cancel(
+                thread_id=thread.id,
+                run_id=run.id
+            )
             return None, None, None
-        asyncio.sleep(2)  # Could also consider exponential backoff here
+        
+        time.sleep(2)
         run = client.beta.threads.runs.retrieve(
             thread_id=thread.id,
             run_id=run.id
@@ -188,7 +186,7 @@ async def generate_response(message_body, wa_id, name, timestamp):
                     logging.warning(
                         f"Thread busy for {name}, retrying in {RETRY_DELAY} seconds... (attempt {retries + 1})"
                     )
-                    asyncio.sleep(RETRY_DELAY)
+                    await asyncio.sleep(RETRY_DELAY)
                     retries += 1
                 else:
                     # Raise other errors immediately
