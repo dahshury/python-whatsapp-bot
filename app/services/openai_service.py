@@ -99,7 +99,7 @@ def run_assistant(thread, name, timeout=60):
         if time.time() - start_time > timeout:
             logging.error(f"Run timed out for {name}")
             return None, None, None
-        time.sleep(2)  # Could also consider exponential backoff here
+        asyncio.sleep(2)  # Could also consider exponential backoff here
         run = client.beta.threads.runs.retrieve(
             thread_id=thread.id,
             run_id=run.id
@@ -150,7 +150,9 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
 async def generate_response(message_body, wa_id, name, timestamp):
     """
     Generate a response from the assistant and update the conversation.
-    Uses a per-user lock to ensure that concurrent calls for the same user do not run simultaneously.
+    Uses a per-user lock to ensure that concurrent calls for the same user
+    do not run simultaneously. Implements a retry loop when adding a user message
+    if the thread is busy with an active run.
     """
     lock = get_lock(wa_id)
     async with lock:
@@ -165,13 +167,36 @@ async def generate_response(message_body, wa_id, name, timestamp):
             logging.info(f"Retrieving existing thread for {name} with wa_id {wa_id}")
             thread = client.beta.threads.retrieve(thread_id)
         
+        # Append the user's message to our local conversation history.
         append_message(wa_id, 'user', message_body, date_str, time_str)
-        client.beta.threads.messages.create(
-            thread_id=thread_id,
-            role="user",
-            content=message_body,
-        )
         
+        # Retry loop to add the user's message to the OpenAI thread.
+        MAX_RETRIES = 60
+        RETRY_DELAY = 2  # seconds
+        retries = 0
+        while retries < MAX_RETRIES:
+            try:
+                client.beta.threads.messages.create(
+                    thread_id=thread_id,
+                    role="user",
+                    content=message_body,
+                )
+                break  # success: exit the retry loop
+            except Exception as e:
+                error_str = str(e)
+                if "while a run" in error_str:
+                    logging.warning(
+                        f"Thread busy for {name}, retrying in {RETRY_DELAY} seconds... (attempt {retries + 1})"
+                    )
+                    asyncio.sleep(RETRY_DELAY)
+                    retries += 1
+                else:
+                    # Raise other errors immediately
+                    raise e
+        if retries == MAX_RETRIES:
+            logging.error(f"Failed to add user message after {MAX_RETRIES} retries for {name}")
+            return None
+
         # Run the blocking OpenAI API call in an executor so as not to block the event loop.
         new_message, assistant_date_str, assistant_time_str = await asyncio.get_event_loop().run_in_executor(
             None, run_assistant, thread, name
