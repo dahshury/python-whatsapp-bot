@@ -4,6 +4,7 @@ import logging
 import datetime
 import shelve
 import asyncio
+import json
 from zoneinfo import ZoneInfo  # Requires Python 3.9+
 from hijri_converter import convert
 import ssl
@@ -50,7 +51,7 @@ def store_thread(wa_id, thread_id):
     with shelve.open("threads_db", writeback=True) as threads_shelf:
         threads_shelf[wa_id] = {'thread_id': thread_id, 'conversation': []}
         threads_shelf.sync()
-
+        
 def append_message(wa_id, role, message, date_str, time_str):
     """
     Append a message to the conversation history for the given WhatsApp ID.
@@ -74,45 +75,7 @@ def append_message(wa_id, role, message, date_str, time_str):
                 }]
             }
         threads_shelf.sync()
-
-def run_assistant(thread, name, timeout=60):
-    """
-    Run the assistant and poll until the run is complete or a timeout is reached.
-    Returns the generated message along with date and time, or None if an error occurs.
-    """
-    assistant = client.beta.assistants.retrieve(OPENAI_ASSISTANT_ID)
-    start_time = time.time()
-    run = client.beta.threads.runs.create_and_poll(
-        thread_id=thread.id,
-        assistant_id=assistant.id,
-    )
-
-    # Poll until the run status is no longer queued or in_progress
-    while run.status in ["queued", "in_progress"]:
-        if time.time() - start_time > timeout:
-            logging.error(f"Run timed out for {name}. Status: {run.status}, Last Error: {run.last_error}")
-            client.beta.threads.runs.cancel(
-                thread_id=thread.id,
-                run_id=run.id
-            )
-            return None, None, None
         
-        time.sleep(2)
-        run = client.beta.threads.runs.retrieve(
-            thread_id=thread.id,
-            run_id=run.id
-        )
-        
-    if run.status == "completed":
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
-        new_message = messages.data[0].content[0].text.value
-        logging.info(f"Generated message for {name}: {new_message}")
-        return new_message, date_str, time_str
-    else:
-        logging.error(f"Run failed for {name}: {run.last_error}")
-        return None, None, None
-    
 def get_current_time():
     """
     Get the current time in both Hijri and Gregorian calendars.
@@ -145,6 +108,73 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
     time_str = dt_saudi.strftime("%H:%M")
     return date_str, time_str
 
+FUNCTION_MAPPING = {
+    "get_current_time": get_current_time
+    # Add other function mappings here
+}
+
+def run_assistant(thread, name, max_iterations=10):
+    """
+    Run the assistant and poll until the run is complete or a timeout is reached.
+    Supports chained function calls with arguments.
+    Returns the generated message along with date and time, or None if an error occurs.
+    """
+    assistant = client.beta.assistants.retrieve(OPENAI_ASSISTANT_ID)
+    iteration = 0
+
+    while iteration < max_iterations:
+        # create_and_poll already handles polling until the run is complete.
+        run = client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id=assistant.id,
+        )
+        if run.status != "completed":
+            logging.error(f"Run failed for {name}: {run.last_error}")
+            return None, None, None
+
+        # Retrieve the latest assistant message.
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        latest_message = messages.data[0].content[0]
+
+        # Check if the assistant's response is a function call.
+        if (hasattr(latest_message, "function_call") and 
+            latest_message.function_call and 
+            latest_message.function_call.get("name") in FUNCTION_MAPPING):
+            
+            function_name = latest_message.function_call.get("name")
+            # Extract arguments from the function call; expected to be a JSON string.
+            raw_args = latest_message.function_call.get("arguments", "{}")
+            try:
+                parsed_args = json.loads(raw_args)
+            except Exception as e:
+                logging.error(f"Error parsing arguments for function '{function_name}': {e}")
+                parsed_args = {}
+            
+            # Execute the corresponding function with the provided arguments.
+            function_result = FUNCTION_MAPPING[function_name](**parsed_args)
+            
+            # Append the function result to the thread as a "function" message.
+            client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="function",
+                content=function_result  # Serialize if necessary
+            )
+            logging.info(
+                f"Executed function '{function_name}' for {name} with arguments {parsed_args} and result: {function_result}"
+            )
+            iteration += 1
+            # Re-run the assistant with the updated conversation context.
+            continue
+        else:
+            # If there's no function call, assume the assistant produced the final text reply.
+            date_str, time_str = parse_unix_timestamp(latest_message.created_at)
+            new_message = latest_message.text.value
+            logging.info(f"Generated message for {name}: {new_message}")
+            return new_message, date_str, time_str
+
+    logging.error(f"Exceeded maximum iterations ({max_iterations}) for {name}")
+    return None, None, None    
+
 async def generate_response(message_body, wa_id, name, timestamp):
     """
     Generate a response from the assistant and update the conversation.
@@ -158,7 +188,13 @@ async def generate_response(message_body, wa_id, name, timestamp):
         thread_id = check_if_thread_exists(wa_id)
         if thread_id is None:
             logging.info(f"Creating new thread for {name} with wa_id {wa_id}")
-            thread = client.beta.threads.create()
+            thread = client.beta.threads.create(
+                tool_resources={
+                            "file_search": {
+                                "vector_store_ids": [config["VEC_STORE_ID"]]
+                            }
+                        }
+                    )
             thread_id = thread.id
             store_thread(wa_id, thread_id)
         else:
@@ -169,7 +205,7 @@ async def generate_response(message_body, wa_id, name, timestamp):
         append_message(wa_id, 'user', message_body, date_str, time_str)
         
         # Retry loop to add the user's message to the OpenAI thread.
-        MAX_RETRIES = 60
+        MAX_RETRIES = 5
         RETRY_DELAY = 2  # seconds
         retries = 0
         while retries < MAX_RETRIES:
