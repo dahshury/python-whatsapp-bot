@@ -2,7 +2,6 @@ import json
 import shelve
 import os
 import logging
-import asyncio
 from fastapi import APIRouter, Request, HTTPException, Depends, Query, BackgroundTasks
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -48,8 +47,8 @@ async def webhook_post(
         logging.info("Received a WhatsApp status update.")
         return JSONResponse(content={"status": "ok"})
     
-    # Schedule the async process_whatsapp_message via a lambda wrapping asyncio.create_task.
-    background_tasks.add_task(lambda: asyncio.create_task(process_whatsapp_message(body)))
+    # Schedule the asynchronous process_whatsapp_message directly as a background task.
+    background_tasks.add_task(process_whatsapp_message, body)
     return JSONResponse(content={"status": "ok"})
 
 def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
