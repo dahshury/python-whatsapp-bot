@@ -1,6 +1,6 @@
-flask
+fastapi
 python-dotenv
 openai
 aiohttp
 requests
-gunicorn
+uvicorn
