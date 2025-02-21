@@ -79,7 +79,7 @@ def append_message(wa_id, role, message, date_str, time_str):
 def get_current_time():
     """
     Get the current time in both Hijri and Gregorian calendars.
-    Returns a tuple with both date and time.
+    Returns a formatted string with both date and time.
     """
     now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
     gregorian_date_str = now.strftime("%Y-%m-%d")
@@ -88,7 +88,7 @@ def get_current_time():
     hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
     hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
     
-    return (gregorian_date_str, gregorian_time_str), (hijri_date_str, gregorian_time_str)
+    return f"Gregorian date: {gregorian_date_str}, Makkah time: {gregorian_time_str}, Hijri date: {hijri_date_str}"
 
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
