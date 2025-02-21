@@ -6,6 +6,9 @@ import sys
 load_dotenv()
 
 config = {
+    "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+    "OPENAI_ASSISTANT_ID": os.getenv("OPENAI_ASSISTANT_ID"),
+    "VEC_STORE_ID": os.getenv("VEC_STORE_ID"),
     "ACCESS_TOKEN": os.getenv("ACCESS_TOKEN"),
     "YOUR_PHONE_NUMBER": os.getenv("YOUR_PHONE_NUMBER"),
     "APP_ID": os.getenv("APP_ID"),
