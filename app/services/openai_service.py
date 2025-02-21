@@ -167,7 +167,7 @@ def run_assistant(thread, name, max_iterations=10):
             continue
         else:
             # If there's no function call, assume the assistant produced the final text reply.
-            date_str, time_str = parse_unix_timestamp(latest_message.created_at)
+            date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
             new_message = latest_message.text.value
             logging.info(f"Generated message for {name}: {new_message}")
             return new_message, date_str, time_str
