@@ -65,7 +65,7 @@ def process_text_for_whatsapp(text):
     return whatsapp_style_text
 
 
-def process_whatsapp_message(body):
+async def process_whatsapp_message(body):
     """
     Processes an incoming WhatsApp message and generates an appropriate response.
     Args:
@@ -91,7 +91,7 @@ def process_whatsapp_message(body):
         
     if message_body:
         timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
-        response_text = generate_response(message_body, wa_id, name, timestamp)
+        response_text = await generate_response(message_body, wa_id, name, timestamp)
         response_text = process_text_for_whatsapp(response_text)
     elif message.get('type') in ['audio', 'image']:
         response_text = process_text_for_whatsapp(
