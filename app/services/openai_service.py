@@ -9,7 +9,7 @@ from app.config import config
 from openai import OpenAI
 from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp
 import inspect
-import assistant_functions
+from app.services import assistant_functions
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 OPENAI_ASSISTANT_ID = config["OPENAI_ASSISTANT_ID"]
