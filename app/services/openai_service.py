@@ -116,64 +116,73 @@ FUNCTION_MAPPING = {
 def run_assistant(thread, name, max_iterations=10):
     """
     Run the assistant and poll until the run is complete or a timeout is reached.
-    Supports chained function calls with arguments.
+    Supports submitting tool outputs via submit_tool_outputs_and_poll.
     Returns the generated message along with date and time, or None if an error occurs.
     """
     assistant = client.beta.assistants.retrieve(OPENAI_ASSISTANT_ID)
-    iteration = 0
+    
+    # Create the initial run and wait for it to complete.
+    run = client.beta.threads.runs.create_and_poll(
+        thread_id=thread.id,
+        assistant_id=assistant.id,
+    )
+    
+    if run.status != "completed":
+        logging.error(f"Run failed for {name}: {run.last_error}")
+        return None, None, None
 
-    while iteration < max_iterations:
-        # create_and_poll already handles polling until the run is complete.
-        run = client.beta.threads.runs.create_and_poll(
-            thread_id=thread.id,
-            assistant_id=assistant.id,
-        )
-        if run.status != "completed":
-            logging.error(f"Run failed for {name}: {run.last_error}")
+    # Prepare to collect tool outputs if the run requires any.
+    tool_outputs = []
+    # Check if there is a required action for tool outputs.
+    if (hasattr(run, "required_action") and 
+        hasattr(run.required_action, "submit_tool_outputs") and 
+        run.required_action.submit_tool_outputs.tool_calls):
+        
+        # Loop through each tool call requested by the assistant.
+        for tool in run.required_action.submit_tool_outputs.tool_calls:
+            if tool.function.name == "get_current_time":
+                # Extract arguments if any (expected to be a JSON string).
+                raw_args = tool.function.get("arguments", "{}")
+                try:
+                    parsed_args = json.loads(raw_args)
+                except Exception as e:
+                    logging.error(f"Error parsing arguments for function 'get_current_time': {e}")
+                    parsed_args = {}
+                
+                # Execute the function with the parsed arguments.
+                output = FUNCTION_MAPPING["get_current_time"](**parsed_args)
+                tool_outputs.append({
+                    "tool_call_id": tool.id,
+                    "output": output  # Ensure this is a string or properly serialized
+                })
+            # Add additional tool calls here as needed.
+    
+    # If any tool outputs were collected, submit them.
+    if tool_outputs:
+        try:
+            run = client.beta.threads.runs.submit_tool_outputs_and_poll(
+                thread_id=thread.id,
+                run_id=run.id,
+                tool_outputs=tool_outputs
+            )
+            logging.info("Tool outputs submitted successfully.")
+        except Exception as e:
+            logging.error(f"Failed to submit tool outputs for {name}: {e}")
             return None, None, None
+    else:
+        logging.info("No tool outputs to submit.")
 
-        # Retrieve the latest assistant message.
+    # After submitting tool outputs (or if there were none), check for final reply.
+    if run.status == "completed":
         messages = client.beta.threads.messages.list(thread_id=thread.id)
         latest_message = messages.data[0].content[0]
-
-        # Check if the assistant's response is a function call.
-        if (hasattr(latest_message, "function_call") and 
-            latest_message.function_call and 
-            latest_message.function_call.get("name") in FUNCTION_MAPPING):
-            
-            function_name = latest_message.function_call.get("name")
-            # Extract arguments from the function call; expected to be a JSON string.
-            raw_args = latest_message.function_call.get("arguments", "{}")
-            try:
-                parsed_args = json.loads(raw_args)
-            except Exception as e:
-                logging.error(f"Error parsing arguments for function '{function_name}': {e}")
-                parsed_args = {}
-            
-            # Execute the corresponding function with the provided arguments.
-            function_result = FUNCTION_MAPPING[function_name](**parsed_args)
-            
-            # Append the function result to the thread as a "function" message.
-            client.beta.threads.messages.create(
-                thread_id=thread.id,
-                role="function",
-                content=function_result  # Serialize if necessary
-            )
-            logging.info(
-                f"Executed function '{function_name}' for {name} with arguments {parsed_args} and result: {function_result}"
-            )
-            iteration += 1
-            # Re-run the assistant with the updated conversation context.
-            continue
-        else:
-            # If there's no function call, assume the assistant produced the final text reply.
-            date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
-            new_message = latest_message.text.value
-            logging.info(f"Generated message for {name}: {new_message}")
-            return new_message, date_str, time_str
-
-    logging.error(f"Exceeded maximum iterations ({max_iterations}) for {name}")
-    return None, None, None    
+        date_str, time_str = parse_unix_timestamp(latest_message.created_at)
+        new_message = latest_message.text.value
+        logging.info(f"Generated message for {name}: {new_message}")
+        return new_message, date_str, time_str
+    else:
+        logging.error(f"Run status is not completed, status: {run.status}")
+        return None, None, None
 
 async def generate_response(message_body, wa_id, name, timestamp):
     """
@@ -205,7 +214,7 @@ async def generate_response(message_body, wa_id, name, timestamp):
         append_message(wa_id, 'user', message_body, date_str, time_str)
         
         # Retry loop to add the user's message to the OpenAI thread.
-        MAX_RETRIES = 5
+        MAX_RETRIES = 20
         RETRY_DELAY = 2  # seconds
         retries = 0
         while retries < MAX_RETRIES:
