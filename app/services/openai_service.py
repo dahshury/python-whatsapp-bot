@@ -127,7 +127,7 @@ def run_assistant(thread, name, max_iterations=10):
         assistant_id=assistant.id,
     )
     
-    if run.status != "completed":
+    if run.status not in ["completed", "requires_action"]:
         logging.error(f"Run failed for {name}: {run.last_error}")
         return None, None, None
 
