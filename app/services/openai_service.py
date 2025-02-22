@@ -7,7 +7,7 @@ import certifi
 import httpx
 from app.config import config
 from openai import OpenAI
-from utils.service_utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp
+from utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp
 import inspect
 import assistant_functions
 
