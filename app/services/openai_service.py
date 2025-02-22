@@ -88,7 +88,11 @@ def get_current_time():
     hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
     hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
     
-    return f"Gregorian date: {gregorian_date_str}, Makkah time: {gregorian_time_str}, Hijri date: {hijri_date_str}"
+    return json.dumps({
+        "gregorian_date": gregorian_date_str,
+        "makkah_time": gregorian_time_str,
+        "hijri_date": hijri_date_str
+    })
 
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
@@ -115,68 +119,66 @@ FUNCTION_MAPPING = {
 
 def run_assistant(thread, name, max_iterations=10):
     """
-    Runs the assistant for the given thread and returns the generated message,
-    along with the associated date and time. If any function calls (tool calls)
-    are requested by the assistant (e.g. for getting the current time), they
-    are executed and submitted before the final reply is retrieved.
+    Run the assistant and poll until the run is complete or a timeout is reached.
+    Supports submitting tool outputs via submit_tool_outputs_and_poll.
+    Returns the generated message along with date and time, or None if an error occurs.
     """
     assistant = client.beta.assistants.retrieve(OPENAI_ASSISTANT_ID)
-
+    
     # Create the initial run and wait for it to complete.
     run = client.beta.threads.runs.create_and_poll(
         thread_id=thread.id,
         assistant_id=assistant.id,
     )
-
-    # Check that the run is in a state where we can proceed.
+    
     if run.status not in ["completed", "requires_action"]:
         logging.error(f"Run failed for {name}: {run.last_error}")
         return None, None, None
 
+    # Prepare to collect tool outputs if the run requires any.
     tool_outputs = []
-    # If the assistant requires tool outputs, process each tool call.
+    # Check if there is a required action for tool outputs.
     if (hasattr(run, "required_action") and 
         hasattr(run.required_action, "submit_tool_outputs") and 
         run.required_action.submit_tool_outputs.tool_calls):
-
+        
+        # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
             if tool.function.name == "get_current_time":
-                # Instead of treating tool.function as a dictionary, access the
-                # 'arguments' attribute using getattr. If not present, default to "{}".
+                # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
                     parsed_args = json.loads(raw_args)
                 except Exception as e:
                     logging.error(f"Error parsing arguments for function 'get_current_time': {e}")
                     parsed_args = {}
-
-                # Execute the mapped function with the parsed arguments.
+                
+                # Execute the function with the parsed arguments.
                 output = FUNCTION_MAPPING["get_current_time"](**parsed_args)
                 tool_outputs.append({
                     "tool_call_id": tool.id,
-                    "output": output  # Ensure this is properly serialized if needed.
+                    "output": output  # Ensure this is a string or properly serialized
                 })
-            # Add additional tool calls here if necessary.
+            # Add additional tool calls here as needed.
+    
+    # If any tool outputs were collected, submit them.
+    if tool_outputs:
+        try:
+            run = client.beta.threads.runs.submit_tool_outputs_and_poll(
+                thread_id=thread.id,
+                run_id=run.id,
+                tool_outputs=tool_outputs
+            )
+            logging.info("Tool outputs submitted successfully.")
+        except Exception as e:
+            logging.error(f"Failed to submit tool outputs for {name}: {e}")
+            return None, None, None
+    else:
+        logging.info("No tool outputs to submit.")
 
-        # Submit all tool outputs at once.
-        if tool_outputs:
-            try:
-                run = client.beta.threads.runs.submit_tool_outputs_and_poll(
-                    thread_id=thread.id,
-                    run_id=run.id,
-                    tool_outputs=tool_outputs
-                )
-                logging.info("Tool outputs submitted successfully.")
-            except Exception as e:
-                logging.error(f"Failed to submit tool outputs for {name}: {e}")
-                return None, None, None
-        else:
-            logging.info("No tool outputs to submit.")
-
-    # Once the run is complete, fetch the latest assistant message.
+    # After submitting tool outputs (or if there were none), check for final reply.
     if run.status == "completed":
         messages = client.beta.threads.messages.list(thread_id=thread.id)
-        # Assumes the most recent message is the assistant's final reply.
         latest_message = messages.data[0].content[0]
         date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
         new_message = latest_message.text.value
