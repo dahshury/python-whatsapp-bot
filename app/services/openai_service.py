@@ -27,29 +27,18 @@ FUNCTION_MAPPING = {
 }
 
 def append_message(wa_id, role, message, date_str, time_str):
-    """
-    Append a message to the conversation history for the given WhatsApp ID.
-    """
-    with shelve.open("threads_db", writeback=True) as threads_shelf:
-        if wa_id in threads_shelf:
-            threads_shelf[wa_id]['conversation'].append({
-                'role': role,
-                'message': message,
-                'date': date_str,
-                'time': time_str
-            })
-        else:
-            threads_shelf[wa_id] = {
-                'thread_id': None,
-                'conversation': [{
-                    'role': role,
-                    'message': message,
-                    'date': date_str,
-                    'time': time_str
-                }]
-            }
-        threads_shelf.sync()
-        
+    from app.db import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Ensure a thread record exists for this wa_id
+    cursor.execute("INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
+    # Insert the conversation message
+    cursor.execute(
+        "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
+        (wa_id, role, message, date_str, time_str)
+    )
+    conn.commit()
+    conn.close()
 
 def run_assistant(thread, name, max_iterations=10):
     """

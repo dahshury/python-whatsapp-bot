@@ -1,5 +1,5 @@
 import asyncio
-import shelve
+from app.db import get_connection
 import datetime
 from zoneinfo import ZoneInfo
 from hijri_converter import convert
@@ -17,22 +17,23 @@ def get_lock(wa_id):
     return global_locks[wa_id]
 
 def check_if_thread_exists(wa_id):
-    """
-    Check if a conversation thread exists for the given WhatsApp ID.
-    """
-    with shelve.open("threads_db") as threads_shelf:
-        entry = threads_shelf.get(wa_id, None)
-        if entry is not None:
-            return entry.get('thread_id')
-        return None
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT thread_id FROM threads WHERE wa_id = ?", (wa_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row["thread_id"] if row else None
 
 def store_thread(wa_id, thread_id):
-    """
-    Create a new conversation entry for the given WhatsApp ID.
-    """
-    with shelve.open("threads_db", writeback=True) as threads_shelf:
-        threads_shelf[wa_id] = {'thread_id': thread_id, 'conversation': [], "reservations": []}
-        threads_shelf.sync()
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Use INSERT OR REPLACE to update existing record if necessary
+    cursor.execute(
+        "INSERT OR REPLACE INTO threads (wa_id, thread_id) VALUES (?, ?)",
+        (wa_id, thread_id)
+    )
+    conn.commit()
+    conn.close()
         
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """

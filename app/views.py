@@ -1,5 +1,5 @@
 import json
-import shelve
+from app.db import get_connection
 import os
 import logging
 from fastapi import APIRouter, Request, HTTPException, Depends, Query, BackgroundTasks
@@ -62,8 +62,25 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
 @router.get("/download/")
 async def download_json(credentials: HTTPBasicCredentials = Depends(security)):
     check_auth(credentials)
-    with shelve.open("threads_db", flag="r") as db:
-        data = dict(db)
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Fetch all thread records
+    cursor.execute("SELECT wa_id, thread_id FROM threads")
+    threads = cursor.fetchall()
+    data = {}
+    for thread in threads:
+        wa_id = thread["wa_id"]
+        data[wa_id] = {"thread_id": thread["thread_id"]}
+        # Fetch conversation messages for the current wa_id
+        cursor.execute("SELECT role, message, date, time FROM conversation WHERE wa_id = ? ORDER BY id", (wa_id,))
+        conversation = [dict(row) for row in cursor.fetchall()]
+        data[wa_id]["conversation"] = conversation
+        # Fetch reservations for the current wa_id
+        cursor.execute("SELECT date, time_slot FROM reservations WHERE wa_id = ?", (wa_id,))
+        reservations = [dict(row) for row in cursor.fetchall()]
+        data[wa_id]["reservations"] = reservations
+    conn.close()
+    
     json_data = json.dumps(data, indent=4, ensure_ascii=False)
     temp_json_filename = os.path.join(os.getcwd(), "threads_db.json")
     with open(temp_json_filename, "w", encoding="utf-8") as f:
