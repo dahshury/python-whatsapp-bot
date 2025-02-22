@@ -69,19 +69,16 @@ def run_assistant(thread, name, max_iterations=10):
         logging.error(f"Run failed for {name}: {run.last_error}")
         return None, None, None
 
-
-    iteration = 0
+    # Prepare to collect tool outputs if the run requires any.
+    tool_outputs = []
     # Check if there is a required action for tool outputs.
-    while (hasattr(run, "required_action") and 
+    if (hasattr(run, "required_action") and 
         hasattr(run.required_action, "submit_tool_outputs") and 
-        run.required_action.submit_tool_outputs.tool_calls) and iteration < max_iterations:
-        # Prepare to collect tool outputs if the run requires any.
-        tool_outputs = []
-        iteration += 1
+        run.required_action.submit_tool_outputs.tool_calls):
         
         # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name in FUNCTION_MAPPING:
+            if tool.function.name == "get_current_time":
                 # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
@@ -91,31 +88,28 @@ def run_assistant(thread, name, max_iterations=10):
                     parsed_args = {}
                 
                 # Execute the function with the parsed arguments.
-                output = FUNCTION_MAPPING[tool.function.name](**parsed_args)
+                output = FUNCTION_MAPPING["get_current_time"](**parsed_args)
                 tool_outputs.append({
                     "tool_call_id": tool.id,
                     "output": output  # Ensure this is a string or properly serialized
                 })
             # Add additional tool calls here as needed.
     
-        # If any tool outputs were collected, submit them.
-        if tool_outputs:
-            try:
-                run = client.beta.threads.runs.submit_tool_outputs_and_poll(
-                    thread_id=thread.id,
-                    run_id=run.id,
-                    tool_outputs=tool_outputs
-                )
-                logging.info("Tool outputs submitted successfully.")
-            except Exception as e:
-                logging.error(f"Failed to submit tool outputs for {name}: {e}")
-                return None, None, None
-            
-        elif run.status == "requires_action":
-            continue
-        else:
-            logging.info("No tool outputs to submit.")
-        
+    # If any tool outputs were collected, submit them.
+    if tool_outputs:
+        try:
+            run = client.beta.threads.runs.submit_tool_outputs_and_poll(
+                thread_id=thread.id,
+                run_id=run.id,
+                tool_outputs=tool_outputs
+            )
+            logging.info("Tool outputs submitted successfully.")
+        except Exception as e:
+            logging.error(f"Failed to submit tool outputs for {name}: {e}")
+            return None, None, None
+    else:
+        logging.info("No tool outputs to submit.")
+
     # After submitting tool outputs (or if there were none), check for final reply.
     if run.status == "completed":
         messages = client.beta.threads.messages.list(thread_id=thread.id)
@@ -124,7 +118,6 @@ def run_assistant(thread, name, max_iterations=10):
         new_message = latest_message.text.value
         logging.info(f"Generated message for {name}: {new_message}")
         return new_message, date_str, time_str
-    
     else:
         logging.error(f"Run status is not completed, status: {run.status}")
         return None, None, None
