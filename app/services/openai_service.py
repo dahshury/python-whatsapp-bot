@@ -5,10 +5,10 @@ import json
 import ssl
 import certifi
 import httpx
+import inspect
 from app.config import config
 from openai import OpenAI
 from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp
-import inspect
 from app.services import assistant_functions
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
@@ -110,22 +110,24 @@ def run_assistant(thread, name, max_iterations=10):
             except Exception as e:
                 logging.error(f"Failed to submit tool outputs for {name}: {e}")
                 return None, None, None
-        else:
-            logging.info("No tool outputs to submit.")
-
-        # After submitting tool outputs (or if there were none), check for final reply.
-        if run.status == "completed":
-            messages = client.beta.threads.messages.list(thread_id=thread.id)
-            latest_message = messages.data[0].content[0]
-            date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
-            new_message = latest_message.text.value
-            logging.info(f"Generated message for {name}: {new_message}")
-            return new_message, date_str, time_str
+            
         elif run.status == "requires_action":
             continue
         else:
-            logging.error(f"Run status is not completed, status: {run.status}")
-            return None, None, None
+            logging.info("No tool outputs to submit.")
+        
+    # After submitting tool outputs (or if there were none), check for final reply.
+    if run.status == "completed":
+        messages = client.beta.threads.messages.list(thread_id=thread.id)
+        latest_message = messages.data[0].content[0]
+        date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
+        new_message = latest_message.text.value
+        logging.info(f"Generated message for {name}: {new_message}")
+        return new_message, date_str, time_str
+    
+    else:
+        logging.error(f"Run status is not completed, status: {run.status}")
+        return None, None, None
 
 async def generate_response(message_body, wa_id, name, timestamp):
     """
