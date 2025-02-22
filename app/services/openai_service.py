@@ -1,17 +1,15 @@
-import os
-import time
 import logging
-import datetime
 import shelve
 import asyncio
 import json
-from zoneinfo import ZoneInfo  # Requires Python 3.9+
-from hijri_converter import convert
 import ssl
 import certifi
 import httpx
 from app.config import config
 from openai import OpenAI
+from utils.service_utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp
+import inspect
+import assistant_functions
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 OPENAI_ASSISTANT_ID = config["OPENAI_ASSISTANT_ID"]
@@ -21,37 +19,13 @@ ssl_context.load_verify_locations(certifi.where())
 
 http_client = httpx.Client(verify=ssl_context)
 client = OpenAI(api_key=OPENAI_API_KEY, http_client=http_client)
+   
+# Dynamically create FUNCTION_MAPPING functions in assistant_functions
+FUNCTION_MAPPING = {
+    name: func for name, func in inspect.getmembers(assistant_functions)
+    if inspect.isfunction(func)
+}
 
-# Global in-memory dictionary to store asyncio locks per user (wa_id)
-global_locks = {}
-
-def get_lock(wa_id):
-    """
-    Retrieve or create an asyncio.Lock for the given WhatsApp ID.
-    Also record a flag in the shelve under the key "locks" for tracking.
-    """
-    if wa_id not in global_locks:
-        global_locks[wa_id] = asyncio.Lock()
-    return global_locks[wa_id]
-
-def check_if_thread_exists(wa_id):
-    """
-    Check if a conversation thread exists for the given WhatsApp ID.
-    """
-    with shelve.open("threads_db") as threads_shelf:
-        entry = threads_shelf.get(wa_id, None)
-        if entry is not None:
-            return entry.get('thread_id')
-        return None
-
-def store_thread(wa_id, thread_id):
-    """
-    Create a new conversation entry for the given WhatsApp ID.
-    """
-    with shelve.open("threads_db", writeback=True) as threads_shelf:
-        threads_shelf[wa_id] = {'thread_id': thread_id, 'conversation': []}
-        threads_shelf.sync()
-        
 def append_message(wa_id, role, message, date_str, time_str):
     """
     Append a message to the conversation history for the given WhatsApp ID.
@@ -76,46 +50,6 @@ def append_message(wa_id, role, message, date_str, time_str):
             }
         threads_shelf.sync()
         
-def get_current_time():
-    """
-    Get the current time in both Hijri and Gregorian calendars.
-    Returns a formatted string with both date and time.
-    """
-    now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-    gregorian_date_str = now.strftime("%Y-%m-%d")
-    gregorian_time_str = now.strftime("%H:%M")
-    
-    hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
-    hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
-    
-    return json.dumps({
-        "gregorian_date": gregorian_date_str,
-        "makkah_time": gregorian_time_str,
-        "hijri_date": hijri_date_str
-    })
-
-def parse_unix_timestamp(timestamp, to_hijri=False):
-    """
-    Convert a Unix timestamp to formatted date and time strings.
-    """
-    timestamp = int(timestamp)
-    dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
-    saudi_timezone = ZoneInfo("Asia/Riyadh")
-    dt_saudi = dt_utc.astimezone(saudi_timezone)
-    
-    if to_hijri:
-        hijri_date = convert.Gregorian(dt_saudi.year, dt_saudi.month, dt_saudi.day).to_hijri()
-        date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
-    else:
-        date_str = dt_saudi.strftime("%Y-%m-%d")
-    
-    time_str = dt_saudi.strftime("%H:%M")
-    return date_str, time_str
-
-FUNCTION_MAPPING = {
-    "get_current_time": get_current_time
-    # Add other function mappings here
-}
 
 def run_assistant(thread, name, max_iterations=10):
     """
@@ -135,16 +69,19 @@ def run_assistant(thread, name, max_iterations=10):
         logging.error(f"Run failed for {name}: {run.last_error}")
         return None, None, None
 
-    # Prepare to collect tool outputs if the run requires any.
-    tool_outputs = []
+
+    iteration = 0
     # Check if there is a required action for tool outputs.
-    if (hasattr(run, "required_action") and 
+    while (hasattr(run, "required_action") and 
         hasattr(run.required_action, "submit_tool_outputs") and 
-        run.required_action.submit_tool_outputs.tool_calls):
+        run.required_action.submit_tool_outputs.tool_calls) and iteration < max_iterations:
+        # Prepare to collect tool outputs if the run requires any.
+        tool_outputs = []
+        iteration += 1
         
         # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name == "get_current_time":
+            if tool.function.name in FUNCTION_MAPPING:
                 # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
@@ -154,39 +91,41 @@ def run_assistant(thread, name, max_iterations=10):
                     parsed_args = {}
                 
                 # Execute the function with the parsed arguments.
-                output = FUNCTION_MAPPING["get_current_time"](**parsed_args)
+                output = FUNCTION_MAPPING[tool.function.name](**parsed_args)
                 tool_outputs.append({
                     "tool_call_id": tool.id,
                     "output": output  # Ensure this is a string or properly serialized
                 })
             # Add additional tool calls here as needed.
     
-    # If any tool outputs were collected, submit them.
-    if tool_outputs:
-        try:
-            run = client.beta.threads.runs.submit_tool_outputs_and_poll(
-                thread_id=thread.id,
-                run_id=run.id,
-                tool_outputs=tool_outputs
-            )
-            logging.info("Tool outputs submitted successfully.")
-        except Exception as e:
-            logging.error(f"Failed to submit tool outputs for {name}: {e}")
-            return None, None, None
-    else:
-        logging.info("No tool outputs to submit.")
+        # If any tool outputs were collected, submit them.
+        if tool_outputs:
+            try:
+                run = client.beta.threads.runs.submit_tool_outputs_and_poll(
+                    thread_id=thread.id,
+                    run_id=run.id,
+                    tool_outputs=tool_outputs
+                )
+                logging.info("Tool outputs submitted successfully.")
+            except Exception as e:
+                logging.error(f"Failed to submit tool outputs for {name}: {e}")
+                return None, None, None
+        else:
+            logging.info("No tool outputs to submit.")
 
-    # After submitting tool outputs (or if there were none), check for final reply.
-    if run.status == "completed":
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        latest_message = messages.data[0].content[0]
-        date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
-        new_message = latest_message.text.value
-        logging.info(f"Generated message for {name}: {new_message}")
-        return new_message, date_str, time_str
-    else:
-        logging.error(f"Run status is not completed, status: {run.status}")
-        return None, None, None
+        # After submitting tool outputs (or if there were none), check for final reply.
+        if run.status == "completed":
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            latest_message = messages.data[0].content[0]
+            date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
+            new_message = latest_message.text.value
+            logging.info(f"Generated message for {name}: {new_message}")
+            return new_message, date_str, time_str
+        elif run.status == "requires_action":
+            continue
+        else:
+            logging.error(f"Run status is not completed, status: {run.status}")
+            return None, None, None
 
 async def generate_response(message_body, wa_id, name, timestamp):
     """
