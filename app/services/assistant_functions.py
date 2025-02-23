@@ -16,19 +16,20 @@ def get_current_time():
     hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
     hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
     
+    day_name = now.strftime("%a")
     return json.dumps({
         "gregorian_date": gregorian_date_str,
         "makkah_time": gregorian_time_str,
-        "hijri_date": hijri_date_str
+        "hijri_date": hijri_date_str,
+        "day_name": day_name
     })
-    
 def get_customer_reservations(wa_id):
     """
     Get the list of reservations for the given WhatsApp ID from SQLite.
     """
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT date, time_slot FROM reservations WHERE wa_id = ?", (wa_id,))
+    cursor.execute("SELECT date, time_slot, customer_name FROM reservations WHERE wa_id = ?", (wa_id,))
     rows = cursor.fetchall()
     conn.close()
     reservation_list = [dict(row) for row in rows]
@@ -53,7 +54,7 @@ def get_time_slots(date_str):
         available = {f"{hour:02d}:00": 0 for hour in range(11, 18, 2)}  # 11 AM to 5 PM
     return json.dumps(available)
 
-def reserve_time_slot(wa_id, date_str, time_slot):
+def reserve_time_slot(wa_id, customer_name, date_str, time_slot):
     available = json.loads(get_time_slots(date_str))
     if time_slot not in available:
         return json.dumps({"success": False, "message": "Invalid time slot."})
@@ -72,10 +73,10 @@ def reserve_time_slot(wa_id, date_str, time_slot):
     if cursor.fetchone() is None:
         cursor.execute("INSERT INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
     
-    # Insert the new reservation
+    # Insert the new reservation with customer name
     cursor.execute(
-        "INSERT INTO reservations (wa_id, date, time_slot) VALUES (?, ?, ?)",
-        (wa_id, date_str, time_slot)
+        "INSERT INTO reservations (wa_id, customer_name, date, time_slot) VALUES (?, ?, ?, ?)",
+        (wa_id, customer_name, date_str, time_slot)
     )
     conn.commit()
     conn.close()

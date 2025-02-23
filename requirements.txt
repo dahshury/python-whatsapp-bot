@@ -4,3 +4,8 @@ openai
 aiohttp
 requests
 uvicorn
+
+streamlit
+streamlit-keyup
+streamlit_calendar
+phonenumbers
