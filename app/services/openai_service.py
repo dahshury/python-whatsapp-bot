@@ -25,7 +25,7 @@ FUNCTION_MAPPING = {
     name: func for name, func in inspect.getmembers(assistant_functions)
     if inspect.isfunction(func)
 }
-
+logging.info(f"FUNCTION_MAPPING: {FUNCTION_MAPPING}")
 def append_message(wa_id, role, message, date_str, time_str):
     from app.db import get_connection
     conn = get_connection()
@@ -67,7 +67,7 @@ def run_assistant(thread, name, max_iterations=10):
         
         # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name in FUNCTION_MAPPING:
+            if tool.function.name in FUNCTION_MAPPING.keys():
                 # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
