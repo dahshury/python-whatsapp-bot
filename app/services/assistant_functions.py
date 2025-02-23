@@ -26,6 +26,7 @@ def get_current_datetime():
     hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
     
     day_name = now.strftime("%a")
+    
     return json.dumps({
         "gregorian_date": gregorian_date_str,
         "makkah_time": gregorian_time_str,

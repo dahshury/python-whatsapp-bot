@@ -25,7 +25,7 @@ FUNCTION_MAPPING = {
     name: func for name, func in inspect.getmembers(assistant_functions)
     if inspect.isfunction(func)
 }
-logging.info(f"FUNCTION_MAPPING: {FUNCTION_MAPPING}")
+
 def append_message(wa_id, role, message, date_str, time_str):
     from app.db import get_connection
     conn = get_connection()
@@ -67,22 +67,33 @@ def run_assistant(thread, name, max_iterations=10):
         
         # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name in FUNCTION_MAPPING.keys():
+            if tool.function.name in FUNCTION_MAPPING:
                 # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
                     parsed_args = json.loads(raw_args)
                 except Exception as e:
-                    logging.error(f"Error parsing arguments for function 'get_current_time': {e}")
+                    logging.error(f"Error parsing arguments for function {tool.function.name}: {e}")
                     parsed_args = {}
                 
                 # Execute the function with the parsed arguments.
-                output = FUNCTION_MAPPING[tool.function.name](**parsed_args)
+                if parsed_args:
+                    output = FUNCTION_MAPPING[tool.function.name](**parsed_args)
+                else:
+                    try:
+                        output = FUNCTION_MAPPING[tool.function.name]()
+                    except Exception as e:
+                        logging.error(f"Error executing function {tool.function.name}: {e}")
+                        return None, None, None
+                    
                 tool_outputs.append({
                     "tool_call_id": tool.id,
                     "output": output  # Ensure this is a string or properly serialized
                 })
             # Add additional tool calls here as needed.
+            else:
+                logging.error(f"Function '{tool.function.name}' not found implemented.")
+                return None, None, None
     
     # If any tool outputs were collected, submit them.
     if tool_outputs:

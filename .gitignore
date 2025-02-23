@@ -1,4 +1,5 @@
 threads_db.json
+threads_db.sqlite
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
