@@ -9,19 +9,22 @@ jobs:
   deploy:
     environment: ec2
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # Increased overall job timeout
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Deploy via SSH using appleboy/ssh-action
+      - name: Deploy via SSH using appleboy/ssh-action with retry
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # Optionally, disable strict host checking (not recommended for production)
-          # known_hosts: ${{ secrets.KNOWN_HOSTS }}
+          timeout: 600
           script: |
-            cd /home/ubuntu/python-whatsapp-bot
-            ./deploy.sh
+            for i in {1..3}; do  # Retry up to 3 times
+              echo "Attempt $i..."
+              cd /home/ubuntu/python-whatsapp-bot
+              ./deploy.sh && break || sleep 10
+            done
