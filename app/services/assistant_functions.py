@@ -4,11 +4,20 @@ from zoneinfo import ZoneInfo
 import datetime
 from hijri_converter import convert
 
-def get_current_time():
+def get_current_datetime():
     """
-    Get the current time in both Hijri and Gregorian calendars.
-    Returns a formatted string with both date and time.
+    Get the current date and time in both Hijri and Gregorian calendars.
+    This function retrieves the current date and time in the Asia/Riyadh timezone,
+    formats the date and time in both Gregorian and Hijri calendars, and returns
+    a JSON string containing the formatted dates and time.
+    Returns:
+        str: A JSON string with the following keys:
+            - "gregorian_date" (str): The current date in Gregorian calendar (YYYY-MM-DD).
+            - "makkah_time" (str): The current time in HH:MM format.
+            - "hijri_date" (str): The current date in Hijri calendar (YYYY-MM-DD).
+            - "day_name" (str): The abbreviated name of the current day (e.g., Mon, Tue).
     """
+    
     now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
     gregorian_date_str = now.strftime("%Y-%m-%d")
     gregorian_time_str = now.strftime("%H:%M")
@@ -23,6 +32,7 @@ def get_current_time():
         "hijri_date": hijri_date_str,
         "day_name": day_name
     })
+    
 def get_customer_reservations(wa_id):
     """
     Get the list of reservations for the given WhatsApp ID from SQLite.
