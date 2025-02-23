@@ -67,7 +67,7 @@ def run_assistant(thread, name, max_iterations=10):
         
         # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name == "get_current_time":
+            if tool.function.name in FUNCTION_MAPPING:
                 # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
@@ -77,7 +77,7 @@ def run_assistant(thread, name, max_iterations=10):
                     parsed_args = {}
                 
                 # Execute the function with the parsed arguments.
-                output = FUNCTION_MAPPING["get_current_time"](**parsed_args)
+                output = FUNCTION_MAPPING[tool.function.name](**parsed_args)
                 tool_outputs.append({
                     "tool_call_id": tool.id,
                     "output": output  # Ensure this is a string or properly serialized
