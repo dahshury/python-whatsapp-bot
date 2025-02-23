@@ -21,7 +21,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 600
+          timeout: 600s # Increased SSH timeout
           script: |
             for i in {1..3}; do  # Retry up to 3 times
               echo "Attempt $i..."
