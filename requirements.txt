@@ -7,4 +7,6 @@ uvicorn
 
 streamlit
 streamlit_calendar
+streamlit-aggrid
+streamlit_option_menu
 phonenumbers
