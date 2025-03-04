@@ -92,4 +92,5 @@ target/
 # Exlcude the database file
 .db
 
-/private
+users.yaml
+test.ipynb

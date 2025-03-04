@@ -78,10 +78,10 @@ def run_assistant(thread, name, max_iterations=10):
                 
                 # Execute the function with the parsed arguments.
                 if parsed_args:
-                    output = FUNCTION_MAPPING[tool.function.name](**parsed_args)
+                    output = FUNCTION_MAPPING[tool.function.name](**parsed_args, json_dump=True)
                 else:
                     try:
-                        output = FUNCTION_MAPPING[tool.function.name]()
+                        output = FUNCTION_MAPPING[tool.function.name](json_dump=True)
                     except Exception as e:
                         logging.error(f"Error executing function {tool.function.name}: {e}")
                         return None, None, None

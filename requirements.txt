@@ -1,12 +1,16 @@
-fastapi
-python-dotenv
-openai
-aiohttp
-requests
-uvicorn
+# Core dependencies
+fastapi==0.115.8
+python-dotenv==1.0.1
+openai==1.61.1
+aiohttp==3.11.12
+requests==2.32.3
+uvicorn==0.34.0
 
-streamlit
-streamlit_calendar
-streamlit-aggrid
-streamlit_option_menu
-phonenumbers
+# Streamlit and related components
+streamlit==1.42.0
+streamlit-calendar==1.2.1
+streamlit-authenticator==0.4.1
+streamlit-antd-components==0.3.2
+
+# Additional dependencies
+phonenumbers==8.13.55

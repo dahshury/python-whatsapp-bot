@@ -11,23 +11,12 @@ def log_http_response(response):
     logging.info(f"Content-type: {response.headers.get('content-type')}")
     logging.info(f"Body: {response.text}")
 
-
-def get_text_message_input(recipient, text):
-    return json.dumps({
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": recipient,
-        "type": "text",
-        "text": {"preview_url": False, "body": text},
-    })
-
-def send_message(data):
+def send_whatsapp_message(wa_id, text):
     """
-    Sends a message using the WhatsApp API.
-    This function sends a message to a specified phone number using the WhatsApp API provided by Facebook. 
-    It constructs the necessary headers and URL, and handles potential exceptions that may occur during the request.
+    Sends a text message using the WhatsApp API.
     Args:
-        data (dict): The message payload to be sent in JSON format.
+        recipient (str): The recipient's WhatsApp ID.
+        text (str): The text message to be sent.
     Returns:
         Response: If the request is successful, returns the response object from the requests library.
         tuple: If an error occurs, returns a tuple containing a JSON response and an HTTP status code.
@@ -36,6 +25,13 @@ def send_message(data):
     Raises:
         requests.HTTPError: If the HTTP request returned an unsuccessful status code.
     """
+    data = json.dumps({
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": wa_id,
+        "type": "text",
+        "text": {"preview_url": False, "body": text},
+    })
     
     headers = {
         "Content-type": "application/json",
@@ -54,7 +50,6 @@ def send_message(data):
     else:
         log_http_response(response)
         return response
-
 
 def process_text_for_whatsapp(text):
     pattern = r"\【.*?\】"
@@ -104,9 +99,7 @@ async def process_whatsapp_message(body):
         response_text = ""
     
     if response_text:
-        data = get_text_message_input(wa_id, response_text)
-        send_message(data)
-
+        send_whatsapp_message(wa_id, response_text)
 
 def is_valid_whatsapp_message(body):
     """

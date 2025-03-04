@@ -1,0 +1,202 @@
+﻿<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>Hijri Date Picker</title>
+  <!-- Local CSS for the datepicker plugin -->
+  <link rel="stylesheet" href="./css/bootstrap-datetimepicker.css">
+  <!-- Minimal Bootstrap styling from CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootswatch/4.3.1/flatly/bootstrap.min.css">
+  <style>
+    /* Remove extra background and margins */
+    body {
+      background: none;
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* Prevent any scrollbars */
+      width: 100%;
+      height: 100%;
+    }
+    
+    /* Wrapper with controlled width */
+    .datepicker-wrapper {
+      display: inline-block;
+      position: relative;
+      max-width: 150px; /* Control the maximum width */
+      width: 100%;
+    }
+    
+    /* Make input compact */
+    .hijri-date-input {
+      width: 100% !important;
+      min-width: 120px;
+      max-width: 150px;
+      border: none;
+      background: none;
+      box-shadow: none;
+      font-size: 1rem;
+      padding: 0.375rem 0.75rem;
+    }
+    
+    /* Fix bootstrap-datetimepicker positioning */
+    .bootstrap-datetimepicker-widget.dropdown-menu {
+      width: auto !important;
+      min-width: 250px !important;
+    }
+    
+    /* Optional: Adapt input colors for dark/light modes */
+    @media (prefers-color-scheme: dark) {
+      .hijri-date-input {
+        color: #fff;
+        background-color: #333;
+      }
+    }
+    
+    @media (prefers-color-scheme: light) {
+      .hijri-date-input {
+        color: #212529;
+        background-color: #fff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Minimal wrapper that only wraps the input -->
+  <div class="datepicker-wrapper">
+    <input type="text" class="form-control hijri-date-input" id="datepicker-options" />
+  </div>
+
+  <!-- Streamlit Component Lifecycle Scripts -->
+  <script>
+    const SET_COMPONENT_VALUE = "streamlit:setComponentValue";
+    const COMPONENT_READY = "streamlit:componentReady";
+    const SET_FRAME_HEIGHT = "streamlit:setFrameHeight";
+
+    function sendMessage(type, data) {
+      const outboundData = Object.assign({ isStreamlitMessage: true, type: type }, data);
+      window.parent.postMessage(outboundData, "*");
+    }
+    
+    sendMessage(COMPONENT_READY, { apiVersion: 1 });
+    
+    window.addEventListener("load", () => {
+      setTimeout(() => { setFrameHeight(50); }, 0);
+    });
+    
+    function setFrameHeight(height) {
+      sendMessage(SET_FRAME_HEIGHT, { height: height });
+    }
+  </script>
+
+  <!-- Include JS dependencies using CDN links -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js" 
+    integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" 
+    integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment-with-locales.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/moment-hijri@2.1.2/moment-hijri.min.js"></script>
+  <!-- Include local JS file for the datepicker plugin -->
+  <script src="./js/bootstrap-hijri-datetimepicker.js"></script>
+
+  <script>
+    $(document).ready(function () {
+      // Initialize the date picker
+      $("#datepicker-options").hijriDatePicker({
+        locale: "ar-sa",
+        defaultDate: moment(),
+        format: "DD-MM-YYYY",
+        hijriFormat: "iYYYY-iMM-iDD",
+        dayViewHeaderFormat: "MMMM YYYY",
+        hijriDayViewHeaderFormat: "iMMMM iYYYY",
+        showSwitcher: true,
+        allowInputToggle: true,
+        showTodayButton: true,
+        useCurrent: true,
+        viewMode: 'months',
+        keepOpen: false,
+        isRTL: true,
+        hijri: true,
+        debug: false, // Set to false in production
+        showClear: true,
+        widgetPositioning: {
+          horizontal: 'auto',
+          vertical: 'auto'
+        }
+      });
+      
+      // Set iframe height when date picker opens
+      $("#datepicker-options").on("dp.show", function () {
+        setFrameHeight(350);
+      });
+
+      // Reset iframe height when date picker closes
+      $("#datepicker-options").on("dp.hide", function () {
+        setFrameHeight(50);
+      });
+
+      // Hide widget when clicking outside the datepicker wrapper
+      $(document).on('click', function (e) {
+        if (!$(e.target).closest('.bootstrap-datetimepicker-widget,.datepicker-wrapper').length) {
+          var picker = $("#datepicker-options").data("HijriDatePicker");
+          if (picker && typeof picker.hide === 'function') {
+            picker.hide();
+          }
+        }
+      });
+      
+      // Show widget on input focus
+      $("#datepicker-options").on("focus", function () {
+        var picker = $(this).data("HijriDatePicker");
+        if (picker && typeof picker.show === 'function') {
+          picker.show();
+        }
+      });
+
+      // Send selected date to Streamlit
+      $("#datepicker-options").on("dp.change", function () {
+        var selectedDate = $(this).val();
+        sendMessage(SET_COMPONENT_VALUE, { value: selectedDate, dataType: "string" });
+      });
+    });
+  </script>
+
+  <script>
+    // Apply theme styles based on system preference
+    function applyThemeStyles() {
+      const inputField = document.querySelector('.hijri-date-input');
+      if (!inputField) return; 
+
+      const darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+      if (darkMode) {
+        // Dark mode styles
+        inputField.style.backgroundColor = '#333';
+        inputField.style.color = '#fff';
+        inputField.style.borderColor = '#444';
+        
+        // Style the popup for dark mode
+        document.documentElement.style.setProperty('--bs-datetimepicker-bg', '#333');
+        document.documentElement.style.setProperty('--bs-datetimepicker-color', '#fff');
+      } else {
+        // Light mode styles
+        inputField.style.backgroundColor = '#fff';
+        inputField.style.color = '#212529';
+        inputField.style.borderColor = '#ced4da';
+        
+        // Style the popup for light mode
+        document.documentElement.style.setProperty('--bs-datetimepicker-bg', '#fff');
+        document.documentElement.style.setProperty('--bs-datetimepicker-color', '#212529');
+      }
+    }
+  
+    // Apply on load
+    window.addEventListener('load', applyThemeStyles);
+  
+    // Re-apply whenever the user/system toggles light/dark theme
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyThemeStyles);
+  </script>
+</body> 
+</html>
