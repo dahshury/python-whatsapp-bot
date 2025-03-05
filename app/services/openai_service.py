@@ -8,7 +8,7 @@ import httpx
 import inspect
 from app.config import config
 from openai import OpenAI
-from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp
+from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message
 from app.services import assistant_functions
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
@@ -26,21 +26,7 @@ FUNCTION_MAPPING = {
     if inspect.isfunction(func)
 }
 
-def append_message(wa_id, role, message, date_str, time_str):
-    from app.db import get_connection
-    conn = get_connection()
-    cursor = conn.cursor()
-    # Ensure a thread record exists for this wa_id
-    cursor.execute("INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
-    # Insert the conversation message
-    cursor.execute(
-        "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
-        (wa_id, role, message, date_str, time_str)
-    )
-    conn.commit()
-    conn.close()
-
-def run_assistant(thread, name, max_iterations=10):
+def run_assistant(wa_id, thread, name, max_iterations=10):
     """
     Run the assistant and poll until the run is complete or a timeout is reached.
     Supports submitting tool outputs via submit_tool_outputs_and_poll.
@@ -68,6 +54,11 @@ def run_assistant(thread, name, max_iterations=10):
         # Loop through each tool call requested by the assistant.
         for tool in run.required_action.submit_tool_outputs.tool_calls:
             if tool.function.name in FUNCTION_MAPPING:
+                # Get the function reference from FUNCTION_MAPPING.
+                function = FUNCTION_MAPPING[tool.function.name]
+                # Inspect the function's signature.
+                sig = inspect.signature(function)
+                
                 # Extract arguments if any (expected to be a JSON string).
                 raw_args = getattr(tool.function, "arguments", "{}")
                 try:
@@ -76,23 +67,23 @@ def run_assistant(thread, name, max_iterations=10):
                     logging.error(f"Error parsing arguments for function {tool.function.name}: {e}")
                     parsed_args = {}
                 
-                # Execute the function with the parsed arguments.
-                if parsed_args:
-                    output = FUNCTION_MAPPING[tool.function.name](**parsed_args, json_dump=True)
-                else:
-                    try:
-                        output = FUNCTION_MAPPING[tool.function.name](json_dump=True)
-                    except Exception as e:
-                        logging.error(f"Error executing function {tool.function.name}: {e}")
-                        return None, None, None
+                # If the function takes a 'wa_id' parameter, add it to parsed_args.
+                if 'wa_id' in sig.parameters:
+                    parsed_args['wa_id'] = wa_id
+                
+                try:
+                    # Execute the function with the parsed arguments.
+                    output = function(**parsed_args, json_dump=True)
+                except Exception as e:
+                    logging.error(f"Error executing function {tool.function.name}: {e}")
+                    return None, None, None
                     
                 tool_outputs.append({
                     "tool_call_id": tool.id,
                     "output": output  # Ensure this is a string or properly serialized
                 })
-            # Add additional tool calls here as needed.
             else:
-                logging.error(f"Function '{tool.function.name}' not found implemented.")
+                logging.error(f"Function '{tool.function.name}' not implemented.")
                 return None, None, None
     
     # If any tool outputs were collected, submit them.
@@ -121,7 +112,48 @@ def run_assistant(thread, name, max_iterations=10):
     else:
         logging.error(f"Run status is not completed, status: {run.status}")
         return None, None, None
+    
+async def process_whatsapp_message(body):
+    """
+    Processes an incoming WhatsApp message and generates an appropriate response.
+    Args:
+        body (dict): The incoming message payload from WhatsApp webhook.
+    Returns:
+        None
+    The function extracts the WhatsApp ID, name, message, and timestamp from the incoming message payload.
+    It attempts to process the message body text. If the message body is present, it generates a response
+    using OpenAI integration and processes the text for WhatsApp. If the message type is audio or image,
+    it sends a predefined response indicating that only text messages can be processed.
+    The generated response is then sent back to the user via WhatsApp.
+    """
+    
+    wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
+    name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
+    message = body["entry"][0]["changes"][0]["value"]["messages"][0]
+    
+    try:
+        message_body = message["text"]["body"]
+    except Exception as e:
+        logging.info(f"Unable to process message type: {message}")
+        message_body = None
+        
+    if message_body:
+        timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
+        response_text = await generate_response(message_body, wa_id, name, timestamp)
+        if response_text is None:
+            return
 
+        response_text = process_text_for_whatsapp(response_text)
+    elif message.get('type') in ['audio', 'image']:
+        response_text = process_text_for_whatsapp(
+            "عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية."
+        )
+    else:
+        response_text = ""
+    
+    if response_text:
+        send_whatsapp_message(wa_id, response_text)
+        
 async def generate_response(message_body, wa_id, name, timestamp):
     """
     Generate a response from the assistant and update the conversation.
@@ -180,7 +212,12 @@ async def generate_response(message_body, wa_id, name, timestamp):
 
         # Run the blocking OpenAI API call in an executor so as not to block the event loop.
         new_message, assistant_date_str, assistant_time_str = await asyncio.get_event_loop().run_in_executor(
-            None, run_assistant, thread, name
+            None, run_assistant, wa_id, thread, name
         )
         append_message(wa_id, 'assistant', new_message, assistant_date_str, assistant_time_str)
         return new_message
+    
+def log_http_response(response):
+    logging.info(f"Status: {response.status_code}")
+    logging.info(f"Content-type: {response.headers.get('content-type')}")
+    logging.info(f"Body: {response.text}")

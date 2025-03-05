@@ -43,6 +43,7 @@ def initialize_db():
             customer_name TEXT,
             date TEXT,
             time_slot TEXT,
+            type INTEGER CHECK(type IN (0, 1)),
             FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
         )
         ''')
@@ -54,6 +55,7 @@ def initialize_db():
             customer_name TEXT,
             date TEXT,
             time_slot TEXT,
+            type INTEGER CHECK(type IN (0, 1)),
             cancelled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
             )

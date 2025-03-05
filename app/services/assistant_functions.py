@@ -1,131 +1,24 @@
 import json
-from app.db import get_connection
-from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta
 import logging
-from hijri_converter import convert
-from dateutil import parser  # Requires: pip install python-dateutil
+from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
-import platform
-import re
 
-def parse_time(time_str):
-    """
-    Parse a time string and return it in 12-hour AM/PM format.
-    If no AM/PM indicator is present and the time is before noon,
-    the function assumes the time is PM.
-    """
-    # Replace Arabic AM/PM with English equivalents
-    time_str = time_str.replace('ص', 'AM').replace('م', 'PM')
-    
-    # Normalize the input string
-    normalized = re.sub(r'\s+', ' ', time_str.strip().upper())
+from app.config import config
+from app.db import get_connection
+from app.utils import (make_thread, parse_date, parse_time,
+                       send_whatsapp_location, find_nearest_time_slot)
+from hijri_converter import convert
+
+def send_business_location(wa_id, json_dump=False):
     try:
-        # Parse the string into a datetime object (date is arbitrary)
-        dt = parser.parse(normalized)
-        
-        # Choose the time format specifier based on the operating system.
-        # On Windows, use '%#I:%M %p'; on Unix-based systems, use '%-I:%M %p'
-        if platform.system() == "Windows":
-            time_format = "%#I:%M %p"
-        else:
-            time_format = "%-I:%M %p"
-        
-        # Return the time formatted in the chosen format
-        return dt.strftime(time_format)
+        response = send_whatsapp_location(wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"])
+        result = {"success": False, "message": "System error occurred. try again later."} if response.get("status") == "error" else {"success": True, "message": "Location sent."}
+        return json.dumps(result) if json_dump else result
     except Exception as e:
-        logging.error("Error while parsing time: {e}")
-        return
-            
-def parse_gregorian_date(date_str):
-    """
-    Parse a Gregorian date string using dateutil to handle many non-ISO formats.
-    Returns the date in ISO 8601 format: YYYY-MM-DD.
-    """
-    try:
-        # dateutil can usually auto-detect the correct format.
-        dt = parser.parse(date_str)
-        return dt.strftime("%Y-%m-%d")
-    except Exception as e:
-        raise ValueError(f"Invalid Gregorian date format: {date_str}. Error: {e}")
+        result = {"success": False, "message": "System error occurred. try again later."}
+        logging.error(f"Function call send_business_location failed, error: {e}")
+        return json.dumps(result) if json_dump else result
 
-def parse_hijri_date(date_str):
-    """
-    Parse a Hijri date string that might be in various non-ISO-like formats.
-    Returns the date in an ISO-like format: YYYY-MM-DD.
-    """
-    # If already in ISO-like format (e.g. "1447-09-10"), return as-is.
-    if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        return date_str
-
-    # Prepare the input by lowercasing and removing commas.
-    s = date_str.lower().replace(',', '')
-
-    # Define a mapping for common Hijri month names.
-    hijri_months = {
-        "muharram": "01",
-        "safar": "02",
-        "rabi' al-awwal": "03",
-        "rabi al-awwal": "03",
-        "rabi1": "03",
-        "rabi i": "03",
-        "rabi' al-thani": "04",
-        "rabi al-thani": "04",
-        "rabi2": "04",
-        "rabi ii": "04",
-        "jumada al-awwal": "05",
-        "jumada1": "05",
-        "jumada i": "05",
-        "jumada al-thani": "06",
-        "jumada2": "06",
-        "jumada ii": "06",
-        "rajab": "07",
-        "sha'ban": "08",
-        "shaban": "08",
-        "ramadan": "09",
-        "shawwal": "10",
-        "dhu al-qadah": "11",
-        "dhu al-qidah": "11",
-        "dhu al-hijjah": "12",
-        "dhu al-hijja": "12"
-    }
-
-    # Try to find a month name in the string.
-    found_month = None
-    for name, num in hijri_months.items():
-        if name in s:
-            found_month = num
-            break
-
-    # Extract all numeric parts from the string.
-    numbers = re.findall(r"\d+", s)
-
-    if found_month and len(numbers) >= 2:
-        # Assume the first number is the day and the last is the year.
-        day = numbers[0]
-        year = numbers[-1]
-        return f"{year}-{found_month}-{int(day):02d}"
-    
-    # If no month name is found, assume the date is fully numeric.
-    if len(numbers) == 3:
-        # Heuristic: if the first number is 4 digits, assume it's year-month-day.
-        if len(numbers[0]) == 4:
-            year, month, day = numbers
-        else:
-            # Otherwise, assume day-month-year (common for Hijri dates).
-            day, month, year = numbers
-        return f"{year}-{int(month):02d}-{int(day):02d}"
-
-    raise ValueError(f"Invalid Hijri date format: {date_str}")
-
-def parse_date(date_str, hijri=False):
-    """
-    Parse a date string (Hijri or Gregorian) and return it in ISO-like format (YYYY-MM-DD).
-    """
-    if hijri:
-        return parse_hijri_date(date_str)
-    else:
-        return parse_gregorian_date(date_str)
 def get_current_datetime(json_dump=False):
     """
     Get the current date and time in both Hijri and Gregorian calendars.
@@ -156,46 +49,36 @@ def get_current_datetime(json_dump=False):
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
         logging.error(f"Function call get_current_datetime failed, error: {e}")
         return json.dumps(result) if json_dump else result
-    
-def make_thread(wa_id):
-    """
-    Ensures that a thread record exists for the given WhatsApp ID (wa_id).
-    If no thread record exists for the provided wa_id, a new record is inserted
-    into the 'threads' table with the wa_id and a null thread_id.
-    Args:
-        wa_id (str): The WhatsApp ID for which to ensure a thread record exists.
-    Returns:
-        None
-    """
-    
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # Ensure a thread record exists.
-    cursor.execute("SELECT thread_id FROM threads WHERE wa_id = ?", (wa_id,))
-    if cursor.fetchone() is None:
-        cursor.execute("INSERT INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
-    conn.commit()
-    conn.close()
-    
-import json
-import logging
-
-def get_all_reservations(json_dump=False):
+        
+def get_all_reservations(future=True, cancelled_only=False, json_dump=False):
     """
     Get all reservations from the database, grouped by wa_id, sorted by date and time_slot.
+    If `future` is True, only returns reservations for today and future dates.
+    If `cancelled` is True, only returns the cancelled reservations. 
     """
+    db = "reservations" if not cancelled_only else "cancelled_reservations"
     try:
         conn = get_connection()
         cursor = conn.cursor()
-
-        # Fetching all reservations sorted by wa_id, date, and time_slot
-        query = """
-            SELECT wa_id, customer_name, date, time_slot 
-            FROM reservations 
-            ORDER BY wa_id ASC, date ASC, time_slot ASC
-        """
-        cursor.execute(query)
+        
+        # Prepare the query based on the future flag.
+        if future:
+            today = date.today().isoformat()
+            query = f"""
+                SELECT wa_id, customer_name, date, time_slot, type 
+                FROM {db} 
+                WHERE date >= ?
+                ORDER BY wa_id ASC, date ASC, time_slot ASC
+            """
+            cursor.execute(query, (today,))
+        else:
+            query = f"""
+                SELECT wa_id, customer_name, date, time_slot, type 
+                FROM {db} 
+                ORDER BY wa_id ASC, date ASC, time_slot ASC
+            """
+            cursor.execute(query)
+        
         rows = cursor.fetchall()
         conn.close()
 
@@ -208,7 +91,8 @@ def get_all_reservations(json_dump=False):
             reservations[user_id].append({
                 "customer_name": row['customer_name'],
                 "date": row['date'],
-                "time_slot": row['time_slot']
+                "time_slot": row['time_slot'],
+                "type": row['type']
             })
 
         return json.dumps(reservations) if json_dump else reservations
@@ -217,9 +101,6 @@ def get_all_reservations(json_dump=False):
         logging.error(f"Function call get_all_reservations failed, error: {e}")
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
         return json.dumps(result) if json_dump else result
-
-import json
-import logging
 
 def get_all_conversations(wa_id=None, json_dump=False):
     """
@@ -308,53 +189,81 @@ def modify_id(old_wa_id, new_wa_id):
         result = {"success": False, "message": "System error occurred"}
         return result
 
-def modify_reservation(wa_id, new_date, new_time_slot, new_name, json_dump=False):
+def modify_reservation(wa_id, new_date, new_time_slot, new_name, new_type, approximate=False, json_dump=False):
     """
     Modify the reservation for an existing customer.
+
+    Parameters:
+        wa_id: WhatsApp ID
+        new_date: New date for the reservation
+        new_time_slot: New time slot (expected format: "%I:%M %p", e.g., "11:00 AM")
+        new_name: New customer name
+        new_type: Reservation type (0 or 1)
+        approximate: If True, reserves the nearest available slot if the requested slot is not available.
+        json_dump: If True, returns the result as a JSON string.
     """
-    available = get_time_slots(new_date)
     new_date = parse_date(new_date)
     new_time_slot = parse_time(new_time_slot)
-    if new_time_slot not in available:
-        result = {"success": False, "message": "Reservation failed. Invalid time slot."}
-        return json.dumps(result) if json_dump else result
-    if not new_name:
-        result = {"success": False, "message": "Reservation failed. Empty customer name."}
-        return json.dumps(result) if json_dump else result
-    if not new_time_slot:
-        result = {"success": False, "message": "Reservation failed. Empty time slot."}
-        return json.dumps(result) if json_dump else result
-
     try:
+        # Get available time slots for the given date.
+        available = get_time_slots(new_date)
+        
+        # If the requested time slot is not in the available slots.
+        if new_time_slot not in available:
+            if approximate:
+                # Find the nearest available time slot.
+                nearest_slot = find_nearest_time_slot(new_time_slot, available.keys())
+                if nearest_slot is None:
+                    result = {"success": False, "message": "No available time slot found for approximation."}
+                    return json.dumps(result) if json_dump else result
+                new_time_slot = nearest_slot
+            else:
+                result = {"success": False, "message": "Reservation modification failed. Invalid time slot."}
+                return json.dumps(result) if json_dump else result
+
+        # Recompute the datetime string with the (possibly adjusted) time slot.
         new_datetime_str = f"{new_date} {new_time_slot}"
         new_datetime_obj = datetime.strptime(new_datetime_str, "%Y-%m-%d %I:%M %p").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-        
+
         if new_datetime_obj < now:
             result = {"success": False, "message": "Cannot reserve a time slot in the past."}
             return json.dumps(result) if json_dump else result
-        
+
+        if not new_name:
+            result = {"success": False, "message": "Reservation modification failed. Empty customer name."}
+            return json.dumps(result) if json_dump else result
+
+        if not new_time_slot:
+            result = {"success": False, "message": "Reservation modification failed. Empty time slot."}
+            return json.dumps(result) if json_dump else result
+
+        if new_type not in (0, 1):
+            result = {"success": False, "message": "Reservation modification failed. Invalid type (must be 0 or 1)."}
+            return json.dumps(result) if json_dump else result
+
         conn = get_connection()
         cursor = conn.cursor()
-    
-        # Check if the reservation exists
+
+        # Check if the reservation exists.
         cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ?", (wa_id,))
         if cursor.fetchone()[0] == 0:
             conn.close()
             result = {"success": False, "message": "Reservation not found."}
             return json.dumps(result) if json_dump else result
-        
-            
+
+        # Update the reservation with the new details.
         cursor.execute(
-            "UPDATE reservations SET date = ?, time_slot = ?, customer_name = ? WHERE wa_id = ?",
-            (new_date, new_time_slot, new_name, wa_id)
-            )
-        
+            "UPDATE reservations SET date = ?, time_slot = ?, customer_name = ?, type = ? WHERE wa_id = ?",
+            (new_date, new_time_slot, new_name, new_type, wa_id)
+        )
+
         conn.commit()
         conn.close()
-        
-        result = {"success": True}
+
+        result = {"success": True, "new_time_slot": new_time_slot}
         return json.dumps(result) if json_dump else result
+
     except Exception as e:
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
         logging.error(f"Function call modify_reservation failed, error: {e}")
@@ -369,7 +278,7 @@ def get_customer_reservations(wa_id, json_dump=False):
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT date, time_slot, customer_name FROM reservations WHERE wa_id = ? AND date || ' ' || time_slot >= ?",
+            "SELECT date, time_slot, customer_name, type FROM reservations WHERE wa_id = ? AND date || ' ' || time_slot >= ?",
             (wa_id, now.strftime("%Y-%m-%d %H:%M"))
         )
         rows = cursor.fetchall()
@@ -425,7 +334,7 @@ def get_time_slots(date_str, json_dump=False, hijri=False, vacation=None):
         logging.error(f"Function call get_time_slots failed, error: {e}")
         return json.dumps(result) if json_dump else result
 
-def reserve_time_slot(wa_id, customer_name, date_str, time_slot, hijri=False, json_dump=False, max_reservations=5):
+def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_type, hijri=False, json_dump=False, max_reservations=5):
     """
     Reserve a time slot for a customer. Handles even non-ISO-like formats by converting
     the input date (Hijri or Gregorian) into a standardized ISO (YYYY-MM-DD) format.
@@ -435,6 +344,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, hijri=False, js
       - customer_name: Customer's name
       - date_str: Date string (can be Hijri or Gregorian)
       - time_slot: Desired time slot
+      - reservation_type: Type of reservation (0 or 1)
       - hijri: Boolean indicating if the input date is Hijri (default: False)
       - json_dump: If True, returns the result as a JSON string (default: False)
       - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
@@ -445,6 +355,10 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, hijri=False, js
 
     if not customer_name:
         result = {"success": False, "message": "Customer name has to be provided."}
+        return json.dumps(result) if json_dump else result
+
+    if reservation_type not in (0, 1):
+        result = {"success": False, "message": "Invalid reservation type. Must be 0 or 1."}
         return json.dumps(result) if json_dump else result
 
     try:
@@ -495,8 +409,8 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, hijri=False, js
         
         # Insert the new reservation (storing the Gregorian date for consistency).
         cursor.execute(
-            "INSERT INTO reservations (wa_id, customer_name, date, time_slot) VALUES (?, ?, ?, ?)",
-            (wa_id, customer_name, gregorian_date_str, time_slot)
+            "INSERT INTO reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
+            (wa_id, customer_name, gregorian_date_str, time_slot, reservation_type)
         )
 
         conn.commit()
@@ -507,6 +421,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, hijri=False, js
             "gregorian_date": gregorian_date_str,
             "hijri_date": hijri_date_str,
             "time_slot": time_slot,
+            "type": reservation_type,
             "message": "Reservation successful."
         }
         return json.dumps(result) if json_dump else result
@@ -610,8 +525,8 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
                 return json.dumps(result) if json_dump else result
             
             cursor.executemany(
-                "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot) VALUES (?, ?, ?, ?)",
-                [(row["wa_id"], row["customer_name"], row["date"], row["time_slot"]) for row in rows]
+                "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
+                [(row["wa_id"], row["customer_name"], row["date"], row["time_slot"], row["type"]) for row in rows]
             )
             cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
             conn.commit()
@@ -638,8 +553,8 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
                 return json.dumps(result) if json_dump else result
 
             cursor.execute(
-                "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot) VALUES (?, ?, ?, ?)",
-                (row["wa_id"], row["customer_name"], row["date"], row["time_slot"])
+                "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
+                (row["wa_id"], row["customer_name"], row["date"], row["time_slot"], row["type"])
             )
             cursor.execute(
                 "DELETE FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ?",

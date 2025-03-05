@@ -1,16 +1,17 @@
-import os
-import streamlit.components.v1 as components
 import datetime
-from hijri_converter import Hijri, Gregorian
-from hijri_converter import convert
+import os
+import time
 from zoneinfo import ZoneInfo
+
+import streamlit as st
+import streamlit.components.v1 as components
+import streamlit_authenticator as stauth
 import yaml
 from dotenv import load_dotenv
-import streamlit as st
-import time
-import yaml
+from hijri_converter import Gregorian, Hijri, convert
 from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
+
+from app.utils.whatsapp_utils import send_whatsapp_message
 
 def bootstrap_hijri_datepicker(default_date="", height=400, key=None):
     _component_func = components.declare_component(
@@ -126,16 +127,7 @@ def subtract_ramadan_from_normal(normal_rules, ramadan_rules):
             })
 
     return adjusted_normal_rules
-
-def process_entry():
-    st.session_state.data_editor_key+=1
-    time.sleep(2)
-    st.rerun()
-    
-import uuid
-
-import uuid
-
+        
 @st.fragment
 def render_conversation(conversations, is_gregorian, reservations):
     # Inject global CSS for tooltip styling
@@ -225,6 +217,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 key=f"chat_input_{selected_event_id}"
             )
             if prompt:
+                # send_whatsapp_message(prompt)
                 st.chat_message(st.session_state["username"], avatar=":material/support_agent:").markdown(prompt)
                 st.session_state.chat_conversations[selected_event_id].append(
                     {"role": st.session_state["username"], "content": prompt}

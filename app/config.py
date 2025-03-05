@@ -17,6 +17,8 @@ config = {
     "VERSION": os.getenv("VERSION"),
     "PHONE_NUMBER_ID": os.getenv("PHONE_NUMBER_ID"),
     "VERIFY_TOKEN": os.getenv("VERIFY_TOKEN"),
+    "BUSINESS_LONGITUDE": os.getenv("BUSINESS_LONGITUDE"),
+    "BUSINESS_LATITUDE": os.getenv("BUSINESS_LATITUDE"),
 }
 
 def configure_logging():

@@ -2,10 +2,91 @@ import asyncio
 from app.db import get_connection
 import datetime
 from zoneinfo import ZoneInfo
+from dateutil import parser  # Requires: pip install python-dateutil
+import platform
+import re
 from hijri_converter import convert
+import logging
 
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
+
+def find_nearest_time_slot(target_slot, available_slots):
+    """
+    Find the nearest available time slot from available_slots relative to target_slot.
+
+    Parameters:
+        target_slot (str): A time slot string in the format "%I:%M %p" (e.g., "11:00 AM")
+        available_slots (iterable): An iterable of time slot strings in the same format.
+
+    Returns:
+        str or None: The nearest available time slot, or None if none found.
+    """
+    from datetime import datetime
+    try:
+        target = datetime.strptime(target_slot, "%I:%M %p")
+    except ValueError:
+        return None
+
+    best_slot = None
+    # We'll use a tuple (diff, direction) as the key for comparison.
+    # diff: absolute difference in minutes from the target.
+    # direction: 0 if the slot is earlier than or equal to the target, 1 if later.
+    # This way, in the event of a tie (equal diff), a slot earlier than the target will be chosen.
+    best_key = None
+
+    for slot in available_slots:
+        try:
+            current = datetime.strptime(slot, "%I:%M %p")
+        except ValueError:
+            continue  # Skip slots that cannot be parsed
+        
+        # Calculate the absolute difference in minutes.
+        diff = abs((current.hour * 60 + current.minute) - (target.hour * 60 + target.minute))
+        # Set direction: 0 if current <= target (i.e. previous or exact match), 1 if after target.
+        direction = 0 if current <= target else 1
+        current_key = (diff, direction)
+        
+        if best_key is None or current_key < best_key:
+            best_key = current_key
+            best_slot = slot
+
+    return best_slot
+
+def make_thread(wa_id):
+    """
+    Ensures that a thread record exists for the given WhatsApp ID (wa_id).
+    If no thread record exists for the provided wa_id, a new record is inserted
+    into the 'threads' table with the wa_id and a null thread_id.
+    Args:
+        wa_id (str): The WhatsApp ID for which to ensure a thread record exists.
+    Returns:
+        None
+    """
+    
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Ensure a thread record exists.
+    cursor.execute("SELECT thread_id FROM threads WHERE wa_id = ?", (wa_id,))
+    if cursor.fetchone() is None:
+        cursor.execute("INSERT INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
+    conn.commit()
+    conn.close()
+
+def append_message(wa_id, role, message, date_str, time_str):
+    from app.db import get_connection
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Ensure a thread record exists for this wa_id
+    cursor.execute("INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
+    # Insert the conversation message
+    cursor.execute(
+        "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
+        (wa_id, role, message, date_str, time_str)
+    )
+    conn.commit()
+    conn.close()
 
 def get_lock(wa_id):
     """
@@ -52,3 +133,121 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
     
     time_str = dt_saudi.strftime("%H:%M")
     return date_str, time_str
+
+def parse_time(time_str):
+    """
+    Parse a time string and return it in 12-hour AM/PM format.
+    If no AM/PM indicator is present and the time is before noon,
+    the function assumes the time is PM.
+    """
+    # Replace Arabic AM/PM with English equivalents
+    time_str = time_str.replace('ص', 'AM').replace('م', 'PM')
+    
+    # Normalize the input string
+    normalized = re.sub(r'\s+', ' ', time_str.strip().upper())
+    try:
+        # Parse the string into a datetime object (date is arbitrary)
+        dt = parser.parse(normalized)
+        
+        # Choose the time format specifier based on the operating system.
+        # On Windows, use '%#I:%M %p'; on Unix-based systems, use '%-I:%M %p'
+        if platform.system() == "Windows":
+            time_format = "%#I:%M %p"
+        else:
+            time_format = "%-I:%M %p"
+        
+        # Return the time formatted in the chosen format
+        return dt.strftime(time_format)
+    except Exception as e:
+        logging.error("Error while parsing time: {e}")
+        return
+            
+def parse_gregorian_date(date_str):
+    """
+    Parse a Gregorian date string using dateutil to handle many non-ISO formats.
+    Returns the date in ISO 8601 format: YYYY-MM-DD.
+    """
+    try:
+        # dateutil can usually auto-detect the correct format.
+        dt = parser.parse(date_str)
+        return dt.strftime("%Y-%m-%d")
+    except Exception as e:
+        raise ValueError(f"Invalid Gregorian date format: {date_str}. Error: {e}")
+
+def parse_hijri_date(date_str):
+    """
+    Parse a Hijri date string that might be in various non-ISO-like formats.
+    Returns the date in an ISO-like format: YYYY-MM-DD.
+    """
+    # If already in ISO-like format (e.g. "1447-09-10"), return as-is.
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        return date_str
+
+    # Prepare the input by lowercasing and removing commas.
+    s = date_str.lower().replace(',', '')
+
+    # Define a mapping for common Hijri month names.
+    hijri_months = {
+        "muharram": "01",
+        "safar": "02",
+        "rabi' al-awwal": "03",
+        "rabi al-awwal": "03",
+        "rabi1": "03",
+        "rabi i": "03",
+        "rabi' al-thani": "04",
+        "rabi al-thani": "04",
+        "rabi2": "04",
+        "rabi ii": "04",
+        "jumada al-awwal": "05",
+        "jumada1": "05",
+        "jumada i": "05",
+        "jumada al-thani": "06",
+        "jumada2": "06",
+        "jumada ii": "06",
+        "rajab": "07",
+        "sha'ban": "08",
+        "shaban": "08",
+        "ramadan": "09",
+        "shawwal": "10",
+        "dhu al-qadah": "11",
+        "dhu al-qidah": "11",
+        "dhu al-hijjah": "12",
+        "dhu al-hijja": "12"
+    }
+
+    # Try to find a month name in the string.
+    found_month = None
+    for name, num in hijri_months.items():
+        if name in s:
+            found_month = num
+            break
+
+    # Extract all numeric parts from the string.
+    numbers = re.findall(r"\d+", s)
+
+    if found_month and len(numbers) >= 2:
+        # Assume the first number is the day and the last is the year.
+        day = numbers[0]
+        year = numbers[-1]
+        return f"{year}-{found_month}-{int(day):02d}"
+    
+    # If no month name is found, assume the date is fully numeric.
+    if len(numbers) == 3:
+        # Heuristic: if the first number is 4 digits, assume it's year-month-day.
+        if len(numbers[0]) == 4:
+            year, month, day = numbers
+        else:
+            # Otherwise, assume day-month-year (common for Hijri dates).
+            day, month, year = numbers
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+
+    raise ValueError(f"Invalid Hijri date format: {date_str}")
+
+def parse_date(date_str, hijri=False):
+    """
+    Parse a date string (Hijri or Gregorian) and return it in ISO-like format (YYYY-MM-DD).
+    """
+    if hijri:
+        return parse_hijri_date(date_str)
+    else:
+        return parse_gregorian_date(date_str)

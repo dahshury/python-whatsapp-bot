@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
-from app.utils.whatsapp_utils import process_whatsapp_message
+from app.services.openai_service import process_whatsapp_message
 
 router = APIRouter()
 security = HTTPBasic()
