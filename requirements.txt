@@ -14,3 +14,4 @@ streamlit-antd-components==0.3.2
 
 # Additional dependencies
 phonenumbers==8.13.55
+tenacity==9.0.0

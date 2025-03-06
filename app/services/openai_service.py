@@ -10,6 +10,9 @@ from app.config import config
 from openai import OpenAI
 from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message
 from app.services import assistant_functions
+from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
+import httpx
+import openai
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 OPENAI_ASSISTANT_ID = config["OPENAI_ASSISTANT_ID"]
@@ -25,6 +28,15 @@ FUNCTION_MAPPING = {
     name: func for name, func in inspect.getmembers(assistant_functions)
     if inspect.isfunction(func)
 }
+
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type((httpx.ConnectError, openai.APIConnectionError))
+)
+
+def safe_retrieve_thread(thread_id):
+    return client.beta.threads.retrieve(thread_id)
 
 def run_assistant(wa_id, thread, name, max_iterations=10):
     """
@@ -178,7 +190,7 @@ async def generate_response(message_body, wa_id, name, timestamp):
             store_thread(wa_id, thread_id)
         else:
             logging.info(f"Retrieving existing thread for {name} with wa_id {wa_id}")
-            thread = client.beta.threads.retrieve(thread_id)
+            thread = safe_retrieve_thread(thread_id)
         
         # Append the user's message to our local conversation history.
         append_message(wa_id, 'user', message_body, date_str, time_str)
