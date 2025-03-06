@@ -10,8 +10,7 @@ import yaml
 from dotenv import load_dotenv
 from hijri_converter import Gregorian, Hijri, convert
 from yaml.loader import SafeLoader
-
-from app.utils.whatsapp_utils import send_whatsapp_message
+from app.utils import send_whatsapp_message, append_message 
 
 def bootstrap_hijri_datepicker(default_date="", height=400, key=None):
     _component_func = components.declare_component(
@@ -216,9 +215,14 @@ def render_conversation(conversations, is_gregorian, reservations):
                 "اكتب ردًا..." if not is_gregorian else "Reply...",
                 key=f"chat_input_{selected_event_id}"
             )
+
             if prompt:
-                # send_whatsapp_message(prompt)
+                datetime_obj = datetime.datetime.now()
+                curr_date = datetime_obj.date().isoformat()
+                curr_time = datetime_obj.strftime("%I:%M %p")
                 st.chat_message(st.session_state["username"], avatar=":material/support_agent:").markdown(prompt)
+                send_whatsapp_message(selected_event_id, prompt)
+                append_message(selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
                 st.session_state.chat_conversations[selected_event_id].append(
                     {"role": st.session_state["username"], "content": prompt}
                 )
