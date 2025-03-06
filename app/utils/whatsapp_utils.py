@@ -78,8 +78,8 @@ def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""):
         "location": {
             "latitude": latitude,
             "longitude": longitude,
-            "name": "-",
-            "address": "-"
+            "name": name,
+            "address": address
         }
     })
 
