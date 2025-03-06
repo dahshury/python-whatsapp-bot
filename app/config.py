@@ -19,6 +19,8 @@ config = {
     "VERIFY_TOKEN": os.getenv("VERIFY_TOKEN"),
     "BUSINESS_LONGITUDE": os.getenv("BUSINESS_LONGITUDE"),
     "BUSINESS_LATITUDE": os.getenv("BUSINESS_LATITUDE"),
+    "BUSINESS_NAME": os.getenv("BUSINESS_NAME"),
+    "BUSINESS_ADDRESS": os.getenv("BUSINESS_ADDRESS"),
 }
 
 def configure_logging():
