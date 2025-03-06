@@ -11,7 +11,7 @@ from hijri_converter import convert
 
 def send_business_location(wa_id, json_dump=False):
     try:
-        status = send_whatsapp_location(wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"])
+        status = send_whatsapp_location(wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"], config['BUSINESS_NAME'], config['BUSINESS_ADDRESS'])
         result = {"success": False, "message": "System error occurred. try again later."} if status.get("status") == "error" else {"success": True, "message": "Location sent."}
         return json.dumps(result) if json_dump else result
     except Exception as e:
