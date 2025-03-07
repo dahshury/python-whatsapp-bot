@@ -775,7 +775,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 }
                 conversation.append(new_message)
                 send_whatsapp_message(st.session_state.selected_event_id, prompt)
-                append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
+                append_message(st.session_state.selected_event_id, st.session_state["secretary"], prompt, curr_date, curr_time)
                 st.rerun(scope="fragment")
         else:
             st.warning("لم يتم العثور على بيانات المحادثة لهذا الحدث." if not is_gregorian else "No conversation data found for this event.")
