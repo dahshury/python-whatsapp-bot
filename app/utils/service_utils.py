@@ -11,6 +11,28 @@ import logging
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
 
+def get_tomorrow_reservations():
+    """
+    Retrieve reservations for tomorrow from the database.
+    
+    Returns:
+        list: A list of reservation records for tomorrow.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    # Calculate tomorrow's date
+    today = datetime.datetime.now(ZoneInfo("Asia/Riyadh"))
+    tomorrow = today + datetime.timedelta(days=1)
+    tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
+    
+    # Query the database for reservations for tomorrow
+    cursor.execute("SELECT * FROM reservations WHERE date = ?", (tomorrow_date_str,))
+    reservations = cursor.fetchall()
+    
+    conn.close()
+    return reservations
+
 def find_nearest_time_slot(target_slot, available_slots):
     """
     Find the nearest available time slot from available_slots relative to target_slot.

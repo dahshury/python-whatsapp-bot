@@ -1,7 +1,8 @@
 #!/bin/bash
 cd /home/ubuntu/python-whatsapp-bot || exit 1
 echo "$(date): Starting deployment" >> deploy.log
-git pull origin main
+git fetch --all
+git reset --hard origin/main
 # If using a virtual environment, uncomment the following lines:
 source venv/bin/activate
 pip install -r requirements.txt

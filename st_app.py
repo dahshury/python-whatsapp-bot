@@ -436,7 +436,7 @@ def render_cal():
             "slotMinTime": "10:00:00" if not free_roam and is_ramadan(initial_date) else "11:00:00" if not free_roam else "00:00:00",
             "slotMaxTime": "22:00:00" if not free_roam else "24:00:00",
             "allDaySlot": False,
-            "hiddenDays": [5],
+            "hiddenDays": [5] if not show_conversations else [],
             "slotDuration": "02:00:00",
             "locale": "ar-sa" if not is_gregorian else "en",
             "direction": "rtl"  if not is_gregorian else "ltr",
