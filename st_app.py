@@ -13,13 +13,14 @@ from streamlit_autorefresh import st_autorefresh
 
 from app.frontend import (authenticate,
                           get_ramadan_dates, is_ramadan,
-                          render_conversation,
                           subtract_ramadan_from_normal)
+from app.utils import send_whatsapp_message, append_message
 from app.services.assistant_functions import (cancel_reservation,
                                               get_all_conversations,
                                               get_all_reservations, modify_id,
                                               modify_reservation, parse_date,
-                                              parse_time, reserve_time_slot)
+                                              parse_time, reserve_time_slot,
+                                              )
 
 # =============================================================================
 # PAGE CONFIGURATION
@@ -64,8 +65,6 @@ if "grid_data" not in st.session_state:
     st.session_state.grid_data = None
 if "last_selected_date" not in st.session_state:
     st.session_state.last_selected_date = None
-if "chat_conversations" not in st.session_state:
-    st.session_state.chat_conversations = {}
 if "data_editor_key" not in st.session_state:
     st.session_state.data_editor_key = 0
 if "prev_cal_response" not in st.session_state:
@@ -126,14 +125,6 @@ def render_sidebar_elements():
 
     st.markdown(clock_markdown, unsafe_allow_html=True)
     sac.divider(label='Prayer Time', icon='person-arms-up', align='center', color='gray')
-    # st.markdown(
-    #     """
-    #     <iframe src="https://timesprayer.com/widgets.php?frame=2&amp;lang=ar&amp;name=makkah&amp;sound=true&amp;fcolor=748BA4&amp;tcolor=474747&amp;frcolor=ff4b4b" 
-    #             style="border: none; overflow: hidden; width: 100%; height: 227px;"></iframe>
-    #     """,
-    #     unsafe_allow_html=True,
-    # )
-    # prayer_html = load_html("./app/frontend/tawkit/index.html")
     st.components.v1.iframe("https://offline.tawkit.net/", height=450)
     sac.divider(label='Options', icon='toggles2', align='center', color='gray')
 
@@ -178,7 +169,6 @@ with st.sidebar:
 # =============================================================================
 # CALENDAR MODE & RAMADAN HOURS
 # =============================================================================
-# Retrieve the default value for ramadan from the query params.
 default_gregorian = st.query_params.get("gregorian", "False") == "True"
 default_free_roam = st.query_params.get("free_roam", "False") == "True"
 default_show_conversations = st.query_params.get("show_conversations", "False") == "False"
@@ -188,19 +178,14 @@ st.query_params.show_conversations = str(show_conversations)
 
 @st.fragment
 def render_view():
-    # =============================================================================
-    # MAIN VIEW RENDERING (DATA VIEW OR CONVERSATION VIEW)
-    # =============================================================================
     dynamic_data_editor_key = f"data_editor_{st.session_state.data_editor_key}"
     if st.session_state.active_view == "data":
         sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key=f"data_divider_{dynamic_data_editor_key}")
         
-        # Check if we have a single-date click or a date range selection
         if st.session_state.selected_start_date and not st.session_state.selected_end_date:
             sel_date = st.session_state.selected_start_date
             hijri_date = Gregorian(*map(int, sel_date.split('-'))).to_hijri().isoformat()
             if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"] and st.session_state.selected_start_time:
-                # Time-based view: filter both date and the start time slot
                 slot_end_time = (datetime.datetime.strptime(st.session_state.selected_start_time, "%H:%M") + st.session_state.slot_duration_delta).strftime("%H:%M")
                 st.markdown(f"#### الأحداث في {hijri_date} {parse_time(st.session_state.selected_start_time)} - {parse_time(slot_end_time)}" if not is_gregorian else f"### Events on {sel_date} {parse_time(st.session_state.selected_start_time)} - {parse_time(slot_end_time)}")
                 filtered = [
@@ -210,9 +195,7 @@ def render_view():
                     and not ("محادثة" in e.get('title', "") if not is_gregorian else "Conversation" in e.get('title', ""))
                 ]
             else:
-                # All-day view: filter only by date
                 st.markdown(f"#### الأحداث في {hijri_date}" if not is_gregorian else f"### Events on {sel_date}")
-                
                 filtered = [
                     e for e in st.session_state.calendar_events
                     if e.get("start", "").split("T")[0] == sel_date and not ("محادثة" in e.get('title', "") if not is_gregorian else "Conversation" in e.get('title', ""))
@@ -245,8 +228,6 @@ def render_view():
         else:
             filtered = []
 
-
-        # Create a DataFrame from the filtered events and convert date strings to datetime objects
         df = pd.DataFrame(columns=["id", "title", "start", "end", "date", "time", "extendedProps"], data=filtered)
         df['start'] = pd.to_datetime(df['start'])
         df['date'] = df['start'].dt.date
@@ -273,7 +254,7 @@ def render_view():
                 "time": st.column_config.TimeColumn(
                     "Time" if is_gregorian else "الوقت",
                     required=True,
-                    format="h:mm a",  # 12-hour format with AM/PM
+                    format="h:mm a",
                     step=7200,
                     default= datetime.datetime.strptime(st.session_state.selected_start_time, "%H:%M").time() if st.session_state.selected_start_time else datetime.time(11, 0) if not is_ramadan(datetime.datetime.strptime(st.session_state.selected_start_date, "%Y-%m-%d").date()) else datetime.time(10, 0),
                     min_value=datetime.time(10, 0),
@@ -299,9 +280,8 @@ def render_view():
             use_container_width=True,)
         widget_state = st.session_state.get(dynamic_data_editor_key, {})
         
-        # Only process changes if they exist and haven't been handled
         if not st.session_state.get('_changes_processed') and (widget_state.get("deleted_rows", []) or widget_state.get("edited_rows", []) or widget_state.get("added_rows", [])):
-            st.session_state._changes_processed = True  # Mark changes as processed
+            st.session_state._changes_processed = True
             
             if widget_state.get("deleted_rows", []):
                 deleted = 0
@@ -315,7 +295,6 @@ def render_view():
                 if deleted>0:
                     st.success(f"{deleted} Reservations cancelled." if is_gregorian else f"تم الغاء {deleted} حجوزات.")
                     time.sleep(1)
-                    # st.session_state.data_editor_key+=1
                     st.session_state._changes_processed = False
                     st.rerun()
                 
@@ -342,14 +321,12 @@ def render_view():
                 if modified ==len(widget_state.get("edited_rows")):
                     st.success(f"{modified} Reservations changed." if is_gregorian else f"تم تعديل {modified} حجوزات.")
                     time.sleep(1)
-                    # st.session_state.data_editor_key+=1
                     st.session_state._changes_processed = False
                     st.rerun()
             if widget_state.get("added_rows", []):
                 added = 0
                 for added_row in widget_state.get("added_rows", []):
                     curr_row = edited_df.iloc[-1]
-                    # Proceed with reservation logic
                     result = reserve_time_slot(curr_row['id'], curr_row['title'], str(curr_row['date']), str(curr_row['time']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, max_reservations=6)
                     if result.get("success", "") == True:
                         added+=1
@@ -359,24 +336,15 @@ def render_view():
                 if added == len(widget_state.get("added_rows", [])):
                     st.success(f"{added} Reservations added." if is_gregorian else f"تم إضافة {added} حجوزات.")
                     time.sleep(1)
-                    # st.session_state.data_editor_key+=1
                     st.session_state._changes_processed = False
                     st.rerun()
 
-        # st.session_state._changes_processed = False
-        # st.json(widget_state)  # Optional: for debugging
-    # =============================================================================
-    # CONVERSATION VIEW
-    # =============================================================================
     elif st.session_state.active_view == "conversation" and show_conversations:
         sac.divider(label='Conversation', icon='chat-dots-fill', align='center', color='gray')
         render_conversation(st.session_state.conversations, is_gregorian, st.session_state.reservations)
-        
+
 @st.fragment
 def render_cal():
-    # =============================================================================
-    # DATA LOADING
-    # =============================================================================
     try:
         st.session_state.reservations = get_all_reservations(future=True)
         if show_conversations:
@@ -388,14 +356,12 @@ def render_cal():
         st.stop()
     st.session_state.calendar_container.empty()
     with st.session_state.calendar_container.container():
-        # Define view IDs mapped to display labels (with emojis)
         mode_names = {
             "timeGridWeek": "شبكة الوقت" if not is_gregorian else "Week Grid",
             "timelineMonth": "الجدول الزمني" if not is_gregorian else "Timeline",
             "listMonth": "القائمة" if not is_gregorian else "List",
             "multiMonthYear": "عدة أشهر" if not is_gregorian else "Multi-Month",
         }
-        # Create a horizontal option menu for view selection.
         sac.divider(label='Calendar', icon='calendar4', align='center', color='gray', key="cal_divider")
         selected_view_idx = sac.segmented(
             items=[
@@ -411,25 +377,22 @@ def render_cal():
             return_index=True
         )
         selected_view_label = list(mode_names.values())[selected_view_idx]
-        # Reverse mapping: from label back to view ID.
         reverse_mode_names = {v: k for k, v in mode_names.items()}
         st.session_state.selected_view_id = reverse_mode_names.get(selected_view_label, "dayGridMonth")
         
-        # Generate business hours rules for Ramadan for a range of years.
         ramadan_rules = []
-        for year in range(2022, 2031):  # Adjust the range as needed.
+        for year in range(2022, 2031):
             start_date, end_date = get_ramadan_dates(year)
             if start_date and end_date:
                 rule = {
                     "daysOfWeek": [0, 1, 2, 3, 4, 6],
                     "startTime": "10:00",
                     "endTime": "16:00",
-                    "startRecur": start_date.isoformat(),  # Inclusive start date
-                    "endRecur": end_date.isoformat(),        # Non-inclusive end date
+                    "startRecur": start_date.isoformat(),
+                    "endRecur": end_date.isoformat(),
                 }
                 ramadan_rules.append(rule)
 
-        # Define the normal business hours rules for non-Ramadan periods.
         normal_rules = [
             {
                 "daysOfWeek": [0, 1, 2, 3, 4],
@@ -450,7 +413,6 @@ def render_cal():
         normal_rules = subtract_ramadan_from_normal(normal_rules, ramadan_rules)
 
         initial_date = st.session_state.selected_start_date if st.session_state.selected_start_date else datetime.date.today().isoformat()
-        # Define common options for the calendar
         big_cal_options = {
             "editable": True,
             "selectable": True,
@@ -477,7 +439,6 @@ def render_cal():
             "businessHours": ramadan_rules + normal_rules if not free_roam else None,
             "eventConstraint": "businessHours" if not free_roam else None,
             "selectConstraint": "businessHours" if not free_roam else None,
-            # Arabic button labels
             "buttonText": {
                 "today": "اليوم",
                 "month": "شهر",
@@ -493,10 +454,7 @@ def render_cal():
         st.session_state.slot_duration_delta = datetime.timedelta(hours=int(big_cal_options['slotDuration'].split(":")[0]), 
                                             minutes=int(big_cal_options['slotDuration'].split(":")[1]))
         num_reservations_per_slot = 6
-        # =============================================================================
-        # BIG CALENDAR OPTIONS, DATA FEEDING, RENDERING
-        # =============================================================================
-        # Define headerToolbar based on selected view
+        
         if st.session_state.selected_view_id in ["dayGridMonth", "timeGridWeek", "timeGridDay"]:
             big_cal_options.update({
                 "headerToolbar": {
@@ -538,7 +496,6 @@ def render_cal():
                 }
             })
 
-        # Create Calendar Events from the database
         st.session_state.calendar_events = []
         for id, customer_reservations in st.session_state.reservations.items():
             for reservation in customer_reservations:
@@ -555,7 +512,7 @@ def render_cal():
                         st.stop()
                     
                     event = {
-                        "id": id,  # use the original wa_id so reservation data can be found
+                        "id": id,
                         "title": customer_name,
                         "start": start_dt.isoformat(),
                         "end": end_dt.isoformat(),
@@ -582,7 +539,7 @@ def render_cal():
                             st.stop()
                         
                         event = {
-                            "id": id,  # use the original wa_id so reservation data can be found
+                            "id": id,
                             "title": customer_name,
                             "start": start_dt.isoformat(),
                             "end": end_dt.isoformat(),
@@ -611,7 +568,7 @@ def render_cal():
                         st.error(f"incorrect time format found, {e}")
                         st.stop()
                     event = {
-                        "id": id,  # use the original wa_id so reservation data can be found
+                        "id": id,
                         "title": f"محادثة: {id}" if not is_gregorian else f"Conversation: {id}",
                         "start": start_dt.isoformat(),
                         "end": end_dt.isoformat(),
@@ -621,7 +578,6 @@ def render_cal():
                     st.session_state.calendar_events.append(event)
             
         events_hash = hashlib.md5(json.dumps(st.session_state.calendar_events, sort_keys=True).encode()).hexdigest()
-        # Render the big calendar
         big_cal_response = calendar(
             events=st.session_state.calendar_events,
             options=big_cal_options,
@@ -641,9 +597,7 @@ def render_cal():
                         """,
             key=f"big_calendar_{st.session_state.selected_view_id}_{events_hash}",
         )
-        # =============================================================================
-        # PROCESS CALLBACKS FROM THE BIG CALENDAR
-        # =============================================================================
+        
         if big_cal_response.get("callback") in ['dateClick', 'select', 'eventClick']:
             st.session_state.prev_cal_response = big_cal_response
             cb_type = big_cal_response.get("callback")
@@ -653,16 +607,13 @@ def render_cal():
         else:
             cb_type = big_cal_response.get("callback")
             
-        # Handle dateClick callbacks
         if cb_type == "dateClick":
             view_type = big_cal_response.get("dateClick", {}).get("view", {}).get("type", "")
             clicked_date = big_cal_response.get("dateClick", {}).get("date", "")
             if clicked_date:
-                # For "all-day" views, only consider the date (ignoring time)
                 if view_type in ["dayGridMonth", "multiMonthYear"]:
                     st.session_state.selected_start_date = clicked_date.split("T")[0]
                     st.session_state.selected_start_time = None
-                # For time-based views, record both date and start time
                 elif view_type in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
                     parts = clicked_date.split("T")
                     st.session_state.selected_start_date = parts[0]
@@ -674,7 +625,6 @@ def render_cal():
             st.session_state.data_editor_key +=1
             render_view()
 
-        # Handle select callbacks
         elif cb_type == "select":
             st.session_state.prev_cal_response = big_cal_response
             selected_start = big_cal_response.get("select", {}).get("start", "")
@@ -682,7 +632,6 @@ def render_cal():
             if selected_start and selected_end:
                 st.session_state.selected_start_date = selected_start.split("T")[0]
                 st.session_state.selected_end_date = selected_end.split("T")[0]
-                # For time-based views, also capture start and end times; for all-day views, ignore times
                 if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
                     st.session_state.selected_start_time = selected_start.split("T")[1][:5]
                     st.session_state.selected_end_time = selected_end.split("T")[1][:5]
@@ -694,7 +643,6 @@ def render_cal():
             st.session_state.data_editor_key +=1
             render_view()
 
-        # Handle eventClick callbacks
         elif cb_type == "eventClick":
             st.session_state.prev_cal_response = big_cal_response
             event_clicked = big_cal_response.get("eventClick", {}).get("event", {})
@@ -706,7 +654,6 @@ def render_cal():
                 st.session_state.data_editor_key +=1
                 render_view()
                 
-        # Handle eventChange callbacks 
         elif cb_type =="eventChange":
             event = big_cal_response.get("eventChange", {}).get("event", {})
             new_start_date = pd.to_datetime(event['start']).date()
@@ -720,11 +667,111 @@ def render_cal():
                 st.session_state.selected_event_id = None
                 st.session_state.selected_end_time = None
                 st.rerun(scope='fragment')
-                # render_view()
             else:
                 st.warning(result.get("message", ""))
 
-    # st.json(big_cal_response, expanded=True)  # Optional: for debugging
-render_cal()
+# =============================================================================
+# RENDER CONVERSATION FUNCTION
+# =============================================================================
+@st.fragment
+def render_conversation(conversations, is_gregorian, reservations):
+    st.markdown(
+        """
+        <style>
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
+    if st.session_state.selected_event_id in conversations:
+        options = []
+        for option in conversations:
+            if option in reservations and isinstance(reservations[option], list) and len(reservations[option]) > 0 and reservations[option][0].get('customer_name'):
+                options.append(f"{option} - {reservations[option][0].get('customer_name')}")
+            else:
+                options.append(option)
+        index = options.index(st.session_state.selected_event_id) if st.session_state.selected_event_id in conversations else 0
+        selected_event_id = st.selectbox(
+            "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
+            options=options,
+            index=index,
+        )
+        if selected_event_id != st.session_state.selected_event_id:
+            st.session_state.selected_event_id = selected_event_id.split(" - ")[0] if " - " in selected_event_id else selected_event_id
+            st.rerun(scope="fragment")
+        
+        conversation = conversations[st.session_state.selected_event_id]
+        if conversation and isinstance(conversation, list) and conversation[0].get("role"):
+            for msg in conversation:
+                role = msg.get("role")
+                message = msg.get("message")
+                raw_timestamp = msg.get("time", None)
+                if raw_timestamp:
+                    try:
+                        time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S") if ":" in raw_timestamp else datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
+                        formatted_timestamp = time_obj.strftime("%I:%M %p")
+                    except Exception:
+                        formatted_timestamp = raw_timestamp
+                else:
+                    formatted_timestamp = "No timestamp"
+                
+                tooltip_html = f"""
+                <div class="tooltip-container">
+                    <span style="text-decoration: none;">{message}</span>
+                    <div class="tooltip-text">{formatted_timestamp}</div>
+                </div>
+                """
+                with st.chat_message(role):
+                    st.markdown(tooltip_html, unsafe_allow_html=True)
+                    
+            prompt = st.chat_input(
+                "اكتب ردًا..." if not is_gregorian else "Reply...",
+                key=f"chat_input_{st.session_state.selected_event_id}", 
+            )
+
+            if prompt:
+                datetime_obj = datetime.datetime.now()
+                curr_date = datetime_obj.date().isoformat()
+                curr_time = datetime_obj.strftime("%I:%M %p")
+                new_message = {
+                    "role": st.session_state["username"],
+                    "message": prompt,
+                    "time": curr_time,
+                    "date": curr_date,
+                }
+                conversation.append(new_message)
+                # send_whatsapp_message(st.session_state.selected_event_id, prompt)
+                append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
+                st.rerun(scope="fragment")
+        else:
+            st.warning("لم يتم العثور على بيانات المحادثة لهذا الحدث." if not is_gregorian else "No conversation data found for this event.")
+
+# =============================================================================
+# MAIN APP EXECUTION
+# =============================================================================
+render_cal()
 st_autorefresh(interval=350000)

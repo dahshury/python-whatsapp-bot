@@ -11,6 +11,10 @@ streamlit==1.42.0
 streamlit-calendar==1.2.1
 streamlit-authenticator==0.4.1
 streamlit-antd-components==0.3.2
+streamlit-autorefresh==1.0.1
+streamlit-antd-components==0.3.2
+streamlit-authenticator==0.4.1
+
 
 # Additional dependencies
 phonenumbers==8.13.55
