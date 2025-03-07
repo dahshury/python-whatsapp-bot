@@ -292,6 +292,9 @@ def render_view():
                         deleted+=1                        
                     else:
                         st.error(result.get("message", ""))
+                        time.sleep(1)
+                        st.session_state._changes_processed = False
+                        st.rerun()
                 if deleted>0:
                     st.success(f"{deleted} Reservations cancelled." if is_gregorian else f"تم الغاء {deleted} حجوزات.")
                     time.sleep(1)
@@ -311,13 +314,18 @@ def render_view():
                                 modified+=1
                             else:
                                 st.error(result.get("message", ""))
+                                time.sleep(1)
+                                st.session_state._changes_processed = False
+                                st.rerun()
                         else:
                             result = modify_reservation(orig_row['id'], str(curr_row['date']), str(curr_row['time']), str(curr_row['title']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1)
                             if result.get("success", "") == True:
                                 modified+=1
                             else:
                                 st.error(result.get("message", ""))
-                                
+                                time.sleep(1)
+                                st.session_state._changes_processed = False
+                                st.rerun()
                 if modified ==len(widget_state.get("edited_rows")):
                     st.success(f"{modified} Reservations changed." if is_gregorian else f"تم تعديل {modified} حجوزات.")
                     time.sleep(1)
@@ -332,7 +340,9 @@ def render_view():
                         added+=1
                     else:
                         st.error(result.get("message", ""))
-                        
+                        time.sleep(1)
+                        st.session_state._changes_processed = False
+                        st.rerun()
                 if added == len(widget_state.get("added_rows", [])):
                     st.success(f"{added} Reservations added." if is_gregorian else f"تم إضافة {added} حجوزات.")
                     time.sleep(1)
@@ -710,7 +720,7 @@ def render_conversation(conversations, is_gregorian, reservations):
     if st.session_state.selected_event_id in conversations:
         options = []
         for option in conversations:
-            if option in reservations and isinstance(reservations[option], list) and len(reservations[option]) > 0 and reservations[option][0].get('customer_name'):
+            if option in reservations and isinstance(reservations[option], list) and len(reservations[option]) > 0 and reservations[option][0].get('customer_name', ""):
                 options.append(f"{option} - {reservations[option][0].get('customer_name')}")
             else:
                 options.append(option)
@@ -764,7 +774,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                     "date": curr_date,
                 }
                 conversation.append(new_message)
-                # send_whatsapp_message(st.session_state.selected_event_id, prompt)
+                send_whatsapp_message(st.session_state.selected_event_id, prompt)
                 append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
                 st.rerun(scope="fragment")
         else:
