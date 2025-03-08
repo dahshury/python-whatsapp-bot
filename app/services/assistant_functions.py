@@ -27,6 +27,7 @@ def get_current_datetime(json_dump=False):
       - "makkah_time" (HH:MM)
       - "hijri_date" (YYYY-MM-DD)
       - "day_name" (abbreviated weekday)
+      - "is_ramadan" (boolean)
     """
     try:
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
@@ -37,12 +38,14 @@ def get_current_datetime(json_dump=False):
         hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
         
         day_name = now.strftime("%a")
+        is_ramadan = hijri_date.month == 9
         
         result = {
             "gregorian_date": gregorian_date_str,
             "makkah_time": gregorian_time_str,
             "hijri_date": hijri_date_str,
-            "day_name": day_name
+            "day_name": day_name,
+            "is_ramadan": is_ramadan
         }
         return json.dumps(result) if json_dump else result
     except Exception as e:

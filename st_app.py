@@ -724,7 +724,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options.append(f"{option} - {reservations[option][0].get('customer_name')}")
             else:
                 options.append(option)
-        index = options.index(st.session_state.selected_event_id) if st.session_state.selected_event_id in conversations else 0
+        index = next((i for i, opt in enumerate(options) if opt.startswith(st.session_state.selected_event_id)), 0)
         selected_event_id = st.selectbox(
             "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
             options=options,
