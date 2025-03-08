@@ -716,7 +716,7 @@ def render_conversation(conversations, is_gregorian, reservations):
         """,
         unsafe_allow_html=True,
     )
-
+    
     if st.session_state.selected_event_id in conversations:
         options = []
         for option in conversations:
@@ -724,7 +724,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options.append(f"{option} - {reservations[option][0].get('customer_name')}")
             else:
                 options.append(option)
-        index = next((i for i, opt in enumerate(options) if opt.startswith(st.session_state.selected_event_id)), 0)
+        index = options.index(st.session_state.selected_event_id).split("-")[0].strip() if st.session_state.selected_event_id in conversations else 0
         selected_event_id = st.selectbox(
             "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
             options=options,
