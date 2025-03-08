@@ -189,79 +189,79 @@ def modify_id(old_wa_id, new_wa_id):
         result = {"success": False, "message": "System error occurred"}
         return result
 
-def modify_reservation(wa_id, new_date, new_time_slot, new_name, new_type, approximate=False, json_dump=False):
+def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, json_dump=False):
     """
     Modify the reservation for an existing customer.
 
     Parameters:
         wa_id: WhatsApp ID
-        new_date: New date for the reservation
-        new_time_slot: New time slot (expected format: "%I:%M %p", e.g., "11:00 AM")
-        new_name: New customer name
-        new_type: Reservation type (0 or 1)
+        new_date: New date for the reservation (optional)
+        new_time_slot: New time slot (expected format: "%I:%M %p", e.g., "11:00 AM") (optional)
+        new_name: New customer name (optional)
+        new_type: Reservation type (0 or 1) (optional)
         approximate: If True, reserves the nearest available slot if the requested slot is not available.
         json_dump: If True, returns the result as a JSON string.
     """
-    new_date = parse_date(new_date)
-    new_time_slot = parse_time(new_time_slot)
     try:
-        # Get available time slots for the given date.
-        available = get_time_slots(new_date)
-        
-        # If the requested time slot is not in the available slots.
-        if new_time_slot not in available:
-            if approximate:
-                # Find the nearest available time slot.
-                nearest_slot = find_nearest_time_slot(new_time_slot, available.keys())
-                if nearest_slot is None:
-                    result = {"success": False, "message": "No available time slot found for approximation."}
-                    return json.dumps(result) if json_dump else result
-                new_time_slot = nearest_slot
-            else:
-                result = {"success": False, "message": "Reservation modification failed. Invalid time slot."}
-                return json.dumps(result) if json_dump else result
+        if new_date:
+            new_date = parse_date(new_date)
+        if new_time_slot:
+            new_time_slot = parse_time(new_time_slot)
 
-        # Recompute the datetime string with the (possibly adjusted) time slot.
-        new_datetime_str = f"{new_date} {new_time_slot}"
-        new_datetime_obj = datetime.strptime(new_datetime_str, "%Y-%m-%d %I:%M %p").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
-        now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-
-        if new_datetime_obj < now:
-            result = {"success": False, "message": "Cannot reserve a time slot in the past."}
-            return json.dumps(result) if json_dump else result
-
-        if not new_name:
-            result = {"success": False, "message": "Reservation modification failed. Empty customer name."}
-            return json.dumps(result) if json_dump else result
-
-        if not new_time_slot:
-            result = {"success": False, "message": "Reservation modification failed. Empty time slot."}
-            return json.dumps(result) if json_dump else result
-
-        if new_type not in (0, 1):
-            result = {"success": False, "message": "Reservation modification failed. Invalid type (must be 0 or 1)."}
+        # Check if at least one parameter is provided
+        if not any([new_date, new_time_slot, new_name, new_type]):
+            result = {"success": False, "message": "No new details provided for modification."}
             return json.dumps(result) if json_dump else result
 
         conn = get_connection()
         cursor = conn.cursor()
 
-        # Check if the reservation exists.
+        # Check if the reservation exists
         cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ?", (wa_id,))
         if cursor.fetchone()[0] == 0:
             conn.close()
-            result = {"success": False, "message": "Reservation not found."}
+            result = {"success": False, "message": f"Reservation not found for {wa_id}."}
             return json.dumps(result) if json_dump else result
 
-        # Update the reservation with the new details.
-        cursor.execute(
-            "UPDATE reservations SET date = ?, time_slot = ?, customer_name = ?, type = ? WHERE wa_id = ?",
-            (new_date, new_time_slot, new_name, new_type, wa_id)
-        )
+        # Prepare the update query dynamically based on provided parameters
+        update_fields = []
+        update_values = []
 
+        if new_date:
+            update_fields.append("date = ?")
+            update_values.append(new_date)
+        if new_time_slot:
+            available = get_time_slots(new_date)
+            if new_time_slot not in available:
+                if approximate:
+                    nearest_slot = find_nearest_time_slot(new_time_slot, available.keys())
+                    if nearest_slot is None:
+                        result = {"success": False, "message": "No available time slot found for approximation."}
+                        return json.dumps(result) if json_dump else result
+                    new_time_slot = nearest_slot
+                else:
+                    result = {"success": False, "message": "Reservation modification failed. Invalid time slot."}
+                    return json.dumps(result) if json_dump else result
+            update_fields.append("time_slot = ?")
+            update_values.append(new_time_slot)
+        if new_name:
+            update_fields.append("customer_name = ?")
+            update_values.append(new_name)
+        if new_type is not None:
+            if new_type not in (0, 1):
+                result = {"success": False, "message": "Reservation modification failed. Invalid type (must be 0 or 1)."}
+                return json.dumps(result) if json_dump else result
+            update_fields.append("type = ?")
+            update_values.append(new_type)
+
+        update_values.append(wa_id)
+        update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE wa_id = ?"
+
+        cursor.execute(update_query, update_values)
         conn.commit()
         conn.close()
 
-        result = {"success": True, "new_time_slot": new_time_slot}
+        result = {"success": True, "message": "Reservation modified successfully."}
         return json.dumps(result) if json_dump else result
 
     except Exception as e:
@@ -313,7 +313,7 @@ def get_time_slots(date_str, json_dump=False, hijri=False, vacation=None):
         elif is_ramadan:
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, 2)}  # 10 AM to 4 PM during Ramadan
         elif day_of_week == 5:  # Saturday
-            available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(17, 21, 2)}  # 5 PM to 10 PM
+            available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(17, 22, 2)}  # 5 PM to 10 PM
         else:  # Sunday to Thursday
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(11, 17, 2)}  # 11 AM to 5 PM
         if date_obj.date() == now.date():
@@ -349,6 +349,10 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
       - json_dump: If True, returns the result as a JSON string (default: False)
       - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
     """
+    if wa_id.startswith("05"):
+        # Remove the '05' prefix and add '966' in its place
+        wa_id = "966" + wa_id[1:]
+        
     if len(str(wa_id)) != 12:
         result = {"success": False, "message": "Invalid phone number. Please make sure to use 96659 at the start."}
         return json.dumps(result) if json_dump else result

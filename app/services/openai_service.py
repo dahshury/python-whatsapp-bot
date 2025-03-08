@@ -80,7 +80,7 @@ def run_assistant(wa_id, thread, name, max_iterations=10):
                     parsed_args = {}
                 
                 # If the function takes a 'wa_id' parameter, add it to parsed_args.
-                if 'wa_id' in sig.parameters:
+                if 'wa_id' in sig.parameters and not parsed_args.get('wa_id', ""):
                     parsed_args['wa_id'] = wa_id
                 
                 try:

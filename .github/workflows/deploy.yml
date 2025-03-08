@@ -27,6 +27,7 @@ jobs:
               echo "Attempt $i..."
               cd /home/ubuntu/python-whatsapp-bot || exit 1
               chmod +x send_reminders.py
+              chmod +x sqlite_backup.sh
               echo "$(date): Starting deployment" >> deploy.log
               git fetch --all
               git reset --hard origin/main
