@@ -716,7 +716,7 @@ def render_conversation(conversations, is_gregorian, reservations):
         """,
         unsafe_allow_html=True,
     )
-    ".".startswith()
+    # print(conversations)
     if st.session_state.selected_event_id in conversations:
         options = []
         for option in conversations:
@@ -724,17 +724,19 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options.append(f"{option} - {reservations[option][0].get('customer_name')}")
             else:
                 options.append(option)
-        index = options.index(st.session_state.selected_event_id.append(f"{option} - {reservations[option][0].get('customer_name')}") if reservations[option][0].get('customer_name', "") else st.session_state.selected_event_id)
+        options.sort(key=len, reverse=True)
+        index = next((i for i, opt in enumerate(options) if opt.startswith(st.session_state.selected_event_id)), 0)
         selected_event_id = st.selectbox(
             "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
             options=options,
             index=index,
         )
-        if selected_event_id != st.session_state.selected_event_id:
-            st.session_state.selected_event_id = selected_event_id.split(" - ")[0] if " - " in selected_event_id else selected_event_id
+        
+        if st.session_state.selected_event_id !=  selected_event_id.split("-")[0].strip():
+            st.session_state.selected_event_id = selected_event_id.split("-")[0].strip()
             st.rerun(scope="fragment")
         
-        conversation = conversations[st.session_state.selected_event_id]
+        conversation = conversations[st.session_state.selected_event_id.split(" - ")[0] if " - " in selected_event_id else selected_event_id]
         if conversation and isinstance(conversation, list) and conversation[0].get("role"):
             for msg in conversation:
                 role = msg.get("role")

@@ -154,11 +154,33 @@ def get_all_conversations(wa_id=None, json_dump=False):
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
         return json.dumps(result) if json_dump else result
     
-def modify_id(old_wa_id, new_wa_id):
+def modify_id(old_wa_id, new_wa_id, ar=False):
     """
     Modify the WhatsApp ID (wa_id) for a customer in all related tables.
     """
     try:
+        # Check if the new wa_id is valid
+        if len(str(new_wa_id)) != 12:
+            message = "The new wa_id must be 12 digits long."
+            if ar:
+                message = "يجب أن يكون رقم الواتساب الجديد مكونًا من 12 رقمًا."
+            result = {"success": False, "message": message}
+            return result
+        
+        if not str(new_wa_id).isdigit():
+            message = "The new wa_id must be an integer."
+            if ar:
+                message = "يجب أن يكون رقم الواتساب الجديد مكون من أرقام."
+            result = {"success": False, "message": message}
+            return result
+        
+        if old_wa_id == new_wa_id:
+            message = "The new wa_id is the same as the old wa_id."
+            if ar:
+                message = "رقم الواتساب الجديد هو نفسه رقم الواتساب القديم."
+            result = {"success": True, "message": message}
+            return result
+
         conn = get_connection()
         cursor = conn.cursor()
         
@@ -166,7 +188,10 @@ def modify_id(old_wa_id, new_wa_id):
         cursor.execute("SELECT COUNT(*) FROM threads WHERE wa_id = ?", (new_wa_id,))
         if cursor.fetchone()[0] > 0:
             conn.close()
-            result = {"success": False, "message": "The new wa_id already exists."}
+            message = "The new wa_id already exists."
+            if ar:
+                message = "رقم الواتساب الجديد موجود بالفعل."
+            result = {"success": False, "message": message}
             return result
         
         # Update the wa_id in the threads table
@@ -184,15 +209,21 @@ def modify_id(old_wa_id, new_wa_id):
         conn.commit()
         conn.close()
         
-        result = {"success": True, "message": "wa_id modified successfully."}
+        message = "wa_id modified successfully."
+        if ar:
+            message = "تم تعديل رقم الواتساب بنجاح."
+        result = {"success": True, "message": message}
         return result
     
     except Exception as e:
         logging.error(f"Function call modify_id failed, error: {e}")
-        result = {"success": False, "message": "System error occurred"}
+        message = "System error occurred"
+        if ar:
+            message = "حدث خطأ في النظام"
+        result = {"success": False, "message": message}
         return result
 
-def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, json_dump=False):
+def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, json_dump=False, ar=False):
     """
     Modify the reservation for an existing customer.
 
@@ -204,6 +235,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         new_type: Reservation type (0 or 1) (optional)
         approximate: If True, reserves the nearest available slot if the requested slot is not available.
         json_dump: If True, returns the result as a JSON string.
+        ar: If True, returns error messages in Arabic.
     """
     try:
         if new_date:
@@ -213,7 +245,10 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
 
         # Check if at least one parameter is provided
         if not any([new_date, new_time_slot, new_name, new_type]):
-            result = {"success": False, "message": "No new details provided for modification."}
+            message = "No new details provided for modification."
+            if ar:
+                message = "لم يتم تقديم تفاصيل جديدة للتعديل."
+            result = {"success": False, "message": message}
             return json.dumps(result) if json_dump else result
 
         conn = get_connection()
@@ -223,7 +258,10 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ?", (wa_id,))
         if cursor.fetchone()[0] == 0:
             conn.close()
-            result = {"success": False, "message": f"Reservation not found for {wa_id}."}
+            message = f"Reservation not found for {wa_id}."
+            if ar:
+                message = f"لم يتم العثور على حجز للرقم {wa_id}."
+            result = {"success": False, "message": message}
             return json.dumps(result) if json_dump else result
 
         # Prepare the update query dynamically based on provided parameters
@@ -239,11 +277,17 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
                 if approximate:
                     nearest_slot = find_nearest_time_slot(new_time_slot, available.keys())
                     if nearest_slot is None:
-                        result = {"success": False, "message": "No available time slot found for approximation."}
+                        message = "No available time slot found for approximation."
+                        if ar:
+                            message = "لم يتم العثور على موعد متاح للتقريب."
+                        result = {"success": False, "message": message}
                         return json.dumps(result) if json_dump else result
                     new_time_slot = nearest_slot
                 else:
-                    result = {"success": False, "message": "Reservation modification failed. Invalid time slot."}
+                    message = "Reservation modification failed. Invalid time slot."
+                    if ar:
+                        message = f" {available} فشل تعديل الحجز. الوقت الذي تم اختياره ليس من ضمن."
+                    result = {"success": False, "message": message}
                     return json.dumps(result) if json_dump else result
             update_fields.append("time_slot = ?")
             update_values.append(new_time_slot)
@@ -252,7 +296,10 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             update_values.append(new_name)
         if new_type is not None:
             if new_type not in (0, 1):
-                result = {"success": False, "message": "Reservation modification failed. Invalid type (must be 0 or 1)."}
+                message = "Reservation modification failed. Invalid type (must be 0 or 1)."
+                if ar:
+                    message = "فشل تعديل الحجز. نوع غير صالح (يجب أن يكون 0 أو 1)."
+                result = {"success": False, "message": message}
                 return json.dumps(result) if json_dump else result
             update_fields.append("type = ?")
             update_values.append(new_type)
@@ -265,10 +312,15 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         conn.close()
 
         result = {"success": True, "message": "Reservation modified successfully."}
+        if ar:
+            result["message"] = "تم تعديل الحجز بنجاح."
         return json.dumps(result) if json_dump else result
 
     except Exception as e:
-        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
+        message = "System error occurred. Ask user to contact the secretary to reserve."
+        if ar:
+            message = "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."
+        result = {"success": False, "message": message}
         logging.error(f"Function call modify_reservation failed, error: {e}")
         return json.dumps(result) if json_dump else result
 
@@ -337,7 +389,7 @@ def get_time_slots(date_str, json_dump=False, hijri=False, vacation=None):
         logging.error(f"Function call get_time_slots failed, error: {e}")
         return json.dumps(result) if json_dump else result
 
-def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_type, hijri=False, json_dump=False, max_reservations=5):
+def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_type, hijri=False, json_dump=False, max_reservations=5, ar=False):
     """
     Reserve a time slot for a customer. Handles even non-ISO-like formats by converting
     the input date (Hijri or Gregorian) into a standardized ISO (YYYY-MM-DD) format.
@@ -351,21 +403,31 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
       - hijri: Boolean indicating if the input date is Hijri (default: False)
       - json_dump: If True, returns the result as a JSON string (default: False)
       - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
+      - ar: If True, returns error messages in Arabic (default: False)
     """
     if wa_id.startswith("05"):
         # Remove the '05' prefix and add '966' in its place
         wa_id = "966" + wa_id[1:]
         
     if len(str(wa_id)) != 12:
-        result = {"success": False, "message": "Invalid phone number. Please make sure to use 96659 at the start."}
+        message = "Invalid phone number. Please make sure to use 96659 at the start."
+        if ar:
+            message = "رقم الهاتف غير صالح. يرجى التأكد من استخدام 96659 في البداية."
+        result = {"success": False, "message": message}
         return json.dumps(result) if json_dump else result
 
     if not customer_name:
-        result = {"success": False, "message": "Customer name has to be provided."}
+        message = "Customer name has to be provided."
+        if ar:
+            message = "يجب تقديم اسم العميل."
+        result = {"success": False, "message": message}
         return json.dumps(result) if json_dump else result
 
     if reservation_type not in (0, 1):
-        result = {"success": False, "message": "Invalid reservation type. Must be 0 or 1."}
+        message = "Invalid reservation type. Must be 0 or 1."
+        if ar:
+            message = "نوع الحجز غير صالح. يجب أن يكون 0 أو 1."
+        result = {"success": False, "message": message}
         return json.dumps(result) if json_dump else result
 
     try:
@@ -382,7 +444,10 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         reservation_date = datetime.strptime(gregorian_date_str, "%Y-%m-%d").date()
         today = datetime.now(tz=ZoneInfo("Asia/Riyadh")).date()
         if reservation_date < today:
-            result = {"success": False, "message": "Cannot reserve a time slot in the past."}
+            message = "Cannot reserve a time slot in the past."
+            if ar:
+                message = "لا يمكن حجز موعد في الماضي."
+            result = {"success": False, "message": message}
             return json.dumps(result) if json_dump else result
 
         # Validate the available time slots for the date.
@@ -391,7 +456,10 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             return json.dumps(available) if json_dump else available
 
         if time_slot not in available:
-            result = {"success": False, "message": "Invalid time slot."}
+            message = "Invalid time slot."
+            if ar:
+                message = f" {available} فشل الحجز. الوقت الذي تم اختياره ليس من ضمن."
+            result = {"success": False, "message": message}
             return json.dumps(result) if json_dump else result
 
         conn = get_connection()
@@ -401,14 +469,20 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ? AND date = ?", (wa_id, gregorian_date_str))
         if cursor.fetchone()[0] > 0:
             conn.close()
-            result = {"success": False, "message": "You already have a reservation for this date. Please cancel it first."}
+            message = "You already have a reservation for this date. Please cancel it first."
+            if ar:
+                message = "لديك حجز بالفعل لهذا التاريخ. يرجى إلغاؤه أولاً."
+            result = {"success": False, "message": message}
             return json.dumps(result) if json_dump else result
 
         # Check if the desired time slot has reached the maximum reservations.
         cursor.execute("SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?", (gregorian_date_str, time_slot))
         if cursor.fetchone()[0] >= max_reservations:
             conn.close()
-            result = {"success": False, "message": "This time slot is fully booked. Please choose another slot."}
+            message = "This time slot is fully booked. Please choose another slot."
+            if ar:
+                message = "هذا الوقت محجوز بالكامل. يرجى اختيار وقت آخر."
+            result = {"success": False, "message": message}
             return json.dumps(result) if json_dump else result
 
         # Ensure a thread record exists.
@@ -431,20 +505,25 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             "type": reservation_type,
             "message": "Reservation successful."
         }
+        if ar:
+            result["message"] = "تم الحجز بنجاح."
         return json.dumps(result) if json_dump else result
 
     except Exception as e:
-        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
+        message = "System error occurred. Ask user to contact the secretary to reserve."
+        if ar:
+            message = "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."
+        result = {"success": False, "message": message}
         logging.error(f"Function call reserve_time_slot failed, error: {e}")
         return json.dumps(result) if json_dump else result
 
-def delete_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
+def delete_reservation(wa_id, date_str=None, time_slot=None, json_dump=False, ar=False):
     """
     Delete a reservation for a customer.
     If date_str and time_slot are not provided, delete all reservations for the customer.
     """
     try:
-        date_str=parse_date(date_str) if date_str else None
+        date_str = parse_date(date_str) if date_str else None
         time_slot = parse_time(time_slot) if time_slot else None
         conn = get_connection()
         cursor = conn.cursor()
@@ -455,9 +534,12 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             count = cursor.fetchone()[0]
             if count == 0:
                 conn.close()
+                message = "No reservations found for the customer."
+                if ar:
+                    message = "لم يتم العثور على حجوزات للعميل."
                 result = {
                     "success": False,
-                    "message": "No reservations found for the customer."
+                    "message": message
                 }
                 return json.dumps(result) if json_dump else result
             
@@ -465,9 +547,12 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             removed = cursor.rowcount > 0
             conn.commit()
             conn.close()
+            message = "All reservations removed." if removed else "Error occurred while removing reservations."
+            if ar:
+                message = "تمت إزالة جميع الحجوزات." if removed else "حدث خطأ أثناء إزالة الحجوزات."
             result = {
                 "success": True,
-                "message": "All reservations removed." if removed else "Error occurred while removing reservations."
+                "message": message
             }
             return json.dumps(result) if json_dump else result
         
@@ -480,9 +565,12 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             exists = cursor.fetchone()[0] > 0
             if not exists:
                 conn.close()
+                message = "Reservation not found."
+                if ar:
+                    message = "لم يتم العثور على الحجز."
                 result = {
                     "success": False,
-                    "message": "Reservation not found."
+                    "message": message
                 }
                 return json.dumps(result) if json_dump else result
 
@@ -493,21 +581,27 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             removed = cursor.rowcount > 0
             conn.commit()
             conn.close()
+            message = "Reservation removed." if removed else "Error occurred while removing the reservation."
+            if ar:
+                message = "تمت إزالة الحجز." if removed else "حدث خطأ أثناء إزالة الحجز."
             result = {
                 "success": True,
-                "message": "Reservation removed." if removed else "Error occurred while removing the reservation."
+                "message": message
             }
             return json.dumps(result) if json_dump else result
 
     except Exception as e:
+        message = "System error occurred."
+        if ar:
+            message = "حدث خطأ في النظام."
         result = {
             "success": False,
-            "message": "System error occurred."
+            "message": message
         }
         logging.error(f"Function call delete_reservation failed, error: {e}")
         return json.dumps(result) if json_dump else result
     
-def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
+def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False, ar=False):
     """
     Cancel a reservation for a customer.
     If date_str and time_slot are not provided, cancel all reservations for the customer.
@@ -525,9 +619,12 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             rows = cursor.fetchall()
             if not rows:
                 conn.close()
+                message = "No reservations found for the customer."
+                if ar:
+                    message = "لم يتم العثور على حجوزات للعميل."
                 result = {
                     "success": False,
-                    "message": "No reservations found for the customer."
+                    "message": message
                 }
                 return json.dumps(result) if json_dump else result
             
@@ -538,9 +635,12 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
             conn.commit()
             conn.close()
+            message = "All reservations cancelled."
+            if ar:
+                message = "تم إلغاء جميع الحجوزات."
             result = {
                 "success": True,
-                "message": "All reservations cancelled."
+                "message": message
             }
             return json.dumps(result) if json_dump else result
         
@@ -553,9 +653,12 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             row = cursor.fetchone()
             if not row:
                 conn.close()
+                message = "Reservation not found."
+                if ar:
+                    message = "لم يتم العثور على الحجز."
                 result = {
                     "success": False,
-                    "message": "Reservation not found."
+                    "message": message
                 }
                 return json.dumps(result) if json_dump else result
 
@@ -569,17 +672,22 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, json_dump=False):
             )
             conn.commit()
             conn.close()
+            message = "Reservation cancelled."
+            if ar:
+                message = "تم إلغاء الحجز."
             result = {
                 "success": True,
-                "message": "Reservation cancelled."
+                "message": message
             }
             return json.dumps(result) if json_dump else result
 
     except Exception as e:
+        message = "System error occurred."
+        if ar:
+            message = "حدث خطأ في النظام."
         result = {
-            "exists": False,
-            "removed": False,
-            "message": "System error occurred."
+            "success": False,
+            "message": message
         }
         logging.error(f"Function call cancel_reservation failed, error: {e}")
         return json.dumps(result) if json_dump else result

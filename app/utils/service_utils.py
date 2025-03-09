@@ -97,7 +97,6 @@ def make_thread(wa_id):
     conn.close()
 
 def append_message(wa_id, role, message, date_str, time_str):
-    from app.db import get_connection
     conn = get_connection()
     cursor = conn.cursor()
     # Ensure a thread record exists for this wa_id

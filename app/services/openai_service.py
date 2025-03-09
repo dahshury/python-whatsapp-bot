@@ -9,6 +9,7 @@ import inspect
 from app.config import config
 from openai import OpenAI
 from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message
+from app.decorators import retry_decorator
 from app.services import assistant_functions
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 import httpx
@@ -29,14 +30,24 @@ FUNCTION_MAPPING = {
     if inspect.isfunction(func)
 }
 
-@retry(
-    wait=wait_exponential(multiplier=1, min=2, max=10),
-    stop=stop_after_attempt(5),
-    retry=retry_if_exception_type((httpx.ConnectError, openai.APIConnectionError))
-)
-
+@retry_decorator
 def safe_retrieve_thread(thread_id):
     return client.beta.threads.retrieve(thread_id)
+
+@retry_decorator
+def safe_create_message(thread_id, role, content):
+    """
+    Create a message in the OpenAI thread with error handling.
+    """
+    try:
+        return client.beta.threads.messages.create(
+            thread_id=thread_id,
+            role=role,
+            content=content
+        )
+    except Exception as e:
+        logging.error(f"Error creating message: {e}")
+        return None
 
 def run_assistant(wa_id, thread, name, max_iterations=10):
     """
