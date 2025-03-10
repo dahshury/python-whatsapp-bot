@@ -212,15 +212,8 @@ def run_claude(wa_id, name, tool_outputs=None):
     Run Claude with the conversation history and handle tool calls.
     Returns the generated message along with date and time, or None if an error occurs.
     """
-    messages = retrieve_messages(wa_id)
+    claude_messages = retrieve_messages(wa_id)
     
-    # Format messages for Claude API
-    claude_messages = []
-    for msg in messages:
-        claude_messages.append({
-            "role": "assistant" if msg["role"] != "user" else "user",
-            "content": msg["content"]
-        })
     try:
         # Make request to Claude API
         response = client.beta.messages.create(

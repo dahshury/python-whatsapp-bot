@@ -112,7 +112,7 @@ def check_if_thread_exists(wa_id):
 
 def retrieve_messages(wa_id):
     """
-    Retrieve message history for a user from the database.
+    Retrieve message history for a user from the database and format for Claude API.
     """
     try:
         make_thread(wa_id)
@@ -128,7 +128,16 @@ def retrieve_messages(wa_id):
         rows = cursor.fetchall()
         messages = [dict(row) for row in rows] if rows else []
         conn.close()
-        return messages
+        
+        # Format messages for Claude API
+        claude_messages = []
+        for msg in messages:
+            claude_messages.append({
+                "role": "assistant" if msg["role"] != "user" else "user",
+                "content": msg["message"]
+            })
+        
+        return claude_messages
     except Exception as e:
         logging.error(f"Error retrieving messages from database: {e}")
         return []
