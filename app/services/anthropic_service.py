@@ -230,82 +230,146 @@ def run_claude(wa_id, name, tool_outputs=None):
         logging.info(f"Initial response stop reason: {response.stop_reason}")
         
         # Process tool calls if present - in a loop to handle multiple consecutive tool calls
-        while response.stop_reason == "tool_use" and response.tool_calls:
-            tool_outputs = []
+        while response.stop_reason == "tool_use":
+            logging.info("Processing tool use response")
             
-            for tool_call in response.tool_calls:
-                if tool_call.name in FUNCTION_MAPPING:
-                    function = FUNCTION_MAPPING[tool_call.name]
-                    sig = inspect.signature(function)
-                    
-                    # Parse arguments
-                    parsed_args = tool_call.parameters
-                    
-                    # If the function takes a 'wa_id' parameter, add it
-                    if 'wa_id' in sig.parameters and not parsed_args.get('wa_id', ""):
-                        parsed_args['wa_id'] = wa_id
-                    
-                    logging.info(f"Executing tool: {tool_call.name} with args: {json.dumps(parsed_args)}")
-                    
-                    try:
-                        # Execute the function with arguments
-                        output = function(**parsed_args)
-                        
-                        # Log the tool output
-                        logging.info(f"Tool output for {tool_call.name}: {json.dumps(output)[:500]}...")
-                        
-                        tool_outputs.append({
-                            "tool_call_id": tool_call.id,
-                            "output": output
-                        })
-                    except Exception as e:
-                        logging.error(f"Error executing function {tool_call.name}: {e}")
-                        return None, None, None
-                else:
-                    logging.error(f"Function '{tool_call.name}' not implemented.")
-                    return None, None, None
+            # Find the tool use block in the content
+            tool_use_block = next((block for block in response.content if block.type == "tool_use"), None)
             
-            # Add the assistant's response and tool outputs to the conversation history
-            claude_messages.append({"role": "assistant", "content": response.content[0].text})
+            if not tool_use_block:
+                logging.error("Tool use indicated but no tool_use block found in content")
+                break
+                
+            tool_name = tool_use_block.name
+            tool_input = tool_use_block.input
+            tool_use_id = tool_use_block.id
             
-            # Format tool results for Claude API
-            tool_results_message = {"role": "user", "content": []}
-            for tool_output in tool_outputs:
-                tool_results_message["content"].append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_output["tool_call_id"],
-                    "content": str(tool_output["output"])
+            logging.info(f"Tool used: {tool_name}")
+            logging.info(f"Tool input: {json.dumps(tool_input)}")
+            
+            # Process the tool call
+            if tool_name in FUNCTION_MAPPING:
+                function = FUNCTION_MAPPING[tool_name]
+                sig = inspect.signature(function)
+                
+                # If the function takes a 'wa_id' parameter, add it
+                if 'wa_id' in sig.parameters and not tool_input.get('wa_id', ""):
+                    tool_input['wa_id'] = wa_id
+                
+                try:
+                    # Execute the function with arguments
+                    if 'json_dump' in sig.parameters:
+                        output = function(**tool_input, json_dump=False)
+                    else:
+                        output = function(**tool_input)
+                    
+                    # Log the tool output
+                    if isinstance(output, (dict, list)):
+                        logging.info(f"Tool output for {tool_name}: {json.dumps(output)[:500]}...")
+                    else:
+                        logging.info(f"Tool output for {tool_name}: {str(output)[:500]}...")
+                    
+                    # Add the assistant's response to conversation history
+                    claude_messages.append({
+                        "role": "assistant", 
+                        "content": response.content
+                    })
+                    
+                    # Add tool result to conversation
+                    claude_messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": json.dumps(output) if isinstance(output, (dict, list)) else str(output)
+                        }]
+                    })
+                    
+                    # Send follow-up with tool outputs
+                    response = client.messages.create(
+                        model=CLAUDE_MODEL,
+                        system=SYSTEM_PROMPT,
+                        messages=claude_messages,
+                        tools=tools,
+                        max_tokens=4096,
+                        temperature=1,
+                        stream=False,
+                    )
+                    
+                    # Log the new stop reason
+                    logging.info(f"Follow-up response stop reason: {response.stop_reason}")
+                    
+                except Exception as e:
+                    logging.error(f"Error executing function {tool_name}: {e}")
+                    
+                    # Return error message to the assistant
+                    claude_messages.append({
+                        "role": "assistant", 
+                        "content": response.content
+                    })
+                    
+                    claude_messages.append({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": tool_use_id,
+                            "content": f"Error: {str(e)}"
+                        }]
+                    })
+                    
+                    # Continue the conversation despite the error
+                    response = client.messages.create(
+                        model=CLAUDE_MODEL,
+                        system=SYSTEM_PROMPT,
+                        messages=claude_messages,
+                        tools=tools,
+                        max_tokens=4096,
+                        temperature=1,
+                        stream=False,
+                    )
+            else:
+                logging.error(f"Function '{tool_name}' not implemented.")
+                # Tell the assistant this tool isn't available
+                claude_messages.append({
+                    "role": "assistant", 
+                    "content": response.content
                 })
-            
-            claude_messages.append(tool_results_message)
-            
-            # Send follow-up with tool outputs
-            response = client.messages.create(
-                model=CLAUDE_MODEL,
-                system=SYSTEM_PROMPT,
-                messages=claude_messages,
-                tools=tools,
-                max_tokens=4096,
-                temperature=1,
-                stream=False,
-            )
-            
-            # Log the new stop reason
-            logging.info(f"Follow-up response stop reason: {response.stop_reason}")
+                
+                claude_messages.append({
+                    "role": "user",
+                    "content": [{
+                        "type": "tool_result",
+                        "tool_use_id": tool_use_id,
+                        "content": f"Error: Tool '{tool_name}' is not implemented"
+                    }]
+                })
+                
+                response = client.messages.create(
+                    model=CLAUDE_MODEL,
+                    system=SYSTEM_PROMPT,
+                    messages=claude_messages,
+                    tools=tools,
+                    max_tokens=4096,
+                    temperature=1,
+                    stream=False,
+                )
         
-        # Get response content
-        if response.content:
-            new_message = response.content[0].text
-            
+        # Get final text response
+        final_response = next(
+            (block.text for block in response.content if hasattr(block, "text")),
+            None,
+        )
+        
+        if final_response:
             # Generate current timestamp
             now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M")
             
-            logging.info(f"Generated message for {name}: {new_message}")
-            return new_message, date_str, time_str
+            logging.info(f"Generated message for {name}: {final_response[:100]}...")
+            return final_response, date_str, time_str
         else:
-            logging.error("No content in Claude response")
+            logging.error("No text content in Claude response")
             return None, None, None
             
     except Exception as e:
