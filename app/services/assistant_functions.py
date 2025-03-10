@@ -640,6 +640,17 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, ar=False):
     Returns:
         dict: Result of the cancellation operation with success status and message
     """
+    
+    if not len(str(wa_id)) == 12:
+        message = "Invalid phone number. Please make sure to use 96659 at the start."
+        if ar:
+            message = "رقم الهاتف غير صالح. يرجى التأكد من استخدام 96659 في البداية."
+        result = {"success": False, "message": message}
+        return result
+    if str(wa_id).startswith("05"):
+        # Remove the '05' prefix and add '966' in its place
+        wa_id = "966" + wa_id[1:]
+        
     try:
         date_str = parse_date(date_str) if date_str else None
         time_slot = parse_time(time_slot) if time_slot else None
