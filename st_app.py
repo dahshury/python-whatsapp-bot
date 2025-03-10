@@ -325,6 +325,8 @@ def render_view():
                                 st.session_state._changes_processed = False
                                 st.rerun()
                         else:
+                            # Adjust time to consider only the hour
+                            curr_row['time'] = curr_row['time'].replace(minute=0, second=0, microsecond=0)
                             result = modify_reservation(str(orig_row['id']), str(curr_row['date']), str(curr_row['time']), str(curr_row['title']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1)
                             if result.get("success", "") == True:
                                 modified+=1
