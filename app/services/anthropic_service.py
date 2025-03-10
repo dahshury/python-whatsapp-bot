@@ -365,10 +365,10 @@ async def generate_response(message_body, wa_id, name, timestamp):
         )
         
         # Append the user's message to conversation history
-        append_message(wa_id, 'user', message_body)
+        append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
         
         if new_message:
-            append_message(wa_id, 'assistant', new_message)
+            append_message(wa_id, 'assistant', new_message, date_str=assistant_date_str, time_str=assistant_time_str)
         
         return new_message
 
