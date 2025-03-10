@@ -15,7 +15,15 @@ from zoneinfo import ZoneInfo
 
 ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = "claude-3-7-sonnet-20250219"
-SYSTEM_PROMPT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
+# Create cached system prompt structure
+SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
+SYSTEM_PROMPT = [
+    {
+        "type": "text",
+        "text": SYSTEM_PROMPT_TEXT,
+        "cache_control": {"type": "ephemeral"}
+    }
+]
 # Setup SSL context for secure connections
 ssl_context = ssl.create_default_context()
 ssl_context.load_verify_locations(certifi.where())
@@ -194,7 +202,8 @@ tools = [
             "type": "object",
             "properties": {},
             "required": []
-        }
+        },
+    "cache_control": {"type": "ephemeral"}  
     }
 ]
 @retry_decorator

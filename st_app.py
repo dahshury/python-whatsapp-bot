@@ -431,6 +431,27 @@ def render_cal():
         normal_rules = subtract_ramadan_from_normal(normal_rules, ramadan_rules)
 
         initial_date = st.session_state.selected_start_date if st.session_state.selected_start_date else datetime.date.today().isoformat()
+        
+        # Get day of week (0-6, where 0 is Sunday, 6 is Saturday)
+        initial_dt = datetime.datetime.fromisoformat(initial_date) if isinstance(initial_date, str) else initial_date
+        day_of_week = initial_dt.weekday() if isinstance(initial_dt, datetime.datetime) else datetime.datetime.fromisoformat(initial_date).weekday()
+        # Convert to Python's weekday (Monday is 0) to calendar weekday (Sunday is 0)
+        day_of_week = (day_of_week + 1) % 7
+
+        # Set min and max times based on conditions
+        if free_roam or show_conversations:
+            slot_min_time = "00:00:00"
+            slot_max_time = "24:00:00"
+        elif is_ramadan(initial_date):
+            slot_min_time = "10:00:00"
+            slot_max_time = "16:00:00"
+        elif day_of_week == 6:  # Saturday
+            slot_min_time = "17:00:00"
+            slot_max_time = "22:00:00"
+        else:  # Sunday through Thursday
+            slot_min_time = "11:00:00" 
+            slot_max_time = "17:00:00"
+
         big_cal_options = {
             "editable": True,
             "selectable": True,
@@ -441,8 +462,8 @@ def render_cal():
             "weekNumbers": False,
             "buttonIcons": True,
             "nowIndicator": True,
-            "slotMinTime": "10:00:00" if not free_roam and is_ramadan(initial_date) else "11:00:00" if not free_roam else "00:00:00",
-            "slotMaxTime": "22:00:00" if not free_roam else "24:00:00",
+            "slotMinTime": slot_min_time,
+            "slotMaxTime": slot_max_time,
             "allDaySlot": False,
             "hiddenDays": [5] if not show_conversations else [],
             "slotDuration": "02:00:00",
