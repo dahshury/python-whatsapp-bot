@@ -222,7 +222,7 @@ def run_claude(wa_id, name, tool_outputs=None):
             messages=claude_messages,
             tools=tools,
             tool_choice="auto",
-            max_tokens=50000,
+            max_tokens=4096,
             temperature=1,
             stream=False,
         )
@@ -287,7 +287,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                 messages=claude_messages,
                 tools=tools,
                 tool_choice="auto",
-                max_tokens=50000,
+                max_tokens=4096,
                 temperature=1,
                 stream=False,
             )
