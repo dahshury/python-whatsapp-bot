@@ -8,12 +8,11 @@ import httpx
 import inspect
 from app.config import config
 from openai import OpenAI
-from app.utils import get_lock, check_if_thread_exists, store_thread, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message
+from app.utils import get_lock, check_if_thread_exists, make_thread, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message
 from app.decorators import retry_decorator
 from app.services import assistant_functions
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 import httpx
-import openai
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 OPENAI_ASSISTANT_ID = config["OPENAI_ASSISTANT_ID"]
@@ -96,7 +95,7 @@ def run_assistant(wa_id, thread, name, max_iterations=10):
                 
                 try:
                     # Execute the function with the parsed arguments.
-                    output = function(**parsed_args, json_dump=True)
+                    output = json.dumps(function(**parsed_args))
                 except Exception as e:
                     logging.error(f"Error executing function {tool.function.name}: {e}")
                     return None, None, None
@@ -198,7 +197,7 @@ async def generate_response(message_body, wa_id, name, timestamp):
                         }
                     )
             thread_id = thread.id
-            store_thread(wa_id, thread_id)
+            make_thread(wa_id, thread_id)
         else:
             logging.info(f"Retrieving existing thread for {name} with wa_id {wa_id}")
             thread = safe_retrieve_thread(thread_id)

@@ -75,44 +75,28 @@ def find_nearest_time_slot(target_slot, available_slots):
 
     return best_slot
 
-def make_thread(wa_id):
-    """
-    Ensures that a thread record exists for the given WhatsApp ID (wa_id).
-    If no thread record exists for the provided wa_id, a new record is inserted
-    into the 'threads' table with the wa_id and a null thread_id.
-    Args:
-        wa_id (str): The WhatsApp ID for which to ensure a thread record exists.
-    Returns:
-        None
-    """
-    
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # Ensure a thread record exists.
-    cursor.execute("SELECT thread_id FROM threads WHERE wa_id = ?", (wa_id,))
-    if cursor.fetchone() is None:
-        cursor.execute("INSERT INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
-    conn.commit()
-    conn.close()
 
 def append_message(wa_id, role, message, date_str, time_str):
-    conn = get_connection()
-    cursor = conn.cursor()
-    # Ensure a thread record exists for this wa_id
-    cursor.execute("INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
-    # Insert the conversation message
-    cursor.execute(
-        "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
-        (wa_id, role, message, date_str, time_str)
-    )
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Ensure a thread record exists for this wa_id
+        cursor.execute("INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
+        # Insert the conversation message
+        cursor.execute(
+            "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
+            (wa_id, role, message, date_str, time_str)
+        )
+        conn.commit()
+    except Exception as e:
+        logging.error(f"Error appending message to database: {e}")
+    finally:
+        conn.close()
 
 def get_lock(wa_id):
     """
     Retrieve or create an asyncio.Lock for the given WhatsApp ID.
-    Also record a flag in the shelve under the key "locks" for tracking.
+    Also record a flag in the sqlite database under the key "locks" for tracking.
     """
     if wa_id not in global_locks:
         global_locks[wa_id] = asyncio.Lock()
@@ -126,9 +110,43 @@ def check_if_thread_exists(wa_id):
     conn.close()
     return row["thread_id"] if row else None
 
-def store_thread(wa_id, thread_id):
+def retrieve_messages(wa_id):
+    """
+    Retrieve message history for a user from the database.
+    """
+    try:
+        make_thread(wa_id)
+        
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Retrieve conversation history
+        cursor.execute(
+            "SELECT role, message FROM conversation WHERE wa_id = ? ORDER BY id ASC",
+            (wa_id,)
+        )
+        rows = cursor.fetchall()
+        messages = [dict(row) for row in rows] if rows else []
+        conn.close()
+        return messages
+    except Exception as e:
+        logging.error(f"Error retrieving messages from database: {e}")
+        return []
+
+def make_thread(wa_id, thread_id=None):
+    """
+    Ensures that a thread record exists for the given WhatsApp ID (wa_id).
+    If no thread record exists for the provided wa_id, a new record is inserted
+    into the 'threads' table with the wa_id and the provided thread_id.
+    Args:
+        wa_id (str): The WhatsApp ID for which to ensure a thread record exists.
+        thread_id (str, optional): The thread ID to store. Defaults to None.
+    Returns:
+        None
+    """
     conn = get_connection()
     cursor = conn.cursor()
+
     # Use INSERT OR REPLACE to update existing record if necessary
     cursor.execute(
         "INSERT OR REPLACE INTO threads (wa_id, thread_id) VALUES (?, ?)",
@@ -185,12 +203,30 @@ def parse_time(time_str):
             
 def parse_gregorian_date(date_str):
     """
-    Parse a Gregorian date string using dateutil to handle many non-ISO formats.
+    Parse a Gregorian date string with explicit format handling.
+    Priority given to DD-MM-YYYY format.
     Returns the date in ISO 8601 format: YYYY-MM-DD.
     """
+    # First try specific formats with priority to DD-MM-YYYY
+    formats_to_try = [
+        "%d-%m-%Y",  # DD-MM-YYYY
+        "%Y-%m-%d",  # YYYY-MM-DD
+        "%d/%m/%Y",  # DD/MM/YYYY
+        "%Y/%m/%d",  # YYYY/MM/DD
+        "%m-%d-%Y",  # MM-DD-YYYY (lower priority)
+        "%m/%d/%Y"   # MM/DD/YYYY (lower priority)
+    ]
+    
+    for fmt in formats_to_try:
+        try:
+            dt = datetime.datetime.strptime(date_str, fmt)
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    
+    # If specific formats fail, try dateutil with dayfirst=True
     try:
-        # dateutil can usually auto-detect the correct format.
-        dt = parser.parse(date_str)
+        dt = parser.parse(date_str, dayfirst=True)
         return dt.strftime("%Y-%m-%d")
     except Exception as e:
         raise ValueError(f"Invalid Gregorian date format: {date_str}. Error: {e}")

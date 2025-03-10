@@ -188,10 +188,14 @@ def render_view():
             if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"] and st.session_state.selected_start_time:
                 slot_end_time = (datetime.datetime.strptime(st.session_state.selected_start_time, "%H:%M") + st.session_state.slot_duration_delta).strftime("%H:%M")
                 st.markdown(f"#### الأحداث في {hijri_date} {parse_time(st.session_state.selected_start_time)} - {parse_time(slot_end_time)}" if not is_gregorian else f"### Events on {sel_date} {parse_time(st.session_state.selected_start_time)} - {parse_time(slot_end_time)}")
+                
+                start_time = datetime.datetime.strptime(st.session_state.selected_start_time, "%H:%M").time()
+                end_time = datetime.datetime.strptime(slot_end_time, "%H:%M").time()
+                
                 filtered = [
                     e for e in st.session_state.calendar_events
                     if e.get("start", "").split("T")[0] == sel_date and
-                    st.session_state.selected_start_time <= e.get("start", "").split("T")[1][:5] <= slot_end_time
+                    start_time <= datetime.datetime.strptime(e.get("start", "").split("T")[1][:5], "%H:%M").time() < end_time
                     and not ("محادثة" in e.get('title', "") if not is_gregorian else "Conversation" in e.get('title', ""))
                 ]
             else:
@@ -206,8 +210,8 @@ def render_view():
             end_date = st.session_state.selected_end_date
             hijri_end_date = Gregorian(*map(int, end_date.split('-'))).to_hijri().isoformat()
             if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
-                start_time = st.session_state.selected_start_time
-                end_time = st.session_state.selected_end_time
+                start_time = datetime.datetime.strptime(st.session_state.selected_start_time, "%H:%M").time()
+                end_time = datetime.datetime.strptime(st.session_state.selected_end_time, "%H:%M").time()
                 if not start_date == end_date:
                     st.markdown(
                         f"#### الأحداث من {hijri_start_date} إلى {hijri_end_date}"  if not is_gregorian else f"#### Events from {start_date} to {end_date}"
@@ -218,12 +222,14 @@ def render_view():
                 filtered = [
                     e for e in st.session_state.calendar_events
                     if start_date <= e.get("start", "").split("T")[0] <= end_date and
-                        start_time <= e.get("start", "").split("T")[1][:5] <= end_time
+                        start_time <= datetime.datetime.strptime(e.get("start", "").split("T")[1][:5], "%H:%M").time() < end_time
+                        and not ("محادثة" in e.get('title', "") if not is_gregorian else "Conversation" in e.get('title', ""))
                 ]
             else:
                 filtered = [
                     e for e in st.session_state.calendar_events
                     if start_date <= e.get("start", "").split("T")[0] <= end_date
+                    and not ("محادثة" in e.get('title', "") if not is_gregorian else "Conversation" in e.get('title', ""))
                 ]
         else:
             filtered = []
@@ -232,6 +238,7 @@ def render_view():
         df['start'] = pd.to_datetime(df['start'])
         df['date'] = df['start'].dt.date
         df['time'] = df['start'].dt.time
+        df = df.sort_values(by='time').reset_index(drop=True)
         if not df.empty:
             df['type'] = df.apply(lambda row: "كشف" if not is_gregorian and row.get("extendedProps", {}).get("type", "") == 0 else 
                                               "مراجعة" if not is_gregorian and row.get("extendedProps", {}).get("type", "") == 1 else
@@ -287,7 +294,7 @@ def render_view():
                 deleted = 0
                 for row_idx in widget_state["deleted_rows"]:
                     orig_row = df.iloc[row_idx]
-                    result = cancel_reservation(orig_row['id'], str(orig_row['date']), str(orig_row['time']))
+                    result = cancel_reservation(orig_row['id'], str(orig_row['date']), str(orig_row['time']), ar=True)
                     if result.get("success", "") == True:
                         deleted+=1                        
                     else:
@@ -308,7 +315,7 @@ def render_view():
                     curr_row = edited_df.iloc[row_idx]
                     if change and not orig_row.equals(curr_row):
                         if 'id' in change:
-                            result = modify_id(orig_row['id'], change['id'])
+                            result = modify_id(orig_row['id'], change['id'], ar=True)
                             if result.get("success", "") == True:
                                 st.success("Phone number changed." if is_gregorian else "تم تعديل رقم الهاتف.")
                                 modified+=1
@@ -335,7 +342,7 @@ def render_view():
                 added = 0
                 for added_row in widget_state.get("added_rows", []):
                     curr_row = edited_df.iloc[-1]
-                    result = reserve_time_slot(curr_row['id'], curr_row['title'], str(curr_row['date']), str(curr_row['time']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, max_reservations=6)
+                    result = reserve_time_slot(curr_row['id'], curr_row['title'], str(curr_row['date']), str(curr_row['time']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, max_reservations=6, ar=True)
                     if result.get("success", "") == True:
                         added+=1
                     else:
@@ -507,32 +514,56 @@ def render_cal():
             })
 
         st.session_state.calendar_events = []
+
+        # Step 1: Group reservations by date and time slot
+        grouped_reservations = {}
         for id, customer_reservations in st.session_state.reservations.items():
             for reservation in customer_reservations:
                 if isinstance(reservation, dict) and reservation.get("customer_name", ""):
-                    customer_name = reservation.get("customer_name")
                     date_str = reservation.get("date")
                     time_str = reservation.get("time_slot")
-                    type = reservation.get("type")
-                    try:
-                        start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str)}", "%Y-%m-%dT%I:%M %p")
-                        end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
-                    except ValueError as e:
-                        st.error(f"incorrect time format found, {e}")
-                        st.stop()
+                    key = f"{date_str}_{time_str}"
+                    if key not in grouped_reservations:
+                        grouped_reservations[key] = []
+                    grouped_reservations[key].append((id, reservation))
+
+        # Step 2: Process each time slot group sequentially
+        for time_key, reservations in grouped_reservations.items():
+            previous_end_dt = None
+            for id, reservation in reservations:
+                customer_name = reservation.get("customer_name", "")
+                date_str = reservation.get("date")
+                time_str = reservation.get("time_slot")
+                type = reservation.get("type")
+                
+                try:
+                    # Parse the start datetime
+                    start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str)}", "%Y-%m-%dT%I:%M %p")
                     
-                    event = {
-                        "id": id,
-                        "title": customer_name,
-                        "start": start_dt.isoformat(),
-                        "end": end_dt.isoformat(),
-                        "backgroundColor": "#9fcc2e" if type==0 else "d7f0f7",
-                        "BorderColor": "#3788d8" if type==0 else "",
-                        "extendedProps": {
-                            "type": type
-                        }
+                    # If we have a previous end time in this slot, start after it
+                    if previous_end_dt and start_dt <= previous_end_dt:
+                        start_dt = previous_end_dt + datetime.timedelta(minutes=1)
+                    
+                    # Calculate end time
+                    end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
+                    previous_end_dt = end_dt
+                except ValueError as e:
+                    st.error(f"Incorrect time format found: {e}")
+                    st.stop()
+                
+                event = {
+                    "id": id,
+                    "title": customer_name,
+                    "start": start_dt.isoformat(),
+                    "end": end_dt.isoformat(),
+                    "backgroundColor": "#4caf50" if type == 0 else "",
+                    "borderColor": "#3788d8" if type == 0 else "",
+                    "extendedProps": {
+                        "type": type
                     }
-                    st.session_state.calendar_events.append(event)
+                }
+                st.session_state.calendar_events.append(event)
+
         if show_cancelled_reservations:
             for id, customer_reservations in st.session_state.cancelled_reservations.items():
                 for reservation in customer_reservations:
@@ -669,7 +700,7 @@ def render_cal():
             new_start_date = pd.to_datetime(event['start']).date()
             new_time = pd.to_datetime(event['start']).time()
             ev_type = big_cal_response.get("eventChange", {}).get("event", {}).get("extendedProps").get("type")
-            result = modify_reservation(event['id'], str(new_start_date), str(new_time), str(event['title']), ev_type, approximate=True)
+            result = modify_reservation(event['id'], str(new_start_date), str(new_time), str(event['title']), ev_type, approximate=True, ar=True)
             if result.get("success", "") == True:
                 st.toast("Reservation changed." if is_gregorian else "تم تعديل الحجز.")
                 time.sleep(1)
@@ -679,7 +710,7 @@ def render_cal():
                 st.rerun(scope='fragment')
             else:
                 st.warning(result.get("message", ""))
-
+    st.json(big_cal_response, expanded=True)
 # =============================================================================
 # RENDER CONVERSATION FUNCTION
 # =============================================================================
@@ -725,7 +756,7 @@ def render_conversation(conversations, is_gregorian, reservations):
             else:
                 options.append(option)
         options.sort(key=len, reverse=True)
-        index = next((i for i, opt in enumerate(options) if opt.startswith(st.session_state.selected_event_id)), 0)
+        index = next((i for i, opt in enumerate(options) if str(opt).startswith(st.session_state.selected_event_id)), 0)
         selected_event_id = st.selectbox(
             "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
             options=options,
