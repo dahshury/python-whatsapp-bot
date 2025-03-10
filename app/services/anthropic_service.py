@@ -314,7 +314,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                         system=SYSTEM_PROMPT,
                         messages=claude_messages,
                         tools=tools,
-                        max_tokens=2048,
+                        max_tokens=4096,
                         temperature=1,
                         stream=False,
                     )
@@ -340,7 +340,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                     system=SYSTEM_PROMPT,
                     messages=claude_messages,
                     tools=tools,
-                    max_tokens=2048,
+                    max_tokens=4096,
                     temperature=1,
                     stream=False,
                 )
