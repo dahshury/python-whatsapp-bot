@@ -358,7 +358,7 @@ def render_view():
                     st.session_state._changes_processed = False
                     st.rerun()
 
-    elif st.session_state.active_view == "conversation" and show_conversations:
+    elif st.session_state.active_view == "conversation":
         sac.divider(label='Conversation', icon='chat-dots-fill', align='center', color='gray')
         render_conversation(st.session_state.conversations, is_gregorian, st.session_state.reservations)
 
