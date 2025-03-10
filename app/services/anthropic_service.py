@@ -144,10 +144,6 @@ tools = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "wa_id": {
-                    "type": "string",
-                    "description": "WhatsApp ID in the format '966xxxxxxxxx' (12 digits). For example, a valid number in Saudi Arabia should start with '966' followed by the 9-digit number. If the number starts with '05xxx', you should automatically format it to the '966' prefix (e.g., '0501234567' becomes '966501234567'). If the user is reserving for themselves using the same number they are talking from, this should be an empty string ('')."
-                },
                 "customer_name": {
                     "type": "string",
                     "description": "Name of the customer making the reservation. This is required always. Never reserve without it. Ensure it's the full name if available; otherwise, use the first and last name."
@@ -178,8 +174,7 @@ tools = [
                 "date_str",
                 "time_slot",
                 "reservation_type",
-                "hijri",
-                "wa_id"
+                "hijri"
             ]
         }
     },
@@ -319,7 +314,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                         system=SYSTEM_PROMPT,
                         messages=claude_messages,
                         tools=tools,
-                        max_tokens=4096,
+                        max_tokens=2048,
                         temperature=1,
                         stream=False,
                     )
@@ -345,7 +340,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                     system=SYSTEM_PROMPT,
                     messages=claude_messages,
                     tools=tools,
-                    max_tokens=4096,
+                    max_tokens=2048,
                     temperature=1,
                     stream=False,
                 )
