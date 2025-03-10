@@ -216,15 +216,15 @@ def run_claude(wa_id, name, tool_outputs=None):
     
     try:
         # Make request to Claude API
-        response = client.beta.messages.create(
+        response = client.messages.create(
             model=CLAUDE_MODEL,
             system=SYSTEM_PROMPT,
             messages=claude_messages,
             tools=tools,
-            betas=["output-128k-2025-02-19"],
             tool_choice="auto",
-            max_tokens=128000,
-            temperature=1
+            max_tokens=50000,
+            temperature=1,
+            stream=False,
         )
         
         # Log the stop reason
@@ -281,15 +281,15 @@ def run_claude(wa_id, name, tool_outputs=None):
             claude_messages.append(tool_results_message)
             
             # Send follow-up with tool outputs
-            response = client.beta.messages.create(
+            response = client.messages.create(
                 model=CLAUDE_MODEL,
                 system=SYSTEM_PROMPT,
                 messages=claude_messages,
                 tools=tools,
-                betas=["output-128k-2025-02-19"],
                 tool_choice="auto",
-                max_tokens=128000,
-                temperature=1
+                max_tokens=50000,
+                temperature=1,
+                stream=False,
             )
             
             # Log the new stop reason
