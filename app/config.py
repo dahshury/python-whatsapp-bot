@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import logging
 import sys
 
-load_dotenv()
+load_dotenv(override=True, encoding="utf-8")
 
 config = {
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
