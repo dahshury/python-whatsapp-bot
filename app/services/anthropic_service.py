@@ -25,7 +25,6 @@ http_client = httpx.Client(verify=ssl_context)
 
 # Create Anthropic client
 client = Anthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
-async_client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
 
 # Dynamically create FUNCTION_MAPPING functions in assistant_functions
 FUNCTION_MAPPING = {
