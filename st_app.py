@@ -712,7 +712,7 @@ def render_cal():
                 st.rerun(scope='fragment')
             else:
                 st.warning(result.get("message", ""))
-    st.json(big_cal_response, expanded=True)
+    # st.json(big_cal_response, expanded=True)
 # =============================================================================
 # RENDER CONVERSATION FUNCTION
 # =============================================================================

@@ -6,6 +6,7 @@ import sys
 load_dotenv(override=True, encoding="utf-8")
 
 config = {
+    "SYSTEM_PROMPT": os.getenv("SYSTEM_PROMPT"),
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
     "OPENAI_ASSISTANT_ID": os.getenv("OPENAI_ASSISTANT_ID"),
     "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
