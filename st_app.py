@@ -294,7 +294,7 @@ def render_view():
                 deleted = 0
                 for row_idx in widget_state["deleted_rows"]:
                     orig_row = df.iloc[row_idx]
-                    result = cancel_reservation(str(orig_row['id']), str(orig_row['date']), str(orig_row['time']), ar=True)
+                    result = cancel_reservation(orig_row['id'], str(orig_row['date']), ar=True)
                     if result.get("success", "") == True:
                         deleted+=1                        
                     else:

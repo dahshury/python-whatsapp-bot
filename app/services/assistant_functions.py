@@ -624,7 +624,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, ar=False):
         logging.error(f"Function call delete_reservation failed, error: {e}")
         return result
     
-def cancel_reservation(wa_id, date_str=None, time_slot=None, ar=False):
+def cancel_reservation(wa_id, date_str=None, ar=False):
     """
     Cancel a reservation for a customer.
     This performs a soft delete by moving the reservations to a 'cancelled_reservations' table.
@@ -633,8 +633,6 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, ar=False):
         wa_id (str): WhatsApp ID of the customer whose reservation should be cancelled.
         date_str (str, optional): Date for the reservation in ISO format (e.g., 'YYYY-MM-DD').
                                  If not provided, all reservations are cancelled.
-        time_slot (str, optional): The specific time slot to cancel in format '%I:%M %p', e.g., '11:00 AM'.
-                                  If not provided, all reservations for the given date are cancelled.
         ar (bool): If True, returns error messages in Arabic
         
     Returns:
@@ -653,12 +651,11 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, ar=False):
         
     try:
         date_str = parse_date(date_str) if date_str else None
-        time_slot = parse_time(time_slot) if time_slot else None
         conn = get_connection()
         cursor = conn.cursor()
         
-        # If either date_str or time_slot is missing, cancel all reservations for this customer.
-        if date_str is None or time_slot is None:
+        # If date_str is missing, cancel all reservations for this customer.
+        if date_str is None:
             cursor.execute("SELECT * FROM reservations WHERE wa_id = ?", (wa_id,))
             rows = cursor.fetchall()
             if not rows:
@@ -688,14 +685,14 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, ar=False):
             }
             return result
         
-        # Otherwise, cancel the specified reservation.
+        # Otherwise, cancel the reservations for the specified date.
         else:
             cursor.execute(
-                "SELECT * FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ?",
-                (wa_id, date_str, time_slot)
+                "SELECT * FROM reservations WHERE wa_id = ? AND date = ?",
+                (wa_id, date_str)
             )
-            row = cursor.fetchone()
-            if not row:
+            rows = cursor.fetchall()
+            if not rows:
                 conn.close()
                 message = "Reservation not found."
                 if ar:
@@ -706,13 +703,13 @@ def cancel_reservation(wa_id, date_str=None, time_slot=None, ar=False):
                 }
                 return result
 
-            cursor.execute(
+            cursor.executemany(
                 "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
-                (row["wa_id"], row["customer_name"], row["date"], row["time_slot"], row["type"])
+                [(row["wa_id"], row["customer_name"], row["date"], row["time_slot"], row["type"]) for row in rows]
             )
             cursor.execute(
-                "DELETE FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ?",
-                (wa_id, date_str, time_slot)
+                "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
+                (wa_id, date_str)
             )
             conn.commit()
             conn.close()
