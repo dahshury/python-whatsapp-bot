@@ -294,7 +294,7 @@ def render_view():
                 deleted = 0
                 for row_idx in widget_state["deleted_rows"]:
                     orig_row = df.iloc[row_idx]
-                    result = cancel_reservation(orig_row['id'], str(orig_row['date']), str(orig_row['time']), ar=True)
+                    result = cancel_reservation(str(orig_row['id']), str(orig_row['date']), str(orig_row['time']), ar=True)
                     if result.get("success", "") == True:
                         deleted+=1                        
                     else:
@@ -315,7 +315,7 @@ def render_view():
                     curr_row = edited_df.iloc[row_idx]
                     if change and not orig_row.equals(curr_row):
                         if 'id' in change:
-                            result = modify_id(orig_row['id'], change['id'], ar=True)
+                            result = modify_id(str(orig_row['id']), str(change['id']), ar=True)
                             if result.get("success", "") == True:
                                 st.success("Phone number changed." if is_gregorian else "تم تعديل رقم الهاتف.")
                                 modified+=1
@@ -325,7 +325,7 @@ def render_view():
                                 st.session_state._changes_processed = False
                                 st.rerun()
                         else:
-                            result = modify_reservation(orig_row['id'], str(curr_row['date']), str(curr_row['time']), str(curr_row['title']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1)
+                            result = modify_reservation(str(orig_row['id']), str(curr_row['date']), str(curr_row['time']), str(curr_row['title']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1)
                             if result.get("success", "") == True:
                                 modified+=1
                             else:
@@ -342,7 +342,7 @@ def render_view():
                 added = 0
                 for added_row in widget_state.get("added_rows", []):
                     curr_row = edited_df.iloc[-1]
-                    result = reserve_time_slot(curr_row['id'], curr_row['title'], str(curr_row['date']), str(curr_row['time']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, max_reservations=6, ar=True)
+                    result = reserve_time_slot(str(curr_row['id']), str(curr_row['title']), str(curr_row['date']), str(curr_row['time']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, max_reservations=6, ar=True)
                     if result.get("success", "") == True:
                         added+=1
                     else:
