@@ -115,10 +115,11 @@ def get_all_reservations(future=True, cancelled_only=False):
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
         return result
 
-def get_all_conversations(wa_id=None):
+def get_all_conversations(wa_id=None, future=False):
     """
     Get all conversations for a specific user (wa_id) from the database. If no wa_id is provided, all conversations in the database are returned.
     Group them by wa_id, then sort by date and time.
+    If `future` is True, only returns conversations for today and future dates.
     """
     try:
         conn = get_connection()
@@ -126,20 +127,40 @@ def get_all_conversations(wa_id=None):
 
         # Filtering by wa_id if provided
         if wa_id:
-            query = """
-                SELECT wa_id, role, message, date, time 
-                FROM conversation 
-                WHERE wa_id = ? 
-                ORDER BY date ASC, time ASC
-            """
-            cursor.execute(query, (wa_id,))
+            if future:
+                today = datetime.now(tz=ZoneInfo("Asia/Riyadh")).strftime("%Y-%m-%d %H:%M")
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    WHERE wa_id = ? AND date || ' ' || time >= ?
+                    ORDER BY date ASC, time ASC
+                """
+                cursor.execute(query, (wa_id, today))
+            else:
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    WHERE wa_id = ? 
+                    ORDER BY date ASC, time ASC
+                """
+                cursor.execute(query, (wa_id,))
         else:
-            query = """
-                SELECT wa_id, role, message, date, time 
-                FROM conversation 
-                ORDER BY wa_id ASC, date ASC, time ASC
-            """
-            cursor.execute(query)
+            if future:
+                today = datetime.now(tz=ZoneInfo("Asia/Riyadh")).strftime("%Y-%m-%d %H:%M")
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    WHERE date || ' ' || time >= ?
+                    ORDER BY wa_id ASC, date ASC, time ASC
+                """
+                cursor.execute(query, (today,))
+            else:
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    ORDER BY wa_id ASC, date ASC, time ASC
+                """
+                cursor.execute(query)
 
         rows = cursor.fetchall()
         conn.close()

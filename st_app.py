@@ -366,8 +366,7 @@ def render_view():
 def render_cal():
     try:
         st.session_state.reservations = get_all_reservations(future=True)
-        if show_conversations:
-            st.session_state.conversations = get_all_conversations()
+        st.session_state.conversations = get_all_conversations(future=False)
         if show_cancelled_reservations:
             st.session_state.cancelled_reservations = get_all_reservations(future=False, cancelled_only=True)
     except Exception as e:
@@ -757,7 +756,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options.append(f"{option} - {reservations[option][0].get('customer_name')}")
             else:
                 options.append(option)
-        options.sort(key=len, reverse=True)
+        options.sort(key=lambda x: (len(x), conversations[x.split(" - ")[0].strip()][-1].get("date", "")), reverse=True)
         index = next((i for i, opt in enumerate(options) if str(opt).startswith(st.session_state.selected_event_id)), 0)
         selected_event_id = st.selectbox(
             "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
