@@ -49,6 +49,35 @@ def send_whatsapp_message(wa_id, text):
     else:
         log_http_response(response)
         return response
+    
+def create_appointment_template():
+    """Create a WhatsApp message template for appointment reminders."""
+    url = f"https://graph.facebook.com/v21.0/{config['PHONE_NUMBER_ID']}/message_templates"
+    
+    headers = {
+        "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
+        "Content-Type": "application/json"
+    }
+    
+    data = {
+        "name": "appointment_reminder",
+        "language": "ar",
+        "category": "APPOINTMENT",
+        "components": [
+            {
+                "type": "BODY",
+                "text": "نذكركم بأن لديكم حجز غدًا في {{1}}.\nنرجو التكرم بالحضور في موعد الحجز المحدد.\nيفضل الحضور قبل موعد الحجز ب 10 دقائق.\nالدخول في الفترة الزمنية المحددة بالأعلى يكون بأسبقية الحضور.",
+                "example": {
+                    "body_text": [
+                        ["3:00 PM"]
+                    ]
+                }
+            }
+        ]
+    }
+    
+    response = requests.post(url, headers=headers, json=data)
+    return response.json()
 
 def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""):
     """

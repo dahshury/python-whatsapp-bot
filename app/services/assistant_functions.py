@@ -400,11 +400,24 @@ def get_customer_reservations(wa_id):
 def get_time_slots(date_str, hijri=False, vacation=None):
     """
     Get all the time slots for a given date.
+    
+    Parameters:
+        date_str (str): Date string to get time slots for (can be Hijri or Gregorian)
+        hijri (bool): Flag indicating if the provided date string is in Hijri format
+        vacation (dict): Dictionary of vacation periods with start dates and durations
+        
+    Returns:
+        dict: Dictionary of available time slots or error message
     """
     try:
-        date_str = parse_date(date_str, hijri=hijri)
+        # Convert date to Gregorian if it's in Hijri format
+        if hijri:
+            hijri_date = convert.Hijri(*map(int, date_str.split('-'))).to_gregorian()
+            gregorian_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
+        else:
+            gregorian_date_str = parse_date(date_str, hijri=hijri)
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-        date_obj = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
+        date_obj = datetime.strptime(gregorian_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
         # Compare only the date parts
         if date_obj.date() < now.date():
             result = {"success": False, "message": "Cannot check time slots for a past date."}
@@ -783,7 +796,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
     """
     date_str = parse_date(date_str, hijri)
     try:
-        all = get_time_slots(date_str)
+        all = get_time_slots(date_str, hijri)
         # If get_time_slots returns an error, pass it through
         if isinstance(all, dict) and "success" in all and not all["success"]:
             return all
