@@ -828,7 +828,8 @@ def get_available_nearby_dates_for_time_slot(time_slot, days_forward=7, days_bac
     """
     try:
         # Parse the requested time slot
-        requested_time = parse_time(time_slot)
+        time_str = parse_time(time_slot)
+        requested_time = datetime.strptime(time_str, "%I:%M %p")
         requested_minutes = requested_time.hour * 60 + requested_time.minute
         
         available_dates = []
@@ -856,6 +857,7 @@ def get_available_nearby_dates_for_time_slot(time_slot, days_forward=7, days_bac
             for slot in all_slots.keys():
                 try:
                     parsed_slot = parse_time(slot)
+                    parsed_slot = datetime.strptime(parsed_slot, "%I:%M %p")
                     parsed_slots.append((slot, parsed_slot))
                 except ValueError:
                     continue  # Skip invalid slots
