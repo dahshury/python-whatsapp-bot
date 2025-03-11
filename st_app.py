@@ -160,8 +160,8 @@ with st.sidebar:
         
     show_cancelled_reservations_idx = sac.segmented(
         items=[
-            sac.SegmentedItem(label='إخفاء المواعيد الملغاة', icon='calendar-event'),
-            sac.SegmentedItem(label='إظهار المواعيد الملغاة', icon='calendar2-x'),
+            sac.SegmentedItem(label='إخفاء المواعيد الملغاة', icon='calendar2-x'),
+            sac.SegmentedItem(label='إظهار المواعيد الملغاة', icon='calendar-event'),
         ], label='', align='center', bg_color='transparent', return_index=True
     )
     show_cancelled_reservations = True if show_cancelled_reservations_idx == 1 else False
@@ -366,7 +366,7 @@ def render_view():
 def render_cal():
     try:
         st.session_state.reservations = get_all_reservations(future=True)
-        st.session_state.conversations = get_all_conversations(future=False)
+        st.session_state.conversations = get_all_conversations(recent='month')
         if show_cancelled_reservations:
             st.session_state.cancelled_reservations = get_all_reservations(future=False, cancelled_only=True)
     except Exception as e:
@@ -548,6 +548,10 @@ def render_cal():
                     if key not in grouped_reservations:
                         grouped_reservations[key] = []
                     grouped_reservations[key].append((id, reservation))
+        
+        # Step 1.5: Sort each group by reservation type
+        for key in grouped_reservations:
+            grouped_reservations[key].sort(key=lambda x: (x[1].get("type", 0), x[1].get("customer_name", "")))
 
         # Step 2: Process each time slot group sequentially
         for time_key, reservations in grouped_reservations.items():
@@ -572,14 +576,15 @@ def render_cal():
                 except ValueError as e:
                     st.error(f"Incorrect time format found: {e}")
                     st.stop()
-                
+                # Reservation event properties
                 event = {
                     "id": id,
                     "title": customer_name,
                     "start": start_dt.isoformat(),
                     "end": end_dt.isoformat(),
-                    "backgroundColor": "#4caf50" if type == 0 else "",
-                    "borderColor": "#3788d8" if type == 0 else "",
+                    "backgroundColor": "#4caf50" if type == 0 else "#3688d8",
+                    "borderColor": "#4caf50" if type == 0 else "#3688d8",
+                    # "textColor": "#FFFFFF" if type == 0 else "",
                     "extendedProps": {
                         "type": type
                     }
@@ -600,15 +605,17 @@ def render_cal():
                         except ValueError as e:
                             st.error(f"incorrect time format found, {e}")
                             st.stop()
-                        
+                            
+                        # Cancelled reservations properties
                         event = {
                             "id": id,
                             "title": customer_name,
                             "start": start_dt.isoformat(),
                             "end": end_dt.isoformat(),
                             "editable": False,
-                            "backgroundColor": "#1d1e2c" if type==0 else "#364156",
-                            "BorderColor": "" if type==0 else "",
+                            "backgroundColor": "#e5e1e0",
+                            "textColor": "#908584",
+                            "BorderColor": "#e5e1e0" if type == 0 else "#e5e1e0",
                             "extendedProps": {
                                 "type": type
                             }
