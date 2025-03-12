@@ -61,13 +61,19 @@ tools = [
                 "new_type": {
                     "type": "integer",
                     "description": "Reservation type (0 for Check-Up, 1 for Follow-Up)."
+                },
+                "hijri": {
+                    "type": "boolean",
+                    "description": "Flag indicating if the provided date string is in Hijri format.",
+                    "required": True
                 }
             },
             "required": [
                 "new_date",
                 "new_time_slot",
                 "new_name",
-                "new_type"
+                "new_type",
+                "hijri"
             ]
         }
     },
@@ -91,7 +97,8 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag to indicate if the output dates should be converted to Hijri format"
+                    "description": "Flag indicating if the provided date string is in Hijri format.",
+                    "required": True
                 }
             },
             "required": [
@@ -123,7 +130,8 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. If true, the date string can be in various Hijri formats such as '1447-09-10', '10 Muharram 1447', or '10, Muharram, 1447'."
+                    "description": "Flag indicating if the provided date string is in Hijri format.",
+                    "required": True
                 }
             },
             "required": [
@@ -174,7 +182,8 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Indicates whether the provided date is in Hijri format (True) or Gregorian format (False). This is required always. Never reserve without it."
+                    "description": "Flag indicating if the provided date string is in Hijri format. This is required always. Never reserve without it.",
+                    "required": True
                 }
             },
             "required": [
@@ -203,7 +212,7 @@ tools = [
             "properties": {},
             "required": []
         },
-    "cache_control": {"type": "ephemeral"}  
+        "cache_control": {"type": "ephemeral"}
     }
 ]
 @retry_decorator

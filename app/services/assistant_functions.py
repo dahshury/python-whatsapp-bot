@@ -277,6 +277,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         new_name (str, optional): New customer name
         new_type (int, optional): Reservation type (0 for Check-Up, 1 for Follow-Up)
         approximate (bool, optional): If True, reserves the nearest available slot if the requested slot is not available
+        hijri (bool, optional): If True, the provided date is in Hijri format
         ar (bool, optional): If True, returns error messages in Arabic
         
     Returns:
@@ -585,6 +586,18 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     """
     Delete a reservation for a customer.
     If date_str and time_slot are not provided, delete all reservations for the customer.
+
+    Parameters:
+        wa_id (str): WhatsApp ID of the customer whose reservation should be deleted.
+        date_str (str, optional): Date for the reservation in ISO format (e.g., 'YYYY-MM-DD').
+                                  If not provided, all reservations are deleted.
+        time_slot (str, optional): Time slot for the reservation (expected format: '%I:%M %p', e.g., '11:00 AM').
+                                   If not provided, all reservations are deleted.
+        hijri (bool): Flag indicating if the provided date string is in Hijri format.
+        ar (bool): If True, returns error messages in Arabic.
+
+    Returns:
+        dict: Result of the deletion operation with success status and message.
     """
     try:
         date_str = parse_date(date_str, hijri) if date_str else None
@@ -673,17 +686,18 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     Parameters:
         wa_id (str): WhatsApp ID of the customer whose reservation should be cancelled.
         date_str (str, optional): Date for the reservation in ISO format (e.g., 'YYYY-MM-DD').
-                                 If not provided, all reservations are cancelled.
-        ar (bool): If True, returns error messages in Arabic
+                                  If not provided, all reservations are cancelled.
+        hijri (bool): Flag indicating if the provided date string is in Hijri format.
+        ar (bool): If True, returns error messages in Arabic.
         
     Returns:
-        dict: Result of the cancellation operation with success status and message
+        dict: Result of the cancellation operation with success status and message.
     """
     
     if not len(str(wa_id)) == 12:
-        message = "Invalid phone number. Please make sure to use 96659 at the start."
+        message = "Invalid phone number. Please make sure to use 96659 at the start of the phone number and that it contains 12 digits."
         if ar:
-            message = "رقم الهاتف غير صالح. يرجى التأكد من استخدام 96659 في البداية."
+            message = "و رقم الهاتف غير صالح. يرجى التأكد من استخدام 9665 في البداية و أن رقم الهاتف مكون من 12 رقم."
         result = {"success": False, "message": message}
         return result
     if str(wa_id).startswith("05"):
