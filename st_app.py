@@ -299,12 +299,12 @@ def render_view():
                         deleted+=1                        
                     else:
                         st.error(result.get("message", ""))
-                        time.sleep(1)
+                        time.sleep(2)
                         st.session_state._changes_processed = False
                         st.rerun()
                 if deleted>0:
                     st.success(f"{deleted} Reservations cancelled." if is_gregorian else f"تم الغاء {deleted} حجوزات.")
-                    time.sleep(1)
+                    time.sleep(2)
                     st.session_state._changes_processed = False
                     st.rerun()
                 
@@ -321,7 +321,7 @@ def render_view():
                                 modified+=1
                             else:
                                 st.error(result.get("message", ""))
-                                time.sleep(1)
+                                time.sleep(2)
                                 st.session_state._changes_processed = False
                                 st.rerun()
                         else:
@@ -332,7 +332,7 @@ def render_view():
                                 modified+=1
                             else:
                                 st.error(result.get("message", ""))
-                                time.sleep(1)
+                                time.sleep(2)
                                 st.session_state._changes_processed = False
                                 st.rerun()
                 if modified ==len(widget_state.get("edited_rows")):
@@ -349,12 +349,12 @@ def render_view():
                         added+=1
                     else:
                         st.error(result.get("message", ""))
-                        time.sleep(1)
+                        time.sleep(2)
                         st.session_state._changes_processed = False
                         st.rerun()
                 if added == len(widget_state.get("added_rows", [])):
                     st.success(f"{added} Reservations added." if is_gregorian else f"تم إضافة {added} حجوزات.")
-                    time.sleep(1)
+                    time.sleep(2)
                     st.session_state._changes_processed = False
                     st.rerun()
 
