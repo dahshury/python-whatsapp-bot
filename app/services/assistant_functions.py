@@ -266,7 +266,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         result = {"success": False, "message": message}
         return result
 
-def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, ar=False):
+def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, hijri=False, ar=False):
     """
     Modify the reservation for an existing customer.
 
@@ -284,7 +284,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
     """
     try:
         if new_date:
-            new_date = parse_date(new_date)
+            new_date = parse_date(new_date, hijri)
         if new_time_slot:
             new_time_slot = parse_time(new_time_slot)
 
@@ -410,12 +410,8 @@ def get_time_slots(date_str, hijri=False, vacation=None):
         dict: Dictionary of available time slots or error message
     """
     try:
-        # Convert date to Gregorian if it's in Hijri format
-        if hijri:
-            hijri_date = convert.Hijri(*map(int, date_str.split('-'))).to_gregorian()
-            gregorian_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
-        else:
-            gregorian_date_str = parse_date(date_str, hijri=hijri)
+
+        gregorian_date_str = parse_date(date_str, hijri=hijri)
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
         date_obj = datetime.strptime(gregorian_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
         # Compare only the date parts
@@ -501,16 +497,15 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
 
     try:
         # Normalize and convert date and time.
-        date_str = parse_date(date_str)
+        date_str = parse_date(date_str, hijri)
         time_slot = parse_time(time_slot)
-        gregorian_date_str = parse_date(date_str, hijri=hijri)
         
         # Convert Gregorian to Hijri for output purposes.
-        hijri_date_obj = convert.Gregorian(*map(int, gregorian_date_str.split('-'))).to_hijri()
+        hijri_date_obj = convert.Gregorian(*map(int, date_str.split('-'))).to_hijri()
         hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
 
         # Check if the reservation date is in the past.
-        reservation_date = datetime.strptime(gregorian_date_str, "%Y-%m-%d").date()
+        reservation_date = datetime.strptime(date_str, "%Y-%m-%d").date()
         today = datetime.now(tz=ZoneInfo("Asia/Riyadh")).date()
         if reservation_date < today:
             message = "Cannot reserve a time slot in the past."
@@ -520,7 +515,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             return result
 
         # Validate the available time slots for the date.
-        available = get_time_slots(gregorian_date_str)
+        available = get_time_slots(date_str)
         if isinstance(available, dict) and "success" in available and not available["success"]:
             return available
 
@@ -535,7 +530,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         cursor = conn.cursor()
 
         # Check if the user already has a reservation for the given date.
-        cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ? AND date = ?", (wa_id, gregorian_date_str))
+        cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ? AND date = ?", (wa_id, date_str))
         if cursor.fetchone()[0] > 0:
             conn.close()
             message = "You already have a reservation for this date. Please cancel it first."
@@ -545,7 +540,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             return result
 
         # Check if the desired time slot has reached the maximum reservations.
-        cursor.execute("SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?", (gregorian_date_str, time_slot))
+        cursor.execute("SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?", (date_str, time_slot))
         if cursor.fetchone()[0] >= max_reservations:
             conn.close()
             message = "This time slot is fully booked. Please choose another slot."
@@ -560,7 +555,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         # Insert the new reservation (storing the Gregorian date for consistency).
         cursor.execute(
             "INSERT INTO reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
-            (wa_id, customer_name, gregorian_date_str, time_slot, reservation_type)
+            (wa_id, customer_name, date_str, time_slot, reservation_type)
         )
 
         conn.commit()
@@ -568,7 +563,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
 
         result = {
             "success": True,
-            "gregorian_date": gregorian_date_str,
+            "gregorian_date": date_str,
             "hijri_date": hijri_date_str,
             "time_slot": time_slot,
             "type": reservation_type,
@@ -586,13 +581,13 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         logging.error(f"Function call reserve_time_slot failed, error: {e}")
         return result
 
-def delete_reservation(wa_id, date_str=None, time_slot=None, ar=False):
+def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
     """
     Delete a reservation for a customer.
     If date_str and time_slot are not provided, delete all reservations for the customer.
     """
     try:
-        date_str = parse_date(date_str) if date_str else None
+        date_str = parse_date(date_str, hijri) if date_str else None
         time_slot = parse_time(time_slot) if time_slot else None
         conn = get_connection()
         cursor = conn.cursor()
@@ -670,7 +665,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, ar=False):
         logging.error(f"Function call delete_reservation failed, error: {e}")
         return result
     
-def cancel_reservation(wa_id, date_str=None, ar=False):
+def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     """
     Cancel a reservation for a customer.
     This performs a soft delete by moving the reservations to a 'cancelled_reservations' table.
@@ -696,7 +691,7 @@ def cancel_reservation(wa_id, date_str=None, ar=False):
         wa_id = "966" + wa_id[1:]
         
     try:
-        date_str = parse_date(date_str) if date_str else None
+        date_str = parse_date(date_str, hijri) if date_str else None
         conn = get_connection()
         cursor = conn.cursor()
         
@@ -796,7 +791,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
     """
     date_str = parse_date(date_str, hijri)
     try:
-        all = get_time_slots(date_str, hijri)
+        all = get_time_slots(date_str)
         # If get_time_slots returns an error, pass it through
         if isinstance(all, dict) and "success" in all and not all["success"]:
             return all

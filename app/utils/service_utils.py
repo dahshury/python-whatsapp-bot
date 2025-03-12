@@ -243,11 +243,13 @@ def parse_gregorian_date(date_str):
 def parse_hijri_date(date_str):
     """
     Parse a Hijri date string that might be in various non-ISO-like formats.
-    Returns the date in an ISO-like format: YYYY-MM-DD.
+    Returns the date in Gregorian format: YYYY-MM-DD.
     """
-    # If already in ISO-like format (e.g. "1447-09-10"), return as-is.
+    # If already in ISO-like format (e.g. "1447-09-10"), convert to Gregorian.
     if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        return date_str
+        hijri_date = convert.Hijri(*map(int, date_str.split('-')))
+        gregorian_date = hijri_date.to_gregorian()
+        return f"{gregorian_date.year}-{gregorian_date.month:02d}-{gregorian_date.day:02d}"
 
     # Prepare the input by lowercasing and removing commas.
     s = date_str.lower().replace(',', '')
@@ -295,7 +297,9 @@ def parse_hijri_date(date_str):
         # Assume the first number is the day and the last is the year.
         day = numbers[0]
         year = numbers[-1]
-        return f"{year}-{found_month}-{int(day):02d}"
+        hijri_date = convert.Hijri(int(year), int(found_month), int(day))
+        gregorian_date = hijri_date.to_gregorian()
+        return f"{gregorian_date.year}-{gregorian_date.month:02d}-{gregorian_date.day:02d}"
     
     # If no month name is found, assume the date is fully numeric.
     if len(numbers) == 3:
@@ -305,7 +309,9 @@ def parse_hijri_date(date_str):
         else:
             # Otherwise, assume day-month-year (common for Hijri dates).
             day, month, year = numbers
-        return f"{year}-{int(month):02d}-{int(day):02d}"
+        hijri_date = convert.Hijri(int(year), int(month), int(day))
+        gregorian_date = hijri_date.to_gregorian()
+        return f"{gregorian_date.year}-{gregorian_date.month:02d}-{gregorian_date.day:02d}"
 
     raise ValueError(f"Invalid Hijri date format: {date_str}")
 
