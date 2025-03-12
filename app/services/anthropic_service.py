@@ -64,8 +64,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format.",
-                    "required": True
+                    "description": "Flag indicating if the provided date string is in Hijri format."
                 }
             },
             "required": [
@@ -97,8 +96,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format.",
-                    "required": True
+                    "description": "Flag indicating if the provided date string is in Hijri format."
                 }
             },
             "required": [
@@ -130,8 +128,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format.",
-                    "required": True
+                    "description": "Flag indicating if the provided date string is in Hijri format."
                 }
             },
             "required": [
@@ -182,8 +179,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. This is required always. Never reserve without it.",
-                    "required": True
+                    "description": "Flag indicating if the provided date string is in Hijri format. This is required always. Never reserve without it."
                 }
             },
             "required": [

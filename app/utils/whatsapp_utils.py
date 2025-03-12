@@ -50,35 +50,6 @@ def send_whatsapp_message(wa_id, text):
         log_http_response(response)
         return response
     
-def create_appointment_template():
-    """Create a WhatsApp message template for appointment reminders."""
-    url = f"https://graph.facebook.com/v21.0/{config['PHONE_NUMBER_ID']}/message_templates"
-    
-    headers = {
-        "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
-        "Content-Type": "application/json"
-    }
-    
-    data = {
-        "name": "appointment_reminder",
-        "language": "ar",
-        "category": "APPOINTMENT",
-        "components": [
-            {
-                "type": "BODY",
-                "text": "نذكركم بأن لديكم حجز غدًا في {{1}}.\nنرجو التكرم بالحضور في موعد الحجز المحدد.\nيفضل الحضور قبل موعد الحجز ب 10 دقائق.\nالدخول في الفترة الزمنية المحددة بالأعلى يكون بأسبقية الحضور.",
-                "example": {
-                    "body_text": [
-                        ["3:00 PM"]
-                    ]
-                }
-            }
-        ]
-    }
-    
-    response = requests.post(url, headers=headers, json=data)
-    return response.json()
-
 def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""):
     """
     Sends a location message using the WhatsApp API.
@@ -130,6 +101,65 @@ def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""):
     else:
         log_http_response(response)
         return {"status": "success", "message": "Location sent successfully"}
+
+def send_whatsapp_template(wa_id, template_name, language="en_US", components=None):
+    """
+    Sends a template message using the WhatsApp API.
+    
+    Args:
+        wa_id (str): The recipient's WhatsApp ID.
+        template_name (str): The name of the template to use.
+        language (str, optional): The language of the template. Defaults to "en_US".
+        components (list, optional): List of component objects containing parameters for the template.
+            Example: [{"type": "body", "parameters": [{"type": "text", "text": "value"}]}]
+    
+    Returns:
+        Response: If the request is successful, returns the response object from the requests library.
+        tuple: If an error occurs, returns a tuple containing a JSON response and an HTTP status code.
+              - On timeout: ({"status": "error", "message": "Request timed out"}, 408)
+              - On request exception: ({"status": "error", "message": "Failed to send template"}, 500)
+    
+    Raises:
+        requests.HTTPError: If the HTTP request returns an unsuccessful status code.
+    """
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": wa_id,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {
+                "code": language
+            }
+        }
+    }
+    
+    # Add components if provided
+    if components:
+        payload["template"]["components"] = components
+    
+    data = json.dumps(payload)
+    
+    headers = {
+        "Content-type": "application/json",
+        "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
+    }
+    url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
+    
+    try:
+        response = requests.post(url, data=data, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+    except requests.Timeout:
+        logging.error("Timeout occurred while sending template message")
+        return {"status": "error", "message": "Request timed out"}, 408
+    except requests.RequestException as e:
+        logging.error(f"Request failed: {e}")
+        return {"status": "error", "message": "Failed to send template"}, 500
+    else:
+        log_http_response(response)
+        return response
 
 def process_text_for_whatsapp(text):
     pattern = r"\【.*?\】"
