@@ -1,6 +1,7 @@
 import asyncio
 from app.db import get_connection
 import datetime
+from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 from dateutil import parser  # Requires: pip install python-dateutil
 import platform
@@ -75,7 +76,140 @@ def find_nearest_time_slot(target_slot, available_slots):
 
     return best_slot
 
+def get_all_reservations(future=True, cancelled_only=False):
+    """
+    Get all reservations from the database, grouped by wa_id, sorted by date and time_slot.
+    If `future` is True, only returns reservations for today and future dates.
+    If `cancelled` is True, only returns the cancelled reservations. 
+    """
+    db = "reservations" if not cancelled_only else "cancelled_reservations"
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        # Prepare the query based on the future flag.
+        if future:
+            today = date.today().isoformat()
+            query = f"""
+                SELECT wa_id, customer_name, date, time_slot, type 
+                FROM {db} 
+                WHERE date >= ?
+                ORDER BY wa_id ASC, date ASC, time_slot ASC
+            """
+            cursor.execute(query, (today,))
+        else:
+            query = f"""
+                SELECT wa_id, customer_name, date, time_slot, type 
+                FROM {db} 
+                ORDER BY wa_id ASC, date ASC, time_slot ASC
+            """
+            cursor.execute(query)
+        
+        rows = cursor.fetchall()
+        conn.close()
 
+        # Structuring the output as a grouped dictionary
+        reservations = {}
+        for row in rows:
+            user_id = row['wa_id']
+            if user_id not in reservations:
+                reservations[user_id] = []
+            reservations[user_id].append({
+                "customer_name": row['customer_name'],
+                "date": row['date'],
+                "time_slot": row['time_slot'],
+                "type": row['type']
+            })
+
+        return reservations
+
+    except Exception as e:
+        logging.error(f"Function call get_all_reservations failed, error: {e}")
+        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
+        return result
+
+def get_all_conversations(wa_id=None, recent=None):
+    """
+    Get all conversations for a specific user (wa_id) from the database. If no wa_id is provided, all conversations in the database are returned.
+    Group them by wa_id, then sort by date and time.
+    If `recent` is provided, it filters conversations based on the specified period ('year', 'month', 'week', 'day').
+    """
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+
+        # Determine the date filter based on the 'recent' parameter
+        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        if recent == 'year':
+            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif recent == 'month':
+            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        elif recent == 'week':
+            start_date = now - timedelta(days=now.weekday())
+            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        elif recent == 'day':
+            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        else:
+            start_date = None
+
+        # Filtering by wa_id if provided
+        if wa_id:
+            if start_date:
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    WHERE wa_id = ? AND date || ' ' || time >= ?
+                    ORDER BY date ASC, time ASC
+                """
+                cursor.execute(query, (wa_id, start_date.strftime("%Y-%m-%d %H:%M")))
+            else:
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    WHERE wa_id = ? 
+                    ORDER BY date ASC, time ASC
+                """
+                cursor.execute(query, (wa_id,))
+        else:
+            if start_date:
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    WHERE date || ' ' || time >= ?
+                    ORDER BY wa_id ASC, date ASC, time ASC
+                """
+                cursor.execute(query, (start_date.strftime("%Y-%m-%d %H:%M"),))
+            else:
+                query = """
+                    SELECT wa_id, role, message, date, time 
+                    FROM conversation 
+                    ORDER BY wa_id ASC, date ASC, time ASC
+                """
+                cursor.execute(query)
+
+        rows = cursor.fetchall()
+        conn.close()
+
+        # Structuring the output as a grouped dictionary
+        conversations = {}
+        for row in rows:
+            user_id = row['wa_id']
+            if user_id not in conversations:
+                conversations[user_id] = []
+            conversations[user_id].append({
+                "role": row['role'],
+                "message": row['message'],
+                "date": row['date'],
+                "time": row['time']
+            })
+
+        return conversations
+
+    except Exception as e:
+        logging.error(f"Function call get_all_conversations failed, error: {e}")
+        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
+        return result
+    
 def append_message(wa_id, role, message, date_str, time_str):
     try:
         conn = get_connection()

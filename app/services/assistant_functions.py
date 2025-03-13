@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from app.config import config
@@ -62,140 +62,6 @@ def get_current_datetime():
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
         logging.error(f"Function call get_current_datetime failed, error: {e}")
         return result
-        
-def get_all_reservations(future=True, cancelled_only=False):
-    """
-    Get all reservations from the database, grouped by wa_id, sorted by date and time_slot.
-    If `future` is True, only returns reservations for today and future dates.
-    If `cancelled` is True, only returns the cancelled reservations. 
-    """
-    db = "reservations" if not cancelled_only else "cancelled_reservations"
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        # Prepare the query based on the future flag.
-        if future:
-            today = date.today().isoformat()
-            query = f"""
-                SELECT wa_id, customer_name, date, time_slot, type 
-                FROM {db} 
-                WHERE date >= ?
-                ORDER BY wa_id ASC, date ASC, time_slot ASC
-            """
-            cursor.execute(query, (today,))
-        else:
-            query = f"""
-                SELECT wa_id, customer_name, date, time_slot, type 
-                FROM {db} 
-                ORDER BY wa_id ASC, date ASC, time_slot ASC
-            """
-            cursor.execute(query)
-        
-        rows = cursor.fetchall()
-        conn.close()
-
-        # Structuring the output as a grouped dictionary
-        reservations = {}
-        for row in rows:
-            user_id = row['wa_id']
-            if user_id not in reservations:
-                reservations[user_id] = []
-            reservations[user_id].append({
-                "customer_name": row['customer_name'],
-                "date": row['date'],
-                "time_slot": row['time_slot'],
-                "type": row['type']
-            })
-
-        return reservations
-
-    except Exception as e:
-        logging.error(f"Function call get_all_reservations failed, error: {e}")
-        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
-        return result
-
-def get_all_conversations(wa_id=None, recent=None):
-    """
-    Get all conversations for a specific user (wa_id) from the database. If no wa_id is provided, all conversations in the database are returned.
-    Group them by wa_id, then sort by date and time.
-    If `recent` is provided, it filters conversations based on the specified period ('year', 'month', 'week', 'day').
-    """
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        # Determine the date filter based on the 'recent' parameter
-        now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-        if recent == 'year':
-            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
-        elif recent == 'month':
-            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        elif recent == 'week':
-            start_date = now - timedelta(days=now.weekday())
-            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
-        elif recent == 'day':
-            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        else:
-            start_date = None
-
-        # Filtering by wa_id if provided
-        if wa_id:
-            if start_date:
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE wa_id = ? AND date || ' ' || time >= ?
-                    ORDER BY date ASC, time ASC
-                """
-                cursor.execute(query, (wa_id, start_date.strftime("%Y-%m-%d %H:%M")))
-            else:
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE wa_id = ? 
-                    ORDER BY date ASC, time ASC
-                """
-                cursor.execute(query, (wa_id,))
-        else:
-            if start_date:
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE date || ' ' || time >= ?
-                    ORDER BY wa_id ASC, date ASC, time ASC
-                """
-                cursor.execute(query, (start_date.strftime("%Y-%m-%d %H:%M"),))
-            else:
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    ORDER BY wa_id ASC, date ASC, time ASC
-                """
-                cursor.execute(query)
-
-        rows = cursor.fetchall()
-        conn.close()
-
-        # Structuring the output as a grouped dictionary
-        conversations = {}
-        for row in rows:
-            user_id = row['wa_id']
-            if user_id not in conversations:
-                conversations[user_id] = []
-            conversations[user_id].append({
-                "role": row['role'],
-                "message": row['message'],
-                "date": row['date'],
-                "time": row['time']
-            })
-
-        return conversations
-
-    except Exception as e:
-        logging.error(f"Function call get_all_conversations failed, error: {e}")
-        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
-        return result
     
 def modify_id(old_wa_id, new_wa_id, ar=False):
     """
@@ -206,7 +72,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         if len(str(new_wa_id)) != 12:
             message = "The new wa_id must be 12 digits long."
             if ar:
-                message = "يجب أن يكون رقم الواتساب الجديد مكونًا من 12 رقمًا."
+                message = "يجب أن يكون رقم الواتساب الجديد مكونٌ من 12 رقمًا."
             result = {"success": False, "message": message}
             return result
         
@@ -227,16 +93,6 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Check if the new wa_id already exists
-        cursor.execute("SELECT COUNT(*) FROM threads WHERE wa_id = ?", (new_wa_id,))
-        if cursor.fetchone()[0] > 0:
-            conn.close()
-            message = "The new wa_id already exists."
-            if ar:
-                message = "رقم الواتساب الجديد موجود بالفعل."
-            result = {"success": False, "message": message}
-            return result
-        
         # Update the wa_id in the threads table
         cursor.execute("UPDATE threads SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
         
@@ -252,9 +108,11 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         conn.commit()
         conn.close()
         
-        message = "wa_id modified successfully."
         if ar:
             message = "تم تعديل رقم الواتساب بنجاح."
+        else:
+            message = "wa_id modified successfully."
+            
         result = {"success": True, "message": message}
         return result
     
@@ -527,18 +385,15 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             result = {"success": False, "message": message}
             return result
 
+        # Check if the user already has a reservation for the given date.
+        existing_reservations = get_customer_reservations(wa_id)
+        if existing_reservations:
+            # Modify the existing reservation
+            modify_result = modify_reservation(wa_id, new_date=date_str, new_time_slot=time_slot, new_name=customer_name, new_type=reservation_type, hijri=hijri, ar=ar)
+            return modify_result
+
         conn = get_connection()
         cursor = conn.cursor()
-
-        # Check if the user already has a reservation for the given date.
-        cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ? AND date = ?", (wa_id, date_str))
-        if cursor.fetchone()[0] > 0:
-            conn.close()
-            message = "You already have a reservation for this date. Please cancel it first."
-            if ar:
-                message = "لديك حجز بالفعل لهذا التاريخ. يرجى إلغاؤه أولاً."
-            result = {"success": False, "message": message}
-            return result
 
         # Check if the desired time slot has reached the maximum reservations.
         cursor.execute("SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?", (date_str, time_slot))

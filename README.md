@@ -1,13 +1,20 @@
 
-# AI WhatsApp Bot with FastAPI
+# AI-WhatsApp-Reservation-App
 
-For the original repository and tutorial (Flask version), please refer to [this GitHub repository](https://github.com/daveebbelaar/python-whatsapp-bot).
+![alt text](1.png)
+![alt text](<Screenshot 2025-03-14 014221.png>)
+![alt text](<Screenshot 2025-03-14 014527.png>)
+This project is a WhatsApp bot built using FastAPI, integrated with OpenAI and Anthropic for generating intelligent responses for customers using Whatsapp API, and includes a Streamlit frontend for managing reservations and managing bookings into a SQLite database. The bot allows users to make, modify, and cancel reservations via WhatsApp, while the front-end Streamlit application provides a graphical interface for managing reservations and customers messages. The project is designed to be easily deployable on various platforms, including AWS and Heroku.
+
+For the original repository and setup torial (Flask version), please refer to [this GitHub repository](https://github.com/daveebbelaar/python-whatsapp-bot).
 
 ## Prerequisites
 
 - A Meta developer account. If you don’t have one, [create a Meta developer account here](https://developers.facebook.com/). For detailed steps, refer to the original tutorial above.
 - A business app. If you don't have one, [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/). For detailed steps, refer to the original tutorial above.
 - Familiarity with Python and FastAPI.
+- Deployment platform (e.g., AWS, Heroku, or local server) to host the FastAPI application and Streamlit frontend.
+- A valid OpenAI or Anthropic API key for AI response generation.
 
 This project is a WhatsApp bot built using FastAPI, integrated with OpenAI for generating intelligent responses, and includes a Streamlit frontend for managing reservations and visualizing data into a SQLite database. The bot allows users to make, modify, and cancel reservations via WhatsApp, with the assistance of AI for natural language understanding.
 
@@ -18,10 +25,13 @@ The project is organized as follows:
 ```plaintext
 ├── app/                     # Main application code
 │   ├── decorators/          # Decorator functions
-│   │   └── security.py      # Handles security-related tasks like signature verification for webhook requests
+│   │   ├── __init__.py
+│   │   ├── safety.py        # Additional security-related tasks
+│   │   └── security.py      # Handles signature verification for webhook requests
 │   ├── frontend/            # Frontend code for the Streamlit interface
 │   │   └── __init__.py      # Defines Streamlit components and authentication logic
 │   ├── services/            # Service modules providing business logic
+│   │   ├── anthropic_service.py    # Integrates with Anthropic to generate AI-driven responses
 │   │   ├── assistant_functions.py  # Functions for managing reservations (booking, modifying, canceling)
 │   │   └── openai_service.py       # Integrates with OpenAI to generate AI-driven responses
 │   ├── utils/               # Utility functions
@@ -32,8 +42,6 @@ The project is organized as follows:
 │   ├── config.py            # Configuration settings loaded from environment variables
 │   ├── db.py                # Database connection and schema definitions using SQLite
 │   └── views.py             # FastAPI route definitions for handling webhooks and data downloads
-├── attempt/                 # Contains static files
-│   └── index.html           # Static HTML file, possibly for testing or demonstration purposes
 ├── README.md                # Project documentation
 ├── run.py                   # Entry point to run the FastAPI application
 ├── send_reminders.py        # Script to send reminders for upcoming reservations
@@ -65,14 +73,17 @@ The application operates as follows:
 
 6. **Frontend**:
    - The Streamlit application in `st_app.py` provides a graphical interface to:
-     - Visualize the reservation calendar.
-     - Manage reservations (create, update, delete).
-     - View conversation histories.
-     - Send manual messages via WhatsApp.
-   - Authentication is handled in `frontend/__init__.py` using `streamlit_authenticator`.
+      - Visualize the reservation calendar.
+      - Manage reservations (create, update, delete).
+      - View conversation histories.
+      - Send manual messages via WhatsApp.
+   - Authentication is handled in `frontend/__init__.py` using `streamlit_authenticator`. The credentials are stored in `users.yaml`. For more details, refer to [Streamlit Authenticator documentation](https://github.com/mkhorasani/Streamlit-Authenticator).
 
 7. **Automated Reminders**:
    - The `send_reminders.py` script periodically checks the database for upcoming reservations and sends reminders to users via WhatsApp.
+
+8. **Automated Database Backup**:
+   - The `sqlite_backup.sh` script creates a backup of the SQLite database to a remote google drive folder.
 
 ## Setup and Installation
 
@@ -105,6 +116,8 @@ Create a `.env` file based on `example.env` and update the necessary variables:
 - `VERIFY_TOKEN`: Webhook verification token.
 - `APP_ID` and `APP_SECRET`: Meta app credentials.
 - `BUSINESS_LATITUDE`, `BUSINESS_LONGITUDE`, `BUSINESS_NAME`, `BUSINESS_ADDRESS`: Business location details.
+- `SYSTEM_PROMPT`: System prompt for Anthropic.
+- `ANTHROPIC_API_KEY`: Your Anthropic API key.
 
 ## 4. Run the FastAPI Application
 
@@ -128,10 +141,14 @@ Configure the WhatsApp webhook to point to your FastAPI application's `/webhook`
 
 ## 7. Set Up Reminders (Optional)
 
-Run `send_reminders.py` manually or schedule it (e.g., via `cron`) to send reminders:
+Run `send_reminders.py` and sqlite_backup.sh manually or schedule them (e.g., via `cron`) to send reminders and back up the database:
 
 ```bash
 python send_reminders.py
+```
+
+```bash
+sqlite_backup.sh
 ```
 
 ---
@@ -150,9 +167,10 @@ pip install -r requirements.txt
 - **Uvicorn**: ASGI server to run FastAPI.
 - **Streamlit**: Frontend framework.
 - **OpenAI**: AI response generation.
-- **SQLite**: Lightweight database (via `sqlite3` in Python standard library).
+- **Anthropic**: AI response generation.
 - **requests**: For HTTP requests to the WhatsApp API.
-- **hijri_converter**: For Hijri date conversions.
+- **aiohttp**: Asynchronous HTTP client/server framework.
+- **python-dotenv**: For loading environment variables from `.env` files.
 
 ---
 

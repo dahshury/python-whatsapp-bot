@@ -16,12 +16,11 @@ from app.frontend import (authenticate,
                           subtract_ramadan_from_normal)
 from app.utils import send_whatsapp_message, append_message
 from app.services.assistant_functions import (cancel_reservation,
-                                              get_all_conversations,
-                                              get_all_reservations, modify_id,
+                                            modify_id,
                                               modify_reservation, parse_date,
                                               parse_time, reserve_time_slot,
                                               )
-
+from app.utils import get_all_reservations, get_all_conversations
 # =============================================================================
 # PAGE CONFIGURATION
 # =============================================================================
