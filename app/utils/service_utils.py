@@ -237,7 +237,7 @@ def get_lock(wa_id):
         global_locks[wa_id] = asyncio.Lock()
     return global_locks[wa_id]
 
-def is_valid_number(phone_number, ar):
+def is_valid_number(phone_number, ar=False):
     if not phonenumbers.is_valid_number(phonenumbers.parse("+" + str(phone_number))): 
         if ar:
             message = "رقم الهاتف غير صالح."

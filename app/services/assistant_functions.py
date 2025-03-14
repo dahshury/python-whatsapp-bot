@@ -71,7 +71,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
     Modify the WhatsApp ID (wa_id) for a customer in all related tables.
     """
     try:
-        is_valid_wa_id = is_valid_number(new_wa_id)
+        is_valid_wa_id = is_valid_number(new_wa_id, ar)
         if not is_valid_wa_id:
             return is_valid_wa_id
         
@@ -134,7 +134,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         dict: Result of the modification operation with success status and message
     """
     try:
-        is_valid_wa_id = is_valid_number(wa_id)
+        is_valid_wa_id = is_valid_number(wa_id, ar)
         if not is_valid_wa_id:
             return is_valid_wa_id
         if new_date:
@@ -327,7 +327,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
       - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
       - ar: If True, returns error messages in Arabic (default: False)
     """
-    is_valid_wa_id = is_valid_number(wa_id)
+    is_valid_wa_id = is_valid_number(wa_id, ar)
     if not is_valid_wa_id:
         return is_valid_wa_id
     
@@ -446,7 +446,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
         dict: Result of the deletion operation with success status and message.
     """
     try:
-        is_valid_wa_id = is_valid_number(wa_id)
+        is_valid_wa_id = is_valid_number(wa_id, ar)
         if not is_valid_wa_id:
             return is_valid_wa_id
         date_str = parse_date(date_str, hijri) if date_str else None
@@ -543,7 +543,7 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         dict: Result of the cancellation operation with success status and message.
     """
     
-    is_valid_wa_id = is_valid_number(wa_id)
+    is_valid_wa_id = is_valid_number(wa_id, ar)
     if not is_valid_wa_id:
         return is_valid_wa_id
         
