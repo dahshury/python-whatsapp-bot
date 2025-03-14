@@ -268,8 +268,6 @@ def render_view():
                 ),
                 "id": st.column_config.NumberColumn("Phone Number" if is_gregorian else "رقم الهاتف", 
                                                         format="%d", 
-                                                        min_value=966500000000, 
-                                                        max_value=966599999999, 
                                                         default=int("9665"),
                                                         required=True),
                 "type": st.column_config.SelectboxColumn(

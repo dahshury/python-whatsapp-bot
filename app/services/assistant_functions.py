@@ -318,7 +318,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
     the input date (Hijri or Gregorian) into a standardized ISO (YYYY-MM-DD) format.
     
     Parameters:
-      - wa_id: WhatsApp ID (12 digits)
+      - wa_id: WhatsApp ID
       - customer_name: Customer's name
       - date_str: Date string (can be Hijri or Gregorian)
       - time_slot: Desired time slot
