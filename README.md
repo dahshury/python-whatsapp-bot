@@ -1,9 +1,9 @@
 
 # AI-WhatsApp-Reservation-App
 
-![alt text](1.png)
-![alt text](<Screenshot 2025-03-14 014221.png>)
-![alt text](<Screenshot 2025-03-14 014527.png>)
+![alt text](media/1.png)
+![alt text](<media/Screenshot 2025-03-14 014221.png>)
+![alt text](<media/Screenshot 2025-03-14 014527.png>)
 This project is a WhatsApp bot built using FastAPI, integrated with OpenAI and Anthropic for generating intelligent responses for customers using Whatsapp API, and includes a Streamlit frontend for managing reservations and managing bookings into a SQLite database. The bot allows users to make, modify, and cancel reservations via WhatsApp, while the front-end Streamlit application provides a graphical interface for managing reservations and customers messages. The project is designed to be easily deployable on various platforms, including AWS and Heroku.
 
 For the original repository and setup torial (Flask version), please refer to [this GitHub repository](https://github.com/daveebbelaar/python-whatsapp-bot).

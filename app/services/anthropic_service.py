@@ -221,7 +221,7 @@ def run_claude(wa_id, name, tool_outputs=None):
     
     try:
         # Make request to Claude API
-        response = client.messages.create(
+        response = client.beta.messages.create(
             model=CLAUDE_MODEL,
             system=SYSTEM_PROMPT,
             messages=claude_messages,
@@ -229,6 +229,7 @@ def run_claude(wa_id, name, tool_outputs=None):
             max_tokens=4096,
             temperature=1,
             stream=False,
+            betas=["token-efficient-tools-2025-02-19"]
         )
         
         # Log the stop reason
@@ -291,7 +292,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                     })
                     
                     # Send follow-up with tool outputs
-                    response = client.messages.create(
+                    response = client.beta.messages.create(
                         model=CLAUDE_MODEL,
                         system=SYSTEM_PROMPT,
                         messages=claude_messages,
@@ -299,6 +300,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                         max_tokens=4096,
                         temperature=1,
                         stream=False,
+                        betas=["token-efficient-tools-2025-02-19"]
                     )
                     
                     # Log the new stop reason
@@ -323,7 +325,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                     })
                     
                     # Continue the conversation despite the error
-                    response = client.messages.create(
+                    response = client.beta.messages.create(
                         model=CLAUDE_MODEL,
                         system=SYSTEM_PROMPT,
                         messages=claude_messages,
@@ -331,6 +333,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                         max_tokens=4096,
                         temperature=1,
                         stream=False,
+                        betas=["token-efficient-tools-2025-02-19"]
                     )
             else:
                 logging.error(f"Function '{tool_name}' not implemented.")
@@ -349,7 +352,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                     }]
                 })
                 
-                response = client.messages.create(
+                response = client.beta.messages.create(
                     model=CLAUDE_MODEL,
                     system=SYSTEM_PROMPT,
                     messages=claude_messages,
@@ -357,6 +360,7 @@ def run_claude(wa_id, name, tool_outputs=None):
                     max_tokens=4096,
                     temperature=1,
                     stream=False,
+                    betas=["token-efficient-tools-2025-02-19"]
                 )
         
         # Get final text response
