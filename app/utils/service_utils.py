@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 from dateutil import parser  # Requires: pip install python-dateutil
 import platform
+import phonenumbers
 import re
 from hijri_converter import convert
 import logging
@@ -236,6 +237,17 @@ def get_lock(wa_id):
         global_locks[wa_id] = asyncio.Lock()
     return global_locks[wa_id]
 
+def is_valid_number(phone_number, ar):
+    if not phonenumbers.is_valid_number(phonenumbers.parse("+" + str(phone_number))): 
+        if ar:
+            message = "رقم الهاتف غير صالح."
+            
+        else:
+            message = "Invalid phone number."
+        result = {"success": False, "message": message}
+        return result
+    else:
+        return True
 def check_if_thread_exists(wa_id):
     conn = get_connection()
     cursor = conn.cursor()

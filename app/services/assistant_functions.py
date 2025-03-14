@@ -2,11 +2,11 @@ import json
 import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
-
+import phonenumbers
 from app.config import config
 from app.db import get_connection
 from app.utils import (make_thread, parse_date, parse_time,
-                       send_whatsapp_location, find_nearest_time_slot)
+                       send_whatsapp_location, find_nearest_time_slot, is_valid_number)
 from hijri_converter import convert
 
 def send_business_location(wa_id):
@@ -21,6 +21,9 @@ def send_business_location(wa_id):
         dict: Result of the operation with success status and message
     """
     try:
+        is_valid_wa_id = is_valid_number(wa_id)
+        if not is_valid_wa_id:
+            return is_valid_wa_id
         status = send_whatsapp_location(wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"], config['BUSINESS_NAME'], config['BUSINESS_ADDRESS'])
         result = {"success": False, "message": "System error occurred. try again later."} if status.get("status") == "error" else {"success": True, "message": "Location sent."}
         return result
@@ -68,20 +71,9 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
     Modify the WhatsApp ID (wa_id) for a customer in all related tables.
     """
     try:
-        # Check if the new wa_id is valid
-        if len(str(new_wa_id)) != 12:
-            message = "The new wa_id must be 12 digits long."
-            if ar:
-                message = "يجب أن يكون رقم الواتساب الجديد مكونٌ من 12 رقمًا."
-            result = {"success": False, "message": message}
-            return result
-        
-        if not str(new_wa_id).isdigit():
-            message = "The new wa_id must be an integer."
-            if ar:
-                message = "يجب أن يكون رقم الواتساب الجديد مكون من أرقام."
-            result = {"success": False, "message": message}
-            return result
+        is_valid_wa_id = is_valid_number(new_wa_id)
+        if not is_valid_wa_id:
+            return is_valid_wa_id
         
         if old_wa_id == new_wa_id:
             message = "The new wa_id is the same as the old wa_id."
@@ -142,6 +134,9 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         dict: Result of the modification operation with success status and message
     """
     try:
+        is_valid_wa_id = is_valid_number(wa_id)
+        if not is_valid_wa_id:
+            return is_valid_wa_id
         if new_date:
             new_date = parse_date(new_date, hijri)
         if new_time_slot:
@@ -239,6 +234,9 @@ def get_customer_reservations(wa_id):
     Returns:
         list: List of reservations with reservation details
     """
+    is_valid_wa_id = is_valid_number(wa_id)
+    if not is_valid_wa_id:
+        return is_valid_wa_id
     try:
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
         conn = get_connection()
@@ -329,17 +327,10 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
       - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
       - ar: If True, returns error messages in Arabic (default: False)
     """
-    if str(wa_id).startswith("05"):
-        # Remove the '05' prefix and add '966' in its place
-        wa_id = "966" + wa_id[1:]
-        
-    if len(str(wa_id)) != 12:
-        message = "Invalid phone number. Please make sure to use 96659 at the start."
-        if ar:
-            message = "رقم الهاتف غير صالح. يرجى التأكد من استخدام 96659 في البداية."
-        result = {"success": False, "message": message}
-        return result
-
+    is_valid_wa_id = is_valid_number(wa_id)
+    if not is_valid_wa_id:
+        return is_valid_wa_id
+    
     if not customer_name:
         message = "Customer name has to be provided."
         if ar:
@@ -455,6 +446,9 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
         dict: Result of the deletion operation with success status and message.
     """
     try:
+        is_valid_wa_id = is_valid_number(wa_id)
+        if not is_valid_wa_id:
+            return is_valid_wa_id
         date_str = parse_date(date_str, hijri) if date_str else None
         time_slot = parse_time(time_slot) if time_slot else None
         conn = get_connection()
@@ -549,15 +543,9 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         dict: Result of the cancellation operation with success status and message.
     """
     
-    if not len(str(wa_id)) == 12:
-        message = "Invalid phone number. Please make sure to use 96659 at the start of the phone number and that it contains 12 digits."
-        if ar:
-            message = "و رقم الهاتف غير صالح. يرجى التأكد من استخدام 9665 في البداية و أن رقم الهاتف مكون من 12 رقم."
-        result = {"success": False, "message": message}
-        return result
-    if str(wa_id).startswith("05"):
-        # Remove the '05' prefix and add '966' in its place
-        wa_id = "966" + wa_id[1:]
+    is_valid_wa_id = is_valid_number(wa_id)
+    if not is_valid_wa_id:
+        return is_valid_wa_id
         
     try:
         date_str = parse_date(date_str, hijri) if date_str else None
