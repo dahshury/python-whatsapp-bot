@@ -329,7 +329,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
       - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
       - ar: If True, returns error messages in Arabic (default: False)
     """
-    if wa_id.startswith("05"):
+    if str(wa_id).startswith("05"):
         # Remove the '05' prefix and add '966' in its place
         wa_id = "966" + wa_id[1:]
         
