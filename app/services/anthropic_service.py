@@ -217,7 +217,7 @@ def run_claude(wa_id, name, tool_outputs=None):
     Run Claude with the conversation history and handle tool calls.
     Returns the generated message along with date and time, or None if an error occurs.
     """
-    claude_messages = retrieve_messages(wa_id)[-5:]  # Get the last 5 messages
+    claude_messages = retrieve_messages(wa_id)
     
     try:
         # Make request to Claude API
