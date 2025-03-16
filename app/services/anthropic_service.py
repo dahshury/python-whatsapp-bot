@@ -212,7 +212,7 @@ tools = [
     }
 ]
 @retry_decorator
-def run_claude(wa_id, name, tool_outputs=None):
+def run_claude(wa_id, name):
     """
     Run Claude with the conversation history and handle tool calls.
     Returns the generated message along with date and time, or None if an error occurs.

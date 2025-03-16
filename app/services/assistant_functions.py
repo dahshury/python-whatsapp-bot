@@ -135,7 +135,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
     """
     try:
         is_valid_wa_id = is_valid_number(wa_id, ar)
-        if not is_valid_wa_id:
+        if is_valid_wa_id != True:
             return is_valid_wa_id
         if new_date:
             new_date = parse_date(new_date, hijri)
@@ -235,7 +235,7 @@ def get_customer_reservations(wa_id):
         list: List of reservations with reservation details
     """
     is_valid_wa_id = is_valid_number(wa_id)
-    if not is_valid_wa_id:
+    if is_valid_wa_id != True:
         return is_valid_wa_id
     try:
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
@@ -328,7 +328,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
       - ar: If True, returns error messages in Arabic (default: False)
     """
     is_valid_wa_id = is_valid_number(wa_id, ar)
-    if not is_valid_wa_id:
+    if is_valid_wa_id != True:
         return is_valid_wa_id
     
     if not customer_name:
@@ -447,7 +447,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     """
     try:
         is_valid_wa_id = is_valid_number(wa_id, ar)
-        if not is_valid_wa_id:
+        if is_valid_wa_id != True:
             return is_valid_wa_id
         date_str = parse_date(date_str, hijri) if date_str else None
         time_slot = parse_time(time_slot) if time_slot else None
@@ -544,7 +544,7 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     """
     
     is_valid_wa_id = is_valid_number(wa_id, ar)
-    if not is_valid_wa_id:
+    if is_valid_wa_id != True:
         return is_valid_wa_id
         
     try:
