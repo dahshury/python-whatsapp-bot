@@ -242,8 +242,8 @@ def get_customer_reservations(wa_id):
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT date, time_slot, customer_name, type FROM reservations WHERE wa_id = ? AND date || ' ' || time_slot >= ?",
-            (wa_id, now.strftime("%Y-%m-%d %H:%M"))
+            "SELECT date, time_slot, customer_name, type FROM reservations WHERE wa_id = ? AND date >= ?",
+            (wa_id, now.strftime("%Y-%m-%d"))
         )
         rows = cursor.fetchall()
         conn.close()
@@ -376,9 +376,9 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             result = {"success": False, "message": message}
             return result
 
-        # Check if the user already has a reservation for the given date.
+        # Check if the user already has any upcoming reservations.
         existing_reservations = get_customer_reservations(wa_id)
-        if existing_reservations:
+        if existing_reservations and isinstance(existing_reservations, list) and len(existing_reservations) > 0:
             # Modify the existing reservation
             modify_result = modify_reservation(wa_id, new_date=date_str, new_time_slot=time_slot, new_name=customer_name, new_type=reservation_type, hijri=hijri, ar=ar)
             return modify_result
