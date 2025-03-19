@@ -118,7 +118,7 @@ tools = [
     },
     {
         "name": "get_available_time_slots",
-        "description": "Get the available time slots for a given date.",
+        "description": "Get the available time slots for a given date. Each time slot is a two-hour block. You can only reserve in these slots, but the user can choose any time within the slot.",
         "input_schema": {
             "type": "object",
             "properties": {
