@@ -3,12 +3,8 @@ import json
 import re
 import requests
 from app.config import config
+from app.utils.logging_utils import log_http_response    
 
-def log_http_response(response):
-    logging.info(f"Status: {response.status_code}")
-    logging.info(f"Content-type: {response.headers.get('content-type')}")
-    logging.info(f"Body: {response.text}")
-    
 def send_whatsapp_message(wa_id, text):
     """
     Sends a text message using the WhatsApp API.

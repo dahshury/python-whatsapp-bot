@@ -23,6 +23,7 @@ config = {
     "BUSINESS_LATITUDE": os.getenv("BUSINESS_LATITUDE"),
     "BUSINESS_NAME": os.getenv("BUSINESS_NAME"),
     "BUSINESS_ADDRESS": os.getenv("BUSINESS_ADDRESS"),
+    "UNSUPPORTED_MEDIA_MESSAGE": os.getenv("UNSUPPORTED_MEDIA_MESSAGE"),
 }
 
 def configure_logging():

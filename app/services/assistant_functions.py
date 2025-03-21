@@ -116,7 +116,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         result = {"success": False, "message": message}
         return result
 
-def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, hijri=False, ar=False):
+def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, max_reservations=5, approximate=False, hijri=False, ar=False):
     """
     Modify the reservation for an existing customer.
 
@@ -134,14 +134,11 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         dict: Result of the modification operation with success status and message
     """
     try:
+        # Phone number validation
         is_valid_wa_id = is_valid_number(wa_id, ar)
         if is_valid_wa_id != True:
             return is_valid_wa_id
-        if new_date:
-            new_date = parse_date(new_date, hijri)
-        if new_time_slot:
-            new_time_slot = parse_time(new_time_slot)
-
+        
         # Check if at least one parameter is provided
         if not any([new_date, new_time_slot, new_name, new_type]):
             message = "No new details provided for modification."
@@ -149,63 +146,150 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
                 message = "لم يتم تقديم تفاصيل جديدة للتعديل."
             result = {"success": False, "message": message}
             return result
-
+        
+        # Get current date/time
+        curr_date = datetime.now(tz=ZoneInfo("Asia/Riyadh")).strftime("%Y-%m-%d")
+        curr_time = datetime.now(tz=ZoneInfo("Asia/Riyadh")).strftime("%I:%M %p")
+        
+        # Get all UPCOMING reservations for this user
         conn = get_connection()
         cursor = conn.cursor()
-
-        # Check if the reservation exists
-        cursor.execute("SELECT COUNT(*) FROM reservations WHERE wa_id = ?", (wa_id,))
-        if cursor.fetchone()[0] == 0:
+        cursor.execute(
+            "SELECT * FROM reservations WHERE wa_id = ? AND date >= ?", 
+            (wa_id, curr_date)
+        )
+        
+        upcoming_reservations = cursor.fetchall()
+        
+        # Check if there's exactly one upcoming reservation
+        if len(upcoming_reservations) == 0:
             conn.close()
-            message = f"Reservation not found for {wa_id}."
             if ar:
-                message = f"لم يتم العثور على حجز للرقم {wa_id}."
+                message = "لم يتم العثور على حجوزات قادمة للتعديل. الرجاء حجز موعد جديد."
+            else:
+                message = "No upcoming reservations found to modify. Please reserve a new appointment."
             result = {"success": False, "message": message}
             return result
-
-        # Prepare the update query dynamically based on provided parameters
-        update_fields = []
-        update_values = []
-
+        
+        # If multiple upcoming reservations, return error
+        if len(upcoming_reservations) > 1:
+            conn.close()
+            message = "Multiple upcoming reservations found. You can only have one future reservation. Please cancel unused reservations." 
+            if ar:
+                message = "تم العثور على حجوزات متعددة قادمة. يمكنك أن تمتلك حجز مستقبلي واحد فقط. الرجاء إلغاء الحجوزات الغير مستعملة"
+            result = {"success": False, "message": message}
+            return result
+        
+        # Now we have exactly one upcoming reservation to modify
+        existing_reservation = upcoming_reservations[0]
+        existing_date = existing_reservation["date"]
+        existing_time_slot = existing_reservation["time_slot"]
+        
+        # Process any new date provided
         if new_date:
-            update_fields.append("date = ?")
-            update_values.append(new_date)
+            check_date = parse_date(new_date, hijri)
+            if check_date < curr_date:
+                message = "You can't reserve in the past"
+                if ar:
+                    message = "لا يمكنك الحجز في الماضي."
+                result = {"success": False, "message": message}
+                return result
+        else:
+            check_date = existing_date
+        
+        # Process any new time slot provided
         if new_time_slot:
-            available = get_time_slots(new_date)
-            if new_time_slot not in available:
-                if approximate:
-                    nearest_slot = find_nearest_time_slot(new_time_slot, available.keys())
-                    if nearest_slot is None:
-                        message = "No available time slot found for approximation."
+            try:
+                check_time_slot = parse_time(new_time_slot)
+                available = get_time_slots(check_date)
+                
+                if isinstance(available, dict) and "success" in available and not available["success"]:
+                    return available
+                
+                if check_date == curr_date:
+                    new_time_obj = datetime.strptime(check_time_slot, "%I:%M %p")
+                    curr_time_obj = datetime.strptime(curr_time, "%I:%M %p")
+                    if new_time_obj <= curr_time_obj:
+                        message = "You can't reserve in the past"
                         if ar:
-                            message = "لم يتم العثور على موعد متاح للتقريب."
+                            message = "لا يمكنك الحجز في الماضي."
                         result = {"success": False, "message": message}
                         return result
-                    new_time_slot = nearest_slot
-                else:
-                    message = "Reservation modification failed. Invalid time slot."
-                    if ar:
-                        message = f" {available} فشل تعديل الحجز. الوقت الذي تم اختياره ليس من ضمن."
-                    result = {"success": False, "message": message}
-                    return result
+                
+                if check_time_slot not in available:
+                    if approximate:
+                        nearest_slot = find_nearest_time_slot(check_time_slot, available.keys())
+                        if nearest_slot is None:
+                            if ar:
+                                message = "لم يتم العثور على موعد متاح للتقريب."
+                            else:
+                                message = "No available time slot found for approximation."
+                            result = {"success": False, "message": message}
+                            conn.close()
+                            return result
+                        check_time_slot = nearest_slot
+                    else:
+                        message = f"Reservation modification failed. The time slot is not within {available}."
+                        if ar:
+                            message = f" {available}  فشل تعديل الحجز. الوقت الذي تم اختياره ليس من ضمن."
+                        result = {"success": False, "message": message}
+                        conn.close()
+                        return result
+            except ValueError as e:
+                message = f"Invalid time format: {str(e)}"
+                if ar:
+                    message = "صيغة الوقت غير صالحة"
+                result = {"success": False, "message": message}
+                return result
+        else:
+            check_time_slot = existing_time_slot
+        
+        # Build update query with properly processed values
+        update_fields = []
+        update_values = []
+        
+        if new_date:
+            update_fields.append("date = ?")
+            update_values.append(check_date)
+            
+        if new_time_slot:
             update_fields.append("time_slot = ?")
-            update_values.append(new_time_slot)
-        if new_name:
-            update_fields.append("customer_name = ?")
-            update_values.append(new_name)
+            update_values.append(check_time_slot)
+        
         if new_type is not None:
             if new_type not in (0, 1):
-                message = "Reservation modification failed. Invalid type (must be 0 or 1)."
                 if ar:
                     message = "فشل تعديل الحجز. نوع غير صالح (يجب أن يكون 0 أو 1)."
+                else:
+                    message = "Reservation modification failed. Invalid type (must be 0 or 1)."
                 result = {"success": False, "message": message}
                 return result
             update_fields.append("type = ?")
             update_values.append(new_type)
+        
+        if new_name:
+            update_fields.append("customer_name = ?")
+            update_values.append(new_name)
+            
+        # Check for max reservation at the new date/time
+        cursor.execute(
+            "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ? AND wa_id != ?",
+            (check_date, check_time_slot, wa_id)
+        )
+        if cursor.fetchone()[0] >= max_reservations:
+            conn.close()
+            message = "This time slot is fully booked. Please choose another."
+            if ar:
+                message = "هذا الوقت محجوز بالكامل. يرجى اختيار وقت آخر."
+            result = {"success": False, "message": message}
+            return result
 
+        # Add final WHERE clause parameters
         update_values.append(wa_id)
-        update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE wa_id = ?"
+        update_values.append(curr_date)
 
+        # Use parameterized query with placeholders
+        update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE wa_id = ? AND date >= ?"
         cursor.execute(update_query, update_values)
         conn.commit()
         conn.close()
@@ -216,7 +300,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         return result
 
     except Exception as e:
-        message = "System error occurred. Ask user to contact the secretary to reserve."
+        message = f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve."
         if ar:
             message = "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."
         result = {"success": False, "message": message}

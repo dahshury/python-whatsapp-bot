@@ -463,7 +463,7 @@ def parse_hijri_date(date_str):
 
 def parse_date(date_str, hijri=False):
     """
-    Parse a date string (Hijri or Gregorian) and return it in ISO-like format (YYYY-MM-DD).
+    Parse a date string (Hijri or Gregorian) and returns it in Gregorian ISO format (YYYY-MM-DD).
     """
     if hijri:
         return parse_hijri_date(date_str)

@@ -7,7 +7,7 @@ import httpx
 import inspect
 from app.config import config
 from anthropic import Anthropic, AsyncAnthropic
-from app.utils import get_lock, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message, retrieve_messages
+from app.utils import get_lock, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message, retrieve_messages, send_messenger_message
 from app.decorators import retry_decorator
 from app.services import assistant_functions
 import datetime
@@ -64,7 +64,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format."
+                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
             "required": [
@@ -96,7 +96,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format."
+                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
             "required": [
@@ -124,11 +124,11 @@ tools = [
             "properties": {
                 "date_str": {
                     "type": "string",
-                    "description": "Date string in ISO 8601 format 'YYYY-MM-DD' to get available time slots for. If 'hijri' is true, the date string can be in various Hijri formats such as '1447-09-10', '10 Muharram 1447', or '10, Muharram, 1447'."
+                    "description": "Date string in ISO 8601 format 'YYYY-MM-DD' to get available time slots for. If 'hijri' is true, The hijri date should be in the format (YYYY-MM-DD)."
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format."
+                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
             "required": [
@@ -179,7 +179,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. This is required always. Never reserve without it."
+                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). This is required always. Never reserve without it."
                 }
             },
             "required": [
@@ -412,7 +412,7 @@ async def process_whatsapp_message(body):
         response_text = process_text_for_whatsapp(response_text)
     elif message.get('type') in ['audio', 'image']:
         response_text = process_text_for_whatsapp(
-            "عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية."
+            config.get(['UNSUPPORTED_MEDIA_MESSAGE'])
         )
     else:
         response_text = ""
@@ -442,6 +442,63 @@ async def generate_response(message_body, wa_id, name, timestamp):
             append_message(wa_id, 'assistant', new_message, date_str=assistant_date_str, time_str=assistant_time_str)
         
         return new_message
+    
+async def process_messenger_message(body):
+    """
+    Processes an incoming Facebook Messenger message and generates a response using Claude.
+    Args:
+        body (dict): The incoming message payload from Messenger webhook.
+    Returns:
+        None
+    """
+    try:
+        # Extract messenger-specific data
+        messaging = body["entry"][0]["messaging"][0]
+        sender_id = messaging["sender"]["id"]
+        
+        # Use sender ID as name for now (could fetch profile info later)
+        name = f"Messenger User {sender_id[-4:]}"
+        
+        # Extract the message text
+        if "message" in messaging and "text" in messaging["message"]:
+            message_body = messaging["message"]["text"]
+        else:
+            logging.info(f"Unable to process message type from Messenger: {messaging}")
+            message_body = None
+            
+        if message_body:
+            # Get current timestamp for the message
+            now = datetime.now()
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%I:%M %p")
+            
+            # Save the user message
+            append_message(sender_id, 'user', message_body, date_str, time_str)
+            
+            # Generate response using Claude (same as in WhatsApp)
+            # Run Claude in an executor to avoid blocking the event loop
+            response_text, assistant_date_str, assistant_time_str = await asyncio.get_event_loop().run_in_executor(
+                None, run_claude, sender_id, name
+            )
+            
+            if response_text:
+                append_message(sender_id, 'assistant', response_text, 
+                              assistant_date_str, assistant_time_str)
+                
+                # Format response for Messenger (similar to WhatsApp)
+                formatted_response = process_text_for_whatsapp(response_text)
+                
+                # Send the response
+                send_messenger_message(sender_id, formatted_response)
+                
+        elif messaging.get("attachments"):
+            response_text = process_text_for_whatsapp(
+                "Sorry, I can only process text messages. For inquiries, please contact the secretary at 0591066596 during official working hours."
+            )
+            send_messenger_message(sender_id, response_text)
+            
+    except Exception as e:
+        logging.error(f"Error processing Messenger message: {e}", exc_info=True)
 
 def log_http_response(response):
     logging.info(f"Status: {response.status_code}")
