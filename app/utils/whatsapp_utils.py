@@ -3,7 +3,7 @@ import json
 import re
 import requests
 from app.config import config
-from app.utils.logging_utils import log_http_response    
+from .logging_utils import log_http_response
 
 def send_whatsapp_message(wa_id, text):
     """

@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
-from app.services.anthropic_service import process_whatsapp_message, process_messenger_message
+from app.services.anthropic_service import process_whatsapp_message
 
 router = APIRouter()
 security = HTTPBasic()
@@ -50,13 +50,7 @@ async def webhook_post(
     # Identify message type based on payload structure
     entry = body.get("entry", [{}])[0]
     
-    # Check if it's a Messenger message
-    if "messaging" in entry:
-        logging.info("Processing Facebook Messenger message")
-        background_tasks.add_task(process_messenger_message, body)
-    # Otherwise assume it's a WhatsApp message (has "changes")
-    elif "changes" in entry:
-        logging.info("Processing WhatsApp message")
+    if "changes" in entry:
         background_tasks.add_task(process_whatsapp_message, body)
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")

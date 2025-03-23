@@ -6,7 +6,7 @@ import phonenumbers
 from app.config import config
 from app.db import get_connection
 from app.utils import (make_thread, parse_date, parse_time,
-                       send_whatsapp_location, find_nearest_time_slot, is_valid_number)
+                       send_whatsapp_location, find_nearest_time_slot, is_valid_number, fix_unicode_sequence)
 from hijri_converter import convert
 
 def send_business_location(wa_id):
@@ -189,9 +189,10 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         if new_date:
             check_date = parse_date(new_date, hijri)
             if check_date < curr_date:
-                message = "You can't reserve in the past"
                 if ar:
                     message = "لا يمكنك الحجز في الماضي."
+                else:
+                    message = "You can't reserve in the past"
                 result = {"success": False, "message": message}
                 return result
         else:
@@ -210,9 +211,10 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
                     new_time_obj = datetime.strptime(check_time_slot, "%I:%M %p")
                     curr_time_obj = datetime.strptime(curr_time, "%I:%M %p")
                     if new_time_obj <= curr_time_obj:
-                        message = "You can't reserve in the past"
                         if ar:
                             message = "لا يمكنك الحجز في الماضي."
+                        else:
+                            message = "You can't reserve in the past"
                         result = {"success": False, "message": message}
                         return result
                 
@@ -256,7 +258,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             update_fields.append("time_slot = ?")
             update_values.append(check_time_slot)
         
-        if new_type is not None:
+        if new_type:
             if new_type not in (0, 1):
                 if ar:
                     message = "فشل تعديل الحجز. نوع غير صالح (يجب أن يكون 0 أو 1)."
@@ -268,6 +270,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             update_values.append(new_type)
         
         if new_name:
+            new_name = fix_unicode_sequence(new_name)
             update_fields.append("customer_name = ?")
             update_values.append(new_name)
             
@@ -421,7 +424,8 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             message = "يجب تقديم اسم العميل."
         result = {"success": False, "message": message}
         return result
-
+    customer_name = fix_unicode_sequence(customer_name)
+    
     if reservation_type not in (0, 1):
         message = "Invalid reservation type. Must be 0 or 1."
         if ar:

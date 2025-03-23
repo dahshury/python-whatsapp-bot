@@ -10,7 +10,6 @@ import yaml
 from dotenv import load_dotenv
 from hijri_converter import Gregorian, Hijri, convert
 from yaml.loader import SafeLoader
-from app.utils import send_whatsapp_message, append_message 
 
 def bootstrap_hijri_datepicker(default_date="", height=400, key=None):
     _component_func = components.declare_component(

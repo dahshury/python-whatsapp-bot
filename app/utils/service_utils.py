@@ -13,6 +13,32 @@ import logging
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
 
+def fix_unicode_sequence(customer_name):
+    """
+    Fixes Unicode escape sequences in customer names.
+    Args:
+        customer_name (str): The customer name string to be fixed.
+    Returns:
+        str: The fixed customer name string.
+    """
+    if customer_name and isinstance(customer_name, str):
+        try:
+            # Check if the name contains Unicode escape sequences (like \u0623)
+            if '\\u' in customer_name or 'u0' in customer_name:
+                # Try to decode proper Unicode escape sequences
+                if '\\u' in customer_name:
+                    customer_name = customer_name.encode().decode('unicode_escape')
+                # Handle improperly formatted sequences like u0623 instead of \u0623
+                elif 'u0' in customer_name:
+                    # Convert u0623 format to \u0623 format
+                    import re
+                    customer_name = re.sub(r'u([0-9a-fA-F]{4})', r'\\u\1', customer_name)
+                    customer_name = customer_name.encode().decode('unicode_escape')
+        except Exception as e:
+            logging.warning(f"Failed to decode Unicode in customer name: {e}")
+    return customer_name
+
+
 def get_tomorrow_reservations():
     """
     Retrieve reservations for tomorrow from the database.
