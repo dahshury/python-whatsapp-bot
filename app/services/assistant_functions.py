@@ -378,7 +378,7 @@ def get_time_slots(date_str, hijri=False, vacation=None):
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, 2)}  # 10 AM to 4 PM during Ramadan
             logging.info(f"Ramadan schedule applied: {available}")
         elif day_of_week == 5:  # Saturday
-            available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(17, 22, 2)}  # 5 PM to 10 PM
+            available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(16, 21, 2)}  # 4 PM to 9 PM
         else:  # Sunday to Thursday
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(11, 17, 2)}  # 11 AM to 5 PM
         if date_obj.date() == now.date():

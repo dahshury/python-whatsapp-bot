@@ -70,6 +70,12 @@ if "prev_cal_response" not in st.session_state:
     st.session_state.prev_cal_response = None
 if 'calendar_container' not in st.session_state:
     st.session_state.calendar_container = st.empty()
+if "selected_view_idx" not in st.session_state:
+    st.session_state.selected_view_idx = 0
+if "selected_view_id" not in st.session_state:
+    st.session_state.selected_view_id = "dayGridMonth"
+if "slot_duration_delta" not in st.session_state:
+    st.session_state.slot_duration_delta = datetime.timedelta(hours=2)
 
 # =============================================================================
 # CUSTOM STYLING
@@ -102,27 +108,6 @@ st.markdown(
 # =============================================================================
 @st.fragment
 def render_sidebar_elements():
-    sac.divider(label='Clock', icon='clock', align='center', color='gray')
-    html_code = """
-                <script src="https://cdn.logwork.com/widget/clock.js"></script>
-                <a href="https://logwork.com/clock-widget/" class="clock-time" data-style="default-numeral" data-size="244" data-timezone="Asia/Riyadh">""</a>
-                """
-
-    # Encode the HTML to Base64
-    encoded_html = base64.b64encode(html_code.encode('utf-8')).decode('utf-8')
-    iframe_src = f"data:text/html;base64,{encoded_html}"
-
-    # Create markdown for the iframe embedding the encoded HTML
-    clock_markdown = f"""
-    <div style="display: flex; justify-content: center; align-items: center; width: 100%;">
-        <iframe src="{iframe_src}" 
-                scrolling="no"
-                style="border: none; overflow: hidden; width: 100%; height: 260px;">
-        </iframe>
-    </div>
-    """
-
-    st.markdown(clock_markdown, unsafe_allow_html=True)
     sac.divider(label='Prayer Time', icon='person-arms-up', align='center', color='gray')
     st.components.v1.iframe("https://offline.tawkit.net/", height=450)
     sac.divider(label='Options', icon='toggles2', align='center', color='gray')
@@ -389,7 +374,10 @@ def render_cal():
             align='center', 
             bg_color='gray',
             use_container_width=True,
-            return_index=True
+            return_index=True,
+            index=st.session_state.selected_view_idx if st.session_state.selected_view_idx else 0,
+            on_change=lambda: st.session_state.update({"selected_view_idx": selected_view_idx}),
+            key="view_selector"
         )
         selected_view_label = list(mode_names.values())[selected_view_idx]
         reverse_mode_names = {v: k for k, v in mode_names.items()}
@@ -418,8 +406,8 @@ def render_cal():
             },
             {
                 "daysOfWeek": [6],
-                "startTime": "17:00",
-                "endTime": "22:00",
+                "startTime": "16:00:00",
+                "endTime": "21:00:00",
                 "startRecur": "2022-01-01",
                 "endRecur": "2031-12-31",
             },
@@ -443,8 +431,8 @@ def render_cal():
             slot_min_time = "10:00:00"
             slot_max_time = "16:00:00"
         elif day_of_week == 6:  # Saturday
-            slot_min_time = "17:00:00"
-            slot_max_time = "22:00:00"
+            slot_min_time = "16:00:00"
+            slot_max_time = "21:00:00"
         else:  # Sunday through Thursday
             slot_min_time = "11:00:00" 
             slot_max_time = "17:00:00"
