@@ -846,7 +846,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 msg_date = msg.get("date", "")
                 if raw_timestamp:
                     try:
-                        time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S") if ":" in raw_timestamp else datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
+                        time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S") if len(raw_timestamp.split(":")) == 3 else datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
                         formatted_timestamp = time_obj.strftime("%I:%M %p")
                     except Exception:
                         formatted_timestamp = raw_timestamp
@@ -870,7 +870,7 @@ def render_conversation(conversations, is_gregorian, reservations):
             if prompt:
                 datetime_obj = datetime.datetime.now()
                 curr_date = datetime_obj.date().isoformat()
-                curr_time = datetime_obj.strftime("%I:%M %p")
+                curr_time = datetime_obj.strftime("%H:%M:%S")
                 new_message = {
                     "role": st.session_state["username"],
                     "message": prompt,

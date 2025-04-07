@@ -150,7 +150,6 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         # Get current date/time
         curr_date = datetime.now(tz=ZoneInfo("Asia/Riyadh")).strftime("%Y-%m-%d")
         curr_time = datetime.now(tz=ZoneInfo("Asia/Riyadh")).strftime("%I:%M %p")
-        
         # Get all UPCOMING reservations for this user
         conn = get_connection()
         cursor = conn.cursor()
@@ -160,7 +159,6 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         )
         
         upcoming_reservations = cursor.fetchall()
-        
         # Check if there's exactly one upcoming reservation
         if len(upcoming_reservations) == 0:
             conn.close()
@@ -170,16 +168,17 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
                 message = "No upcoming reservations found to modify. Please reserve a new appointment."
             result = {"success": False, "message": message}
             return result
-        
         # If multiple upcoming reservations, return error
         if len(upcoming_reservations) > 1:
             conn.close()
-            message = "Multiple upcoming reservations found. You can only have one future reservation. Please cancel unused reservations." 
+            translated_reservations = [
+                {key: row[key] for key in row.keys()} for row in upcoming_reservations
+            ]
+            message = f"Multiple upcoming reservations found: {translated_reservations}. You can only have one future reservation. Please cancel unused reservations."
             if ar:
                 message = "تم العثور على حجوزات متعددة قادمة. يمكنك أن تمتلك حجز مستقبلي واحد فقط. الرجاء إلغاء الحجوزات الغير مستعملة"
             result = {"success": False, "message": message}
             return result
-        
         # Now we have exactly one upcoming reservation to modify
         existing_reservation = upcoming_reservations[0]
         existing_date = existing_reservation["date"]
@@ -187,7 +186,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         
         # Process any new date provided
         if new_date:
-            check_date = parse_date(new_date, hijri)
+            check_date = parse_date(new_date)
             if check_date < curr_date:
                 if ar:
                     message = "لا يمكنك الحجز في الماضي."
@@ -197,7 +196,6 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
                 return result
         else:
             check_date = existing_date
-        
         # Process any new time slot provided
         if new_time_slot:
             try:
@@ -341,7 +339,7 @@ def get_customer_reservations(wa_id):
         logging.error(f"Function call get_customer_reservations failed, error: {e}")
         return result
 
-def get_time_slots(date_str, hijri=False, vacation=None):
+def get_time_slots(date_str, hijri=False, vacation={}):
     """
     Get all the time slots for a given date.
     
@@ -352,16 +350,51 @@ def get_time_slots(date_str, hijri=False, vacation=None):
         
     Returns:
         dict: Dictionary of available time slots or error message
+    
+    Example:
+        >>> get_time_slots("2023-10-15")
+        {'11:00 AM': 0, '01:00 PM': 0, '03:00 PM': 0, '05:00 PM': 0}
+        
+        >>> get_time_slots("1445-09-10", hijri=True)
+        {'10:00 AM': 0, '12:00 PM': 0, '02:00 PM': 0, '04:00 PM': 0}
+        
+        >>> get_time_slots("2023-10-15", vacation={"2023-10-15": 1, "2023-10-20": 2})
+        {'success': False, 'message': 'Doctor is on vacation.'}
     """
     try:
+        # Default vacation configuration
+        if not vacation:
+            # Check if there are vacation dates in config
+            vacation_start_dates = config.get("VACATION_START_DATES", "")
+            vacation_durations = config.get("VACATION_DURATIONS", "")
+            
+            # Parse multiple vacation periods if provided in config
+            if vacation_start_dates and vacation_durations:
+                # Handle both single values and multiple comma-separated values
+                start_dates = [d.strip() for d in str(vacation_start_dates).split(',') if d.strip()]
+                durations = [int(d.strip()) for d in str(vacation_durations).split(',') if d.strip()]
+            
+                # Create vacation dictionary {start_date: duration}
+                if len(start_dates) == len(durations):
+                    vacation = {start_date: duration for start_date, duration in zip(start_dates, durations)}
+                else:
+                    vacation = {}
 
+        # Parse the provided date
         gregorian_date_str = parse_date(date_str, hijri=hijri)
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
         date_obj = datetime.strptime(gregorian_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
-        # Compare only the date parts
-        if date_obj.date() < now.date():
-            result = {"success": False, "message": "Cannot check time slots for a past date."}
-            return result
+        if date_obj < now:
+            message = "Cannot reserve a time slot in the past."
+            return {"success": False, "message": message}
+        # Check if the date falls within the vacation period
+        if vacation:
+            for start_day, duration in vacation.items():
+                start_date = datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
+                end_date = start_date + timedelta(days=duration)
+                if start_date.date() <= date_obj.date() <= end_date.date():
+                    message = f"We are on vacation from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. {config.get('VACATION_MESSAGE', '')}"
+                    return {"success": False, "message": message}
 
         day_of_week = date_obj.weekday()
 
@@ -381,17 +414,10 @@ def get_time_slots(date_str, hijri=False, vacation=None):
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(16, 21, 2)}  # 4 PM to 9 PM
         else:  # Sunday to Thursday
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(11, 17, 2)}  # 11 AM to 5 PM
+
+        # Filter out past time slots if the date is today
         if date_obj.date() == now.date():
             available = {time: count for time, count in available.items() if datetime.strptime(time, "%I:%M %p").time() > now.time()}
-
-        # Check if the date falls within the vacation period
-        if vacation:
-            for start_day, duration in vacation.items():
-                start_date = datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
-                end_date = start_date + timedelta(days=duration)
-                if start_date.date() <= date_obj.date() <= end_date.date():
-                    result = {"success": False, "message": "Doctor is on vacation."}
-                    return result
 
         return available
     except Exception as e:
@@ -437,7 +463,6 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         # Normalize and convert date and time.
         date_str = parse_date(date_str, hijri)
         time_slot = parse_time(time_slot)
-        
         # Convert Gregorian to Hijri for output purposes.
         hijri_date_obj = convert.Gregorian(*map(int, date_str.split('-'))).to_hijri()
         hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"

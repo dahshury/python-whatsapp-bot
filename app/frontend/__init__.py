@@ -55,7 +55,6 @@ def get_ramadan_dates(year):
     ramadan_end = ramadan_start + datetime.timedelta(days=30)
     return ramadan_start, ramadan_end
 
-
 def update_passwords(yaml_path=None):
     """
     Loads the users.yaml file, updates user passwords using environment variables, 

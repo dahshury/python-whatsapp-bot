@@ -24,6 +24,9 @@ config = {
     "BUSINESS_NAME": os.getenv("BUSINESS_NAME"),
     "BUSINESS_ADDRESS": os.getenv("BUSINESS_ADDRESS"),
     "UNSUPPORTED_MEDIA_MESSAGE": os.getenv("UNSUPPORTED_MEDIA_MESSAGE"),
+    "VACATION_START_DATES": os.getenv("VACATION_START_DATES"),
+    "VACATION_DURATIONS": os.getenv("VACATION_DURATIONS"),
+    "VACATION_MESSAGE": os.getenv("VACATION_MESSAGE"),
 }
 
 def configure_logging():

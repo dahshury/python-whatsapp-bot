@@ -338,7 +338,7 @@ def make_thread(wa_id, thread_id=None):
         
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
-    Convert a Unix timestamp to formatted date and time strings.
+    Convert a Unix timestamp to formatted date and time strings, including seconds.
     """
     timestamp = int(timestamp)
     dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
@@ -351,7 +351,7 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
     else:
         date_str = dt_saudi.strftime("%Y-%m-%d")
     
-    time_str = dt_saudi.strftime("%H:%M")
+    time_str = dt_saudi.strftime("%H:%M:%S")
     return date_str, time_str
 
 def parse_time(time_str):
