@@ -64,7 +64,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
             "required": [
@@ -96,7 +96,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
             "required": [
@@ -128,7 +128,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
             "required": [
@@ -179,7 +179,7 @@ tools = [
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided date string is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). This is required always. Never reserve without it."
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). This is required always. Never reserve without it."
                 }
             },
             "required": [

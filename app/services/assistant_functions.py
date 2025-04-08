@@ -382,8 +382,8 @@ def get_time_slots(date_str, hijri=False, vacation={}):
 
         # Parse the provided date
         gregorian_date_str = parse_date(date_str, hijri=hijri)
-        now = datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-        date_obj = datetime.strptime(gregorian_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
+        now = datetime.now(tz=ZoneInfo("Asia/Riyadh")).date()
+        date_obj = datetime.strptime(gregorian_date_str, "%Y-%m-%d").date()
         if date_obj < now:
             message = "Cannot reserve a time slot in the past."
             return {"success": False, "message": message}
