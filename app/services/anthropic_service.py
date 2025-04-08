@@ -215,12 +215,14 @@ tools = [
 def run_claude(wa_id, name):
     """
     Run Claude with the conversation history and handle tool calls.
-    Returns the generated message along with date and time, or None if an error occurs.
+    Returns the generated message along with date and time.
+    Raises exceptions for error cases to enable retry functionality.
     """
     claude_messages = retrieve_messages(wa_id)
     
     try:
         # Make request to Claude API
+        logging.info(f"Making Claude API request for {name} (wa_id: {wa_id})")
         response = client.beta.messages.create(
             model=CLAUDE_MODEL,
             system=SYSTEM_PROMPT,
@@ -379,11 +381,12 @@ def run_claude(wa_id, name):
             return final_response, date_str, time_str
         else:
             logging.error("No text content in Claude response")
-            return None, None, None
+            raise RuntimeError("No text content in Claude response")
             
     except Exception as e:
         logging.error(f"Error in Claude API call: {e}")
-        return None, None, None
+        logging.info(f"Will retry Claude API call for {name} due to error")
+        raise  # Re-raise the exception for retry handling
 
 async def process_whatsapp_message(body):
     """
@@ -434,9 +437,8 @@ async def generate_response(message_body, wa_id, name, timestamp):
         append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
         
         # Run Claude in an executor to avoid blocking the event loop
-        new_message, assistant_date_str, assistant_time_str = await asyncio.get_event_loop().run_in_executor(
-            None, run_claude, wa_id, name
-        )
+        # Using run_claude directly bypasses the decorator, so we need to call it properly
+        new_message, assistant_date_str, assistant_time_str = await asyncio.to_thread(run_claude, wa_id, name)
         
         if new_message:
             append_message(wa_id, 'assistant', new_message, date_str=assistant_date_str, time_str=assistant_time_str)
