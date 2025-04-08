@@ -1,6 +1,7 @@
 from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
 import httpx
-from anthropic import AnthropicError, RateLimitError
+import openai
+from anthropic import AnthropicError, RateLimitError, APIStatusError
 
 def retry_decorator(func):
     """
@@ -13,5 +14,7 @@ def retry_decorator(func):
             httpx.ConnectError,
             AnthropicError,
             RateLimitError,
+            APIStatusError,
+            openai.APIConnectionError
         ))
     )(func)
