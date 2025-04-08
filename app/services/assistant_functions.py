@@ -380,7 +380,6 @@ def get_time_slots(date_str, hijri=False, vacation={}):
                 else:
                     vacation = {}
 
-        # Parse the provided date
         gregorian_date_str = parse_date(date_str, hijri=hijri)
         now = datetime.now(tz=ZoneInfo("Asia/Riyadh")).date()
         date_obj = datetime.strptime(gregorian_date_str, "%Y-%m-%d").date()
@@ -392,7 +391,7 @@ def get_time_slots(date_str, hijri=False, vacation={}):
             for start_day, duration in vacation.items():
                 start_date = datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
                 end_date = start_date + timedelta(days=duration)
-                if start_date.date() <= date_obj.date() <= end_date.date():
+                if start_date.date() <= date_obj <= end_date.date():
                     message = f"We are on vacation from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. {config.get('VACATION_MESSAGE', '')}"
                     return {"success": False, "message": message}
 
@@ -416,8 +415,8 @@ def get_time_slots(date_str, hijri=False, vacation={}):
             available = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(11, 17, 2)}  # 11 AM to 5 PM
 
         # Filter out past time slots if the date is today
-        if date_obj.date() == now.date():
-            available = {time: count for time, count in available.items() if datetime.strptime(time, "%I:%M %p").time() > now.time()}
+        if date_obj == now:
+            available = {time: count for time, count in available.items() if datetime.strptime(time, "%I:%M %p").time() > datetime.now(tz=ZoneInfo("Asia/Riyadh")).time()}
 
         return available
     except Exception as e:
