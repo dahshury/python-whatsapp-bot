@@ -1,4 +1,3 @@
-import base64
 import datetime
 import hashlib
 import json
@@ -13,7 +12,7 @@ from streamlit_autorefresh import st_autorefresh
 
 from app.frontend import (authenticate,
                           get_ramadan_dates, is_ramadan,
-                          subtract_ramadan_from_normal)
+                          subtract_ramadan_from_normal, convert_time_to_sortable)
 from app.utils import send_whatsapp_message, append_message
 from app.services.assistant_functions import (cancel_reservation,
                                             modify_id,
@@ -254,6 +253,9 @@ def render_view():
                 "id": st.column_config.NumberColumn("Phone Number" if is_gregorian else "رقم الهاتف", 
                                                         format="%d", 
                                                         default=int("9665"),
+                                                        max_value=999999999999,  # Maximum reasonable phone number length
+                                                        step=1,
+                                                        help="Enter a valid phone number starting with country code (e.g. 966xxxxxxxxx or 1xxxxxxxxxx)" if is_gregorian else "أدخل رقم هاتف صالح يبدأ برمز البلد (مثل 966xxxxxxxxx)",
                                                         required=True),
                 "type": st.column_config.SelectboxColumn(
                     "Reservation type" if is_gregorian else "نوع الحجز",
@@ -281,12 +283,12 @@ def render_view():
                         deleted+=1                        
                     else:
                         st.error(result.get("message", ""))
-                        time.sleep(2)
+                        time.sleep(5)
                         st.session_state._changes_processed = False
                         st.rerun()
                 if deleted>0:
                     st.success(f"{deleted} Reservations cancelled." if is_gregorian else f"تم الغاء {deleted} حجوزات.")
-                    time.sleep(2)
+                    time.sleep(3)
                     st.session_state._changes_processed = False
                     st.rerun()
                 
@@ -303,40 +305,74 @@ def render_view():
                                 modified+=1
                             else:
                                 st.error(result.get("message", ""))
-                                time.sleep(2)
+                                time.sleep(5)
                                 st.session_state._changes_processed = False
                                 st.rerun()
                         else:
                             # Adjust time to consider only the hour
                             curr_row['time'] = curr_row['time'].replace(minute=0, second=0, microsecond=0)
-                            result = modify_reservation(str(orig_row['id']), str(curr_row['date']), str(curr_row['time']), str(curr_row['title']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1)
+                            # Format the time properly to ensure it's in the expected format
+                            if isinstance(curr_row['time'], datetime.time):
+                                # Format time as HH:MM AM/PM
+                                formatted_time = curr_row['time'].strftime("%I:%M %p")
+                            else:
+                                # If it's already a string, ensure it's in the right format
+                                formatted_time = str(curr_row['time']).split(".")[0]  # Remove any milliseconds
+                                if ":" in formatted_time and not ("AM" in formatted_time.upper() or "PM" in formatted_time.upper()):
+                                    # Convert 24h format to 12h format with AM/PM
+                                    try:
+                                        dt = datetime.datetime.strptime(formatted_time[:5], "%H:%M")
+                                        formatted_time = dt.strftime("%I:%M %p")
+                                    except:
+                                        # Keep original if parsing fails
+                                        pass
+                            result = modify_reservation(str(orig_row['id']), str(curr_row['date']), formatted_time, 
+                                                      str(curr_row['title']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1)
                             if result.get("success", "") == True:
                                 modified+=1
                             else:
                                 st.error(result.get("message", ""))
-                                time.sleep(2)
+                                time.sleep(5)
                                 st.session_state._changes_processed = False
                                 st.rerun()
                 if modified ==len(widget_state.get("edited_rows")):
                     st.success(f"{modified} Reservations changed." if is_gregorian else f"تم تعديل {modified} حجوزات.")
-                    time.sleep(1)
+                    time.sleep(3)
                     st.session_state._changes_processed = False
                     st.rerun()
             if widget_state.get("added_rows", []):
                 added = 0
                 for added_row in widget_state.get("added_rows", []):
                     curr_row = edited_df.iloc[-1]
-                    result = reserve_time_slot(str(curr_row['id']), str(curr_row['title']), str(curr_row['date']), str(curr_row['time']), 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, max_reservations=6, ar=True)
+                    # Format the time properly to ensure it's in the expected format
+                    if isinstance(curr_row['time'], datetime.time):
+                        # Format time as HH:MM AM/PM
+                        formatted_time = curr_row['time'].strftime("%I:%M %p")
+                    else:
+                        # If it's already a string, ensure it's in the right format
+                        formatted_time = str(curr_row['time']).split(".")[0]  # Remove any milliseconds
+                        if ":" in formatted_time and not ("AM" in formatted_time.upper() or "PM" in formatted_time.upper()):
+                            # Convert 24h format to 12h format with AM/PM
+                            try:
+                                dt = datetime.datetime.strptime(formatted_time[:5], "%H:%M")
+                                formatted_time = dt.strftime("%I:%M %p")
+                            except:
+                                # Keep original if parsing fails
+                                pass
+                    
+                    result = reserve_time_slot(str(curr_row['id']), str(curr_row['title']), str(curr_row['date']), 
+                                             formatted_time, 0 if curr_row['type'] in ["كشف", "Check-up"] else 1, 
+                                             max_reservations=6, ar=True)
                     if result.get("success", "") == True:
                         added+=1
                     else:
                         st.error(result.get("message", ""))
-                        time.sleep(2)
+                        time.sleep(5)
                         st.session_state._changes_processed = False
                         st.rerun()
                 if added == len(widget_state.get("added_rows", [])):
                     st.success(f"{added} Reservations added." if is_gregorian else f"تم إضافة {added} حجوزات.")
-                    time.sleep(2)
+                    time.sleep(3)
                     st.session_state._changes_processed = False
                     st.rerun()
 
@@ -549,7 +585,7 @@ def render_cal():
                 
                 try:
                     # Parse the start datetime
-                    start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str)}", "%Y-%m-%dT%I:%M %p")
+                    start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
                     
                     # If we have a previous end time in this slot, start after it
                     if previous_end_dt and start_dt <= previous_end_dt:
@@ -585,7 +621,7 @@ def render_cal():
                         time_str = reservation.get("time_slot")
                         type = reservation.get("type")
                         try:
-                            start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str)}", "%Y-%m-%dT%I:%M %p")
+                            start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
                             end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
                         except ValueError as e:
                             st.error(f"incorrect time format found, {e}")
@@ -617,7 +653,7 @@ def render_cal():
                         continue
                     time_str = conversation[-1].get("time")
                     try:
-                        start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str)}", "%Y-%m-%dT%I:%M %p")
+                        start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
                         end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
                     except ValueError as e:
                         st.error(f"incorrect time format found, {e}")
@@ -713,11 +749,13 @@ def render_cal():
             event = big_cal_response.get("eventChange", {}).get("event", {})
             new_start_date = pd.to_datetime(event['start']).date()
             new_time = pd.to_datetime(event['start']).time()
+            # Format the time properly as a string in HH:MM format
+            formatted_time = new_time.strftime("%H:%M")
             ev_type = big_cal_response.get("eventChange", {}).get("event", {}).get("extendedProps").get("type")
-            result = modify_reservation(event['id'], str(new_start_date), str(new_time), str(event['title']), ev_type, approximate=True, ar=True)
+            result = modify_reservation(event['id'], str(new_start_date), formatted_time, str(event['title']), ev_type, approximate=True, ar=True)
             if result.get("success", "") == True:
                 st.toast("Reservation changed." if is_gregorian else "تم تعديل الحجز.")
-                time.sleep(1)
+                time.sleep(5)
                 st.session_state.selected_start_time = str(new_start_date)
                 st.session_state.selected_event_id = None
                 st.session_state.selected_end_time = None
@@ -761,7 +799,7 @@ def render_conversation(conversations, is_gregorian, reservations):
         """,
         unsafe_allow_html=True,
     )
-    # print(conversations)
+
     if st.session_state.selected_event_id in conversations:
         # First create/prepare the options list
         options = []
@@ -839,16 +877,35 @@ def render_conversation(conversations, is_gregorian, reservations):
         
         conversation = conversations[st.session_state.selected_event_id.split(" - ")[0] if " - " in selected_event_id else selected_event_id]
         if conversation and isinstance(conversation, list) and conversation[0].get("role"):
-            for msg in conversation:
+            # Sort the conversation by date and time
+            sorted_conversation = sorted(conversation, 
+                                         key=lambda x: (x.get("date", ""), 
+                                                       convert_time_to_sortable(x.get("time", "00:00:00"))))
+            
+            for msg in sorted_conversation:
                 role = msg.get("role")
                 message = msg.get("message")
                 raw_timestamp = msg.get("time", None)
                 msg_date = msg.get("date", "")
+                
+                # Convert timestamp to consistent 12-hour format
                 if raw_timestamp:
                     try:
-                        time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S") if len(raw_timestamp.split(":")) == 3 else datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
+                        # Handle either 24-hour format or already 12-hour format
+                        if len(raw_timestamp.split(":")) == 3 and "AM" not in raw_timestamp.upper() and "PM" not in raw_timestamp.upper():
+                            # 24-hour format with seconds (HH:MM:SS)
+                            time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S")
+                        elif len(raw_timestamp.split(":")) == 2 and "AM" not in raw_timestamp.upper() and "PM" not in raw_timestamp.upper():
+                            # 24-hour format without seconds (HH:MM)
+                            time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M")
+                        else:
+                            # Already in 12-hour format
+                            time_obj = datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
+                        
+                        # Format to 12-hour for display
                         formatted_timestamp = time_obj.strftime("%I:%M %p")
-                    except Exception:
+                    except Exception as e:
+                        # If parse fails, use as is
                         formatted_timestamp = raw_timestamp
                 else:
                     formatted_timestamp = "No timestamp"
@@ -870,7 +927,8 @@ def render_conversation(conversations, is_gregorian, reservations):
             if prompt:
                 datetime_obj = datetime.datetime.now()
                 curr_date = datetime_obj.date().isoformat()
-                curr_time = datetime_obj.strftime("%H:%M:%S")
+                curr_time = datetime_obj.strftime("%H:%M:%S")  # Store in 24-hour format with seconds
+                display_time = datetime_obj.strftime("%I:%M %p")  # For display in UI
                 new_message = {
                     "role": st.session_state["username"],
                     "message": prompt,

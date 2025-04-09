@@ -11,8 +11,6 @@ from openai import OpenAI
 from app.utils import get_lock, check_if_thread_exists, make_thread, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message
 from app.decorators import retry_decorator
 from app.services import assistant_functions
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type
-import httpx
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 OPENAI_ASSISTANT_ID = config["OPENAI_ASSISTANT_ID"]
@@ -48,6 +46,7 @@ def safe_create_message(thread_id, role, content):
         logging.error(f"Error creating message: {e}")
         return None
 
+@retry_decorator
 def run_assistant(wa_id, thread, name, max_iterations=10):
     """
     Run the assistant and poll until the run is complete or a timeout is reached.
@@ -56,85 +55,91 @@ def run_assistant(wa_id, thread, name, max_iterations=10):
     """
     assistant = client.beta.assistants.retrieve(OPENAI_ASSISTANT_ID)
     
-    # Create the initial run and wait for it to complete.
-    run = client.beta.threads.runs.create_and_poll(
-        thread_id=thread.id,
-        assistant_id=assistant.id,
-    )
-    
-    if run.status not in ["completed", "requires_action"]:
-        logging.error(f"Run failed for {name}: {run.last_error}")
-        return None, None, None
-
-    # Prepare to collect tool outputs if the run requires any.
-    tool_outputs = []
-    # Check if there is a required action for tool outputs.
-    if (hasattr(run, "required_action") and 
-        hasattr(run.required_action, "submit_tool_outputs") and 
-        run.required_action.submit_tool_outputs.tool_calls):
+    try:
+        logging.info(f"Creating run for {name} (wa_id: {wa_id})")
+        # Create the initial run and wait for it to complete.
+        run = client.beta.threads.runs.create_and_poll(
+            thread_id=thread.id,
+            assistant_id=assistant.id,
+        )
         
-        # Loop through each tool call requested by the assistant.
-        for tool in run.required_action.submit_tool_outputs.tool_calls:
-            if tool.function.name in FUNCTION_MAPPING:
-                # Get the function reference from FUNCTION_MAPPING.
-                function = FUNCTION_MAPPING[tool.function.name]
-                # Inspect the function's signature.
-                sig = inspect.signature(function)
-                
-                # Extract arguments if any (expected to be a JSON string).
-                raw_args = getattr(tool.function, "arguments", "{}")
-                try:
-                    parsed_args = json.loads(raw_args)
-                except Exception as e:
-                    logging.error(f"Error parsing arguments for function {tool.function.name}: {e}")
-                    parsed_args = {}
-                
-                # If the function takes a 'wa_id' parameter, add it to parsed_args.
-                if 'wa_id' in sig.parameters and not parsed_args.get('wa_id', ""):
-                    parsed_args['wa_id'] = wa_id
-                
-                try:
-                    # Execute the function with the parsed arguments.
-                    output = json.dumps(function(**parsed_args))
-                except Exception as e:
-                    logging.error(f"Error executing function {tool.function.name}: {e}")
-                    return None, None, None
-                    
-                tool_outputs.append({
-                    "tool_call_id": tool.id,
-                    "output": output  # Ensure this is a string or properly serialized
-                })
-            else:
-                logging.error(f"Function '{tool.function.name}' not implemented.")
-                return None, None, None
-    
-    # If any tool outputs were collected, submit them.
-    if tool_outputs:
-        try:
-            run = client.beta.threads.runs.submit_tool_outputs_and_poll(
-                thread_id=thread.id,
-                run_id=run.id,
-                tool_outputs=tool_outputs
-            )
-            logging.info("Tool outputs submitted successfully.")
-        except Exception as e:
-            logging.error(f"Failed to submit tool outputs for {name}: {e}")
+        if run.status not in ["completed", "requires_action"]:
+            logging.error(f"Run failed for {name}: {run.last_error}")
             return None, None, None
-    else:
-        logging.info("No tool outputs to submit.")
 
-    # After submitting tool outputs (or if there were none), check for final reply.
-    if run.status == "completed":
-        messages = client.beta.threads.messages.list(thread_id=thread.id)
-        latest_message = messages.data[0].content[0]
-        date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
-        new_message = latest_message.text.value
-        logging.info(f"Generated message for {name}: {new_message}")
-        return new_message, date_str, time_str
-    else:
-        logging.error(f"Run status is not completed, status: {run.status}")
-        return None, None, None
-    
+        # Prepare to collect tool outputs if the run requires any.
+        tool_outputs = []
+        # Check if there is a required action for tool outputs.
+        if (hasattr(run, "required_action") and 
+            hasattr(run.required_action, "submit_tool_outputs") and 
+            run.required_action.submit_tool_outputs.tool_calls):
+            
+            # Loop through each tool call requested by the assistant.
+            for tool in run.required_action.submit_tool_outputs.tool_calls:
+                if tool.function.name in FUNCTION_MAPPING:
+                    # Get the function reference from FUNCTION_MAPPING.
+                    function = FUNCTION_MAPPING[tool.function.name]
+                    # Inspect the function's signature.
+                    sig = inspect.signature(function)
+                    
+                    # Extract arguments if any (expected to be a JSON string).
+                    raw_args = getattr(tool.function, "arguments", "{}")
+                    try:
+                        parsed_args = json.loads(raw_args)
+                    except Exception as e:
+                        logging.error(f"Error parsing arguments for function {tool.function.name}: {e}")
+                        parsed_args = {}
+                    
+                    # If the function takes a 'wa_id' parameter, add it to parsed_args.
+                    if 'wa_id' in sig.parameters and not parsed_args.get('wa_id', ""):
+                        parsed_args['wa_id'] = wa_id
+                    
+                    try:
+                        # Execute the function with the parsed arguments.
+                        output = json.dumps(function(**parsed_args))
+                    except Exception as e:
+                        logging.error(f"Error executing function {tool.function.name}: {e}")
+                        return None, None, None
+                        
+                    tool_outputs.append({
+                        "tool_call_id": tool.id,
+                        "output": output  # Ensure this is a string or properly serialized
+                    })
+                else:
+                    logging.error(f"Function '{tool.function.name}' not implemented.")
+                    return None, None, None
+        
+        # If any tool outputs were collected, submit them.
+        if tool_outputs:
+            try:
+                run = client.beta.threads.runs.submit_tool_outputs_and_poll(
+                    thread_id=thread.id,
+                    run_id=run.id,
+                    tool_outputs=tool_outputs
+                )
+                logging.info("Tool outputs submitted successfully.")
+            except Exception as e:
+                logging.error(f"Failed to submit tool outputs for {name}: {e}")
+                return None, None, None
+        else:
+            logging.info("No tool outputs to submit.")
+
+        # After submitting tool outputs (or if there were none), check for final reply.
+        if run.status == "completed":
+            messages = client.beta.threads.messages.list(thread_id=thread.id)
+            latest_message = messages.data[0].content[0]
+            date_str, time_str = parse_unix_timestamp(messages.data[0].created_at)
+            new_message = latest_message.text.value
+            logging.info(f"Generated message for {name}: {new_message[:100]}...")
+            return new_message, date_str, time_str
+        else:
+            logging.error(f"Run status is not completed, status: {run.status}")
+            return None, None, None
+    except Exception as e:
+        logging.error(f"Error in OpenAI API call: {e}")
+        logging.info(f"Will retry OpenAI API call for {name} due to error")
+        raise  # Re-raise the exception for retry handling
+
 async def process_whatsapp_message(body):
     """
     Processes an incoming WhatsApp message and generates an appropriate response.
@@ -232,14 +237,9 @@ async def generate_response(message_body, wa_id, name, timestamp):
             logging.error(f"Failed to add user message after {MAX_RETRIES} retries for {name}")
             return None
 
-        # Run the blocking OpenAI API call in an executor so as not to block the event loop.
-        new_message, assistant_date_str, assistant_time_str = await asyncio.get_event_loop().run_in_executor(
-            None, run_assistant, wa_id, thread, name
+        # Run the blocking OpenAI API call using to_thread to properly handle decorated functions
+        new_message, assistant_date_str, assistant_time_str = await asyncio.to_thread(
+            run_assistant, wa_id, thread, name
         )
         append_message(wa_id, 'assistant', new_message, assistant_date_str, assistant_time_str)
         return new_message
-    
-def log_http_response(response):
-    logging.info(f"Status: {response.status_code}")
-    logging.info(f"Content-type: {response.headers.get('content-type')}")
-    logging.info(f"Body: {response.text}")

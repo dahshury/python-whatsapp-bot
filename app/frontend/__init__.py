@@ -151,3 +151,83 @@ def is_ramadan(gregorian_date):
     date_obj = datetime.datetime.combine(date_obj, datetime.time.min).replace(tzinfo=ZoneInfo("Asia/Riyadh"))
     hijri_date = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
     return hijri_date.month == 9
+
+def convert_time_to_sortable(time_str):
+    """
+    Converts time strings in various formats to a sortable format.
+    Handles 24-hour format (HH:MM:SS or HH:MM) or 12-hour format (HH:MM AM/PM).
+    Ensures seconds are properly included for accurate sorting of conversation timestamps.
+    
+    Parameters:
+        time_str (str): Time string in various formats
+        
+    Returns:
+        str: Normalized 24-hour time format for sorting (HH:MM:SS)
+    """
+    if not time_str:
+        return "00:00:00"  # Default for empty time strings
+    
+    try:
+        # Handle 12-hour format (e.g., "01:30 PM", "1:30 PM", etc.)
+        if "AM" in time_str.upper() or "PM" in time_str.upper():
+            # Parse 12-hour format with AM/PM
+            # Try different formats that might be encountered
+            try:
+                # First try with seconds
+                time_obj = datetime.datetime.strptime(time_str, "%I:%M:%S %p")
+            except ValueError:
+                try:
+                    # Try without seconds
+                    time_obj = datetime.datetime.strptime(time_str, "%I:%M %p")
+                except ValueError:
+                    # If all else fails, extract and convert manually
+                    parts = time_str.upper().replace("AM", " AM").replace("PM", " PM").split()
+                    if len(parts) != 2:
+                        return "00:00:00"  # Default for invalid format
+                    
+                    time_part = parts[0]
+                    am_pm = parts[1]
+                    
+                    # Split hours, minutes, and possibly seconds
+                    time_components = time_part.split(":")
+                    
+                    if len(time_components) >= 2:
+                        hour, minute = map(int, time_components[:2])
+                        second = int(time_components[2]) if len(time_components) > 2 else 0
+                    else:
+                        hour = int(time_part)
+                        minute = 0
+                        second = 0
+                    
+                    # Adjust for PM
+                    if am_pm == "PM" and hour < 12:
+                        hour += 12
+                    elif am_pm == "AM" and hour == 12:
+                        hour = 0
+                    
+                    return f"{hour:02d}:{minute:02d}:{second:02d}"
+            
+            # Convert to 24-hour format string with seconds
+            return time_obj.strftime("%H:%M:%S")
+        
+        # Handle 24-hour format without seconds (HH:MM)
+        elif len(time_str.split(":")) == 2:
+            return f"{time_str}:00"
+        
+        # Handle 24-hour format with seconds (HH:MM:SS)
+        elif len(time_str.split(":")) == 3:
+            return time_str
+        
+        # Try to parse as a simple hour
+        elif time_str.isdigit():
+            hour = int(time_str)
+            if 0 <= hour <= 23:
+                return f"{hour:02d}:00:00"
+        
+        # If none of the above formats match, return default
+        return "00:00:00"
+    
+    except Exception:
+        # Return default time for any parsing errors
+        return "00:00:00"
+    
