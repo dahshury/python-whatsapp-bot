@@ -889,33 +889,36 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         # Reverse mapping (24-hour to 12-hour) for results
         reverse_map = {v: k for k, v in time_format_map.items()}
 
-        # Get reservation counts for each time slot (using 24-hour format for database query)
+        # Get reservation counts for each time slot
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Format query placeholders for the IN clause
-        placeholders = ', '.join(['?'] * len(time_format_map.values()))
+        # Format query placeholders for the IN clause - include both 12h and 24h formats
+        all_possible_formats = list(time_format_map.keys()) + list(time_format_map.values())
+        placeholders = ', '.join(['?'] * len(all_possible_formats))
         
         if placeholders:  # Only query if there are time slots
-            # Query using 24-hour format time slots
+            # Query using both 12-hour and 24-hour format time slots for compatibility
             cursor.execute(
                 f"SELECT time_slot, COUNT(*) as count FROM reservations WHERE date = ? AND time_slot IN ({placeholders}) GROUP BY time_slot",
-                [parsed_date_str] + list(time_format_map.values())
+                [parsed_date_str] + all_possible_formats
             )
             rows = cursor.fetchall()
             
-            # Process results, mapping 24-hour format back to 12-hour format
+            # Process results, handling both 12-hour and 24-hour formats
             if rows:
                 for row in rows:
                     db_time_slot = row["time_slot"]
+                    count = row["count"]
+                    
                     # If time in database is in 24-hour format, map it back to 12-hour for display
                     if db_time_slot in reverse_map:
                         display_time_slot = reverse_map[db_time_slot]
                         if display_time_slot in all_slots:
-                            all_slots[display_time_slot] += row["count"]
-                    # Fallback for existing data that might be in 12-hour format
+                            all_slots[display_time_slot] += count
+                    # If time is already in 12-hour format
                     elif db_time_slot in all_slots:
-                        all_slots[db_time_slot] += row["count"]
+                        all_slots[db_time_slot] += count
         
         conn.close()
         

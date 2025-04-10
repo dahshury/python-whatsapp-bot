@@ -617,14 +617,13 @@ def parse_date(date_str, hijri=False):
     else:
         return parse_gregorian_date(date_str)
 
-def is_vacation_period(date_obj, vacation_dict=None, hijri=False):
+def is_vacation_period(date_obj, vacation_dict=None):
     """
     Check if a given date falls within a vacation period.
     
     Parameters:
         date_obj (datetime.date): The date to check
         vacation_dict (dict, optional): Dictionary of vacation periods with start dates and durations
-        hijri (bool): Whether the vacation dates are in Hijri format
         
     Returns:
         tuple: (is_vacation, message)
@@ -644,11 +643,11 @@ def is_vacation_period(date_obj, vacation_dict=None, hijri=False):
                     start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
                     durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
                     
-                    # Parse each date, handling Hijri dates if specified
+                    # Parse each date in Gregorian format
                     parsed_start_dates = []
                     for date_str in start_dates:
                         try:
-                            parsed_date = parse_date(date_str, hijri=hijri)
+                            parsed_date = parse_gregorian_date(date_str)
                             parsed_start_dates.append(parsed_date)
                         except ValueError as e:
                             logging.error(f"Error parsing vacation date {date_str}: {e}")
