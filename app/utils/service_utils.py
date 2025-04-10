@@ -624,6 +624,7 @@ def is_vacation_period(date_obj, vacation_dict=None, hijri=False):
     Parameters:
         date_obj (datetime.date): The date to check
         vacation_dict (dict, optional): Dictionary of vacation periods with start dates and durations
+        hijri (bool): Whether the vacation dates are in Hijri format
         
     Returns:
         tuple: (is_vacation, message)
@@ -635,16 +636,25 @@ def is_vacation_period(date_obj, vacation_dict=None, hijri=False):
         if vacation_dict is None:
             vacation_dict = {}
             vacation_start_dates = config.get("VACATION_START_DATES", "")
-            vacation_start_dates = parse_date(vacation_start_dates, hijri)
             vacation_durations = config.get("VACATION_DURATIONS", "")
             
-            if vacation_start_dates and vacation_durations:
+            # Only process if both values are non-empty strings
+            if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
                 try:
-                    start_dates = [d.strip() for d in str(vacation_start_dates).split(',') if d.strip()]
-                    durations = [int(d.strip()) for d in str(vacation_durations).split(',') if d.strip()]
+                    start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
+                    durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
                     
-                    if len(start_dates) == len(durations):
-                        vacation_dict = {start_date: duration for start_date, duration in zip(start_dates, durations)}
+                    # Parse each date, handling Hijri dates if specified
+                    parsed_start_dates = []
+                    for date_str in start_dates:
+                        try:
+                            parsed_date = parse_date(date_str, hijri=hijri)
+                            parsed_start_dates.append(parsed_date)
+                        except ValueError as e:
+                            logging.error(f"Error parsing vacation date {date_str}: {e}")
+                    
+                    if len(parsed_start_dates) == len(durations):
+                        vacation_dict = {start_date: duration for start_date, duration in zip(parsed_start_dates, durations)}
                 except (ValueError, TypeError) as e:
                     logging.error(f"Error parsing vacation dates: {e}")
                     # Continue with empty vacation_dict if parsing fails
