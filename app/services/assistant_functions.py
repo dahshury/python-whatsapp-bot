@@ -355,31 +355,59 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         logging.error(f"Function call modify_reservation failed, error: {e}")
         return result
 
-def get_customer_reservations(wa_id):
+def get_customer_reservations(wa_id, slot_duration=2):
     """
-    Get the list of future reservations for the given WhatsApp ID.
-    Retrieves all upcoming appointments that haven't passed yet.
+    Get the list of all reservations for the given WhatsApp ID.
+    Includes both past and future reservations, with a flag indicating if each reservation is in the future.
+    A reservation is considered in the future if its date is greater than the current date,
+    or if it's the current date but the time slot is more than slot_duration hours from now.
     
     Parameters:
         wa_id (str): WhatsApp ID of the customer to retrieve reservations for
+        slot_duration (int, optional): Number of hours before a reservation to consider it in the future. Defaults to 2.
         
     Returns:
-        list: List of reservations with reservation details
+        list: List of reservations with reservation details and is_future flag
     """
     is_valid_wa_id = is_valid_number(wa_id)
     if is_valid_wa_id != True:
         return is_valid_wa_id
     try:
         now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        current_date = now.strftime("%Y-%m-%d")
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT date, time_slot, customer_name, type FROM reservations WHERE wa_id = ? AND date >= ?",
-            (wa_id, now.strftime("%Y-%m-%d"))
+            "SELECT date, time_slot, customer_name, type FROM reservations WHERE wa_id = ?",
+            (wa_id,)
         )
         rows = cursor.fetchall()
         conn.close()
-        reservation_list = [dict(row) for row in rows]
+        
+        reservation_list = []
+        for row in rows:
+            row_dict = dict(row)
+            
+            # Check if the reservation is in the future
+            if row_dict["date"] > current_date:
+                # Future date
+                row_dict["is_future"] = True
+            elif row_dict["date"] == current_date:
+                # Same date, check time
+                # Convert time_slot to datetime for comparison
+                time_slot_24h = normalize_time_format(row_dict["time_slot"], to_24h=True)
+                slot_time = datetime.datetime.strptime(time_slot_24h, "%H:%M").time()
+                slot_datetime = datetime.datetime.combine(now.date(), slot_time, tzinfo=ZoneInfo("Asia/Riyadh"))
+                
+                # Reservation is in the future if it's more than slot_duration hours from now
+                time_diff = (slot_datetime - now).total_seconds() / 3600  # difference in hours
+                row_dict["is_future"] = time_diff > slot_duration
+            else:
+                # Past date
+                row_dict["is_future"] = False
+                
+            reservation_list.append(row_dict)
+            
         return reservation_list
     except Exception as e:
         result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
