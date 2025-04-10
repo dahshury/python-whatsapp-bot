@@ -42,7 +42,7 @@ FUNCTION_MAPPING = {
 tools = [
     {
         "name": "modify_reservation",
-        "description": "Modify the reservation for an existing customer.",
+        "description": "Modify the reservation for an existing customer. Only provide the fields that are being modified.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -67,44 +67,45 @@ tools = [
                     "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
                 }
             },
-            "required": [
-                "new_date",
-                "new_time_slot",
-                "new_name",
-                "new_type",
-                "hijri"
-            ]
+            "required": []
         }
     },
     {
-        "name": "get_available_nearby_dates_for_time_slot",
-        "description": "Get the list of available dates for the given time slot within a range of days.",
+        "name": "search_available_appointments",
+        "description": "Get the available nearby dates for a given time slot within a specified range of days. If no time_slot is provided, returns all available time slots for each date in the range. If no start_date is provided, defaults to today.",
         "input_schema": {
             "type": "object",
             "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "The date to start searching from (format: YYYY-MM-DD), defaults to today"
+                },
                 "time_slot": {
                     "type": "string",
-                    "description": "The time slot to check availability for in the format (expected format: %I:%M %p, e.g., 11:00 AM)"
+                    "description": "The time slot to check availability for (can be 12-hour or 24-hour format). If not provided, all available time slots for each date are returned."
                 },
                 "days_forward": {
                     "type": "integer",
-                    "description": "Number of days to look forward for availability, must be a non-negative integer"
+                    "description": "Number of days to look forward for availability, must be a non-negative integer",
+                    "default": 7
                 },
                 "days_backward": {
                     "type": "integer",
-                    "description": "Number of days to look backward for availability, must be a non-negative integer"
+                    "description": "Number of days to look backward for availability, must be a non-negative integer",
+                    "default": 0
+                },
+                "max_reservations": {
+                    "type": "integer",
+                    "description": "Maximum reservations per slot",
+                    "default": 5
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
+                    "description": "Flag to indicate if the provided date is in Hijri format and if output dates should be in Hijri",
+                    "default": False
                 }
             },
-            "required": [
-                "time_slot",
-                "days_forward",
-                "days_backward",
-                "hijri"
-            ]
+            "required": []
         }
     },
     {
@@ -133,7 +134,6 @@ tools = [
             },
             "required": [
                 "date_str",
-                "hijri"
             ]
         }
     },
@@ -187,7 +187,6 @@ tools = [
                 "date_str",
                 "time_slot",
                 "reservation_type",
-                "hijri"
             ]
         }
     },
@@ -238,9 +237,7 @@ def run_claude(wa_id, name):
         logging.info(f"Initial response stop reason: {response.stop_reason}")
         
         # Process tool calls if present - in a loop to handle multiple consecutive tool calls
-        while response.stop_reason == "tool_use":
-            logging.info("Processing tool use response")
-            
+        while response.stop_reason == "tool_use":            
             # Find the tool use block in the content
             tool_use_block = next((block for block in response.content if block.type == "tool_use"), None)
             
@@ -265,12 +262,7 @@ def run_claude(wa_id, name):
                     tool_input['wa_id'] = wa_id
                 
                 try:
-                    # Execute the function with arguments
-                    if 'json_dump' in sig.parameters:
-                        output = function(**tool_input, json_dump=False)
-                    else:
-                        output = function(**tool_input)
-                    
+                    output = function(**tool_input)
                     # Log the tool output
                     if isinstance(output, (dict, list)):
                         logging.info(f"Tool output for {tool_name}: {json.dumps(output)[:500]}...")
@@ -375,7 +367,7 @@ def run_claude(wa_id, name):
             # Generate current timestamp
             now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
             date_str = now.strftime("%Y-%m-%d")
-            time_str = now.strftime("%H:%M")
+            time_str = now.strftime("%H:%M:%S")
             
             logging.info(f"Generated message for {name}: {final_response[:100]}...")
             return final_response, date_str, time_str
@@ -384,8 +376,7 @@ def run_claude(wa_id, name):
             raise RuntimeError("No text content in Claude response")
             
     except Exception as e:
-        logging.error(f"Error in Claude API call: {e}")
-        logging.info(f"Will retry Claude API call for {name} due to error")
+        logging.error(f"Error in Claude API call: {e}. Retrying...")
         raise  # Re-raise the exception for retry handling
 
 async def process_whatsapp_message(body):

@@ -617,7 +617,7 @@ def parse_date(date_str, hijri=False):
     else:
         return parse_gregorian_date(date_str)
 
-def is_vacation_period(date_obj, vacation_dict=None):
+def is_vacation_period(date_obj, vacation_dict=None, hijri=False):
     """
     Check if a given date falls within a vacation period.
     
@@ -635,6 +635,7 @@ def is_vacation_period(date_obj, vacation_dict=None):
         if vacation_dict is None:
             vacation_dict = {}
             vacation_start_dates = config.get("VACATION_START_DATES", "")
+            vacation_start_dates = parse_date(vacation_start_dates, hijri)
             vacation_durations = config.get("VACATION_DURATIONS", "")
             
             if vacation_start_dates and vacation_durations:
@@ -666,19 +667,15 @@ def is_vacation_period(date_obj, vacation_dict=None):
         logging.error(f"Error in is_vacation_period: {e}")
         return False, None
 
-def get_time_slots(date_str=None, date_obj=None, hijri=False, check_vacation=True, to_24h=False, filter_past=False):
+def get_time_slots(date_str=None, check_vacation=True, to_24h=False):
     """
     Comprehensive function to get time slots for a specific date with all business rules applied.
     
     Parameters:
-        date_str (str, optional): Date string to get time slots for (can be Hijri or Gregorian)
+        date_str (str, optional): Gegorian iso-format date string to get time slots for.
                                   If provided, this will be converted to a date_obj
-        date_obj (datetime.date, optional): Date object to get time slots for
-                                            Either date_str or date_obj must be provided
-        hijri (bool): Flag indicating if date_str is in Hijri format (default: False)
         check_vacation (bool): Whether to check if the date is during a vacation period (default: True)
         to_24h (bool): Whether to return time slots in 24-hour format (default: False)
-        filter_past (bool): Whether to filter out past time slots if the date is today (default: False)
         
     Returns:
         dict or tuple: 
@@ -691,14 +688,9 @@ def get_time_slots(date_str=None, date_obj=None, hijri=False, check_vacation=Tru
         >>> get_time_slots("2023-10-15")
         {'11:00 AM': 0, '01:00 PM': 0, '03:00 PM': 0, '05:00 PM': 0}
         
-        >>> get_time_slots("1445-09-10", hijri=True)
-        {'10:00 AM': 0, '12:00 PM': 0, '02:00 PM': 0, '04:00 PM': 0}
-        
         >>> get_time_slots("2023-10-15", to_24h=True)
         {'11:00': 0, '13:00': 0, '15:00': 0, '17:00': 0}
         
-        >>> get_time_slots(date_obj=datetime.date(2023, 10, 15))
-        {'11:00 AM': 0, '01:00 PM': 0, '03:00 PM': 0, '05:00 PM': 0}
     """
     try:
         now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
@@ -706,15 +698,13 @@ def get_time_slots(date_str=None, date_obj=None, hijri=False, check_vacation=Tru
         # Convert date_str to date_obj if date_str is provided
         if date_str is not None:
             # First validate the date using is_valid_date_time
-            is_valid, error_message, parsed_date_str, _ = is_valid_date_time(date_str, hijri=hijri)
+            is_valid, error_message, parsed_date_str, _ = is_valid_date_time(date_str)
             if not is_valid:
                 return {"success": False, "message": error_message}
                 
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
-        elif date_obj is None:
-            # If neither date_str nor date_obj is provided, use current date
-            date_obj = now.date()
         else:
+            date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
             # Ensure the provided date_obj is not in the past
             if date_obj < now.date():
                 return {"success": False, "message": "Cannot get time slots for past dates."}
@@ -742,8 +732,8 @@ def get_time_slots(date_str=None, date_obj=None, hijri=False, check_vacation=Tru
         else:  # Sunday to Thursday
             available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(11, 17, 2)}  # 11 AM to 5 PM
         
-        # Filter out past time slots if requested and the date is today
-        if filter_past and date_obj == now.date():
+        # Filter out past time slots if the date is today
+        if date_obj == now.date():
             current_time = now.time()
             available_12h = filter_past_time_slots(available_12h, current_time)
         

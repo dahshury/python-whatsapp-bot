@@ -1,14 +1,12 @@
-import json
 import logging
 import datetime
-from datetime import timedelta
 from zoneinfo import ZoneInfo
 from app.config import config
 from app.db import get_connection
 from app.utils import (
     send_whatsapp_location, is_valid_number, fix_unicode_sequence, parse_date, parse_time, 
-    normalize_time_format, is_valid_date_time, is_vacation_period,
-    get_time_slots, filter_past_time_slots, 
+    normalize_time_format, is_vacation_period,
+    get_time_slots, 
     find_nearest_time_slot, make_thread, validate_reservation_type
 )
 from hijri_converter import convert
@@ -848,7 +846,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
             return {"success": False, "message": vacation_message}
         
         # Get all time slots for the date with filtering for past times if date is today
-        all_slots = get_time_slots(date_obj=date_obj, filter_past=(date_obj == now.date()))
+        all_slots = get_time_slots(date_str=parsed_date_str)
         
         # If get_time_slots returns an error, pass it through
         if isinstance(all_slots, dict) and "success" in all_slots and not all_slots["success"]:
@@ -901,35 +899,66 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         logging.error(f"Function call get_available_time_slots failed, error: {e}")
         return result
 
-def get_available_nearby_dates_for_time_slot(time_slot, days_forward=7, days_backward=0, max_reservations=5, hijri=False):
+def search_available_appointments(start_date=None, time_slot=None, days_forward=7, days_backward=0, max_reservations=5, hijri=False):
     """
     Get the available nearby dates for a given time slot within a specified range of days.
-    Returns a list of dictionaries with date, time_slot, and whether it's an exact match.
+    If no time_slot is provided, returns all available time slots for each date in the range,
+    grouped by date.
     
     Parameters:
-        time_slot (str): The time slot to check availability for (can be 12-hour or 24-hour format)
+        start_date (str or datetime.date, optional): The date to start searching from (format: YYYY-MM-DD), defaults to today
+        time_slot (str, optional): The time slot to check availability for (can be 12-hour or 24-hour format)
+                                  If None, all available time slots for each date are returned
         days_forward (int): Number of days to look forward for availability, must be a non-negative integer
         days_backward (int): Number of days to look backward for availability, must be a non-negative integer
         max_reservations (int): Maximum reservations per slot (default: 5)
-        hijri (bool): Flag to indicate if the output dates should be converted to Hijri format
+        hijri (bool): Flag to indicate if the provided date is in Hijri format and if output dates should be in Hijri
     
     Returns:
-        list: List of dictionaries with available dates and times
-              [{"date": str, "time_slot": str, "is_exact": bool}, ...]
+        list: If time_slot is provided: List of dictionaries with available dates and times
+              [{"date": str, "time_slot": str, "time_slot_24h": str, "is_exact": bool}, ...]
+              If time_slot is None: List of dictionaries with dates and their available time slots
+              [{"date": str, "time_slots": [{"time_slot": str, "time_slot_24h": str}, ...]}, ...]
     """
     try:
-                
-        # Parse the requested time slot to 24-hour format for internal processing
-        parsed_time_str = normalize_time_format(time_slot, to_24h=True)
-        requested_time = datetime.datetime.strptime(parsed_time_str, "%H:%M")
-        requested_minutes = requested_time.hour * 60 + requested_time.minute
+        # Initialize variables for time slot comparison
+        requested_time = None
+        requested_minutes = None
+        display_time_slot = None
         
-        # Get 12-hour format for display
-        display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
+        # Parse the requested time slot if provided
+        if time_slot is not None:
+            parsed_time_str = normalize_time_format(time_slot, to_24h=True)
+            requested_time = datetime.datetime.strptime(parsed_time_str, "%H:%M")
+            requested_minutes = requested_time.hour * 60 + requested_time.minute
+            display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
         
         available_dates = []
+        date_slots_map = {}  # For grouping slots by date when no time_slot is provided
+        
         # Get current date/time in Asia/Riyadh timezone
         today = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        
+        # Use provided start_date if available, otherwise use today
+        if start_date:
+            if isinstance(start_date, str):
+                try:
+                    # Use parse_date which handles both Gregorian and Hijri dates
+                    parsed_date_str = parse_date(start_date, hijri=hijri)
+                    start_date = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
+                except Exception as e:
+                    logging.error(f"Error parsing start date: {e}")
+                    # Fall back to today if parsing fails
+                    start_date = today.date()
+            elif isinstance(start_date, datetime.date):
+                # Already a date object, no conversion needed
+                pass
+            else:
+                raise ValueError("start_date must be a string (YYYY-MM-DD) or datetime.date object")
+            
+            # Create a datetime object at the start of the day in Riyadh timezone
+            today = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=ZoneInfo("Asia/Riyadh"))
+        
         now = today.date()
         conn = get_connection()
         cursor = conn.cursor()
@@ -939,7 +968,7 @@ def get_available_nearby_dates_for_time_slot(time_slot, days_forward=7, days_bac
         
         for day_offset in date_range:
             date_obj = today + datetime.timedelta(days=day_offset)
-            date_str = date_obj.strftime("%Y-%m-%d")
+            gregorian_date_str = date_obj.strftime("%Y-%m-%d")
             date_day = date_obj.date()
             
             # Skip dates in the past
@@ -951,8 +980,44 @@ def get_available_nearby_dates_for_time_slot(time_slot, days_forward=7, days_bac
             if is_vacation:
                 continue
             
+            # Convert Gregorian to Hijri for output if requested
+            hijri_date_str = None
+            if hijri:
+                hijri_date_obj = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
+                hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
+            
+            # Date string for display - Hijri or Gregorian based on parameter
+            display_date_str = hijri_date_str if hijri else gregorian_date_str
+            
+            # If no specific time slot is requested, get all available time slots for this date
+            if time_slot is None:
+                available_slots = get_available_time_slots(gregorian_date_str, max_reservations, hijri=False)
+                
+                # Skip if get_available_time_slots returns an error or empty list
+                if isinstance(available_slots, dict) and "success" in available_slots and not available_slots["success"]:
+                    continue
+                if not available_slots:
+                    continue
+                
+                # Group slots by date
+                if display_date_str not in date_slots_map:
+                    date_slots_map[display_date_str] = []
+                
+                # Add each available slot for this date
+                for slot in available_slots:
+                    # Always store 24-hour format internally, but display in 12-hour format
+                    slot_24h = normalize_time_format(slot, to_24h=True)
+                    slot_12h = normalize_time_format(slot_24h, to_24h=False)
+                    
+                    date_slots_map[display_date_str].append({
+                        "time_slot": slot_12h,
+                    })
+                
+                continue  # Move to the next date
+            
+            # For specific time slot requests, continue with the existing logic
             # Get all slots for this date with past filtering for today
-            all_slots = get_time_slots(date_obj=date_day, filter_past=(date_day == now))
+            all_slots = get_time_slots(date_str=gregorian_date_str)
             
             # Skip if get_time_slots returns an empty/non-dict result
             if not isinstance(all_slots, dict) or not all_slots:
@@ -984,37 +1049,42 @@ def get_available_nearby_dates_for_time_slot(time_slot, days_forward=7, days_bac
             
             # Get 24-hour format of the closest slot for database query
             closest_slot_24h = normalize_time_format(closest_slot, to_24h=True)
+            # Ensure 12-hour format for display
+            closest_slot_12h = normalize_time_format(closest_slot_24h, to_24h=False)
             
             # Check reservation count for the closest slot
             cursor.execute(
                 "SELECT COUNT(*) as count FROM reservations WHERE date = ? AND time_slot = ?",
-                (date_str, closest_slot_24h)
+                (gregorian_date_str, closest_slot_24h)
             )
             row = cursor.fetchone()
             count = row["count"] if row else 0
             
             # Add date if the slot has availability
             if count < max_reservations:
-                available_dates.append({
-                    "date": date_str,
-                    "time_slot": closest_slot,  # Keep 12-hour format for display
+                date_entry = {
+                    "date": display_date_str,
+                    "time_slot": closest_slot_12h,  # Use 12-hour format for display
                     "time_slot_24h": closest_slot_24h,  # Include 24-hour format for reference
                     "is_exact": is_exact
-                })
+                }
+                
+                available_dates.append(date_entry)
         
         conn.close()
         
-        # Convert to Hijri format if requested
-        if hijri:
-            for entry in available_dates:
-                date_obj = datetime.datetime.strptime(entry["date"], "%Y-%m-%d")
-                hijri_date = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
-                entry["date"] = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
+        # If no time_slot was provided, convert the grouped map to a list
+        if time_slot is None and date_slots_map:
+            for date_str, slots in date_slots_map.items():
+                available_dates.append({
+                    "date": date_str,
+                    "time_slots": slots
+                })
         
         return available_dates
     
     except ValueError as ve:
-        result = {"success": False, "message": f"Invalid time format: {str(ve)}"}
+        result = {"success": False, "message": f"Invalid format: {str(ve)}"}
         return result
     except Exception as e:
         result = {"success": False, "message": f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve."}
