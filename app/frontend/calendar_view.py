@@ -76,7 +76,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             {
                 "daysOfWeek": [6],
                 "startTime": "16:00:00",
-                "endTime": "21:00:00",
+                "endTime": "22:00:00",
                 "startRecur": "2022-01-01",
                 "endRecur": "2031-12-31",
             },
@@ -123,7 +123,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             slot_max_time = "16:00:00"
         elif day_of_week == 6:  # Saturday
             slot_min_time = "16:00:00"
-            slot_max_time = "21:00:00"
+            slot_max_time = "22:00:00"
         else:  # Sunday through Thursday
             slot_min_time = "11:00:00" 
             slot_max_time = "17:00:00"

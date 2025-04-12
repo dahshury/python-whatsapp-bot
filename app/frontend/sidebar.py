@@ -38,10 +38,10 @@ def render_vacation_editor():
             col1, col2, col3 = st.columns([4, 4, 1])
             with col1:
                 new_start = st.date_input("تاريخ البداية" if not st.session_state.get('is_gregorian', False) else "Start Date", 
-                                         value=period['start'], key=f"start_{i}")
+                                         value=period['start'], key=f"start_{i}", min_value=date.today(), format="DD/MM/YYYY")
             with col2:
                 new_end = st.date_input("تاريخ النهاية" if not st.session_state.get('is_gregorian', False) else "End Date", 
-                                       value=period['end'], key=f"end_{i}")
+                                       value=period['end'], key=f"end_{i}", min_value=date.today(), format="DD/MM/YYYY")
             with col3:
                 if st.button("✗", key=f"remove_{i}", help="Remove this vacation period"):
                     st.session_state.vacation_periods.pop(i)

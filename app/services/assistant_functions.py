@@ -159,6 +159,9 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         if isinstance(upcoming_reservations, dict) and "success" in upcoming_reservations and not upcoming_reservations["success"]:
             return upcoming_reservations
         
+        # Filter to only include future reservations
+        upcoming_reservations = [res for res in upcoming_reservations if res["is_future"]]
+        
         # Check if there's exactly one upcoming reservation
         if len(upcoming_reservations) == 0:
             if ar:
@@ -183,14 +186,19 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             
         # Now we have exactly one upcoming reservation to modify
         existing_reservation = upcoming_reservations[0]
+        print("existing_reservation", existing_reservation)
         existing_date = existing_reservation["date"]
+        print("existing_date", existing_date)
         existing_time_slot = existing_reservation["time_slot"]
+        print("existing_time_slot", existing_time_slot)
         
         # Initialize with existing values
         parsed_date_str = existing_date
+        print("parsed_date_str", parsed_date_str)
         parsed_time_str = existing_time_slot
+        print("parsed_time_str", parsed_time_str)
         
-        # Handle new date if provided
+        # Validate new date if provided
         if new_date:
             try:
                 # Parse date (Hijri or Gregorian based on hijri flag)
@@ -203,7 +211,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
                 result = {"success": False, "message": message}
                 return result
         
-        # Handle new time slot if provided
+        # Validate new time slot if provided
         if new_time_slot:
             try:
                 # Parse and normalize time to 24-hour format
@@ -256,6 +264,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             
             if display_time_slot not in available_slots_set:
                 if approximate:
+                    print("approximate", approximate)
                     nearest_slot = find_nearest_time_slot(display_time_slot, available_slots)
                     if nearest_slot is None:
                         if ar:
@@ -299,11 +308,11 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             update_values.append(new_name)
             
         # If no changes to make, return early
-        if not update_fields:
+        if not update_values:
             if ar:
-                message = "لم يتم إجراء أي تغييرات."
+                message = "لم يتم إجراء أي تغييرات كونه لم يتم تقديم تفاصيل جديدة."
             else:
-                message = "No changes were made."
+                message = "No changes were made as no new details were provided."
             result = {"success": True, "message": message}
             return result
             
@@ -331,17 +340,13 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
 
         # Use parameterized query with placeholders
         update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE wa_id = ? AND date >= ?"
+        print("update_query", update_query)
         cursor.execute(update_query, update_values)
         conn.commit()
         conn.close()
-
-        # Convert time back to 12-hour format for display
-        display_time = normalize_time_format(parsed_time_str, to_24h=False)
-        
         result = {
             "success": True, 
             "message": "Reservation modified successfully.",
-            "time_slot": display_time
         }
         if ar:
             result["message"] = "تم تعديل الحجز بنجاح."
@@ -522,7 +527,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         # Check if the user already has any upcoming reservations
         existing_reservations = get_customer_reservations(wa_id)
         if existing_reservations and isinstance(existing_reservations, list) and len(existing_reservations) > 0:
-            # Modify the existing reservation
+            # di`` the existing reservation
             modify_result = modify_reservation(
                 wa_id, 
                 new_date=parsed_date_str, 
@@ -896,7 +901,6 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         # Format query placeholders for the IN clause - include both 12h and 24h formats
         all_possible_formats = list(time_format_map.keys()) + list(time_format_map.values())
         placeholders = ', '.join(['?'] * len(all_possible_formats))
-        
         if placeholders:  # Only query if there are time slots
             # Query using both 12-hour and 24-hour format time slots for compatibility
             cursor.execute(
@@ -904,13 +908,11 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
                 [parsed_date_str] + all_possible_formats
             )
             rows = cursor.fetchall()
-            
             # Process results, handling both 12-hour and 24-hour formats
             if rows:
                 for row in rows:
                     db_time_slot = row["time_slot"]
                     count = row["count"]
-                    
                     # If time in database is in 24-hour format, map it back to 12-hour for display
                     if db_time_slot in reverse_map:
                         display_time_slot = reverse_map[db_time_slot]
