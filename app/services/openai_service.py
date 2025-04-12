@@ -47,7 +47,7 @@ def safe_create_message(thread_id, role, content):
         return None
 
 @retry_decorator
-def run_assistant(wa_id, thread, name, max_iterations=10):
+def run_assistant(wa_id, thread, name):
     """
     Run the assistant and poll until the run is complete or a timeout is reached.
     Supports submitting tool outputs via submit_tool_outputs_and_poll.
@@ -139,47 +139,6 @@ def run_assistant(wa_id, thread, name, max_iterations=10):
         logging.error(f"Error in OpenAI API call: {e}")
         logging.info(f"Will retry OpenAI API call for {name} due to error")
         raise  # Re-raise the exception for retry handling
-
-async def process_whatsapp_message(body):
-    """
-    Processes an incoming WhatsApp message and generates an appropriate response.
-    Args:
-        body (dict): The incoming message payload from WhatsApp webhook.
-    Returns:
-        None
-    The function extracts the WhatsApp ID, name, message, and timestamp from the incoming message payload.
-    It attempts to process the message body text. If the message body is present, it generates a response
-    using OpenAI integration and processes the text for WhatsApp. If the message type is audio or image,
-    it sends a predefined response indicating that only text messages can be processed.
-    The generated response is then sent back to the user via WhatsApp.
-    """
-    
-    wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
-    name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
-    message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    
-    try:
-        message_body = message["text"]["body"]
-    except Exception as e:
-        logging.info(f"Unable to process message type: {message}")
-        message_body = None
-        
-    if message_body:
-        timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
-        response_text = await generate_response(message_body, wa_id, name, timestamp)
-        if response_text is None:
-            return
-
-        response_text = process_text_for_whatsapp(response_text)
-    elif message.get('type') in ['audio', 'image']:
-        response_text = process_text_for_whatsapp(
-            "عفوًا، لا يمكنني معالجة ملفات إلا النصوص فقط. للاستفسارات، يرجى التواصل على السكرتيرة هاتفيًا على الرقم 0591066596 في أوقات الدوام الرسمية."
-        )
-    else:
-        response_text = ""
-    
-    if response_text:
-        send_whatsapp_message(wa_id, response_text)
         
 async def generate_response(message_body, wa_id, name, timestamp):
     """

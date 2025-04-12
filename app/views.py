@@ -7,8 +7,8 @@ from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
-from app.services.anthropic_service import process_whatsapp_message
-
+from app.utils.whatsapp_utils import process_whatsapp_message
+from app.services.anthropic_service import run_claude
 router = APIRouter()
 security = HTTPBasic()
 
@@ -51,7 +51,7 @@ async def webhook_post(
     entry = body.get("entry", [{}])[0]
     
     if "changes" in entry:
-        background_tasks.add_task(process_whatsapp_message, body)
+        background_tasks.add_task(process_whatsapp_message, body, run_llm_function=run_claude)
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")
         

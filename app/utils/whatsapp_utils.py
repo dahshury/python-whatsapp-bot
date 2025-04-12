@@ -4,6 +4,8 @@ import re
 import requests
 from app.config import config
 from .logging_utils import log_http_response
+import asyncio
+from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message
 
 def send_whatsapp_message(wa_id, text):
     """
@@ -157,6 +159,45 @@ def send_whatsapp_template(wa_id, template_name, language="en_US", components=No
         log_http_response(response)
         return response
 
+async def process_whatsapp_message(body, run_llm_function):
+    """
+    Processes an incoming WhatsApp message and generates a response using the provided LLM function.
+    Args:
+        body (dict): The incoming message payload from WhatsApp webhook.
+        run_llm_function (callable, optional): The function to use for generating responses. Defaults to None.
+    Returns:
+        None
+    """
+    wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
+    name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
+    message = body["entry"][0]["changes"][0]["value"]["messages"][0]
+    
+    try:
+        message_body = message["text"]["body"]
+    except Exception as e:
+        logging.info(f"Unable to process message type: {message}")
+        message_body = None
+        
+    if message_body:
+        timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
+        if run_llm_function is None:
+            logging.error("No LLM function provided for processing message")
+            return
+        response_text = await generate_response(message_body, wa_id, name, timestamp, run_llm_function)
+        if response_text is None:
+            return
+
+        response_text = process_text_for_whatsapp(response_text)
+    elif message.get('type') in ['audio', 'image']:
+        response_text = process_text_for_whatsapp(
+            config.get(['UNSUPPORTED_MEDIA_MESSAGE'])
+        )
+    else:
+        response_text = ""
+    
+    if response_text:
+        send_whatsapp_message(wa_id, response_text)
+
 def process_text_for_whatsapp(text):
     pattern = r"\【.*?\】"
     text = re.sub(pattern, "", text).strip()
@@ -177,3 +218,25 @@ def is_valid_whatsapp_message(body):
         and body["entry"][0]["changes"][0]["value"].get("messages")
         and body["entry"][0]["changes"][0]["value"]["messages"][0]
     )
+
+async def generate_response(message_body, wa_id, name, timestamp, run_llm_function):
+    """
+    Generate a response from Claude and update the conversation.
+    Uses a per-user lock to ensure that concurrent calls for the same user
+    do not run simultaneously.
+    """
+    lock = get_lock(wa_id)
+    async with lock:
+        date_str, time_str = parse_unix_timestamp(timestamp)
+        
+        # IMPORTANT: Save the user message BEFORE running Claude
+        append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
+        
+        # Run Claude in an executor to avoid blocking the event loop
+        # Using run_claude directly bypasses the decorator, so we need to call it properly
+        new_message, assistant_date_str, assistant_time_str = await asyncio.to_thread(run_llm_function, wa_id, name)
+        
+        if new_message:
+            append_message(wa_id, 'assistant', new_message, date_str=assistant_date_str, time_str=assistant_time_str)
+        
+        return new_message

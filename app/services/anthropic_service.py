@@ -7,7 +7,7 @@ import httpx
 import inspect
 from app.config import config
 from anthropic import Anthropic, AsyncAnthropic
-from app.utils import get_lock, parse_unix_timestamp, append_message, process_text_for_whatsapp, send_whatsapp_message, retrieve_messages
+from app.utils import retrieve_messages
 from app.decorators import retry_decorator
 from app.services import assistant_functions
 import datetime
@@ -378,60 +378,3 @@ def run_claude(wa_id, name):
     except Exception as e:
         logging.error(f"Error in Claude API call: {e}. Retrying...")
         raise  # Re-raise the exception for retry handling
-
-async def process_whatsapp_message(body):
-    """
-    Processes an incoming WhatsApp message and generates a response using Claude.
-    Args:
-        body (dict): The incoming message payload from WhatsApp webhook.
-    Returns:
-        None
-    """
-    wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
-    name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
-    message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    
-    try:
-        message_body = message["text"]["body"]
-    except Exception as e:
-        logging.info(f"Unable to process message type: {message}")
-        message_body = None
-        
-    if message_body:
-        timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
-        response_text = await generate_response(message_body, wa_id, name, timestamp)
-        if response_text is None:
-            return
-
-        response_text = process_text_for_whatsapp(response_text)
-    elif message.get('type') in ['audio', 'image']:
-        response_text = process_text_for_whatsapp(
-            config.get(['UNSUPPORTED_MEDIA_MESSAGE'])
-        )
-    else:
-        response_text = ""
-    
-    if response_text:
-        send_whatsapp_message(wa_id, response_text)
-        
-async def generate_response(message_body, wa_id, name, timestamp):
-    """
-    Generate a response from Claude and update the conversation.
-    Uses a per-user lock to ensure that concurrent calls for the same user
-    do not run simultaneously.
-    """
-    lock = get_lock(wa_id)
-    async with lock:
-        date_str, time_str = parse_unix_timestamp(timestamp)
-        
-        # IMPORTANT: Save the user message BEFORE running Claude
-        append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
-        
-        # Run Claude in an executor to avoid blocking the event loop
-        # Using run_claude directly bypasses the decorator, so we need to call it properly
-        new_message, assistant_date_str, assistant_time_str = await asyncio.to_thread(run_claude, wa_id, name)
-        
-        if new_message:
-            append_message(wa_id, 'assistant', new_message, date_str=assistant_date_str, time_str=assistant_time_str)
-        
-        return new_message
