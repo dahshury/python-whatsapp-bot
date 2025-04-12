@@ -526,7 +526,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
 
         # Check if the user already has any upcoming reservations
         existing_reservations = get_customer_reservations(wa_id)
-        if existing_reservations and isinstance(existing_reservations, list) and len(existing_reservations) > 0:
+        if existing_reservations and isinstance(existing_reservations, list) and len(existing_reservations) > 0 and any(res["is_future"] for res in existing_reservations):
             # di`` the existing reservation
             modify_result = modify_reservation(
                 wa_id, 
