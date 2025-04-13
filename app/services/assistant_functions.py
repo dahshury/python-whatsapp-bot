@@ -39,7 +39,7 @@ def get_current_datetime():
     Get the current date and time in both Hijri and Gregorian calendars.
     Returns a dict with:
       - "gregorian_date" (YYYY-MM-DD)
-      - "makkah_time" (HH:MM)
+      - "makkah_time" (HH:MM AM/PM)
       - "hijri_date" (YYYY-MM-DD)
       - "day_name" (abbreviated weekday)
       - "is_ramadan" (boolean)
@@ -47,7 +47,7 @@ def get_current_datetime():
     try:
         now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
         gregorian_date_str = now.strftime("%Y-%m-%d")
-        gregorian_time_str = now.strftime("%H:%M")
+        time_str = now.strftime("%H:%M %p")
         
         hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
         hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
@@ -57,7 +57,7 @@ def get_current_datetime():
         
         result = {
             "gregorian_date": gregorian_date_str,
-            "makkah_time": gregorian_time_str,
+            "makkah_time": time_str,
             "hijri_date": hijri_date_str,
             "day_name": day_name,
             "is_ramadan": is_ramadan
@@ -186,17 +186,12 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             
         # Now we have exactly one upcoming reservation to modify
         existing_reservation = upcoming_reservations[0]
-        print("existing_reservation", existing_reservation)
         existing_date = existing_reservation["date"]
-        print("existing_date", existing_date)
         existing_time_slot = existing_reservation["time_slot"]
-        print("existing_time_slot", existing_time_slot)
         
         # Initialize with existing values
         parsed_date_str = existing_date
-        print("parsed_date_str", parsed_date_str)
         parsed_time_str = existing_time_slot
-        print("parsed_time_str", parsed_time_str)
         
         # Validate new date if provided
         if new_date:
@@ -527,7 +522,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         # Check if the user already has any upcoming reservations
         existing_reservations = get_customer_reservations(wa_id)
         if existing_reservations and isinstance(existing_reservations, list) and len(existing_reservations) > 0 and any(res["is_future"] for res in existing_reservations):
-            # di`` the existing reservation
+            # modify the existing reservation
             modify_result = modify_reservation(
                 wa_id, 
                 new_date=parsed_date_str, 

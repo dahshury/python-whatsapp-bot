@@ -119,7 +119,7 @@ tools = [
     },
     {
         "name": "get_available_time_slots",
-        "description": "Get the available time slots for a given date, considering vacation periods and past dates. This function checks if a date is valid (not in the past or during vacation) and returns only time slots that have availability.",
+        "description": "Get the available time slots for a given date, considering vacation periods. Returns only time slots that have availability.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -192,7 +192,7 @@ tools = [
     },
     {
         "name": "send_business_location",
-        "description": "Sends the business WhatsApp location message using the WhatsApp API.",
+        "description": "Sends the business WhatsApp location message using the WhatsApp API. Send this message always when the user asks for the business location.",
         "input_schema": {
             "type": "object",
             "properties": {},
@@ -201,7 +201,7 @@ tools = [
     },
     {
         "name": "get_current_datetime",
-        "description": "Get the current date and time in both Hijri and Gregorian calendars.",
+        "description": "Get the current date and time in both Hijri and Gregorian calendars. Always use this as the reference point for every message in all date-related operations. Never assume you know the current date or time without checking. Always check the current date and time before suggesting any dates or times.",
         "input_schema": {
             "type": "object",
             "properties": {},
