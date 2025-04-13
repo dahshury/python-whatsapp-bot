@@ -15,6 +15,7 @@ streamlit-antd-components==0.3.2
 streamlit-autorefresh==1.0.1
 streamlit-antd-components==0.3.2
 streamlit-authenticator==0.4.1
+google-genai==1.10.0
 
 
 # Additional dependencies

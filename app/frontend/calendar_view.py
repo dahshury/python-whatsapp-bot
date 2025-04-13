@@ -16,10 +16,40 @@ from app.frontend.data_view import render_view
 @st.fragment
 def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reservations):
     try:
-        st.session_state.reservations = get_all_reservations(future=True)
+        # Get all reservations at once with future=False to include both future and past
+        all_reservations = get_all_reservations(future=False)
+        
+        # Split into active and cancelled reservations
+        st.session_state.reservations = {}
+        st.session_state.cancelled_reservations = {}
+        
+        # Process reservations based on their type
+        for wa_id, customer_reservations in all_reservations.items():
+            active_reservations = []
+            cancelled = []
+            
+            for reservation in customer_reservations:
+                if isinstance(reservation, dict):
+                    if reservation.get("cancelled", False):
+                        cancelled.append(reservation)
+                    else:
+                        # Only include reservations with future dates in active reservations
+                        date_str = reservation.get("date", "")
+                        if date_str:
+                            reservation_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+                            today = datetime.date.today()
+                            if reservation_date >= today:
+                                active_reservations.append(reservation)
+            
+            if active_reservations:
+                st.session_state.reservations[wa_id] = active_reservations
+            if cancelled and show_cancelled_reservations:
+                st.session_state.cancelled_reservations[wa_id] = cancelled
+                
+        # Store all reservations (both active and cancelled) for name lookups
+        st.session_state.all_customer_data = all_reservations
+        
         st.session_state.conversations = get_all_conversations(recent='month')
-        if show_cancelled_reservations:
-            st.session_state.cancelled_reservations = get_all_reservations(future=False, cancelled_only=True)
     except Exception as e:
         st.error(f"Data loading failed, {e}" if is_gregorian else f"فشل تحميل قاعدة البيانات, {e}")
         st.stop()
@@ -305,8 +335,23 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
         if show_conversations:
             for id, conversation in st.session_state.conversations.items():
                 if isinstance(conversation, list):
+                    # Check if there's a reservation for this ID (active or cancelled)
+                    customer_name = None
+                    
+                    # First check in active reservations
                     if id in st.session_state.reservations:
-                        continue
+                        for reservation in st.session_state.reservations[id]:
+                            if reservation.get("customer_name"):
+                                customer_name = reservation.get("customer_name")
+                                break
+                                
+                    # If not found, check in cancelled reservations
+                    if not customer_name and id in st.session_state.all_customer_data:
+                        for reservation in st.session_state.all_customer_data[id]:
+                            if reservation.get("customer_name"):
+                                customer_name = reservation.get("customer_name")
+                                break
+                    
                     date_str = conversation[-1].get("date", "")
                     if not date_str:
                         continue
@@ -317,9 +362,13 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                     except ValueError as e:
                         st.error(f"incorrect time format found, {e}")
                         st.stop()
+                        
+                    # Create title based on customer name if available
+                    title = f"محادثة: {customer_name if customer_name else id}" if not is_gregorian else f"Conversation: {customer_name if customer_name else id}"
+                    
                     event = {
                         "id": id,
-                        "title": f"محادثة: {id}" if not is_gregorian else f"Conversation: {id}",
+                        "title": title,
                         "start": start_dt.isoformat(),
                         "end": end_dt.isoformat(),
                         "editable": False,

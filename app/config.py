@@ -27,6 +27,7 @@ config = {
     "VACATION_START_DATES": os.getenv("VACATION_START_DATES"),
     "VACATION_DURATIONS": os.getenv("VACATION_DURATIONS"),
     "VACATION_MESSAGE": os.getenv("VACATION_MESSAGE"),
+    "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
 }
 
 def configure_logging():

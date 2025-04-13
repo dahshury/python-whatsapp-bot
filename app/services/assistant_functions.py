@@ -14,13 +14,17 @@ from hijri_converter import convert
 def send_business_location(wa_id):
     """
     Sends the business WhatsApp location message using the WhatsApp API.
-    This function sends the clinic's location to the specified WhatsApp contact.
     
     Parameters:
         wa_id (str): WhatsApp ID to send the location to
         
     Returns:
-        dict: Result of the operation with success status and message
+        dict: Result of the operation with:
+            - success (bool): True if location was sent successfully, False otherwise
+            - message (str): Human-readable status message
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     try:
         is_valid_wa_id = is_valid_number(wa_id)
@@ -36,13 +40,22 @@ def send_business_location(wa_id):
 
 def get_current_datetime():
     """
-    Get the current date and time in both Hijri and Gregorian calendars.
-    Returns a dict with:
-      - "gregorian_date" (YYYY-MM-DD)
-      - "makkah_time" (HH:MM AM/PM)
-      - "hijri_date" (YYYY-MM-DD)
-      - "day_name" (abbreviated weekday)
-      - "is_ramadan" (boolean)
+    Get the current date and time in both Hijri and Gregorian calendars with timezone set to Asia/Riyadh.
+    
+    Returns:
+        dict: A dictionary containing:
+            - gregorian_date (str): Current date in Gregorian calendar (YYYY-MM-DD format)
+            - makkah_time (str): Current time in Makkah (HH:MM AM/PM format)
+            - hijri_date (str): Current date in Hijri calendar (YYYY-MM-DD format)
+            - day_name (str): Abbreviated weekday name (e.g., 'Mon', 'Tue')
+            - is_ramadan (bool): True if current Hijri month is Ramadan (9), False otherwise
+            
+        On error, returns:
+            - success (bool): False
+            - message (str): Error message for user
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     try:
         now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
@@ -70,7 +83,23 @@ def get_current_datetime():
     
 def modify_id(old_wa_id, new_wa_id, ar=False):
     """
-    Modify the WhatsApp ID (wa_id) for a customer in all related tables.
+    Modify the WhatsApp ID (wa_id) for a customer in all related database tables.
+    
+    This function updates a customer's WhatsApp ID across all database tables:
+    threads, conversation, reservations, and cancelled_reservations.
+    
+    Parameters:
+        old_wa_id (str): The current WhatsApp ID to be replaced
+        new_wa_id (str): The new WhatsApp ID to replace with
+        ar (bool, optional): If True, returns error messages in Arabic. Defaults to False.
+        
+    Returns:
+        dict: Result of the modification operation with:
+            - success (bool): True if the ID was modified successfully, False otherwise
+            - message (str): Human-readable status message in English or Arabic based on 'ar' parameter
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     try:
         is_valid_wa_id = is_valid_number(new_wa_id, ar)
@@ -355,19 +384,36 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         logging.error(f"Function call modify_reservation failed, error: {e}")
         return result
 
-def get_customer_reservations(wa_id, slot_duration=2):
+def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
     """
     Get the list of all reservations for the given WhatsApp ID.
-    Includes both past and future reservations, with a flag indicating if each reservation is in the future.
-    A reservation is considered in the future if its date is greater than the current date,
-    or if it's the current date but the time slot is more than slot_duration hours from now.
+    
+    This function retrieves all reservations for a customer, marking each as future or past.
+    A reservation is considered "future" if its date is after the current date,
+    or if it's on the current date but its time slot is more than slot_duration hours from now.
     
     Parameters:
         wa_id (str): WhatsApp ID of the customer to retrieve reservations for
-        slot_duration (int, optional): Number of hours before a reservation to consider it in the future. Defaults to 2.
+        slot_duration (int, optional): Number of hours before a reservation to consider it in the future.
+                                       Defaults to 2 hours.
+        include_past (bool, optional): If True, includes past reservations in the result.
+                                       If False, only returns future reservations. Defaults to False.
         
     Returns:
-        list: List of reservations with reservation details and is_future flag
+        list: List of reservation dictionaries, each containing:
+            - date (str): Reservation date in YYYY-MM-DD format
+            - time_slot (str): Time slot (stored in 24-hour format)
+            - customer_name (str): Name of the customer
+            - type (int): Reservation type (0 for Check-Up, 1 for Follow-Up)
+            - is_future (bool): Flag indicating if the reservation is in the future
+            
+        On error or invalid WhatsApp ID:
+            dict: Contains error information with:
+                - success (bool): False
+                - message (str): Error message
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     is_valid_wa_id = is_valid_number(wa_id)
     if is_valid_wa_id != True:
@@ -406,7 +452,9 @@ def get_customer_reservations(wa_id, slot_duration=2):
                 # Past date
                 row_dict["is_future"] = False
                 
-            reservation_list.append(row_dict)
+            # Include past reservations if the flag is set
+            if include_past or row_dict["is_future"]:
+                reservation_list.append(row_dict)
             
         return reservation_list
     except Exception as e:
@@ -416,19 +464,38 @@ def get_customer_reservations(wa_id, slot_duration=2):
 
 def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_type, hijri=False, max_reservations=5, ar=False):
     """
-    Reserve a time slot for a customer. Handles even non-ISO-like formats by converting
-    the input date (Hijri or Gregorian) into a standardized ISO (YYYY-MM-DD) format.
-    Time is stored in 24-hour format internally.
+    Reserve a time slot for a customer.
+    
+    This function creates a new reservation or modifies an existing one if the customer
+    already has a future reservation. It handles both Hijri and Gregorian date formats,
+    as well as 12-hour and 24-hour time formats. All dates are stored internally in 
+    YYYY-MM-DD (Gregorian) format, and times are stored in 24-hour format.
     
     Parameters:
-      - wa_id: WhatsApp ID
-      - customer_name: Customer's name
-      - date_str: Date string (can be Hijri or Gregorian)
-      - time_slot: Desired time slot (can be 12-hour or 24-hour format)
-      - reservation_type: Type of reservation (0 for Check-Up, 1 for Follow-Up)
-      - hijri: Boolean indicating if the input date is Hijri (default: False)
-      - max_reservations: Maximum allowed reservations per time slot on a day (default: 5)
-      - ar: If True, returns error messages in Arabic (default: False)
+        wa_id (str): WhatsApp ID of the customer
+        customer_name (str): Customer's name
+        date_str (str): Date string (in either Hijri or Gregorian format)
+        time_slot (str): Desired time slot (in either 12-hour or 24-hour format)
+        reservation_type (int): Type of reservation (0 for Check-Up, 1 for Follow-Up)
+        hijri (bool, optional): If True, treats the input date as Hijri. Defaults to False.
+        max_reservations (int, optional): Maximum allowed reservations per time slot. Defaults to 5.
+        ar (bool, optional): If True, returns error messages in Arabic. Defaults to False.
+    
+    Returns:
+        dict: On success, contains:
+            - success (bool): True
+            - gregorian_date (str): Reserved date in Gregorian YYYY-MM-DD format
+            - hijri_date (str): Reserved date in Hijri YYYY-MM-DD format
+            - time_slot (str): Reserved time slot in 12-hour format
+            - type (int): Reservation type (0 for Check-Up, 1 for Follow-Up)
+            - message (str): Success message
+            
+        On failure, contains:
+            - success (bool): False
+            - message (str): Error message in English or Arabic based on 'ar' parameter
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     is_valid_wa_id = is_valid_number(wa_id, ar)
     if is_valid_wa_id != True:
@@ -584,20 +651,32 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
 
 def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
     """
-    Delete a reservation for a customer.
-    If date_str and time_slot are not provided, delete all reservations for the customer.
+    Delete a reservation or all reservations for a customer.
+    
+    This function performs a hard delete of reservations from the database.
+    If both date_str and time_slot are provided, only the specific reservation is deleted.
+    If either date_str or time_slot is missing, all reservations for the customer are deleted.
+    
+    For soft deletion that preserves reservation history, use cancel_reservation instead.
 
     Parameters:
-        wa_id (str): WhatsApp ID of the customer whose reservation should be deleted.
-        date_str (str, optional): Date for the reservation in ISO format (e.g., 'YYYY-MM-DD').
+        wa_id (str): WhatsApp ID of the customer whose reservation(s) should be deleted
+        date_str (str, optional): Date of the reservation to delete. Can be in Hijri or
+                                 Gregorian format depending on the 'hijri' parameter.
+                                 If not provided, all reservations are deleted.
+        time_slot (str, optional): Time slot of the reservation to delete (12-hour or 24-hour format).
                                   If not provided, all reservations are deleted.
-        time_slot (str, optional): Time slot for the reservation (either 12-hour or 24-hour format).
-                                   If not provided, all reservations are deleted.
-        hijri (bool): Flag indicating if the provided date string is in Hijri format.
-        ar (bool): If True, returns error messages in Arabic.
+        hijri (bool, optional): Flag indicating if the provided date is in Hijri format.
+                               Defaults to False.
+        ar (bool, optional): If True, returns messages in Arabic. Defaults to False.
 
     Returns:
-        dict: Result of the deletion operation with success status and message.
+        dict: Result of the deletion operation with:
+            - success (bool): True if deletion was successful, False otherwise
+            - message (str): Human-readable status message in English or Arabic based on 'ar' parameter
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     try:        
         is_valid_wa_id = is_valid_number(wa_id, ar)
@@ -717,18 +796,30 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     
 def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     """
-    Cancel a reservation for a customer.
-    This performs a soft delete by moving the reservations to a 'cancelled_reservations' table.
+    Cancel a reservation or all reservations for a customer.
+    
+    This function performs a soft delete by moving the reservation(s) to the 'cancelled_reservations'
+    table before removing them from the active 'reservations' table. This preserves reservation
+    history while freeing up the time slot.
+    
+    If date_str is provided, only reservations on that date are cancelled.
+    If date_str is not provided, all of the customer's reservations are cancelled.
     
     Parameters:
-        wa_id (str): WhatsApp ID of the customer whose reservation should be cancelled.
-        date_str (str, optional): Date for the reservation in ISO format (e.g., 'YYYY-MM-DD').
-                                  If not provided, all reservations are cancelled.
-        hijri (bool): Flag indicating if the provided date string is in Hijri format.
-        ar (bool): If True, returns error messages in Arabic.
+        wa_id (str): WhatsApp ID of the customer whose reservation(s) should be cancelled
+        date_str (str, optional): Date of the reservation in Hijri or Gregorian format.
+                                 If not provided, all reservations are cancelled.
+        hijri (bool, optional): Flag indicating if the provided date is in Hijri format.
+                               Defaults to False.
+        ar (bool, optional): If True, returns messages in Arabic. Defaults to False.
         
     Returns:
-        dict: Result of the cancellation operation with success status and message.
+        dict: Result of the cancellation operation with:
+            - success (bool): True if cancellation was successful, False otherwise
+            - message (str): Human-readable status message in English or Arabic based on 'ar' parameter
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     try:
         is_valid_wa_id = is_valid_number(wa_id, ar)
@@ -838,18 +929,36 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
 
 def get_available_time_slots(date_str, max_reservations=5, hijri=False):
     """
-    Get the available time slots for a given date, considering vacation periods and past dates.
+    Get the available time slots for a given date.
+    
+    This function retrieves all available time slots for a specified date, considering:
+    - Vacation periods (slots are unavailable during vacation periods)
+    - Past dates (no slots available for past dates)
+    - Current reservations (only returns slots with fewer than max_reservations)
+    
+    The function handles both Hijri and Gregorian date formats, converting all dates
+    to Gregorian format internally.
     
     Parameters:
         date_str (str): Date string to get available time slots for.
-                        If 'hijri' is true, the date string can be in various Hijri formats such as
-                        '1447-09-10', '10 Muharram 1447', or '10, Muharram, 1447'.
-                        Otherwise, expects Gregorian date formats like 'YYYY-MM-DD'.
-        max_reservations (int): Maximum number of reservations allowed per time slot
-        hijri (bool): Flag indicating if the provided date string is in Hijri format
+                       If 'hijri' is True, accepts Hijri formats such as:
+                       '1447-09-10', '10 Muharram 1447', or '10, Muharram, 1447'.
+                       Otherwise, expects Gregorian date formats like 'YYYY-MM-DD'.
+        max_reservations (int, optional): Maximum number of reservations allowed per time slot.
+                                         Defaults to 5.
+        hijri (bool, optional): Flag indicating if the provided date string is in Hijri format.
+                               Defaults to False.
         
     Returns:
         list: List of available time slots in 12-hour format (for display)
+        
+        On error:
+            dict: Contains error information with:
+                - success (bool): False
+                - message (str): Error message describing the issue
+    
+    Raises:
+        Exception: Catches and logs any exceptions, returning a formatted error message
     """
     try:
         # Get current date/time in Saudi Arabia timezone
@@ -929,24 +1038,68 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
 
 def search_available_appointments(start_date=None, time_slot=None, days_forward=7, days_backward=0, max_reservations=5, hijri=False):
     """
-    Get the available nearby dates for a given time slot within a specified range of days.
-    If no time_slot is provided, returns all available time slots for each date in the range,
-    grouped by date.
+    Search for available appointment slots across a range of dates.
+    
+    This function searches for available appointment slots within a specified date range,
+    with two different modes of operation:
+    
+    1. With time_slot specified: Finds the closest available time to the requested time
+       on each date in the range.
+    2. Without time_slot specified: Returns all available time slots for each date in the default range (7 days forward and 0 days backward).
+    
+    The function handles vacation periods, past dates, and checks reservation counts against
+    max_reservations. It can work with both Hijri and Gregorian calendars.
     
     Parameters:
-        start_date (str or datetime.date, optional): The date to start searching from (format: YYYY-MM-DD), defaults to today
-        time_slot (str, optional): The time slot to check availability for (can be 12-hour or 24-hour format)
-                                  If None, all available time slots for each date are returned
-        days_forward (int): Number of days to look forward for availability, must be a non-negative integer
-        days_backward (int): Number of days to look backward for availability, must be a non-negative integer
-        max_reservations (int): Maximum reservations per slot (default: 5)
-        hijri (bool): Flag to indicate if the provided date is in Hijri format and if output dates should be in Hijri
+        start_date (str or datetime.date, optional): The date to start searching from.
+                                                    If string, format should be YYYY-MM-DD.
+                                                    If None, defaults to today.
+        time_slot (str, optional): The time slot to search for (12-hour or 24-hour format).
+                                  If None, returns all available time slots for each date.
+        days_forward (int, optional): Number of days to search ahead. Defaults to 7.
+        days_backward (int, optional): Number of days to search in the past. Defaults to 0.
+                                      (Past dates will still be filtered out)
+        max_reservations (int, optional): Maximum allowed reservations per time slot.
+                                         Defaults to 5.
+        hijri (bool, optional): If True, treats input date as Hijri and outputs Hijri dates.
+                               Defaults to False.
     
     Returns:
-        list: If time_slot is provided: List of dictionaries with available dates and times
-              [{"date": str, "time_slot": str, "time_slot_24h": str, "is_exact": bool}, ...]
-              If time_slot is None: List of dictionaries with dates and their available time slots
-              [{"date": str, "time_slots": [{"time_slot": str, "time_slot_24h": str}, ...]}, ...]
+        If time_slot is provided:
+            list: List of dictionaries with available dates and closest matching times:
+                 [
+                    {
+                        "date": str,             # Date in requested format (Hijri or Gregorian)
+                        "time_slot": str,        # Time slot in 12-hour format
+                        "time_slot_24h": str,    # Time slot in 24-hour format 
+                        "is_exact": bool         # True if exact requested time is available
+                    },
+                    ...
+                 ]
+                 
+        If time_slot is None:
+            list: List of dictionaries with dates and all available time slots:
+                 [
+                    {
+                        "date": str,             # Date in requested format (Hijri or Gregorian)
+                        "time_slots": [
+                            {
+                                "time_slot": str  # Available time slot in 12-hour format
+                            },
+                            ...
+                        ]
+                    },
+                    ...
+                 ]
+                 
+        On error:
+            dict: Contains error information with:
+                - success (bool): False
+                - message (str): Error message
+    
+    Raises:
+        ValueError: If start_date is not a string or datetime.date object
+        Exception: Catches and logs any other exceptions, returning a formatted error message
     """
     try:
         # Initialize variables for time slot comparison

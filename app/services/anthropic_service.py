@@ -41,33 +41,53 @@ FUNCTION_MAPPING = {
 }
 tools = [
     {
-        "name": "modify_reservation",
-        "description": "Modify the reservation for an existing customer. Only provide the fields that are being modified.",
+        "name": "send_business_location",
+        "description": "Sends the business WhatsApp location message using the WhatsApp API. Send this message always when the user asks for the business location.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "get_current_datetime",
+        "description": "Get the current date and time in both Hijri and Gregorian calendars. Always use this as the reference point for every message in all date-related operations. Never assume you know the current date or time without checking. Always check the current date and time before suggesting any dates or times.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "get_customer_reservations",
+        "description": "Get the list of reservations for the user",
         "input_schema": {
             "type": "object",
             "properties": {
-                "new_date": {
-                    "type": "string",
-                    "description": "New date for the reservation in ISO format (YYYY-MM-DD)."
-                },
-                "new_time_slot": {
-                    "type": "string",
-                    "description": "New time slot (expected format: '%I:%M %p', e.g., '11:00 AM')."
-                },
-                "new_name": {
-                    "type": "string",
-                    "description": "New customer name."
-                },
-                "new_type": {
-                    "type": "integer",
-                    "description": "Reservation type (0 for Check-Up, 1 for Follow-Up)."
-                },
-                "hijri": {
+                "include_past": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
+                    "description": "Flag to include past reservations. defaults to False."
                 }
             },
             "required": []
+        }
+    },
+    {
+        "name": "get_available_time_slots",
+        "description": "Get the available time slots for a given date, considering vacation periods. Returns only time slots that have availability.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date_str": {
+                    "type": "string",
+                    "description": "Date string in ISO 8601 format 'YYYY-MM-DD' to get available time slots for. If 'hijri' is true, The input date to this function should be in the format (YYYY-MM-DD)."
+                },
+                "hijri": {
+                    "type": "boolean",
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). defaults to False."
+                }
+            },
+            "required": ["date_str"]
         }
     },
     {
@@ -86,66 +106,19 @@ tools = [
                 },
                 "days_forward": {
                     "type": "integer",
-                    "description": "Number of days to look forward for availability, must be a non-negative integer",
-                    "default": 7
+                    "description": "Number of days to look forward for availability, must be a non-negative integer. defaults to 7."
                 },
                 "days_backward": {
                     "type": "integer",
-                    "description": "Number of days to look backward for availability, must be a non-negative integer",
-                    "default": 0
+                    "description": "Number of days to look backward for availability, must be a non-negative integer. defaults to 0."
                 },
                 "max_reservations": {
                     "type": "integer",
-                    "description": "Maximum reservations per slot",
-                    "default": 5
+                    "description": "Maximum reservations per slot. defaults to 5."
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag to indicate if the provided date is in Hijri format and if output dates should be in Hijri",
-                    "default": False
-                }
-            },
-            "required": []
-        }
-    },
-    {
-        "name": "get_customer_reservations",
-        "description": "Get the list of reservations for the user.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
-        "name": "get_available_time_slots",
-        "description": "Get the available time slots for a given date, considering vacation periods. Returns only time slots that have availability.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "date_str": {
-                    "type": "string",
-                    "description": "Date string in ISO 8601 format 'YYYY-MM-DD' to get available time slots for. If 'hijri' is true, The hijri date should be in the format (YYYY-MM-DD)."
-                },
-                "hijri": {
-                    "type": "boolean",
-                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD)."
-                }
-            },
-            "required": [
-                "date_str",
-            ]
-        }
-    },
-    {
-        "name": "cancel_reservation",
-        "description": "Cancel a reservation for a customer. If date_str is not provided, cancel all reservations for the customer.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "date_str": {
-                    "type": "string",
-                    "description": "Date for the reservation in ISO format (e.g., 'YYYY-MM-DD'). If not provided, all reservations are cancelled."
+                    "description": "Flag to indicate if the provided date is in Hijri format and if output dates should be in Hijri. defaults to False."
                 }
             },
             "required": []
@@ -171,44 +144,67 @@ tools = [
                 },
                 "reservation_type": {
                     "type": "integer",
-                    "enum": [
-                        0,
-                        1
-                    ],
+                    "enum": [0, 1],
                     "description": "Type of reservation. 0 for Check-Up, 1 for Follow-Up. This is required always. Never reserve without it. Make sure the user chooses it."
                 },
                 "hijri": {
                     "type": "boolean",
-                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). This is required always. Never reserve without it."
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). This is required always. Never reserve without it. defaults to False."
                 }
             },
             "required": [
                 "customer_name",
                 "date_str",
                 "time_slot",
-                "reservation_type",
+                "reservation_type"
             ]
         }
     },
     {
-        "name": "send_business_location",
-        "description": "Sends the business WhatsApp location message using the WhatsApp API. Send this message always when the user asks for the business location.",
+        "name": "modify_reservation",
+        "description": "Modify the reservation for an existing customer. Only provide the fields that are being modified.",
         "input_schema": {
             "type": "object",
-            "properties": {},
+            "properties": {
+                "new_date": {
+                    "type": "string",
+                    "description": "New date for the reservation in ISO format (YYYY-MM-DD)."
+                },
+                "new_time_slot": {
+                    "type": "string",
+                    "description": "New time slot (expected format: '%I:%M %p', e.g., '11:00 AM')."
+                },
+                "new_name": {
+                    "type": "string",
+                    "description": "New customer name."
+                },
+                "new_type": {
+                    "type": "integer",
+                    "description": "Reservation type (0 for Check-Up, 1 for Follow-Up)."
+                },
+                "hijri": {
+                    "type": "boolean",
+                    "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). defaults to False."
+                }
+            },
             "required": []
         }
     },
     {
-        "name": "get_current_datetime",
-        "description": "Get the current date and time in both Hijri and Gregorian calendars. Always use this as the reference point for every message in all date-related operations. Never assume you know the current date or time without checking. Always check the current date and time before suggesting any dates or times.",
+        "name": "cancel_reservation",
+        "description": "Cancel a reservation for a customer. If date_str is not provided, cancel all reservations for the customer.",
         "input_schema": {
             "type": "object",
-            "properties": {},
+            "properties": {
+                "date_str": {
+                    "type": "string",
+                    "description": "Date for the reservation in ISO format (e.g., 'YYYY-MM-DD'). If not provided, all reservations are cancelled."
+                }
+            },
             "required": []
         },
         "cache_control": {"type": "ephemeral"}
-    }
+    },
 ]
 @retry_decorator
 def run_claude(wa_id, name):
