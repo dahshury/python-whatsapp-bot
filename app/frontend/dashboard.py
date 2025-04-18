@@ -90,6 +90,14 @@ st.markdown(
 )
 
 # =============================================================================
+# Read URL params via stable API
+params = st.query_params
+default_gregorian = params.get("gregorian", "0") == "1"
+default_free_roam = params.get("free_roam", "0") == "1"
+default_show_conversations = params.get("show_conversations", "0") == "1"
+default_show_cancelled = params.get("show_cancelled_reservations", "0") == "1"
+
+# =============================================================================
 # SIDE BAR (Prayer Times, Clock)
 # =============================================================================
 with st.sidebar:
@@ -101,7 +109,13 @@ with st.sidebar:
             items=[
                 sac.SegmentedItem(label='هجري', icon='moon'),
                 sac.SegmentedItem(label='ميلادي', icon='calendar-month'),
-            ], label='', align='center', bg_color='transparent', return_index=True
+            ],
+            label='',
+            align='center',
+            bg_color='transparent',
+            return_index=True,
+            index=1 if default_gregorian else 0,
+            key="gregorian_selector"
         )
         is_gregorian = True if is_gregorian_idx == 1 else False
         
@@ -110,7 +124,13 @@ with st.sidebar:
             items=[
                 sac.SegmentedItem(label='مقيد', icon='lock'),
                 sac.SegmentedItem(label='غير مقيد', icon='unlock'),
-            ], label='', align='center', bg_color='transparent', return_index=True
+            ],
+            label='',
+            align='center',
+            bg_color='transparent',
+            return_index=True,
+            index=1 if default_free_roam else 0,
+            key="free_roam_selector"
         )
         free_roam = True if free_roam_idx == 1 else False
         
@@ -118,7 +138,13 @@ with st.sidebar:
             items=[
                 sac.SegmentedItem(label='إخفاء الرسائل', icon='envelope-slash'),
                 sac.SegmentedItem(label='إظهار الرسائل', icon='whatsapp'),
-            ], label='', align='center', bg_color='transparent', return_index=True
+            ],
+            label='',
+            align='center',
+            bg_color='transparent',
+            return_index=True,
+            index=1 if default_show_conversations else 0,
+            key="show_conversations_selector"
         )
     show_conversations = True if show_conversations_idx == 1 else False
         
@@ -126,26 +152,37 @@ with st.sidebar:
         items=[
             sac.SegmentedItem(label='إخفاء المواعيد الملغاة', icon='calendar2-x'),
             sac.SegmentedItem(label='إظهار المواعيد الملغاة', icon='calendar-event'),
-        ], label='', align='center', bg_color='transparent', return_index=True
+        ],
+        label='',
+        align='center',
+        bg_color='transparent',
+        return_index=True,
+        index=1 if default_show_cancelled else 0,
+        key="show_cancelled_selector"
     )
     show_cancelled_reservations = True if show_cancelled_reservations_idx == 1 else False
     
     # Add vacation editor as the last element in the sidebar
     st.session_state.is_gregorian = is_gregorian
     render_vacation_editor()
-
-# =============================================================================
-# CALENDAR MODE & RAMADAN HOURS
-# =============================================================================
-default_gregorian = st.query_params.get("gregorian", "False") == "True"
-default_free_roam = st.query_params.get("free_roam", "False") == "True"
-default_show_conversations = st.query_params.get("show_conversations", "False") == "False"
-st.query_params.free_roam = str(free_roam)
-st.query_params.gregorian = str(is_gregorian)
-st.query_params.show_conversations = str(show_conversations)
+    # Persist toggles with stable API if they changed
+    if (
+        is_gregorian != default_gregorian
+        or free_roam != default_free_roam
+        or show_conversations != default_show_conversations
+        or show_cancelled_reservations != default_show_cancelled
+    ):
+        st.query_params.from_dict({
+            "gregorian": [str(int(is_gregorian))],
+            "free_roam": [str(int(free_roam))],
+            "show_conversations": [str(int(show_conversations))],
+            "show_cancelled_reservations": [str(int(show_cancelled_reservations))],
+        })
+        st.rerun()
 
 # =============================================================================
 # MAIN APP EXECUTION
 # =============================================================================
+# Render calendar with current toggle states
 render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reservations)
 st_autorefresh(interval=350000)

@@ -38,7 +38,8 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                         if date_str:
                             reservation_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
                             today = datetime.date.today()
-                            if reservation_date >= today:
+                            # In free_roam mode include all dates, else only future dates
+                            if free_roam or reservation_date >= today:
                                 active_reservations.append(reservation)
             
             if active_reservations:
@@ -178,6 +179,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             slot_min_time = "11:00:00" 
             slot_max_time = "17:00:00"
 
+        # Base calendar options
         big_cal_options = {
             "editable": True,
             "selectable": True,
@@ -194,31 +196,45 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             "hiddenDays": [5] if not show_conversations else [],
             "slotDuration": "02:00:00",
             "locale": "ar-sa" if not is_gregorian else "en",
-            "direction": "rtl"  if not is_gregorian else "ltr",
+            "direction": "rtl" if not is_gregorian else "ltr",
             "firstDay": 6,
             "aspectRatio": 1.35,
-            "expandRows": True,
             "initialDate": initial_date,
             "initialView": st.session_state.selected_view_id,
             "timeZone": "Asia/Riyadh",
-            "businessHours": ramadan_rules + normal_rules if not free_roam else None,
-            "eventConstraint": "businessHours" if not free_roam else None,
-            "selectConstraint": "businessHours" if not free_roam else None,
-            "buttonText": {
+        }
+        # Localize calendar button text
+        if not is_gregorian:
+            big_cal_options["buttonText"] = {
                 "today": "اليوم",
                 "month": "شهر",
                 "week": "أسبوع",
                 "day": "يوم",
-                "multiMonthYear": "عدة أشهر"} if not is_gregorian else {
+                "multiMonthYear": "عدة أشهر",
+            }
+        else:
+            big_cal_options["buttonText"] = {
                 "today": "today",
                 "month": "month",
                 "week": "week",
                 "day": "day",
-                "multiMonthYear": "multiMonthYear"}
-        }
-        # Only enforce validRange for non-multiMonthYear views
-        if st.session_state.selected_view_id != "multiMonthYear":
-            big_cal_options["validRange"] = {"start": datetime.datetime.now().isoformat()}
+                "multiMonthYear": "multiMonthYear",
+            }
+        # Add business hours constraints only when not in free_roam
+        if not free_roam:
+            big_cal_options.update({
+                "businessHours": ramadan_rules + normal_rules,
+                "eventConstraint": "businessHours",
+                "selectConstraint": "businessHours",
+            })
+            # Enforce validRange for navigation when not free_roam
+            if st.session_state.selected_view_id != "multiMonthYear":
+                big_cal_options["validRange"] = {"start": datetime.datetime.now().isoformat()}
+        # In free_roam mode, allow full navigation and events
+        else:
+            # No constraints: remove any potential limiting keys
+            for key in ["businessHours", "eventConstraint", "selectConstraint", "validRange"]:
+                big_cal_options.pop(key, None)
         st.session_state.slot_duration_delta = datetime.timedelta(hours=int(big_cal_options['slotDuration'].split(":")[0]), 
                                             minutes=int(big_cal_options['slotDuration'].split(":")[1]))
         num_reservations_per_slot = 6
@@ -455,11 +471,12 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             view_type = big_cal_response.get("dateClick", {}).get("view", {}).get("type", "")
             clicked_date = big_cal_response.get("dateClick", {}).get("date", "")
             if clicked_date:
-                # Prevent selecting past dates/times using timestamp comparison
-                dt_clicked = pd.to_datetime(clicked_date).to_pydatetime()
-                if dt_clicked.timestamp() < time.time():
-                    st.warning("Cannot select past time slots.")
-                    return
+                # Skip past-date selection check in free_roam
+                if not free_roam and clicked_date:
+                    dt_clicked = pd.to_datetime(clicked_date).to_pydatetime()
+                    if dt_clicked.timestamp() < time.time():
+                        st.warning("Cannot select past time slots.")
+                        return
                 if view_type in ["dayGridMonth", "multiMonthYear"]:
                     st.session_state.selected_start_date = clicked_date.split("T")[0]
                     st.session_state.selected_start_time = None
@@ -471,17 +488,19 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_end_date = None
                 st.session_state.selected_end_time = None
                 st.session_state.selected_event_id = None
-            render_view(is_gregorian)
+                
+                # Don't render the view here - we'll do it once at the end of processing
 
         elif cb_type == "select":
             selected_start = big_cal_response.get("select", {}).get("start", "")
             selected_end = big_cal_response.get("select", {}).get("end", "")
             if selected_start and selected_end:
-                # Prevent selecting past dates/times using timestamp comparison
-                dt_selected_start = pd.to_datetime(selected_start).to_pydatetime()
-                if dt_selected_start.timestamp() < time.time():
-                    st.warning("Cannot select past time slots.")
-                    return
+                # Skip past-range selection check in free_roam
+                if not free_roam and selected_start:
+                    dt_selected_start = pd.to_datetime(selected_start).to_pydatetime()
+                    if dt_selected_start.timestamp() < time.time():
+                        st.warning("Cannot select past time slots.")
+                        return
                 st.session_state.selected_start_date = selected_start.split("T")[0]
                 st.session_state.selected_end_date = selected_end.split("T")[0]
                 if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
@@ -492,7 +511,8 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                     st.session_state.selected_end_time = None
                 st.session_state.active_view = "data"
                 st.session_state.selected_event_id = None
-            render_view(is_gregorian)
+                
+                # Don't render the view here - we'll do it once at the end of processing
 
         elif cb_type == "eventClick":
             event_clicked = big_cal_response.get("eventClick", {}).get("event", {})
@@ -501,7 +521,8 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_event_id = event_id
                 st.session_state.active_view = "conversation"
                 st.session_state.selected_date = None
-                render_view(is_gregorian)
+                
+                # Don't render the view here - we'll do it once at the end of processing
                 
         elif cb_type =="eventChange":
             event = big_cal_response.get("eventChange", {}).get("event", {})
@@ -521,4 +542,8 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.pop('calendar_events_hash', None)
                 st.rerun(scope='fragment')
             else:
-                st.warning(result.get("message", "")) 
+                st.warning(result.get("message", ""))
+        
+        # Only render the view once after all processing is complete
+        if st.session_state.active_view in ["data", "conversation"]:
+            render_view(is_gregorian) 
