@@ -32,36 +32,63 @@ def render_vacation_editor():
     # Vacation Periods Editor header
     sac.divider(label='فترات الإجازة' if not st.session_state.get('is_gregorian', False) else 'Vacation Periods', 
                 icon='airplane', align='center', color='gray')    
-    # Display vacation periods with date pickers
+    # Header row for columns: index, start date, end date
+    col0_lbl, col1_lbl, col2_lbl, col3_lbl = st.columns([1, 4, 4, 1])
+    with col1_lbl:
+        st.write('Start Date' if st.session_state.get('is_gregorian', False) else 'تاريخ البداية')
+    with col2_lbl:
+        st.write('End Date' if st.session_state.get('is_gregorian', False) else 'تاريخ النهاية')
     for i, period in enumerate(st.session_state.vacation_periods):
-        with st.container():
-            col1, col2, col3 = st.columns([4, 4, 1])
-            with col1:
-                new_start = st.date_input("تاريخ البداية" if not st.session_state.get('is_gregorian', False) else "Start Date", 
-                                         value=period['start'], key=f"start_{i}", min_value=date.today(), format="DD/MM/YYYY")
-            with col2:
-                new_end = st.date_input("تاريخ النهاية" if not st.session_state.get('is_gregorian', False) else "End Date", 
-                                       value=period['end'], key=f"end_{i}", min_value=date.today(), format="DD/MM/YYYY")
-            with col3:
-                if st.button("✗", key=f"remove_{i}", help="Remove this vacation period"):
-                    st.session_state.vacation_periods.pop(i)
-                    update_vacation_env()
-                    st.rerun()
-            
-            # Update session state if changed
-            if new_start != period['start'] or new_end != period['end']:
-                if new_start <= new_end:
-                    st.session_state.vacation_periods[i]['start'] = new_start
-                    st.session_state.vacation_periods[i]['end'] = new_end
-                    update_vacation_env()
-                else:
-                    st.warning("يجب أن يكون تاريخ النهاية بعد تاريخ البداية." if not st.session_state.get('is_gregorian', False) 
-                              else "End date must be after start date.")
+        col0, col1, col2, col3 = st.columns([1, 4, 4, 1])
+        # Number icon button
+        with col0:
+            sac.buttons(
+                [sac.ButtonsItem(icon=sac.BsIcon(name=f"{i+1}-square-fill", size='md', color="gray"))],
+                align='center',
+                variant='text',
+                index=None,
+                key=f"num_{i}"
+            )
+        # Date pickers with collapsed labels
+        with col1:
+            new_start = st.date_input(
+                "Start Date",
+                value=period['start'],
+                key=f"start_{i}",
+                min_value=date.today(),
+                format="DD/MM/YYYY",
+                label_visibility="collapsed"
+            )
+        with col2:
+            new_end = st.date_input(
+                "End Date",
+                value=period['end'],
+                key=f"end_{i}",
+                min_value=date.today(),
+                format="DD/MM/YYYY",
+                label_visibility="collapsed"
+            )
+        # Remove button using st.button
+        with col3:
+            if st.button(
+                "🗑",
+                key=f"remove_{i}",
+                help=("Remove this vacation period" if st.session_state.get('is_gregorian', False) else "حذف فترة الإجازة"),
+                use_container_width=True
+            ):
+                st.session_state.vacation_periods.pop(i)
+                update_vacation_env()
+                st.rerun()
     
-    # Add new vacation period with + icon
-    col1, col2, col3 = st.columns([4, 4, 1])
-    with col3:
-        if st.button("✚", key="add_period", help="Add new vacation period"):
+    # Add new vacation period button using st.button
+    col0_add, col1_add, col2_add, col3_add = st.columns([1, 4, 4, 1])
+    with col3_add:
+        if st.button(
+            "✚",
+            key="add_period",
+            help=("Add new vacation period" if st.session_state.get('is_gregorian', False) else "إضافة فترة إجازة جديدة"),
+            use_container_width=True
+        ):
             last_end = st.session_state.vacation_periods[-1]['end'] if st.session_state.vacation_periods else date.today()
             new_start = last_end + timedelta(days=1)
             new_end = new_start + timedelta(days=7)

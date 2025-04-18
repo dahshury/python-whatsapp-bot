@@ -1,0 +1,36 @@
+from setuptools import setup, find_packages
+
+setup(
+    name="ai_whatsapp_reservation_app",
+    version="0.1.0",
+    packages=find_packages(include=["app", "app.*"]),
+    install_requires=[
+        "fastapi==0.115.8",
+        "python-dotenv==1.0.1",
+        "openai==1.61.1",
+        "anthropic==0.49.0",
+        "aiohttp==3.11.12",
+        "requests==2.32.3",
+        "uvicorn==0.34.0",
+        "streamlit==1.42.0",
+        "streamlit-calendar==1.2.1",
+        "streamlit-authenticator==0.4.1",
+        "streamlit-antd-components==0.3.2",
+        "streamlit-autorefresh==1.0.1",
+        "google-genai==1.10.0",
+        "phonenumbers==8.13.55",
+        "tenacity==9.0.0",
+        "apscheduler==3.10.1",
+    ],
+    include_package_data=True,
+    description="AI WhatsApp Reservation App (FastAPI + Streamlit)",
+    author="Your Name",
+    author_email="you@example.com",
+    url="https://github.com/your-repo/python-whatsapp-bot",
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "Framework :: FastAPI",
+        "Framework :: Streamlit",
+        "Operating System :: OS Independent",
+    ],
+) 

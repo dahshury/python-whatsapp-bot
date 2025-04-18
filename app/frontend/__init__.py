@@ -56,29 +56,27 @@ def get_ramadan_dates(year):
     return ramadan_start, ramadan_end
 
 def update_passwords(yaml_path=None):
-    """
-    Loads the users.yaml file, updates user passwords using environment variables, 
-    and saves the updated YAML back to disk.
-    """
     # Load environment variables from .env file
     load_dotenv()
-
-    # Determine the path to the YAML file
+    # Determine the path to the users.yaml at project root
     if yaml_path is None:
-        yaml_path = os.path.join(os.path.dirname(__file__), "../../users.yaml")
-
+        yaml_path = os.path.join(os.getcwd(), "users.yaml")
+    # Skip if the file doesn't exist
+    if not os.path.isfile(yaml_path):
+        return
     # Load the YAML file
     with open(yaml_path, "r") as file:
         config = yaml.safe_load(file)
-
+    # Skip if config is invalid
+    if not isinstance(config, dict):
+        return
     # Iterate through users in the YAML and update passwords if env var exists
     if "credentials" in config and "usernames" in config["credentials"]:
         for user, data in config["credentials"]["usernames"].items():
             env_var_name = f"{user}_password"
-            new_password = os.getenv(env_var_name)  # Get password from env
-            if new_password:  # Only update if env var is set
+            new_password = os.getenv(env_var_name)
+            if new_password:
                 config["credentials"]["usernames"][user]["password"] = new_password
-
     # Save the updated YAML file
     with open(yaml_path, "w") as file:
         yaml.safe_dump(config, file, default_flow_style=False)
@@ -128,15 +126,23 @@ def subtract_ramadan_from_normal(normal_rules, ramadan_rules):
 @st.fragment
 def authenticate():
     update_passwords()
-
-    with open('./users.yaml') as file:
+    # Load authentication configuration from project-root users.yaml
+    config_path = os.path.join(os.getcwd(), "users.yaml")
+    if not os.path.isfile(config_path):
+        st.error(f"users.yaml not found at {config_path}")
+        st.stop()
+    with open(config_path, "r") as file:
         config = yaml.load(file, Loader=SafeLoader)
-        authenticator = stauth.Authenticate(
-            config['credentials'],
-            config['cookie']['name'],
-            config['cookie']['key'],
-            config['cookie']['expiry_days']
-        )
+    # Validate config structure
+    if not isinstance(config, dict) or "credentials" not in config or "cookie" not in config:
+        st.error("Authentication configuration missing or invalid.")
+        st.stop()
+    authenticator = stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"]
+    )
     return authenticator
 
 def is_ramadan(gregorian_date):

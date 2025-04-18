@@ -3,13 +3,13 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # Adjust if you want to deploy from a different branch
+      - main
 
 jobs:
   deploy:
     environment: ec2
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Increased overall job timeout
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -21,21 +21,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          timeout: 600s # Increased SSH timeout
+          timeout: 600s
           script: |
             for i in {1..3}; do  # Retry up to 3 times
               echo "Attempt $i..."
               cd /home/ubuntu/python-whatsapp-bot || exit 1
-              chmod +x send_reminders.py
-              chmod +x sqlite_backup.sh
-              echo "$(date): Starting deployment" >> deploy.log
-              git fetch --all
-              git reset --hard origin/main
-              # If using a virtual environment, uncomment the following lines:
-              source venv/bin/activate
-              pip install -r requirements.txt
-              sudo systemctl restart gunicorn
-              sudo systemctl restart streamlit-app
-              echo "$(date): Deployment complete" >> deploy.log
+              chmod +x scripts/deploy.sh
+              ./scripts/deploy.sh
               break || sleep 10
             done

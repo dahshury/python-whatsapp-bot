@@ -43,8 +43,18 @@ def render_conversation(conversations, is_gregorian, reservations):
         # First create/prepare the options list
         options = []
         for option in conversations:
-            if option in reservations and isinstance(reservations[option], list) and len(reservations[option]) > 0 and reservations[option][0].get('customer_name', ""):
-                options.append(f"{option} - {reservations[option][0].get('customer_name')}")
+            # Try to fetch name from active reservations
+            name = None
+            if option in reservations and isinstance(reservations[option], list) and reservations[option] and reservations[option][0].get('customer_name'):
+                name = reservations[option][0]['customer_name']
+            # If no active reservation name, check all customer data for past or cancelled reservation names
+            if not name and 'all_customer_data' in st.session_state and option in st.session_state.all_customer_data:
+                for res in st.session_state.all_customer_data[option]:
+                    if isinstance(res, dict) and res.get('customer_name'):
+                        name = res['customer_name']
+                        break
+            if name:
+                options.append(f"{option} - {name}")
             else:
                 options.append(option)
         options.sort(key=lambda x: (len(x), conversations[x.split(" - ")[0].strip()][-1].get("date", "")), reverse=True)
@@ -75,44 +85,53 @@ def render_conversation(conversations, is_gregorian, reservations):
             </style>
         """, unsafe_allow_html=True)
 
-        # Create columns with better proportions for the navigation
+        # Navigation label
+        label_text = "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا..."
+        st.write(label_text)
+
+        # Navigation controls row: arrows and select
         col1, col2, col3 = st.columns([1, 10, 1])
-
-        # Left arrow (previous)
+        # Left arrow
         with col1:
-            st.markdown('<div class="nav-arrow-container">', unsafe_allow_html=True)
-            prev_btn = st.button("◀", key="prev_conversation", use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        # Selectbox
+            prev_btn = st.button(
+                "◀",
+                key="prev_conversation",
+                help=("Previous" if is_gregorian else "السابق"),
+                use_container_width=True
+            )
+        # Selectbox without label
         with col2:
             selected_event_id = st.selectbox(
-                "Select or write a number..." if is_gregorian else "اختر أو اكتب رقمًا...",
+                "select a conversation",
                 options=options,
                 index=index,
+                label_visibility="collapsed",
+                key=f"conversation_selectbox",
             )
-
-        # Right arrow (next)
+        # Right arrow
         with col3:
-            st.markdown('<div class="nav-arrow-container">', unsafe_allow_html=True)
-            next_btn = st.button("▶", key="next_conversation", use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            next_btn = st.button(
+                "▶",
+                key="next_conversation",
+                help=("Next" if is_gregorian else "التالي"),
+                use_container_width=True
+            )
 
         # Handle navigation button clicks
         if prev_btn and len(options) > 0:
             new_index = (index - 1) % len(options)
             st.session_state.selected_event_id = options[new_index].split(" - ")[0].strip()
-            st.rerun(scope="fragment")
+            # st.rerun(scope="fragment")
 
         if next_btn and len(options) > 0:
             new_index = (index + 1) % len(options)
             st.session_state.selected_event_id = options[new_index].split(" - ")[0].strip()
-            st.rerun(scope="fragment")
+            # st.rerun(scope="fragment")
 
         # Handle selectbox changes
         if st.session_state.selected_event_id != selected_event_id.split("-")[0].strip():
             st.session_state.selected_event_id = selected_event_id.split("-")[0].strip()
-            st.rerun(scope="fragment")
+            # st.rerun(scope="fragment")
         
         conversation = conversations[st.session_state.selected_event_id.split(" - ")[0] if " - " in selected_event_id else selected_event_id]
         if conversation and isinstance(conversation, list) and conversation[0].get("role"):
@@ -177,6 +196,6 @@ def render_conversation(conversations, is_gregorian, reservations):
                 conversation.append(new_message)
                 send_whatsapp_message(st.session_state.selected_event_id, prompt)
                 append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
-                st.rerun(scope="fragment")
+                # st.rerun(scope="fragment")
         else:
             st.warning("لم يتم العثور على بيانات المحادثة لهذا الحدث." if not is_gregorian else "No conversation data found for this event.") 

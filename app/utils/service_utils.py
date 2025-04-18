@@ -16,6 +16,21 @@ from app.db import get_connection
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
 
+# Helper to standardize API responses across services
+def format_response(success: bool, data=None, message: str = None):
+    """
+    Format a consistent response:
+      - success (bool)
+      - data (optional payload)
+      - message (optional user-facing message)
+    """
+    resp = {"success": success}
+    if data is not None:
+        resp["data"] = data
+    if message is not None:
+        resp["message"] = message
+    return resp
+
 def fix_unicode_sequence(customer_name):
     """
     Fixes Unicode escape sequences in customer names.
@@ -66,6 +81,7 @@ def get_tomorrow_reservations():
 def find_nearest_time_slot(target_slot, available_slots):
     """
     Find the nearest available time slot from available_slots relative to target_slot.
+    Only returns slots that are in the future from the current time.
 
     Parameters:
         target_slot (str): A time slot string in the format "%I:%M %p" (e.g., "11:00 AM")
@@ -79,28 +95,43 @@ def find_nearest_time_slot(target_slot, available_slots):
     except ValueError:
         return None
 
+    # Get current time
+    now = datetime.datetime.now(ZoneInfo("Asia/Riyadh"))
+    current_time = datetime.datetime.combine(
+        now.date(), 
+        datetime.time(now.hour, now.minute),
+        tzinfo=ZoneInfo("Asia/Riyadh")
+    )
+
     best_slot = None
-    # We'll use a tuple (diff, direction) as the key for comparison.
-    # diff: absolute difference in minutes from the target.
-    # direction: 0 if the slot is earlier than or equal to the target, 1 if later.
-    # This way, in the event of a tie (equal diff), a slot earlier than the target will be chosen.
     best_key = None
 
     for slot in available_slots:
         try:
-            current = datetime.datetime.strptime(slot, "%I:%M %p")
+            slot_time = datetime.datetime.strptime(slot, "%I:%M %p")
+            # Create a datetime with today's date and the slot time
+            slot_datetime = datetime.datetime.combine(
+                now.date(), 
+                datetime.time(slot_time.hour, slot_time.minute),
+                tzinfo=ZoneInfo("Asia/Riyadh")
+            )
+            
+            # Skip slots that are in the past
+            if slot_datetime <= current_time:
+                continue
+                
+            # Calculate the absolute difference in minutes from target
+            diff = abs((slot_time.hour * 60 + slot_time.minute) - (target.hour * 60 + target.minute))
+            # Set direction: 0 if slot_time <= target, 1 if after target
+            direction = 0 if slot_time <= target else 1
+            current_key = (diff, direction)
+            
+            if best_key is None or current_key < best_key:
+                best_key = current_key
+                best_slot = slot
+                
         except ValueError:
             continue  # Skip slots that cannot be parsed
-        
-        # Calculate the absolute difference in minutes.
-        diff = abs((current.hour * 60 + current.minute) - (target.hour * 60 + target.minute))
-        # Set direction: 0 if current <= target (i.e. previous or exact match), 1 if after target.
-        direction = 0 if current <= target else 1
-        current_key = (diff, direction)
-        
-        if best_key is None or current_key < best_key:
-            best_key = current_key
-            best_slot = slot
 
     return best_slot
 
@@ -866,3 +897,74 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
     
     except Exception as e:
         return False, f"Invalid date or time format: {str(e)}", None, None
+
+def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
+    """
+    Hard delete reservation(s) for a customer, handling three cases:
+    1) both date and time_slot: delete that specific slot
+    2) only date: delete all reservations on that date
+    3) neither provided: delete all reservations for this wa_id
+    """
+    # Validate WhatsApp ID
+    is_valid = is_valid_number(wa_id, ar)
+    if is_valid is not True:
+        return is_valid
+
+    # Parse date if provided
+    parsed_date = None
+    if date_str:
+        try:
+            parsed_date = parse_date(date_str, hijri=hijri)
+        except Exception as e:
+            msg = "تاريخ غير صالح." if ar else f"Invalid date format: {e}"
+            return {"success": False, "message": msg}
+
+    # Parse time if provided
+    parsed_time = None
+    if time_slot:
+        try:
+            parsed_time = normalize_time_format(time_slot, to_24h=True)
+        except Exception as e:
+            msg = "صيغة الوقت غير صالحة." if ar else f"Invalid time format: {e}"
+            return {"success": False, "message": msg}
+
+    # Perform deletion
+    conn = get_connection()
+    cursor = conn.cursor()
+    if parsed_date is not None and parsed_time is not None:
+        cursor.execute(
+            "DELETE FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ?",
+            (wa_id, parsed_date, parsed_time)
+        )
+    elif parsed_date is not None:
+        cursor.execute(
+            "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
+            (wa_id, parsed_date)
+        )
+    else:
+        cursor.execute(
+            "DELETE FROM reservations WHERE wa_id = ?",
+            (wa_id,)
+        )
+
+    removed = cursor.rowcount > 0
+    conn.commit()
+    conn.close()
+
+    # Build response message
+    if ar:
+        if parsed_date and parsed_time:
+            msg = "تمت إزالة الحجز." if removed else "حدث خطأ أثناء إزالة الحجز."
+        elif parsed_date:
+            msg = "تمت إزالة الحجوزات في ذلك التاريخ." if removed else "حدث خطأ أثناء إزالة الحجوزات."
+        else:
+            msg = "تمت إزالة جميع الحجوزات." if removed else "حدث خطأ أثناء إزالة الحجوزات."
+    else:
+        if parsed_date and parsed_time:
+            msg = "Reservation removed." if removed else "Error occurred while removing the reservation."
+        elif parsed_date:
+            msg = "Reservations on that date removed." if removed else "Error occurred while removing reservations on that date."
+        else:
+            msg = "All reservations removed." if removed else "Error occurred while removing reservations."
+
+    return {"success": True, "message": msg}

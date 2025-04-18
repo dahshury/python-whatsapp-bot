@@ -190,7 +190,7 @@ async def process_whatsapp_message(body, run_llm_function):
         response_text = process_text_for_whatsapp(response_text)
     elif message.get('type') in ['audio', 'image']:
         response_text = process_text_for_whatsapp(
-            config.get(['UNSUPPORTED_MEDIA_MESSAGE'])
+            config.get('UNSUPPORTED_MEDIA_MESSAGE', "")
         )
     else:
         response_text = ""

@@ -53,7 +53,22 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
     except Exception as e:
         st.error(f"Data loading failed, {e}" if is_gregorian else f"فشل تحميل قاعدة البيانات, {e}")
         st.stop()
-    st.session_state.calendar_container.empty()
+    
+    # Only clear and rebuild the calendar if absolutely necessary
+    should_rebuild_calendar = False
+    
+    # Check if this is the first render or if view type has changed
+    if ('calendar_events' not in st.session_state or 
+        'calendar_events_hash' not in st.session_state or
+        'prev_settings' not in st.session_state or
+        st.session_state.get('prev_settings') != (is_gregorian, free_roam, show_conversations, show_cancelled_reservations)):
+        should_rebuild_calendar = True
+        st.session_state.prev_settings = (is_gregorian, free_roam, show_conversations, show_cancelled_reservations)
+        
+    # Only empty the container if we need to rebuild
+    if should_rebuild_calendar:
+        st.session_state.calendar_container.empty()
+    
     with st.session_state.calendar_container.container():
         mode_names = {
             "timeGridWeek": "شبكة الوقت" if not is_gregorian else "Week Grid",
@@ -62,25 +77,31 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             "multiMonthYear": "عدة أشهر" if not is_gregorian else "Multi-Month",
         }
         sac.divider(label='Calendar', icon='calendar4', align='center', color='gray', key="cal_divider")
+        # derive view IDs and current index from session state
+        view_ids = list(mode_names.keys())
+        current_idx = view_ids.index(st.session_state.selected_view_id) if st.session_state.selected_view_id in view_ids else 0
+        # render segmented control and update session state
         selected_view_idx = sac.segmented(
             items=[
-                sac.SegmentedItem(label=mode_names["timeGridWeek"], icon='calendar2-range'),
-                sac.SegmentedItem(label=mode_names["timelineMonth"], icon='grid-1x2-fill'),
-                sac.SegmentedItem(label=mode_names["listMonth"], icon='list'),
-                sac.SegmentedItem(label=mode_names["multiMonthYear"], icon='calendar2-week')
-            ], 
-            label='', 
-            align='center', 
+                sac.SegmentedItem(label=mode_names[view_ids[0]], icon='calendar2-range'),
+                sac.SegmentedItem(label=mode_names[view_ids[1]], icon='grid-1x2-fill'),
+                sac.SegmentedItem(label=mode_names[view_ids[2]], icon='list'),
+                sac.SegmentedItem(label=mode_names[view_ids[3]], icon='calendar2-week')
+            ],
+            label='',
+            align='center',
             bg_color='gray',
             use_container_width=True,
             return_index=True,
-            index=st.session_state.selected_view_idx if st.session_state.selected_view_idx else 0,
-            on_change=lambda: st.session_state.update({"selected_view_idx": selected_view_idx}),
+            index=current_idx,
             key="view_selector"
         )
-        selected_view_label = list(mode_names.values())[selected_view_idx]
-        reverse_mode_names = {v: k for k, v in mode_names.items()}
-        st.session_state.selected_view_id = reverse_mode_names.get(selected_view_label, "dayGridMonth")
+        
+        # Check if the view selector changed
+        if st.session_state.selected_view_idx != selected_view_idx:
+            should_rebuild_calendar = True
+            st.session_state.selected_view_idx = selected_view_idx
+            st.session_state.selected_view_id = view_ids[selected_view_idx]
         
         ramadan_rules = []
         for year in range(2022, 2031):
@@ -115,7 +136,6 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
         normal_rules = subtract_ramadan_from_normal(normal_rules, ramadan_rules)
 
         # Add vacation periods as disabled dates in the calendar
-        vacation_rules = []
         vacation_events = []
         if 'vacation_periods' in st.session_state:
             for period in st.session_state.vacation_periods:
@@ -196,6 +216,9 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 "day": "day",
                 "multiMonthYear": "multiMonthYear"}
         }
+        # Only enforce validRange for non-multiMonthYear views
+        if st.session_state.selected_view_id != "multiMonthYear":
+            big_cal_options["validRange"] = {"start": datetime.datetime.now().isoformat()}
         st.session_state.slot_duration_delta = datetime.timedelta(hours=int(big_cal_options['slotDuration'].split(":")[0]), 
                                             minutes=int(big_cal_options['slotDuration'].split(":")[1]))
         num_reservations_per_slot = 6
@@ -229,7 +252,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 "headerToolbar": {
                     "left": "today prev,next",
                     "center": "title",
-                    "right": "dayGridMonth"
+                    "right": None
                 }
             })
         else:
@@ -237,78 +260,128 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 "headerToolbar": {
                     "left": "today prev,next",
                     "center": "title",
-                    "right": "dayGridMonth,timeGridWeek,timeGridDay,listMonth"
+                    "right": None
                 }
             })
 
-        st.session_state.calendar_events = []
+        # Only generate calendar events if we need to rebuild the calendar or if they don't exist yet
+        if should_rebuild_calendar or 'calendar_events' not in st.session_state:
+            st.session_state.calendar_events = []
 
-        # Add vacation events first so they appear as background
-        if not free_roam:
-            st.session_state.calendar_events.extend(vacation_events)
+            # Add vacation events first so they appear as background
+            if not free_roam:
+                st.session_state.calendar_events.extend(vacation_events)
 
-        # Step 1: Group reservations by date and time slot
-        grouped_reservations = {}
-        for id, customer_reservations in st.session_state.reservations.items():
-            for reservation in customer_reservations:
-                if isinstance(reservation, dict) and reservation.get("customer_name", ""):
-                    date_str = reservation.get("date")
-                    time_str = reservation.get("time_slot")
-                    key = f"{date_str}_{time_str}"
-                    if key not in grouped_reservations:
-                        grouped_reservations[key] = []
-                    grouped_reservations[key].append((id, reservation))
-        
-        # Step 1.5: Sort each group by reservation type
-        for key in grouped_reservations:
-            grouped_reservations[key].sort(key=lambda x: (x[1].get("type", 0), x[1].get("customer_name", "")))
-
-        # Step 2: Process each time slot group sequentially
-        for time_key, reservations in grouped_reservations.items():
-            previous_end_dt = None
-            for id, reservation in reservations:
-                customer_name = reservation.get("customer_name", "")
-                date_str = reservation.get("date")
-                time_str = reservation.get("time_slot")
-                type = reservation.get("type")
-                
-                try:
-                    # Parse the start datetime
-                    start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
-                    
-                    # If we have a previous end time in this slot, start after it
-                    if previous_end_dt and start_dt <= previous_end_dt:
-                        start_dt = previous_end_dt + datetime.timedelta(minutes=1)
-                    
-                    # Calculate end time
-                    end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
-                    previous_end_dt = end_dt
-                except ValueError as e:
-                    st.error(f"Incorrect time format found: {e}")
-                    st.stop()
-                # Reservation event properties
-                event = {
-                    "id": id,
-                    "title": customer_name,
-                    "start": start_dt.isoformat(),
-                    "end": end_dt.isoformat(),
-                    "backgroundColor": "#4caf50" if type == 0 else "#3688d8",
-                    "borderColor": "#4caf50" if type == 0 else "#3688d8",
-                    # "textColor": "#FFFFFF" if type == 0 else "",
-                    "extendedProps": {
-                        "type": type
-                    }
-                }
-                st.session_state.calendar_events.append(event)
-
-        if show_cancelled_reservations:
-            for id, customer_reservations in st.session_state.cancelled_reservations.items():
+            # Step 1: Group reservations by date and time slot
+            grouped_reservations = {}
+            for id, customer_reservations in st.session_state.reservations.items():
                 for reservation in customer_reservations:
                     if isinstance(reservation, dict) and reservation.get("customer_name", ""):
-                        customer_name = reservation.get("customer_name")
                         date_str = reservation.get("date")
                         time_str = reservation.get("time_slot")
-                        type = reservation.get("type")
+                        key = f"{date_str}_{time_str}"
+                        if key not in grouped_reservations:
+                            grouped_reservations[key] = []
+                        grouped_reservations[key].append((id, reservation))
+            
+            # Step 1.5: Sort each group by reservation type
+            for key in grouped_reservations:
+                grouped_reservations[key].sort(key=lambda x: (x[1].get("type", 0), x[1].get("customer_name", "")))
+
+            # Step 2: Process each time slot group sequentially
+            for time_key, reservations in grouped_reservations.items():
+                previous_end_dt = None
+                for id, reservation in reservations:
+                    customer_name = reservation.get("customer_name", "")
+                    date_str = reservation.get("date")
+                    time_str = reservation.get("time_slot")
+                    type = reservation.get("type")
+                    
+                    try:
+                        # Parse the start datetime
+                        start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
+                        
+                        # If we have a previous end time in this slot, start after it
+                        if previous_end_dt and start_dt <= previous_end_dt:
+                            start_dt = previous_end_dt + datetime.timedelta(minutes=1)
+                        
+                        # Calculate end time
+                        end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
+                        previous_end_dt = end_dt
+                    except ValueError as e:
+                        st.error(f"Incorrect time format found: {e}")
+                        st.stop()
+                    # Reservation event properties
+                    is_past_slot = start_dt < datetime.datetime.now()
+                    event = {
+                        "id": id,
+                        "title": customer_name,
+                        "start": start_dt.isoformat(),
+                        "end": end_dt.isoformat(),
+                        "backgroundColor": "#4caf50" if type == 0 else "#3688d8",
+                        "borderColor": "#4caf50" if type == 0 else "#3688d8",
+                        "editable": not is_past_slot,
+                        "extendedProps": {
+                            "type": type
+                        }
+                    }
+                    st.session_state.calendar_events.append(event)
+
+            if show_cancelled_reservations:
+                for id, customer_reservations in st.session_state.cancelled_reservations.items():
+                    for reservation in customer_reservations:
+                        if isinstance(reservation, dict) and reservation.get("customer_name", ""):
+                            customer_name = reservation.get("customer_name")
+                            date_str = reservation.get("date")
+                            time_str = reservation.get("time_slot")
+                            type = reservation.get("type")
+                            try:
+                                start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
+                                end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
+                            except ValueError as e:
+                                st.error(f"incorrect time format found, {e}")
+                                st.stop()
+                                
+                            # Cancelled reservations properties
+                            event = {
+                                "id": id,
+                                "title": customer_name,
+                                "start": start_dt.isoformat(),
+                                "end": end_dt.isoformat(),
+                                "editable": False,
+                                "backgroundColor": "#e5e1e0",
+                                "textColor": "#908584",
+                                "BorderColor": "#e5e1e0" if type == 0 else "#e5e1e0",
+                                "extendedProps": {
+                                    "type": type
+                                }
+                            }
+                            st.session_state.calendar_events.append(event)
+                        
+            if show_conversations:
+                for id, conversation in st.session_state.conversations.items():
+                    if isinstance(conversation, list):
+                        # Check if there's a reservation for this ID (active or cancelled)
+                        customer_name = None
+                        
+                        # First check in active reservations
+                        if id in st.session_state.reservations:
+                            for reservation in st.session_state.reservations[id]:
+                                if reservation.get("customer_name"):
+                                    customer_name = reservation.get("customer_name")
+                                    break
+                                    
+                        # If not found, check in cancelled reservations
+                        if not customer_name and id in st.session_state.all_customer_data:
+                            for reservation in st.session_state.all_customer_data[id]:
+                                if reservation.get("customer_name"):
+                                    customer_name = reservation.get("customer_name")
+                                    break
+                        
+                        date_str = conversation[-1].get("date", "")
+                        if not date_str:
+                            continue
+                        time_str = conversation[-1].get("time")
                         try:
                             start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
                             end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
@@ -316,67 +389,31 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                             st.error(f"incorrect time format found, {e}")
                             st.stop()
                             
-                        # Cancelled reservations properties
+                        # Create title based on customer name if available
+                        title = f"محادثة: {customer_name if customer_name else id}" if not is_gregorian else f"Conversation: {customer_name if customer_name else id}"
+                        
                         event = {
                             "id": id,
-                            "title": customer_name,
+                            "title": title,
                             "start": start_dt.isoformat(),
                             "end": end_dt.isoformat(),
                             "editable": False,
-                            "backgroundColor": "#e5e1e0",
-                            "textColor": "#908584",
-                            "BorderColor": "#e5e1e0" if type == 0 else "#e5e1e0",
-                            "extendedProps": {
-                                "type": type
-                            }
+                            "backgroundColor": "#EDAE49",
+                            "borderColor": "#EDAE49",
+                            "classNames": ["conversation-event"]
                         }
                         st.session_state.calendar_events.append(event)
-                    
-        if show_conversations:
-            for id, conversation in st.session_state.conversations.items():
-                if isinstance(conversation, list):
-                    # Check if there's a reservation for this ID (active or cancelled)
-                    customer_name = None
-                    
-                    # First check in active reservations
-                    if id in st.session_state.reservations:
-                        for reservation in st.session_state.reservations[id]:
-                            if reservation.get("customer_name"):
-                                customer_name = reservation.get("customer_name")
-                                break
-                                
-                    # If not found, check in cancelled reservations
-                    if not customer_name and id in st.session_state.all_customer_data:
-                        for reservation in st.session_state.all_customer_data[id]:
-                            if reservation.get("customer_name"):
-                                customer_name = reservation.get("customer_name")
-                                break
-                    
-                    date_str = conversation[-1].get("date", "")
-                    if not date_str:
-                        continue
-                    time_str = conversation[-1].get("time")
-                    try:
-                        start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
-                        end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
-                    except ValueError as e:
-                        st.error(f"incorrect time format found, {e}")
-                        st.stop()
-                        
-                    # Create title based on customer name if available
-                    title = f"محادثة: {customer_name if customer_name else id}" if not is_gregorian else f"Conversation: {customer_name if customer_name else id}"
-                    
-                    event = {
-                        "id": id,
-                        "title": title,
-                        "start": start_dt.isoformat(),
-                        "end": end_dt.isoformat(),
-                        "editable": False,
-                        "backgroundColor": "#EDAE49"
-                    }
-                    st.session_state.calendar_events.append(event)
             
-        events_hash = hashlib.md5(json.dumps(st.session_state.calendar_events, sort_keys=True).encode()).hexdigest()
+            # Create a stable hash of the current events for the calendar key
+            events_hash = hashlib.md5(json.dumps(st.session_state.calendar_events, sort_keys=True).encode()).hexdigest()
+            st.session_state.calendar_events_hash = events_hash
+        else:
+            # Use the cached hash if available and we don't need to rebuild
+            events_hash = st.session_state.calendar_events_hash
+            
+        # Generate a stable key for the calendar component
+        calendar_key = f"big_calendar_{st.session_state.selected_view_id}_{events_hash}"
+        
         big_cal_response = calendar(
             events=st.session_state.calendar_events,
             options=big_cal_options,
@@ -390,26 +427,39 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                         .fc-event-title {
                             font-weight: 700;
                         }
+                        .fc-event.conversation-event .fc-event-time {
+                            display: none;
+                        }
                         .fc-toolbar-title {
                             font-size: 2rem;
                         }
                         """,
-            key=f"big_calendar_{st.session_state.selected_view_id}_{events_hash}",
+            key=calendar_key,
         )
         
-        if big_cal_response.get("callback") in ['dateClick', 'select', 'eventClick']:
+        # Store the current response if it's a meaningful interaction
+        current_callback = big_cal_response.get("callback")
+        
+        # Only update the stored calendar response for meaningful callbacks
+        if current_callback in ['dateClick', 'select', 'eventClick']:
             st.session_state.prev_cal_response = big_cal_response
-            cb_type = big_cal_response.get("callback")
-        elif st.session_state.prev_cal_response and big_cal_response.get("callback") not in ['eventChange']:
+            cb_type = current_callback
+        # If we have a previous response and the current one isn't meaningful, use the previous one
+        elif st.session_state.prev_cal_response and current_callback not in ['eventChange']:
             cb_type = st.session_state.prev_cal_response.get("callback")
             big_cal_response = st.session_state.prev_cal_response
         else:
-            cb_type = big_cal_response.get("callback")
+            cb_type = current_callback
             
         if cb_type == "dateClick":
             view_type = big_cal_response.get("dateClick", {}).get("view", {}).get("type", "")
             clicked_date = big_cal_response.get("dateClick", {}).get("date", "")
             if clicked_date:
+                # Prevent selecting past dates/times using timestamp comparison
+                dt_clicked = pd.to_datetime(clicked_date).to_pydatetime()
+                if dt_clicked.timestamp() < time.time():
+                    st.warning("Cannot select past time slots.")
+                    return
                 if view_type in ["dayGridMonth", "multiMonthYear"]:
                     st.session_state.selected_start_date = clicked_date.split("T")[0]
                     st.session_state.selected_start_time = None
@@ -421,14 +471,17 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_end_date = None
                 st.session_state.selected_end_time = None
                 st.session_state.selected_event_id = None
-            st.session_state.data_editor_key +=1
             render_view(is_gregorian)
 
         elif cb_type == "select":
-            st.session_state.prev_cal_response = big_cal_response
             selected_start = big_cal_response.get("select", {}).get("start", "")
             selected_end = big_cal_response.get("select", {}).get("end", "")
             if selected_start and selected_end:
+                # Prevent selecting past dates/times using timestamp comparison
+                dt_selected_start = pd.to_datetime(selected_start).to_pydatetime()
+                if dt_selected_start.timestamp() < time.time():
+                    st.warning("Cannot select past time slots.")
+                    return
                 st.session_state.selected_start_date = selected_start.split("T")[0]
                 st.session_state.selected_end_date = selected_end.split("T")[0]
                 if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
@@ -439,18 +492,15 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                     st.session_state.selected_end_time = None
                 st.session_state.active_view = "data"
                 st.session_state.selected_event_id = None
-            st.session_state.data_editor_key +=1
             render_view(is_gregorian)
 
         elif cb_type == "eventClick":
-            st.session_state.prev_cal_response = big_cal_response
             event_clicked = big_cal_response.get("eventClick", {}).get("event", {})
             event_id = event_clicked.get("id")
             if event_id:
                 st.session_state.selected_event_id = event_id
                 st.session_state.active_view = "conversation"
                 st.session_state.selected_date = None
-                st.session_state.data_editor_key +=1
                 render_view(is_gregorian)
                 
         elif cb_type =="eventChange":
@@ -467,6 +517,8 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_start_time = str(new_start_date)
                 st.session_state.selected_event_id = None
                 st.session_state.selected_end_time = None
+                # Force a rebuild of calendar events on the next render
+                st.session_state.pop('calendar_events_hash', None)
                 st.rerun(scope='fragment')
             else:
                 st.warning(result.get("message", "")) 

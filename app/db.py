@@ -7,8 +7,15 @@ DB_PATH = os.path.join(os.getcwd(), "threads_db.sqlite")
 
 def get_connection():
     """Return a new SQLite connection with rows as dictionaries."""
-    conn = sqlite3.connect(DB_PATH)
+    # Use WAL journaling and longer timeout to handle concurrent access
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
+    try:
+        # Enable Write-Ahead Logging and set busy_timeout for concurrency
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout = 5000;")
+    except Exception:
+        pass
     return conn
 
 def initialize_db():

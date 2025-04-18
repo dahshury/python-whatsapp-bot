@@ -1,4 +1,3 @@
-
 # AI-WhatsApp-Reservation-App
 
 ![alt text](media/1.png)
@@ -10,7 +9,7 @@ For the original repository and setup torial (Flask version), please refer to [t
 
 ## Prerequisites
 
-- A Meta developer account. If you don’t have one, [create a Meta developer account here](https://developers.facebook.com/). For detailed steps, refer to the original tutorial above.
+- A Meta developer account. If you don't have one, [create a Meta developer account here](https://developers.facebook.com/). For detailed steps, refer to the original tutorial above.
 - A business app. If you don't have one, [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/). For detailed steps, refer to the original tutorial above.
 - Familiarity with Python and FastAPI.
 - Deployment platform (e.g., AWS, Heroku, or local server) to host the FastAPI application and Streamlit frontend.
@@ -20,32 +19,30 @@ This project is a WhatsApp bot built using FastAPI, integrated with OpenAI for g
 
 ## Project Structure
 
-The project is organized as follows:
-
 ```plaintext
-├── app/                     # Main application code
-│   ├── decorators/          # Decorator functions
-│   │   ├── __init__.py
-│   │   ├── safety.py        # Additional security-related tasks
-│   │   └── security.py      # Handles signature verification for webhook requests
-│   ├── frontend/            # Frontend code for the Streamlit interface
-│   │   └── __init__.py      # Defines Streamlit components and authentication logic
-│   ├── services/            # Service modules providing business logic
-│   │   ├── anthropic_service.py    # Integrates with Anthropic to generate AI-driven responses
-│   │   ├── assistant_functions.py  # Functions for managing reservations (booking, modifying, canceling)
-│   │   └── openai_service.py       # Integrates with OpenAI to generate AI-driven responses
-│   ├── utils/               # Utility functions
-│   │   ├── __init__.py      # Imports utility functions from submodules
-│   │   ├── service_utils.py # Helper functions for services (thread management, date parsing)
-│   │   └── whatsapp_utils.py# Utilities for interacting with the WhatsApp API (sending messages, processing text)
-│   ├── __init__.py          # Makes the `app` directory a Python package and initializes the FastAPI app
-│   ├── config.py            # Configuration settings loaded from environment variables
-│   ├── db.py                # Database connection and schema definitions using SQLite
-│   └── views.py             # FastAPI route definitions for handling webhooks and data downloads
-├── README.md                # Project documentation
-├── run.py                   # Entry point to run the FastAPI application
-├── send_reminders.py        # Script to send reminders for upcoming reservations
-└── st_app.py                # Streamlit application for the frontend interface
+├── .github/                  # GitHub workflows and CI configurations
+├── .streamlit/               # Streamlit configuration files
+├── app/                      # Main application code
+│   ├── decorators/           # Decorator functions for security and safety
+│   ├── frontend/             # Streamlit frontend components and authentication logic
+│   ├── services/             # Business logic modules (OpenAI, Anthropic, reservation management)
+│   ├── utils/                # Utility functions for services and WhatsApp API interactions
+│   ├── config.py             # Configuration settings loaded from environment variables
+│   ├── db.py                 # Database connection and schema definitions using SQLite
+│   ├── i18n.py               # Internationalization support
+│   └── views.py              # FastAPI route definitions
+├── media/                    # Static media (screenshots) used in documentation
+├── scripts/                  # Utility scripts (deploy, backups, reminders)
+│   ├── deploy.sh             # Deployment script
+│   ├── send_reminders.py     # Script to send reservation reminders via WhatsApp
+│   └── sqlite_backup.sh      # Shell script to back up the SQLite database
+├── tests/                    # Test suite for the application
+├── .env.example              # Sample environment variables file
+├── requirements.txt          # Project dependencies
+├── run.py                    # Entry point to run the FastAPI application
+├── Procfile                  # Heroku process specification
+├── LICENSE.txt               # Project license
+└── README.md                 # Project documentation
 ```
 
 ## Overall Operation
@@ -72,7 +69,7 @@ The application operates as follows:
    - Functions in `utils/service_utils.py` and `utils/whatsapp_utils.py` assist with tasks like sending WhatsApp messages, parsing dates/times, and managing threads.
 
 6. **Frontend**:
-   - The Streamlit application in `st_app.py` provides a graphical interface to:
+   - The Streamlit application in `app/frontend/dashboard.py` provides a graphical interface to:
       - Visualize the reservation calendar.
       - Manage reservations (create, update, delete).
       - View conversation histories.
@@ -80,7 +77,7 @@ The application operates as follows:
    - Authentication is handled in `frontend/__init__.py` using `streamlit_authenticator`. The credentials are stored in `users.yaml`. For more details, refer to [Streamlit Authenticator documentation](https://github.com/mkhorasani/Streamlit-Authenticator).
 
 7. **Automated Reminders**:
-   - The `send_reminders.py` script periodically checks the database for upcoming reservations and sends reminders to users via WhatsApp.
+   - A background scheduler (APS cheduler) in the FastAPI app runs daily at midnight to automatically send appointment reminders via WhatsApp.
 
 8. **Automated Database Backup**:
    - The `sqlite_backup.sh` script creates a backup of the SQLite database to a remote google drive folder.
@@ -89,7 +86,7 @@ The application operates as follows:
 
 To set up and run the application:
 
-# AI WhatsApp Bot Setup Guide
+## AI WhatsApp Bot Setup Guide
 
 ## 1. Clone the Repository
 
@@ -130,7 +127,7 @@ Runs on `http://0.0.0.0:8000` by default.
 ## 5. Run the Streamlit Frontend
 
 ```bash
-streamlit run st_app.py
+streamlit run app/frontend/dashboard.py
 ```
 
 Access at `http://localhost:8501` (default Streamlit port).
@@ -139,7 +136,13 @@ Access at `http://localhost:8501` (default Streamlit port).
 
 Configure the WhatsApp webhook to point to your FastAPI application's `/webhook` endpoint (e.g., via `ngrok` for local testing).
 
-## 7. Set Up Reminders (Optional)
+## 7. Automated Reminders
+
+- No additional setup is required: reminders are sent automatically by the FastAPI background scheduler at the configured timezone (midnight by default).
+  
+  *Tip:* You can still run `scripts/send_reminders.py` manually for ad‑hoc reminders if needed.
+
+## 8. Set Up Reminders (Optional)
 
 Run `send_reminders.py` and sqlite_backup.sh manually or schedule them (e.g., via `cron`) to send reminders and back up the database:
 

@@ -59,7 +59,7 @@ if 'calendar_container' not in st.session_state:
 if "selected_view_idx" not in st.session_state:
     st.session_state.selected_view_idx = 0
 if "selected_view_id" not in st.session_state:
-    st.session_state.selected_view_id = "dayGridMonth"
+    st.session_state.selected_view_id = "timeGridWeek"
 if "slot_duration_delta" not in st.session_state:
     st.session_state.slot_duration_delta = timedelta(hours=2)
 

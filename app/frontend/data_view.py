@@ -138,10 +138,16 @@ def render_view(is_gregorian):
                         time.sleep(5)
                         st.session_state._changes_processed = False
                         st.rerun()
-                if deleted>0:
+                if deleted > 0:
                     st.success(f"{deleted} Reservations cancelled." if is_gregorian else f"تم الغاء {deleted} حجوزات.")
                     time.sleep(3)
+                    # Reset change processing flag
                     st.session_state._changes_processed = False
+                    # Bump data editor key to clear widget state and avoid repeated deletes
+                    st.session_state.data_editor_key += 1
+                    # Invalidate calendar cache to force rebuild of calendar events
+                    st.session_state.pop('prev_settings', None)
+                    st.session_state.pop('calendar_events_hash', None)
                     st.rerun()
                 
             if widget_state.get("edited_rows", []):
