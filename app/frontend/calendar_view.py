@@ -102,7 +102,17 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
         if st.session_state.selected_view_idx != selected_view_idx:
             should_rebuild_calendar = True
             st.session_state.selected_view_idx = selected_view_idx
-            st.session_state.selected_view_id = view_ids[selected_view_idx]
+            new_view_id = view_ids[selected_view_idx]
+            
+            # Update query params if view changed
+            if st.session_state.selected_view_id != new_view_id:
+                st.session_state.selected_view_id = new_view_id
+                st.query_params["view"] = new_view_id
+                # No need to rerun here, the calendar component will handle the visual update
+                # st.rerun() # Avoid unnecessary rerun if only view changed
+                
+        # Update session state regardless (needed for initial setup)
+        st.session_state.selected_view_id = view_ids[selected_view_idx]
         
         ramadan_rules = []
         for year in range(2022, 2031):
@@ -488,8 +498,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_end_date = None
                 st.session_state.selected_end_time = None
                 st.session_state.selected_event_id = None
-                
-                # Don't render the view here - we'll do it once at the end of processing
+            render_view(is_gregorian)
 
         elif cb_type == "select":
             selected_start = big_cal_response.get("select", {}).get("start", "")
@@ -511,8 +520,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                     st.session_state.selected_end_time = None
                 st.session_state.active_view = "data"
                 st.session_state.selected_event_id = None
-                
-                # Don't render the view here - we'll do it once at the end of processing
+            render_view(is_gregorian)
 
         elif cb_type == "eventClick":
             event_clicked = big_cal_response.get("eventClick", {}).get("event", {})
@@ -521,8 +529,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_event_id = event_id
                 st.session_state.active_view = "conversation"
                 st.session_state.selected_date = None
-                
-                # Don't render the view here - we'll do it once at the end of processing
+                render_view(is_gregorian)
                 
         elif cb_type =="eventChange":
             event = big_cal_response.get("eventChange", {}).get("event", {})
@@ -542,8 +549,4 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.pop('calendar_events_hash', None)
                 st.rerun(scope='fragment')
             else:
-                st.warning(result.get("message", ""))
-        
-        # Only render the view once after all processing is complete
-        if st.session_state.active_view in ["data", "conversation"]:
-            render_view(is_gregorian) 
+                st.warning(result.get("message", "")) 

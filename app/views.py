@@ -1,16 +1,16 @@
-import json
-from app.db import get_connection
-import os
 import logging
-from fastapi import APIRouter, Request, HTTPException, Depends, Query, BackgroundTasks
-from fastapi.responses import JSONResponse, FileResponse, RedirectResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+
 from app.config import config
 from app.decorators.security import verify_signature
-from app.utils.whatsapp_utils import process_whatsapp_message
 from app.services.anthropic_service import run_claude
+from app.utils.whatsapp_utils import process_whatsapp_message
+
 router = APIRouter()
 security = HTTPBasic()
+
 
 @router.get("/webhook")
 async def webhook_get(
@@ -18,6 +18,9 @@ async def webhook_get(
     hub_verify_token: str = Query(None, alias="hub.verify_token"),
     hub_challenge: str = Query(None, alias="hub.challenge")
 ):
+    """
+    Handle webhook verification from WhatsApp API.
+    """
     if hub_mode and hub_verify_token:
         if hub_mode == "subscribe" and hub_verify_token == config["VERIFY_TOKEN"]:
             logging.info("WEBHOOK_VERIFIED")
@@ -29,12 +32,16 @@ async def webhook_get(
         logging.info("MISSING_PARAMETER")
         raise HTTPException(status_code=400, detail="Missing parameters")
 
+
 @router.post("/webhook")
 async def webhook_post(
     request: Request,
     background_tasks: BackgroundTasks,
     _=Depends(verify_signature)
 ):
+    """
+    Process incoming webhook events from WhatsApp API.
+    """
     try:
         body = await request.json()
         logging.info(f"Request body: {body}")
@@ -47,7 +54,7 @@ async def webhook_post(
         logging.info("Received a WhatsApp status update.")
         return JSONResponse(content={"status": "ok"})
     
-    # Identify message type based on payload structure
+    # Process message in background if it's a valid WhatsApp message
     entry = body.get("entry", [{}])[0]
     
     if "changes" in entry:
@@ -57,7 +64,11 @@ async def webhook_post(
         
     return JSONResponse(content={"status": "ok"})
 
+
 def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Validate HTTP Basic Authentication credentials.
+    """
     correct_username = config["APP_ID"]
     correct_password = config["APP_SECRET"]
     if credentials.username == correct_username and credentials.password == correct_password:
@@ -65,8 +76,12 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     else:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
+
 @router.get("/app")
 async def redirect_to_app(request: Request):
+    """
+    Redirect to the main application URL, preserving query parameters.
+    """
     query_params = request.query_params
     redirect_url = config["APP_URL"]
     if query_params:

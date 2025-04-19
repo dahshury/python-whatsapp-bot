@@ -304,11 +304,30 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
         return result
     
 def append_message(wa_id, role, message, date_str, time_str):
+    """
+    Append a message to the conversation database for a given WhatsApp user.
+    Ensures that a thread record exists in the 'threads' table and then inserts
+    the message into the 'conversation' table. Any database errors are caught
+    and logged without interrupting execution.
+
+    Args:
+        wa_id (str): WhatsApp user identifier.
+        role (str): Sender role (e.g., 'user', 'secretary').
+        message (str): The message text to store.
+        date_str (str): Message date in 'YYYY-MM-DD' format.
+        time_str (str): Message time in 'HH:MM' format.
+
+    Returns:
+        None
+    """
     try:
         conn = get_connection()
         cursor = conn.cursor()
         # Ensure a thread record exists for this wa_id
-        cursor.execute("INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)", (wa_id, None))
+        cursor.execute(
+            "INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)",
+            (wa_id, None)
+        )
         # Insert the conversation message
         cursor.execute(
             "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",

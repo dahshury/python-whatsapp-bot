@@ -59,7 +59,9 @@ if 'calendar_container' not in st.session_state:
 if "selected_view_idx" not in st.session_state:
     st.session_state.selected_view_idx = 0
 if "selected_view_id" not in st.session_state:
-    st.session_state.selected_view_id = "timeGridWeek"
+    # Read initial view from query params, default to 'timeGridWeek'
+    default_view_id = st.query_params.get("view", "timeGridWeek")
+    st.session_state.selected_view_id = default_view_id
 if "slot_duration_delta" not in st.session_state:
     st.session_state.slot_duration_delta = timedelta(hours=2)
 
@@ -172,12 +174,19 @@ with st.sidebar:
         or show_conversations != default_show_conversations
         or show_cancelled_reservations != default_show_cancelled
     ):
-        st.query_params.from_dict({
-            "gregorian": [str(int(is_gregorian))],
-            "free_roam": [str(int(free_roam))],
-            "show_conversations": [str(int(show_conversations))],
-            "show_cancelled_reservations": [str(int(show_cancelled_reservations))],
-        })
+        # Prepare params to update, only include toggles
+        updated_params = {}
+        if is_gregorian != default_gregorian:
+            updated_params["gregorian"] = str(int(is_gregorian))
+        if free_roam != default_free_roam:
+            updated_params["free_roam"] = str(int(free_roam))
+        if show_conversations != default_show_conversations:
+            updated_params["show_conversations"] = str(int(show_conversations))
+        if show_cancelled_reservations != default_show_cancelled:
+            updated_params["show_cancelled_reservations"] = str(int(show_cancelled_reservations))
+        
+        # Use st.query_params.update() which preserves existing params like 'view'
+        st.query_params.update(updated_params)
         st.rerun()
 
 # =============================================================================
