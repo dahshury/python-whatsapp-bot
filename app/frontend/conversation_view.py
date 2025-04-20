@@ -1,9 +1,11 @@
 import datetime
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 
 from app.frontend import convert_time_to_sortable
 from app.utils import send_whatsapp_message, append_message
+from app.config import config
 
 @st.fragment
 def render_conversation(conversations, is_gregorian, reservations):
@@ -176,10 +178,38 @@ def render_conversation(conversations, is_gregorian, reservations):
                 """
                 with st.chat_message(role):
                     st.markdown(tooltip_html, unsafe_allow_html=True)
-                    
+            
+            # Determine if chat input should be disabled due to 24h lockout
+            tz_str = config.get("TIMEZONE", "UTC")
+            tz = ZoneInfo(tz_str)
+            now = datetime.datetime.now(tz)
+            user_msgs = [msg for msg in sorted_conversation if msg.get("role") == "user"]
+            if user_msgs:
+                last_user = user_msgs[-1]
+                try:
+                    last_date = datetime.date.fromisoformat(last_user["date"])
+                    time_str = last_user.get("time", "")
+                    # Parse time in various formats (HHMMSS or HH:MM:SS or HH:MM)
+                    if len(time_str) == 6 and time_str.isdigit():
+                        t = datetime.datetime.strptime(time_str, "%H%M%S").time()
+                    else:
+                        parts = time_str.split(":")
+                        if len(parts) == 3:
+                            t = datetime.datetime.strptime(time_str, "%H:%M:%S").time()
+                        elif len(parts) == 2:
+                            t = datetime.datetime.strptime(time_str, "%H:%M").time()
+                        else:
+                            raise ValueError("Invalid time format")
+                    last_dt = datetime.datetime(last_date.year, last_date.month, last_date.day, t.hour, t.minute, t.second, tzinfo=tz)
+                    disabled = (now - last_dt).total_seconds() > 86400
+                except:
+                    disabled = False
+            else:
+                disabled = False
             prompt = st.chat_input(
                 "اكتب ردًا..." if not is_gregorian else "Reply...",
-                key=f"chat_input_{st.session_state.selected_event_id}", 
+                disabled=disabled,
+                key=f"chat_input_{st.session_state.selected_event_id}",
             )
 
             if prompt:
@@ -196,6 +226,6 @@ def render_conversation(conversations, is_gregorian, reservations):
                 conversation.append(new_message)
                 send_whatsapp_message(st.session_state.selected_event_id, prompt)
                 append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
-                # st.rerun(scope="fragment")
+                st.rerun(scope="fragment")
         else:
             st.warning("لم يتم العثور على بيانات المحادثة لهذا الحدث." if not is_gregorian else "No conversation data found for this event.") 

@@ -197,6 +197,9 @@ def render_view(is_gregorian):
                     st.success(f"{modified} Reservations changed." if is_gregorian else f"تم تعديل {modified} حجوزات.")
                     time.sleep(3)
                     st.session_state._changes_processed = False
+                    st.session_state.data_editor_key += 1  # bump data_editor_key to clear widget state
+                    st.session_state.pop('prev_settings', None)
+                    st.session_state.pop('calendar_events_hash', None)
                     st.rerun()
             if widget_state.get("added_rows", []):
                 added = 0
@@ -227,11 +230,17 @@ def render_view(is_gregorian):
                         st.error(result.get("message", ""))
                         time.sleep(5)
                         st.session_state._changes_processed = False
+                        st.session_state.data_editor_key += 1  # bump data_editor_key to clear widget state
+                        st.session_state.pop('prev_settings', None)
+                        st.session_state.pop('calendar_events_hash', None)
                         st.rerun()
                 if added == len(widget_state.get("added_rows", [])):
                     st.success(f"{added} Reservations added." if is_gregorian else f"تم إضافة {added} حجوزات.")
                     time.sleep(3)
                     st.session_state._changes_processed = False
+                    st.session_state.data_editor_key += 1  # bump data_editor_key to clear widget state
+                    st.session_state.pop('prev_settings', None)
+                    st.session_state.pop('calendar_events_hash', None)
                     st.rerun()
 
     elif st.session_state.active_view == "conversation":

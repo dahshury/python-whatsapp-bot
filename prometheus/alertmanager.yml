@@ -1,0 +1,25 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@example.com'
+  smtp_auth_username: 'username'
+  smtp_auth_password: 'password'
+  smtp_require_tls: true
+
+route:
+  group_by: ['alertname', 'job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'email-notifications'
+
+receivers:
+  - name: 'email-notifications'
+    email_configs:
+      - to: 'ops@example.com'
+
+# Slack receiver example (uncomment and configure if using Slack):
+#  - name: 'slack-notifications'
+#    slack_configs:
+#      - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
+#        channel: '#alerts' 
