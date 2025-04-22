@@ -135,50 +135,87 @@ def find_nearest_time_slot(target_slot, available_slots):
 
     return best_slot
 
-def get_all_reservations(future=True, cancelled_only=False):
+def get_all_reservations(future=True, include_cancelled=False):
     """
     Get all reservations from the database, grouped by wa_id, sorted by date and time_slot.
     If `future` is True, only returns reservations for today and future dates.
-    If `cancelled` is True, only returns the cancelled reservations. 
+    If `include_cancelled` is True, includes cancelled reservations along with active ones.
     """
-    db = "reservations" if not cancelled_only else "cancelled_reservations"
     try:
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Prepare the query based on the future flag.
+        # Base query to get non-cancelled reservations
+        base_query = """
+            SELECT wa_id, customer_name, date, time_slot, type 
+            FROM reservations
+        """
+        
+        # Query for cancelled reservations if needed
+        cancelled_query = """
+            SELECT wa_id, customer_name, date, time_slot, type 
+            FROM cancelled_reservations
+        """
+        
+        # Add date filter if future is True
+        where_clause = ""
+        params = []
         if future:
             today = date.today().isoformat()
-            query = f"""
-                SELECT wa_id, customer_name, date, time_slot, type 
-                FROM {db} 
-                WHERE date >= ?
-                ORDER BY wa_id ASC, date ASC, time_slot ASC
-            """
-            cursor.execute(query, (today,))
-        else:
-            query = f"""
-                SELECT wa_id, customer_name, date, time_slot, type 
-                FROM {db} 
-                ORDER BY wa_id ASC, date ASC, time_slot ASC
-            """
-            cursor.execute(query)
+            where_clause = " WHERE date >= ?"
+            params.append(today)
         
-        rows = cursor.fetchall()
+        # Complete the queries with where clause and ordering
+        main_query = base_query + where_clause + " ORDER BY wa_id ASC, date ASC, time_slot ASC"
+        
+        # Execute the main query for active reservations
+        cursor.execute(main_query, params)
+        active_rows = cursor.fetchall()
+        
+        cancelled_rows = []
+        # If include_cancelled is True, also get cancelled reservations
+        if include_cancelled:
+            cancelled_main_query = cancelled_query + where_clause + " ORDER BY wa_id ASC, date ASC, time_slot ASC"
+            cursor.execute(cancelled_main_query, params)
+            # Get the cancelled rows from this query result, not from the first query
+            cancelled_rows = cursor.fetchall()
+        
         conn.close()
 
         # Structuring the output as a grouped dictionary
         reservations = {}
-        for row in rows:
+        
+        # Process active reservations
+        for row in active_rows:
             user_id = row['wa_id']
             if user_id not in reservations:
                 reservations[user_id] = []
-            reservations[user_id].append({
+            
+            reservation = {
                 "customer_name": row['customer_name'],
                 "date": row['date'],
                 "time_slot": row['time_slot'],
-                "type": row['type']
-            })
+                "type": row['type'],
+                "cancelled": False
+            }
+            
+            reservations[user_id].append(reservation)
+        
+        # Process cancelled reservations if included
+        for row in cancelled_rows:
+            user_id = row['wa_id']
+            if user_id not in reservations:
+                reservations[user_id] = []
+            
+            reservation = {
+                "customer_name": row['customer_name'],
+                "date": row['date'],
+                "time_slot": row['time_slot'],
+                "type": row['type'],
+                "cancelled": True
+            }
+            
+            reservations[user_id].append(reservation)
 
         return reservations
 

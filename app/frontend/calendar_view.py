@@ -8,16 +8,16 @@ import streamlit as st
 import streamlit_antd_components as sac
 from streamlit_calendar import calendar
 
-from app.frontend import get_ramadan_dates, is_ramadan, subtract_ramadan_from_normal
-from app.services.assistant_functions import parse_date, parse_time, modify_reservation
-from app.utils import get_all_reservations, get_all_conversations
-from app.frontend.data_view import render_view
+from . import get_ramadan_dates, is_ramadan, subtract_ramadan_from_normal
+from .whatsapp_client import get_all_reservations, get_all_conversations, parse_date, parse_time, modify_reservation
+from .data_view import render_view
 
 @st.fragment
-def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reservations):
+def render_cal(is_gregorian, free_roam):
+    today = datetime.date.today()
     try:
         # Get all reservations at once with future=False to include both future and past
-        all_reservations = get_all_reservations(future=False)
+        all_reservations = get_all_reservations(future=False, include_cancelled=free_roam)
         
         # Split into active and cancelled reservations
         st.session_state.reservations = {}
@@ -29,22 +29,23 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             cancelled = []
             
             for reservation in customer_reservations:
-                if isinstance(reservation, dict):
-                    if reservation.get("cancelled", False):
-                        cancelled.append(reservation)
-                    else:
-                        # Only include reservations with future dates in active reservations
-                        date_str = reservation.get("date", "")
-                        if date_str:
-                            reservation_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-                            today = datetime.date.today()
-                            # In free_roam mode include all dates, else only future dates
-                            if free_roam or reservation_date >= today:
-                                active_reservations.append(reservation)
-            
+                
+                # Only include reservations with future dates in active reservations
+                date_str = reservation.get("date", "")
+                if date_str:
+                    reservation_date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+                    # In free_roam mode include all dates, else only future dates
+                    if free_roam:
+                        if reservation.get("cancelled"):
+                            cancelled.append(reservation)
+                        else:
+                            active_reservations.append(reservation)
+                    elif reservation_date >= today and not reservation.get("cancelled", False):
+                        active_reservations.append(reservation)
+        
             if active_reservations:
                 st.session_state.reservations[wa_id] = active_reservations
-            if cancelled and show_cancelled_reservations:
+            if cancelled:
                 st.session_state.cancelled_reservations[wa_id] = cancelled
                 
         # Store all reservations (both active and cancelled) for name lookups
@@ -62,9 +63,9 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
     if ('calendar_events' not in st.session_state or 
         'calendar_events_hash' not in st.session_state or
         'prev_settings' not in st.session_state or
-        st.session_state.get('prev_settings') != (is_gregorian, free_roam, show_conversations, show_cancelled_reservations)):
+        st.session_state.get('prev_settings') != (is_gregorian, free_roam)):
         should_rebuild_calendar = True
-        st.session_state.prev_settings = (is_gregorian, free_roam, show_conversations, show_cancelled_reservations)
+        st.session_state.prev_settings = (is_gregorian, free_roam)
         
     # Only empty the container if we need to rebuild
     if should_rebuild_calendar:
@@ -176,7 +177,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
         day_of_week = (day_of_week + 1) % 7
 
         # Set min and max times based on conditions
-        if free_roam or show_conversations:
+        if free_roam:
             slot_min_time = "00:00:00"
             slot_max_time = "24:00:00"
         elif is_ramadan(initial_date):
@@ -203,7 +204,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
             "slotMinTime": slot_min_time,
             "slotMaxTime": slot_max_time,
             "allDaySlot": False,
-            "hiddenDays": [5] if not show_conversations else [],
+            "hiddenDays": [5] if not free_roam else [],
             "slotDuration": "02:00:00",
             "locale": "ar-sa" if not is_gregorian else "en",
             "direction": "rtl" if not is_gregorian else "ltr",
@@ -348,12 +349,13 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                         "borderColor": "#4caf50" if type == 0 else "#3688d8",
                         "editable": not is_past_slot,
                         "extendedProps": {
-                            "type": type
+                            "type": type,
+                            "cancelled": False
                         }
                     }
                     st.session_state.calendar_events.append(event)
 
-            if show_cancelled_reservations:
+            if free_roam:
                 for id, customer_reservations in st.session_state.cancelled_reservations.items():
                     for reservation in customer_reservations:
                         if isinstance(reservation, dict) and reservation.get("customer_name", ""):
@@ -377,14 +379,15 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                                 "editable": False,
                                 "backgroundColor": "#e5e1e0",
                                 "textColor": "#908584",
-                                "BorderColor": "#e5e1e0" if type == 0 else "#e5e1e0",
+                                "borderColor": "#e5e1e0" if type == 0 else "#e5e1e0",
                                 "extendedProps": {
-                                    "type": type
+                                    "type": type,
+                                    "cancelled": True
                                 }
                             }
                             st.session_state.calendar_events.append(event)
                         
-            if show_conversations:
+            if free_roam:
                 for id, conversation in st.session_state.conversations.items():
                     if isinstance(conversation, list):
                         # Check if there's a reservation for this ID (active or cancelled)
@@ -498,7 +501,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_end_date = None
                 st.session_state.selected_end_time = None
                 st.session_state.selected_event_id = None
-            render_view(is_gregorian)
+            render_view(is_gregorian, show_title=True)
 
         elif cb_type == "select":
             selected_start = big_cal_response.get("select", {}).get("start", "")
@@ -520,7 +523,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                     st.session_state.selected_end_time = None
                 st.session_state.active_view = "data"
                 st.session_state.selected_event_id = None
-            render_view(is_gregorian)
+            render_view(is_gregorian, show_title=True)
 
         elif cb_type == "eventClick":
             event_clicked = big_cal_response.get("eventClick", {}).get("event", {})
@@ -529,7 +532,7 @@ def render_cal(is_gregorian, free_roam, show_conversations, show_cancelled_reser
                 st.session_state.selected_event_id = event_id
                 st.session_state.active_view = "conversation"
                 st.session_state.selected_date = None
-                render_view(is_gregorian)
+                render_view(is_gregorian, show_title=True)
                 
         elif cb_type =="eventChange":
             event = big_cal_response.get("eventChange", {}).get("event", {})

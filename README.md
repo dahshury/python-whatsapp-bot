@@ -82,6 +82,8 @@ The application operates as follows:
 8. **Automated Database Backup**:
    - The `sqlite_backup.sh` script creates a backup of the SQLite database to a remote google drive folder.
 
+
+
 ## Setup and Installation
 
 To set up and run the application:

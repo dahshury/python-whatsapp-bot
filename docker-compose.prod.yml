@@ -1,0 +1,50 @@
+# production compose: mounts host data directory for .env and sqlite DB
+
+services:
+  backend:
+    image: dahshury/python-whatsapp-bot-backend:latest
+    container_name: reservation_backend
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./threads_db.sqlite:/app/data/threads_db.sqlite
+      - ./.env:/app/.env
+    depends_on:
+      - prometheus
+
+  frontend:
+    image: dahshury/python-whatsapp-bot-frontend:latest
+    container_name: reservation_frontend
+    ports:
+      - '8501:8501'
+    volumes:
+      - ./app/frontend:/app/app/frontend
+      - ./.env:/app/.env
+      - ./users.yaml:/app/users.yaml
+      - ./.streamlit:/app/.streamlit
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - '9090:9090'
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    container_name: alertmanager
+    volumes:
+      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - '9093:9093'
+
+  discord-adapter:
+    image: benjojo/alertmanager-discord:latest
+    container_name: alertmanager_discord
+    env_file:
+      - .env
+    environment:
+      - LISTEN_ADDRESS=0.0.0.0:9094
+    ports:
+      - '9094:9094'

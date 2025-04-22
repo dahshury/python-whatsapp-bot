@@ -3,7 +3,8 @@ import os
 import logging
 
 # Define the SQLite database file path
-DB_PATH = os.path.join(os.getcwd(), "threads_db.sqlite")
+# Use environment variable if set, otherwise default to current working directory
+DB_PATH = os.environ.get("DB_PATH", os.path.join(os.getcwd(), "threads_db.sqlite"))
 
 def get_connection():
     """Return a new SQLite connection with rows as dictionaries."""

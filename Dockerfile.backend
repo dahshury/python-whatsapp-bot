@@ -1,0 +1,37 @@
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Copy backend dependencies file
+COPY requirements-backend.in ./
+RUN pip install --upgrade pip pip-tools \
+    && pip-compile --output-file requirements-backend.txt requirements-backend.in \
+    && pip install -r requirements-backend.txt
+
+# Copy only the backend code (not frontend)
+COPY run.py .
+COPY app/config.py app/config.py
+COPY app/__init__.py app/__init__.py
+COPY app/db.py app/db.py
+COPY app/i18n.py app/i18n.py
+COPY app/metrics.py app/metrics.py
+COPY app/scheduler.py app/scheduler.py
+COPY app/views.py app/views.py
+COPY app/utils/ app/utils/
+COPY app/services/ app/services/
+COPY app/decorators/ app/decorators/
+
+# Create data directory for persistent storage
+RUN mkdir -p /app/data
+
+# Note: We'll handle database copy in the docker-compose command instead
+
+# Set environment variable to point to persisted database location
+ENV DB_PATH=/app/data/threads_db.sqlite
+
+# Expose FastAPI port
+EXPOSE 8000
+
+# Default command runs the FastAPI app; scheduler starts automatically
+CMD ["python", "run.py"] 

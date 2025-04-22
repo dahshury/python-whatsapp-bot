@@ -1,0 +1,87 @@
+name: Docker Build, Push to Docker Hub & Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  DOCKER_HUB_USERNAME: dahshury
+  BACKEND_REPO: python-whatsapp-bot-backend
+  FRONTEND_REPO: python-whatsapp-bot-frontend
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_REPO }}:latest -f Dockerfile.backend .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_REPO }}:latest
+
+      - name: Build and push frontend image
+        run: |
+          docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest -f Dockerfile.frontend .
+          docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest
+
+      - name: Copy docker-compose.prod.yml to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.prod.yml"
+          target: "/home/ubuntu/python-whatsapp-bot"
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          timeout: 600s
+          commands: |
+            # Retry the deployment steps up to 3 times
+            for i in {1..3}; do
+              echo "Deploy attempt $i..."
+              set -e
+              # Login to Docker Hub
+              echo ${{ secrets.DOCKER_HUB_TOKEN }} | docker login -u ${{ env.DOCKER_HUB_USERNAME }} --password-stdin
+
+              # Move to project directory
+              cd /home/ubuntu/python-whatsapp-bot
+
+              # Warn if .env doesn't exist
+              if [ ! -f .env ]; then
+                echo "WARNING: .env not found"
+              fi
+              # Warn if threads_db.sqlite doesn't exist
+              if [ ! -f threads_db.sqlite ]; then
+                echo "WARNING: threads_db.sqlite not found"
+              fi
+
+              # Pull and restart all services using production compose file
+              docker-compose -f docker-compose.prod.yml pull
+              docker-compose -f docker-compose.prod.yml down
+              docker-compose -f docker-compose.prod.yml up -d
+
+              # Clean up unused images
+              docker system prune -f
+
+              echo "Deployment succeeded"
+              exit 0
+            done
+            echo "Deployment failed after 3 attempts"
+            exit 1 

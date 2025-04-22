@@ -11,12 +11,13 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 12h
-  receiver: 'email-notifications'
+  receiver: 'discord-notifications'
 
 receivers:
-  - name: 'email-notifications'
-    email_configs:
-      - to: 'ops@example.com'
+  - name: 'discord-notifications'
+    webhook_configs:
+      - url: 'http://discord-adapter:9094'
+        send_resolved: true
 
 # Slack receiver example (uncomment and configure if using Slack):
 #  - name: 'slack-notifications'

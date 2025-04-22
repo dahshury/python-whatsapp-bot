@@ -1,16 +1,17 @@
 import logging
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Body
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import config
 from app.decorators.security import verify_signature
 from app.services.anthropic_service import run_claude
-from app.utils.whatsapp_utils import process_whatsapp_message
+from app.utils.whatsapp_utils import process_whatsapp_message, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
+from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message
+from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id
 
 router = APIRouter()
 security = HTTPBasic()
-
 
 @router.get("/webhook")
 async def webhook_get(
@@ -31,7 +32,6 @@ async def webhook_get(
     else:
         logging.info("MISSING_PARAMETER")
         raise HTTPException(status_code=400, detail="Missing parameters")
-
 
 @router.post("/webhook")
 async def webhook_post(
@@ -64,7 +64,6 @@ async def webhook_post(
         
     return JSONResponse(content={"status": "ok"})
 
-
 def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Validate HTTP Basic Authentication credentials.
@@ -76,7 +75,6 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     else:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-
 @router.get("/app")
 async def redirect_to_app(request: Request):
     """
@@ -87,3 +85,106 @@ async def redirect_to_app(request: Request):
     if query_params:
         redirect_url = f"{redirect_url}?{query_params}"
     return RedirectResponse(url=redirect_url)
+
+@router.post("/whatsapp/message")
+async def api_send_whatsapp_message(payload: dict = Body(...)):
+    wa_id = payload.get("wa_id")
+    text = payload.get("text")
+    response = send_whatsapp_message(wa_id, text)
+    if isinstance(response, tuple):
+        return JSONResponse(content=response[0], status_code=response[1])
+    return JSONResponse(content=response.json())
+
+@router.post("/whatsapp/location")
+async def api_send_whatsapp_location(payload: dict = Body(...)):
+    wa_id = payload.get("wa_id")
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+    name = payload.get("name", "")
+    address = payload.get("address", "")
+    response = send_whatsapp_location(wa_id, latitude, longitude, name, address)
+    if isinstance(response, tuple):
+        return JSONResponse(content=response[0], status_code=response[1])
+    return JSONResponse(content=response)
+
+@router.post("/whatsapp/template")
+async def api_send_whatsapp_template(payload: dict = Body(...)):
+    wa_id = payload.get("wa_id")
+    template_name = payload.get("template_name")
+    language = payload.get("language", "en_US")
+    components = payload.get("components")
+    response = send_whatsapp_template(wa_id, template_name, language, components)
+    if isinstance(response, tuple):
+        return JSONResponse(content=response[0], status_code=response[1])
+    return JSONResponse(content=response.json())
+
+@router.get("/conversations")
+async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):
+    conversations = get_all_conversations(recent=recent, limit=limit)
+    return JSONResponse(content=conversations)
+
+@router.post("/conversations/{wa_id}")
+async def api_append_message(wa_id: str, payload: dict = Body(...)):
+    append_message(
+        wa_id,
+        payload.get("role"),
+        payload.get("message"),
+        payload.get("date"),
+        payload.get("time")
+    )
+    return JSONResponse(content={"success": True})
+
+@router.get("/reservations")
+async def api_get_all_reservations(future: bool = Query(True), include_cancelled: bool = Query(False)):
+    reservations = get_all_reservations(future=future, include_cancelled=include_cancelled)
+    return JSONResponse(content=reservations)
+
+# Reservation creation endpoint
+@router.post("/reservations")
+async def api_reserve_time_slot(payload: dict = Body(...)):
+    resp = reserve_time_slot(
+        payload.get("wa_id"),
+        payload.get("customer_name"),
+        payload.get("date_str"),
+        payload.get("time_slot"),
+        payload.get("reservation_type"),
+        hijri=payload.get("hijri", False),
+        max_reservations=payload.get("max_reservations", 5),
+        ar=payload.get("ar", False)
+    )
+    return JSONResponse(content=resp)
+
+# Cancel reservation endpoint
+@router.post("/reservations/{wa_id}/cancel")
+async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
+    resp = cancel_reservation(
+        wa_id,
+        date_str=payload.get("date_str"),
+        hijri=payload.get("hijri", False),
+        ar=payload.get("ar", False)
+    )
+    return JSONResponse(content=resp)
+
+# Modify reservation endpoint
+@router.post("/reservations/{wa_id}/modify")
+async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
+    resp = modify_reservation(
+        wa_id,
+        payload.get("new_date"),
+        payload.get("new_time_slot"),
+        payload.get("new_name"),
+        payload.get("new_type"),
+        hijri=payload.get("hijri", False),
+        ar=payload.get("ar", False)
+    )
+    return JSONResponse(content=resp)
+
+# Modify WhatsApp ID endpoint
+@router.post("/reservations/{wa_id}/modify_id")
+async def api_modify_id(wa_id: str, payload: dict = Body(...)):
+    resp = modify_id(
+        payload.get("old_wa_id", wa_id),
+        payload.get("new_wa_id"),
+        ar=payload.get("ar", False)
+    )
+    return JSONResponse(content=resp)

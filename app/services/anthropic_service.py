@@ -106,7 +106,7 @@ tools = [
                 },
                 "days_forward": {
                     "type": "integer",
-                    "description": "Number of days to look forward for availability, must be a non-negative integer. defaults to 7."
+                    "description": "Number of days to look forward for availability, must be a non-negative integer. defaults to 3."
                 },
                 "days_backward": {
                     "type": "integer",

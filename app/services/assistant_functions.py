@@ -10,6 +10,9 @@ from app.utils import (
 )
 from hijri_converter import convert
 import sqlite3, time
+from app.decorators.metrics_decorators import (
+    instrument_reservation, instrument_cancellation, instrument_modification
+)
 # Use configured timezone
 TIMEZONE = config.get("TIMEZONE", "Asia/Riyadh")
 
@@ -143,6 +146,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
             message = "حدث خطأ في النظام"
         return format_response(False, message=get_message("system_error_try_later", ar))
 
+@instrument_modification
 def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, max_reservations=5, approximate=False, hijri=False, ar=False):
     """
     Modify the reservation for an existing customer.
@@ -405,6 +409,7 @@ def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
         logging.error(f"Function call get_customer_reservations failed, error: {e}")
         return format_response(False, message="System error occurred. Ask user to contact the secretary to reserve.")
 
+@instrument_reservation
 def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_type, hijri=False, max_reservations=5, ar=False):
     """
     Reserve a time slot for a customer.
@@ -543,6 +548,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         logging.error(f"Function call reserve_time_slot failed, error: {e}")
         return result
 
+@instrument_cancellation
 def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     """
     Cancel a reservation or all reservations for a customer.
@@ -750,7 +756,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         logging.error(f"Function call get_available_time_slots failed, error: {e}")
         return format_response(False, message=f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve.")
 
-def search_available_appointments(start_date=None, time_slot=None, days_forward=7, days_backward=0, max_reservations=5, hijri=False):
+def search_available_appointments(start_date=None, time_slot=None, days_forward=3, days_backward=0, max_reservations=5, hijri=False):
     """
     Search for available appointment slots across a range of dates.
     
@@ -759,7 +765,7 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
     
     1. With time_slot specified: Finds the closest available time to the requested time
        on each date in the range.
-    2. Without time_slot specified: Returns all available time slots for each date in the default range (7 days forward and 0 days backward).
+    2. Without time_slot specified: Returns all available time slots for each date in the default range (3 days forward and 0 days backward).
     
     The function handles vacation periods, past dates, and checks reservation counts against
     max_reservations. It can work with both Hijri and Gregorian calendars.

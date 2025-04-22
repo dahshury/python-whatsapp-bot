@@ -1,0 +1,34 @@
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Ensure the app directory is on Python's module search path
+ENV PYTHONPATH=/app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy Python package meta files and install dependencies
+COPY requirements-frontend.in ./
+
+# Add requests explicitly for HTTP client
+RUN echo "requests>=2.31.0" >> requirements-frontend.in
+
+RUN pip install --upgrade pip pip-tools \
+    && pip-compile --output-file requirements-frontend.txt requirements-frontend.in \
+    && pip install -r requirements-frontend.txt
+
+# Copy only the necessary frontend files
+COPY app/frontend/ app/frontend/
+COPY app/config.py app/config.py
+COPY users.yaml ./
+COPY .streamlit/ .streamlit/
+
+# Expose Streamlit default port
+EXPOSE 8501
+
+# Run the Streamlit dashboard
+CMD ["streamlit", "run", "app/frontend/dashboard.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"] 

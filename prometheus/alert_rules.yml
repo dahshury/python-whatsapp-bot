@@ -1,0 +1,56 @@
+groups:
+- name: assistant_alerts
+  rules:
+    # Alert whenever the assistant returns a 5xx HTTP error (function exception)
+    - alert: AssistantFunctionException
+      expr: |
+        increase(http_requests_total{http_status=~"5.."}[5m]) > 0
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Assistant returned a 5xx error"
+        description: |
+          The assistant returned HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}.
+
+    # Alert whenever a retry occurs in the safety decorator
+    - alert: AssistantRetryOccurred
+      expr: |
+        increase(api_retry_attempts_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: info
+      annotations:
+        summary: "Retry occurred in assistant safety decorator"
+        description: |
+          A retry was attempted in the assistant's retry decorator with exception type {{ $labels.exception_type }}.
+
+    # Alert on any handled reservation failure
+    - alert: ReservationFailure
+      expr: increase(reservations_failed_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Reservation operation failed"
+        description: "A reservation attempt failed in the service."
+
+    # Alert on any handled cancellation failure
+    - alert: CancellationFailure
+      expr: increase(reservations_cancellation_failed_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Cancellation operation failed"
+        description: "A cancellation attempt failed in the service."
+
+    # Alert on any handled modification failure
+    - alert: ModificationFailure
+      expr: increase(reservations_modification_failed_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Modification operation failed"
+        description: "A reservation modification attempt failed in the service." 

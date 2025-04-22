@@ -2,10 +2,9 @@ import datetime
 from zoneinfo import ZoneInfo
 
 import streamlit as st
-
-from app.frontend import convert_time_to_sortable
-from app.utils import send_whatsapp_message, append_message
-from app.config import config
+import streamlit_antd_components as sac
+from . import convert_time_to_sortable
+from .whatsapp_client import send_whatsapp_message, append_message
 
 @st.fragment
 def render_conversation(conversations, is_gregorian, reservations):
@@ -123,17 +122,47 @@ def render_conversation(conversations, is_gregorian, reservations):
         if prev_btn and len(options) > 0:
             new_index = (index - 1) % len(options)
             st.session_state.selected_event_id = options[new_index].split(" - ")[0].strip()
-            # st.rerun(scope="fragment")
+            st.rerun(scope="fragment")
 
         if next_btn and len(options) > 0:
             new_index = (index + 1) % len(options)
             st.session_state.selected_event_id = options[new_index].split(" - ")[0].strip()
-            # st.rerun(scope="fragment")
+            st.rerun(scope="fragment")
 
         # Handle selectbox changes
         if st.session_state.selected_event_id != selected_event_id.split("-")[0].strip():
             st.session_state.selected_event_id = selected_event_id.split("-")[0].strip()
-            # st.rerun(scope="fragment")
+            st.rerun(scope="fragment")
+        
+        # Add data editor for selected conversation person only
+        # Save old date/time selection
+        old_start_date = st.session_state.get('selected_start_date')
+        old_end_date = st.session_state.get('selected_end_date')
+        old_start_time = st.session_state.get('selected_start_time')
+        old_end_time = st.session_state.get('selected_end_time')
+        # Determine a safe date for this person's reservations
+        person_id = st.session_state.selected_event_id
+        if person_id in reservations and reservations[person_id]:
+            person_date = reservations[person_id][0].get('date') or datetime.date.today().isoformat()
+        else:
+            person_date = datetime.date.today().isoformat()
+        st.session_state.selected_start_date = person_date
+        st.session_state.selected_end_date = None
+        st.session_state.selected_start_time = None
+        st.session_state.selected_end_time = None
+        # Set filter and render data view
+        st.session_state['selected_filter_id'] = person_id
+        prev_active_view = st.session_state.active_view
+        st.session_state.active_view = "data"
+        from .data_view import render_view
+        render_view(is_gregorian, show_title=False)
+        # Restore state
+        st.session_state.active_view = prev_active_view
+        st.session_state.pop('selected_filter_id', None)
+        st.session_state.selected_start_date = old_start_date
+        st.session_state.selected_end_date = old_end_date
+        st.session_state.selected_start_time = old_start_time
+        st.session_state.selected_end_time = old_end_time
         
         conversation = conversations[st.session_state.selected_event_id.split(" - ")[0] if " - " in selected_event_id else selected_event_id]
         if conversation and isinstance(conversation, list) and conversation[0].get("role"):
@@ -141,7 +170,7 @@ def render_conversation(conversations, is_gregorian, reservations):
             sorted_conversation = sorted(conversation, 
                                          key=lambda x: (x.get("date", ""), 
                                                        convert_time_to_sortable(x.get("time", "00:00:00"))))
-            
+            sac.divider(label='Conversation', icon='chat-dots-fill', align='center', color='gray')
             for msg in sorted_conversation:
                 role = msg.get("role")
                 message = msg.get("message")
@@ -180,6 +209,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                     st.markdown(tooltip_html, unsafe_allow_html=True)
             
             # Determine if chat input should be disabled due to 24h lockout
+            from app.config import config
             tz_str = config.get("TIMEZONE", "UTC")
             tz = ZoneInfo(tz_str)
             now = datetime.datetime.now(tz)

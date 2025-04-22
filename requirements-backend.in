@@ -1,0 +1,23 @@
+# Backend requirements
+fastapi>=0.104.1
+uvicorn>=0.23.2
+python-dotenv>=1.0.0
+httpx>=0.25.0
+pydantic>=2.4.2
+prometheus-client>=0.17.1
+psutil>=5.9.6
+APScheduler>=3.10.4
+hijri_converter>=2.3.1
+requests>=2.31.0
+pyyaml>=6.0.1
+python-multipart>=0.0.6
+sqlalchemy>=2.0.23  # If you're using SQLAlchemy
+anthropic>=0.8.0  # If you need Claude API
+
+# Additional requirements
+openai==1.61.1
+aiohttp==3.11.12
+google-genai==1.10.0
+phonenumbers==8.13.55
+tenacity==9.0.0
+python-dateutil==2.8.2 

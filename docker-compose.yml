@@ -1,17 +1,62 @@
-version: '3.8'
+# Local docker-compose configuration
 
 services:
-  app:
-    build: .
-    container_name: reservation_app
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: reservation_backend
+    env_file:
+      - .env
     ports:
       - '8000:8000'
     depends_on:
       - prometheus
     environment:
-      - ENV=production
+      - ENV=${ENVIRONMENT:-development}
+      - BACKEND_URL=http://backend:8000
+    volumes:
+      - ${MOUNT_BACKEND:-./app:/app/app}
+      - ./run.py:/app/run.py
+      - ./requirements-backend.in:/app/requirements-backend.in
+      - db_data:/app/data
+      - ./.env:/app/.env
+      - ./scripts:/app/scripts
+      - ./backups:/app/backups
     restart: on-failure
-
+    command: >
+      sh -c "mkdir -p /app/data &&
+             if [ -f /app/data/threads_db.sqlite ]; then
+               echo 'Database already exists in data volume'
+             elif [ -f /app/threads_db.sqlite ]; then
+               echo 'Copying database from project root to volume...'
+               cp /app/threads_db.sqlite /app/data/
+             elif [ -f threads_db.sqlite ]; then
+               echo 'Copying database from working directory to volume...'
+               cp threads_db.sqlite /app/data/
+             else
+               echo 'WARNING: No database found in any location!'
+             fi &&
+             uvicorn run:app --host 0.0.0.0 --port 8000"
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: reservation_frontend
+    env_file:
+      - .env
+    ports:
+      - '8501:8501'
+    depends_on:
+      - backend
+    environment:
+      - ENV=${ENVIRONMENT:-development}
+    volumes:
+      - ${MOUNT_FRONTEND:-./app/frontend:/app/app/frontend}
+      - ./.env:/app/.env
+      - ./users.yaml:/app/users.yaml
+      - ./.streamlit:/app/.streamlit
+    restart: on-failure
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -23,19 +68,8 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
     restart: on-failure
 
-  grafana:
-    image: grafana/grafana:latest
-    container_name: grafana
-    depends_on:
-      - prometheus
-    ports:
-      - '3000:3000'
-    volumes:
-      - grafana-storage:/var/lib/grafana
-    restart: on-failure
-
   alertmanager:
-    image: prom/alertmanager:latest
+    image: prom/alertmanager:v0.28.0
     container_name: alertmanager
     volumes:
       - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
@@ -45,5 +79,19 @@ services:
       - '9093:9093'
     restart: on-failure
 
+
+  # Alertmanager Discord adapter: formats alerts into rich embeds
+  discord-adapter:
+    image: benjojo/alertmanager-discord:latest
+    container_name: alertmanager_discord
+    env_file:
+      - .env
+    environment:
+      - LISTEN_ADDRESS=0.0.0.0:9094
+    ports:
+      - '9094:9094'
+    restart: on-failure
+
 volumes:
-  grafana-storage: 
+  db_data:
+    # Named volume for database persistence
