@@ -44,13 +44,17 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Create required directories with proper permissions
+            # Create base directory if it doesn't exist
             mkdir -p /home/ubuntu/python-whatsapp-bot
+            
+            # Remove existing directories that might have permission issues
+            sudo rm -rf /home/ubuntu/python-whatsapp-bot/prometheus
+            
+            # Create fresh directories with proper permissions
             mkdir -p /home/ubuntu/python-whatsapp-bot/prometheus
             
-            # Ensure proper ownership and permissions
-            chown -R ubuntu:ubuntu /home/ubuntu/python-whatsapp-bot
-            chmod -R 755 /home/ubuntu/python-whatsapp-bot
+            # Ensure proper ownership (use sudo)
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/python-whatsapp-bot
 
       - name: Copy deployment files to EC2
         uses: appleboy/scp-action@master
@@ -80,9 +84,11 @@ jobs:
               # Move to project directory
               cd /home/ubuntu/python-whatsapp-bot
 
-              # Ensure prometheus directory exists with proper permissions
-              mkdir -p prometheus
-              chmod -R 755 prometheus
+              # Fix permissions if needed (use sudo)
+              if [ ! -w prometheus ]; then
+                echo "Fixing prometheus directory permissions..."
+                sudo chown -R ubuntu:ubuntu prometheus
+              fi
 
               # Warn if .env doesn't exist
               if [ ! -f .env ]; then
