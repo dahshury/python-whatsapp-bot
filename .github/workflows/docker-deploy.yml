@@ -78,8 +78,8 @@ jobs:
               docker compose -f docker-compose.prod.yml down
               docker compose -f docker-compose.prod.yml up -d
 
-              # Clean up unused images
-              docker system prune -f
+              # Clean up unused images and build cache
+              docker system prune -af
 
               echo "Deployment succeeded"
               exit 0

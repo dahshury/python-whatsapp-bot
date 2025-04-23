@@ -7,14 +7,15 @@ import time
 from fastapi import Request, Response
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
+# Instrumentation: Prometheus metrics (defined at module level)
+REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'http_status'])
+REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency', ['method', 'endpoint'])
+
 def create_app():
     configure_logging()
     app = FastAPI()
 
-    # Instrumentation: Prometheus metrics
-    REQUEST_COUNT = Counter('http_requests_total', 'Total HTTP requests', ['method', 'endpoint', 'http_status'])
-    REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request latency', ['method', 'endpoint'])
-
+    # Middleware uses the globally defined metrics
     @app.middleware("http")
     async def metrics_middleware(request: Request, call_next):
         start_time = time.time()
