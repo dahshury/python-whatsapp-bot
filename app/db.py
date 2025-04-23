@@ -20,19 +20,19 @@ def get_connection():
     return conn
 
 def initialize_db():
-    """Initialize the SQLite database and create necessary tables if they don't exist."""
+    """Initialize the SQLite database and create necessary tables and indexes if they don't exist."""
     try:
         conn = get_connection()
         cursor = conn.cursor()
         # Table for threads (each WhatsApp ID has one thread record)
-        cursor.execute('''
+        cursor.execute("""
         CREATE TABLE IF NOT EXISTS threads (
             wa_id TEXT PRIMARY KEY,
             thread_id TEXT
         )
-        ''')
+        """)
         # Table for conversation messages
-        cursor.execute('''
+        cursor.execute("""
         CREATE TABLE IF NOT EXISTS conversation (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             wa_id TEXT,
@@ -42,9 +42,9 @@ def initialize_db():
             time TEXT,
             FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
         )
-        ''')
+        """)
         # Table for reservations
-        cursor.execute('''
+        cursor.execute("""
         CREATE TABLE IF NOT EXISTS reservations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             wa_id TEXT,
@@ -54,7 +54,7 @@ def initialize_db():
             type INTEGER CHECK(type IN (0, 1)),
             FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
         )
-        ''')
+        """)
         # Table for monitoring cancelled reservations
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS cancelled_reservations (
@@ -68,9 +68,19 @@ def initialize_db():
             FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
             )
         """)
+        
+        # Create Indexes if they don't exist
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_wa_id ON reservations(wa_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_date_time ON reservations(date, time_slot);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_cancelled_reservations_wa_id ON cancelled_reservations(wa_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_cancelled_reservations_date_time ON cancelled_reservations(date, time_slot);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_wa_id ON conversation(wa_id);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_wa_id_date_time ON conversation(wa_id, date, time);")
+        # Note: idx_threads_wa_id is not needed as wa_id is PRIMARY KEY in threads table.
+        
         conn.commit()
     except Exception as e:
-        logging.error(f"Error creating database, {e}")
+        logging.error(f"Error creating database tables or indexes, {e}")
     finally:
         try:
             conn.close()

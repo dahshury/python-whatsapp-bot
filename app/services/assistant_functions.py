@@ -14,7 +14,7 @@ from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
 # Use configured timezone
-TIMEZONE = config.get("TIMEZONE", "Asia/Riyadh")
+TIMEZONE = config.get("TIMEZONE", "UTC")
 
 def send_business_location(wa_id):
     """
@@ -47,7 +47,7 @@ def send_business_location(wa_id):
 
 def get_current_datetime():
     """
-    Get the current date and time in both Hijri and Gregorian calendars with timezone set to Asia/Riyadh.
+    Get the current date and time in both Hijri and Gregorian calendars with timezone set to TIMEZONE.
     
     Returns:
         dict: A dictionary containing:
@@ -85,7 +85,8 @@ def get_current_datetime():
         return format_response(True, data=data)
     except Exception as e:
         logging.error(f"Function call get_current_datetime failed, error: {e}")
-        return format_response(False, message=get_message("system_error_contact_secretary"))
+        # Standard system error
+        return format_response(False, message=get_message("system_error_generic", error=str(e)))
     
 def modify_id(old_wa_id, new_wa_id, ar=False):
     """
@@ -175,7 +176,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             return format_response(False, message=get_message("no_new_details", ar))
         
         # Get current date/time in Saudi Arabia timezone
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
         
         # Retrieve and unpack upcoming reservations
         resp = get_customer_reservations(wa_id)
@@ -217,43 +218,38 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         parsed_date_str = pd_normalized
         parsed_time_str = pt_normalized
         
-        # Get available time slots and validate the selected time
-        if new_time_slot:
-            # Convert back to 12-hour format for display and validation with available slots
-            display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
-            
-            # Retrieve and unpack available slots
-            resp_slots = get_available_time_slots(parsed_date_str, max_reservations, hijri=False)
-            if not resp_slots.get("success", False):
-                return resp_slots
-            available_slots = resp_slots.get("data", [])
-            
-            # Convert the list of available slots to a set for faster lookups
-            available_slots_set = set(available_slots)
-            
-            if display_time_slot not in available_slots_set:
-                if approximate:
-                    # Find nearest slot by absolute clock-time difference
-                    target_24h = normalize_time_format(display_time_slot, to_24h=True)
-                    th, tm = map(int, target_24h.split(':'))
-                    target_minutes = th * 60 + tm
-                    best_slot, best_diff = None, None
-                    for slot in available_slots:
-                        slot_24h = normalize_time_format(slot, to_24h=True)
-                        h, m = map(int, slot_24h.split(':'))
-                        diff = abs(h * 60 + m - target_minutes)
-                        if best_diff is None or diff < best_diff:
-                            best_diff, best_slot = diff, slot
-                    if best_slot is None:
-                        message = "لم يتم العثور على موعد متاح للتقريب." if ar else "No available time slot found for approximation."
-                        return format_response(False, message=message)
-                    parsed_time_str = normalize_time_format(best_slot, to_24h=True)
-                else:
-                    message = f"Reservation modification failed. The time slot is not available. Available slots: {available_slots}"
-                    if ar:
-                        message = f" {available_slots}  فشل تعديل الحجز. الوقت الذي تم اختياره ليس متاحًا. الأوقات المتاحة:"
-                    result = {"success": False, "message": message}
-                    return result
+        # Retrieve and unpack available slots
+        resp_slots = get_available_time_slots(parsed_date_str, max_reservations, hijri=False)
+        if not resp_slots.get("success", False):
+            return resp_slots
+        available_slots = resp_slots.get("data", [])
+        
+        # Build a set of available slots in 24-hour format for robust comparison
+        available_slots_24h = { normalize_time_format(slot, to_24h=True) for slot in available_slots }
+        
+        # Check if the requested time (parsed_time_str) in 24-hour format is available
+        if parsed_time_str not in available_slots_24h:
+            if approximate:
+                # Find nearest slot by absolute clock-time difference
+                target_24h = parsed_time_str
+                th, tm = map(int, target_24h.split(':'))
+                target_minutes = th * 60 + tm
+                best_slot, best_diff = None, None
+                for slot in available_slots:
+                    slot_24h = normalize_time_format(slot, to_24h=True)
+                    h, m = map(int, slot_24h.split(':'))
+                    diff = abs(h * 60 + m - target_minutes)
+                    if best_diff is None or diff < best_diff:
+                        best_diff, best_slot = diff, slot
+                if best_slot is None:
+                    return format_response(False, message=get_message("no_slots_available_approx", ar))
+                parsed_time_str = normalize_time_format(best_slot, to_24h=True)
+            else:
+                # Format failure message using i18n
+                display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
+                slots_str = ", ".join(available_slots)
+                msg = get_message("reservation_failed_slot", ar, slot=display_time_slot, slots=slots_str)
+                return format_response(False, message=msg)
         
         # Build update query with properly processed values
         update_fields = []
@@ -283,12 +279,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             
         # If no changes to make, return early
         if not update_values:
-            if ar:
-                message = "لم يتم إجراء أي تغييرات كونه لم يتم تقديم تفاصيل جديدة."
-            else:
-                message = "No changes were made as no new details were provided."
-            result = {"success": True, "message": message}
-            return result
+            return format_response(True, message=get_message("no_changes_made", ar))
             
         # Update reservation using safe DB handling
         conn = get_connection()
@@ -303,9 +294,6 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             )
             if cursor.fetchone()[0] >= max_reservations:
                 conn.rollback()
-                msg = "This time slot is fully booked. Please choose another."
-                if ar:
-                    msg = "هذا الوقت محجوز بالكامل. يرجى اختيار وقت آخر."
                 return format_response(False, message=get_message("slot_fully_booked", ar))
 
             # Only update future reservations
@@ -322,28 +310,26 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         return format_response(True, message=get_message("reservation_modified", ar))
 
     except Exception as e:
-        message = f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve."
-        if ar:
-            message = "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."
-        result = format_response(False, message=message)
         logging.error(f"Function call modify_reservation failed, error: {e}")
-        return result
+        return format_response(False, message=get_message("system_error_contact_secretary", ar))
 
 def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
     """
     Get the list of all reservations for the given WhatsApp ID.
-    
+
     This function retrieves all reservations for a customer, marking each as future or past.
-    A reservation is considered "future" if its date is after the current date,
-    or if it's on the current date but its time slot is more than slot_duration hours from now.
-    
+    A reservation is considered "future" if the current time is before the end of its
+    time slot (calculated as the reservation's start time plus the slot_duration).
+
     Parameters:
         wa_id (str): WhatsApp ID of the customer to retrieve reservations for
-        slot_duration (int, optional): Number of hours before a reservation to consider it in the future.
+        slot_duration (int, optional): Duration of the reservation slot in hours.
+                                       A reservation is considered "future" if the current time
+                                       is before the end of its time slot (start time + slot_duration).
                                        Defaults to 2 hours.
         include_past (bool, optional): If True, includes past reservations in the result.
                                        If False, only returns future reservations. Defaults to False.
-        
+
     Returns:
         list: List of reservation dictionaries, each containing:
             - date (str): Reservation date in YYYY-MM-DD format
@@ -351,12 +337,12 @@ def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
             - customer_name (str): Name of the customer
             - type (int): Reservation type (0 for Check-Up, 1 for Follow-Up)
             - is_future (bool): Flag indicating if the reservation is in the future
-            
+
         On error or invalid WhatsApp ID:
             dict: Contains error information with:
                 - success (bool): False
                 - message (str): Error message
-    
+
     Raises:
         Exception: Catches and logs any exceptions, returning a formatted error message
     """
@@ -364,8 +350,7 @@ def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
     if is_valid_wa_id != True:
         return is_valid_wa_id
     try:
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
-        current_date = now.strftime("%Y-%m-%d")
+        now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
         conn = get_connection()
         cursor = conn.cursor()
         try:
@@ -376,38 +361,33 @@ def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
             rows = cursor.fetchall()
         finally:
             conn.close()
-        
+
         reservation_list = []
         for row in rows:
             row_dict = dict(row)
-            
-            # Check if the reservation is in the future
-            if row_dict["date"] > current_date:
-                # Future date
-                row_dict["is_future"] = True
-            elif row_dict["date"] == current_date:
-                # Same date, check time
-                # Convert time_slot to datetime for comparison
-                time_slot_24h = normalize_time_format(row_dict["time_slot"], to_24h=True)
-                slot_time = datetime.datetime.strptime(time_slot_24h, "%H:%M").time()
-                slot_datetime = datetime.datetime.combine(now.date(), slot_time, tzinfo=ZoneInfo("Asia/Riyadh"))
-                
-                # Reservation is in the future if it's more than slot_duration hours from now
-                time_diff = (slot_datetime - now).total_seconds() / 3600  # difference in hours
-                row_dict["is_future"] = time_diff > slot_duration
-            else:
-                # Past date
-                row_dict["is_future"] = False
-                
-            # Include past reservations if the flag is set
+
+            # Parse reservation date and time
+            reservation_date_str = row_dict["date"]
+            time_slot_24h = normalize_time_format(row_dict["time_slot"], to_24h=True)
+            slot_time = datetime.datetime.strptime(time_slot_24h, "%H:%M").time()
+            reservation_date = datetime.datetime.strptime(reservation_date_str, "%Y-%m-%d").date()
+            slot_start_datetime = datetime.datetime.combine(reservation_date, slot_time, tzinfo=ZoneInfo(TIMEZONE))
+
+            # Calculate the end time of the slot
+            slot_end_datetime = slot_start_datetime + datetime.timedelta(hours=slot_duration)
+
+            # Check if the current time is before the end of the slot
+            row_dict["is_future"] = now < slot_end_datetime
+
+            # Include past reservations if the flag is set or if it's a future reservation
             if include_past or row_dict["is_future"]:
                 reservation_list.append(row_dict)
-            
+
         # Standardize success response returning list of reservations
         return format_response(True, data=reservation_list)
     except Exception as e:
         logging.error(f"Function call get_customer_reservations failed, error: {e}")
-        return format_response(False, message="System error occurred. Ask user to contact the secretary to reserve.")
+        return format_response(False, message=get_message("system_error_contact_secretary"))
 
 @instrument_reservation
 def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_type, hijri=False, max_reservations=5, ar=False):
@@ -481,12 +461,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         available_slots = resp_slots.get("data", [])
 
         if display_time_slot not in available_slots:
-            if ar:
-                message = f"فشل الحجز. الوقت الذي تم اختياره ({display_time_slot}) غير متاح. الأوقات المتاحة: {', '.join(available_slots)}"
-            else:
-                message = f"Reservation failed. The selected time slot ({display_time_slot}) is not available. Available slots: {', '.join(available_slots)}"
-            result = {"success": False, "message": message}
-            return result
+            return format_response(False, message=get_message("reservation_failed_slot", ar, slot=display_time_slot, slots=', '.join(available_slots)))
 
         # Retrieve and unpack existing reservations
         resp_exist = get_customer_reservations(wa_id)
@@ -541,9 +516,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             conn.close()
 
     except Exception as e:
-        message = f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve."
-        if ar:
-            message = "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."
+        message = get_message("system_error_contact_secretary", ar)
         result = format_response(False, message=message)
         logging.error(f"Function call reserve_time_slot failed, error: {e}")
         return result
@@ -686,7 +659,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
     """
     try:
         # Get current date/time in Saudi Arabia timezone
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
         
         # Process date - convert from Hijri if needed
         try:
@@ -825,20 +798,18 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
         # Initialize variables for time slot comparison
         requested_time = None
         requested_minutes = None
-        display_time_slot = None
         
         # Parse the requested time slot if provided
         if time_slot is not None:
             parsed_time_str = normalize_time_format(time_slot, to_24h=True)
             requested_time = datetime.datetime.strptime(parsed_time_str, "%H:%M")
             requested_minutes = requested_time.hour * 60 + requested_time.minute
-            display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
         
         available_dates = []
         date_slots_map = {}  # For grouping slots by date when no time_slot is provided
         
-        # Get current date/time in Asia/Riyadh timezone
-        today = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        # Get current date/time in timezone
+        today = datetime.datetime.now(tz=TIMEZONE)
         
         # Use provided start_date if available, otherwise use today
         if start_date:
@@ -857,8 +828,8 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
             else:
                 raise ValueError("start_date must be a string (YYYY-MM-DD) or datetime.date object")
             
-            # Create a datetime object at the start of the day in Riyadh timezone
-            today = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=ZoneInfo("Asia/Riyadh"))
+            # Create a datetime object at the start of the day in TIMEZONE
+            today = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=ZoneInfo(TIMEZONE))
         
         now = today.date()
         conn = get_connection()
@@ -973,7 +944,6 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
                 date_entry = {
                     "date": display_date_str,
                     "time_slot": closest_slot_12h,  # Use 12-hour format for display
-                    "time_slot_24h": closest_slot_24h,  # Include 24-hour format for reference
                     "is_exact": is_exact
                 }
                 
@@ -993,8 +963,9 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
         return format_response(True, data=available_dates)
     
     except ValueError as ve:
-        result = {"success": False, "message": f"Invalid format: {str(ve)}"}
-        return result
+        # Invalid input format error
+        return format_response(False, message=get_message("invalid_date_format", error=str(ve)))
     except Exception as e:
         logging.error(f"Function call search_available_appointments failed, error: {e}")
-        return format_response(False, message=f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve.")
+        # Generic system error
+        return format_response(False, message=get_message("system_error_generic", error=str(e)))

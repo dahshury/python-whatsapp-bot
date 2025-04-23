@@ -19,7 +19,7 @@ services:
       - ${MOUNT_BACKEND:-./app:/app/app}
       - ./run.py:/app/run.py
       - ./requirements-backend.in:/app/requirements-backend.in
-      - db_data:/app/data
+      - ./threads_db.sqlite:/app/data/threads_db.sqlite
       - ./.env:/app/.env
       - ./scripts:/app/scripts
       - ./backups:/app/backups
@@ -91,7 +91,3 @@ services:
     ports:
       - '9094:9094'
     restart: on-failure
-
-volumes:
-  db_data:
-    # Named volume for database persistence

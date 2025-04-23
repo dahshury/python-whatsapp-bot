@@ -9,15 +9,30 @@ import streamlit_antd_components as sac
 from streamlit_calendar import calendar
 
 from . import get_ramadan_dates, is_ramadan, subtract_ramadan_from_normal
-from .whatsapp_client import get_all_reservations, get_all_conversations, parse_date, parse_time, modify_reservation
+from . import format_date_for_display, get_event_time_range, update_date_time_selection
+from .whatsapp_client import get_all_reservations, get_all_conversations, parse_date, parse_time, modify_reservation, get_message, find_nearest_time_slot
 from .data_view import render_view
 
+def reset_calendar(success, new_start_date):
+    time.sleep(3 if success else 5)
+    st.session_state.selected_start_date = str(new_start_date)
+    st.session_state.selected_event_id = None
+    st.session_state.selected_end_time = None
+    # Force a rebuild of calendar events on the next render
+    st.session_state.pop('calendar_events_hash', None)
+    st.rerun()
+    
 @st.fragment
 def render_cal(is_gregorian, free_roam):
     today = datetime.date.today()
     try:
         # Get all reservations at once with future=False to include both future and past
-        all_reservations = get_all_reservations(future=False, include_cancelled=free_roam)
+        res_response = get_all_reservations(future=False, include_cancelled=free_roam)
+        if not res_response.get("success", False):
+            error_msg = res_response.get("message") or get_message("system_error_try_later", ar=not is_gregorian)
+            st.error(error_msg)
+            st.stop()
+        all_reservations = res_response["data"] # Use data from the standardized response
         
         # Split into active and cancelled reservations
         st.session_state.reservations = {}
@@ -51,9 +66,15 @@ def render_cal(is_gregorian, free_roam):
         # Store all reservations (both active and cancelled) for name lookups
         st.session_state.all_customer_data = all_reservations
         
-        st.session_state.conversations = get_all_conversations(recent='month')
+        conv_response = get_all_conversations(recent='month')
+        if not conv_response.get("success", False):
+            error_msg = conv_response.get("message") or get_message("system_error_try_later", ar=not is_gregorian)
+            st.error(error_msg)
+            st.stop()
+        st.session_state.conversations = conv_response["data"] # Use data from the standardized response
     except Exception as e:
-        st.error(f"Data loading failed, {e}" if is_gregorian else f"فشل تحميل قاعدة البيانات, {e}")
+        msg = get_message("system_error_generic", ar=not is_gregorian, error=str(e))
+        st.error(msg)
         st.stop()
     
     # Only clear and rebuild the calendar if absolutely necessary
@@ -73,10 +94,10 @@ def render_cal(is_gregorian, free_roam):
     
     with st.session_state.calendar_container.container():
         mode_names = {
-            "timeGridWeek": "شبكة الوقت" if not is_gregorian else "Week Grid",
-            "timelineMonth": "الجدول الزمني" if not is_gregorian else "Timeline",
-            "listMonth": "القائمة" if not is_gregorian else "List",
-            "multiMonthYear": "عدة أشهر" if not is_gregorian else "Multi-Month",
+            "timeGridWeek": get_message("calendar_week_grid", ar=not is_gregorian),
+            "timelineMonth": get_message("calendar_timeline", ar=not is_gregorian),
+            "listMonth": get_message("calendar_list", ar=not is_gregorian),
+            "multiMonthYear": get_message("calendar_multi_month", ar=not is_gregorian),
         }
         sac.divider(label='Calendar', icon='calendar4', align='center', color='gray', key="cal_divider")
         # derive view IDs and current index from session state
@@ -164,7 +185,7 @@ def render_cal(is_gregorian, free_roam):
                         "rendering": "background",
                         "overlap": False,
                         "editable": False,
-                        "title": "إجازة" if not is_gregorian else "Vacation"
+                        "title": get_message("vacation", ar=not is_gregorian)
                     }
                     vacation_events.append(vacation_event)
 
@@ -335,8 +356,8 @@ def render_cal(is_gregorian, free_roam):
                         # Calculate end time
                         end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
                         previous_end_dt = end_dt
-                    except ValueError as e:
-                        st.error(f"Incorrect time format found: {e}")
+                    except Exception:
+                        st.error(get_message("invalid_time", ar=not is_gregorian))
                         st.stop()
                     # Reservation event properties
                     is_past_slot = start_dt < datetime.datetime.now()
@@ -347,7 +368,7 @@ def render_cal(is_gregorian, free_roam):
                         "end": end_dt.isoformat(),
                         "backgroundColor": "#4caf50" if type == 0 else "#3688d8",
                         "borderColor": "#4caf50" if type == 0 else "#3688d8",
-                        "editable": not is_past_slot,
+                        "editable": not is_past_slot or free_roam,  # Allow editing past events in free_roam mode
                         "extendedProps": {
                             "type": type,
                             "cancelled": False
@@ -366,8 +387,8 @@ def render_cal(is_gregorian, free_roam):
                             try:
                                 start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
                                 end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
-                            except ValueError as e:
-                                st.error(f"incorrect time format found, {e}")
+                            except Exception:
+                                st.error(get_message("invalid_time", ar=not is_gregorian))
                                 st.stop()
                                 
                             # Cancelled reservations properties
@@ -414,12 +435,12 @@ def render_cal(is_gregorian, free_roam):
                         try:
                             start_dt = datetime.datetime.strptime(f"{parse_date(date_str)}T{parse_time(time_str, to_24h=True)}", "%Y-%m-%dT%H:%M")
                             end_dt = start_dt + st.session_state.slot_duration_delta / num_reservations_per_slot
-                        except ValueError as e:
-                            st.error(f"incorrect time format found, {e}")
+                        except Exception:
+                            st.error(get_message("invalid_time", ar=not is_gregorian))
                             st.stop()
                             
                         # Create title based on customer name if available
-                        title = f"محادثة: {customer_name if customer_name else id}" if not is_gregorian else f"Conversation: {customer_name if customer_name else id}"
+                        title = get_message("conversation", ar=not is_gregorian, name=customer_name if customer_name else id)
                         
                         event = {
                             "id": id,
@@ -488,18 +509,15 @@ def render_cal(is_gregorian, free_roam):
                 if not free_roam and clicked_date:
                     dt_clicked = pd.to_datetime(clicked_date).to_pydatetime()
                     if dt_clicked.timestamp() < time.time():
-                        st.warning("Cannot select past time slots.")
+                        st.warning(get_message("cannot_select_past", ar=not is_gregorian))
                         return
                 if view_type in ["dayGridMonth", "multiMonthYear"]:
-                    st.session_state.selected_start_date = clicked_date.split("T")[0]
-                    st.session_state.selected_start_time = None
+                    # Only update date without time
+                    update_date_time_selection(clicked_date.split("T")[0])
                 elif view_type in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
-                    parts = clicked_date.split("T")
-                    st.session_state.selected_start_date = parts[0]
-                    st.session_state.selected_start_time = parts[1][:5]
+                    # Update both date and time
+                    update_date_time_selection(clicked_date)
                 st.session_state.active_view = "data"
-                st.session_state.selected_end_date = None
-                st.session_state.selected_end_time = None
                 st.session_state.selected_event_id = None
             render_view(is_gregorian, show_title=True)
 
@@ -507,22 +525,21 @@ def render_cal(is_gregorian, free_roam):
             selected_start = big_cal_response.get("select", {}).get("start", "")
             selected_end = big_cal_response.get("select", {}).get("end", "")
             if selected_start and selected_end:
-                # Skip past-range selection check in free_roam
-                if not free_roam and selected_start:
-                    dt_selected_start = pd.to_datetime(selected_start).to_pydatetime()
-                    if dt_selected_start.timestamp() < time.time():
-                        st.warning("Cannot select past time slots.")
-                        return
-                st.session_state.selected_start_date = selected_start.split("T")[0]
-                st.session_state.selected_end_date = selected_end.split("T")[0]
-                if st.session_state.selected_view_id in ["timeGridWeek", "timeGridDay", "timelineMonth"]:
-                    st.session_state.selected_start_time = selected_start.split("T")[1][:5]
-                    st.session_state.selected_end_time = selected_end.split("T")[1][:5]
-                else:
-                    st.session_state.selected_start_time = None
-                    st.session_state.selected_end_time = None
                 st.session_state.active_view = "data"
                 st.session_state.selected_event_id = None
+                # Skip past-range selection check in free_roam
+                if not free_roam:
+                    dt_selected_start = pd.to_datetime(selected_start).to_pydatetime()
+                    if dt_selected_start.timestamp() < time.time():
+                        st.warning(get_message("cannot_select_past", ar=not is_gregorian))
+                        return
+                        
+                # Update start date/time
+                update_date_time_selection(selected_start, is_range=True)
+                
+                # Update end date/time
+                update_date_time_selection(selected_end, is_range=True, is_end=True)
+                
             render_view(is_gregorian, show_title=True)
 
         elif cb_type == "eventClick":
@@ -538,18 +555,17 @@ def render_cal(is_gregorian, free_roam):
             event = big_cal_response.get("eventChange", {}).get("event", {})
             new_start_date = pd.to_datetime(event['start']).date()
             new_time = pd.to_datetime(event['start']).time()
-            # Format the time properly as a string in HH:MM format
-            formatted_time = new_time.strftime("%H:%M")
+            # Format as 12-hour string for backend and frontend lookup
+            formatted_time = new_time.strftime("%I:%M %p")
+            # Attempt to approximate to nearest available slot via backend endpoint
+            nearest_resp = find_nearest_time_slot(str(new_start_date), formatted_time, ar=not is_gregorian)
+            if nearest_resp.get("success", False) and 'time_slot' in nearest_resp:
+                formatted_time = nearest_resp.get("time_slot")
             ev_type = big_cal_response.get("eventChange", {}).get("event", {}).get("extendedProps").get("type")
-            result = modify_reservation(event['id'], str(new_start_date), formatted_time, str(event['title']), ev_type, approximate=True, ar=True)
+            result = modify_reservation(event['id'], str(new_start_date), formatted_time, str(event['title']), ev_type, approximate=True, ar=not is_gregorian)
             if result.get("success", "") == True:
-                st.toast("Reservation changed." if is_gregorian else "تم تعديل الحجز.")
-                time.sleep(5)
-                st.session_state.selected_start_time = str(new_start_date)
-                st.session_state.selected_event_id = None
-                st.session_state.selected_end_time = None
-                # Force a rebuild of calendar events on the next render
-                st.session_state.pop('calendar_events_hash', None)
-                st.rerun(scope='fragment')
+                st.toast(get_message("reservation_changed", ar=not is_gregorian))
+                reset_calendar(True, new_start_date)
             else:
-                st.warning(result.get("message", "")) 
+                st.error(result.get("message", ""))
+                reset_calendar(False, new_start_date)

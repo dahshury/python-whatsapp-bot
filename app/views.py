@@ -7,8 +7,8 @@ from app.config import config
 from app.decorators.security import verify_signature
 from app.services.anthropic_service import run_claude
 from app.utils.whatsapp_utils import process_whatsapp_message, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
-from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message
-from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id
+from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, find_nearest_time_slot
+from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, get_available_time_slots
 
 router = APIRouter()
 security = HTTPBasic()
@@ -174,6 +174,8 @@ async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
         payload.get("new_time_slot"),
         payload.get("new_name"),
         payload.get("new_type"),
+        max_reservations=payload.get("max_reservations", 5),
+        approximate=payload.get("approximate", False),
         hijri=payload.get("hijri", False),
         ar=payload.get("ar", False)
     )
@@ -188,3 +190,41 @@ async def api_modify_id(wa_id: str, payload: dict = Body(...)):
         ar=payload.get("ar", False)
     )
     return JSONResponse(content=resp)
+
+# Nearest time slot endpoint for front-end approximation
+@router.post("/reservations/nearest")
+async def api_find_nearest_time_slot(payload: dict = Body(...)):
+    """Returns the nearest available time slot for a given date and target slot."""
+    date_str = payload.get("date_str")
+    time_slot = payload.get("time_slot")
+    max_reservations = payload.get("max_reservations", 5)
+    hijri = payload.get("hijri", False)
+    ar = payload.get("ar", False)
+    # Retrieve available slots
+    resp_slots = get_available_time_slots(date_str, max_reservations, hijri=hijri)
+    if not resp_slots.get("success", False):
+        return JSONResponse(content=resp_slots)
+    available_slots = resp_slots.get("data", [])
+    # Find nearest slot
+    nearest = find_nearest_time_slot(time_slot, available_slots)
+    if not nearest:
+        # No approximation found
+        from app.i18n import get_message
+        msg = get_message("system_error_try_later", ar=ar)
+        return JSONResponse(content={"success": False, "message": msg})
+    return JSONResponse(content={"success": True, "time_slot": nearest})
+
+@router.get("/message")
+async def api_get_message(request: Request, key: str = Query(...), ar: bool = Query(False)):
+    """
+    Retrieve a translated message by key via HTTP query parameters.
+    """
+    # Collect any additional formatting args from query params
+    params = dict(request.query_params)
+    # Remove reserved params
+    params.pop("key", None)
+    params.pop("ar", None)
+    # Convert ar to bool
+    from app.i18n import get_message
+    message = get_message(key, ar, **params)
+    return JSONResponse(content={"message": message})

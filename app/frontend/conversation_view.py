@@ -154,8 +154,12 @@ def render_conversation(conversations, is_gregorian, reservations):
         st.session_state['selected_filter_id'] = person_id
         prev_active_view = st.session_state.active_view
         st.session_state.active_view = "data"
-        from .data_view import render_view
-        render_view(is_gregorian, show_title=False)
+        
+        # Container for data editor
+        with st.container(border=True):
+            from .data_view import render_view
+            render_view(is_gregorian, show_title=False)
+        
         # Restore state
         st.session_state.active_view = prev_active_view
         st.session_state.pop('selected_filter_id', None)
@@ -171,91 +175,94 @@ def render_conversation(conversations, is_gregorian, reservations):
                                          key=lambda x: (x.get("date", ""), 
                                                        convert_time_to_sortable(x.get("time", "00:00:00"))))
             sac.divider(label='Conversation', icon='chat-dots-fill', align='center', color='gray')
-            for msg in sorted_conversation:
-                role = msg.get("role")
-                message = msg.get("message")
-                raw_timestamp = msg.get("time", None)
-                msg_date = msg.get("date", "")
-                
-                # Convert timestamp to consistent 12-hour format
-                if raw_timestamp:
-                    try:
-                        # Handle either 24-hour format or already 12-hour format
-                        if len(raw_timestamp.split(":")) == 3 and "AM" not in raw_timestamp.upper() and "PM" not in raw_timestamp.upper():
-                            # 24-hour format with seconds (HH:MM:SS)
-                            time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S")
-                        elif len(raw_timestamp.split(":")) == 2 and "AM" not in raw_timestamp.upper() and "PM" not in raw_timestamp.upper():
-                            # 24-hour format without seconds (HH:MM)
-                            time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M")
-                        else:
-                            # Already in 12-hour format
-                            time_obj = datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
-                        
-                        # Format to 12-hour for display
-                        formatted_timestamp = time_obj.strftime("%I:%M %p")
-                    except Exception as e:
-                        # If parse fails, use as is
-                        formatted_timestamp = raw_timestamp
-                else:
-                    formatted_timestamp = "No timestamp"
-                
-                tooltip_html = f"""
-                <div class="tooltip-container">
-                    <span style="text-decoration: none;">{message}</span>
-                    <div class="tooltip-text">{msg_date} {formatted_timestamp}</div>
-                </div>
-                """
-                with st.chat_message(role):
-                    st.markdown(tooltip_html, unsafe_allow_html=True)
             
-            # Determine if chat input should be disabled due to 24h lockout
-            from app.config import config
-            tz_str = config.get("TIMEZONE", "UTC")
-            tz = ZoneInfo(tz_str)
-            now = datetime.datetime.now(tz)
-            user_msgs = [msg for msg in sorted_conversation if msg.get("role") == "user"]
-            if user_msgs:
-                last_user = user_msgs[-1]
-                try:
-                    last_date = datetime.date.fromisoformat(last_user["date"])
-                    time_str = last_user.get("time", "")
-                    # Parse time in various formats (HHMMSS or HH:MM:SS or HH:MM)
-                    if len(time_str) == 6 and time_str.isdigit():
-                        t = datetime.datetime.strptime(time_str, "%H%M%S").time()
+            # Container for conversation
+            with st.container(border=True):
+                for msg in sorted_conversation:
+                    role = msg.get("role")
+                    message = msg.get("message")
+                    raw_timestamp = msg.get("time", None)
+                    msg_date = msg.get("date", "")
+                    
+                    # Convert timestamp to consistent 12-hour format
+                    if raw_timestamp:
+                        try:
+                            # Handle either 24-hour format or already 12-hour format
+                            if len(raw_timestamp.split(":")) == 3 and "AM" not in raw_timestamp.upper() and "PM" not in raw_timestamp.upper():
+                                # 24-hour format with seconds (HH:MM:SS)
+                                time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M:%S")
+                            elif len(raw_timestamp.split(":")) == 2 and "AM" not in raw_timestamp.upper() and "PM" not in raw_timestamp.upper():
+                                # 24-hour format without seconds (HH:MM)
+                                time_obj = datetime.datetime.strptime(raw_timestamp, "%H:%M")
+                            else:
+                                # Already in 12-hour format
+                                time_obj = datetime.datetime.strptime(raw_timestamp, "%I:%M %p")
+                            
+                            # Format to 12-hour for display
+                            formatted_timestamp = time_obj.strftime("%I:%M %p")
+                        except Exception as e:
+                            # If parse fails, use as is
+                            formatted_timestamp = raw_timestamp
                     else:
-                        parts = time_str.split(":")
-                        if len(parts) == 3:
-                            t = datetime.datetime.strptime(time_str, "%H:%M:%S").time()
-                        elif len(parts) == 2:
-                            t = datetime.datetime.strptime(time_str, "%H:%M").time()
+                        formatted_timestamp = "No timestamp"
+                    
+                    tooltip_html = f"""
+                    <div class="tooltip-container">
+                        <span style="text-decoration: none;">{message}</span>
+                        <div class="tooltip-text">{msg_date} {formatted_timestamp}</div>
+                    </div>
+                    """
+                    with st.chat_message(role):
+                        st.markdown(tooltip_html, unsafe_allow_html=True)
+                
+                # Determine if chat input should be disabled due to 24h lockout
+                from app.config import config
+                tz_str = config.get("TIMEZONE", "UTC")
+                tz = ZoneInfo(tz_str)
+                now = datetime.datetime.now(tz)
+                user_msgs = [msg for msg in sorted_conversation if msg.get("role") == "user"]
+                if user_msgs:
+                    last_user = user_msgs[-1]
+                    try:
+                        last_date = datetime.date.fromisoformat(last_user["date"])
+                        time_str = last_user.get("time", "")
+                        # Parse time in various formats (HHMMSS or HH:MM:SS or HH:MM)
+                        if len(time_str) == 6 and time_str.isdigit():
+                            t = datetime.datetime.strptime(time_str, "%H%M%S").time()
                         else:
-                            raise ValueError("Invalid time format")
-                    last_dt = datetime.datetime(last_date.year, last_date.month, last_date.day, t.hour, t.minute, t.second, tzinfo=tz)
-                    disabled = (now - last_dt).total_seconds() > 86400
-                except:
+                            parts = time_str.split(":")
+                            if len(parts) == 3:
+                                t = datetime.datetime.strptime(time_str, "%H:%M:%S").time()
+                            elif len(parts) == 2:
+                                t = datetime.datetime.strptime(time_str, "%H:%M").time()
+                            else:
+                                raise ValueError("Invalid time format")
+                        last_dt = datetime.datetime(last_date.year, last_date.month, last_date.day, t.hour, t.minute, t.second, tzinfo=tz)
+                        disabled = (now - last_dt).total_seconds() > 86400
+                    except:
+                        disabled = False
+                else:
                     disabled = False
-            else:
-                disabled = False
-            prompt = st.chat_input(
-                "اكتب ردًا..." if not is_gregorian else "Reply...",
-                disabled=disabled,
-                key=f"chat_input_{st.session_state.selected_event_id}",
-            )
+                prompt = st.chat_input(
+                    "اكتب ردًا..." if not is_gregorian else "Reply...",
+                    disabled=disabled,
+                    key=f"chat_input_{st.session_state.selected_event_id}",
+                )
 
-            if prompt:
-                datetime_obj = datetime.datetime.now()
-                curr_date = datetime_obj.date().isoformat()
-                curr_time = datetime_obj.strftime("%H:%M:%S")  # Store in 24-hour format with seconds
-                display_time = datetime_obj.strftime("%I:%M %p")  # For display in UI
-                new_message = {
-                    "role": st.session_state["username"],
-                    "message": prompt,
-                    "time": curr_time,
-                    "date": curr_date,
-                }
-                conversation.append(new_message)
-                send_whatsapp_message(st.session_state.selected_event_id, prompt)
-                append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
-                st.rerun(scope="fragment")
+                if prompt:
+                    datetime_obj = datetime.datetime.now()
+                    curr_date = datetime_obj.date().isoformat()
+                    curr_time = datetime_obj.strftime("%H:%M:%S")  # Store in 24-hour format with seconds
+                    display_time = datetime_obj.strftime("%I:%M %p")  # For display in UI
+                    new_message = {
+                        "role": st.session_state["username"],
+                        "message": prompt,
+                        "time": curr_time,
+                        "date": curr_date,
+                    }
+                    conversation.append(new_message)
+                    send_whatsapp_message(st.session_state.selected_event_id, prompt)
+                    append_message(st.session_state.selected_event_id, st.session_state["username"], prompt, curr_date, curr_time)
+                    st.rerun(scope="fragment")
         else:
             st.warning("لم يتم العثور على بيانات المحادثة لهذا الحدث." if not is_gregorian else "No conversation data found for this event.") 

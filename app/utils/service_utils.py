@@ -12,23 +12,27 @@ from hijri_converter import convert
 
 from app.config import config
 from app.db import get_connection
+from app.i18n import get_message
 
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
 
 # Helper to standardize API responses across services
-def format_response(success: bool, data=None, message: str = None):
+def format_response(success: bool, data=None, message: str = None, status_code: int = None):
     """
     Format a consistent response:
       - success (bool)
       - data (optional payload)
       - message (optional user-facing message)
+      - status_code (optional HTTP status code)
     """
     resp = {"success": success}
     if data is not None:
         resp["data"] = data
     if message is not None:
         resp["message"] = message
+    if status_code is not None:
+        return resp, status_code
     return resp
 
 def fix_unicode_sequence(customer_name):
@@ -63,20 +67,21 @@ def get_tomorrow_reservations():
     Returns:
         list: A list of reservation records for tomorrow.
     """
-    conn = get_connection()
-    cursor = conn.cursor()
-    
-    # Calculate tomorrow's date
-    today = datetime.datetime.now(ZoneInfo("Asia/Riyadh"))
-    tomorrow = today + datetime.timedelta(days=1)
-    tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
-    
-    # Query the database for reservations for tomorrow
-    cursor.execute("SELECT * FROM reservations WHERE date = ?", (tomorrow_date_str,))
-    reservations = cursor.fetchall()
-    
-    conn.close()
-    return reservations
+    try:
+        conn = get_connection()
+        cursor = conn.cursor()
+        # Calculate tomorrow's date
+        today = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
+        tomorrow = today + datetime.timedelta(days=1)
+        tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
+        # Query the database for reservations for tomorrow
+        cursor.execute("SELECT * FROM reservations WHERE date = ?", (tomorrow_date_str,))
+        rows = cursor.fetchall()
+        conn.close()
+        return format_response(True, data=[dict(r) for r in rows])
+    except Exception as e:
+        logging.error(f"get_tomorrow_reservations failed, error: {e}")
+        return format_response(False, message=get_message("system_error_generic", error=str(e)))
 
 def find_nearest_time_slot(target_slot, available_slots):
     """
@@ -96,11 +101,11 @@ def find_nearest_time_slot(target_slot, available_slots):
         return None
 
     # Get current time
-    now = datetime.datetime.now(ZoneInfo("Asia/Riyadh"))
+    now = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
     current_time = datetime.datetime.combine(
         now.date(), 
         datetime.time(now.hour, now.minute),
-        tzinfo=ZoneInfo("Asia/Riyadh")
+        tzinfo=ZoneInfo(config['TIMEZONE'])
     )
 
     best_slot = None
@@ -113,7 +118,7 @@ def find_nearest_time_slot(target_slot, available_slots):
             slot_datetime = datetime.datetime.combine(
                 now.date(), 
                 datetime.time(slot_time.hour, slot_time.minute),
-                tzinfo=ZoneInfo("Asia/Riyadh")
+                tzinfo=ZoneInfo(config['TIMEZONE'])
             )
             
             # Skip slots that are in the past
@@ -217,12 +222,12 @@ def get_all_reservations(future=True, include_cancelled=False):
             
             reservations[user_id].append(reservation)
 
-        return reservations
+        # Return grouped reservations in standardized format
+        return format_response(True, data=reservations)
 
     except Exception as e:
-        logging.error(f"Function call get_all_reservations failed, error: {e}")
-        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
-        return result
+        logging.error(f"get_all_reservations failed, error: {e}")
+        return format_response(False, message=get_message("system_error_contact_secretary"))
 
 def get_all_conversations(wa_id=None, recent=None, limit=0):
     """
@@ -237,7 +242,7 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
         cursor = conn.cursor()
 
         # Determine the date filter based on the 'recent' parameter
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
         if recent == 'year':
             start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
         elif recent == 'month':
@@ -333,12 +338,12 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
                 "time": row['time']
             })
 
-        return conversations
+        # Return grouped conversations in standardized format
+        return format_response(True, data=conversations)
 
     except Exception as e:
-        logging.error(f"Function call get_all_conversations failed, error: {e}")
-        result = {"success": False, "message": "System error occurred. Ask user to contact the secretary to reserve."}
-        return result
+        logging.error(f"get_all_conversations failed, error: {e}")
+        return format_response(False, message=get_message("system_error_contact_secretary"))
     
 def append_message(wa_id, role, message, date_str, time_str):
     """
@@ -388,50 +393,29 @@ def get_lock(wa_id):
 def is_valid_number(phone_number, ar=False):
     """
     Validate if a phone number is a valid WhatsApp number.
-    
-    Args:
-        phone_number (str): The phone number to validate (with or without + prefix)
-        ar (bool): Whether to return error messages in Arabic
-        
-    Returns:
-        True if valid, or dict with error info if invalid
     """
     try:
-        # Ensure we're working with a string
         phone_number = str(phone_number).strip()
-        
-        # Remove any '+' prefix if it exists to ensure consistent format
         if phone_number.startswith('+'):
             phone_number = phone_number[1:]
-            
-        # Basic length check - international numbers should be reasonable length
+        # Basic length check
         if len(phone_number) < 8 or len(phone_number) > 15:
-            message = "Phone number length is invalid (should be between 8-15 digits)."
-            if ar:
-                message = "طول رقم الهاتف غير صالح (يجب أن يكون بين 8-15 رقمًا)."
-            return {"success": False, "message": message}
-            
+            # Phone number length error
+            return format_response(False, message=get_message("phone_length_error", ar=ar))
         # Check using phonenumbers library
         try:
             parsed_number = phonenumbers.parse("+" + phone_number)
             if not phonenumbers.is_valid_number(parsed_number):
-                message = "Invalid phone number format."
-                if ar:
-                    message = "صيغة رقم الهاتف غير صالحة."
-                return {"success": False, "message": message}
+                # Phone number format error
+                return format_response(False, message=get_message("phone_format_error", ar=ar))
         except Exception as e:
-            message = f"Invalid phone number: {str(e)}"
-            if ar:
-                message = "رقم الهاتف غير صالح."
-            return {"success": False, "message": message}
-            
+            # Invalid phone number with exception detail
+            return format_response(False, message=get_message("phone_invalid", ar=ar, error=str(e)))
         return True
     except Exception as e:
         logging.error(f"Phone validation error: {e}")
-        message = "Phone validation error"
-        if ar:
-            message = "خطأ في التحقق من صحة رقم الهاتف"
-        return {"success": False, "message": message}
+        # General phone validation error
+        return format_response(False, message=get_message("phone_validation_error", ar=ar))
 
 def check_if_thread_exists(wa_id):
     conn = get_connection()
@@ -501,7 +485,7 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
     """
     timestamp = int(timestamp)
     dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
-    saudi_timezone = ZoneInfo("Asia/Riyadh")
+    saudi_timezone = ZoneInfo(config['TIMEZONE'])
     dt_saudi = dt_utc.astimezone(saudi_timezone)
     
     if to_hijri:
@@ -748,7 +732,7 @@ def is_vacation_period(date_obj, vacation_dict=None):
         # Check if the date falls within any vacation period
         for start_day, duration in vacation_dict.items():
             try:
-                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo("Asia/Riyadh"))
+                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
                 end_date = start_date + datetime.timedelta(days=duration)
                 if start_date.date() <= date_obj <= end_date.date():
                     vacation_msg = config.get('VACATION_MESSAGE', 'The clinic is closed during this period.')
@@ -789,27 +773,27 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False):
         
     """
     try:
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
         
         # Convert date_str to date_obj if date_str is provided
         if date_str is not None:
             # First validate the date using is_valid_date_time
             is_valid, error_message, parsed_date_str, _ = is_valid_date_time(date_str)
             if not is_valid:
-                return {"success": False, "message": error_message}
+                return format_response(False, message=error_message)
                 
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
         else:
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
             # Ensure the provided date_obj is not in the past
             if date_obj < now.date():
-                return {"success": False, "message": "Cannot get time slots for past dates."}
+                return format_response(False, message=get_message("past_date_error"))
             
         # Check if the date falls within a vacation period
         if check_vacation:
             is_vacation, vacation_message = is_vacation_period(date_obj)
             if is_vacation:
-                return {"success": False, "message": vacation_message or "We are on vacation at this time."}
+                return format_response(False, message=vacation_message)
         
         # Get day of week (0=Monday, 6=Sunday)
         day_of_week = date_obj.weekday()
@@ -845,7 +829,8 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False):
         
     except Exception as e:
         logging.error(f"Error getting time slots: {e}")
-        return {"success": False, "message": f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve."}
+        # System error fallback
+        return format_response(False, message=get_message("system_error_generic", error=str(e)))
 
 def validate_reservation_type(reservation_type, ar=False):
     """
@@ -866,19 +851,11 @@ def validate_reservation_type(reservation_type, ar=False):
         parsed_type = int(reservation_type)
         
         if parsed_type not in (0, 1):
-            if ar:
-                message = "نوع الحجز غير صالح. يجب أن يكون 0 أو 1."
-            else:
-                message = "Invalid reservation type. Must be 0 or 1."
-            return False, {"success": False, "message": message}, None
+            return False, format_response(False, message=get_message("invalid_reservation_type", ar)), None
             
         return True, None, parsed_type
     except (ValueError, TypeError):
-        if ar:
-            message = "نوع الحجز غير صالح. يجب أن يكون 0 أو 1."
-        else:
-            message = "Invalid reservation type. Must be 0 or 1."
-        return False, {"success": False, "message": message}, None
+        return False, format_response(False, message=get_message("invalid_reservation_type", ar)), None
 
 def filter_past_time_slots(time_slots_dict, current_time=None):
     """
@@ -896,7 +873,7 @@ def filter_past_time_slots(time_slots_dict, current_time=None):
     
     # If current_time is not provided, use the current time
     if current_time is None:
-        current_time = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh")).time()
+        current_time = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE'])).time()
     
     # Filter out past time slots
     return {
@@ -927,7 +904,7 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
         date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
         
         # Get current date and time
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
         today = now.date()
         
         # Default value for parsed_time
@@ -935,7 +912,7 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
         
         # Check if the date is in the past
         if date_obj < today:
-            return False, "Cannot schedule in a past date.", parsed_date_str, parsed_time_str
+            return False, get_message("cannot_reserve_past"), parsed_date_str, parsed_time_str
         
         # If time string is provided, check if it's valid for today
         if time_str:
@@ -947,12 +924,12 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
                 current_time = now.time()
                 
                 if time_obj <= current_time:
-                    return False, "Cannot schedule at a time that has already passed.", parsed_date_str, parsed_time_str
+                    return False, get_message("cannot_reserve_past"), parsed_date_str, parsed_time_str
         
         return True, None, parsed_date_str, parsed_time_str
     
     except Exception as e:
-        return False, f"Invalid date or time format: {str(e)}", None, None
+        return False, get_message("invalid_date_format", error=str(e)), None, None
 
 def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
     """
@@ -972,8 +949,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
         try:
             parsed_date = parse_date(date_str, hijri=hijri)
         except Exception as e:
-            msg = "تاريخ غير صالح." if ar else f"Invalid date format: {e}"
-            return {"success": False, "message": msg}
+            return format_response(False, message=get_message("invalid_date", ar))
 
     # Parse time if provided
     parsed_time = None
@@ -981,8 +957,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
         try:
             parsed_time = normalize_time_format(time_slot, to_24h=True)
         except Exception as e:
-            msg = "صيغة الوقت غير صالحة." if ar else f"Invalid time format: {e}"
-            return {"success": False, "message": msg}
+            return format_response(False, message=get_message("invalid_time", ar))
 
     # Perform deletion
     conn = get_connection()
@@ -1007,20 +982,9 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     conn.commit()
     conn.close()
 
-    # Build response message
-    if ar:
-        if parsed_date and parsed_time:
-            msg = "تمت إزالة الحجز." if removed else "حدث خطأ أثناء إزالة الحجز."
-        elif parsed_date:
-            msg = "تمت إزالة الحجوزات في ذلك التاريخ." if removed else "حدث خطأ أثناء إزالة الحجوزات."
-        else:
-            msg = "تمت إزالة جميع الحجوزات." if removed else "حدث خطأ أثناء إزالة الحجوزات."
+    # Standardized response message
+    if removed:
+        key = "reservation_cancelled" if parsed_date and parsed_time else "all_reservations_cancelled"
     else:
-        if parsed_date and parsed_time:
-            msg = "Reservation removed." if removed else "Error occurred while removing the reservation."
-        elif parsed_date:
-            msg = "Reservations on that date removed." if removed else "Error occurred while removing reservations on that date."
-        else:
-            msg = "All reservations removed." if removed else "Error occurred while removing reservations."
-
-    return {"success": True, "message": msg}
+        key = "system_error_contact_secretary"
+    return format_response(removed, message=get_message(key, ar))

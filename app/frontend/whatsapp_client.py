@@ -91,12 +91,13 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     return r.json()
 
 
-def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, hijri=False, ar=False):
+def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, new_type=None, approximate=False, hijri=False, ar=False):
     payload = {
         "new_date": new_date,
         "new_time_slot": new_time_slot,
         "new_name": new_name,
         "new_type": new_type,
+        "approximate": approximate,
         "hijri": hijri,
         "ar": ar,
     }
@@ -110,6 +111,15 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
     r = requests.post(f"{BACKEND_URL}/reservations/{old_wa_id}/modify_id", json=payload)
     r.raise_for_status()
     return r.json()
+
+def get_message(key, ar=False, **kwargs):
+    """Retrieve a translated message by key via backend /message endpoint."""
+    params = {"key": key, "ar": ar}
+    params.update(kwargs)
+    r = requests.get(f"{BACKEND_URL}/message", params=params)
+    r.raise_for_status()
+    data = r.json()
+    return data.get("message", "")
 
 # Date/time helpers for front-end calendar
 
@@ -190,4 +200,15 @@ def parse_time(time_str, to_24h=True):
     except Exception as e:
         # If all parsing attempts fail, return original with warning
         print(f"Warning: Could not parse time '{time_str}': {e}")
-        return time_str 
+        return time_str
+
+def find_nearest_time_slot(date_str, time_slot, ar=False):
+    """Call backend endpoint to get nearest available time slot."""
+    payload = {
+        "date_str": date_str,
+        "time_slot": time_slot,
+        "ar": ar,
+    }
+    r = requests.post(f"{BACKEND_URL}/reservations/nearest", json=payload)
+    r.raise_for_status()
+    return r.json() 

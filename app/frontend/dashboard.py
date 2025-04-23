@@ -94,7 +94,7 @@ st.markdown(
 # =============================================================================
 # Read URL params via stable API
 params = st.query_params
-default_gregorian = params.get("gregorian", "0") == "1"
+default_gregorian = params.get("gregorian", "0") == "1"  # Default is hijri
 default_free_roam = params.get("free_roam", "0") == "1"
 
 # =============================================================================
@@ -102,59 +102,14 @@ default_free_roam = params.get("free_roam", "0") == "1"
 # =============================================================================
 with st.sidebar:
     render_sidebar_elements()
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        is_gregorian_idx = sac.segmented(
-            items=[
-                sac.SegmentedItem(label='هجري', icon='moon'),
-                sac.SegmentedItem(label='ميلادي', icon='calendar-month'),
-            ],
-            label='',
-            align='center',
-            bg_color='transparent',
-            return_index=True,
-            index=1 if default_gregorian else 0,
-            key="gregorian_selector"
-        )
-        is_gregorian = True if is_gregorian_idx == 1 else False
-        
-    with col2:
-        free_roam_idx = sac.segmented(
-            items=[
-                sac.SegmentedItem(label='مقيد', icon='lock'),
-                sac.SegmentedItem(label='غير مقيد', icon='unlock'),
-            ],
-            label='',
-            align='center',
-            bg_color='transparent',
-            return_index=True,
-            index=1 if default_free_roam else 0,
-            key="free_roam_selector"
-        )
-        free_roam = True if free_roam_idx == 1 else False
-    
     # Add vacation editor as the last element in the sidebar
-    st.session_state.is_gregorian = is_gregorian
     render_vacation_editor()
-    # Persist toggles with stable API if they changed
-    if (
-        is_gregorian != default_gregorian
-        or free_roam != default_free_roam):
-        # Prepare params to update, only include toggles
-        updated_params = {}
-        if is_gregorian != default_gregorian:
-            updated_params["gregorian"] = str(int(is_gregorian))
-        if free_roam != default_free_roam:
-            updated_params["free_roam"] = str(int(free_roam))
-        
-        # Use st.query_params.update() which preserves existing params like 'view'
-        st.query_params.update(updated_params)
-        st.rerun()
 
 # =============================================================================
 # MAIN APP EXECUTION
 # =============================================================================
-# Render calendar with current toggle states
+# Render calendar with toggle states from session state
+is_gregorian = st.session_state.get('is_gregorian', params.get("gregorian", "1") == "1")
+free_roam = st.session_state.get('free_roam', params.get("free_roam", "0") == "1")
 render_cal(is_gregorian, free_roam)
 st_autorefresh(interval=350000)
