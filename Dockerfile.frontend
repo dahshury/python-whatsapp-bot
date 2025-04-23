@@ -23,6 +23,7 @@ RUN pip install --upgrade pip pip-tools \
 
 # Copy only the necessary frontend files
 COPY app/frontend/ app/frontend/
+COPY app/services/ app/services/
 COPY app/config.py app/config.py
 COPY .streamlit/ .streamlit/
 
