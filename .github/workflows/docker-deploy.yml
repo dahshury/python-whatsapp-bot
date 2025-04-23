@@ -37,6 +37,21 @@ jobs:
           docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest -f Dockerfile.frontend .
           docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest
 
+      - name: Setup directory on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Create required directories with proper permissions
+            mkdir -p /home/ubuntu/python-whatsapp-bot
+            mkdir -p /home/ubuntu/python-whatsapp-bot/prometheus
+            
+            # Ensure proper ownership and permissions
+            chown -R ubuntu:ubuntu /home/ubuntu/python-whatsapp-bot
+            chmod -R 755 /home/ubuntu/python-whatsapp-bot
+
       - name: Copy deployment files to EC2
         uses: appleboy/scp-action@master
         with:
@@ -65,8 +80,9 @@ jobs:
               # Move to project directory
               cd /home/ubuntu/python-whatsapp-bot
 
-              # Create prometheus directory if it doesn't exist
+              # Ensure prometheus directory exists with proper permissions
               mkdir -p prometheus
+              chmod -R 755 prometheus
 
               # Warn if .env doesn't exist
               if [ ! -f .env ]; then
