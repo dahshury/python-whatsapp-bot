@@ -37,14 +37,15 @@ jobs:
           docker build -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest -f Dockerfile.frontend .
           docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest
 
-      - name: Copy docker-compose.prod.yml to EC2
+      - name: Copy deployment files to EC2
         uses: appleboy/scp-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.prod.yml"
+          source: "docker-compose.prod.yml,prometheus/**,.streamlit/**,users.yaml"
           target: "/home/ubuntu/python-whatsapp-bot"
+          overwrite: true
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1
@@ -63,6 +64,9 @@ jobs:
 
               # Move to project directory
               cd /home/ubuntu/python-whatsapp-bot
+
+              # Create prometheus directory if it doesn't exist
+              mkdir -p prometheus
 
               # Warn if .env doesn't exist
               if [ ! -f .env ]; then

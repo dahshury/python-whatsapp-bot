@@ -72,7 +72,10 @@ services:
     image: prom/alertmanager:v0.28.0
     container_name: alertmanager
     volumes:
-      - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - type: bind
+        source: ./prometheus/alertmanager.yml
+        target: /etc/alertmanager/alertmanager.yml
+        read_only: true
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
     ports:

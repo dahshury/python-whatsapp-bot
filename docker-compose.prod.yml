@@ -18,7 +18,6 @@ services:
     ports:
       - '8501:8501'
     volumes:
-      - ./app/frontend:/app/app/frontend
       - ./.env:/app/.env
       - ./users.yaml:/app/users.yaml
       - ./.streamlit:/app/.streamlit
@@ -38,6 +37,7 @@ services:
       - ./prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     ports:
       - '9093:9093'
+    restart: on-failure
 
   discord-adapter:
     image: benjojo/alertmanager-discord:latest
