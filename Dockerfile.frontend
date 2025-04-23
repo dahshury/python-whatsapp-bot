@@ -24,7 +24,6 @@ RUN pip install --upgrade pip pip-tools \
 # Copy only the necessary frontend files
 COPY app/frontend/ app/frontend/
 COPY app/config.py app/config.py
-COPY users.yaml ./
 COPY .streamlit/ .streamlit/
 
 # Expose Streamlit default port
