@@ -40,8 +40,7 @@ def configure_logging():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        stream=sys.stdout,
-        handlers=[logging.StreamHandler()]
+        handlers=[logging.StreamHandler(sys.stdout)]
     )
 
 def update_env_variable(key, value):
