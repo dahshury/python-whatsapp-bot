@@ -93,7 +93,10 @@ def run_responses(wa_id, user_input, previous_response_id, name):
     }
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
+    # Log request payload
+    logging.debug(f"OpenAI Responses.create called with kwargs: {json.dumps(kwargs, default=str)}")
     response = client.responses.create(**kwargs)
+    logging.debug(f"OpenAI Responses.create returned: {response}")
     # handle any function calls
     while True:
         fc_items = [item for item in response.output if item.type == "function_call"]
@@ -131,6 +134,7 @@ def run_openai(wa_id, name):
     Run the OpenAI Responses API with existing conversation context.
     Returns (response_text, date_str, time_str).
     """
+    logging.info(f"Running OpenAI runner for wa_id={wa_id}, name={name}")
     # Get the last user message from conversation
     conn = get_connection()
     cursor = conn.cursor()
@@ -142,11 +146,18 @@ def run_openai(wa_id, name):
     conn.close()
     user_input = row["message"] if row else ""
     prev_response_id = check_if_thread_exists(wa_id)
+    logging.debug(f"Previous OpenAI thread id: {prev_response_id}")
     # Call the synchronous Responses API function
-    new_message, response_id, created_at = run_responses(wa_id, user_input, prev_response_id, name)
+    try:
+        new_message, response_id, created_at = run_responses(wa_id, user_input, prev_response_id, name)
+    except Exception as e:
+        logging.error(f"Error during run_responses: {e}", exc_info=True)
+        return "", "", ""
     if new_message:
+        logging.info(f"OpenAI runner produced message: {new_message[:50]}...")
         date_str, time_str = parse_unix_timestamp(created_at)
         append_message(wa_id, 'assistant', new_message, date_str, time_str)
         make_thread(wa_id, response_id)
         return new_message, date_str, time_str
+    logging.warning(f"OpenAI runner returned no message for wa_id={wa_id}")
     return "", "", ""
