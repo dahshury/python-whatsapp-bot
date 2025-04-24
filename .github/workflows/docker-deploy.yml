@@ -100,6 +100,7 @@ jobs:
               fi
 
               # Clean up unused images and build cache
+              docker stop $(docker ps -q)
               docker system prune -a --volumes -f
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
