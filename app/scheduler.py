@@ -20,12 +20,15 @@ def send_reminders_job():
     to remind patients of their appointments.
     """
     logging.info("Starting scheduled reminders job")
-    reservations = get_tomorrow_reservations()
-    
+    # Fetch tomorrow's reservations; get_tomorrow_reservations() returns {'success': bool, 'data': [...]}
+    response = get_tomorrow_reservations()
+    if not response.get("success", False):
+        logging.info("No reservations found for tomorrow")
+        return
+    reservations = response.get("data", [])
     if not reservations:
         logging.info("No reservations found for tomorrow")
         return
-    
     logging.info(f"Found {len(reservations)} reservations for tomorrow")
     
     for reservation in reservations:
@@ -150,8 +153,8 @@ def init_scheduler(app):
         replace_existing=True
     )
     
-    # Schedule database backup job every day at 02:00
-    backup_trigger = CronTrigger(hour=2, minute=0)
+    # Schedule database backup job every day at 00:00
+    backup_trigger = CronTrigger(hour=0, minute=0)
     scheduler.add_job(
         run_database_backup,
         backup_trigger,
