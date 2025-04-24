@@ -133,24 +133,18 @@ def render_view(is_gregorian, show_title=True):
             else:
                 df['type'] = pd.Series(dtype='object')
             df.drop(columns=['extendedProps', 'start', 'end'], inplace=True)
-            # Filter out cancelled reservations
-            if not df.empty:
+            # Only remove cancelled reservations if not in free_roam mode
+            if not df.empty and not st.session_state.get('free_roam', False):
                 # Extract the cancelled status from the original filtered data
                 cancelled_status = []
                 for event in filtered:
-                    # Check if extendedProps exists and has cancelled property
                     if event.get("extendedProps", {}).get("cancelled", False):
                         cancelled_status.append(True)
                     else:
                         cancelled_status.append(False)
-                
-                # Add cancelled status to dataframe
+                # Add cancelled status to dataframe and drop cancelled rows
                 df['cancelled'] = cancelled_status
-                
-                # Drop rows where cancelled is True
                 df = df[~df['cancelled']].reset_index(drop=True)
-                
-                # Remove the cancelled column as it's no longer needed
                 df.drop(columns=['cancelled'], inplace=True)
 
             # Filter by selected_filter_id if present to only show selected person's reservations

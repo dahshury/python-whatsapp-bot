@@ -25,6 +25,10 @@ def reset_calendar(success, new_start_date):
 @st.fragment
 def render_cal(is_gregorian, free_roam):
     today = datetime.date.today()
+    
+    # Store free_roam status in session state so other components can access it
+    st.session_state['free_roam'] = free_roam
+    
     try:
         # Get all reservations at once with future=False to include both future and past
         res_response = get_all_reservations(future=False, include_cancelled=free_roam)

@@ -145,7 +145,7 @@ def init_scheduler(app):
     scheduler.add_job(
         monitor_system_metrics,
         'interval',
-        seconds=30,
+        seconds=60*3,
         id="system_metrics",
         replace_existing=True
     )

@@ -140,14 +140,25 @@ def render_conversation(conversations, is_gregorian, reservations):
         old_end_date = st.session_state.get('selected_end_date')
         old_start_time = st.session_state.get('selected_start_time')
         old_end_time = st.session_state.get('selected_end_time')
-        # Determine a safe date for this person's reservations
+        # Determine date range for this person's reservations
         person_id = st.session_state.selected_event_id
-        if person_id in reservations and reservations[person_id]:
-            person_date = reservations[person_id][0].get('date') or datetime.date.today().isoformat()
+        free_roam = st.session_state.get('free_roam', False)
+        # Select the appropriate reservation list
+        if free_roam:
+            data_source = st.session_state.get('all_customer_data', {}).get(person_id, [])
         else:
-            person_date = datetime.date.today().isoformat()
-        st.session_state.selected_start_date = person_date
-        st.session_state.selected_end_date = None
+            data_source = reservations.get(person_id, [])
+        # Extract all dates from the selected data source
+        date_list = [item.get('date') for item in data_source if item.get('date')]
+        if date_list:
+            sorted_dates = sorted(date_list)
+            start_date = sorted_dates[0]
+            end_date = sorted_dates[-1]
+        else:
+            today = datetime.date.today().isoformat()
+            start_date = end_date = today
+        st.session_state.selected_start_date = start_date
+        st.session_state.selected_end_date = end_date
         st.session_state.selected_start_time = None
         st.session_state.selected_end_time = None
         # Set filter and render data view

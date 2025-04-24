@@ -99,13 +99,17 @@ jobs:
                 echo "WARNING: threads_db.sqlite not found"
               fi
 
-              # Pull and restart all services using production compose file
+              echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
-              docker compose -f docker-compose.prod.yml down
-              docker compose -f docker-compose.prod.yml up -d
 
-              # Clean up unused images and build cache
-              docker system prune -af
+              echo "Recreating only changed services..."
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
+
+              echo "Pruning dangling images..."
+              docker image prune -f
+
+              echo "Pruning build cache..."
+              docker builder prune -f
 
               echo "Deployment succeeded"
               exit 0
