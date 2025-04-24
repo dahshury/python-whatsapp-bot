@@ -8,9 +8,9 @@ from zoneinfo import ZoneInfo
 from app.config import config
 from app.utils import retrieve_messages
 from app.decorators import retry_decorator
-from app.services import assistant_functions
 from google import genai
 from google.genai import types
+from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 
 # Get API key from environment or config
 GEMINI_API_KEY = config.get("GEMINI_API_KEY", "")
@@ -22,17 +22,11 @@ SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
 # Initialize the Gemini API client
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Dynamically create FUNCTION_MAPPING from assistant_functions
-FUNCTION_MAPPING = {
-    name: func for name, func in inspect.getmembers(assistant_functions)
-    if inspect.isfunction(func)
-}
-
 # Create function declarations dynamically from assistant_functions
 def create_function_declarations():
     declarations = []
     
-    # Define schema type mapping
+    # Define schema type mapping for conversions
     type_mapping = {
         "boolean": genai.types.Type.BOOLEAN,
         "string": genai.types.Type.STRING,
@@ -41,6 +35,9 @@ def create_function_declarations():
         "object": genai.types.Type.OBJECT,
         "array": genai.types.Type.ARRAY,
     }
+    
+    # Use central schemas
+    schema_map = {t["name"]: t["schema"] for t in TOOL_DEFINITIONS}
     
     # Helper function to convert JSON schema to Gemini schema
     def convert_schema(json_schema):
@@ -68,23 +65,6 @@ def create_function_declarations():
             converted[prop_name] = convert_schema(prop_schema)
         return converted
     
-    # Special case for specific functions with predefined schemas
-    special_schemas = {
-        "get_customer_reservations": genai.types.Schema(
-            type=genai.types.Type.OBJECT,
-            properties={
-                "include_past": genai.types.Schema(
-                    type=genai.types.Type.BOOLEAN,
-                    description="Flag to include past reservations.",
-                )
-            },
-        ),
-        "send_business_location": genai.types.Schema(
-            type=genai.types.Type.OBJECT,
-            properties={},
-        )
-    }
-    
     # Create declarations for each function in assistant_functions with schema
     for func_name, func in FUNCTION_MAPPING.items():
         # Skip internal functions (starting with _)
@@ -95,13 +75,22 @@ def create_function_declarations():
         docstring = func.__doc__ or f"Function {func_name}"
         description = docstring.split("\n")[0].strip()
         
-        # Use special schema if available for this function
-        if func_name in special_schemas:
+        # Use central schema if available
+        func_schema = schema_map.get(func_name)
+        if func_schema:
+            declaration_params = genai.types.Schema(
+                type=genai.types.Type.OBJECT,
+                properties={
+                    k: genai.types.Schema(type=genai.types.Type._from_json(v["type"]), description=v.get("description", ""))
+                    for k, v in func_schema.get("properties", {}).items()
+                },
+                required=func_schema.get("required", [])
+            )
             declarations.append(
                 types.FunctionDeclaration(
                     name=func_name,
                     description=description,
-                    parameters=special_schemas[func_name],
+                    parameters=declaration_params,
                 )
             )
             continue

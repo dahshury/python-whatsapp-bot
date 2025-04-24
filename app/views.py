@@ -5,7 +5,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import config
 from app.decorators.security import verify_signature
-from app.services.anthropic_service import run_claude
+from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import process_whatsapp_message, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, find_nearest_time_slot
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, get_available_time_slots
@@ -58,7 +58,11 @@ async def webhook_post(
     entry = body.get("entry", [{}])[0]
     
     if "changes" in entry:
-        background_tasks.add_task(process_whatsapp_message, body, run_llm_function=run_claude)
+        background_tasks.add_task(
+            process_whatsapp_message,
+            body,
+            run_llm_function=get_llm_service().run
+        )
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")
         

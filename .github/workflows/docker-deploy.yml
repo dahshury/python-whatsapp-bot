@@ -99,6 +99,8 @@ jobs:
                 echo "WARNING: threads_db.sqlite not found"
               fi
 
+              # Clean up unused images and build cache
+              docker system prune -a --volumes -f
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
 

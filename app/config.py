@@ -22,6 +22,7 @@ config = {
     
     "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+    "LLM_PROVIDER": os.getenv("LLM_PROVIDER", "anthropic"),
     "OPENAI_ASSISTANT_ID": os.getenv("OPENAI_ASSISTANT_ID"),
     "VEC_STORE_ID": os.getenv("VEC_STORE_ID"),
     
