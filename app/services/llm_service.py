@@ -1,5 +1,6 @@
 # app/services/llm_service.py
 import abc
+import logging
 from app.config import get
 from app.services.anthropic_service import run_claude
 from app.services.gemini_service import run_gemini
@@ -40,6 +41,7 @@ def get_llm_service():
     Defaults to 'anthropic'.
     """
     provider = get("LLM_PROVIDER", "anthropic").lower()
+    logging.info(f"LLM provider configured as: {provider}")
     if provider == "anthropic":
         return AnthropicService()
     elif provider == "gemini":

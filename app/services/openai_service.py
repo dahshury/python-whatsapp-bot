@@ -35,6 +35,11 @@ FUNCTION_DEFINITIONS = [
     for t in TOOL_DEFINITIONS
 ]
 
+# Load a system prompt for OpenAI from config
+SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
+
+logging.getLogger("openai").setLevel(logging.DEBUG)
+
 async def generate_response(message_body, wa_id, name, timestamp):
     """
     Generate a response from the assistant and update the conversation.
@@ -67,15 +72,17 @@ async def generate_response(message_body, wa_id, name, timestamp):
 
 def run_responses(wa_id, user_input, previous_response_id, name):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp."""
-    # initial create: wrap user input as developer message, include text & reasoning
-    initial_input = [
-        {
+    # initial create: include system prompt then user input as developer messages
+    initial_input = []
+    if SYSTEM_PROMPT_TEXT:
+        initial_input.append({
             "role": "developer",
-            "content": [
-                {"type": "input_text", "text": user_input}
-            ]
-        }
-    ]
+            "content": [{"type": "input_text", "text": SYSTEM_PROMPT_TEXT}]
+        })
+    initial_input.append({
+        "role": "developer",
+        "content": [{"type": "input_text", "text": user_input}]
+    })
     kwargs = {
         "model": MODEL,
         "input": initial_input,
