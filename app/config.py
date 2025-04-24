@@ -41,6 +41,7 @@ def configure_logging():
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stdout,
+        handlers=[logging.StreamHandler()]
     )
 
 def update_env_variable(key, value):
