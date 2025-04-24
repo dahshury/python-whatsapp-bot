@@ -15,7 +15,7 @@ sqlalchemy>=2.0.23  # If you're using SQLAlchemy
 anthropic>=0.8.0  # If you need Claude API
 
 # Additional requirements
-openai==1.61.1
+openai==1.76.0
 aiohttp==3.11.12
 google-genai==1.10.0
 phonenumbers==8.13.55

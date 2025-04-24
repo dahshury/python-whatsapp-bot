@@ -7,7 +7,7 @@ setup(
     install_requires=[
         "fastapi==0.115.8",
         "python-dotenv==1.0.1",
-        "openai==1.61.1",
+        "openai==1.76.0",
         "anthropic==0.49.0",
         "aiohttp==3.11.12",
         "requests==2.32.3",

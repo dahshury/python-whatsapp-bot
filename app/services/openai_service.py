@@ -80,7 +80,7 @@ def run_responses(wa_id, user_input, previous_response_id, name):
             "content": [{"type": "input_text", "text": SYSTEM_PROMPT_TEXT}]
         })
     initial_input.append({
-        "role": "developer",
+        "role": "user",
         "content": [{"type": "input_text", "text": user_input}]
     })
     kwargs = {
