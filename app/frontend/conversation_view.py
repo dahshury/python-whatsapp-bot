@@ -261,7 +261,10 @@ def render_conversation(conversations, is_gregorian, reservations):
                 )
 
                 if prompt:
-                    datetime_obj = datetime.datetime.now()
+                    from app.config import config
+                    tz_str = config.get("TIMEZONE", "UTC")
+                    tz = ZoneInfo(tz_str)
+                    datetime_obj = datetime.datetime.now(tz)
                     curr_date = datetime_obj.date().isoformat()
                     curr_time = datetime_obj.strftime("%H:%M:%S")  # Store in 24-hour format with seconds
                     display_time = datetime_obj.strftime("%I:%M %p")  # For display in UI

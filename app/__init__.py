@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.responses import ORJSONResponse
 from app.config import configure_logging
 from app.views import router as webhook_router
 from app.scheduler import init_scheduler
@@ -13,7 +14,7 @@ REQUEST_LATENCY = Histogram('http_request_duration_seconds', 'HTTP request laten
 
 def create_app():
     configure_logging()
-    app = FastAPI()
+    app = FastAPI(default_response_class=ORJSONResponse)
 
     @app.middleware("http")
     async def metrics_middleware(request: Request, call_next):

@@ -6,7 +6,6 @@ from app.frontend import authenticate
 from app.frontend.sidebar import render_sidebar_elements, render_vacation_editor
 from app.frontend.calendar_view import render_cal
 
-
 # =============================================================================
 # PAGE CONFIGURATION
 # =============================================================================

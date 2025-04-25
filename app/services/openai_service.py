@@ -11,7 +11,6 @@ from app.utils import get_lock, check_if_thread_exists, make_thread, parse_unix_
 from app.utils.service_utils import get_connection
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
-from app.services import assistant_functions
 
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 
@@ -72,21 +71,31 @@ async def generate_response(message_body, wa_id, name, timestamp):
 
 def run_responses(wa_id, user_input, previous_response_id, name):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp."""
-    # prepare arguments for the Responses API call: use 'instructions' for system prompt and pass user_input as a text input
+    # Get vector store ID if configured
+    vec_id = config.get("VEC_STORE_ID")
+    
+    # Set up base kwargs with function tools
     kwargs = {
         "model": MODEL,
         "input": user_input,
         "text": {"format": {"type": "text"}},
-        "reasoning": {"effort": "high", "summary": "auto"},
+        "reasoning": {"effort": "high", "summary": "null"},
         "tools": FUNCTION_DEFINITIONS,
         "store": True
     }
+    
+    # Add vector store and file_search tool if configured
+    if vec_id:
+        # Add file_search tool with vector_store_ids
+        kwargs["tools"] = FUNCTION_DEFINITIONS + [{
+            "type": "file_search",
+            "vector_store_ids": [vec_id]
+        }]
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
-        
     if SYSTEM_PROMPT_TEXT:
         kwargs["instructions"] = SYSTEM_PROMPT_TEXT
-        
+    
     # Log request payload
     response = client.responses.create(**kwargs)
     # handle any function calls
@@ -148,7 +157,6 @@ def run_openai(wa_id, name):
     if new_message:
         logging.info(f"OpenAI runner produced message: {new_message[:50]}...")
         date_str, time_str = parse_unix_timestamp(created_at)
-        append_message(wa_id, 'assistant', new_message, date_str, time_str)
         make_thread(wa_id, response_id)
         return new_message, date_str, time_str
     logging.warning(f"OpenAI runner returned no message for wa_id={wa_id}")

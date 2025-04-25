@@ -13,6 +13,8 @@ pyyaml>=6.0.1
 python-multipart>=0.0.6
 sqlalchemy>=2.0.23  # If you're using SQLAlchemy
 anthropic>=0.8.0  # If you need Claude API
+orjson>=3.9.0  # Faster JSON serialization/deserialization
+uvloop>=0.19.0  # Faster event loop implementation
 
 # Additional requirements
 openai==1.76.0

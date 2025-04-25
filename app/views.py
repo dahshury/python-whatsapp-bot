@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Body
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -12,6 +13,11 @@ from app.services.assistant_functions import reserve_time_slot, cancel_reservati
 
 router = APIRouter()
 security = HTTPBasic()
+
+# Create a semaphore to limit concurrent background tasks
+# Adjust the value based on memory availability (lower for less memory)
+MAX_CONCURRENT_TASKS = 5
+task_semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
 
 @router.get("/webhook")
 async def webhook_get(
@@ -32,6 +38,15 @@ async def webhook_get(
     else:
         logging.info("MISSING_PARAMETER")
         raise HTTPException(status_code=400, detail="Missing parameters")
+
+async def _process_and_release(body, run_llm_function):
+    """Process a WhatsApp message and release the semaphore when done."""
+    try:
+        await process_whatsapp_message(body, run_llm_function)
+    except Exception as e:
+        logging.error(f"Error processing WhatsApp message: {e}")
+    finally:
+        task_semaphore.release()
 
 @router.post("/webhook")
 async def webhook_post(
@@ -58,10 +73,19 @@ async def webhook_post(
     entry = body.get("entry", [{}])[0]
     
     if "changes" in entry:
+        # Try to acquire semaphore without blocking the response
+        if task_semaphore.locked() and task_semaphore._value == 0:
+            logging.warning("Maximum concurrent tasks reached. Message processing delayed.")
+            # Still return 200 OK to WhatsApp API to prevent retries
+            return JSONResponse(content={"status": "ok", "note": "Processing delayed due to high load"})
+        
+        await task_semaphore.acquire()
+        llm_service = get_llm_service()
+        
         background_tasks.add_task(
-            process_whatsapp_message,
+            _process_and_release,
             body,
-            run_llm_function=get_llm_service().run
+            llm_service.run
         )
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")
@@ -94,7 +118,7 @@ async def redirect_to_app(request: Request):
 async def api_send_whatsapp_message(payload: dict = Body(...)):
     wa_id = payload.get("wa_id")
     text = payload.get("text")
-    response = send_whatsapp_message(wa_id, text)
+    response = await send_whatsapp_message(wa_id, text)
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
     return JSONResponse(content=response.json())
@@ -106,7 +130,7 @@ async def api_send_whatsapp_location(payload: dict = Body(...)):
     longitude = payload.get("longitude")
     name = payload.get("name", "")
     address = payload.get("address", "")
-    response = send_whatsapp_location(wa_id, latitude, longitude, name, address)
+    response = await send_whatsapp_location(wa_id, latitude, longitude, name, address)
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
     return JSONResponse(content=response)
@@ -117,7 +141,7 @@ async def api_send_whatsapp_template(payload: dict = Body(...)):
     template_name = payload.get("template_name")
     language = payload.get("language", "en_US")
     components = payload.get("components")
-    response = send_whatsapp_template(wa_id, template_name, language, components)
+    response = await send_whatsapp_template(wa_id, template_name, language, components)
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
     return JSONResponse(content=response.json())
