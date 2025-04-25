@@ -79,7 +79,7 @@ def run_responses(wa_id, user_input, previous_response_id, name):
         "model": MODEL,
         "input": user_input,
         "text": {"format": {"type": "text"}},
-        "reasoning": {"effort": "high", "summary": "null"},
+        "reasoning": {"effort": "high", "summary": "auto"},
         "tools": FUNCTION_DEFINITIONS,
         "store": True
     }
