@@ -7,7 +7,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
-from app.utils.whatsapp_utils import process_whatsapp_message, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
+from app.utils.whatsapp_utils import process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, find_nearest_time_slot
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, get_available_time_slots
 
@@ -42,7 +42,7 @@ async def webhook_get(
 async def _process_and_release(body, run_llm_function):
     """Process a WhatsApp message and release the semaphore when done."""
     try:
-        await process_whatsapp_message(body, run_llm_function)
+        await process_whatsapp_message_util(body, run_llm_function)
     except Exception as e:
         logging.error(f"Error processing WhatsApp message: {e}")
     finally:

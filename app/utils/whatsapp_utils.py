@@ -6,6 +6,7 @@ import asyncio
 from app.config import config
 from .logging_utils import log_http_response
 from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message
+import inspect
 
 # Create a single persistent client for all WhatsApp API calls
 whatsapp_client = httpx.AsyncClient(
@@ -245,13 +246,15 @@ async def generate_response(message_body, wa_id, name, timestamp, run_llm_functi
     async with lock:
         date_str, time_str = parse_unix_timestamp(timestamp)
         
-        # Save the user message BEFORE running Claude
+        # Save the user message BEFORE running LLM
         append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
         
-        # Run Claude in an executor to avoid blocking the event loop
-        new_message, assistant_date_str, assistant_time_str = await asyncio.to_thread(
-            run_llm_function, wa_id, name
-        )
+        # Call LLM function: async -> get coroutine, sync -> run in thread
+        if inspect.iscoroutinefunction(run_llm_function):
+            call = run_llm_function(wa_id, name)
+        else:
+            call = asyncio.to_thread(run_llm_function, wa_id, name)
+        new_message, assistant_date_str, assistant_time_str = await call
         
         if new_message:
             append_message(wa_id, 'assistant', new_message, 
