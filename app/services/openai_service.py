@@ -72,7 +72,6 @@ async def generate_response(message_body, wa_id, name, timestamp):
 def run_responses(wa_id, user_input, previous_response_id, name):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp."""
     # Get vector store ID if configured
-    vec_id = config.get("VEC_STORE_ID")
     
     # Set up base kwargs with function tools
     kwargs = {
@@ -84,13 +83,14 @@ def run_responses(wa_id, user_input, previous_response_id, name):
         "store": True
     }
     
-    # Add vector store and file_search tool if configured
-    if vec_id:
-        # Add file_search tool with vector_store_ids
-        kwargs["tools"] = FUNCTION_DEFINITIONS + [{
-            "type": "file_search",
-            "vector_store_ids": [vec_id]
-        }]
+    # vec_id = config.get("VEC_STORE_ID")
+    # # Add vector store and file_search tool if configured
+    # if vec_id:
+    #     # Add file_search tool with vector_store_ids
+    #     kwargs["tools"] = FUNCTION_DEFINITIONS + [{
+    #         "type": "file_search",
+    #         "vector_store_ids": [vec_id]
+    #     }]
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
     if SYSTEM_PROMPT_TEXT:
@@ -135,7 +135,6 @@ def run_openai(wa_id, name):
     Run the OpenAI Responses API with existing conversation context.
     Returns (response_text, date_str, time_str).
     """
-    logging.info(f"Running OpenAI runner for wa_id={wa_id}, name={name}")
     # Get the last user message from conversation
     conn = get_connection()
     cursor = conn.cursor()
@@ -147,7 +146,6 @@ def run_openai(wa_id, name):
     conn.close()
     user_input = row["message"] if row else ""
     prev_response_id = check_if_thread_exists(wa_id)
-    logging.debug(f"Previous OpenAI thread id: {prev_response_id}")
     # Call the synchronous Responses API function
     try:
         new_message, response_id, created_at = run_responses(wa_id, user_input, prev_response_id, name)

@@ -42,6 +42,8 @@ def configure_logging():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[logging.StreamHandler(sys.stdout)]
     )
+    # Silence verbose APScheduler INFO logs
+    logging.getLogger('apscheduler').setLevel(logging.WARNING)
 
 def update_env_variable(key, value):
     """
