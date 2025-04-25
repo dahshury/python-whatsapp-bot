@@ -3,10 +3,12 @@ from app.metrics import (
     CANCELLATION_REQUESTS, CANCELLATION_SUCCESSES, CANCELLATION_FAILURES,
     MODIFY_REQUESTS, MODIFY_SUCCESSES, MODIFY_FAILURES,
 )
+from functools import wraps
 
 # Decorators for domain-specific instrumentation
 
 def instrument_reservation(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         RESERVATION_REQUESTS.inc()
         result = func(*args, **kwargs)
@@ -19,6 +21,7 @@ def instrument_reservation(func):
 
 
 def instrument_cancellation(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         CANCELLATION_REQUESTS.inc()
         result = func(*args, **kwargs)
@@ -31,6 +34,7 @@ def instrument_cancellation(func):
 
 
 def instrument_modification(func):
+    @wraps(func)
     def wrapper(*args, **kwargs):
         MODIFY_REQUESTS.inc()
         result = func(*args, **kwargs)

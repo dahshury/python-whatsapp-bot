@@ -72,20 +72,10 @@ async def generate_response(message_body, wa_id, name, timestamp):
 
 def run_responses(wa_id, user_input, previous_response_id, name):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp."""
-    # initial create: include system prompt then user input as developer messages
-    initial_input = []
-    if SYSTEM_PROMPT_TEXT:
-        initial_input.append({
-            "role": "developer",
-            "content": [{"type": "input_text", "text": SYSTEM_PROMPT_TEXT}]
-        })
-    initial_input.append({
-        "role": "user",
-        "content": [{"type": "input_text", "text": user_input}]
-    })
+    # prepare arguments for the Responses API call: use 'instructions' for system prompt and pass user_input as a text input
     kwargs = {
         "model": MODEL,
-        "input": initial_input,
+        "input": user_input,
         "text": {"format": {"type": "text"}},
         "reasoning": {"effort": "high", "summary": "auto"},
         "tools": FUNCTION_DEFINITIONS,
@@ -93,10 +83,12 @@ def run_responses(wa_id, user_input, previous_response_id, name):
     }
     if previous_response_id:
         kwargs["previous_response_id"] = previous_response_id
+        
+    if SYSTEM_PROMPT_TEXT:
+        kwargs["instructions"] = SYSTEM_PROMPT_TEXT
+        
     # Log request payload
-    logging.debug(f"OpenAI Responses.create called with kwargs: {json.dumps(kwargs, default=str)}")
     response = client.responses.create(**kwargs)
-    logging.debug(f"OpenAI Responses.create returned: {response}")
     # handle any function calls
     while True:
         fc_items = [item for item in response.output if item.type == "function_call"]
