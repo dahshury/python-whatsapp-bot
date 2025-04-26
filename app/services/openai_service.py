@@ -112,7 +112,7 @@ def run_openai(wa_id):
     )
     rows = cursor.fetchone()
     conn.close()
-    input_chat = [{"role": row[0], "content": row[1]} for row in rows]
+    input_chat = [{"role": row[0] if row[0] in ["user", "assistant"] else "assistant", "content": row[1]} for row in rows]
     # Call the synchronous Responses API function
     try:
         new_message, created_at = run_responses(wa_id, input_chat)
