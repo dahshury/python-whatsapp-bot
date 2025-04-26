@@ -7,7 +7,7 @@ import httpx
 import inspect
 from app.config import config
 from openai import OpenAI
-from app.utils import get_lock, check_if_thread_exists, make_thread, parse_unix_timestamp, append_message
+from app.utils import get_lock, parse_unix_timestamp, append_message, make_thread
 from app.utils.service_utils import get_connection
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
@@ -49,34 +49,28 @@ async def generate_response(message_body, wa_id, name, timestamp):
     lock = get_lock(wa_id)
     async with lock:
         date_str, time_str = parse_unix_timestamp(timestamp)
-        prev_response_id = check_if_thread_exists(wa_id)
-        if prev_response_id:
-            logging.info(f"Continuing conversation {prev_response_id} for {name} (wa_id: {wa_id})")
-        else:
-            logging.info(f"Starting new conversation for {name} (wa_id: {wa_id})")
+        make_thread(wa_id, None)
         # Append user message locally
         append_message(wa_id, 'user', message_body, date_str, time_str)
         # Call the Responses API, processing any function calls
-        new_message, response_id, created_at = await asyncio.to_thread(
-            run_responses, wa_id, message_body, prev_response_id, name
+        new_message, created_at = await asyncio.to_thread(
+            run_responses, wa_id, message_body, name
         )
         if not new_message:
             return None
-        # Save the new response id
-        make_thread(wa_id, response_id)
         # Append assistant message locally with timestamp from response
         assistant_date_str, assistant_time_str = parse_unix_timestamp(created_at)
         append_message(wa_id, 'assistant', new_message, assistant_date_str, assistant_time_str)
         return new_message
 
-def run_responses(wa_id, user_input, previous_response_id, name):
+def run_responses(wa_id, input_chat):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp."""
     # Get vector store ID if configured
     
     # Set up base kwargs with function tools
     kwargs = {
         "model": MODEL,
-        "input": user_input,
+        "input": input_chat,
         "text": {"format": {"type": "text"}},
         "reasoning": {"effort": "high", "summary": "auto"},
         "tools": FUNCTION_DEFINITIONS,
@@ -91,8 +85,7 @@ def run_responses(wa_id, user_input, previous_response_id, name):
     #         "type": "file_search",
     #         "vector_store_ids": [vec_id]
     #     }]
-    if previous_response_id:
-        kwargs["previous_response_id"] = previous_response_id
+
     if SYSTEM_PROMPT_TEXT:
         kwargs["instructions"] = SYSTEM_PROMPT_TEXT
     
@@ -116,7 +109,6 @@ def run_responses(wa_id, user_input, previous_response_id, name):
         kwargs = {
             "model": MODEL,
             "input": input_items,
-            "previous_response_id": response.id,
             "tools": FUNCTION_DEFINITIONS,
             "store": True
         }
@@ -127,7 +119,7 @@ def run_responses(wa_id, user_input, previous_response_id, name):
     if msg_items:
         content = msg_items[-1].content
         text = "".join([c.text for c in content if c.type == "output_text"])
-    return text, response.id, response.created_at
+    return text, response.created_at
 
 @retry_decorator
 def run_openai(wa_id, name):
@@ -139,23 +131,21 @@ def run_openai(wa_id, name):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT message FROM conversation WHERE wa_id = ? AND role = 'user' ORDER BY id DESC LIMIT 1",
+        "SELECT role, message FROM conversation WHERE wa_id = ? ORDER BY id DESC",
         (wa_id,)
     )
-    row = cursor.fetchone()
+    rows = cursor.fetchone()
     conn.close()
-    user_input = row["message"] if row else ""
-    prev_response_id = check_if_thread_exists(wa_id)
+    input_chat = [{"role": row[0], "content": row[1]} for row in rows]
     # Call the synchronous Responses API function
     try:
-        new_message, response_id, created_at = run_responses(wa_id, user_input, prev_response_id, name)
+        new_message, created_at = run_responses(wa_id, input_chat, name)
     except Exception as e:
         logging.error(f"Error during run_responses: {e}", exc_info=True)
         return "", "", ""
     if new_message:
         logging.info(f"OpenAI runner produced message: {new_message[:50]}...")
         date_str, time_str = parse_unix_timestamp(created_at)
-        make_thread(wa_id, response_id)
         return new_message, date_str, time_str
     logging.warning(f"OpenAI runner returned no message for wa_id={wa_id}")
     return "", "", ""

@@ -48,6 +48,8 @@ def configure_logging():
     logging.getLogger('openai').setLevel(logging.WARNING)
     logging.getLogger('openai._base_client').setLevel(logging.WARNING)
     logging.getLogger('httpx').setLevel(logging.WARNING)
+    # Silence Uvicorn HTTP access logs (quiet GET /metrics and other access)  
+    logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
 
 def update_env_variable(key, value):
     """

@@ -6,7 +6,7 @@ from app.db import get_connection
 from app.i18n import get_message
 from app.utils import (
     send_whatsapp_location, is_valid_number, fix_unicode_sequence, parse_date, parse_time, 
-    normalize_time_format, is_vacation_period, format_response, get_time_slots, make_thread, validate_reservation_type, is_valid_date_time
+    normalize_time_format, is_vacation_period, format_response, get_time_slots, validate_reservation_type, is_valid_date_time, make_thread
 )
 from hijri_converter import convert
 import sqlite3, time
@@ -93,7 +93,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
     Modify the WhatsApp ID (wa_id) for a customer in all related database tables.
     
     This function updates a customer's WhatsApp ID across all database tables:
-    threads, conversation, reservations, and cancelled_reservations.
+    conversation, reservations, and cancelled_reservations.
     
     Parameters:
         old_wa_id (str): The current WhatsApp ID to be replaced
@@ -122,9 +122,6 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Update the wa_id in the threads table
-        cursor.execute("UPDATE threads SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-        
         # Update the wa_id in the conversation table
         cursor.execute("UPDATE conversation SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
         
@@ -137,14 +134,10 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         conn.commit()
         conn.close()
         
-        msg = "تم تعديل رقم الواتساب بنجاح." if ar else "wa_id modified successfully."
         return format_response(True, message=get_message("wa_id_modified", ar))
     
     except Exception as e:
         logging.error(f"Function call modify_id failed, error: {e}")
-        message = "System error occurred"
-        if ar:
-            message = "حدث خطأ في النظام"
         return format_response(False, message=get_message("system_error_try_later", ar))
 
 @instrument_modification
@@ -480,9 +473,9 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
                 ar=ar
             )
             return modify_result
-
+        
         # Reserve new time slot in a write-locked transaction
-        make_thread(wa_id)
+        make_thread(wa_id, None)
         conn = get_connection()
         cursor = conn.cursor()
         try:
@@ -598,18 +591,11 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         # Delete from active reservations
         if parsed_date_str is None:
             cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
-            msg = "All reservations cancelled."
-            if ar:
-                msg = "تم إلغاء جميع الحجوزات."
         else:
             cursor.execute(
                 "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
                 (wa_id, parsed_date_str)
-            )
-            msg = "Reservation cancelled."
-            if ar:
-                msg = "تم إلغاء الحجز."
-                
+            )   
         conn.commit()
         conn.close()
         
