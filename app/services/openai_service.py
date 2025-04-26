@@ -107,12 +107,15 @@ def run_openai(wa_id):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT role, message FROM conversation WHERE wa_id = ? ORDER BY id DESC",
+        "SELECT* FROM conversation WHERE wa_id = ?",
         (wa_id,)
     )
-    rows = cursor.fetchone()
+    rows = cursor.fetchall()
+    # Sort rows by the 'id' column (assuming it's the first column, index 0)
+    rows.sort(key=lambda row: row[0])
     conn.close()
-    input_chat = [{"role": row[0] if row[0] == "user" else "assistant", "content": row[1]} for row in rows]
+    # Adjust indices: role is now at index 2, message at index 3
+    input_chat = [{"role": row[2] if row[2] in ["user", "assistant"] else "assistant", "content": row[3]} for row in rows]
     # Call the synchronous Responses API function
     try:
         new_message, created_at = run_responses(wa_id, input_chat)
