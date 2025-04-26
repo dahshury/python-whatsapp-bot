@@ -86,7 +86,8 @@ def run_responses(wa_id, input_chat):
             "model": MODEL,
             "input": input_items,
             "tools": FUNCTION_DEFINITIONS,
-            "store": True
+            "store": True,
+            "previous_response_id": response.id  # Link to previous response
         }
         response = client.responses.create(**kwargs)
     # extract assistant message
