@@ -39,30 +39,6 @@ SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
 
 logging.getLogger("openai").setLevel(logging.DEBUG)
 
-async def generate_response(message_body, wa_id, name, timestamp):
-    """
-    Generate a response from the assistant and update the conversation.
-    Uses a per-user lock to ensure that concurrent calls for the same user
-    do not run simultaneously. Implements a retry loop when adding a user message
-    if the thread is busy with an active run.
-    """
-    lock = get_lock(wa_id)
-    async with lock:
-        date_str, time_str = parse_unix_timestamp(timestamp)
-        make_thread(wa_id, None)
-        # Append user message locally
-        append_message(wa_id, 'user', message_body, date_str, time_str)
-        # Call the Responses API, processing any function calls
-        new_message, created_at = await asyncio.to_thread(
-            run_responses, wa_id, message_body, name
-        )
-        if not new_message:
-            return None
-        # Append assistant message locally with timestamp from response
-        assistant_date_str, assistant_time_str = parse_unix_timestamp(created_at)
-        append_message(wa_id, 'assistant', new_message, assistant_date_str, assistant_time_str)
-        return new_message
-
 def run_responses(wa_id, input_chat):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp."""
     # Get vector store ID if configured
@@ -122,7 +98,7 @@ def run_responses(wa_id, input_chat):
     return text, response.created_at
 
 @retry_decorator
-def run_openai(wa_id, name):
+def run_openai(wa_id):
     """
     Run the OpenAI Responses API with existing conversation context.
     Returns (response_text, date_str, time_str).
@@ -139,7 +115,7 @@ def run_openai(wa_id, name):
     input_chat = [{"role": row[0], "content": row[1]} for row in rows]
     # Call the synchronous Responses API function
     try:
-        new_message, created_at = run_responses(wa_id, input_chat, name)
+        new_message, created_at = run_responses(wa_id, input_chat)
     except Exception as e:
         logging.error(f"Error during run_responses: {e}", exc_info=True)
         return "", "", ""
