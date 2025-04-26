@@ -21,7 +21,9 @@ setup(
         "phonenumbers==8.13.55",
         "tenacity==9.0.0",
         "apscheduler==3.10.1",
-        "prometheus-client==0.21.1"
+        "prometheus-client==0.21.1",
+        "orjson>=3.9.0",
+        "uvloop>=0.19.0",
     ],
     include_package_data=True,
     description="AI WhatsApp Reservation App (FastAPI + Streamlit)",

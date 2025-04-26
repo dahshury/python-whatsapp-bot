@@ -44,6 +44,10 @@ def configure_logging():
     )
     # Silence verbose APScheduler INFO logs
     logging.getLogger('apscheduler').setLevel(logging.WARNING)
+    # Silence OpenAI client debug logs and HTTPX library logs
+    logging.getLogger('openai').setLevel(logging.WARNING)
+    logging.getLogger('openai._base_client').setLevel(logging.WARNING)
+    logging.getLogger('httpx').setLevel(logging.WARNING)
 
 def update_env_variable(key, value):
     """

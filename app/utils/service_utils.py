@@ -735,7 +735,7 @@ def is_vacation_period(date_obj, vacation_dict=None):
                 start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
                 end_date = start_date + datetime.timedelta(days=duration)
                 if start_date.date() <= date_obj <= end_date.date():
-                    vacation_msg = config.get('VACATION_MESSAGE', 'The clinic is closed during this period.')
+                    vacation_msg = config.get('VACATION_MESSAGE', 'The business is closed during this period.')
                     message = f"We are on vacation from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. {vacation_msg}"
                     return True, message
             except (ValueError, TypeError) as e:

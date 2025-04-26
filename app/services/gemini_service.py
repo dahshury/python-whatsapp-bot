@@ -183,7 +183,7 @@ def run_gemini(wa_id, name):
         types.Content(
             role="model",
             parts=[
-                types.Part.from_text(text="I'll help you as the automated manager for Dr. Amal Said's clinic."),
+                types.Part.from_text(text="I'll be a helpful assistant."),
             ],
         )
     )

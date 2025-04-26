@@ -12,6 +12,8 @@ import inspect
 whatsapp_client = httpx.AsyncClient(
     timeout=10.0,
     limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
+    # verify=False,
+    # trust_env=False,
 )
 
 async def send_whatsapp_message(wa_id, text):

@@ -53,4 +53,15 @@ groups:
         severity: warning
       annotations:
         summary: "Modification operation failed"
-        description: "A reservation modification attempt failed in the service." 
+        description: "A reservation modification attempt failed in the service."
+        
+    # Alert on any delete reservation failure
+    - alert: DeleteReservationFailure
+      expr: |
+        increase(http_requests_total{http_status=~"5..", endpoint=~"/api/reservations.*", method="DELETE"}[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Delete reservation operation failed"
+        description: "A delete reservation attempt failed with HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}." 
