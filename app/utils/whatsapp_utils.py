@@ -160,7 +160,6 @@ async def process_whatsapp_message(body, run_llm_function):
         None
     """
     wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
-    name = body["entry"][0]["changes"][0]["value"]["contacts"][0]["profile"]["name"]
     message = body["entry"][0]["changes"][0]["value"]["messages"][0]
     
     try:
@@ -174,7 +173,7 @@ async def process_whatsapp_message(body, run_llm_function):
         if run_llm_function is None:
             logging.error("No LLM function provided for processing message")
             return
-        response_text = await generate_response(message_body, wa_id, name, timestamp, run_llm_function)
+        response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
         if response_text is None:
             return
         response_text = process_text_for_whatsapp(response_text)
@@ -228,7 +227,7 @@ def is_valid_whatsapp_message(body):
     )
 
 
-async def generate_response(message_body, wa_id, name, timestamp, run_llm_function):
+async def generate_response(message_body, wa_id, timestamp, run_llm_function):
     """
     Generate a response from Claude and update the conversation.
     Uses a per-user lock to ensure that concurrent calls for the same user
@@ -237,7 +236,6 @@ async def generate_response(message_body, wa_id, name, timestamp, run_llm_functi
     Args:
         message_body (str): The message text from the user.
         wa_id (str): The user's WhatsApp ID.
-        name (str): The user's name.
         timestamp (int): Unix timestamp of the message.
         run_llm_function (callable): Function to generate AI responses.
         
@@ -253,9 +251,9 @@ async def generate_response(message_body, wa_id, name, timestamp, run_llm_functi
         
         # Call LLM function: async -> get coroutine, sync -> run in thread
         if inspect.iscoroutinefunction(run_llm_function):
-            call = run_llm_function(wa_id, name)
+            call = run_llm_function(wa_id)
         else:
-            call = asyncio.to_thread(run_llm_function, wa_id, name)
+            call = asyncio.to_thread(run_llm_function, wa_id)
         new_message, assistant_date_str, assistant_time_str = await call
         
         if new_message:

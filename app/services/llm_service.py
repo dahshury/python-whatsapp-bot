@@ -12,7 +12,7 @@ class BaseLLMService(abc.ABC):
     Abstract base class for LLM services. Subclasses must implement the `run` method.
     """
     @abc.abstractmethod
-    def run(self, wa_id: str, name: str):
+    def run(self, wa_id: str):
         """
         Execute the LLM request using the service and return a tuple (response_text, date_str, time_str).
         """
@@ -20,18 +20,18 @@ class BaseLLMService(abc.ABC):
 
 
 class AnthropicService(BaseLLMService):
-    def run(self, wa_id: str, name: str):
-        return run_claude(wa_id, name)
+    def run(self, wa_id: str):
+        return run_claude(wa_id)
 
 
 class GeminiService(BaseLLMService):
-    def run(self, wa_id: str, name: str):
-        return run_gemini(wa_id, name)
+    def run(self, wa_id: str):
+        return run_gemini(wa_id)
 
 
 class OpenAIService(BaseLLMService):
-    def run(self, wa_id: str, name: str):
-        return run_openai(wa_id, name)
+    def run(self, wa_id: str):
+        return run_openai(wa_id)
 
 
 def get_llm_service():
