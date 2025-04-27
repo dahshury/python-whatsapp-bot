@@ -13,6 +13,7 @@ import sqlite3, time
 from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
+import asyncio
 # Use configured timezone
 TIMEZONE = config.get("TIMEZONE", "UTC")
 
@@ -35,10 +36,14 @@ def send_business_location(wa_id):
         is_valid_wa_id = is_valid_number(wa_id)
         if is_valid_wa_id is not True:
             return is_valid_wa_id
-        status = send_whatsapp_location(
+        status_call = send_whatsapp_location(
             wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"],
             config['BUSINESS_NAME'], config['BUSINESS_ADDRESS']
         )
+        if asyncio.iscoroutine(status_call):
+            status = asyncio.run(status_call)
+        else:
+            status = status_call
         ok = status.get("status") != "error"
         return format_response(ok, message=get_message("location_sent" if ok else "system_error_try_later"))
     except Exception as e:
