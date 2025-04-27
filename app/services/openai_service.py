@@ -78,7 +78,18 @@ def run_responses(wa_id, input_chat):
             func = FUNCTION_MAPPING.get(fc.name)
             if func and 'wa_id' in inspect.signature(func).parameters:
                 args['wa_id'] = wa_id
-            result = func(**args) if func else {}
+            
+            # Handle async functions properly
+            if func:
+                if inspect.iscoroutinefunction(func):
+                    # For async functions, run them in the event loop
+                    result = asyncio.run(func(**args))
+                else:
+                    # For regular functions, call them directly
+                    result = func(**args)
+            else:
+                result = {}
+                
             input_items.append({"type":"function_call","call_id":fc.call_id,"name":fc.name,"arguments":fc.arguments})
             input_items.append({"type":"function_call_output","call_id":fc.call_id,"output":json.dumps(result)})
         # submit function call outputs
