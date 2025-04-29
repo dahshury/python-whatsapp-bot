@@ -11,16 +11,13 @@ from app.utils import parse_unix_timestamp
 from app.utils.service_utils import get_connection
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
+from app.utils.http_client import sync_client
 
 # Always reload config to ensure we have the latest values
 load_config()
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
-
-ssl_context = ssl.create_default_context()
-ssl_context.load_verify_locations(certifi.where())
-
-http_client = httpx.Client(verify=ssl_context)
-client = OpenAI(api_key=OPENAI_API_KEY, http_client=http_client)
+SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
+client = OpenAI(api_key=OPENAI_API_KEY, http_client=sync_client)
 
 # Use the new Responses API (o3 model)
 MODEL = "o3"
@@ -35,10 +32,6 @@ FUNCTION_DEFINITIONS = [
     }
     for t in TOOL_DEFINITIONS
 ]
-
-if config.get("SYSTEM_PROMPT"):
-    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
-
     
 logging.getLogger("openai").setLevel(logging.DEBUG)
 

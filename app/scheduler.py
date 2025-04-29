@@ -2,17 +2,18 @@ import logging
 import datetime
 import os
 import subprocess
-import time
+from zoneinfo import ZoneInfo
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
-from app.config import config
+from app.config import config, get
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
 from app.metrics import monitor_system_metrics
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False
+tz = config.get("TIMEZONE", "UTC")
 
 def send_reminders_job():
     """
@@ -24,7 +25,7 @@ def send_reminders_job():
     pid = os.getpid()
     logging.info(f"send_reminders_job start in pid {pid}")
     logging.info("Starting scheduled reminders job")
-    # Fetch tomorrow's reservations; get_tomorrow_reservations() returns {'success': bool, 'data': [...]}
+    # Fetch tomorrow's reservations
     response = get_tomorrow_reservations()
     if not response.get("success", False):
         logging.info("No reservations found for tomorrow")
@@ -59,12 +60,12 @@ def send_reminders_job():
         )
         
         # Log the message in the conversation history
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(tz=ZoneInfo(tz))
         append_message(
             reservation["wa_id"], 
             "secretary", 
             message,
-            now.date().isoformat(), 
+            now.date().isoformat(),
             now.strftime("%H:%M:%S")
         )
         
@@ -153,11 +154,10 @@ def init_scheduler(app):
         return
     logging.info(f"init_scheduler start in pid {pid}")
     _scheduler_initialized = True
-    tz = config.get("TIMEZONE", "UTC")
     scheduler = BackgroundScheduler(timezone=tz)
     
     # Schedule job every day at 19:00
-    trigger = CronTrigger(hour=19, minute=0)
+    trigger = CronTrigger(hour=19, minute=0, timezone=tz)
     logging.info(f"Adding job 'send_reminders' with trigger {trigger} in pid {pid}")
     scheduler.add_job(
         send_reminders_job,
@@ -177,7 +177,7 @@ def init_scheduler(app):
     )
     
     # Schedule database backup job every day at 00:00
-    backup_trigger = CronTrigger(hour=0, minute=0)
+    backup_trigger = CronTrigger(hour=0, minute=0, timezone=tz)
     logging.info(f"Adding job 'database_backup' with trigger {backup_trigger} in pid {pid}")
     scheduler.add_job(
         run_database_backup,

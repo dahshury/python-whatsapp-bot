@@ -988,3 +988,23 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     else:
         key = "system_error_contact_secretary"
     return format_response(removed, message=get_message(key, ar))
+
+def delete_user(wa_id):
+    """
+    Hard delete user(s) from the database, and all their data.
+    """
+    # Validate WhatsApp ID
+    is_valid = is_valid_number(wa_id)
+    if is_valid is not True:
+        return is_valid
+
+    # Perform deletion
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
+    cursor.execute("DELETE FROM cancelled_reservations WHERE wa_id = ?", (wa_id,))
+    cursor.execute("DELETE FROM conversation WHERE wa_id = ?", (wa_id,))
+    cursor.execute("DELETE FROM threads WHERE wa_id = ?", (wa_id,))
+    conn.commit()
+    conn.close()
+    return format_response(True, message=get_message("user_deleted"))

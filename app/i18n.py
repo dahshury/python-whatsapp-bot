@@ -72,6 +72,9 @@ MESSAGES = {
     "calendar_multi_month": {"en": "Multi-Month", "ar": "عدة أشهر"},
     "vacation": {"en": "Vacation", "ar": "إجازة"},
     "conversation": {"en": "Conversation: {name}", "ar": "محادثة: {name}"},
+    
+    # delete_user
+    "user_deleted": {"en": "User deleted successfully.", "ar": "تم حذف المستخدم بنجاح."},
 }
 
 

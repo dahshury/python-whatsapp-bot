@@ -25,6 +25,16 @@ groups:
         description: |
           A retry was attempted in the assistant's retry decorator with exception type {{ $labels.exception_type }}.
 
+    # Alert when retry count spikes above threshold
+    - alert: ExcessiveAssistantRetries
+      expr: increase(api_retry_attempts_total[5m]) > 10
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High retry rate in assistant safety decorator"
+        description: "More than 10 retries in 5 minutes (exception_type={{ $labels.exception_type }})."
+
     # Alert on any handled reservation failure
     - alert: ReservationFailure
       expr: increase(reservations_failed_total[5m]) > 0

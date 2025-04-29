@@ -7,12 +7,10 @@ from app.config import config
 from .logging_utils import log_http_response
 from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message
 import inspect
+from app.utils.http_client import async_client
 
-# Create a single persistent client for all WhatsApp API calls
-whatsapp_client = httpx.AsyncClient(
-    timeout=10.0,
-    limits=httpx.Limits(max_keepalive_connections=5, max_connections=10),
-)
+# Use the shared async HTTP client for WhatsApp API calls
+whatsapp_client = async_client
 
 async def send_whatsapp_message(wa_id, text):
     """

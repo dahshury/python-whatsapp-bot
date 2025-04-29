@@ -110,5 +110,12 @@ with st.sidebar:
 # Render calendar with toggle states from session state
 is_gregorian = st.session_state.get('is_gregorian', params.get("gregorian", "1") == "1")
 free_roam = st.session_state.get('free_roam', params.get("free_roam", "0") == "1")
+
+# Auto-refresh and clear calendar cache on refresh
+refresh_count = st_autorefresh(interval=350000, key="autorefresh")
+if 'last_refresh_count' not in st.session_state or st.session_state.last_refresh_count != refresh_count:
+    st.session_state.last_refresh_count = refresh_count
+    st.session_state.pop('calendar_events_hash', None)
+    st.session_state.pop('calendar_events', None)
+    st.session_state.pop('prev_settings', None)
 render_cal(is_gregorian, free_roam)
-st_autorefresh(interval=350000)
