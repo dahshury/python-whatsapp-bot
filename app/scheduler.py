@@ -5,6 +5,7 @@ import subprocess
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+import asyncio
 
 from app.config import config, get
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
@@ -51,13 +52,16 @@ def send_reminders_job():
             "الدخول في الفترة الزمنية المحددة بالأعلى يكون بأسبقية الحضور."
         )
         
-        # Send WhatsApp template message
-        send_whatsapp_template(
-            reservation["wa_id"], 
-            "appointment_reminder", 
-            "ar", 
-            components
-        )
+        # Send WhatsApp template message (await the async function)
+        try:
+            asyncio.run(send_whatsapp_template(
+                reservation["wa_id"],
+                "appointment_reminder",
+                "ar",
+                components
+            ))
+        except Exception as e:
+            logging.error(f"Failed to send reminder template: {e}")
         
         # Log the message in the conversation history
         now = datetime.datetime.now(tz=ZoneInfo(tz))
