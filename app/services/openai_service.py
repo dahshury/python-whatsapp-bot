@@ -7,12 +7,13 @@ import httpx
 import inspect
 from app.config import config, load_config
 from openai import OpenAI
-from dotenv import load_dotenv
 from app.utils import parse_unix_timestamp
 from app.utils.service_utils import get_connection
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 
+# Always reload config to ensure we have the latest values
+load_config()
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
 
 ssl_context = ssl.create_default_context()
@@ -37,9 +38,7 @@ FUNCTION_DEFINITIONS = [
 
 if config.get("SYSTEM_PROMPT"):
     SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
-else:
-    load_config()
-    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
+
     
 logging.getLogger("openai").setLevel(logging.DEBUG)
 
