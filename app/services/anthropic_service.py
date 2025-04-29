@@ -5,11 +5,10 @@ import ssl
 import certifi
 import httpx
 import inspect
-from app.config import config
+from app.config import config, load_config
 from anthropic import Anthropic, AsyncAnthropic
 from app.utils import retrieve_messages
 from app.decorators import retry_decorator
-from app.services import assistant_functions
 import datetime
 from zoneinfo import ZoneInfo
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
@@ -17,7 +16,12 @@ from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY", "")
 CLAUDE_MODEL = "claude-3-7-sonnet-20250219"
 # Create cached system prompt structure
-SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
+if config.get("SYSTEM_PROMPT"):
+    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
+else:
+    load_config()
+    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
+    
 SYSTEM_PROMPT = [
     {
         "type": "text",
@@ -98,7 +102,12 @@ def run_claude(wa_id, name):
                     tool_input['wa_id'] = wa_id
                 
                 try:
-                    output = function(**tool_input)
+                    if inspect.iscoroutinefunction(function):
+                        # For async functions, run them in the event loop
+                        output = asyncio.run(function(**tool_input))
+                    else:
+                        # For regular functions, call them directly
+                        output = function(**tool_input)
                     # Log the tool output
                     if isinstance(output, (dict, list)):
                         logging.info(f"Tool output for {tool_name}: {json.dumps(output)[:500]}...")

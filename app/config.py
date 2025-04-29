@@ -3,7 +3,11 @@ from dotenv import load_dotenv
 import logging
 import sys
 
-load_dotenv(override=True, encoding="utf-8")
+
+def load_config():
+    load_dotenv(override=True, encoding="utf-8")
+    
+load_config()
 
 config = {
     "PHONE_NUMBER_ID": os.getenv("PHONE_NUMBER_ID"),

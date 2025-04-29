@@ -5,9 +5,10 @@ import ssl
 import certifi
 import httpx
 import inspect
-from app.config import config
+from app.config import config, load_config
 from openai import OpenAI
-from app.utils import get_lock, parse_unix_timestamp, append_message, make_thread
+from dotenv import load_dotenv
+from app.utils import parse_unix_timestamp
 from app.utils.service_utils import get_connection
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
@@ -34,9 +35,12 @@ FUNCTION_DEFINITIONS = [
     for t in TOOL_DEFINITIONS
 ]
 
-# Load a system prompt for OpenAI from config
-SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
-
+if config.get("SYSTEM_PROMPT"):
+    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
+else:
+    load_config()
+    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
+    
 logging.getLogger("openai").setLevel(logging.DEBUG)
 
 def run_responses(wa_id, input_chat):
@@ -47,6 +51,7 @@ def run_responses(wa_id, input_chat):
     kwargs = {
         "model": MODEL,
         "input": input_chat,
+        "instructions": SYSTEM_PROMPT_TEXT,
         "text": {"format": {"type": "text"}},
         "reasoning": {"effort": "high", "summary": "auto"},
         "tools": FUNCTION_DEFINITIONS,
@@ -62,9 +67,6 @@ def run_responses(wa_id, input_chat):
     #         "vector_store_ids": [vec_id]
     #     }]
 
-    if SYSTEM_PROMPT_TEXT:
-        kwargs["instructions"] = SYSTEM_PROMPT_TEXT
-    
     # Log request payload
     response = client.responses.create(**kwargs)
     # handle any function calls
