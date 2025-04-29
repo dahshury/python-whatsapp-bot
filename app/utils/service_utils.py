@@ -166,7 +166,8 @@ def get_all_reservations(future=True, include_cancelled=False):
         where_clause = ""
         params = []
         if future:
-            today = date.today().isoformat()
+            # Use timezone-aware date for today
+            today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
             where_clause = " WHERE date >= ?"
             params.append(today)
         

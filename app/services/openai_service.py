@@ -1,9 +1,6 @@
 import logging
 import asyncio
 import json
-import ssl
-import certifi
-import httpx
 import inspect
 from app.config import config, load_config
 from openai import OpenAI

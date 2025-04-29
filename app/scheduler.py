@@ -3,9 +3,8 @@ import datetime
 import os
 import subprocess
 from zoneinfo import ZoneInfo
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-import asyncio
 
 from app.config import config, get
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
@@ -16,7 +15,7 @@ from app.metrics import monitor_system_metrics
 _scheduler_initialized = False
 tz = config.get("TIMEZONE", "UTC")
 
-def send_reminders_job():
+async def send_reminders_job():
     """
     Send appointment reminders to patients with reservations for tomorrow.
     
@@ -52,14 +51,14 @@ def send_reminders_job():
             "الدخول في الفترة الزمنية المحددة بالأعلى يكون بأسبقية الحضور."
         )
         
-        # Send WhatsApp template message (await the async function)
+        # Send WhatsApp template message using async helper
         try:
-            asyncio.run(send_whatsapp_template(
+            await send_whatsapp_template(
                 reservation["wa_id"],
                 "appointment_reminder",
                 "ar",
                 components
-            ))
+            )
         except Exception as e:
             logging.error(f"Failed to send reminder template: {e}")
         
@@ -158,7 +157,7 @@ def init_scheduler(app):
         return
     logging.info(f"init_scheduler start in pid {pid}")
     _scheduler_initialized = True
-    scheduler = BackgroundScheduler(timezone=tz)
+    scheduler = AsyncIOScheduler(timezone=tz)
     
     # Schedule job every day at 19:00
     trigger = CronTrigger(hour=19, minute=0, timezone=tz)

@@ -1,12 +1,10 @@
 import logging
 import asyncio
 import json
-import ssl
-import certifi
-import httpx
 import inspect
 from app.config import config, load_config
-from anthropic import Anthropic, AsyncAnthropic
+from anthropic import Anthropic
+from app.utils.http_client import sync_client
 from app.utils import retrieve_messages
 from app.decorators import retry_decorator
 import datetime
@@ -29,15 +27,9 @@ SYSTEM_PROMPT = [
         "cache_control": {"type": "ephemeral"}
     }
 ]
-# Setup SSL context for secure connections
-ssl_context = ssl.create_default_context()
-ssl_context.load_verify_locations(certifi.where())
-
-# Configure HTTP client with SSL context
-http_client = httpx.Client(verify=ssl_context)
 
 # Create Anthropic client
-client = Anthropic(api_key=ANTHROPIC_API_KEY, http_client=http_client)
+client = Anthropic(api_key=ANTHROPIC_API_KEY, http_client=sync_client)
 
 # Build Anthropic-compatible tools list from central definitions
 tools = [

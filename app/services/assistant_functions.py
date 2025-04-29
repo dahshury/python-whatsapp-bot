@@ -223,7 +223,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         available_slots = resp_slots.get("data", [])
         
         # Build a set of available slots in 24-hour format for robust comparison
-        available_slots_24h = { normalize_time_format(slot, to_24h=True) for slot in available_slots }
+        available_slots_24h = {normalize_time_format(slot, to_24h=True) for slot in available_slots}
         
         # Check if the requested time (parsed_time_str) in 24-hour format is available
         if parsed_time_str not in available_slots_24h:
