@@ -9,7 +9,7 @@ global:
 route:
   group_by: ['alertname', 'job']
   group_wait: 0s
-  group_interval: 0s
+  group_interval: 30s
   repeat_interval: 12h
   receiver: 'discord-notifications'
 
