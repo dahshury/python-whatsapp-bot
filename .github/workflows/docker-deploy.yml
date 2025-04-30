@@ -100,7 +100,11 @@ jobs:
               fi
 
               # Clean up unused images and build cache
-              docker stop $(docker ps -q)
+              # Stop running containers only if any are found
+              containers=$(docker ps -q)
+              if [ -n "$containers" ]; then
+                docker stop $containers
+              fi
               docker system prune -a --volumes -f
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
