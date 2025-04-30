@@ -9,7 +9,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.config import config, get
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
-from app.metrics import monitor_system_metrics
+from app.metrics import monitor_system_metrics, FUNCTION_ERRORS
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False
@@ -60,6 +60,7 @@ async def send_reminders_job():
                 components
             )
         except Exception as e:
+            FUNCTION_ERRORS.labels(function="send_reminders_job").inc()
             logging.error(f"Failed to send reminder template: {e}")
         
         # Log the message in the conversation history
@@ -95,6 +96,7 @@ def run_database_backup():
         
         # Check if script exists
         if not os.path.isfile(script_path):
+            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             logging.error(f"Backup script not found at {script_path}")
             return
         
@@ -122,14 +124,18 @@ def run_database_backup():
                 for line in stdout.splitlines():
                     logging.debug(f"Backup: {line}")
             else:
+                FUNCTION_ERRORS.labels(function="run_database_backup").inc()
                 logging.error(f"Database backup failed with code {process.returncode}")
                 for line in stderr.splitlines():
+                    FUNCTION_ERRORS.labels(function="run_database_backup").inc()
                     logging.error(f"Backup error: {line}")
         except subprocess.TimeoutExpired:
             process.kill()
+            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             logging.error("Database backup timed out after 5 minutes")
             
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="run_database_backup").inc()
         logging.error(f"Error during database backup: {e}")
 
 

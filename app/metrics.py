@@ -60,4 +60,11 @@ CPU_USAGE_PERCENT = Gauge(
 )
 MEMORY_USAGE_BYTES = Gauge(
     'process_memory_bytes', 'Current process memory usage in bytes'
+)
+
+# LLM and backend function execution errors: include function name
+FUNCTION_ERRORS = Counter(
+    'assistant_function_errors_total',
+    'Total errors in assistant function execution',
+    ['function']
 ) 

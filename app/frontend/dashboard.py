@@ -5,6 +5,7 @@ from streamlit_autorefresh import st_autorefresh
 from app.frontend import authenticate
 from app.frontend.sidebar import render_sidebar_elements, render_vacation_editor
 from app.frontend.calendar_view import render_cal
+from app.frontend.statistics_view import render_statistics
 
 # =============================================================================
 # PAGE CONFIGURATION
@@ -98,11 +99,33 @@ default_free_roam = params.get("free_roam", "0") == "1"
 
 # =============================================================================
 # SIDE BAR (Prayer Times, Clock)
-# =============================================================================
+# Determine default page from query params
+default_page = params.get('page', 'calendar')
+default_page_index = 0 if str(default_page).lower() == 'calendar' else 1
+selected_menu = default_page_index
 with st.sidebar:
-    render_sidebar_elements()
-    # Add vacation editor as the last element in the sidebar
-    render_vacation_editor()
+    user_name = st.session_state.get('name', '')
+    # Show menu only for non-secretary users
+    if st.session_state.get('authentication_status') and user_name.lower() != 'secretary':
+        # Build and display main navigation menu
+        is_gregorian_menu = st.session_state.get('is_gregorian', default_gregorian)
+        menu_items = [
+            sac.MenuItem('Calendar' if is_gregorian_menu else 'التقويم', icon='calendar-month'),
+            sac.MenuItem('Statistics' if is_gregorian_menu else 'الإحصائيات', icon='bar-chart'),
+        ]
+        selected_menu = sac.menu(menu_items, index=default_page_index, return_index=True, open_all=True, key='main_sidebar_menu')
+        # Persist page selection in query params
+        if selected_menu != default_page_index:
+            st.query_params.update({'page': 'calendar' if selected_menu == 0 else 'statistics'})
+            st.rerun()
+        # Render sidebar elements only for Calendar page
+        if selected_menu == 0:
+            render_sidebar_elements()
+            render_vacation_editor()
+    else:
+        # For secretary or anonymous users, always show calendar sidebar
+        render_sidebar_elements()
+        render_vacation_editor()
 
 # =============================================================================
 # MAIN APP EXECUTION
@@ -118,4 +141,9 @@ if 'last_refresh_count' not in st.session_state or st.session_state.last_refresh
     st.session_state.pop('calendar_events_hash', None)
     st.session_state.pop('calendar_events', None)
     st.session_state.pop('prev_settings', None)
-render_cal(is_gregorian, free_roam)
+# Render main view based on sidebar selection
+if selected_menu == 0:
+    render_cal(is_gregorian, free_roam)
+else:
+    # Render the full statistics dashboard
+    render_statistics(is_gregorian)

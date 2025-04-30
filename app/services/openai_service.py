@@ -9,6 +9,7 @@ from app.utils.service_utils import get_connection
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.utils.http_client import sync_client
+from app.metrics import FUNCTION_ERRORS
 
 # Always reload config to ensure we have the latest values
 load_config()
@@ -67,17 +68,27 @@ def run_responses(wa_id, input_chat):
         for fc in fc_items:
             args = json.loads(getattr(fc, "arguments", "{}"))
             func = FUNCTION_MAPPING.get(fc.name)
+            
+            # Log function call name and arguments
+            logging.info(f"Tool call: {fc.name} with arguments: {args}")
+            
             if func and 'wa_id' in inspect.signature(func).parameters:
                 args['wa_id'] = wa_id
             
             # Handle async functions properly
             if func:
-                if inspect.iscoroutinefunction(func):
-                    # For async functions, run them in the event loop
-                    result = asyncio.run(func(**args))
-                else:
-                    # For regular functions, call them directly
-                    result = func(**args)
+                try:
+                    if inspect.iscoroutinefunction(func):
+                        # For async functions, run them in the event loop
+                        result = asyncio.run(func(**args))
+                    else:
+                        # For regular functions, call them directly
+                        result = func(**args)
+                except Exception as e:
+                    FUNCTION_ERRORS.labels(function=fc.name).inc()
+                    error_msg = f"Error executing {fc.name}: {str(e)}"
+                    logging.error(error_msg, exc_info=True)
+                    result = {"error": error_msg}
             else:
                 result = {}
                 
@@ -123,6 +134,7 @@ def run_openai(wa_id):
     try:
         new_message, created_at = run_responses(wa_id, input_chat)
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="run_openai").inc()
         logging.error(f"Error during run_responses: {e}", exc_info=True)
         return "", "", ""
     if new_message:

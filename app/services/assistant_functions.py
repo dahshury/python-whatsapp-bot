@@ -14,6 +14,7 @@ from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
 import asyncio
+from app.metrics import FUNCTION_ERRORS
 # Use configured timezone
 TIMEZONE = config.get("TIMEZONE", "UTC")
 
@@ -47,6 +48,7 @@ def send_business_location(wa_id):
         ok = status.get("status") != "error"
         return format_response(ok, message=get_message("location_sent" if ok else "system_error_try_later"))
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="send_business_location").inc()
         logging.error(f"Function call send_business_location failed, error: {e}")
         return format_response(False, message=get_message("system_error_try_later"))
 
@@ -89,7 +91,7 @@ def get_current_datetime():
         }
         return format_response(True, data=data)
     except Exception as e:
-        logging.error(f"Function call get_current_datetime failed, error: {e}")
+        FUNCTION_ERRORS.labels(function="get_current_datetime").inc()
         # Standard system error
         return format_response(False, message=get_message("system_error_generic", error=str(e)))
     
@@ -142,6 +144,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         return format_response(True, message=get_message("wa_id_modified", ar))
     
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="modify_id").inc()
         logging.error(f"Function call modify_id failed, error: {e}")
         return format_response(False, message=get_message("system_error_try_later", ar))
 
@@ -308,6 +311,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         return format_response(True, message=get_message("reservation_modified", ar))
 
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="modify_reservation").inc()
         logging.error(f"Function call modify_reservation failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary", ar))
 
@@ -384,6 +388,7 @@ def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
         # Standardize success response returning list of reservations
         return format_response(True, data=reservation_list)
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="get_customer_reservations").inc()
         logging.error(f"Function call get_customer_reservations failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary"))
 
@@ -507,6 +512,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
                 "type": reservation_type
             }, message=get_message("reservation_successful", ar))
         except sqlite3.OperationalError as e:
+            FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
             conn.rollback()
             logging.error(f"reserve_time_slot DB error: {e}")
             return format_response(False, message=get_message("system_error_try_later", ar))
@@ -514,6 +520,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             conn.close()
 
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
         message = get_message("system_error_contact_secretary", ar)
         result = format_response(False, message=message)
         logging.error(f"Function call reserve_time_slot failed, error: {e}")
@@ -608,6 +615,7 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         return format_response(True, message=get_message("all_reservations_cancelled" if parsed_date_str is None else "reservation_cancelled", ar))
 
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="cancel_reservation").inc()
         message = f"System error occurred: {str(e)}."
         if ar:
             message = "حدث خطأ في النظام."
@@ -717,6 +725,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         # Standardize success response returning available slots
         return format_response(True, data=result)
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="get_available_time_slots").inc()
         logging.error(f"Function call get_available_time_slots failed, error: {e}")
         return format_response(False, message=f"System error occurred: {str(e)}. Ask user to contact the secretary to reserve.")
 
@@ -800,7 +809,7 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
         date_slots_map = {}  # For grouping slots by date when no time_slot is provided
         
         # Get current date/time in timezone
-        today = datetime.datetime.now(tz=TIMEZONE)
+        today = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
         
         # Use provided start_date if available, otherwise use today
         if start_date:
@@ -820,7 +829,7 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
                 raise ValueError("start_date must be a string (YYYY-MM-DD) or datetime.date object")
             
             # Create a datetime object at the start of the day in TIMEZONE
-            today = datetime.datetime.combine(start_date, datetime.time.min, tzinfo=ZoneInfo(TIMEZONE))
+            today = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=ZoneInfo(TIMEZONE))
         
         now = today.date()
         conn = get_connection()
@@ -954,9 +963,11 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
         return format_response(True, data=available_dates)
     
     except ValueError as ve:
+        FUNCTION_ERRORS.labels(function="search_available_appointments").inc()
         # Invalid input format error
         return format_response(False, message=get_message("invalid_date_format", error=str(ve)))
     except Exception as e:
+        FUNCTION_ERRORS.labels(function="search_available_appointments").inc()
         logging.error(f"Function call search_available_appointments failed, error: {e}")
         # Generic system error
         return format_response(False, message=get_message("system_error_generic", error=str(e)))

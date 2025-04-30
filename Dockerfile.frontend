@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements-frontend.in ./
 
 # Add requests explicitly for HTTP client
-RUN echo "requests>=2.31.0" >> requirements-frontend.in
+# Already included in requirements-frontend.in
 
 RUN pip install --upgrade pip pip-tools \
     && pip-compile --output-file requirements-frontend.txt requirements-frontend.in \
