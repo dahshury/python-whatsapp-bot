@@ -51,4 +51,52 @@ The test suite focuses on:
 
 ## Database Testing
 
-The unit tests mock the database connection to avoid actual database operations. For integration testing with the real database, consider adding tests to a separate integration test directory. 
+The unit tests mock the database connection to avoid actual database operations. For integration testing with the real database, consider adding tests to a separate integration test directory.
+
+## WhatsApp Reminder Tests
+
+To test the WhatsApp reminder functionality, use the `test_reminder_system.py` test:
+
+### Running in Docker (Recommended)
+
+First, make sure your Docker containers are running:
+
+```bash
+docker-compose up -d
+```
+
+Then, run the test in the backend container:
+
+```bash
+# Run the full test suite (mocks database and tests send_reminders_job)
+docker-compose exec backend python -m tests.test_reminder_system
+
+# Or test sending a reminder to a specific phone number
+docker-compose exec backend python -m tests.test_reminder_system 201017419800
+```
+
+### Running Locally
+
+You can also run the test directly if your environment is configured properly:
+
+```bash
+# Run the full test suite
+python -m tests.test_reminder_system
+
+# Or test sending a reminder to a specific phone number 
+python -m tests.test_reminder_system 201017419800
+```
+
+### What's Being Tested
+
+1. The test verifies that the `send_reminders_job` function properly:
+   - Retrieves reservations for tomorrow
+   - Sends WhatsApp template messages to each user
+   - Logs the messages in the conversation history
+
+2. When testing a specific phone number, it:
+   - Validates WhatsApp API credentials
+   - Sends a direct reminder template to the specified number
+   - Reports success or failure with detailed error messages
+
+This approach tests the actual scheduler code without modifying the database. 

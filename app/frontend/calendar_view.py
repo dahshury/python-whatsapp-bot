@@ -70,7 +70,7 @@ def render_cal(is_gregorian, free_roam):
         # Store all reservations (both active and cancelled) for name lookups
         st.session_state.all_customer_data = all_reservations
         
-        conv_response = get_all_conversations(recent='month')
+        conv_response = get_all_conversations()
         if not conv_response.get("success", False):
             error_msg = conv_response.get("message") or get_message("system_error_try_later", ar=not is_gregorian)
             st.error(error_msg)

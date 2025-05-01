@@ -245,14 +245,17 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
         # Determine the date filter based on the 'recent' parameter
         now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
         if recent == 'year':
-            start_date = now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+            # One full year back from now
+            start_date = now - timedelta(days=365)
         elif recent == 'month':
-            start_date = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            # One full month back from now
+            start_date = now - timedelta(days=30)
         elif recent == 'week':
-            start_date = now - timedelta(days=now.weekday())
-            start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            # One full week back from now
+            start_date = now - timedelta(days=7)
         elif recent == 'day':
-            start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            # One full day back from now
+            start_date = now - timedelta(days=1)
         else:
             start_date = None
 
