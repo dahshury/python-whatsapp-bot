@@ -666,18 +666,6 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         except Exception as e:
             return {"success": False, "message": f"Invalid date format: {str(e)}"}
         
-        # Convert parsed date to datetime object
-        date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
-        
-        # Check if the date is in the past
-        if date_obj < now.date():
-            return {"success": False, "message": "Cannot get slots for past dates."}
-        
-        # Check if the date falls within a vacation period
-        is_vacation, vacation_message = is_vacation_period(date_obj)
-        if is_vacation:
-            return {"success": False, "message": vacation_message}
-        
         # Get all time slots for the date with filtering for past times if date is today
         all_slots = get_time_slots(date_str=parsed_date_str)
         
@@ -722,6 +710,8 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
         
         # Return only slots with availability (in 12-hour format for display)
         result = [ts for ts, count in all_slots.items() if count < max_reservations]
+        if not result:
+            return format_response(False, message=get_message("all_slots_fully_booked"))
         # Standardize success response returning available slots
         return format_response(True, data=result)
     except Exception as e:

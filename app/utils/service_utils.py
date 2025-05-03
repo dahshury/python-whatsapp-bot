@@ -751,15 +751,21 @@ def is_vacation_period(date_obj, vacation_dict=None):
         logging.error(f"Error in is_vacation_period: {e}")
         return False, None
 
-def get_time_slots(date_str=None, check_vacation=True, to_24h=False):
+def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2, schedule=None):
     """
     Comprehensive function to get time slots for a specific date with all business rules applied.
     
     Parameters:
-        date_str (str, optional): Gegorian iso-format date string to get time slots for.
+        date_str (str, optional): Gregorian iso-format date string to get time slots for.
                                   If provided, this will be converted to a date_obj
         check_vacation (bool): Whether to check if the date is during a vacation period (default: True)
         to_24h (bool): Whether to return time slots in 24-hour format (default: False)
+        interval (int): Hour interval between time slots (default: 2)
+        schedule (dict, optional): Dictionary defining working schedules for weekdays
+                                  Format: {weekday: [start_hour, end_hour] or None}
+                                  Keys are weekdays (0=Monday, 6=Sunday)
+                                  Values are either None (non-working day) or [start_hour, end_hour]
+                                  If None, defaults to clinic's regular schedule
         
     Returns:
         dict or tuple: 
@@ -802,19 +808,35 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False):
         # Get day of week (0=Monday, 6=Sunday)
         day_of_week = date_obj.weekday()
         
+        # Set default schedule if not provided
+        if schedule is None:
+            schedule = {
+                0: [11, 17],  # Monday: 11 AM to 5 PM
+                1: [11, 17],  # Tuesday: 11 AM to 5 PM
+                2: [11, 17],  # Wednesday: 11 AM to 5 PM
+                3: [11, 17],  # Thursday: 11 AM to 5 PM
+                4: None,      # Friday: Non-working day
+                5: [16, 21],  # Saturday: 4 PM to 9 PM
+                6: [11, 17]   # Sunday: 11 AM to 5 PM
+            }
+        
+        # Check if the day is a non-working day
+        if schedule.get(day_of_week) is None:
+            return format_response(False, message=get_message("non_working_day"))
+        
         # Check if the date falls within Ramadan
         hijri_date = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
         is_ramadan = hijri_date.month == 9
         
         # Define time slots in 12-hour format based on day and Ramadan status
-        if day_of_week == 4:  # Friday
-            available_12h = {}  # Clinic is closed on Fridays
-        elif is_ramadan:
-            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, 2)}  # 10 AM to 4 PM during Ramadan
-        elif day_of_week == 5:  # Saturday
-            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(16, 21, 2)}  # 4 PM to 9 PM
-        else:  # Sunday to Thursday
-            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(11, 17, 2)}  # 11 AM to 5 PM
+        if is_ramadan:
+            # Ramadan hours override regular schedule
+            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, interval)}
+        else:
+            # Use the configured schedule for this day
+            day_schedule = schedule.get(day_of_week, [11, 17])
+            start_hour, end_hour = day_schedule
+            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(start_hour, end_hour, interval)}
         
         # Filter out past time slots if the date is today
         if date_obj == now.date():

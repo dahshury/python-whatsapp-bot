@@ -8,6 +8,7 @@ MESSAGES = {
     "invalid_date_format": {"en": "Invalid date format: {error}", "ar": "تنسيق تاريخ غير صالح: {error}"},
     "past_date_error": {"en": "Cannot schedule for past dates.", "ar": "لا يمكنك الجدولة لتواريخ ماضية."},
     "system_error_contact_secretary": {"en": "System error occurred. Ask user to contact the secretary to reserve.", "ar": "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."},
+    "non_working_day": {"en": "The clinic is closed on this day.", "ar": "العيادة مغلقة في هذا اليوم."},
     
     # send_business_location
     "location_sent": {"en": "Location sent.", "ar": "تم إرسال الموقع."},
@@ -32,7 +33,7 @@ MESSAGES = {
     "invalid_reservation_type": {"en": "Invalid reservation type. Must be 0 or 1.", "ar": "نوع الحجز غير صالح. يجب أن يكون 0 أو 1."},
     "no_slots_available_approx": {"en": "No available time slot found for approximation.", "ar": "لم يتم العثور على موعد متاح للتقريب."},
     "no_changes_made": {"en": "No changes were made as no new details were provided.", "ar": "لم يتم إجراء أي تغييرات كونه لم يتم تقديم تفاصيل جديدة."},
-    
+    "all_slots_fully_booked": {"en": "All slots are fully booked for this date. Please choose another date.", "ar": "جميع المواعيد محجوزة. يرجى اختيار تاريخ آخر."},
     # cancel_reservation
     "all_reservations_cancelled": {"en": "All reservations cancelled.", "ar": "تم إلغاء جميع الحجوزات."},
     "reservation_cancelled": {"en": "Reservation cancelled.", "ar": "تم إلغاء الحجز."},

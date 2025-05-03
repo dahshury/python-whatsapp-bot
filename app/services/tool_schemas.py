@@ -10,17 +10,17 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "get_current_datetime",
-        "description": "Get the current date and time in both Hijri and Gregorian calendars. Always use this as the reference point for every message in all date-related operations. Never assume you know the current date or time without checking. Always check the current date and time before suggesting any dates or times.",
+        "description": "Gets the current date and time in both Hijri and Gregorian calendars. Always use this as the reference point for every message in all date-related operations. Never assume you know the current date or time without checking. Always check the current date and time before suggesting any dates or times.",
         "schema": {"type": "object", "properties": {}, "required": [], "additionalProperties": False}
     },
     {
         "name": "get_customer_reservations",
-        "description": "Get the list of reservations for the user",
+        "description": "Get all reservations of the user. If no include_past is provided, defaults to False.",
         "schema": {"type": "object", "properties": {"include_past": {"type": "boolean", "description": "Flag to include past reservations. defaults to False."}}, "required": [], "additionalProperties": False}
     },
     {
         "name": "get_available_time_slots",
-        "description": "Get the available time slots for a given date, considering vacation periods. Returns only time slots that have availability.",
+        "description": "Gets the available time slots for a given date. Returns only time slots that have availability for the given date.",
         "schema": {"type": "object", "properties": {"date_str": {"type": "string", "description": "Date string in ISO 8601 format 'YYYY-MM-DD' to get available time slots for. If 'hijri' is true, The input date to this function should be in the format (YYYY-MM-DD)."}, "hijri": {"type": "boolean", "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). defaults to False."}}, "required": ["date_str"], "additionalProperties": False}
     },
     {
@@ -35,12 +35,12 @@ TOOL_DEFINITIONS = [
     },
     {
         "name": "modify_reservation",
-        "description": "Modify the reservation for an existing customer. Only provide the fields that are being modified.",
+        "description": "Modifies a reservation for an existing customer. Only provide the fields that are being modified.",
         "schema": {"type": "object", "properties": {"new_date": {"type": "string", "description": "New date for the reservation in ISO format (YYYY-MM-DD)."}, "new_time_slot": {"type": "string", "description": "New time slot (expected format: '%I:%M %p', e.g., '11:00 AM')."}, "new_name": {"type": "string", "description": "New customer name."}, "new_type": {"type": "integer", "description": "Reservation type (0 for Check-Up, 1 for Follow-Up)."}, "hijri": {"type": "boolean", "description": "Flag indicating if the provided input date string to this function is in Hijri format. The hijri date should be in the format (YYYY-MM-DD). defaults to False."}}, "required": [], "additionalProperties": False}
     },
     {
         "name": "cancel_reservation",
-        "description": "Cancel a reservation for a customer. If date_str is not provided, cancel all reservations for the customer.",
+        "description": "Cancels a reservation for a customer. If date_str is not provided, cancels all reservations for the customer.",
         "schema": {"type": "object", "properties": {"date_str": {"type": "string", "description": "Date for the reservation in ISO format (e.g., 'YYYY-MM-DD'). If not provided, all reservations are cancelled."}}, "required": [], "additionalProperties": False},
         "cache_control": {"type": "ephemeral"}
     },

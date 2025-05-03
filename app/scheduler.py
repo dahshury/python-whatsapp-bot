@@ -47,9 +47,6 @@ async def send_reminders_job():
         
         for reservation in reservations:
             try:
-                # Log the reservation data for debugging
-                logging.info(f"Processing reservation: {reservation}")
-                
                 # Prepare template components
                 components = [
                     {"type": "body", "parameters": [{"type": "text", "text": reservation["time_slot"]}]}
