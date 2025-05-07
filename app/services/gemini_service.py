@@ -20,7 +20,7 @@ from app.metrics import FUNCTION_ERRORS
 load_config()
 
 # Get API key from environment or config
-GEMINI_API_KEY = config.get("GEMINI_API_KEY", "")
+GEMINI_API_KEY = config.get("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-2.5-pro-preview-05-06"
 
 # Create system prompt 

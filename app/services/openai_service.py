@@ -5,7 +5,7 @@ import inspect
 from app.config import config, load_config
 from openai import OpenAI
 from app.utils import parse_unix_timestamp
-from app.utils.service_utils import get_connection
+from app.utils.service_utils import get_connection, retrieve_messages
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.utils.http_client import sync_client
@@ -117,19 +117,8 @@ def run_openai(wa_id):
     Run the OpenAI Responses API with existing conversation context.
     Returns (response_text, date_str, time_str).
     """
-    # Get the last user message from conversation
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT* FROM conversation WHERE wa_id = ?",
-        (wa_id,)
-    )
-    rows = cursor.fetchall()
-    # Sort rows by the 'id' column (assuming it's the first column, index 0)
-    rows.sort(key=lambda row: row[0])
-    conn.close()
-    # Adjust indices: role is now at index 2, message at index 3
-    input_chat = [{"role": row[2] if row[2] in ["user", "assistant"] else "assistant", "content": row[3]} for row in rows]
+    # Retrieve message history using centralized service
+    input_chat = retrieve_messages(wa_id)
     # Call the synchronous Responses API function
     try:
         new_message, created_at = run_responses(wa_id, input_chat)

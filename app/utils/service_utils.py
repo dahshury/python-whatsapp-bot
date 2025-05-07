@@ -431,32 +431,25 @@ def check_if_thread_exists(wa_id):
 
 def retrieve_messages(wa_id):
     """
-    Retrieve message history for a user from the database and format for Claude API.
+    Retrieve message history for a user from the database and format for service consumption.
     """
     try:
+        # Ensure a thread record exists
         make_thread(wa_id)
-        
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        # Retrieve conversation history
-        cursor.execute(
-            "SELECT role, message FROM conversation WHERE wa_id = ? ORDER BY id ASC",
-            (wa_id,)
-        )
-        rows = cursor.fetchall()
-        messages = [dict(row) for row in rows] if rows else []
-        conn.close()
-        
-        # Format messages for Claude API
-        claude_messages = []
+        # Use centralized conversation retrieval
+        response = get_all_conversations(wa_id=wa_id)
+        if not response.get("success", False):
+            return []
+        data = response.get("data", {})
+        # Extract messages list for this user
+        messages = data.get(wa_id) or data.get(str(wa_id), [])
+        input_chat = []
         for msg in messages:
-            claude_messages.append({
+            input_chat.append({
                 "role": "assistant" if msg["role"] != "user" else "user",
                 "content": msg["message"]
             })
-        
-        return claude_messages
+        return input_chat
     except Exception as e:
         logging.error(f"Error retrieving messages from database: {e}")
         return []

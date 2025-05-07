@@ -11,8 +11,9 @@ import datetime
 from zoneinfo import ZoneInfo
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 
-ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = "claude-3-7-sonnet-20250219"
+TIMEZONE = config.get("TIMEZONE")
 # Create cached system prompt structure
 if config.get("SYSTEM_PROMPT"):
     SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
@@ -49,7 +50,7 @@ def run_claude(wa_id, name):
     Returns the generated message along with date and time.
     Raises exceptions for error cases to enable retry functionality.
     """
-    claude_messages = retrieve_messages(wa_id)
+    input_chat = retrieve_messages(wa_id)
     
     try:
         # Make request to Claude API
@@ -57,10 +58,10 @@ def run_claude(wa_id, name):
         response = client.beta.messages.create(
             model=CLAUDE_MODEL,
             system=SYSTEM_PROMPT,
-            messages=claude_messages,
+            messages=input_chat,
             tools=tools,
             max_tokens=4096,
-            temperature=1,
+            temperature=0.3,
             stream=False,
             betas=["token-efficient-tools-2025-02-19"]
         )
@@ -107,13 +108,13 @@ def run_claude(wa_id, name):
                         logging.info(f"Tool output for {tool_name}: {str(output)[:500]}...")
                     
                     # Add the assistant's response to conversation history
-                    claude_messages.append({
+                    input_chat.append({
                         "role": "assistant", 
                         "content": response.content
                     })
                     
                     # Add tool result to conversation
-                    claude_messages.append({
+                    input_chat.append({
                         "role": "user",
                         "content": [{
                             "type": "tool_result",
@@ -126,10 +127,10 @@ def run_claude(wa_id, name):
                     response = client.beta.messages.create(
                         model=CLAUDE_MODEL,
                         system=SYSTEM_PROMPT,
-                        messages=claude_messages,
+                        messages=input_chat,
                         tools=tools,
                         max_tokens=4096,
-                        temperature=1,
+                        temperature=0.3,
                         stream=False,
                         betas=["token-efficient-tools-2025-02-19"]
                     )
@@ -141,12 +142,12 @@ def run_claude(wa_id, name):
                     logging.error(f"Error executing function {tool_name}: {e}")
                     
                     # Return error message to the assistant
-                    claude_messages.append({
+                    input_chat.append({
                         "role": "assistant", 
                         "content": response.content
                     })
                     
-                    claude_messages.append({
+                    input_chat.append({
                         "role": "user",
                         "content": [{
                             "type": "tool_result",
@@ -159,22 +160,22 @@ def run_claude(wa_id, name):
                     response = client.beta.messages.create(
                         model=CLAUDE_MODEL,
                         system=SYSTEM_PROMPT,
-                        messages=claude_messages,
+                        messages=input_chat,
                         tools=tools,
                         max_tokens=4096,
-                        temperature=1,
+                        temperature=0.3,
                         stream=False,
                         betas=["token-efficient-tools-2025-02-19"]
                     )
             else:
                 logging.error(f"Function '{tool_name}' not implemented.")
                 # Tell the assistant this tool isn't available
-                claude_messages.append({
+                input_chat.append({
                     "role": "assistant", 
                     "content": response.content
                 })
                 
-                claude_messages.append({
+                input_chat.append({
                     "role": "user",
                     "content": [{
                         "type": "tool_result",
@@ -186,10 +187,10 @@ def run_claude(wa_id, name):
                 response = client.beta.messages.create(
                     model=CLAUDE_MODEL,
                     system=SYSTEM_PROMPT,
-                    messages=claude_messages,
+                    messages=input_chat,
                     tools=tools,
                     max_tokens=4096,
-                    temperature=1,
+                    temperature=0.3,
                     stream=False,
                     betas=["token-efficient-tools-2025-02-19"]
                 )
@@ -202,7 +203,7 @@ def run_claude(wa_id, name):
         
         if final_response:
             # Generate current timestamp
-            now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+            now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M:%S")
             
