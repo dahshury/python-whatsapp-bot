@@ -1,26 +1,34 @@
+# To run this code you need to install the following dependencies:
+# pip install google-genai zoneinfo
+
 import logging
 import json
 import inspect
 import os
+import asyncio
 import datetime
 from zoneinfo import ZoneInfo
 
-from app.config import config
+from app.config import config, load_config
 from app.utils import retrieve_messages
 from app.decorators import retry_decorator
 from google import genai
 from google.genai import types
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
+from app.metrics import FUNCTION_ERRORS
+
+load_config()
 
 # Get API key from environment or config
 GEMINI_API_KEY = config.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = "gemini-2.5-pro-preview-03-25"
+GEMINI_MODEL = "gemini-2.5-pro-preview-05-06"
 
 # Create system prompt 
-SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT", "You are a helpful assistant.")
+SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
 
 # Initialize the Gemini API client
 client = genai.Client(api_key=GEMINI_API_KEY)
+logging.getLogger("google.genai").setLevel(logging.DEBUG)
 
 # Create function declarations dynamically from assistant_functions
 def create_function_declarations():
@@ -298,8 +306,13 @@ def run_gemini(wa_id, name):
                         function_args['wa_id'] = wa_id
                     
                     try:
-                        # Invoke the function
-                        output = function(**function_args)
+                        # Invoke the function with proper async handling
+                        if inspect.iscoroutinefunction(function):
+                            # For async functions, run them in the event loop
+                            output = asyncio.run(function(**function_args))
+                        else:
+                            # For regular functions, call them directly
+                            output = function(**function_args)
                         
                         # Log the tool output
                         if isinstance(output, (dict, list)):
@@ -328,25 +341,22 @@ def run_gemini(wa_id, name):
                         )
                         
                     except Exception as e:
-                        logging.error(f"Error executing function {function_name}: {e}")
-                        
+                        FUNCTION_ERRORS.labels(function=function_name).inc()
+                        error_msg = f"Error executing function {function_name}: {e}"
+                        logging.error(error_msg, exc_info=True)
+                        output = {"error": error_msg}
                         # Add model's response with tool call to conversation
                         contents.append(
                             types.Content(
                                 role="model",
-                                parts=[
-                                    types.Part.from_text(text=current_response_text),
-                                ],
+                                parts=[types.Part.from_text(text=current_response_text)],
                             )
                         )
-                        
-                        # Add error result to conversation
+                        # Add tool result to conversation
                         contents.append(
                             types.Content(
                                 role="user",
-                                parts=[
-                                    types.Part.from_text(text=f"Error executing {function_name}: {str(e)}"),
-                                ],
+                                parts=[types.Part.from_text(text=f"Tool result for {function_name}: {json.dumps(output)}")],
                             )
                         )
                 else:
@@ -381,5 +391,6 @@ def run_gemini(wa_id, name):
         return response_text, date_str, time_str
     
     except Exception as e:
-        logging.error(f"Error in Gemini API call: {e}. Retrying...")
-        raise  # Re-raise the exception for retry handling 
+        FUNCTION_ERRORS.labels(function="run_gemini").inc()
+        logging.error(f"Error in Gemini API call: {e}. Retrying...", exc_info=True)
+        raise

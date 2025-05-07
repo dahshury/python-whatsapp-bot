@@ -3,6 +3,7 @@ import datetime
 import os
 import subprocess
 import traceback
+import gc
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -157,6 +158,12 @@ def run_database_backup():
         logging.error(f"Error during database backup: {e}")
 
 
+# Define a job to manually trigger Python garbage collection
+def collect_garbage_job():
+    collected = gc.collect()
+    logging.info(f"Garbage collection manually triggered: collected {collected} objects")
+
+
 def init_scheduler(app):
     """
     Initialize and start the background scheduler with a daily job.
@@ -233,6 +240,15 @@ def init_scheduler(app):
         run_database_backup,
         backup_trigger,
         id="database_backup",
+        replace_existing=True
+    )
+    
+    # Schedule manual garbage collection every hour
+    scheduler.add_job(
+        collect_garbage_job,
+        'interval',
+        hours=1,
+        id="gc_collect",
         replace_existing=True
     )
     

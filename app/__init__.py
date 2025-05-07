@@ -25,6 +25,11 @@ def create_app():
         logging.info(f"startup: initializing scheduler in pid {pid}")
         init_scheduler(app)
         yield
+        # Shutdown: close HTTP clients
+        logging.info("shutdown: closing HTTP clients")
+        from app.utils.http_client import async_client, sync_client
+        await async_client.aclose()
+        sync_client.close()
 
     app = FastAPI(default_response_class=ORJSONResponse, lifespan=lifespan)
 

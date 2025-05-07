@@ -2,6 +2,8 @@ import logging
 import uvicorn
 import uvloop
 import asyncio
+import tracemalloc
+tracemalloc.start()
 from app import create_app
 
 # Use uvloop for better performance

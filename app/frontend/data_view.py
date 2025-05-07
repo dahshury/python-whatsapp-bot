@@ -123,7 +123,7 @@ def render_view(is_gregorian, show_title=True):
             df['start'] = pd.to_datetime(df['start'])
             df['date'] = df['start'].dt.date
             df['time'] = df['start'].dt.time
-            df = df.sort_values(by='time').reset_index(drop=True)
+            df = df.sort_values(by=['date', 'time']).reset_index(drop=True)
             if not df.empty:
                 df['type'] = df.apply(lambda row: "كشف" if not is_gregorian and row.get("extendedProps", {}).get("type", "") == 0 else 
                                                   "مراجعة" if not is_gregorian and row.get("extendedProps", {}).get("type", "") == 1 else

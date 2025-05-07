@@ -1,8 +1,6 @@
 # Frontend requirements
-streamlit>=1.27.2
 streamlit-authenticator>=0.2.3
 streamlit-autorefresh>=1.0.1
-streamlit-calendar>=1.1.0
 streamlit-antd-components>=0.2.3
 pandas>=2.1.1
 hijri-converter>=2.3.1

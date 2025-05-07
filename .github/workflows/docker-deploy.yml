@@ -55,6 +55,14 @@ jobs:
             
             # Ensure proper ownership (use sudo)
             sudo chown -R ubuntu:ubuntu /home/ubuntu/python-whatsapp-bot
+            # Create swap file if not exists (1G)
+            if ! sudo swapon --show | grep -q '/swapfile'; then
+              sudo fallocate -l 1G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+            fi
 
       - name: Copy deployment files to EC2
         uses: appleboy/scp-action@master
