@@ -44,7 +44,11 @@ async def _process_and_release(body, run_llm_function):
     try:
         await process_whatsapp_message_util(body, run_llm_function)
     except Exception as e:
-        logging.error(f"Error processing WhatsApp message: {e}")
+        logging.error(f"ERROR PROCESSING WHATSAPP MESSAGE: {e}", exc_info=True)
+        logging.error("=============== FULL ERROR DETAILS ===============")
+        import traceback
+        logging.error(traceback.format_exc())
+        logging.error("=================================================")
     finally:
         task_semaphore.release()
 

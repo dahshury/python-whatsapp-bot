@@ -22,7 +22,7 @@ load_config()
 # Get API key from environment or config
 GEMINI_API_KEY = config.get("GEMINI_API_KEY")
 GEMINI_MODEL = "gemini-2.5-pro-preview-05-06"
-
+TIMEZONE = config.get("TIMEZONE")
 # Create system prompt 
 SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
 
@@ -164,7 +164,7 @@ def create_function_declarations():
     return declarations
 
 @retry_decorator
-def run_gemini(wa_id, name):
+def run_gemini(wa_id):
     """
     Run Gemini with the conversation history and handle tool calls.
     Returns the generated message along with date and time.
@@ -255,7 +255,7 @@ def run_gemini(wa_id, name):
     
     try:
         # Make request to Gemini API
-        logging.info(f"Making Gemini API request for {name} (wa_id: {wa_id})")
+        logging.info(f"Making Gemini API request for {wa_id}")
         
         response_text = ""
         tool_calls_in_progress = True
@@ -383,11 +383,11 @@ def run_gemini(wa_id, name):
                     )
         
         # Generate current timestamp
-        now = datetime.datetime.now(tz=ZoneInfo("Asia/Riyadh"))
+        now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
         date_str = now.strftime("%Y-%m-%d")
         time_str = now.strftime("%H:%M:%S")
         
-        logging.info(f"Generated message for {name}: {response_text[:100]}...")
+        logging.info(f"Generated message for {wa_id}: {response_text[:100]}...")
         return response_text, date_str, time_str
     
     except Exception as e:

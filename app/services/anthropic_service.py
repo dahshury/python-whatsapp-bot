@@ -44,7 +44,7 @@ tools = [
 ]
 
 @retry_decorator
-def run_claude(wa_id, name):
+def run_claude(wa_id):
     """
     Run Claude with the conversation history and handle tool calls.
     Returns the generated message along with date and time.
@@ -54,7 +54,7 @@ def run_claude(wa_id, name):
     
     try:
         # Make request to Claude API
-        logging.info(f"Making Claude API request for {name} (wa_id: {wa_id})")
+        logging.info(f"Making Claude API request for {wa_id}")
         response = client.beta.messages.create(
             model=CLAUDE_MODEL,
             system=SYSTEM_PROMPT,
@@ -207,12 +207,15 @@ def run_claude(wa_id, name):
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M:%S")
             
-            logging.info(f"Generated message for {name}: {final_response[:100]}...")
+            logging.info(f"Generated message for {wa_id}: {final_response[:100]}...")
             return final_response, date_str, time_str
         else:
             logging.error("No text content in Claude response")
             raise RuntimeError("No text content in Claude response")
             
     except Exception as e:
-        logging.error(f"Error in Claude API call: {e}. Retrying...")
+        logging.error(f"======================================================")
+        logging.error(f"CLAUDE API ERROR for wa_id={wa_id}: {e}")
+        logging.error(f"This error will trigger the retry mechanism")
+        logging.error(f"======================================================")
         raise  # Re-raise the exception for retry handling
