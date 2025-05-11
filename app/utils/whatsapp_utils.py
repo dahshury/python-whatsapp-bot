@@ -5,7 +5,7 @@ import httpx
 import asyncio
 from app.config import config
 from .logging_utils import log_http_response
-from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message
+from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message, get_all_conversations
 import inspect
 from app.utils.http_client import async_client
 
@@ -155,33 +155,38 @@ async def process_whatsapp_message(body, run_llm_function):
     Returns:
         None
     """
-    wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
-    message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-    
     try:
-        message_body = message["text"]["body"]
-    except KeyError:
-        logging.info(f"Unable to process message type: {message}")
-        message_body = None
+        wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
+        message = body["entry"][0]["changes"][0]["value"]["messages"][0]
         
-    if message_body:
-        timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
-        if run_llm_function is None:
-            logging.error("No LLM function provided for processing message")
-            return
-        response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
-        if response_text is None:
-            return
-        response_text = process_text_for_whatsapp(response_text)
-    elif message.get('type') in ['audio', 'image']:
-        response_text = process_text_for_whatsapp(
-            config.get('UNSUPPORTED_MEDIA_MESSAGE', "")
-        )
-    else:
-        response_text = ""
-    
-    if response_text:
-        await send_whatsapp_message(wa_id, response_text)
+        try:
+            message_body = message["text"]["body"]
+        except KeyError:
+            logging.info(f"Unable to process message type: {message.get('type', 'unknown')}")
+            message_body = None
+            
+        if message_body:
+            timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
+            if run_llm_function is None:
+                logging.error("No LLM function provided for processing message")
+                return
+                
+            response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
+            
+            # Only send a response if we got one back from the LLM
+            if response_text:
+                response_text = process_text_for_whatsapp(response_text)
+                await send_whatsapp_message(wa_id, response_text)
+            
+        elif message.get('type') in ['audio', 'image']:
+            # Handle media messages
+            response_text = process_text_for_whatsapp(
+                config.get('UNSUPPORTED_MEDIA_MESSAGE', "I'm sorry, I can't process audio or image files yet.")
+            )
+            await send_whatsapp_message(wa_id, response_text)
+            
+    except Exception as e:
+        logging.error(f"Error processing WhatsApp message: {e}", exc_info=True)
 
 
 def process_text_for_whatsapp(text):
@@ -236,24 +241,42 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
         run_llm_function (callable): Function to generate AI responses.
         
     Returns:
-        str: The generated response text.
+        str or None: The generated response text, or None if no valid response was generated.
     """
     lock = get_lock(wa_id)
     async with lock:
         date_str, time_str = parse_unix_timestamp(timestamp)
         
+        # Check for messages that might already be processed
+        # Get last 5 messages to check for duplicates
+        response = get_all_conversations(wa_id=wa_id, limit=5)
+        if response.get("success", False):
+            messages = response.get("data", {}).get(wa_id) or response.get("data", {}).get(str(wa_id), [])
+            
+            # Check if this message is already in the conversation history
+            for msg in messages:
+                if msg["role"] == "user" and msg["message"] == message_body and msg["time"] == time_str:
+                    logging.warning(f"Duplicate message detected for wa_id={wa_id}: '{message_body}'. Skipping processing.")
+                    return None
+        
         # Save the user message BEFORE running LLM
         append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
         
         # Call LLM function: async -> get coroutine, sync -> run in thread
-        if inspect.iscoroutinefunction(run_llm_function):
-            call = run_llm_function(wa_id)
-        else:
-            call = asyncio.to_thread(run_llm_function, wa_id)
-        new_message, assistant_date_str, assistant_time_str = await call
-        
-        if new_message:
-            append_message(wa_id, 'assistant', new_message, 
-                          date_str=assistant_date_str, time_str=assistant_time_str)
-        
-        return new_message
+        try:
+            if inspect.iscoroutinefunction(run_llm_function):
+                call = run_llm_function(wa_id)
+            else:
+                call = asyncio.to_thread(run_llm_function, wa_id)
+            new_message, assistant_date_str, assistant_time_str = await call
+            
+            if new_message:
+                append_message(wa_id, 'assistant', new_message, 
+                              date_str=assistant_date_str, time_str=assistant_time_str)
+                return new_message
+            else:
+                logging.warning(f"Empty or None response received from LLM for wa_id={wa_id}")
+                return None
+        except Exception as e:
+            logging.error(f"Error generating response: {e}")
+            return None

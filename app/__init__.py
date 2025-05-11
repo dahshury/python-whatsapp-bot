@@ -37,8 +37,19 @@ def create_app():
     async def metrics_middleware(request: Request, call_next):
         start_time = time.time()
         response = await call_next(request)
-        REQUEST_LATENCY.labels(request.method, request.url.path).observe(time.time() - start_time)
-        REQUEST_COUNT.labels(request.method, request.url.path, response.status_code).inc()
+        elapsed = time.time() - start_time
+        try:
+            # Safely handle URL paths that might cause parsing errors
+            path = str(request.url.path)
+            # Normalize the path to avoid issues with invalid characters
+            if '[' in path or ']' in path:
+                # Replace problematic IPv6 URL characters or sanitize path
+                path = "/__sanitized_path__"
+                
+            REQUEST_LATENCY.labels(request.method, path).observe(elapsed)
+            REQUEST_COUNT.labels(request.method, path, response.status_code).inc()
+        except Exception as e:
+            logging.warning(f"Metrics instrumentation failed: {e}")
         return response
 
     @app.get("/metrics")

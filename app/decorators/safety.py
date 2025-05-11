@@ -1,4 +1,4 @@
-from tenacity import retry, wait_exponential, stop_after_attempt, retry_if_exception_type, RetryError
+from tenacity import retry, wait_exponential, stop_after_delay, retry_if_exception_type, RetryError
 import httpx
 import openai
 import logging
@@ -21,19 +21,19 @@ def retry_decorator(func):
         
     # The retry function from tenacity
     retry_func = retry(
-        wait=wait_exponential(multiplier=3, min=10, max=3600),  # Longer max wait for overloaded servers
-        stop=stop_after_attempt(100),
+        wait=wait_exponential(multiplier=3, min=10, max=3600),
+        stop=stop_after_delay(10800),  # Stop retrying after ~3 hours total delay
         retry=retry_if_exception_type((
             httpx.ConnectError,
             httpx.ReadTimeout,
             httpx.HTTPError,
-            AnthropicError,  # Base class for all Anthropic errors
+            AnthropicError,
             RateLimitError,
             APIStatusError,
             APIError,
             APIConnectionError,
             openai.APIConnectionError,
-            Exception  # Catch all other exceptions as a fallback
+            Exception
         )),
         after=_record_retry
     )(func)

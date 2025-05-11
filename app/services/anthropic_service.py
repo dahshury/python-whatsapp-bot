@@ -210,8 +210,12 @@ def run_claude(wa_id):
             logging.info(f"Generated message for {wa_id}: {final_response[:100]}...")
             return final_response, date_str, time_str
         else:
-            logging.error("No text content in Claude response")
-            raise RuntimeError("No text content in Claude response")
+            # No text content; return None instead of empty string
+            logging.error("No text content in Claude response; returning None without retry")
+            now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%H:%M:%S")
+            return None, date_str, time_str
             
     except Exception as e:
         logging.error(f"======================================================")

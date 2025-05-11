@@ -16,7 +16,7 @@ security = HTTPBasic()
 
 # Create a semaphore to limit concurrent background tasks
 # Adjust the value based on memory availability (lower for less memory)
-MAX_CONCURRENT_TASKS = 5
+MAX_CONCURRENT_TASKS = 10
 task_semaphore = asyncio.BoundedSemaphore(MAX_CONCURRENT_TASKS)
 
 @router.get("/webhook")
@@ -50,6 +50,7 @@ async def _process_and_release(body, run_llm_function):
         logging.error(traceback.format_exc())
         logging.error("=================================================")
     finally:
+        # Always release the semaphore, even if processing failed
         task_semaphore.release()
 
 @router.post("/webhook")
@@ -79,22 +80,32 @@ async def webhook_post(
     if "changes" in entry:
         # Try to acquire semaphore without blocking the response
         if task_semaphore.locked() and task_semaphore._value == 0:
-            logging.warning("Maximum concurrent tasks reached. Message processing delayed.")
+            # Log current semaphore status
+            logging.warning(f"Maximum concurrent tasks reached ({MAX_CONCURRENT_TASKS}). Message processing delayed.")
             # Still return 200 OK to WhatsApp API to prevent retries
             return JSONResponse(content={"status": "ok", "note": "Processing delayed due to high load"})
         
-        await task_semaphore.acquire()
-        llm_service = get_llm_service()
-        
-        background_tasks.add_task(
-            _process_and_release,
-            body,
-            llm_service.run
-        )
+        # Log task creation
+        try:
+            await task_semaphore.acquire()
+            llm_service = get_llm_service()
+            logging.debug(f"Semaphore acquired. Tasks in progress: {MAX_CONCURRENT_TASKS - task_semaphore._value}")
+            
+            background_tasks.add_task(
+                _process_and_release,
+                body,
+                llm_service.run
+            )
+        except Exception as e:
+            # Make sure to release the semaphore if task creation fails
+            if task_semaphore.locked():
+                task_semaphore.release()
+            logging.error(f"Failed to create background task: {e}")
+            
+        return JSONResponse(content={"status": "ok"})
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")
-        
-    return JSONResponse(content={"status": "ok"})
+        return JSONResponse(content={"status": "unknown"})
 
 def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     """

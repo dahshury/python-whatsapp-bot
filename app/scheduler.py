@@ -110,8 +110,9 @@ def run_database_backup():
     try:
         logging.info("Starting database backup job")
         
-        # Path to backup script
-        script_path = "/app/scripts/sqlite_backup.sh"
+        # Determine path to backup script (supports container and local development)
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        script_path = os.path.join(project_root, "scripts", "sqlite_backup.sh")
         
         # Check if script exists
         if not os.path.isfile(script_path):
