@@ -15,12 +15,6 @@ sync_client = httpx.Client(verify=ssl_context)
 async_client = httpx.AsyncClient(
     timeout=30.0,  # Increased from 10.0 to 30.0 seconds
     limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
-    retry=httpx.Retry(
-        status_codes=[408, 429, 500, 502, 503, 504],
-        methods=["GET", "POST"],
-        max_retries=3,
-        backoff_factor=0.5
-    ),
     verify=ssl_context
 )
 
@@ -47,12 +41,6 @@ async def ensure_client_healthy():
             async_client = httpx.AsyncClient(
                 timeout=30.0,
                 limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
-                retry=httpx.Retry(
-                    status_codes=[408, 429, 500, 502, 503, 504],
-                    methods=["GET", "POST"],
-                    max_retries=3,
-                    backoff_factor=0.5
-                ),
                 verify=ssl_context
             )
             
