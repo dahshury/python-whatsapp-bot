@@ -7,10 +7,8 @@ from app.config import config
 from .logging_utils import log_http_response
 from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message, get_all_conversations
 import inspect
-from app.utils.http_client import async_client
-
-# Use the shared async HTTP client for WhatsApp API calls
-whatsapp_client = async_client
+from app.utils.http_client import ensure_client_healthy
+from app.metrics import WHATSAPP_MESSAGE_FAILURES
 
 async def send_whatsapp_message(wa_id, text):
     """
@@ -67,11 +65,26 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
         }
     }
 
-    response = await _send_whatsapp_request(payload, "location message")
-    if isinstance(response, tuple) or not response:
-        return response
-    
-    return {"status": "success", "message": "Location sent successfully"}
+    try:
+        response = await _send_whatsapp_request(payload, "location message")
+        
+        # Check if response is an error tuple
+        if isinstance(response, tuple):
+            return response
+            
+        # Check if response is None
+        if not response:
+            return {"status": "error", "message": "Empty response when sending location"}, 500
+            
+        # Fully consume and properly close the response to avoid connection issues
+        await response.aread()
+        response.close()
+            
+        return {"status": "success", "message": "Location sent successfully"}
+        
+    except Exception as e:
+        logging.error(f"Exception in send_whatsapp_location: {e}")
+        return {"status": "error", "message": f"Failed to send location message: {str(e)}"}, 500
 
 
 async def send_whatsapp_template(wa_id, template_name, language="en_US", components=None):
@@ -130,17 +143,40 @@ async def _send_whatsapp_request(payload, message_type):
     }
     url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
     
+    response = None
     try:
-        response = await whatsapp_client.post(url, content=data, headers=headers)
+        # Get the global client, ensuring it's healthy
+        client = await ensure_client_healthy()
+        
+        response = await client.post(url, content=data, headers=headers)
         response.raise_for_status()
         log_http_response(response)
         return response
         
     except httpx.TimeoutException:
         logging.error(f"Timeout occurred while sending {message_type}")
+        if response:
+            try:
+                response.close()
+            except Exception:
+                pass
         return {"status": "error", "message": "Request timed out"}, 408
+    except (httpx.TransportError, httpx.NetworkError, RuntimeError) as e:
+        logging.error(f"Transport or network error when sending {message_type}: {e}")
+        WHATSAPP_MESSAGE_FAILURES.inc()  # Track transport/network errors
+        if response:
+            try:
+                response.close()
+            except Exception:
+                pass
+        return {"status": "error", "message": f"Connection error when sending {message_type}"}, 500
     except httpx.RequestError as e:
         logging.error(f"Request failed when sending {message_type}: {e}")
+        if response:
+            try:
+                response.close()
+            except Exception:
+                pass
         return {"status": "error", "message": f"Failed to send {message_type}"}, 500
 
 
@@ -158,7 +194,14 @@ async def process_whatsapp_message(body, run_llm_function):
     try:
         wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
         message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-        
+        message_type = message.get('type')
+        if message_type in ['audio', 'image']:
+            # Handle media messages
+            response_text = process_text_for_whatsapp(
+                config.get('UNSUPPORTED_MEDIA_MESSAGE', "I'm sorry, I can't process audio or image files yet.")
+            )
+            await send_whatsapp_message(wa_id, response_text)
+            
         try:
             message_body = message["text"]["body"]
         except KeyError:
@@ -177,13 +220,6 @@ async def process_whatsapp_message(body, run_llm_function):
             if response_text:
                 response_text = process_text_for_whatsapp(response_text)
                 await send_whatsapp_message(wa_id, response_text)
-            
-        elif message.get('type') in ['audio', 'image']:
-            # Handle media messages
-            response_text = process_text_for_whatsapp(
-                config.get('UNSUPPORTED_MEDIA_MESSAGE', "I'm sorry, I can't process audio or image files yet.")
-            )
-            await send_whatsapp_message(wa_id, response_text)
             
     except Exception as e:
         logging.error(f"Error processing WhatsApp message: {e}", exc_info=True)

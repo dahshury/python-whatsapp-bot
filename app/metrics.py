@@ -67,4 +67,40 @@ FUNCTION_ERRORS = Counter(
     'assistant_function_errors_total',
     'Total errors in assistant function execution',
     ['function']
+)
+
+# Additional metrics for the specific errors reported
+CLAUDE_API_ERRORS = Counter(
+    'claude_api_errors_total',
+    'Total errors from the Claude API'
+)
+
+ANTHROPIC_RETRY_ATTEMPTS = Counter(
+    'anthropic_retry_attempts_total',
+    'Number of retry attempts for Anthropic API requests'
+)
+
+WHATSAPP_MESSAGE_FAILURES = Counter(
+    'whatsapp_message_failures_total',
+    'Total number of WhatsApp message delivery failures'
+)
+
+SCHEDULER_JOB_MISSED = Counter(
+    'scheduler_job_missed_total',
+    'Total number of scheduler jobs that missed their execution time'
+)
+
+BACKUP_SCRIPT_FAILURES = Counter(
+    'backup_script_failures_total',
+    'Total number of backup script failures'
+)
+
+INVALID_HTTP_REQUESTS = Counter(
+    'invalid_http_requests_total',
+    'Total number of invalid HTTP requests received'
+)
+
+CONCURRENT_TASK_LIMIT_REACHED = Counter(
+    'concurrent_task_limit_reached_total',
+    'Number of times the concurrent task limit was reached'
 ) 

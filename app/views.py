@@ -10,6 +10,7 @@ from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, find_nearest_time_slot
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, get_available_time_slots
+from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
 
 router = APIRouter()
 security = HTTPBasic()
@@ -34,9 +35,11 @@ async def webhook_get(
             return JSONResponse(content=hub_challenge)
         else:
             logging.info("VERIFICATION_FAILED")
+            INVALID_HTTP_REQUESTS.inc()  # Track invalid verification
             raise HTTPException(status_code=403, detail="Verification failed")
     else:
         logging.info("MISSING_PARAMETER")
+        INVALID_HTTP_REQUESTS.inc()  # Track missing parameters
         raise HTTPException(status_code=400, detail="Missing parameters")
 
 async def _process_and_release(body, run_llm_function):
@@ -67,11 +70,20 @@ async def webhook_post(
         logging.info(f"Request body: {body}")
     except Exception:
         logging.error("Failed to decode JSON")
+        INVALID_HTTP_REQUESTS.inc()  # Track invalid JSON
         raise HTTPException(status_code=400, detail="Invalid JSON provided")
     
     # Check for WhatsApp status update
     if body.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {}).get("statuses"):
         logging.info("Received a WhatsApp status update.")
+        
+        # Check for failed message delivery status
+        statuses = body.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {}).get("statuses", [])
+        for status in statuses:
+            if status.get("status") == "failed":
+                logging.warning(f"WhatsApp message delivery failed: {status}")
+                WHATSAPP_MESSAGE_FAILURES.inc()  # Track message delivery failures
+                
         return JSONResponse(content={"status": "ok"})
     
     # Process message in background if it's a valid WhatsApp message
@@ -82,6 +94,7 @@ async def webhook_post(
         if task_semaphore.locked() and task_semaphore._value == 0:
             # Log current semaphore status
             logging.warning(f"Maximum concurrent tasks reached ({MAX_CONCURRENT_TASKS}). Message processing delayed.")
+            CONCURRENT_TASK_LIMIT_REACHED.inc()  # Track concurrent task limit reached
             # Still return 200 OK to WhatsApp API to prevent retries
             return JSONResponse(content={"status": "ok", "note": "Processing delayed due to high load"})
         
@@ -105,6 +118,7 @@ async def webhook_post(
         return JSONResponse(content={"status": "ok"})
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")
+        INVALID_HTTP_REQUESTS.inc()  # Track unknown webhook payload
         return JSONResponse(content={"status": "unknown"})
 
 def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
@@ -116,6 +130,7 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username == correct_username and credentials.password == correct_password:
         return True
     else:
+        INVALID_HTTP_REQUESTS.inc()  # Track unauthorized access
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 @router.get("/app")

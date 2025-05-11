@@ -7,11 +7,12 @@ import gc
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR
 
 from app.config import config, get
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
-from app.metrics import monitor_system_metrics, FUNCTION_ERRORS
+from app.metrics import monitor_system_metrics, FUNCTION_ERRORS, SCHEDULER_JOB_MISSED, BACKUP_SCRIPT_FAILURES
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False
@@ -116,8 +117,9 @@ def run_database_backup():
         
         # Check if script exists
         if not os.path.isfile(script_path):
-            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             logging.error(f"Backup script not found at {script_path}")
+            BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             return
         
         # Ensure script is executable
@@ -144,25 +146,41 @@ def run_database_backup():
                 for line in stdout.splitlines():
                     logging.debug(f"Backup: {line}")
             else:
-                FUNCTION_ERRORS.labels(function="run_database_backup").inc()
                 logging.error(f"Database backup failed with code {process.returncode}")
+                BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+                FUNCTION_ERRORS.labels(function="run_database_backup").inc()
                 for line in stderr.splitlines():
                     FUNCTION_ERRORS.labels(function="run_database_backup").inc()
                     logging.error(f"Backup error: {line}")
         except subprocess.TimeoutExpired:
             process.kill()
-            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             logging.error("Database backup timed out after 5 minutes")
+            BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             
     except Exception as e:
-        FUNCTION_ERRORS.labels(function="run_database_backup").inc()
         logging.error(f"Error during database backup: {e}")
+        BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+        FUNCTION_ERRORS.labels(function="run_database_backup").inc()
 
 
 # Define a job to manually trigger Python garbage collection
 def collect_garbage_job():
     collected = gc.collect()
     logging.info(f"Garbage collection manually triggered: collected {collected} objects")
+
+
+# Listener function for APScheduler missed job events
+def scheduler_listener(event):
+    if event.code == EVENT_JOB_MISSED:
+        job_id = event.job_id
+        logging.warning(f"Run time of job {job_id} was missed")
+        SCHEDULER_JOB_MISSED.inc()  # Increment the missed job counter
+    elif event.code == EVENT_JOB_ERROR:
+        job_id = event.job_id
+        exception = event.exception
+        logging.error(f"Job {job_id} raised an exception: {exception}")
+        FUNCTION_ERRORS.labels(function=f"scheduler_job_{job_id}").inc()
 
 
 def init_scheduler(app):
@@ -213,6 +231,9 @@ def init_scheduler(app):
     logging.info(f"init_scheduler start in pid {pid}")
     _scheduler_initialized = True
     scheduler = AsyncIOScheduler(timezone=tz)
+    
+    # Add the job missed listener
+    scheduler.add_listener(scheduler_listener, EVENT_JOB_MISSED | EVENT_JOB_ERROR)
     
     # Schedule job every day at 19:00
     trigger = CronTrigger(hour=19, minute=0, timezone=tz)

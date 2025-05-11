@@ -9,15 +9,50 @@ global:
 route:
   group_by: ['alertname', 'job']
   group_wait: 0s
-  group_interval: 30s
-  repeat_interval: 12h
+  group_interval: 1m
+  repeat_interval: 30m
   receiver: 'discord-notifications'
+  routes:
+    - match:
+        severity: critical
+      group_wait: 0s
+      group_interval: 30s
+      repeat_interval: 5m
+      receiver: 'discord-notifications'
+    
+    - match:
+        severity: warning
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 10m
+      receiver: 'discord-notifications'
+    
+    - match:
+        severity: info
+      group_wait: 0s
+      group_interval: 2m
+      repeat_interval: 30m
+      receiver: 'discord-notifications'
+
+inhibit_rules:
+  - source_match:
+      severity: 'warning'
+    target_match:
+      severity: 'info'
+    equal: ['job']
+  
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['job']
 
 receivers:
   - name: 'discord-notifications'
     webhook_configs:
       - url: 'http://discord-adapter:9094'
         send_resolved: true
+        max_alerts: 10
 
 # Slack receiver example (uncomment and configure if using Slack):
 #  - name: 'slack-notifications'

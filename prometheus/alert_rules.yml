@@ -74,4 +74,73 @@ groups:
         severity: warning
       annotations:
         summary: "Delete reservation operation failed"
-        description: "A delete reservation attempt failed with HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}." 
+        description: "A delete reservation attempt failed with HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}."
+
+- name: application_errors
+  rules:
+    # Alert on Claude API errors and retries
+    - alert: ClaudeAPIError
+      expr: |
+        rate(claude_api_errors_total[5m]) > 0 or
+        rate(anthropic_retry_attempts_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Claude API Error Detected"
+        description: "Claude API error or retry detected in the application"
+
+    # Alert on WhatsApp message delivery failures
+    - alert: WhatsAppMessageFailure
+      expr: |
+        rate(whatsapp_message_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "WhatsApp Message Delivery Failed"
+        description: "WhatsApp message delivery failed (likely marked as undeliverable)"
+        
+    # Alert on APScheduler missed jobs
+    - alert: SchedulerJobMissed
+      expr: |
+        rate(scheduler_job_missed_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Scheduler Job Execution Missed"
+        description: "An APScheduler job missed its scheduled execution time"
+        
+    # Alert on backup script failures
+    - alert: BackupScriptFailure
+      expr: |
+        rate(backup_script_failures_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Database Backup Script Failed"
+        description: "The database backup script failed to execute properly"
+        
+    # Alert on invalid HTTP requests
+    - alert: InvalidHTTPRequest
+      expr: |
+        rate(invalid_http_requests_total[5m]) > 0
+      for: 1m
+      labels:
+        severity: info
+      annotations:
+        summary: "Invalid HTTP Request Received"
+        description: "An invalid HTTP request was received by the application"
+        
+    # Alert on concurrent task limits
+    - alert: ConcurrentTaskLimitReached
+      expr: |
+        rate(concurrent_task_limit_reached_total[5m]) > 0
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Maximum Concurrent Tasks Reached"
+        description: "The application has reached its maximum concurrent task limit" 

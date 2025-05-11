@@ -10,6 +10,7 @@ from app.decorators import retry_decorator
 import datetime
 from zoneinfo import ZoneInfo
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
+from app.metrics import CLAUDE_API_ERRORS, ANTHROPIC_RETRY_ATTEMPTS
 
 ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY")
 CLAUDE_MODEL = "claude-3-7-sonnet-20250219"
@@ -76,6 +77,7 @@ def run_claude(wa_id):
             
             if not tool_use_block:
                 logging.error("Tool use indicated but no tool_use block found in content")
+                CLAUDE_API_ERRORS.inc()
                 break
                 
             tool_name = tool_use_block.name
@@ -140,6 +142,7 @@ def run_claude(wa_id):
                     
                 except Exception as e:
                     logging.error(f"Error executing function {tool_name}: {e}")
+                    CLAUDE_API_ERRORS.inc()
                     
                     # Return error message to the assistant
                     input_chat.append({
@@ -169,6 +172,7 @@ def run_claude(wa_id):
                     )
             else:
                 logging.error(f"Function '{tool_name}' not implemented.")
+                CLAUDE_API_ERRORS.inc()
                 # Tell the assistant this tool isn't available
                 input_chat.append({
                     "role": "assistant", 
@@ -212,6 +216,7 @@ def run_claude(wa_id):
         else:
             # No text content; return None instead of empty string
             logging.error("No text content in Claude response; returning None without retry")
+            CLAUDE_API_ERRORS.inc()
             now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M:%S")
@@ -222,4 +227,6 @@ def run_claude(wa_id):
         logging.error(f"CLAUDE API ERROR for wa_id={wa_id}: {e}")
         logging.error(f"This error will trigger the retry mechanism")
         logging.error(f"======================================================")
+        CLAUDE_API_ERRORS.inc()
+        ANTHROPIC_RETRY_ATTEMPTS.inc()
         raise  # Re-raise the exception for retry handling
