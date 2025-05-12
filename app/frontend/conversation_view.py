@@ -58,7 +58,13 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options.append(f"{option} - {name}")
             else:
                 options.append(option)
-        options.sort(key=lambda x: (len(x), conversations[x.split(" - ")[0].strip()][-1].get("date", "")), reverse=True)
+        options.sort(
+            key=lambda x: max(
+                ((msg.get("date") or "", convert_time_to_sortable(msg.get("time") or "")) for msg in conversations[x.split(" - ")[0].strip()]),
+                default=("", "00:00:00")
+            ),
+            reverse=True
+        )
         index = next((i for i, opt in enumerate(options) if str(opt).startswith(st.session_state.selected_event_id)), 0)
 
         # Add custom CSS for better alignment
@@ -98,6 +104,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 "◀",
                 key="prev_conversation",
                 help=("Previous" if is_gregorian else "السابق"),
+                disabled=(index == 0),
                 use_container_width=True
             )
         # Selectbox without label
@@ -115,6 +122,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 "▶",
                 key="next_conversation",
                 help=("Next" if is_gregorian else "التالي"),
+                disabled=(index == len(options) - 1),
                 use_container_width=True
             )
 

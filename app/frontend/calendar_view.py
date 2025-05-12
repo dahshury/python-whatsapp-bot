@@ -2,6 +2,7 @@ import datetime
 import hashlib
 import json
 import time
+import os
 
 import pandas as pd
 import streamlit as st
@@ -237,7 +238,7 @@ def render_cal(is_gregorian, free_roam):
             "aspectRatio": 1.35,
             "initialDate": initial_date,
             "initialView": st.session_state.selected_view_id,
-            "timeZone": "Asia/Riyadh",
+            "timeZone": f"{os.getenv('TIMEZONE', 'UTC')}",
         }
         # Localize calendar button text
         if not is_gregorian:
@@ -486,6 +487,10 @@ def render_cal(is_gregorian, free_roam):
                         }
                         .fc-toolbar-title {
                             font-size: 2rem;
+                        }
+                        /* Change cursor to pointer for all calendar events */
+                        .fc-event {
+                            cursor: pointer !important;
                         }
                         """,
             key=calendar_key,
