@@ -74,16 +74,18 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
             
         # Check if response is None
         if not response:
+            WHATSAPP_MESSAGE_FAILURES.inc()  # Track any response failures
             return {"status": "error", "message": "Empty response when sending location"}, 500
             
-        # Fully consume and properly close the response to avoid connection issues
-        await response.aread()
-        response.close()
+        # Fully consume the response content without closing the transport
+        if hasattr(response, 'aread'):
+            await response.aread()
             
         return {"status": "success", "message": "Location sent successfully"}
         
     except Exception as e:
         logging.error(f"Exception in send_whatsapp_location: {e}")
+        WHATSAPP_MESSAGE_FAILURES.inc()  # Track exceptions as message failures
         return {"status": "error", "message": f"Failed to send location message: {str(e)}"}, 500
 
 

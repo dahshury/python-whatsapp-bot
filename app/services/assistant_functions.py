@@ -14,7 +14,7 @@ from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
 import asyncio
-from app.metrics import FUNCTION_ERRORS
+from app.metrics import FUNCTION_ERRORS, WHATSAPP_MESSAGE_FAILURES
 # Use configured timezone
 TIMEZONE = config.get("TIMEZONE", "UTC")
 
@@ -64,6 +64,7 @@ def send_business_location(wa_id):
         return format_response(ok, message=get_message("location_sent" if ok else "system_error_try_later"))
     except Exception as e:
         FUNCTION_ERRORS.labels(function="send_business_location").inc()
+        WHATSAPP_MESSAGE_FAILURES.inc()  # Track transport/network errors for alerting
         logging.error(f"Function call send_business_location failed, error: {e}")
         return format_response(False, message=get_message("system_error_try_later"))
 
