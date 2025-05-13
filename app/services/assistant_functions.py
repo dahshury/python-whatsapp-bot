@@ -42,10 +42,25 @@ def send_business_location(wa_id):
             config['BUSINESS_NAME'], config['BUSINESS_ADDRESS']
         )
         if asyncio.iscoroutine(status_call):
-            status = asyncio.run(status_call)
+            # Use a more robust way to run async code in sync context if needed
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    status = loop.run_until_complete(status_call)
+                else:
+                    status = asyncio.run(status_call)
+            except RuntimeError:
+                # Fallback if no event loop is running
+                status = asyncio.run(status_call)
         else:
             status = status_call
-        ok = status.get("status") != "error"
+        # Handle different return types from send_whatsapp_location
+        if isinstance(status, dict):
+            ok = status.get("status") != "error"
+        elif isinstance(status, tuple):
+            ok = status[0] if len(status) > 0 else False
+        else:
+            ok = False
         return format_response(ok, message=get_message("location_sent" if ok else "system_error_try_later"))
     except Exception as e:
         FUNCTION_ERRORS.labels(function="send_business_location").inc()
