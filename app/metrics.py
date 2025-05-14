@@ -69,16 +69,51 @@ FUNCTION_ERRORS = Counter(
     ['function']
 )
 
-# Additional metrics for the specific errors reported
-CLAUDE_API_ERRORS = Counter(
-    'claude_api_errors_total',
-    'Total errors from the Claude API'
+# Enhanced LLM metrics with detailed error types
+LLM_API_ERRORS = Counter(
+    'llm_api_errors_total',
+    'Total errors from LLM API calls',
+    ['provider', 'error_type']
 )
 
-ANTHROPIC_RETRY_ATTEMPTS = Counter(
-    'anthropic_retry_attempts_total',
-    'Number of retry attempts for Anthropic API requests'
+LLM_TOOL_EXECUTION_ERRORS = Counter(
+    'llm_tool_execution_errors_total',
+    'Total errors from executing tools called by LLMs',
+    ['tool_name', 'provider']
 )
+
+LLM_RETRY_ATTEMPTS = Counter(
+    'llm_retry_attempts_total',
+    'Number of retry attempts for LLM API requests',
+    ['provider', 'error_type']
+)
+
+LLM_EMPTY_RESPONSES = Counter(
+    'llm_empty_responses_total',
+    'Number of empty or invalid responses from LLMs',
+    ['provider', 'response_type']
+)
+
+# Common error types for LLMs
+# Provider-specific enum types should be handled with error_type="provider_specific" and detailed logs
+LLM_ERROR_TYPES = {
+    'authentication': 'Authentication error (API key issues)',
+    'rate_limit': 'Rate limit exceeded',
+    'context_length': 'Context length exceeded',
+    'timeout': 'Request timeout',
+    'server': 'Server error (5xx)',
+    'network': 'Network connectivity issue',
+    'provider_specific': 'Provider-specific error',
+    'bad_request': 'Bad request (4xx)',
+    'empty_response': 'Empty response received',
+    'invalid_response': 'Invalid response format',
+    'unknown': 'Unknown error'
+}
+
+# Legacy metrics for backward compatibility
+CLAUDE_API_ERRORS = LLM_API_ERRORS.labels(provider='anthropic', error_type='unknown')
+CLAUDE_TOOL_EXECUTION_ERRORS = LLM_TOOL_EXECUTION_ERRORS
+ANTHROPIC_RETRY_ATTEMPTS = LLM_RETRY_ATTEMPTS.labels(provider='anthropic', error_type='unknown')
 
 WHATSAPP_MESSAGE_FAILURES = Counter(
     'whatsapp_message_failures_total',

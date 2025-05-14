@@ -14,8 +14,9 @@ from app.utils import retrieve_messages
 from app.decorators import retry_decorator
 from google import genai
 from google.genai import types
+from google.api_core.exceptions import InvalidArgument, ResourceExhausted, NotFound, PermissionDenied, GoogleAPIError
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
-from app.metrics import FUNCTION_ERRORS
+from app.metrics import FUNCTION_ERRORS, LLM_API_ERRORS, LLM_TOOL_EXECUTION_ERRORS, LLM_RETRY_ATTEMPTS, LLM_EMPTY_RESPONSES
 
 load_config()
 
@@ -29,6 +30,33 @@ SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
 # Initialize the Gemini API client
 client = genai.Client(api_key=GEMINI_API_KEY)
 logging.getLogger("google.genai").setLevel(logging.DEBUG)
+
+def map_gemini_error(e):
+    """Map Google Gemini exceptions to standardized error types"""
+    if isinstance(e, ResourceExhausted):
+        # Check if it's likely a rate limit or context length
+        error_msg = str(e).lower()
+        if "quota" in error_msg or "rate" in error_msg:
+            return "rate_limit"
+        else:
+            return "context_length"
+    elif isinstance(e, PermissionDenied):
+        return "authentication"
+    elif isinstance(e, InvalidArgument):
+        return "bad_request"
+    elif isinstance(e, NotFound):
+        return "provider_specific"
+    elif isinstance(e, GoogleAPIError):
+        # General Google API error
+        return "server"
+    elif isinstance(e, TimeoutError):
+        return "timeout"
+    else:
+        # Network or unknown error
+        error_msg = str(e).lower()
+        if "network" in error_msg or "connection" in error_msg:
+            return "network"
+        return "unknown"
 
 # Create function declarations dynamically from assistant_functions
 def create_function_declarations():
@@ -164,12 +192,22 @@ def create_function_declarations():
     return declarations
 
 @retry_decorator
-def run_gemini(wa_id):
+def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
     """
     Run Gemini with the conversation history and handle tool calls.
     Returns the generated message along with date and time.
     Raises exceptions for error cases to enable retry functionality.
+    
+    Args:
+        wa_id (str): WhatsApp ID of the user
+        model (str): Gemini model to use.
+        system_prompt (str): System prompt to use.
+        max_tokens (int, optional): Maximum tokens for response.
+        timezone (str, optional): Timezone for timestamps.
     """
+    # Use timezone from parameters or fallback to UTC
+    tz = timezone or "UTC"
+    
     # Retrieve conversation history
     messages_history = retrieve_messages(wa_id)
     
@@ -181,7 +219,7 @@ def run_gemini(wa_id):
         types.Content(
             role="user",
             parts=[
-                types.Part.from_text(text=SYSTEM_PROMPT_TEXT),
+                types.Part.from_text(text=system_prompt),
             ],
         )
     )
@@ -191,206 +229,191 @@ def run_gemini(wa_id):
         types.Content(
             role="model",
             parts=[
-                types.Part.from_text(text="I'll be a helpful assistant."),
+                types.Part.from_text(text="I'll assist you according to these instructions."),
             ],
         )
     )
     
     # Process conversation history
     for message in messages_history:
-        role = "user" if message["role"] == "user" else "model"
+        role = message.get("role")
+        content = message.get("content", [])
         
-        # Handle normal text content
-        if isinstance(message.get("content"), str):
+        # Skip empty messages
+        if not content:
+            continue
+            
+        # Convert role from OpenAI format to Gemini format
+        gemini_role = "user" if role == "user" else "model"
+        
+        # Process content based on type
+        if isinstance(content, str):
+            # Simple text message
             contents.append(
                 types.Content(
-                    role=role,
-                    parts=[
-                        types.Part.from_text(text=message["content"]),
-                    ],
+                    role=gemini_role,
+                    parts=[types.Part.from_text(text=content)]
                 )
             )
-        
-        # Handle tool results or more complex content structures
-        elif isinstance(message.get("content"), list):
+        elif isinstance(content, list):
+            # Complex message with blocks
             parts = []
             
-            for content_item in message["content"]:
-                if isinstance(content_item, dict) and content_item.get("type") == "tool_result":
-                    # This is a tool result, we need to create appropriate content
-                    tool_result = content_item.get("content", "")
-                    parts.append(types.Part.from_text(
-                        text=f"Tool result: {tool_result}"
-                    ))
-                elif isinstance(content_item, dict) and content_item.get("type") == "text":
-                    # Regular text content
-                    parts.append(types.Part.from_text(text=content_item.get("text", "")))
-                else:
-                    # Handle other types or fallback
-                    parts.append(types.Part.from_text(text=str(content_item)))
+            # Extract text from content blocks
+            for block in content:
+                if isinstance(block, dict):
+                    # Handle different block types
+                    block_type = block.get("type", "")
+                    
+                    if block_type == "text":
+                        # Text block
+                        parts.append(types.Part.from_text(text=block.get("text", "")))
+                    elif block_type == "tool_use":
+                        # Tool use block - add as text for now
+                        tool_name = block.get("name", "")
+                        tool_input = block.get("input", {})
+                        parts.append(types.Part.from_text(
+                            text=f"[Tool use: {tool_name} with input {json.dumps(tool_input)}]"
+                        ))
+                    elif block_type == "tool_result":
+                        # Tool result block
+                        tool_content = block.get("content", "")
+                        parts.append(types.Part.from_text(
+                            text=f"[Tool result: {tool_content}]"
+                        ))
+                elif isinstance(block, str):
+                    # Plain text in array
+                    parts.append(types.Part.from_text(text=block))
             
+            # Add the content with all parts
             if parts:
-                contents.append(
-                    types.Content(
-                        role=role,
-                        parts=parts,
-                    )
-                )
-    
-    # Create function tools
-    tools = [
-        types.Tool(
-            function_declarations=create_function_declarations()
-        )
-    ]
-    
-    # Prepare generate content config with tools
-    generate_content_config = types.GenerateContentConfig(
-        tools=tools,
-        response_mime_type="text/plain",
-        system_instruction=[
-            types.Part.from_text(text=SYSTEM_PROMPT_TEXT),
-        ],
-    )
+                contents.append(types.Content(role=gemini_role, parts=parts))
     
     try:
+        # Create function declarations
+        function_declarations = create_function_declarations()
+        
+        # Set up model parameters
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "top_k": 64,
+            "max_output_tokens": max_tokens if max_tokens else 4096,
+        }
+        
         # Make request to Gemini API
         logging.info(f"Making Gemini API request for {wa_id}")
         
-        response_text = ""
-        tool_calls_in_progress = True
+        # Create the model with the specified model name
+        model_instance = client.get_genai_model(model)
         
-        while tool_calls_in_progress:
-            # Generate content with Gemini
-            response_stream = client.models.generate_content_stream(
-                model=GEMINI_MODEL,
-                contents=contents,
-                config=generate_content_config,
-            )
+        # Generate content with function calling
+        response = model_instance.generate_content(
+            contents,
+            generation_config=generation_config,
+            tools=[types.Tool(function_declarations=function_declarations)]
+        )
+        
+        # Process function calls if present
+        while hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'function_calls') and response.candidates[0].function_calls:
+            function_calls = response.candidates[0].function_calls
             
-            # Reset for this iteration
-            current_response_text = ""
-            has_function_calls = False
-            function_calls = []
-            
-            # Process the streaming response
-            for chunk in response_stream:
-                if chunk.text:
-                    current_response_text += chunk.text
-                
-                if chunk.function_calls:
-                    has_function_calls = True
-                    function_calls.extend(chunk.function_calls)
-            
-            # If there are no function calls, we're done
-            if not has_function_calls:
-                response_text = current_response_text
-                tool_calls_in_progress = False
-                continue
-            
-            # Process function calls
+            # Process each function call
             for function_call in function_calls:
                 function_name = function_call.name
-                function_args = function_call.args
+                function_args = {}
                 
-                logging.info(f"Tool used: {function_name}")
-                logging.info(f"Tool input: {json.dumps(function_args)}")
+                # Extract function arguments
+                for arg_name, arg_value in function_call.args.items():
+                    function_args[arg_name] = arg_value
                 
-                # Process the tool call
+                logging.info(f"Function call: {function_name} with args: {function_args}")
+                
+                # Execute the function if it exists
                 if function_name in FUNCTION_MAPPING:
                     function = FUNCTION_MAPPING[function_name]
                     sig = inspect.signature(function)
                     
-                    # If the function takes a 'wa_id' parameter, add it
-                    if 'wa_id' in sig.parameters and not function_args.get('wa_id', ""):
+                    # Add wa_id if the function expects it
+                    if 'wa_id' in sig.parameters and 'wa_id' not in function_args:
                         function_args['wa_id'] = wa_id
                     
                     try:
-                        # Invoke the function with proper async handling
+                        # Execute function (async or sync)
                         if inspect.iscoroutinefunction(function):
-                            # For async functions, run them in the event loop
-                            output = asyncio.run(function(**function_args))
+                            result = asyncio.run(function(**function_args))
                         else:
-                            # For regular functions, call them directly
-                            output = function(**function_args)
-                        
-                        # Log the tool output
-                        if isinstance(output, (dict, list)):
-                            logging.info(f"Tool output for {function_name}: {json.dumps(output)[:500]}...")
+                            result = function(**function_args)
+                            
+                        # Convert result to string if needed
+                        if isinstance(result, (dict, list)):
+                            result_str = json.dumps(result)
                         else:
-                            logging.info(f"Tool output for {function_name}: {str(output)[:500]}...")
-                        
-                        # Add model's response with tool call to conversation
-                        contents.append(
-                            types.Content(
-                                role="model",
-                                parts=[
-                                    types.Part.from_text(text=current_response_text),
-                                ],
-                            )
-                        )
-                        
-                        # Add tool result to conversation
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[
-                                    types.Part.from_text(text=f"Tool result for {function_name}: {json.dumps(output) if isinstance(output, (dict, list)) else str(output)}"),
-                                ],
-                            )
-                        )
+                            result_str = str(result)
+                            
+                        # Log result (truncated for large outputs)
+                        logging.info(f"Function result: {result_str[:500]}...")
                         
                     except Exception as e:
+                        # Use both metrics for now during transition
                         FUNCTION_ERRORS.labels(function=function_name).inc()
-                        error_msg = f"Error executing function {function_name}: {e}"
-                        logging.error(error_msg, exc_info=True)
-                        output = {"error": error_msg}
-                        # Add model's response with tool call to conversation
-                        contents.append(
-                            types.Content(
-                                role="model",
-                                parts=[types.Part.from_text(text=current_response_text)],
-                            )
-                        )
-                        # Add tool result to conversation
-                        contents.append(
-                            types.Content(
-                                role="user",
-                                parts=[types.Part.from_text(text=f"Tool result for {function_name}: {json.dumps(output)}")],
-                            )
-                        )
+                        LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=function_name, provider="gemini").inc()
+                        result_str = f"Error executing {function_name}: {str(e)}"
+                        logging.error(result_str, exc_info=True)
                 else:
-                    logging.error(f"Function '{function_name}' not implemented.")
-                    
-                    # Add model's response with tool call to conversation
-                    contents.append(
-                        types.Content(
-                            role="model",
-                            parts=[
-                                types.Part.from_text(text=current_response_text),
-                            ],
-                        )
+                    result_str = f"Function {function_name} not found"
+                    logging.error(result_str)
+                    LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=function_name, provider="gemini").inc()
+                
+                # Add function call and result to conversation
+                contents.append(
+                    types.Content(
+                        role="model",
+                        parts=[types.Part.from_text(text=f"I need to call {function_name}({json.dumps(function_args)})")],
                     )
-                    
-                    # Add error result to conversation
-                    contents.append(
-                        types.Content(
-                            role="user",
-                            parts=[
-                                types.Part.from_text(text=f"Error: Tool '{function_name}' is not implemented"),
-                            ],
-                        )
+                )
+                
+                contents.append(
+                    types.Content(
+                        role="user",
+                        parts=[types.Part.from_text(text=f"Result of {function_name}: {result_str}")],
                     )
+                )
+            
+            # Generate follow-up response
+            response = model_instance.generate_content(
+                contents,
+                generation_config=generation_config,
+                tools=[types.Tool(function_declarations=function_declarations)]
+            )
         
-        # Generate current timestamp
-        now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
-        date_str = now.strftime("%Y-%m-%d")
-        time_str = now.strftime("%H:%M:%S")
+        # Extract final text response
+        if hasattr(response, 'text'):
+            final_response = response.text
+        elif hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'content'):
+            final_response = response.candidates[0].content.parts[0].text
+        else:
+            final_response = None
         
-        logging.info(f"Generated message for {wa_id}: {response_text[:100]}...")
-        return response_text, date_str, time_str
-    
+        if final_response:
+            # Generate current timestamp in the specified timezone
+            now = datetime.datetime.now(tz=ZoneInfo(tz))
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%H:%M:%S")
+            
+            logging.info(f"Generated message for {wa_id}: {final_response[:100]}...")
+            return final_response, date_str, time_str
+        else:
+            logging.error("No text content in Gemini response")
+            LLM_EMPTY_RESPONSES.labels(provider="gemini", response_type="no_text_content").inc()
+            now = datetime.datetime.now(tz=ZoneInfo(tz))
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%H:%M:%S")
+            return None, date_str, time_str
+            
     except Exception as e:
-        FUNCTION_ERRORS.labels(function="run_gemini").inc()
-        logging.error(f"Error in Gemini API call: {e}. Retrying...", exc_info=True)
-        raise
+        error_type = map_gemini_error(e)
+        logging.error(f"GEMINI API ERROR for wa_id={wa_id}: {e} (type: {error_type})", exc_info=True)
+        LLM_API_ERRORS.labels(provider="gemini", error_type=error_type).inc()
+        LLM_RETRY_ATTEMPTS.labels(provider="gemini", error_type=error_type).inc()
+        raise  # Re-raise for retry handling

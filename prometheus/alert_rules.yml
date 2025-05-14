@@ -76,20 +76,54 @@ groups:
         summary: "Delete reservation operation failed"
         description: "A delete reservation attempt failed with HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}."
 
-- name: application_errors
+- name: llm_errors
   rules:
-    # Alert on Claude API errors and retries
-    - alert: ClaudeAPIError
+    # Alert on LLM API errors by provider and type
+    - alert: LLMApiError
       expr: |
-        rate(claude_api_errors_total[5m]) > 0 or
-        rate(anthropic_retry_attempts_total[5m]) > 0
+        rate(llm_api_errors_total[5m]) > 0
       for: 0m
       labels:
         severity: warning
       annotations:
-        summary: "Claude API Error Detected"
-        description: "Claude API error or retry detected in the application"
+        summary: "LLM API Error Detected"
+        description: "{{ $labels.provider }} API error ({{ $labels.error_type }}) detected"
 
+    # Alert on LLM retry attempts
+    - alert: LLMRetryAttempts
+      expr: |
+        rate(llm_retry_attempts_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "LLM API Retry Detected" 
+        description: "{{ $labels.provider }} API retry ({{ $labels.error_type }}) detected"
+        
+    # Alert on LLM tool execution errors
+    - alert: LLMToolExecutionError
+      expr: |
+        rate(llm_tool_execution_errors_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "LLM Tool Execution Error"
+        description: "Error executing tool '{{ $labels.tool_name }}' called by {{ $labels.provider }}"
+        
+    # Alert on empty LLM responses
+    - alert: LLMEmptyResponse
+      expr: |
+        rate(llm_empty_responses_total[5m]) > 0
+      for: 0m
+      labels:
+        severity: info
+      annotations:
+        summary: "Empty or Invalid LLM Response"
+        description: "{{ $labels.provider }} returned an {{ $labels.response_type }} response"
+        
+- name: application_errors
+  rules:
     # Alert on WhatsApp message delivery failures
     - alert: WhatsAppMessageFailure
       expr: |
