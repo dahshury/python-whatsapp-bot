@@ -77,9 +77,10 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
             WHATSAPP_MESSAGE_FAILURES.inc()  # Track any response failures
             return {"status": "error", "message": "Empty response when sending location"}, 500
             
-        # Fully consume the response content without closing the transport
-        if hasattr(response, 'aread'):
-            await response.aread()
+        # Fully consume the response but don't close it
+        await response.aread()
+        # Don't explicitly close the response to keep the connection alive
+        # for subsequent requests (managed by the HTTP client)
             
         return {"status": "success", "message": "Location sent successfully"}
         

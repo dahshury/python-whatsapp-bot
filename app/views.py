@@ -163,6 +163,10 @@ async def api_send_whatsapp_location(payload: dict = Body(...)):
     response = await send_whatsapp_location(wa_id, latitude, longitude, name, address)
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
+    # Make sure to extract data without closing the response
+    if hasattr(response, 'json'):
+        return JSONResponse(content=response.json())
+    # Just return the dict response without accessing the response object directly
     return JSONResponse(content=response)
 
 @router.post("/whatsapp/template")

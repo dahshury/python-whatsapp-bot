@@ -37,23 +37,30 @@ def send_business_location(wa_id):
         is_valid_wa_id = is_valid_number(wa_id)
         if is_valid_wa_id is not True:
             return is_valid_wa_id
-        status_call = send_whatsapp_location(
-            wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"],
-            config['BUSINESS_NAME'], config['BUSINESS_ADDRESS']
-        )
-        if asyncio.iscoroutine(status_call):
-            # Use a more robust way to run async code in sync context if needed
+            
+        # Create a new function that wraps the async call and handles it properly
+        async def send_location_wrapper():
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    status = loop.run_until_complete(status_call)
-                else:
-                    status = asyncio.run(status_call)
-            except RuntimeError:
-                # Fallback if no event loop is running
-                status = asyncio.run(status_call)
+                result = await send_whatsapp_location(
+                    wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"],
+                    config['BUSINESS_NAME'], config['BUSINESS_ADDRESS']
+                )
+                return result
+            except Exception as e:
+                logging.error(f"Error in send_location_wrapper: {e}")
+                WHATSAPP_MESSAGE_FAILURES.inc()
+                return {"status": "error", "message": str(e)}
+                
+        # Use the same event loop pattern as other functions instead of asyncio.run()
+        # which would create and destroy a new loop
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            future = asyncio.ensure_future(send_location_wrapper())
+            status = loop.run_until_complete(future)
         else:
-            status = status_call
+            # Only create a new event loop if absolutely necessary
+            status = asyncio.run(send_location_wrapper())
+            
         # Handle different return types from send_whatsapp_location
         if isinstance(status, dict):
             ok = status.get("status") != "error"
