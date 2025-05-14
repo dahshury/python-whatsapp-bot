@@ -4,7 +4,7 @@ import json
 import inspect
 from app.config import config
 from openai import OpenAI
-from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, InvalidRequestError
+from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, BadRequestError
 from app.utils import parse_unix_timestamp
 from app.utils.service_utils import get_connection, retrieve_messages
 from app.decorators.safety import retry_decorator
@@ -38,7 +38,7 @@ def map_openai_error(e):
         return "authentication"
     elif isinstance(e, APIConnectionError):
         return "network"
-    elif isinstance(e, InvalidRequestError):
+    elif isinstance(e, BadRequestError):
         # Check if it's likely a context length issue
         error_msg = str(e).lower()
         if "token" in error_msg or "context" in error_msg or "content too long" in error_msg:

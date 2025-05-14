@@ -460,82 +460,82 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
     # Store the validated type
     reservation_type = parsed_type
 
-    # Parse and validate date/time in a single step (ensures no past)
-    valid, err_msg, parsed_date_str, parsed_time_str = is_valid_date_time(date_str, time_slot, hijri)
-    if not valid:
-        return format_response(False, message=err_msg)
-    
-    # Convert Gregorian to Hijri for output purposes
-    hijri_date_obj = convert.Gregorian(*map(int, parsed_date_str.split('-'))).to_hijri()
-    hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
+        # Parse and validate date/time in a single step (ensures no past)
+        valid, err_msg, parsed_date_str, parsed_time_str = is_valid_date_time(date_str, time_slot, hijri)
+        if not valid:
+            return format_response(False, message=err_msg)
+        
+        # Convert Gregorian to Hijri for output purposes
+        hijri_date_obj = convert.Gregorian(*map(int, parsed_date_str.split('-'))).to_hijri()
+        hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
 
-    # Get 12-hour format time for display and validation
-    display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
+        # Get 12-hour format time for display and validation
+        display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
 
-    # Retrieve and unpack available slots
-    resp_slots = get_available_time_slots(parsed_date_str, max_reservations, hijri=False)
-    if not resp_slots.get("success", False):
-        return resp_slots
-    available_slots = resp_slots.get("data", [])
+        # Retrieve and unpack available slots
+        resp_slots = get_available_time_slots(parsed_date_str, max_reservations, hijri=False)
+        if not resp_slots.get("success", False):
+            return resp_slots
+        available_slots = resp_slots.get("data", [])
 
-    if display_time_slot not in available_slots:
-        return format_response(False, message=get_message("reservation_failed_slot", ar, slot=display_time_slot, slots=', '.join(available_slots)))
+        if display_time_slot not in available_slots:
+            return format_response(False, message=get_message("reservation_failed_slot", ar, slot=display_time_slot, slots=', '.join(available_slots)))
 
-    # Retrieve and unpack existing reservations
-    resp_exist = get_customer_reservations(wa_id)
-    if not resp_exist.get("success", False):
-        return resp_exist
-    existing_reservations = resp_exist.get("data", [])
-    if existing_reservations and any(res["is_future"] for res in existing_reservations):
-        # modify the existing reservation
-        modify_result = modify_reservation(
-            wa_id, 
-            new_date=parsed_date_str, 
-            new_time_slot=parsed_time_str, 
-            new_name=customer_name, 
-            new_type=reservation_type, 
-            hijri=False, 
-            ar=ar
-        )
-        return modify_result
-    
-    # Reserve new time slot in a write-locked transaction
-    make_thread(wa_id, None)
-    conn = get_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute("BEGIN IMMEDIATE")
-        # Capacity check
-        cursor.execute(
-            "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?",
-            (parsed_date_str, parsed_time_str)
-        )
-        if cursor.fetchone()[0] >= max_reservations:
-            conn.rollback()
-            return format_response(False, message=get_message("slot_fully_booked", ar))
+        # Retrieve and unpack existing reservations
+        resp_exist = get_customer_reservations(wa_id)
+        if not resp_exist.get("success", False):
+            return resp_exist
+        existing_reservations = resp_exist.get("data", [])
+        if existing_reservations and any(res["is_future"] for res in existing_reservations):
+            # modify the existing reservation
+            modify_result = modify_reservation(
+                wa_id, 
+                new_date=parsed_date_str, 
+                new_time_slot=parsed_time_str, 
+                new_name=customer_name, 
+                new_type=reservation_type, 
+                hijri=False, 
+                ar=ar
+            )
+            return modify_result
+        
+        # Reserve new time slot in a write-locked transaction
+        make_thread(wa_id, None)
+        conn = get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("BEGIN IMMEDIATE")
+            # Capacity check
+            cursor.execute(
+                "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?",
+                (parsed_date_str, parsed_time_str)
+            )
+            if cursor.fetchone()[0] >= max_reservations:
+                conn.rollback()
+                return format_response(False, message=get_message("slot_fully_booked", ar))
 
-        # Insert the new reservation
-        cursor.execute(
-            "INSERT INTO reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
-            (wa_id, customer_name, parsed_date_str, parsed_time_str, reservation_type)
-        )
-        conn.commit()
-        return format_response(True, data={
-            "gregorian_date": parsed_date_str,
-            "hijri_date": hijri_date_str,
-            "time_slot": display_time_slot,
-            "type": reservation_type
-        }, message=get_message("reservation_successful", ar))
-    except sqlite3.OperationalError as e:
+            # Insert the new reservation
+            cursor.execute(
+                "INSERT INTO reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
+                (wa_id, customer_name, parsed_date_str, parsed_time_str, reservation_type)
+            )
+            conn.commit()
+            return format_response(True, data={
+                "gregorian_date": parsed_date_str,
+                "hijri_date": hijri_date_str,
+                "time_slot": display_time_slot,
+                "type": reservation_type
+            }, message=get_message("reservation_successful", ar))
+        except sqlite3.OperationalError as e:
         # Technical error - database operation failed
-        conn.rollback()
-        logging.error(f"reserve_time_slot DB error: {e}")
+            conn.rollback()
+            logging.error(f"reserve_time_slot DB error: {e}")
         # Increment the function-specific error counter
         FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
         # Raise the exception instead of returning a response
         raise
-    finally:
-        conn.close()
+        finally:
+            conn.close()
 
 @instrument_cancellation
 def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
