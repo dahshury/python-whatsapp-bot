@@ -50,16 +50,16 @@ def send_business_location(wa_id):
                 logging.error(f"Error in send_location_wrapper: {e}")
                 WHATSAPP_MESSAGE_FAILURES.inc()
                 return {"status": "error", "message": str(e)}
-                
-        # Use the same event loop pattern as other functions instead of asyncio.run()
-        # which would create and destroy a new loop
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            future = asyncio.ensure_future(send_location_wrapper())
-            status = loop.run_until_complete(future)
-        else:
-            # Only create a new event loop if absolutely necessary
-            status = asyncio.run(send_location_wrapper())
+        
+        # Always create a new event loop when running in a background thread
+        # This ensures we have an event loop regardless of which thread we're in
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            status = loop.run_until_complete(send_location_wrapper())
+        finally:
+            # Clean up to prevent potential memory leaks
+            loop.close()
             
         # Handle different return types from send_whatsapp_location
         if isinstance(status, dict):
