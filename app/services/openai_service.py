@@ -4,7 +4,7 @@ import json
 import inspect
 from app.config import config
 from openai import OpenAI
-from openai.types.error import APIError, RateLimitError, APIConnectionError, AuthenticationError, InvalidRequestError
+from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, InvalidRequestError
 from app.utils import parse_unix_timestamp
 from app.utils.service_utils import get_connection, retrieve_messages
 from app.decorators.safety import retry_decorator

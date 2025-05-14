@@ -107,25 +107,45 @@ jobs:
                 echo "WARNING: threads_db.sqlite not found"
               fi
 
-              # Clean up unused images and build cache
-              # Stop running containers only if any are found
-              containers=$(docker ps -q)
-              if [ -n "$containers" ]; then
-                docker stop $containers
-              fi
-              docker system prune -a --volumes -f
+              # First, clean up space BEFORE pulling new images
+              
+              # Get container IDs but don't stop them yet
+              running_containers=$(docker ps -q)
+              
+              # Clean all unused volumes (not used by running containers)
+              docker volume prune -f
+              
+              # Clean all unused networks
+              docker network prune -f
+              
+              # Remove all dangling images (not used and not tagged)
+              docker image prune -f
+              
+              # Clean build cache
+              docker builder prune -f
+              
+              # Now pull the new images - this ensures we have space for them
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
 
-              echo "Recreating only changed services..."
+              # Now safe to stop running containers
+              if [ -n "$running_containers" ]; then
+                echo "Stopping running containers..."
+                docker stop $running_containers
+              fi
+              
+              # Start new containers
+              echo "Starting updated services..."
               docker compose -f docker-compose.prod.yml up -d --remove-orphans
-
-              echo "Pruning dangling images..."
-              docker image prune -f
-
-              echo "Pruning build cache..."
-              docker builder prune -f
-
+              
+              # After new containers are running, remove ALL unused images
+              echo "Removing ALL unused images to reclaim space..."
+              docker image prune -a -f
+              
+              # Final system prune to clean everything else
+              echo "Final system cleanup..."
+              docker system prune -f
+              
               echo "Deployment succeeded"
               exit 0
             done
