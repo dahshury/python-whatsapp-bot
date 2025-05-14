@@ -2,18 +2,19 @@ import logging
 import datetime
 from zoneinfo import ZoneInfo
 from app.config import config
+from hijri_converter import convert
 from app.db import get_connection
 from app.i18n import get_message
 from app.utils import (
-    send_whatsapp_location, is_valid_number, fix_unicode_sequence, parse_date, parse_time, 
+    is_valid_number, fix_unicode_sequence, parse_date, parse_time, 
     normalize_time_format, is_vacation_period, format_response, get_time_slots, validate_reservation_type, is_valid_date_time, make_thread
 )
-from hijri_converter import convert
+from app.utils.http_client import sync_client
 import sqlite3, time
 from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
-import asyncio
+import json
 from app.metrics import FUNCTION_ERRORS, WHATSAPP_MESSAGE_FAILURES
 # Use configured timezone
 TIMEZONE = config.get("TIMEZONE", "UTC")
@@ -38,40 +39,32 @@ def send_business_location(wa_id):
         if is_valid_wa_id is not True:
             return is_valid_wa_id
             
-        # Create a new function that wraps the async call and handles it properly
-        async def send_location_wrapper():
-            try:
-                result = await send_whatsapp_location(
-                    wa_id, config["BUSINESS_LATITUDE"], config["BUSINESS_LONGITUDE"],
-                    config['BUSINESS_NAME'], config['BUSINESS_ADDRESS']
-                )
-                return result
-            except Exception as e:
-                logging.error(f"Error in send_location_wrapper: {e}")
-                WHATSAPP_MESSAGE_FAILURES.inc()
-                return {"status": "error", "message": str(e)}
-        
-        # Always create a new event loop when running in a background thread
-        # This ensures we have an event loop regardless of which thread we're in
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            status = loop.run_until_complete(send_location_wrapper())
-        finally:
-            # Clean up to prevent potential memory leaks
-            loop.close()
-            
-        # Handle different return types from send_whatsapp_location
-        if isinstance(status, dict):
-            ok = status.get("status") != "error"
-        elif isinstance(status, tuple):
-            ok = status[0] if len(status) > 0 else False
-        else:
-            ok = False
-        return format_response(ok, message=get_message("location_sent" if ok else "system_error_try_later"))
+        # Build WhatsApp API payload
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": wa_id,
+            "type": "location",
+            "location": {
+                "latitude": config["BUSINESS_LATITUDE"],
+                "longitude": config["BUSINESS_LONGITUDE"],
+                "name": config["BUSINESS_NAME"],
+                "address": config["BUSINESS_ADDRESS"]
+            }
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {config['ACCESS_TOKEN']}"
+        }
+        url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
+        # Send synchronously to avoid event loop conflicts
+        response = sync_client.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        # Success
+        return format_response(True, message=get_message("location_sent"))
     except Exception as e:
         FUNCTION_ERRORS.labels(function="send_business_location").inc()
-        WHATSAPP_MESSAGE_FAILURES.inc()  # Track transport/network errors for alerting
+        WHATSAPP_MESSAGE_FAILURES.inc()
         logging.error(f"Function call send_business_location failed, error: {e}")
         return format_response(False, message=get_message("system_error_try_later"))
 
