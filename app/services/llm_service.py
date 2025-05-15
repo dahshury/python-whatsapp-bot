@@ -59,7 +59,6 @@ class AnthropicService(BaseLLMService):
             max_tokens=self.max_tokens,
             thinking=self.claude_thinking,
             stream=self.stream,
-            enable_thinking=self.enable_thinking,
             timezone=self.timezone
         )
 

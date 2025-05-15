@@ -76,7 +76,7 @@ def map_anthropic_error(e):
         return "unknown"
 
 @retry_decorator
-def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None, stream=False, enable_thinking=True, timezone=None):
+def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None, stream=False, timezone=None):
     """
     Run Claude with the conversation history and handle tool calls.
     Returns the generated message along with date and time.
@@ -87,16 +87,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         model (str): Claude model to use.
         system_prompt (str, optional): System prompt to use.
         max_tokens (int, optional): Maximum tokens for response.
-        thinking (dict, optional): Extended thinking configuration.
+        thinking (dict, optional): Extended thinking configuration dict or None to disable.
         stream (bool, optional): Whether to stream responses.
-        enable_thinking (bool): Whether to enable extended thinking.
         timezone (str, optional): Timezone for timestamps.
     """
-    # Configure thinking based on enable_thinking parameter
-    api_thinking = None
-    if enable_thinking and thinking:
-        api_thinking = thinking
-    
     # Create system prompt structure if custom prompt provided
     if system_prompt:
         system_prompt_obj = [
@@ -119,10 +113,11 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     # Use timezone from parameters or fallback to UTC
     tz = timezone or "UTC"
     
+    # Get conversation history
     input_chat = retrieve_messages(wa_id)
     
-    # Helper to send request with optional thinking
-    def send_claude_request():
+    # Prepare API request arguments - always maintain thinking setting consistency
+    def prepare_request_args():
         req_kwargs = {
             "model": model,
             "system": system_prompt_obj,
@@ -132,21 +127,22 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             "stream": stream,
             "betas": ["token-efficient-tools-2025-02-19"]
         }
-        if api_thinking is not None:
-            req_kwargs["thinking"] = api_thinking
-        return client.beta.messages.create(**req_kwargs)
+        
+        # Only include thinking when it's a non-empty dict
+        if thinking:
+            req_kwargs["thinking"] = thinking
+            
+        return req_kwargs
 
     try:
-        # Make request to Claude API
+        # Initial request to Claude
         logging.info(f"Making Claude API request for {wa_id}")
-        response = send_claude_request()
-        
-        # Log the stop reason
+        response = client.beta.messages.create(**prepare_request_args())
         logging.info(f"Initial response stop reason: {response.stop_reason}")
         
-        # Process tool calls if present - in a loop to handle multiple consecutive tool calls
-        while response.stop_reason == "tool_use":            
-            # Find the tool use block in the content
+        # Process tool calls if present
+        while response.stop_reason == "tool_use":
+            # Find the tool use block
             tool_use_block = next((block for block in response.content if block.type == "tool_use"), None)
             
             if not tool_use_block:
@@ -154,6 +150,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                 LLM_API_ERRORS.labels(provider="anthropic", error_type="invalid_response").inc()
                 break
                 
+            # Extract tool details
             tool_name = tool_use_block.name
             tool_input = tool_use_block.input
             tool_use_id = tool_use_block.id
@@ -161,11 +158,20 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             logging.info(f"Tool used: {tool_name}")
             logging.info(f"Tool input: {json.dumps(tool_input)}")
             
-            # Extract thinking blocks - this is critical for Claude 3.7 extended thinking
+            # Extract ALL thinking and redacted_thinking blocks in their original order
+            # This is critical for preserving Claude's reasoning
             thinking_blocks = [block for block in response.content 
                               if block.type in ["thinking", "redacted_thinking"]]
             
-            # Process the tool call
+            # Prepare the assistant's response content with correct ordering:
+            # 1. All thinking blocks must come first if present
+            # 2. Followed by the tool_use block
+            assistant_content = []
+            if thinking_blocks:
+                assistant_content.extend(thinking_blocks)
+            assistant_content.append(tool_use_block)
+            
+            # Execute tool if available
             if tool_name in FUNCTION_MAPPING:
                 function = FUNCTION_MAPPING[tool_name]
                 sig = inspect.signature(function)
@@ -175,28 +181,25 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     tool_input['wa_id'] = wa_id
                 
                 try:
+                    # Execute tool function (synchronous or asynchronous)
                     if inspect.iscoroutinefunction(function):
-                        # For async functions, run them in the event loop
                         output = asyncio.run(function(**tool_input))
                     else:
-                        # For regular functions, call them directly
                         output = function(**tool_input)
-                    # Log the tool output
+                    
+                    # Log tool output
                     if isinstance(output, (dict, list)):
                         logging.info(f"Tool output for {tool_name}: {json.dumps(output)[:500]}...")
                     else:
                         logging.info(f"Tool output for {tool_name}: {str(output)[:500]}...")
                     
-                    # Store assistant message with thinking blocks followed by tool_use block
-                    # This order is critical per the documentation
-                    assistant_blocks = thinking_blocks + [tool_use_block]
-                    
+                    # Add the assistant message with thinking and tool use, exactly as received
                     input_chat.append({
                         "role": "assistant",
-                        "content": assistant_blocks
+                        "content": assistant_content
                     })
                     
-                    # Add tool result to conversation
+                    # Add tool result as user message
                     input_chat.append({
                         "role": "user",
                         "content": [{
@@ -206,37 +209,18 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         }]
                     })
                     
-                    # For continued conversation after tool use, we must disable thinking
-                    # to avoid the "must start with thinking block" error on follow-up
-                    # This is because Claude doesn't produce new thinking blocks during tool result processing
-                    temp_thinking = None
-                    if response.stop_reason == "tool_use":
-                        # Only use thinking for the first request, disable for follow-ups
-                        temp_thinking = api_thinking
-                        api_thinking = None
-                    
-                    # Send follow-up with tool outputs
-                    response = send_claude_request()
-                    
-                    # Restore thinking setting for future requests
-                    api_thinking = temp_thinking
-                    
-                    # Log the new stop reason
-                    logging.info(f"Follow-up response stop reason: {response.stop_reason}")
-                    
                 except Exception as e:
+                    # Handle tool execution errors
                     logging.error(f"Error executing function {tool_name}: {e}")
-                    # Track tool-specific execution errors with provider
                     LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=tool_name, provider="anthropic").inc()
                     
-                    # Store assistant message with thinking and tool use
-                    assistant_blocks = thinking_blocks + [tool_use_block]
-                    
+                    # Add the assistant message with thinking and tool use
                     input_chat.append({
                         "role": "assistant",
-                        "content": assistant_blocks
+                        "content": assistant_content
                     })
                     
+                    # Add error result
                     input_chat.append({
                         "role": "user",
                         "content": [{
@@ -246,28 +230,18 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         }]
                     })
                     
-                    # Temporarily disable thinking for tool result processing
-                    temp_thinking = api_thinking
-                    api_thinking = None
-                    
-                    # Continue the conversation despite the error
-                    response = send_claude_request()
-                    
-                    # Restore thinking setting
-                    api_thinking = temp_thinking
             else:
+                # Handle unimplemented tool
                 logging.error(f"Function '{tool_name}' not implemented.")
-                # Track as tool execution error with provider
                 LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=tool_name, provider="anthropic").inc()
                 
-                # Store assistant message with thinking and tool use
-                assistant_blocks = thinking_blocks + [tool_use_block]
-                
+                # Add the assistant message with thinking and tool use
                 input_chat.append({
                     "role": "assistant",
-                    "content": assistant_blocks
+                    "content": assistant_content
                 })
                 
+                # Add error about unimplemented tool
                 input_chat.append({
                     "role": "user",
                     "content": [{
@@ -276,25 +250,20 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         "content": f"Error: Tool '{tool_name}' is not implemented"
                     }]
                 })
-                
-                # Temporarily disable thinking for tool result processing
-                temp_thinking = api_thinking
-                api_thinking = None
-                
-                # Error for unimplemented tool
-                response = send_claude_request()
-                
-                # Restore thinking setting
-                api_thinking = temp_thinking
+            
+            # Get follow-up response - use the same thinking settings consistently
+            logging.info(f"Making follow-up Claude API request for {wa_id}")
+            response = client.beta.messages.create(**prepare_request_args())
+            logging.info(f"Follow-up response stop reason: {response.stop_reason}")
         
-        # Get final text response
+        # Extract final text response
         final_response = next(
             (block.text for block in response.content if hasattr(block, "text")),
             None,
         )
         
+        # Format and return the response
         if final_response:
-            # Generate current timestamp
             now = datetime.datetime.now(tz=ZoneInfo(tz))
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M:%S")
@@ -302,7 +271,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             logging.info(f"Generated message for {wa_id}: {final_response[:100]}...")
             return final_response, date_str, time_str
         else:
-            # No text content; return None instead of empty string
+            # No text content found in response
             logging.error("No text content in Claude response; returning None without retry")
             LLM_EMPTY_RESPONSES.labels(provider="anthropic", response_type="no_text_content").inc()
             now = datetime.datetime.now(tz=ZoneInfo(tz))
@@ -311,6 +280,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             return None, date_str, time_str
             
     except Exception as e:
+        # Handle and log API errors
         error_type = map_anthropic_error(e)
         logging.error(f"======================================================")
         logging.error(f"CLAUDE API ERROR for wa_id={wa_id}: {e} (type: {error_type})")
@@ -318,4 +288,4 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         logging.error(f"======================================================")
         LLM_API_ERRORS.labels(provider="anthropic", error_type=error_type).inc()
         LLM_RETRY_ATTEMPTS.labels(provider="anthropic", error_type=error_type).inc()
-        raise  # Re-raise the exception for retry handling
+        raise  # Re-raise for retry
