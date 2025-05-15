@@ -116,7 +116,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     # Get conversation history
     input_chat = retrieve_messages(wa_id)
     
-    # Prepare API request arguments - always maintain thinking setting consistency
+    # Prepare API request arguments, with optional thinking inclusion
     def prepare_request_args():
         req_kwargs = {
             "model": model,
@@ -127,16 +127,15 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             "stream": stream,
             "betas": ["token-efficient-tools-2025-02-19"]
         }
-        
-        # Only include thinking when it's a non-empty dict
+        # Always include thinking when configured for extended reasoning
         if thinking:
             req_kwargs["thinking"] = thinking
-            
+        
         return req_kwargs
 
     try:
         # Initial request to Claude
-        logging.info(f"Making Claude API request for {wa_id}")
+        logging.info(f"Making initial Claude API request for {wa_id}")
         response = client.beta.messages.create(**prepare_request_args())
         logging.info(f"Initial response stop reason: {response.stop_reason}")
         
@@ -251,7 +250,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     }]
                 })
             
-            # Get follow-up response - use the same thinking settings consistently
+            # Follow-up request after tool result
             logging.info(f"Making follow-up Claude API request for {wa_id}")
             response = client.beta.messages.create(**prepare_request_args())
             logging.info(f"Follow-up response stop reason: {response.stop_reason}")
