@@ -13,29 +13,6 @@ from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.metrics import LLM_API_ERRORS, LLM_RETRY_ATTEMPTS, LLM_TOOL_EXECUTION_ERRORS, LLM_EMPTY_RESPONSES, LLM_ERROR_TYPES
 
 ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY")
-# Default values - will be overridden by parameters passed from llm_service.py
-CLAUDE_MODEL = "claude-3-7-sonnet-20250219"
-TIMEZONE = config.get("TIMEZONE")
-# Add extended thinking parameters for Claude
-THINKING_BUDGET_TOKENS = 2048
-THINKING = {
-    "type": "enabled",
-    "budget_tokens": THINKING_BUDGET_TOKENS
-}
-# Create cached system prompt structure
-if config.get("SYSTEM_PROMPT"):
-    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
-else:
-    load_config()
-    SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
-    
-SYSTEM_PROMPT = [
-    {
-        "type": "text",
-        "text": SYSTEM_PROMPT_TEXT,
-        "cache_control": {"type": "ephemeral"}
-    }
-]
 
 # Create Anthropic client
 client = Anthropic(api_key=ANTHROPIC_API_KEY, http_client=sync_client)
@@ -105,7 +82,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         system_prompt_obj = [
             {
                 "type": "text",
-                "text": "",
+                "text": "You are a helpful assistant that can answer questions and help with tasks.",
                 "cache_control": {"type": "ephemeral"}
             }
         ]
@@ -138,6 +115,8 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         logging.info(f"Making initial Claude API request for {wa_id}")
         response = client.beta.messages.create(**prepare_request_args())
         logging.info(f"Initial response stop reason: {response.stop_reason}")
+        thinking_block = next((block for block in response.content
+            if block.type == 'thinking'), None)
         
         # Process tool calls if present
         while response.stop_reason == "tool_use":
@@ -159,15 +138,14 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             
             # Extract ALL thinking and redacted_thinking blocks in their original order
             # This is critical for preserving Claude's reasoning
-            thinking_blocks = [block for block in response.content 
-                              if block.type in ["thinking", "redacted_thinking"]]
+
             
             # Prepare the assistant's response content with correct ordering:
             # 1. All thinking blocks must come first if present
             # 2. Followed by the tool_use block
             assistant_content = []
-            if thinking_blocks:
-                assistant_content.extend(thinking_blocks)
+            if thinking_block:
+                assistant_content.append(thinking_block)
             assistant_content.append(tool_use_block)
             
             # Execute tool if available
@@ -204,7 +182,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         "content": [{
                             "type": "tool_result",
                             "tool_use_id": tool_use_id,
-                            "content": json.dumps(output) if isinstance(output, (dict, list)) else str(output)
+                            "content": json.dumps(output.get('data', output)) if isinstance(output, (dict, list)) else str(output)
                         }]
                     })
                     
