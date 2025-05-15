@@ -121,19 +121,25 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     
     input_chat = retrieve_messages(wa_id)
     
+    # Helper to send request with optional thinking
+    def send_claude_request():
+        req_kwargs = {
+            "model": model,
+            "system": system_prompt_obj,
+            "messages": input_chat,
+            "tools": tools,
+            "max_tokens": max_tokens,
+            "stream": stream,
+            "betas": ["token-efficient-tools-2025-02-19"]
+        }
+        if api_thinking is not None:
+            req_kwargs["thinking"] = api_thinking
+        return client.beta.messages.create(**req_kwargs)
+
     try:
         # Make request to Claude API
         logging.info(f"Making Claude API request for {wa_id}")
-        response = client.beta.messages.create(
-            model=model,
-            system=system_prompt_obj,
-            messages=input_chat,
-            tools=tools,
-            max_tokens=max_tokens,
-            thinking=api_thinking,
-            stream=stream,
-            betas=["token-efficient-tools-2025-02-19"]
-        )
+        response = send_claude_request()
         
         # Log the stop reason
         logging.info(f"Initial response stop reason: {response.stop_reason}")
@@ -210,16 +216,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         api_thinking = None
                     
                     # Send follow-up with tool outputs
-                    response = client.beta.messages.create(
-                        model=model,
-                        system=system_prompt_obj,
-                        messages=input_chat,
-                        tools=tools,
-                        max_tokens=max_tokens,
-                        thinking=api_thinking,  # May be None during tool chain
-                        stream=stream,
-                        betas=["token-efficient-tools-2025-02-19"]
-                    )
+                    response = send_claude_request()
                     
                     # Restore thinking setting for future requests
                     api_thinking = temp_thinking
@@ -254,16 +251,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     api_thinking = None
                     
                     # Continue the conversation despite the error
-                    response = client.beta.messages.create(
-                        model=model,
-                        system=system_prompt_obj,
-                        messages=input_chat,
-                        tools=tools,
-                        max_tokens=max_tokens,
-                        thinking=api_thinking,
-                        stream=stream,
-                        betas=["token-efficient-tools-2025-02-19"]
-                    )
+                    response = send_claude_request()
                     
                     # Restore thinking setting
                     api_thinking = temp_thinking
@@ -293,16 +281,8 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                 temp_thinking = api_thinking
                 api_thinking = None
                 
-                response = client.beta.messages.create(
-                    model=model,
-                    system=system_prompt_obj,
-                    messages=input_chat,
-                    tools=tools,
-                    max_tokens=max_tokens,
-                    thinking=api_thinking,
-                    stream=stream,
-                    betas=["token-efficient-tools-2025-02-19"]
-                )
+                # Error for unimplemented tool
+                response = send_claude_request()
                 
                 # Restore thinking setting
                 api_thinking = temp_thinking
