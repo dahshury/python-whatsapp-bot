@@ -6,15 +6,14 @@ from hijri_converter import convert
 from app.db import get_connection
 from app.i18n import get_message
 from app.utils import (
-    is_valid_number, fix_unicode_sequence, parse_date, parse_time, 
+    is_valid_number, fix_unicode_sequence, parse_date, 
     normalize_time_format, is_vacation_period, format_response, get_time_slots, validate_reservation_type, is_valid_date_time, make_thread
 )
 from app.utils.http_client import sync_client
-import sqlite3, time
+import sqlite3
 from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
-import json
 from app.metrics import FUNCTION_ERRORS, WHATSAPP_MESSAGE_FAILURES
 # Use configured timezone
 TIMEZONE = config.get("TIMEZONE", "UTC")

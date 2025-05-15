@@ -155,6 +155,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             logging.info(f"Tool used: {tool_name}")
             logging.info(f"Tool input: {json.dumps(tool_input)}")
             
+            # Extract thinking blocks - this is critical for Claude 3.7 extended thinking
+            thinking_blocks = [block for block in response.content 
+                              if block.type in ["thinking", "redacted_thinking"]]
+            
             # Process the tool call
             if tool_name in FUNCTION_MAPPING:
                 function = FUNCTION_MAPPING[tool_name]
@@ -177,8 +181,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     else:
                         logging.info(f"Tool output for {tool_name}: {str(output)[:500]}...")
                     
-                    # Preserve thinking and tool_use blocks for continued reasoning
-                    assistant_blocks = [block for block in response.content if block.type in ["thinking", "redacted_thinking", "tool_use"]]
+                    # Store assistant message with thinking blocks followed by tool_use block
+                    # This order is critical per the documentation
+                    assistant_blocks = thinking_blocks + [tool_use_block]
+                    
                     input_chat.append({
                         "role": "assistant",
                         "content": assistant_blocks
@@ -194,6 +200,15 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         }]
                     })
                     
+                    # For continued conversation after tool use, we must disable thinking
+                    # to avoid the "must start with thinking block" error on follow-up
+                    # This is because Claude doesn't produce new thinking blocks during tool result processing
+                    temp_thinking = None
+                    if response.stop_reason == "tool_use":
+                        # Only use thinking for the first request, disable for follow-ups
+                        temp_thinking = api_thinking
+                        api_thinking = None
+                    
                     # Send follow-up with tool outputs
                     response = client.beta.messages.create(
                         model=model,
@@ -201,10 +216,13 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         messages=input_chat,
                         tools=tools,
                         max_tokens=max_tokens,
-                        thinking=api_thinking,
+                        thinking=api_thinking,  # May be None during tool chain
                         stream=stream,
                         betas=["token-efficient-tools-2025-02-19"]
                     )
+                    
+                    # Restore thinking setting for future requests
+                    api_thinking = temp_thinking
                     
                     # Log the new stop reason
                     logging.info(f"Follow-up response stop reason: {response.stop_reason}")
@@ -214,8 +232,9 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     # Track tool-specific execution errors with provider
                     LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=tool_name, provider="anthropic").inc()
                     
-                    # Preserve thinking and tool_use blocks for continued reasoning (error case)
-                    assistant_blocks = [block for block in response.content if block.type in ["thinking", "redacted_thinking", "tool_use"]]
+                    # Store assistant message with thinking and tool use
+                    assistant_blocks = thinking_blocks + [tool_use_block]
+                    
                     input_chat.append({
                         "role": "assistant",
                         "content": assistant_blocks
@@ -230,6 +249,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         }]
                     })
                     
+                    # Temporarily disable thinking for tool result processing
+                    temp_thinking = api_thinking
+                    api_thinking = None
+                    
                     # Continue the conversation despite the error
                     response = client.beta.messages.create(
                         model=model,
@@ -241,13 +264,17 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         stream=stream,
                         betas=["token-efficient-tools-2025-02-19"]
                     )
+                    
+                    # Restore thinking setting
+                    api_thinking = temp_thinking
             else:
                 logging.error(f"Function '{tool_name}' not implemented.")
                 # Track as tool execution error with provider
                 LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=tool_name, provider="anthropic").inc()
                 
-                # Preserve thinking and tool_use blocks for continued reasoning (missing tool)
-                assistant_blocks = [block for block in response.content if block.type in ["thinking", "redacted_thinking", "tool_use"]]
+                # Store assistant message with thinking and tool use
+                assistant_blocks = thinking_blocks + [tool_use_block]
+                
                 input_chat.append({
                     "role": "assistant",
                     "content": assistant_blocks
@@ -262,6 +289,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     }]
                 })
                 
+                # Temporarily disable thinking for tool result processing
+                temp_thinking = api_thinking
+                api_thinking = None
+                
                 response = client.beta.messages.create(
                     model=model,
                     system=system_prompt_obj,
@@ -272,6 +303,9 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     stream=stream,
                     betas=["token-efficient-tools-2025-02-19"]
                 )
+                
+                # Restore thinking setting
+                api_thinking = temp_thinking
         
         # Get final text response
         final_response = next(
