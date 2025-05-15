@@ -115,8 +115,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         logging.info(f"Making initial Claude API request for {wa_id}")
         response = client.beta.messages.create(**prepare_request_args())
         logging.info(f"Initial response stop reason: {response.stop_reason}")
-        thinking_block = next((block for block in response.content
-            if block.type == 'thinking'), None)
+        
+        # Extract ALL thinking and redacted_thinking blocks in their original order
+        thinking_blocks = [block for block in response.content 
+                         if block.type in ('thinking', 'redacted_thinking')]
         
         # Process tool calls if present
         while response.stop_reason == "tool_use":
@@ -136,16 +138,11 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             logging.info(f"Tool used: {tool_name}")
             logging.info(f"Tool input: {json.dumps(tool_input)}")
             
-            # Extract ALL thinking and redacted_thinking blocks in their original order
-            # This is critical for preserving Claude's reasoning
-
-            
             # Prepare the assistant's response content with correct ordering:
             # 1. All thinking blocks must come first if present
             # 2. Followed by the tool_use block
             assistant_content = []
-            if thinking_block:
-                assistant_content.append(thinking_block)
+            assistant_content.extend(thinking_blocks)  # Add all thinking blocks
             assistant_content.append(tool_use_block)
             
             # Execute tool if available
@@ -232,6 +229,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             logging.info(f"Making follow-up Claude API request for {wa_id}")
             response = client.beta.messages.create(**prepare_request_args())
             logging.info(f"Follow-up response stop reason: {response.stop_reason}")
+            
+            # Update thinking blocks from follow-up response
+            thinking_blocks = [block for block in response.content 
+                             if block.type in ('thinking', 'redacted_thinking')]
         
         # Extract final text response
         final_response = next(
