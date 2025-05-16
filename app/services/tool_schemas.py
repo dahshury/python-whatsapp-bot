@@ -44,6 +44,12 @@ TOOL_DEFINITIONS = [
         "schema": {"type": "object", "properties": {"date_str": {"type": "string", "description": "Date for the reservation in ISO format (e.g., 'YYYY-MM-DD'). If not provided, all reservations are cancelled."}}, "required": [], "additionalProperties": False},
         "cache_control": {"type": "ephemeral"}
     },
+    {
+        "name": "think",
+        "description": "Use the tool to think about something. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed.",
+        "schema": {"type": "object", "properties": {"thought": {"type": "string", "description": "A thought to think about."}}, "required": ["thought"], "additionalProperties": False},
+        "cache_control": {"type": "ephemeral"}
+    },
 ] 
 
 FUNCTION_MAPPING = {

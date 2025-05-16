@@ -94,7 +94,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     input_chat = retrieve_messages(wa_id)
     
     # Prepare API request arguments, with optional thinking inclusion
-    def prepare_request_args():
+    def prepare_request_args(enable_thinking=False):
         req_kwargs = {
             "model": model,
             "system": system_prompt_obj,
@@ -105,7 +105,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             "betas": ["token-efficient-tools-2025-02-19"]
         }
         # Always include thinking when configured for extended reasoning
-        if thinking:
+        if thinking and enable_thinking:
             req_kwargs["thinking"] = thinking
         
         return req_kwargs
@@ -117,8 +117,11 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         logging.info(f"Initial response stop reason: {response.stop_reason}")
         
         # Extract ALL thinking and redacted_thinking blocks in their original order
-        thinking_blocks = [block for block in response.content 
-                         if block.type in ('thinking', 'redacted_thinking')]
+        all_thinking_blocks = [
+            block for block in response.content
+            if block.type in ["thinking", "redacted_thinking"]
+        ]
+        logging.info(f"All thinking blocks: {all_thinking_blocks}")
         
         # Process tool calls if present
         while response.stop_reason == "tool_use":
@@ -142,7 +145,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             # 1. All thinking blocks must come first if present
             # 2. Followed by the tool_use block
             assistant_content = []
-            assistant_content.extend(thinking_blocks)  # Add all thinking blocks
+            assistant_content.extend(all_thinking_blocks)  # Add all thinking blocks
             assistant_content.append(tool_use_block)
             
             # Execute tool if available
@@ -230,10 +233,6 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             response = client.beta.messages.create(**prepare_request_args())
             logging.info(f"Follow-up response stop reason: {response.stop_reason}")
             
-            # Update thinking blocks from follow-up response
-            thinking_blocks = [block for block in response.content 
-                             if block.type in ('thinking', 'redacted_thinking')]
-        
         # Extract final text response
         final_response = next(
             (block.text for block in response.content if hasattr(block, "text")),

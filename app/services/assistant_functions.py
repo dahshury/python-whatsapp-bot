@@ -971,3 +971,26 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
         logging.error(f"Function call search_available_appointments failed, error: {e}")
         # Generic system error
         return format_response(False, message=get_message("system_error_generic", error=str(e)))
+
+def think(thought):
+    """
+    A tool for Claude to use for structured thinking during complex tasks.
+    This function doesn't perform any actions - it simply returns the thought
+    to create space for the model to engage in structured reasoning.
+    
+    Parameters:
+        thought (str): The thought content from Claude
+        
+    Returns:
+        dict: A success response containing the thought
+    """
+    # Simply log the thought at DEBUG level - no other action needed
+    logging.debug(f"Thinking: {thought}")
+    
+    # Return success with the thought echoed back
+    return {
+        "success": True,
+        "data": {
+            "thought": thought
+        }
+    }
