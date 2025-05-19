@@ -144,19 +144,38 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Update the wa_id in the conversation table
-        cursor.execute("UPDATE conversation SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-        
-        # Update the wa_id in the reservations table
-        cursor.execute("UPDATE reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-        
-        # Update the wa_id in the cancelled_reservations table
-        cursor.execute("UPDATE cancelled_reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-        
-        conn.commit()
-        conn.close()
-        
-        return format_response(True, message=get_message("wa_id_modified", ar))
+        try:
+            # Begin transaction
+            cursor.execute("BEGIN IMMEDIATE")
+            
+            # Update the wa_id in the conversation table
+            cursor.execute("UPDATE conversation SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
+            conv_rows = cursor.rowcount
+            
+            # Update the wa_id in the reservations table
+            cursor.execute("UPDATE reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
+            res_rows = cursor.rowcount
+            
+            # Update the wa_id in the cancelled_reservations table
+            cursor.execute("UPDATE cancelled_reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
+            canc_rows = cursor.rowcount
+            
+            # Verify that at least one record was updated across all tables
+            if conv_rows + res_rows + canc_rows == 0:
+                conn.rollback()
+                return format_response(False, message=get_message("wa_id_not_found", ar))
+            
+            conn.commit()
+            return format_response(True, message=get_message("wa_id_modified", ar))
+            
+        except sqlite3.Error as e:
+            # Handle all SQLite errors
+            conn.rollback()
+            FUNCTION_ERRORS.labels(function="modify_id").inc()
+            logging.error(f"modify_id SQLite error: {e}")
+            return format_response(False, message=get_message("system_error_try_later", ar))
+        finally:
+            conn.close()
     
     except Exception as e:
         FUNCTION_ERRORS.labels(function="modify_id").inc()
@@ -319,18 +338,39 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             where_clause = "wa_id = ? AND (date > ? OR (date = ? AND time_slot >= ?))"
             update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE {where_clause}"
             cursor.execute(update_query, update_values)
+            
+            # Verify the update happened
+            if cursor.rowcount == 0:
+                conn.rollback()
+                logging.error("modify_reservation failed: no rows affected")
+                return format_response(False, message=get_message("reservation_not_found", ar))
+                
             conn.commit()
+            
+            # Standardize success response
+            return format_response(True, message=get_message("reservation_modified", ar))
+
+        except sqlite3.Error as e:
+            # Handle all SQLite errors
+            conn.rollback()
+            FUNCTION_ERRORS.labels(function="modify_reservation").inc()
+            logging.error(f"modify_reservation SQLite error: {e}")
+            return format_response(False, message=get_message("system_error_contact_secretary", ar))
+        except Exception as e:
+            # Handle any other exceptions
+            conn.rollback()
+            FUNCTION_ERRORS.labels(function="modify_reservation").inc()
+            logging.error(f"modify_reservation unexpected error: {e}")
+            return format_response(False, message=get_message("system_error_contact_secretary", ar))
         finally:
             conn.close()
-        # Standardize success response
-        return format_response(True, message=get_message("reservation_modified", ar))
 
     except Exception as e:
         FUNCTION_ERRORS.labels(function="modify_reservation").inc()
         logging.error(f"Function call modify_reservation failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary", ar))
 
-def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
+def get_customer_reservations(wa_id, include_past=False):
     """
     Get the list of all reservations for the given WhatsApp ID.
 
@@ -390,11 +430,9 @@ def get_customer_reservations(wa_id, slot_duration=2, include_past=False):
             reservation_date = datetime.datetime.strptime(reservation_date_str, "%Y-%m-%d").date()
             slot_start_datetime = datetime.datetime.combine(reservation_date, slot_time, tzinfo=ZoneInfo(TIMEZONE))
 
-            # Calculate the end time of the slot
-            slot_end_datetime = slot_start_datetime + datetime.timedelta(hours=slot_duration)
 
-            # Check if the current time is before the end of the slot
-            row_dict["is_future"] = now < slot_end_datetime
+            # Check if the current time is before the start of the slot
+            row_dict["is_future"] = now < slot_start_datetime
 
             # Include past reservations if the flag is set or if it's a future reservation
             if include_past or row_dict["is_future"]:
@@ -518,6 +556,14 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             "INSERT INTO reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
             (wa_id, customer_name, parsed_date_str, parsed_time_str, reservation_type)
         )
+        
+        # Verify the insert actually happened
+        if cursor.rowcount < 1:
+            conn.rollback()
+            FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
+            logging.error(f"reserve_time_slot insert failed - no rows affected")
+            return format_response(False, message=get_message("system_error_contact_secretary", ar))
+            
         conn.commit()
         return format_response(True, data={
             "gregorian_date": parsed_date_str,
@@ -533,6 +579,18 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
         # Raise the exception instead of returning a response
         raise
+    except sqlite3.Error as e:
+        # Catch all other SQLite errors
+        conn.rollback()
+        logging.error(f"reserve_time_slot SQLite error: {e}")
+        FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
+        return format_response(False, message=get_message("system_error_contact_secretary", ar))
+    except Exception as e:
+        # Catch any other unexpected errors
+        conn.rollback()
+        logging.error(f"reserve_time_slot unexpected error: {e}")
+        FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
+        return format_response(False, message=get_message("system_error_contact_secretary", ar))
     finally:
         conn.close()
 
@@ -602,27 +660,51 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Move to cancelled_reservations
-        for res in reservations_to_cancel:
-            res["wa_id"] = wa_id
-        cursor.executemany(
-            "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
-            [(res["wa_id"], res["customer_name"], res["date"], res["time_slot"], res["type"]) for res in reservations_to_cancel]
-        )
+        try:
+            # Begin transaction
+            cursor.execute("BEGIN IMMEDIATE")
+            
+            # Move to cancelled_reservations
+            for res in reservations_to_cancel:
+                res["wa_id"] = wa_id
+            
+            insert_count = 0
+            for res in reservations_to_cancel:
+                cursor.execute(
+                    "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
+                    (res["wa_id"], res["customer_name"], res["date"], res["time_slot"], res["type"])
+                )
+                insert_count += cursor.rowcount
+            
+            # Delete from active reservations
+            if parsed_date_str is None:
+                cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
+            else:
+                cursor.execute(
+                    "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
+                    (wa_id, parsed_date_str)
+                )
+            delete_count = cursor.rowcount
+            
+            # Verify operations succeeded
+            if insert_count != len(reservations_to_cancel) or delete_count == 0:
+                conn.rollback()
+                logging.error(f"cancel_reservation failed: inserted {insert_count}/{len(reservations_to_cancel)}, deleted {delete_count}")
+                return format_response(False, message=get_message("system_error_try_later", ar))
+                
+            conn.commit()
+            
+            # Standardize success response
+            return format_response(True, message=get_message("all_reservations_cancelled" if parsed_date_str is None else "reservation_cancelled", ar))
         
-        # Delete from active reservations
-        if parsed_date_str is None:
-            cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
-        else:
-            cursor.execute(
-                "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
-                (wa_id, parsed_date_str)
-            )   
-        conn.commit()
-        conn.close()
-        
-        # Standardize success response
-        return format_response(True, message=get_message("all_reservations_cancelled" if parsed_date_str is None else "reservation_cancelled", ar))
+        except sqlite3.Error as e:
+            # Handle all SQLite errors
+            conn.rollback()
+            FUNCTION_ERRORS.labels(function="cancel_reservation").inc()
+            logging.error(f"cancel_reservation SQLite error: {e}")
+            return format_response(False, message=get_message("system_error_try_later", ar))
+        finally:
+            conn.close()
 
     except Exception as e:
         FUNCTION_ERRORS.labels(function="cancel_reservation").inc()
@@ -694,27 +776,34 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
 
         conn = get_connection()
         cursor = conn.cursor()
+        
         try:
             # Format query placeholders for the IN clause - include both 12h and 24h formats
             all_possible_formats = list(time_format_map.keys()) + list(time_format_map.values())
             placeholders = ', '.join(['?'] * len(all_possible_formats))
+            
             if placeholders:  # Only query if there are time slots
-                cursor.execute(
-                    f"SELECT time_slot, COUNT(*) as count FROM reservations WHERE date = ? AND time_slot IN ({placeholders}) GROUP BY time_slot",
-                    [parsed_date_str] + all_possible_formats
-                )
-                rows = cursor.fetchall()
-                # Process results, handling both 12-hour and 24-hour formats
-                if rows:
-                    for row in rows:
-                        db_time_slot = row["time_slot"]
-                        count = row["count"]
-                        if db_time_slot in reverse_map:
-                            display_time_slot = reverse_map[db_time_slot]
-                            if display_time_slot in all_slots:
-                                all_slots[display_time_slot] += count
-                        elif db_time_slot in all_slots:
-                            all_slots[db_time_slot] += count
+                try:
+                    cursor.execute(
+                        f"SELECT time_slot, COUNT(*) as count FROM reservations WHERE date = ? AND time_slot IN ({placeholders}) GROUP BY time_slot",
+                        [parsed_date_str] + all_possible_formats
+                    )
+                    rows = cursor.fetchall()
+                    # Process results, handling both 12-hour and 24-hour formats
+                    if rows:
+                        for row in rows:
+                            db_time_slot = row["time_slot"]
+                            count = row["count"]
+                            if db_time_slot in reverse_map:
+                                display_time_slot = reverse_map[db_time_slot]
+                                if display_time_slot in all_slots:
+                                    all_slots[display_time_slot] += count
+                            elif db_time_slot in all_slots:
+                                all_slots[db_time_slot] += count
+                except sqlite3.Error as e:
+                    FUNCTION_ERRORS.labels(function="get_available_time_slots").inc()
+                    logging.error(f"get_available_time_slots SQL error: {e}")
+                    return format_response(False, message=get_message("system_error_contact_secretary"))
         finally:
             conn.close()
         
@@ -835,121 +924,134 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
         conn = get_connection()
         cursor = conn.cursor()
 
-        # Include today in the search
-        date_range = list(range(-days_backward, days_forward + 1))
-        
-        for day_offset in date_range:
-            date_obj = today + datetime.timedelta(days=day_offset)
-            gregorian_date_str = date_obj.strftime("%Y-%m-%d")
-            date_day = date_obj.date()
+        try:
+            # Include today in the search
+            date_range = list(range(-days_backward, days_forward + 1))
             
-            # Skip dates in the past
-            if date_day < now:
-                continue
+            for day_offset in date_range:
+                date_obj = today + datetime.timedelta(days=day_offset)
+                gregorian_date_str = date_obj.strftime("%Y-%m-%d")
+                date_day = date_obj.date()
                 
-            # Skip dates during vacation
-            is_vacation, _ = is_vacation_period(date_day)
-            if is_vacation:
-                continue
-            
-            # Convert Gregorian to Hijri for output if requested
-            hijri_date_str = None
-            if hijri:
-                hijri_date_obj = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
-                hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
-            
-            # Date string for display - Hijri or Gregorian based on parameter
-            display_date_str = hijri_date_str if hijri else gregorian_date_str
-            
-            # If no specific time slot is requested, get all available time slots for this date
-            if time_slot is None:
-                result = get_available_time_slots(gregorian_date_str, max_reservations, hijri=False)
-                # Skip if error response
-                if isinstance(result, dict) and result.get("success") is False:
+                # Skip dates in the past
+                if date_day < now:
                     continue
-                # Extract list of slots
-                if isinstance(result, dict) and "data" in result:
-                    available_slots = result.get("data") or []
-                else:
-                    available_slots = result or []
-                if not available_slots:
-                    continue
-
-                # Group slots by date
-                if display_date_str not in date_slots_map:
-                    date_slots_map[display_date_str] = []
-
-                # Add each available slot for this date
-                for slot in available_slots:
-                    # Always store 24-hour format internally, but display in 12-hour format
-                    slot_24h = normalize_time_format(slot, to_24h=True)
-                    slot_12h = normalize_time_format(slot_24h, to_24h=False)
                     
-                    date_slots_map[display_date_str].append({
-                        "time_slot": slot_12h,
-                    })
+                # Skip dates during vacation
+                is_vacation, _ = is_vacation_period(date_day)
+                if is_vacation:
+                    continue
                 
-                continue  # Move to the next date
-            
-            # For specific time slot requests, continue with the existing logic
-            # Get all slots for this date with past filtering for today
-            all_slots = get_time_slots(date_str=gregorian_date_str)
-            
-            # Skip if get_time_slots returned an error (vacation or parsing)
-            if isinstance(all_slots, dict) and all_slots.get("success") is False:
-                continue
-            # Skip if get_time_slots returns an empty/non-dict result
-            if not isinstance(all_slots, dict) or not all_slots:
-                continue
+                # Convert Gregorian to Hijri for output if requested
+                hijri_date_str = None
+                if hijri:
+                    hijri_date_obj = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
+                    hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
                 
-            # Parse all available slots and convert to 24-hour format
-            parsed_slots = []
-            for slot in all_slots.keys():
+                # Date string for display - Hijri or Gregorian based on parameter
+                display_date_str = hijri_date_str if hijri else gregorian_date_str
+                
+                # If no specific time slot is requested, get all available time slots for this date
+                if time_slot is None:
+                    result = get_available_time_slots(gregorian_date_str, max_reservations, hijri=False)
+                    # Skip if error response
+                    if isinstance(result, dict) and result.get("success") is False:
+                        continue
+                    # Extract list of slots
+                    if isinstance(result, dict) and "data" in result:
+                        available_slots = result.get("data") or []
+                    else:
+                        available_slots = result or []
+                    if not available_slots:
+                        continue
+
+                    # Group slots by date
+                    if display_date_str not in date_slots_map:
+                        date_slots_map[display_date_str] = []
+
+                    # Add each available slot for this date
+                    for slot in available_slots:
+                        # Always store 24-hour format internally, but display in 12-hour format
+                        slot_24h = normalize_time_format(slot, to_24h=True)
+                        slot_12h = normalize_time_format(slot_24h, to_24h=False)
+                        
+                        date_slots_map[display_date_str].append({
+                            "time_slot": slot_12h,
+                        })
+                    
+                    continue  # Move to the next date
+                
+                # For specific time slot requests, continue with the existing logic
+                # Get all slots for this date with past filtering for today
+                all_slots = get_time_slots(date_str=gregorian_date_str)
+                
+                # Skip if get_time_slots returned an error (vacation or parsing)
+                if isinstance(all_slots, dict) and all_slots.get("success") is False:
+                    continue
+                # Skip if get_time_slots returns an empty/non-dict result
+                if not isinstance(all_slots, dict) or not all_slots:
+                    continue
+                    
+                # Parse all available slots and convert to 24-hour format
+                parsed_slots = []
+                for slot in all_slots.keys():
+                    try:
+                        # Convert to 24-hour format for comparison
+                        slot_24h = normalize_time_format(slot, to_24h=True)
+                        slot_time = datetime.datetime.strptime(slot_24h, "%H:%M")
+                        parsed_slots.append((slot, slot_time))
+                    except ValueError:
+                        continue  # Skip invalid slots
+                
+                if not parsed_slots:
+                    continue
+                
+                # Find the closest slot based on time difference in minutes
+                closest_slot, closest_time = min(
+                    parsed_slots,
+                    key=lambda x: abs((x[1].hour * 60 + x[1].minute) - requested_minutes)
+                )
+                
+                # Determine if this is an exact match (using 24-hour format for comparison)
+                is_exact = (closest_time.hour == requested_time.hour and 
+                           closest_time.minute == requested_time.minute)
+                
+                # Get 24-hour format of the closest slot for database query
+                closest_slot_24h = normalize_time_format(closest_slot, to_24h=True)
+                # Ensure 12-hour format for display
+                closest_slot_12h = normalize_time_format(closest_slot_24h, to_24h=False)
+                
                 try:
-                    # Convert to 24-hour format for comparison
-                    slot_24h = normalize_time_format(slot, to_24h=True)
-                    slot_time = datetime.datetime.strptime(slot_24h, "%H:%M")
-                    parsed_slots.append((slot, slot_time))
-                except ValueError:
-                    continue  # Skip invalid slots
-            
-            if not parsed_slots:
-                continue
-            
-            # Find the closest slot based on time difference in minutes
-            closest_slot, closest_time = min(
-                parsed_slots,
-                key=lambda x: abs((x[1].hour * 60 + x[1].minute) - requested_minutes)
-            )
-            
-            # Determine if this is an exact match (using 24-hour format for comparison)
-            is_exact = (closest_time.hour == requested_time.hour and 
-                       closest_time.minute == requested_time.minute)
-            
-            # Get 24-hour format of the closest slot for database query
-            closest_slot_24h = normalize_time_format(closest_slot, to_24h=True)
-            # Ensure 12-hour format for display
-            closest_slot_12h = normalize_time_format(closest_slot_24h, to_24h=False)
-            
-            # Check reservation count for the closest slot
-            cursor.execute(
-                "SELECT COUNT(*) as count FROM reservations WHERE date = ? AND time_slot = ?",
-                (gregorian_date_str, closest_slot_24h)
-            )
-            row = cursor.fetchone()
-            count = row["count"] if row else 0
-            
-            # Add date if the slot has availability
-            if count < max_reservations:
-                date_entry = {
-                    "date": display_date_str,
-                    "time_slot": closest_slot_12h,  # Use 12-hour format for display
-                    "is_exact": is_exact
-                }
+                    # Check reservation count for the closest slot
+                    cursor.execute(
+                        "SELECT COUNT(*) as count FROM reservations WHERE date = ? AND time_slot = ?",
+                        (gregorian_date_str, closest_slot_24h)
+                    )
+                    row = cursor.fetchone()
+                    count = row["count"] if row else 0
+                    
+                    # Add date if the slot has availability
+                    if count < max_reservations:
+                        date_entry = {
+                            "date": display_date_str,
+                            "time_slot": closest_slot_12h,  # Use 12-hour format for display
+                            "is_exact": is_exact
+                        }
+                        
+                        available_dates.append(date_entry)
+                except sqlite3.Error as e:
+                    # Log and continue on database errors for individual slots
+                    logging.error(f"Database error while checking slot {closest_slot_24h} on {gregorian_date_str}: {e}")
+                    FUNCTION_ERRORS.labels(function="search_available_appointments").inc()
+                    continue
                 
-                available_dates.append(date_entry)
-        
-        conn.close()
+        except sqlite3.Error as e:
+            # Handle all SQLite errors
+            FUNCTION_ERRORS.labels(function="search_available_appointments").inc()
+            logging.error(f"search_available_appointments SQLite error: {e}")
+            return format_response(False, message=get_message("system_error_generic", error=str(e)))
+        finally:
+            conn.close()
         
         # If no time_slot was provided, convert the grouped map to a list
         if time_slot is None and date_slots_map:
