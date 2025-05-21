@@ -242,7 +242,8 @@ def init_scheduler(app):
         send_reminders_job,
         trigger,
         id="send_reminders",
-        replace_existing=True
+        replace_existing=True,
+        misfire_grace_time=300
     )
     
     # Schedule system metrics polling every 30 seconds
@@ -252,7 +253,8 @@ def init_scheduler(app):
         'interval',
         seconds=60*3,
         id="system_metrics",
-        replace_existing=True
+        replace_existing=True,
+        misfire_grace_time=300
     )
     
     # Schedule database backup job every day at 00:00
@@ -262,7 +264,8 @@ def init_scheduler(app):
         run_database_backup,
         backup_trigger,
         id="database_backup",
-        replace_existing=True
+        replace_existing=True,
+        misfire_grace_time=300
     )
     
     # Schedule manual garbage collection every hour
@@ -271,7 +274,8 @@ def init_scheduler(app):
         'interval',
         hours=1,
         id="gc_collect",
-        replace_existing=True
+        replace_existing=True,
+        misfire_grace_time=300
     )
     
     scheduler.start()

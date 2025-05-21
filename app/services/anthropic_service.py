@@ -121,7 +121,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             block for block in response.content
             if block.type in ["thinking", "redacted_thinking"]
         ]
-        logging.info(f"All thinking blocks: {all_thinking_blocks}")
+        # logging.info(f"All thinking blocks: {all_thinking_blocks}")
         
         # Process tool calls if present
         while response.stop_reason == "tool_use":
@@ -139,8 +139,9 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             tool_use_id = tool_use_block.id
             
             logging.info(f"Tool used: {tool_name}")
-            logging.info(f"Tool input: {json.dumps(tool_input)}")
-            
+            if tool_input:
+                logging.info(f"Tool input: {json.dumps(tool_input)}")
+                            
             # Prepare the assistant's response content with correct ordering:
             # 1. All thinking blocks must come first if present
             # 2. Followed by the tool_use block
@@ -182,7 +183,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         "content": [{
                             "type": "tool_result",
                             "tool_use_id": tool_use_id,
-                            "content": json.dumps(output.get('data', output)) if isinstance(output, (dict, list)) else str(output)
+                            "content": json.dumps(output.get('message', output)) if isinstance(output, (dict, list)) else str(output)
                         }]
                     })
                     

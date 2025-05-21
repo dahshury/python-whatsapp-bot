@@ -23,6 +23,7 @@ services:
       - ./.env:/app/.env
       - ./scripts:/app/scripts
       - ./backups:/app/backups
+      - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     restart: on-failure
     command: >
       sh -c "mkdir -p /app/data &&

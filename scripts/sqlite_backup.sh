@@ -1,5 +1,5 @@
 #!/bin/bash
-
+et -euo pipefail
 # Detect environment - container or host
 if [ -f "/.dockerenv" ] || [ -f "/run/.containerenv" ]; then
     # Inside Docker container
