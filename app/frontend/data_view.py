@@ -21,8 +21,6 @@ def reset_data_editor(success=True):
 def render_view(is_gregorian, show_title=True):
     dynamic_data_editor_key = f"data_editor_{st.session_state.data_editor_key}"
     if st.session_state.active_view == "data":
-        sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key=f"data_divider_{dynamic_data_editor_key}")
-        
         # Add container with border for data editor
         with st.container(border=True):
             filtered = []

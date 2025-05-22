@@ -7,7 +7,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
-from app.utils.whatsapp_utils import process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
+from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, find_nearest_time_slot
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, get_available_time_slots
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
@@ -87,9 +87,7 @@ async def webhook_post(
         return JSONResponse(content={"status": "ok"})
     
     # Process message in background if it's a valid WhatsApp message
-    entry = body.get("entry", [{}])[0]
-    
-    if "changes" in entry:
+    if is_valid_whatsapp_message(body):
         # Try to acquire semaphore without blocking the response
         if task_semaphore.locked() and task_semaphore._value == 0:
             # Log current semaphore status

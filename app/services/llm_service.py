@@ -22,7 +22,7 @@ class BaseLLMService(abc.ABC):
         
         # Default LLM-specific configurations
         # Claude
-        self.claude_model = "claude-3-7-sonnet-20250219"
+        self.claude_model = "claude-sonnet-4-20250514"
         self.enable_thinking = False
         self.thinking_budget_tokens = 1024
         self.claude_thinking = None

@@ -92,14 +92,8 @@ def render_vacation_editor():
     sac.divider(label='فترات الإجازة' if not st.session_state.get('is_gregorian', False) else 'Vacation Periods', 
                 icon='airplane', align='center', color='gray')
     with st.container(border=True):
-        # Header row for columns: index, start date, end date
-        col0_lbl, col1_lbl, col2_lbl, col3_lbl = st.columns([1, 4, 4, 1])
-        with col1_lbl:
-            st.write('Start Date' if st.session_state.get('is_gregorian', False) else 'تاريخ البداية')
-        with col2_lbl:
-            st.write('End Date' if st.session_state.get('is_gregorian', False) else 'تاريخ النهاية')
         for i, period in enumerate(st.session_state.vacation_periods):
-            col0, col1, col2, col3 = st.columns([1, 4, 4, 1])
+            col0, col1, col2 = st.columns([1, 8, 1])
             # Number icon button
             with col0:
                 sac.buttons(
@@ -109,27 +103,26 @@ def render_vacation_editor():
                     index=None,
                     key=f"num_{i}"
                 )
-            # Date pickers with collapsed labels
+            # Date range picker
             with col1:
-                new_start = st.date_input(
-                    "Start Date",
-                    value=period['start'],
-                    key=f"start_{i}",
+                date_range = st.date_input(
+                    "Vacation Period",
+                    value=(period['start'], period['end']),
+                    key=f"period_{i}",
                     min_value=date.today(),
                     format="DD/MM/YYYY",
                     label_visibility="collapsed"
                 )
+                
+                # Update period if date range changed
+                if isinstance(date_range, tuple) and len(date_range) == 2:
+                    if date_range[0] != period['start'] or date_range[1] != period['end']:
+                        period['start'] = date_range[0]
+                        period['end'] = date_range[1]
+                        update_vacation_env()
+            
+            # Remove button
             with col2:
-                new_end = st.date_input(
-                    "End Date",
-                    value=period['end'],
-                    key=f"end_{i}",
-                    min_value=date.today(),
-                    format="DD/MM/YYYY",
-                    label_visibility="collapsed"
-                )
-            # Remove button using st.button
-            with col3:
                 if st.button(
                     "🗑",
                     key=f"remove_{i}",
@@ -140,9 +133,9 @@ def render_vacation_editor():
                     update_vacation_env()
                     st.rerun()
         
-        # Add new vacation period button using st.button
-        col0_add, col1_add, col2_add, col3_add = st.columns([1, 4, 4, 1])
-        with col3_add:
+        # Add new vacation period button
+        col0_add, col1_add, col2_add = st.columns([1, 8, 1])
+        with col2_add:
             if st.button(
                 "✚",
                 key="add_period",

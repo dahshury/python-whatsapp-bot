@@ -125,7 +125,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 disabled=(index == len(options) - 1),
                 use_container_width=True
             )
-
+        sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key=f"data_divider")
         # Handle navigation button clicks
         if prev_btn and len(options) > 0:
             new_index = (index - 1) % len(options)
