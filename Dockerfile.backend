@@ -5,6 +5,9 @@ RUN apt-get update && apt-get install -y build-essential python3-dev libuv1-dev 
 # Set working directory
 WORKDIR /app
 
+# Create rclone config directory
+RUN mkdir -p /root/.config/rclone
+
 # Install uv for better package management
 RUN pip install --no-cache-dir uv
 
@@ -29,6 +32,7 @@ COPY tests/ tests/
 
 # Create data directory for persistent storage
 RUN mkdir -p /app/data
+RUN mkdir -p /app/backups
 
 # Note: We'll handle database copy in the docker-compose command instead
 

@@ -10,6 +10,7 @@ services:
     volumes:
       - ./threads_db.sqlite:/app/data/threads_db.sqlite
       - ./.env:/app/.env
+      - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     depends_on:
       - prometheus
 

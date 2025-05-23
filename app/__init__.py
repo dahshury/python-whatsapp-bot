@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from app.config import configure_logging, load_config
 from app.views import router as webhook_router
 from app.scheduler import init_scheduler
@@ -32,6 +33,23 @@ def create_app():
         sync_client.close()
 
     app = FastAPI(default_response_class=ORJSONResponse, lifespan=lifespan)
+
+    # Configure CORS
+    origins = [
+        "http://localhost",
+        "http://localhost:8080", # Common port for live-server or similar dev servers
+        "http://127.0.0.1:8080", # Adding the specific IP-based origin
+        "null",  # Allow requests from file:/// URLs (for local testing)
+        # Add any other origins your frontend might be served from, e.g., a deployed URL
+    ]
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],  # Allows all methods
+        allow_headers=["*"],  # Allows all headers
+    )
 
     @app.middleware("http")
     async def metrics_middleware(request: Request, call_next):

@@ -3,285 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Calendar Viewer</title>
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <!-- FullCalendar CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css">
-    <!-- Custom CSS -->
-    <style>
-        body {
-            display: flex;
-            font-family: Arial, sans-serif;
-        }
-        .sidebar {
-            width: 300px;
-            padding: 20px;
-            background-color: #f8f9fa;
-            height: 100vh;
-            overflow-y: auto;
-            position: fixed;
-        }
-        .main-content {
-            margin-left: 320px;
-            padding: 20px;
-            width: calc(100% - 320px);
-        }
-        #calendar {
-            max-width: 900px;
-            margin-bottom: 20px;
-        }
-        #data-view, #conversation-view {
-            display: none;
-        }
-        .divider {
-            margin: 20px 0;
-            text-align: center;
-            color: gray;
-        }
-        .options label {
-            display: block;
-            margin: 10px 0;
-        }
-        .clock iframe {
-            width: 100%;
-            height: 260px;
-            border: none;
-        }
-        .prayer-times iframe {
-            width: 100%;
-            height: 450px;
-            border: none;
-        }
-        #login-form {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        #login-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: none;
-        }
-    </style>
+    <title>Dr. Amal Calendar</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>">
+    <link rel="stylesheet" href="css/style.css?v=1.8">
+    <!-- Include FullCalendar and AG-Grid libraries -->
+    <!-- FullCalendar via CDN -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <!-- AG-Grid via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+    <!-- Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- Login Overlay -->
-    <div id="login-overlay">
-        <form id="login-form">
-            <h3>Login</h3>
-            <div class="mb-3">
-                <label for="username" class="form-label">Username</label>
-                <input type="text" class="form-control" id="username" required>
+    <button id="theme-toggle" class="theme-toggle-btn">
+        <span class="theme-icon">🌙</span>
+        <span class="theme-text">Dark Mode</span>
+    </button>
+    <div class="container">
+        <aside class="sidebar">
+            <!-- Sidebar content will be dynamically loaded here by sidebar.js -->
+        </aside>
+        <main class="main-content">
+            <!-- Main content (calendar or statistics) will be loaded here by app.js -->
+            <div id="calendar-container">
+                <!-- FullCalendar will be initialized here -->
             </div>
-            <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control" id="password" required>
+            <div id="conversation-area" class="conversation-display-area" style="display: none;">
+                <!-- Conversation content will be dynamically loaded here -->
             </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-        </form>
+            <div id="data-editor-area" class="data-editor-display-area" style="display: none;">
+                <!-- AG-Grid data editor will be dynamically loaded here -->
+            </div>
+        </main>
     </div>
-
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="divider">Clock</div>
-        <div class="clock">
-            <iframe src="data:text/html;base64,PHNjcmlwdCBzcmM9Imh0dHBzOi8vY2RuLmxvZ3dvcmsuY29tL3dpZGdldC9jbG9jay5qcyI+PC9zY3JpcHQ+PGEgaHJlZj0iaHR0cHM6Ly9sb2d3b3JrLmNvbS9jbG9jay13aWRnZXQvIiBjbGFzcz0iY2xvY2stdGltZSIgZGF0YS1zdHlsZT0iZGVmYXVsdC1udW1lcmFsIiBkYXRhLXNpemU9IjI0NCIgZGF0YS10aW1lem9uZT0iQXNpYS9SaXlhZGgiPjwvYT4=" scrolling="no"></iframe>
-        </div>
-        <div class="divider">Prayer Time</div>
-        <div class="prayer-times">
-            <iframe src="https://offline.tawkit.net/" height="450" scrolling="no"></iframe>
-        </div>
-        <div class="divider">Options</div>
-        <div class="options">
-            <label><input type="checkbox" id="gregorian"> Gregorian</label>
-            <label><input type="checkbox" id="show-conversations" checked> Show Conversations</label>
-            <label><input type="checkbox" id="free-roam"> Free Roam</label>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="divider">Calendar</div>
-        <div id="calendar"></div>
-        <div id="data-view">
-            <div class="divider">Data</div>
-            <table class="table" id="events-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-        <div id="conversation-view">
-            <div class="divider">Conversation</div>
-            <div id="conversation-content"></div>
-        </div>
-    </div>
-
-    <!-- JavaScript Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
-    <script>
-        // Dummy Data
-        const reservations = {
-            "966500000001": [{ "customer_name": "Ali", "date": "2023-10-15", "time_slot": "11:00 AM" }],
-            "966500000002": [{ "customer_name": "Sara", "date": "2023-10-16", "time_slot": "1:00 PM" }]
-        };
-        const conversations = {
-            "966500000003": [{ "date": "2023-10-17", "time": "2:00 PM", "message": "Hello!" }]
-        };
-
-        // State Management
-        let activeView = "calendar";
-        let selectedDate = null;
-        let selectedEventId = null;
-
-        // Authentication
-        document.getElementById("login-overlay").style.display = "block";
-        document.getElementById("login-form").addEventListener("submit", function(e) {
-            e.preventDefault();
-            document.getElementById("login-overlay").style.display = "none";
-        });
-
-        // Calendar Setup
-        document.addEventListener("DOMContentLoaded", function() {
-            const calendarEl = document.getElementById("calendar");
-            const calendar = new FullCalendar.Calendar(calendarEl, {
-                initialView: "timeGridWeek",
-                editable: true,
-                selectable: true,
-                eventStartEditable: true,
-                eventDurationEditable: false,
-                slotMinTime: "11:00:00",
-                slotMaxTime: "22:00:00",
-                allDaySlot: false,
-                hiddenDays: [5],
-                slotDuration: "02:00:00",
-                locale: "en",
-                direction: "ltr",
-                firstDay: 6,
-                aspectRatio: 1.35,
-                timeZone: "Asia/Riyadh",
-                businessHours: [
-                    { daysOfWeek: [0, 1, 2, 3, 4], startTime: "11:00", endTime: "17:00" },
-                    { daysOfWeek: [6], startTime: "17:00", endTime: "22:00" }
-                ],
-                eventConstraint: "businessHours",
-                selectConstraint: "businessHours",
-                events: generateEvents(),
-                dateClick: function(info) {
-                    selectedDate = info.dateStr;
-                    activeView = "data";
-                    updateView();
-                },
-                select: function(info) {
-                    selectedDate = info.startStr;
-                    activeView = "data";
-                    updateView();
-                },
-                eventClick: function(info) {
-                    selectedEventId = info.event.id;
-                    activeView = "conversation";
-                    updateView();
-                },
-                eventChange: function(info) {
-                    console.log("Event changed:", info.event);
-                }
-            });
-            calendar.render();
-
-            // Update options based on checkbox changes
-            document.getElementById("gregorian").addEventListener("change", updateCalendarOptions);
-            document.getElementById("free-roam").addEventListener("change", updateCalendarOptions);
-            document.getElementById("show-conversations").addEventListener("change", function() {
-                calendar.setOption("events", generateEvents());
-            });
-
-            function updateCalendarOptions() {
-                const isGregorian = document.getElementById("gregorian").checked;
-                const isFreeRoam = document.getElementById("free-roam").checked;
-                calendar.setOption("locale", isGregorian ? "en" : "ar-sa");
-                calendar.setOption("direction", isGregorian ? "ltr" : "rtl");
-                calendar.setOption("slotMinTime", isFreeRoam ? "00:00:00" : "11:00:00");
-                calendar.setOption("slotMaxTime", isFreeRoam ? "24:00:00" : "22:00:00");
-                calendar.setOption("businessHours", isFreeRoam ? null : [
-                    { daysOfWeek: [0, 1, 2, 3, 4], startTime: "11:00", endTime: "17:00" },
-                    { daysOfWeek: [6], startTime: "17:00", endTime: "22:00" }
-                ]);
-                calendar.setOption("eventConstraint", isFreeRoam ? null : "businessHours");
-                calendar.setOption("selectConstraint", isFreeRoam ? null : "businessHours");
-            }
-        });
-
-        // Generate Calendar Events
-        function generateEvents() {
-            let events = [];
-            for (let id in reservations) {
-                reservations[id].forEach(res => {
-                    const start = moment(`${res.date} ${res.time_slot}`, "YYYY-MM-DD h:mm A").toISOString();
-                    const end = moment(start).add(20, "minutes").toISOString();
-                    events.push({ id, title: res.customer_name, start, end });
-                });
-            }
-            if (document.getElementById("show-conversations").checked) {
-                for (let id in conversations) {
-                    conversations[id].forEach(conv => {
-                        const start = moment(`${conv.date} ${conv.time}`, "YYYY-MM-DD h:mm A").toISOString();
-                        const end = moment(start).add(20, "minutes").toISOString();
-                        events.push({ id, title: `Conversation: ${id}`, start, end, backgroundColor: "#EDAE49", editable: false });
-                    });
-                }
-            }
-            return events;
-        }
-
-        // Update View Based on State
-        function updateView() {
-            const calendarDiv = document.getElementById("calendar");
-            const dataView = document.getElementById("data-view");
-            const conversationView = document.getElementById("conversation-view");
-
-            calendarDiv.style.display = activeView === "calendar" ? "block" : "none";
-            dataView.style.display = activeView === "data" ? "block" : "none";
-            conversationView.style.display = activeView === "conversation" ? "block" : "none";
-
-            if (activeView === "data" && selectedDate) {
-                const tbody = dataView.querySelector("tbody");
-                tbody.innerHTML = "";
-                const filteredEvents = generateEvents().filter(e => e.start.includes(selectedDate.split("T")[0]));
-                filteredEvents.forEach(event => {
-                    const row = document.createElement("tr");
-                    row.innerHTML = `
-                        <td>${event.id}</td>
-                        <td>${event.title}</td>
-                        <td>${moment(event.start).format("YYYY-MM-DD")}</td>
-                        <td>${moment(event.start).format("h:mm A")}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } else if (activeView === "conversation" && selectedEventId) {
-                const content = document.getElementById("conversation-content");
-                const conv = conversations[selectedEventId] || [];
-                content.innerHTML = conv.length ? conv.map(c => `<p>${c.message}</p>`).join("") : "<p>No conversation available.</p>";
-            }
-        }
-    </script>
+    <script src="js/app.js?v=1.14"></script>
+    <script src="js/sidebar.js?v=1.14"></script>
+    <script src="js/calendar_view.js?v=1.14"></script>
+    <script src="js/data_view.js?v=1.14"></script>
+    <script src="js/statistics_view.js?v=1.14"></script>
+    <script src="js/conversation_view.js?v=1.14"></script>
 </body>
-</html>
+</html> 
