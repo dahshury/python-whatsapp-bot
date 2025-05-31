@@ -201,14 +201,3 @@ def parse_time(time_str, to_24h=True):
         # If all parsing attempts fail, return original with warning
         print(f"Warning: Could not parse time '{time_str}': {e}")
         return time_str
-
-def find_nearest_time_slot(date_str, time_slot, ar=False):
-    """Call backend endpoint to get nearest available time slot."""
-    payload = {
-        "date_str": date_str,
-        "time_slot": time_slot,
-        "ar": ar,
-    }
-    r = requests.post(f"{BACKEND_URL}/reservations/nearest", json=payload)
-    r.raise_for_status()
-    return r.json() 

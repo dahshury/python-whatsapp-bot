@@ -11,8 +11,10 @@ from streamlit_calendar import calendar
 
 from . import get_ramadan_dates, is_ramadan, subtract_ramadan_from_normal
 from . import format_date_for_display, get_event_time_range, update_date_time_selection
-from .whatsapp_client import get_all_reservations, get_all_conversations, parse_date, parse_time, modify_reservation, get_message, find_nearest_time_slot
+from .whatsapp_client import get_all_reservations, get_all_conversations, parse_date, parse_time, modify_reservation, get_message
 from .data_view import render_view
+
+TIMEZONE = os.getenv('TIMEZONE', 'UTC')
 
 def reset_calendar(success, new_start_date):
     time.sleep(3 if success else 5)
@@ -118,7 +120,6 @@ def render_cal(is_gregorian, free_roam):
             ],
             label='',
             align='center',
-            bg_color='gray',
             use_container_width=True,
             return_index=True,
             index=current_idx,
@@ -181,10 +182,11 @@ def render_cal(is_gregorian, free_roam):
                 end_date = period.get('end')
                 
                 if start_date and end_date:
-                    # Instead of using business hours, create background events for vacation periods
+                    # Create background events for vacation periods
+                    # No need to add extra day since end_date is now inclusive
                     vacation_event = {
                         "start": start_date.isoformat(),
-                        "end": (end_date + datetime.timedelta(days=1)).isoformat(),  # Add a day to include the end date
+                        "end": (end_date + datetime.timedelta(days=1)).isoformat(),  # Calendar needs exclusive end date for full-day events
                         "display": "background",
                         "color": "#ffcccb",  # Light red background
                         "rendering": "background",
@@ -235,10 +237,10 @@ def render_cal(is_gregorian, free_roam):
             "locale": "ar-sa" if not is_gregorian else "en",
             "direction": "rtl" if not is_gregorian else "ltr",
             "firstDay": 6,
-            "aspectRatio": 1.35,
+            "aspectRatio": 1.4,
             "initialDate": initial_date,
             "initialView": st.session_state.selected_view_id,
-            "timeZone": f"{os.getenv('TIMEZONE', 'UTC')}",
+            "timeZone": f"{TIMEZONE}",
         }
         # Localize calendar button text
         if not is_gregorian:
@@ -492,6 +494,73 @@ def render_cal(is_gregorian, free_roam):
                         .fc-event {
                             cursor: pointer !important;
                         }
+                         .fc-col-header {
+                         border-radius: 16px !important;
+                         }
+
+                         .fc-scrollgrid {
+                         border-radius: 16px !important;
+                         }
+                         .fc-scrollgrid-section > td {
+                         border-radius: 0px 0px 16px 16px !important;
+                         }
+
+                         .fc-scrollgrid-section > th {
+                         border-radius: 0px 16px 0px 0px !important;
+                         }
+                        .fc .fc-toolbar-title {
+                            font-size: 1.25rem !important;
+                            margin: 0;
+                            font-weight: 500;
+                            padding: 20px 0 0px 20px;
+                        }
+
+                        .fc .fc-button {
+                            background-color: #006082 !important;
+                            border-color: #006082 !important;
+                        }
+
+                        .fc-day-today {
+                            background-color: var(--background-color, #edf5f7) !important;
+                        }
+
+                        [data-theme="dark"] .fc-day-today {
+                            background-color: #1e293b !important;
+                        }
+
+                        .fc-theme-standard td {
+                            border: 1px solid #e5e7eb !important;
+                        } 
+
+                        .fc-day-other {
+                            background: #FAFAFB;
+                        }
+
+                        .fc .fc-button .fc-icon {
+                            font-size: 0.875rem !important;
+                        }
+
+                        a.fc-col-header-cell-cushion {
+                            font-size: .85em !important;
+                            line-height: 2.2rem !important;
+                            font-weight: 600 !important;
+                        }
+
+                        .fc .fc-daygrid-day-top {
+                            flex-direction: inherit !important;
+                            padding: 5px !important;
+                            font-size: .75em !important;
+                            color: #6b7280 !important;
+                        }
+
+                        .fc .fc-button-primary:disabled {
+                            background-color: #eeeeee !important;
+                            color: black !important;
+                            border-color: #eeeeee !important;
+                            font-size: 0.875rem !important;
+                            line-height: 1.25rem !important;
+                            text-transform: capitalize !important;
+                        }
                         """,
             key=calendar_key,
         )
@@ -566,10 +635,7 @@ def render_cal(is_gregorian, free_roam):
             new_time = pd.to_datetime(event['start']).time()
             # Format as 12-hour string for backend and frontend lookup
             formatted_time = new_time.strftime("%I:%M %p")
-            # Attempt to approximate to nearest available slot via backend endpoint
-            nearest_resp = find_nearest_time_slot(str(new_start_date), formatted_time, ar=not is_gregorian)
-            if nearest_resp.get("success", False) and 'time_slot' in nearest_resp:
-                formatted_time = nearest_resp.get("time_slot")
+            # The modify_reservation function will handle approximation when approximate=True
             ev_type = big_cal_response.get("eventChange", {}).get("event", {}).get("extendedProps").get("type")
             result = modify_reservation(event['id'], str(new_start_date), formatted_time, str(event['title']), ev_type, approximate=True, ar=not is_gregorian)
             if result.get("success", "") == True:

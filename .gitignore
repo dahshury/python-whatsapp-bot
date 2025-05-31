@@ -95,5 +95,5 @@ target/
 users.yaml
 test.ipynb
 
-attempt/
+private/
 st2.py

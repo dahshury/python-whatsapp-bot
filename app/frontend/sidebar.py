@@ -105,21 +105,53 @@ def render_vacation_editor():
                 )
             # Date range picker
             with col1:
-                date_range = st.date_input(
-                    "Vacation Period",
-                    value=(period['start'], period['end']),
-                    key=f"period_{i}",
-                    min_value=date.today(),
-                    format="DD/MM/YYYY",
-                    label_visibility="collapsed"
-                )
+                current_day = date.today()
                 
-                # Update period if date range changed
-                if isinstance(date_range, tuple) and len(date_range) == 2:
-                    if date_range[0] != period['start'] or date_range[1] != period['end']:
-                        period['start'] = date_range[0]
-                        period['end'] = date_range[1]
-                        update_vacation_env()
+                # Determine if this is an ongoing vacation (started in the past)
+                is_ongoing = period['start'] < current_day
+                
+                if is_ongoing:
+                    # For ongoing vacations, show original dates but make start date read-only
+                    # by using the original dates and no min_value restriction
+                    date_range = st.date_input(
+                        "Vacation Period",
+                        value=(period['start'], period['end']),
+                        key=f"period_{i}",
+                        format="DD/MM/YYYY",
+                        label_visibility="collapsed",
+                        help="This vacation has already started. Only the end date can be modified." if st.session_state.get('is_gregorian', False) else "هذه الإجازة بدأت بالفعل. يمكن تعديل تاريخ الانتهاء فقط."
+                    )
+                    
+                    # For ongoing vacations, only allow end date changes
+                    if isinstance(date_range, tuple) and len(date_range) == 2:
+                        new_start, new_end = date_range
+                        # Keep original start date, but allow end date changes (must be >= today)
+                        if new_end < current_day:
+                            new_end = current_day
+                        if new_start != period['start'] or new_end != period['end']:
+                            period['start'] = period['start']  # Keep original start
+                            period['end'] = max(new_end, current_day)  # Ensure end is not in the past
+                            update_vacation_env()
+                else:
+                    # For future vacations, enforce min_value restriction
+                    default_start_date = max(period['start'], current_day)
+                    default_end_date = max(period['end'], default_start_date + timedelta(days=1))
+                    
+                    date_range = st.date_input(
+                        "Vacation Period",
+                        value=(default_start_date, default_end_date),
+                        key=f"period_{i}",
+                        min_value=current_day,
+                        format="DD/MM/YYYY",
+                        label_visibility="collapsed"
+                    )
+                    
+                    # Update period if date range changed
+                    if isinstance(date_range, tuple) and len(date_range) == 2:
+                        if date_range[0] != period['start'] or date_range[1] != period['end']:
+                            period['start'] = date_range[0]
+                            period['end'] = date_range[1]
+                            update_vacation_env()
             
             # Remove button
             with col2:
@@ -173,7 +205,10 @@ def initialize_vacation_periods():
 # Function to update environment variables
 def update_vacation_env():
     start_dates = ','.join([p['start'].strftime('%Y-%m-%d') for p in st.session_state.vacation_periods])
-    durations = ','.join([str((p['end'] - p['start']).days) for p in st.session_state.vacation_periods])
+    # Fix: Add 1 to make the duration calculation consistent with backend logic
+    # Backend does: end_date = start_date + timedelta(days=duration)
+    # So duration should be: (end_date - start_date).days + 1 for inclusive end dates
+    durations = ','.join([str((p['end'] - p['start']).days + 1) for p in st.session_state.vacation_periods])
     
     # Update .env file
     env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), '.env')

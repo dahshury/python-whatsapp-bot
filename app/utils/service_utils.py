@@ -142,57 +142,63 @@ def find_nearest_time_slot(target_slot, available_slots):
 
 def get_all_reservations(future=True, include_cancelled=False):
     """
-    Get all reservations from the database, grouped by wa_id, sorted by date and time_slot.
-    If `future` is True, only returns reservations for today and future dates.
-    If `include_cancelled` is True, includes cancelled reservations along with active ones.
+    Retrieve all reservations from the database.
+    
+    Parameters:
+        future (bool): If True, only return reservations for today and future dates.
+                      If False, return all reservations.
+        include_cancelled (bool): If True, include cancelled reservations in the results.
+                                 If False, only return active reservations.
+    
+    Returns:
+        dict: Dictionary with wa_id as keys and list of reservation dicts as values.
+             Each reservation dict contains customer_name, date, time_slot, type, and cancelled flag.
     """
     try:
         conn = get_connection()
         cursor = conn.cursor()
         
-        # Base query to get non-cancelled reservations
+        # Base query to get reservations (join with customers table for customer_name)
         base_query = """
-            SELECT wa_id, customer_name, date, time_slot, type 
-            FROM reservations
+            SELECT r.wa_id, c.customer_name, r.date, r.time_slot, r.type, r.status
+            FROM reservations r
+            JOIN customers c ON r.wa_id = c.wa_id
         """
         
-        # Query for cancelled reservations if needed
-        cancelled_query = """
-            SELECT wa_id, customer_name, date, time_slot, type 
-            FROM cancelled_reservations
-        """
+        # Build WHERE conditions
+        where_conditions = []
+        params = []
         
         # Add date filter if future is True
-        where_clause = ""
-        params = []
         if future:
             # Use timezone-aware date for today
             today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
-            where_clause = " WHERE date >= ?"
+            where_conditions.append("r.date >= ?")
             params.append(today)
         
-        # Complete the queries with where clause and ordering
-        main_query = base_query + where_clause + " ORDER BY wa_id ASC, date ASC, time_slot ASC"
+        # Add status filter based on include_cancelled
+        if not include_cancelled:
+            where_conditions.append("r.status = 'active'")
         
-        # Execute the main query for active reservations
+        # Combine WHERE conditions
+        where_clause = ""
+        if where_conditions:
+            where_clause = " WHERE " + " AND ".join(where_conditions)
+        
+        # Complete the query with where clause and ordering
+        main_query = base_query + where_clause + " ORDER BY r.wa_id ASC, r.date ASC, r.time_slot ASC"
+        
+        # Execute the query
         cursor.execute(main_query, params)
-        active_rows = cursor.fetchall()
-        
-        cancelled_rows = []
-        # If include_cancelled is True, also get cancelled reservations
-        if include_cancelled:
-            cancelled_main_query = cancelled_query + where_clause + " ORDER BY wa_id ASC, date ASC, time_slot ASC"
-            cursor.execute(cancelled_main_query, params)
-            # Get the cancelled rows from this query result, not from the first query
-            cancelled_rows = cursor.fetchall()
+        rows = cursor.fetchall()
         
         conn.close()
 
         # Structuring the output as a grouped dictionary
         reservations = {}
         
-        # Process active reservations
-        for row in active_rows:
+        # Process reservations
+        for row in rows:
             user_id = row['wa_id']
             if user_id not in reservations:
                 reservations[user_id] = []
@@ -202,23 +208,7 @@ def get_all_reservations(future=True, include_cancelled=False):
                 "date": row['date'],
                 "time_slot": row['time_slot'],
                 "type": row['type'],
-                "cancelled": False
-            }
-            
-            reservations[user_id].append(reservation)
-        
-        # Process cancelled reservations if included
-        for row in cancelled_rows:
-            user_id = row['wa_id']
-            if user_id not in reservations:
-                reservations[user_id] = []
-            
-            reservation = {
-                "customer_name": row['customer_name'],
-                "date": row['date'],
-                "time_slot": row['time_slot'],
-                "type": row['type'],
-                "cancelled": True
+                "cancelled": row['status'] == 'cancelled'
             }
             
             reservations[user_id].append(reservation)
@@ -352,7 +342,7 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
 def append_message(wa_id, role, message, date_str, time_str):
     """
     Append a message to the conversation database for a given WhatsApp user.
-    Ensures that a thread record exists in the 'threads' table and then inserts
+    Ensures that a customer record exists in the 'customers' table and then inserts
     the message into the 'conversation' table. Any database errors are caught
     and logged without interrupting execution.
 
@@ -369,9 +359,9 @@ def append_message(wa_id, role, message, date_str, time_str):
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        # Ensure a thread record exists for this wa_id
+        # Ensure a customer record exists for this wa_id
         cursor.execute(
-            "INSERT OR IGNORE INTO threads (wa_id, thread_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO customers (wa_id, customer_name) VALUES (?, ?)",
             (wa_id, None)
         )
         # Insert the conversation message
@@ -421,14 +411,6 @@ def is_valid_number(phone_number, ar=False):
         # General phone validation error
         return format_response(False, message=get_message("phone_validation_error", ar=ar))
 
-def check_if_thread_exists(wa_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT thread_id FROM threads WHERE wa_id = ?", (wa_id,))
-    row = cursor.fetchone()
-    conn.close()
-    return row["thread_id"] if row else None
-
 def retrieve_messages(wa_id):
     """
     Retrieve message history for a user from the database and format for service consumption.
@@ -454,25 +436,46 @@ def retrieve_messages(wa_id):
         logging.error(f"Error retrieving messages from database: {e}")
         return []
 
-def make_thread(wa_id, thread_id=None):
+def make_thread(wa_id, customer_name=None):
     """
-    Ensures that a thread record exists for the given WhatsApp ID (wa_id).
-    If no thread record exists for the provided wa_id, a new record is inserted
-    into the 'threads' table with the wa_id and the provided thread_id.
+    Ensures that a customer record exists for the given WhatsApp ID (wa_id).
+    If no customer record exists for the provided wa_id, a new record is inserted
+    into the 'customers' table with the wa_id and customer_name.
+    If a record exists, only updates customer_name if it's currently NULL/empty.
     Args:
-        wa_id (str): The WhatsApp ID for which to ensure a thread record exists.
-        thread_id (str, optional): The thread ID to store. Defaults to None.
+        wa_id (str): The WhatsApp ID for which to ensure a customer record exists.
+        customer_name (str, optional): The customer name to store. Defaults to None.
     Returns:
         None
     """
     conn = get_connection()
     cursor = conn.cursor()
 
-    # Use INSERT OR REPLACE to update existing record if necessary
-    cursor.execute(
-        "INSERT OR REPLACE INTO threads (wa_id, thread_id) VALUES (?, ?)",
-        (wa_id, thread_id)
-    )
+    # First, check if customer exists
+    cursor.execute("SELECT customer_name FROM customers WHERE wa_id = ?", (wa_id,))
+    existing = cursor.fetchone()
+    
+    if existing is None:
+        # Customer doesn't exist, create new record
+        cursor.execute(
+            "INSERT INTO customers (wa_id, customer_name) VALUES (?, ?)",
+            (wa_id, customer_name)
+        )
+    else:
+        # Customer exists, update fields that are currently NULL/empty
+        updates = []
+        params = []
+        
+        # Only update customer_name if provided and current value is NULL/empty
+        if customer_name is not None and (existing["customer_name"] is None or existing["customer_name"].strip() == ""):
+            updates.append("customer_name = ?")
+            params.append(customer_name)
+        
+        # Execute update if there are changes
+        if updates:
+            params.append(wa_id)  # Add wa_id for WHERE clause
+            cursor.execute(f"UPDATE customers SET {', '.join(updates)} WHERE wa_id = ?", params)
+    
     conn.commit()
     conn.close()
         
@@ -730,7 +733,9 @@ def is_vacation_period(date_obj, vacation_dict=None):
         for start_day, duration in vacation_dict.items():
             try:
                 start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
-                end_date = start_date + datetime.timedelta(days=duration)
+                # Fix: Treat duration as inclusive days count
+                # For 20 days starting May 31: May 31 + 19 days = June 19 (20th day inclusive)
+                end_date = start_date + datetime.timedelta(days=duration-1)
                 if start_date.date() <= date_obj <= end_date.date():
                     vacation_msg = config.get('VACATION_MESSAGE', 'The business is closed during this period.')
                     message = f"We are on vacation from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. {vacation_msg}"
@@ -743,6 +748,61 @@ def is_vacation_period(date_obj, vacation_dict=None):
     except Exception as e:
         logging.error(f"Error in is_vacation_period: {e}")
         return False, None
+
+def find_vacation_end_date(date_obj, vacation_dict=None):
+    """
+    Find the end date of the vacation period if the given date falls within one.
+    
+    Parameters:
+        date_obj (datetime.date): The date to check
+        vacation_dict (dict, optional): Dictionary of vacation periods with start dates and durations
+        
+    Returns:
+        datetime.date or None: The end date of the vacation period if date_obj is within one, otherwise None
+    """    
+    try:
+        # Set up the vacation dictionary if not provided
+        if vacation_dict is None:
+            vacation_dict = {}
+            vacation_start_dates = config.get("VACATION_START_DATES", "")
+            vacation_durations = config.get("VACATION_DURATIONS", "")
+            
+            # Only process if both values are non-empty strings
+            if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
+                try:
+                    start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
+                    durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
+                    
+                    # Parse each date in Gregorian format
+                    parsed_start_dates = []
+                    for date_str in start_dates:
+                        try:
+                            parsed_date = parse_gregorian_date(date_str)
+                            parsed_start_dates.append(parsed_date)
+                        except ValueError as e:
+                            logging.error(f"Error parsing vacation date {date_str}: {e}")
+                    
+                    if len(parsed_start_dates) == len(durations):
+                        vacation_dict = {start_date: duration for start_date, duration in zip(parsed_start_dates, durations)}
+                except (ValueError, TypeError) as e:
+                    logging.error(f"Error parsing vacation dates: {e}")
+                    # Continue with empty vacation_dict if parsing fails
+        
+        # Check if the date falls within any vacation period and return the end date
+        for start_day, duration in vacation_dict.items():
+            try:
+                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
+                end_date = start_date + datetime.timedelta(days=duration-1)
+                if start_date.date() <= date_obj <= end_date.date():
+                    return end_date.date()
+            except (ValueError, TypeError) as e:
+                logging.error(f"Error checking vacation period for date {start_day}: {e}")
+                # Continue checking other dates if one fails
+        
+        return None
+    except Exception as e:
+        logging.error(f"Error in find_vacation_end_date: {e}")
+        return None
 
 def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2, schedule=None):
     """
@@ -1021,9 +1081,8 @@ def delete_user(wa_id):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
-    cursor.execute("DELETE FROM cancelled_reservations WHERE wa_id = ?", (wa_id,))
     cursor.execute("DELETE FROM conversation WHERE wa_id = ?", (wa_id,))
-    cursor.execute("DELETE FROM threads WHERE wa_id = ?", (wa_id,))
+    cursor.execute("DELETE FROM customers WHERE wa_id = ?", (wa_id,))
     conn.commit()
     conn.close()
     return format_response(True, message=get_message("user_deleted"))

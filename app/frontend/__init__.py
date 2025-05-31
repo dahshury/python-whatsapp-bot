@@ -308,7 +308,7 @@ def is_ramadan(gregorian_date):
         date_obj = datetime.datetime.strptime(gregorian_date, "%Y-%m-%d").date()
     
     # Apply the timezone to the date by combining with a minimal time
-    date_obj = datetime.datetime.combine(date_obj, datetime.time.min).replace(tzinfo=ZoneInfo(os.getenv("TIMEZONE", "UTC")))
+    date_obj = datetime.datetime.combine(date_obj, datetime.time.min).replace(tzinfo=ZoneInfo(os.getenv("TIMEZONE", "Asia/Riyadh")))
     hijri_date = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
     return hijri_date.month == 9
 

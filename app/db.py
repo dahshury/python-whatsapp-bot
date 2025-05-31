@@ -24,13 +24,15 @@ def initialize_db():
     try:
         conn = get_connection()
         cursor = conn.cursor()
-        # Table for threads (each WhatsApp ID has one thread record)
+        
+        # Table for customers (renamed from threads, now includes customer_name)
         cursor.execute("""
-        CREATE TABLE IF NOT EXISTS threads (
+        CREATE TABLE IF NOT EXISTS customers (
             wa_id TEXT PRIMARY KEY,
-            thread_id TEXT
+            customer_name TEXT
         )
         """)
+        
         # Table for conversation messages
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS conversation (
@@ -40,43 +42,35 @@ def initialize_db():
             message TEXT,
             date TEXT,
             time TEXT,
-            FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
+            FOREIGN KEY (wa_id) REFERENCES customers(wa_id)
         )
         """)
-        # Table for reservations
+        
+        # Table for reservations with soft deletion support
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS reservations (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             wa_id TEXT,
-            customer_name TEXT,
             date TEXT,
             time_slot TEXT,
             type INTEGER CHECK(type IN (0, 1)),
-            FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
+            status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'cancelled')),
+            cancelled_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (wa_id) REFERENCES customers(wa_id)
         )
-        """)
-        # Table for monitoring cancelled reservations
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS cancelled_reservations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            wa_id TEXT,
-            customer_name TEXT,
-            date TEXT,
-            time_slot TEXT,
-            type INTEGER CHECK(type IN (0, 1)),
-            cancelled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (wa_id) REFERENCES threads(wa_id)
-            )
         """)
         
         # Create Indexes if they don't exist
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_wa_id ON customers(wa_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_wa_id ON reservations(wa_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_date_time ON reservations(date, time_slot);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_cancelled_reservations_wa_id ON cancelled_reservations(wa_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_cancelled_reservations_date_time ON cancelled_reservations(date, time_slot);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_wa_id_status ON reservations(wa_id, status);")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_date_time_status ON reservations(date, time_slot, status);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_wa_id ON conversation(wa_id);")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_wa_id_date_time ON conversation(wa_id, date, time);")
-        # Note: idx_threads_wa_id is not needed as wa_id is PRIMARY KEY in threads table.
         
         conn.commit()
     except Exception as e:

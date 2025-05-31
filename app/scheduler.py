@@ -16,7 +16,7 @@ from app.metrics import monitor_system_metrics, FUNCTION_ERRORS, SCHEDULER_JOB_M
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False
-tz = config.get("TIMEZONE", "UTC")
+tz = config.get("TIMEZONE", "Asia/Riyadh")
 
 async def send_reminders_job():
     """

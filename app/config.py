@@ -31,7 +31,7 @@ config = {
     "VEC_STORE_ID": os.getenv("VEC_STORE_ID"),
     
     "SYSTEM_PROMPT": os.getenv("SYSTEM_PROMPT"),
-    "TIMEZONE": os.getenv("TIMEZONE"),
+    "TIMEZONE": os.getenv("TIMEZONE", "Asia/Riyadh"),
     "UNSUPPORTED_MEDIA_MESSAGE": os.getenv("UNSUPPORTED_MEDIA_MESSAGE"),
     
     "VACATION_DURATIONS": os.getenv("VACATION_DURATIONS"),
@@ -108,11 +108,12 @@ def update_vacation_settings(start_date, end_date, message):
         message (str): Vacation message
     """
     if start_date and end_date:
-        # Calculate duration in days
+        # Calculate duration in days (inclusive)
         from datetime import datetime
         start = datetime.strptime(start_date, "%Y-%m-%d")
         end = datetime.strptime(end_date, "%Y-%m-%d")
-        duration = (end - start).days
+        # Add 1 to make it inclusive: if start=May 31 and end=June 19, duration should be 20 days
+        duration = (end - start).days + 1
         
         # Update the environment variables
         update_env_variable("VACATION_START_DATES", start_date)

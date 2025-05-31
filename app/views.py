@@ -8,9 +8,11 @@ from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
-from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, find_nearest_time_slot
-from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, get_available_time_slots
+from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, is_vacation_period
+from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
+import datetime
+from zoneinfo import ZoneInfo
 
 router = APIRouter()
 security = HTTPBasic()
@@ -251,29 +253,6 @@ async def api_modify_id(wa_id: str, payload: dict = Body(...)):
     )
     return JSONResponse(content=resp)
 
-# Nearest time slot endpoint for front-end approximation
-@router.post("/reservations/nearest")
-async def api_find_nearest_time_slot(payload: dict = Body(...)):
-    """Returns the nearest available time slot for a given date and target slot."""
-    date_str = payload.get("date_str")
-    time_slot = payload.get("time_slot")
-    max_reservations = payload.get("max_reservations", 5)
-    hijri = payload.get("hijri", False)
-    ar = payload.get("ar", False)
-    # Retrieve available slots
-    resp_slots = get_available_time_slots(date_str, max_reservations, hijri=hijri)
-    if not resp_slots.get("success", False):
-        return JSONResponse(content=resp_slots)
-    available_slots = resp_slots.get("data", [])
-    # Find nearest slot
-    nearest = find_nearest_time_slot(time_slot, available_slots)
-    if not nearest:
-        # No approximation found
-        from app.i18n import get_message
-        msg = get_message("system_error_try_later", ar=ar)
-        return JSONResponse(content={"success": False, "message": msg})
-    return JSONResponse(content={"success": True, "time_slot": nearest})
-
 @router.get("/message")
 async def api_get_message(request: Request, key: str = Query(...), ar: bool = Query(False)):
     """
@@ -288,3 +267,51 @@ async def api_get_message(request: Request, key: str = Query(...), ar: bool = Qu
     from app.i18n import get_message
     message = get_message(key, ar, **params)
     return JSONResponse(content={"message": message})
+
+@router.get("/vacations")
+async def api_get_vacation_periods():
+    """
+    Get vacation periods from configuration.
+    Returns a list of vacation periods with start and end dates.
+    """
+    try:
+        vacation_periods = []
+        
+        # Get vacation configuration
+        vacation_start_dates = config.get("VACATION_START_DATES", "")
+        vacation_durations = config.get("VACATION_DURATIONS", "")
+        vacation_message = config.get("VACATION_MESSAGE", "The business is closed during this period.")
+        
+        # Process vacation periods if configured
+        if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
+            try:
+                start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
+                durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
+                
+                if len(start_dates) == len(durations):
+                    for start_date_str, duration in zip(start_dates, durations):
+                        try:
+                            # Parse start date
+                            start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
+                            # Fix: Treat duration as inclusive days count
+                            # For 20 days starting May 31: May 31 + 19 days = June 19 (20th day inclusive)
+                            end_date = start_date + datetime.timedelta(days=duration-1)
+                            
+                            vacation_periods.append({
+                                "start": start_date.isoformat(),
+                                "end": end_date.isoformat(),
+                                "title": vacation_message,
+                                "duration": duration
+                            })
+                        except ValueError as e:
+                            logging.error(f"Error parsing vacation date {start_date_str}: {e}")
+                            continue
+                            
+            except (ValueError, TypeError) as e:
+                logging.error(f"Error parsing vacation configuration: {e}")
+        
+        return JSONResponse(content=vacation_periods)
+        
+    except Exception as e:
+        logging.error(f"Error getting vacation periods: {e}")
+        return JSONResponse(content=[], status_code=500)

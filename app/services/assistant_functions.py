@@ -7,7 +7,7 @@ from app.db import get_connection
 from app.i18n import get_message
 from app.utils import (
     is_valid_number, fix_unicode_sequence, parse_date, 
-    normalize_time_format, is_vacation_period, format_response, get_time_slots, validate_reservation_type, is_valid_date_time, make_thread
+    normalize_time_format, is_vacation_period, find_vacation_end_date, format_response, get_time_slots, validate_reservation_type, is_valid_date_time, make_thread, find_nearest_time_slot
 )
 from app.utils.http_client import sync_client
 import sqlite3
@@ -115,7 +115,7 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
     Modify the WhatsApp ID (wa_id) for a customer in all related database tables.
     
     This function updates a customer's WhatsApp ID across all database tables:
-    conversation, reservations, and cancelled_reservations.
+    conversation, reservations, and customers.
     
     Parameters:
         old_wa_id (str): The current WhatsApp ID to be replaced
@@ -156,12 +156,12 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
             cursor.execute("UPDATE reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
             res_rows = cursor.rowcount
             
-            # Update the wa_id in the cancelled_reservations table
-            cursor.execute("UPDATE cancelled_reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-            canc_rows = cursor.rowcount
+            # Update the wa_id in the customers table
+            cursor.execute("UPDATE customers SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
+            cust_rows = cursor.rowcount
             
             # Verify that at least one record was updated across all tables
-            if conv_rows + res_rows + canc_rows == 0:
+            if conv_rows + res_rows + cust_rows == 0:
                 conn.rollback()
                 return format_response(False, message=get_message("wa_id_not_found", ar))
             
@@ -265,20 +265,11 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         # Check if the requested time (parsed_time_str) in 24-hour format is available
         if parsed_time_str not in available_slots_24h:
             if approximate:
-                # Find nearest slot by absolute clock-time difference
-                target_24h = parsed_time_str
-                th, tm = map(int, target_24h.split(':'))
-                target_minutes = th * 60 + tm
-                best_slot, best_diff = None, None
-                for slot in available_slots:
-                    slot_24h = normalize_time_format(slot, to_24h=True)
-                    h, m = map(int, slot_24h.split(':'))
-                    diff = abs(h * 60 + m - target_minutes)
-                    if best_diff is None or diff < best_diff:
-                        best_diff, best_slot = diff, slot
-                if best_slot is None:
+                # Use the centralized find_nearest_time_slot utility function
+                nearest_slot = find_nearest_time_slot(normalize_time_format(parsed_time_str, to_24h=False), available_slots)
+                if nearest_slot is None:
                     return format_response(False, message=get_message("no_slots_available_approx", ar))
-                parsed_time_str = normalize_time_format(best_slot, to_24h=True)
+                parsed_time_str = normalize_time_format(nearest_slot, to_24h=True)
             else:
                 # Format failure message using i18n
                 display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
@@ -307,13 +298,14 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
             update_fields.append("type = ?")
             update_values.append(parsed_type)
         
+        # Handle customer name update separately in customers table
+        update_customer_name = False
         if new_name:
             new_name = fix_unicode_sequence(new_name)
-            update_fields.append("customer_name = ?")
-            update_values.append(new_name)
+            update_customer_name = True
             
         # If no changes to make, return early
-        if not update_values:
+        if not update_values and not update_customer_name:
             return format_response(True, message=get_message("no_changes_made", ar))
             
         # Update reservation using safe DB handling
@@ -322,28 +314,41 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
         try:
             # Lock DB for write to enforce atomic capacity check + update
             cursor.execute("BEGIN IMMEDIATE")
-            # Capacity check
+            
+            # Capacity check for active reservations only
             cursor.execute(
-                "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ? AND wa_id != ?",
+                "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ? AND wa_id != ? AND status = 'active'",
                 (parsed_date_str, parsed_time_str, wa_id)
             )
             if cursor.fetchone()[0] >= max_reservations:
                 conn.rollback()
                 return format_response(False, message=get_message("slot_fully_booked", ar))
 
-            # Only update future reservations
-            curr_date = now.strftime("%Y-%m-%d")
-            curr_time = now.strftime("%H:%M")
-            update_values.extend([wa_id, curr_date, curr_date, curr_time])
-            where_clause = "wa_id = ? AND (date > ? OR (date = ? AND time_slot >= ?))"
-            update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE {where_clause}"
-            cursor.execute(update_query, update_values)
+            # Update reservations table if needed
+            if update_fields:
+                # Add updated_at to the update
+                update_fields.append("updated_at = CURRENT_TIMESTAMP")
+                
+                # Only update future active reservations
+                curr_date = now.strftime("%Y-%m-%d")
+                curr_time = now.strftime("%H:%M")
+                update_values.extend([wa_id, curr_date, curr_date, curr_time])
+                where_clause = "wa_id = ? AND status = 'active' AND (date > ? OR (date = ? AND time_slot >= ?))"
+                update_query = f"UPDATE reservations SET {', '.join(update_fields)} WHERE {where_clause}"
+                cursor.execute(update_query, update_values)
+                
+                # Verify the update happened
+                if cursor.rowcount == 0:
+                    conn.rollback()
+                    logging.error("modify_reservation failed: no rows affected")
+                    return format_response(False, message=get_message("reservation_not_found", ar))
             
-            # Verify the update happened
-            if cursor.rowcount == 0:
-                conn.rollback()
-                logging.error("modify_reservation failed: no rows affected")
-                return format_response(False, message=get_message("reservation_not_found", ar))
+            # Update customer name if needed
+            if update_customer_name:
+                cursor.execute(
+                    "UPDATE customers SET customer_name = ? WHERE wa_id = ?",
+                    (new_name, wa_id)
+                )
                 
             conn.commit()
             
@@ -375,15 +380,11 @@ def get_customer_reservations(wa_id, include_past=False):
     Get the list of all reservations for the given WhatsApp ID.
 
     This function retrieves all reservations for a customer, marking each as future or past.
-    A reservation is considered "future" if the current time is before the end of its
-    time slot (calculated as the reservation's start time plus the slot_duration).
+    A reservation is considered "future" if the current time is before the start of its
+    time slot.
 
     Parameters:
         wa_id (str): WhatsApp ID of the customer to retrieve reservations for
-        slot_duration (int, optional): Duration of the reservation slot in hours.
-                                       A reservation is considered "future" if the current time
-                                       is before the end of its time slot (start time + slot_duration).
-                                       Defaults to 2 hours.
         include_past (bool, optional): If True, includes past reservations in the result.
                                        If False, only returns future reservations. Defaults to False.
 
@@ -394,6 +395,7 @@ def get_customer_reservations(wa_id, include_past=False):
             - customer_name (str): Name of the customer
             - type (int): Reservation type (0 for Check-Up, 1 for Follow-Up)
             - is_future (bool): Flag indicating if the reservation is in the future
+            - status (str): Reservation status ('active' or 'cancelled')
 
         On error or invalid WhatsApp ID:
             dict: Contains error information with:
@@ -411,8 +413,12 @@ def get_customer_reservations(wa_id, include_past=False):
         conn = get_connection()
         cursor = conn.cursor()
         try:
+            # Join with customers table to get customer_name, only get active reservations
             cursor.execute(
-                "SELECT date, time_slot, customer_name, type FROM reservations WHERE wa_id = ?",
+                """SELECT r.date, r.time_slot, c.customer_name, r.type, r.status 
+                   FROM reservations r 
+                   JOIN customers c ON r.wa_id = c.wa_id 
+                   WHERE r.wa_id = ? AND r.status = 'active'""",
                 (wa_id,)
             )
             rows = cursor.fetchall()
@@ -429,7 +435,6 @@ def get_customer_reservations(wa_id, include_past=False):
             slot_time = datetime.datetime.strptime(time_slot_24h, "%H:%M").time()
             reservation_date = datetime.datetime.strptime(reservation_date_str, "%Y-%m-%d").date()
             slot_start_datetime = datetime.datetime.combine(reservation_date, slot_time, tzinfo=ZoneInfo(TIMEZONE))
-
 
             # Check if the current time is before the start of the slot
             row_dict["is_future"] = now < slot_start_datetime
@@ -450,10 +455,10 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
     """
     Reserve a time slot for a customer.
     
-    This function creates a new reservation or modifies an existing one if the customer
-    already has a future reservation. It handles both Hijri and Gregorian date formats,
-    as well as 12-hour and 24-hour time formats. All dates are stored internally in 
-    YYYY-MM-DD (Gregorian) format, and times are stored in 24-hour format.
+    This function creates a new reservation, modifies an existing active one, or reinstates
+    a cancelled reservation if the customer already has a reservation for the same slot.
+    It handles both Hijri and Gregorian date formats, as well as 12-hour and 24-hour time formats.
+    All dates are stored internally in YYYY-MM-DD (Gregorian) format, and times are stored in 24-hour format.
     
     Parameters:
         wa_id (str): WhatsApp ID of the customer
@@ -518,13 +523,13 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
     if display_time_slot not in available_slots:
         return format_response(False, message=get_message("reservation_failed_slot", ar, slot=display_time_slot, slots=', '.join(available_slots)))
 
-    # Retrieve and unpack existing reservations
+    # Retrieve and unpack existing active reservations
     resp_exist = get_customer_reservations(wa_id)
     if not resp_exist.get("success", False):
         return resp_exist
     existing_reservations = resp_exist.get("data", [])
     if existing_reservations and any(res["is_future"] for res in existing_reservations):
-        # modify the existing reservation
+        # modify the existing active reservation
         modify_result = modify_reservation(
             wa_id, 
             new_date=parsed_date_str, 
@@ -536,15 +541,48 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         )
         return modify_result
     
-    # Reserve new time slot in a write-locked transaction
-    make_thread(wa_id, None)
+    # Ensure customer record exists and update customer name
+    make_thread(wa_id, customer_name)
+    
     conn = get_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("BEGIN IMMEDIATE")
-        # Capacity check
+        
+        # Check if there's a cancelled reservation for this exact slot that can be reinstated
         cursor.execute(
-            "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ?",
+            "SELECT id FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ? AND status = 'cancelled'",
+            (wa_id, parsed_date_str, parsed_time_str)
+        )
+        cancelled_reservation = cursor.fetchone()
+        
+        if cancelled_reservation:
+            # Reinstate the cancelled reservation
+            cursor.execute(
+                """UPDATE reservations 
+                   SET status = 'active', type = ?, cancelled_at = NULL, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (reservation_type, cancelled_reservation["id"])
+            )
+            
+            if cursor.rowcount < 1:
+                conn.rollback()
+                FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
+                logging.error(f"reserve_time_slot reinstatement failed - no rows affected")
+                return format_response(False, message=get_message("system_error_contact_secretary", ar))
+                
+            conn.commit()
+            return format_response(True, data={
+                "gregorian_date": parsed_date_str,
+                "hijri_date": hijri_date_str,
+                "time_slot": display_time_slot,
+                "type": reservation_type
+            }, message=get_message("reservation_successful", ar))
+        
+        # No existing cancelled reservation, proceed with new reservation
+        # Capacity check for active reservations only
+        cursor.execute(
+            "SELECT COUNT(*) FROM reservations WHERE date = ? AND time_slot = ? AND status = 'active'",
             (parsed_date_str, parsed_time_str)
         )
         if cursor.fetchone()[0] >= max_reservations:
@@ -553,8 +591,8 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
 
         # Insert the new reservation
         cursor.execute(
-            "INSERT INTO reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
-            (wa_id, customer_name, parsed_date_str, parsed_time_str, reservation_type)
+            "INSERT INTO reservations (wa_id, date, time_slot, type, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            (wa_id, parsed_date_str, parsed_time_str, reservation_type)
         )
         
         # Verify the insert actually happened
@@ -597,19 +635,19 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
 @instrument_cancellation
 def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     """
-    Cancel a reservation or all reservations for a customer.
+    Cancel a reservation or all reservations for a customer using soft deletion.
     
-    This function performs a soft delete by moving the reservation(s) to the 'cancelled_reservations'
-    table before removing them from the active 'reservations' table. This preserves reservation
-    history while freeing up the time slot.
+    This function performs a soft delete by updating the reservation status to 'cancelled'
+    and setting the cancelled_at timestamp. This preserves reservation history while
+    freeing up the time slot for new bookings.
     
     If date_str is provided, only reservations on that date are cancelled.
-    If date_str is not provided, all of the customer's reservations are cancelled.
+    If date_str is not provided, all of the customer's active reservations are cancelled.
     
     Parameters:
         wa_id (str): WhatsApp ID of the customer whose reservation(s) should be cancelled
         date_str (str, optional): Date of the reservation in Hijri or Gregorian format.
-                                 If not provided, all reservations are cancelled.
+                                 If not provided, all active reservations are cancelled.
         hijri (bool, optional): Flag indicating if the provided date is in Hijri format.
                                Defaults to False.
         ar (bool, optional): If True, returns messages in Arabic. Defaults to False.
@@ -627,13 +665,13 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         if is_valid_wa_id != True:
             return is_valid_wa_id
             
-        # Retrieve and unpack upcoming reservations
+        # Retrieve and unpack active reservations
         resp_up = get_customer_reservations(wa_id)
         if not resp_up.get("success", False):
             return resp_up
-        upcoming_reservations = resp_up.get("data", [])
-        # Check if there are any reservations
-        if not upcoming_reservations:
+        active_reservations = resp_up.get("data", [])
+        # Check if there are any active reservations
+        if not active_reservations:
             return format_response(False, message=get_message("no_reservations_found", ar))
             
         # Process date if provided
@@ -647,15 +685,15 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
         # Filter reservations by date if specified
         reservations_to_cancel = []
         if parsed_date_str is not None:
-            for res in upcoming_reservations:
+            for res in active_reservations:
                 if res["date"] == parsed_date_str:
                     reservations_to_cancel.append(res)
             
             if not reservations_to_cancel:
                 return format_response(False, message=get_message("reservation_not_found", ar))
         else:
-            # Cancel all reservations
-            reservations_to_cancel = upcoming_reservations
+            # Cancel all active reservations
+            reservations_to_cancel = active_reservations
                 
         conn = get_connection()
         cursor = conn.cursor()
@@ -664,33 +702,32 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
             # Begin transaction
             cursor.execute("BEGIN IMMEDIATE")
             
-            # Move to cancelled_reservations
-            for res in reservations_to_cancel:
-                res["wa_id"] = wa_id
-            
-            insert_count = 0
-            for res in reservations_to_cancel:
-                cursor.execute(
-                    "INSERT INTO cancelled_reservations (wa_id, customer_name, date, time_slot, type) VALUES (?, ?, ?, ?, ?)",
-                    (res["wa_id"], res["customer_name"], res["date"], res["time_slot"], res["type"])
-                )
-                insert_count += cursor.rowcount
-            
-            # Delete from active reservations
+            # Update reservations to cancelled status
+            cancel_count = 0
             if parsed_date_str is None:
-                cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
-            else:
+                # Cancel all active reservations for the customer
                 cursor.execute(
-                    "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
+                    """UPDATE reservations 
+                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                       WHERE wa_id = ? AND status = 'active'""",
+                    (wa_id,)
+                )
+                cancel_count = cursor.rowcount
+            else:
+                # Cancel reservations for specific date
+                cursor.execute(
+                    """UPDATE reservations 
+                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                       WHERE wa_id = ? AND date = ? AND status = 'active'""",
                     (wa_id, parsed_date_str)
                 )
-            delete_count = cursor.rowcount
+                cancel_count = cursor.rowcount
             
             # Verify operations succeeded
-            if insert_count != len(reservations_to_cancel) or delete_count == 0:
+            if cancel_count == 0:
                 conn.rollback()
-                logging.error(f"cancel_reservation failed: inserted {insert_count}/{len(reservations_to_cancel)}, deleted {delete_count}")
-                return format_response(False, message=get_message("system_error_try_later", ar))
+                logging.error(f"cancel_reservation failed: no rows updated")
+                return format_response(False, message=get_message("reservation_not_found", ar))
                 
             conn.commit()
             
@@ -722,7 +759,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
     This function retrieves all available time slots for a specified date, considering:
     - Vacation periods (slots are unavailable during vacation periods)
     - Past dates (no slots available for past dates)
-    - Current reservations (only returns slots with fewer than max_reservations)
+    - Current active reservations (only returns slots with fewer than max_reservations active bookings)
     
     The function handles both Hijri and Gregorian date formats, converting all dates
     to Gregorian format internally.
@@ -732,7 +769,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
                        If 'hijri' is True, accepts Hijri formats such as:
                        '1447-09-10', '10 Muharram 1447', or '10, Muharram, 1447'.
                        Otherwise, expects Gregorian date formats like 'YYYY-MM-DD'.
-        max_reservations (int, optional): Maximum number of reservations allowed per time slot.
+        max_reservations (int, optional): Maximum number of active reservations allowed per time slot.
                                          Defaults to 5.
         hijri (bool, optional): Flag indicating if the provided date string is in Hijri format.
                                Defaults to False.
@@ -784,8 +821,9 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
             
             if placeholders:  # Only query if there are time slots
                 try:
+                    # Only count active reservations
                     cursor.execute(
-                        f"SELECT time_slot, COUNT(*) as count FROM reservations WHERE date = ? AND time_slot IN ({placeholders}) GROUP BY time_slot",
+                        f"SELECT time_slot, COUNT(*) as count FROM reservations WHERE date = ? AND time_slot IN ({placeholders}) AND status = 'active' GROUP BY time_slot",
                         [parsed_date_str] + all_possible_formats
                     )
                     rows = cursor.fetchall()
@@ -919,7 +957,19 @@ def search_available_appointments(start_date=None, time_slot=None, days_forward=
             
             # Create a datetime object at the start of the day in TIMEZONE
             today = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=ZoneInfo(TIMEZONE))
-        
+        else:
+            # No start_date provided, check if today is in vacation and adjust accordingly
+            today_date = today.date()
+            is_vacation_today, _ = is_vacation_period(today_date)
+            
+            if is_vacation_today:
+                # Find the end of the current vacation period
+                vacation_end_date = find_vacation_end_date(today_date)
+                if vacation_end_date:
+                    # Start searching from the day after vacation ends
+                    start_date = vacation_end_date + datetime.timedelta(days=1)
+                    today = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=ZoneInfo(TIMEZONE))
+                    
         now = today.date()
         conn = get_connection()
         cursor = conn.cursor()
