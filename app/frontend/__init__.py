@@ -199,9 +199,16 @@ def filter_events_by_date_time(events, date_filter, start_time_obj=None, end_tim
         # Apply time filter if provided
         if start_time_obj and end_time_obj:
             try:
-                event_time = datetime.datetime.strptime(e.get("start", "").split("T")[1][:5], "%H:%M").time()
-                if not (start_time_obj <= event_time < end_time_obj):
-                    continue
+                # Check if the event has a time component (contains 'T')
+                start_str = e.get("start", "")
+                if "T" in start_str and len(start_str.split("T")) > 1:
+                    event_time = datetime.datetime.strptime(start_str.split("T")[1][:5], "%H:%M").time()
+                    if not (start_time_obj <= event_time < end_time_obj):
+                        continue
+                else:
+                    # For events without time (like vacation periods), skip time filtering
+                    # These are typically full-day events and should be included regardless of time filter
+                    pass
             except:
                 continue
                 

@@ -183,10 +183,10 @@ def render_cal(is_gregorian, free_roam):
                 
                 if start_date and end_date:
                     # Create background events for vacation periods
-                    # No need to add extra day since end_date is now inclusive
+                    # Convert dates to full datetime strings for consistency with other events
                     vacation_event = {
-                        "start": start_date.isoformat(),
-                        "end": (end_date + datetime.timedelta(days=1)).isoformat(),  # Calendar needs exclusive end date for full-day events
+                        "start": datetime.datetime.combine(start_date, datetime.time.min).isoformat(),
+                        "end": datetime.datetime.combine(end_date + datetime.timedelta(days=1), datetime.time.min).isoformat(),  # Calendar needs exclusive end date for full-day events
                         "display": "background",
                         "color": "#ffcccb",  # Light red background
                         "rendering": "background",
