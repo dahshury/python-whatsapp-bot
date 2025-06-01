@@ -688,6 +688,42 @@ def parse_date(date_str, hijri=False):
     else:
         return parse_gregorian_date(date_str)
 
+def format_enhanced_vacation_message(start_date, end_date, base_message=""):
+    """
+    Create a comprehensive vacation message with day names and dates in both Hijri and Gregorian calendars.
+    
+    Parameters:
+        start_date (datetime): Start date of vacation
+        end_date (datetime): End date of vacation  
+        base_message (str): Base vacation message from config
+        
+    Returns:
+        str: Formatted vacation message with both calendar systems and day names
+    """
+    # Get day names in English
+    start_day_name = start_date.strftime('%A')
+    end_day_name = end_date.strftime('%A')
+    
+    # Convert to Hijri dates
+    start_hijri = convert.Gregorian(start_date.year, start_date.month, start_date.day).to_hijri()
+    end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
+    
+    # Format dates in both calendars
+    start_gregorian = start_date.strftime('%Y-%m-%d')
+    end_gregorian = end_date.strftime('%Y-%m-%d')
+    start_hijri_str = f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
+    end_hijri_str = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
+    
+    # Create vacation message with English names and both calendar dates
+    message = f"""🏖️:
+• {start_day_name} {start_gregorian} ({start_hijri_str} Hijri)
+To:
+• {end_day_name} {end_gregorian} ({end_hijri_str} Hijri)
+
+{base_message}"""
+    
+    return message
+
 def is_vacation_period(date_obj, vacation_dict=None):
     """
     Check if a given date falls within a vacation period.
@@ -737,8 +773,12 @@ def is_vacation_period(date_obj, vacation_dict=None):
                 # For 20 days starting May 31: May 31 + 19 days = June 19 (20th day inclusive)
                 end_date = start_date + datetime.timedelta(days=duration-1)
                 if start_date.date() <= date_obj <= end_date.date():
+                    # Get base vacation message
                     vacation_msg = config.get('VACATION_MESSAGE', 'The business is closed during this period.')
-                    message = f"We are on vacation from {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}. {vacation_msg}"
+                    
+                    # Create comprehensive vacation message with both calendars and day names
+                    message = format_enhanced_vacation_message(start_date, end_date, vacation_msg)
+                    
                     return True, message
             except (ValueError, TypeError) as e:
                 logging.error(f"Error checking vacation period for date {start_day}: {e}")

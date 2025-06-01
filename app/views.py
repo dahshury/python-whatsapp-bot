@@ -8,7 +8,7 @@ from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
-from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, is_vacation_period
+from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
 import datetime
@@ -297,10 +297,13 @@ async def api_get_vacation_periods():
                             # For 20 days starting May 31: May 31 + 19 days = June 19 (20th day inclusive)
                             end_date = start_date + datetime.timedelta(days=duration-1)
                             
+                            # Create comprehensive vacation message using the utility function
+                            enhanced_vacation_message = format_enhanced_vacation_message(start_date, end_date, vacation_message)
+                            
                             vacation_periods.append({
                                 "start": start_date.isoformat(),
                                 "end": end_date.isoformat(),
-                                "title": vacation_message,
+                                "title": enhanced_vacation_message,
                                 "duration": duration
                             })
                         except ValueError as e:
