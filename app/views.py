@@ -8,7 +8,7 @@ from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
-from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message
+from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, format_enhanced_vacation_message
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
 import datetime
