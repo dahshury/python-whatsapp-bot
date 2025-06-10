@@ -5,13 +5,15 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "sonner"
+import { UndoManager } from "@/components/UndoManager"
 import { LanguageProvider } from "@/lib/language-context"
 import { SettingsProvider } from "@/lib/settings-context"
+import { VacationProvider } from "@/lib/vacation-context"
 import { ErrorRecoveryInit } from "@/components/error-recovery-init"
+import { TopNav } from "@/components/top-nav"
 
-// Import GlobalSettings normally for now since layout is a server component
-import { GlobalSettings } from "@/components/global-settings"
+// import { GlobalSettings } from "@/components/global-settings"
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -41,13 +43,22 @@ export default function RootLayout({
           <ErrorRecoveryInit />
           <LanguageProvider>
             <SettingsProvider>
-              <SidebarProvider>
-                <AppSidebar />
-                <main className="flex-1 relative">
-                  {children}
-                  <GlobalSettings />
-                </main>
-              </SidebarProvider>
+              <VacationProvider>
+                <div className="flex flex-col h-screen">
+                  <header className="border-b flex justify-center">
+                    <TopNav />
+                  </header>
+                  <div className="flex flex-1 overflow-hidden">
+                    <SidebarProvider>
+                      <AppSidebar />
+                      <main className="flex-1 relative overflow-y-auto">
+                        {children}
+                      </main>
+                    </SidebarProvider>
+                  </div>
+                </div>
+              </VacationProvider>
+              <UndoManager />
             </SettingsProvider>
           </LanguageProvider>
           <Toaster />

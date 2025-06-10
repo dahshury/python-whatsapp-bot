@@ -7,6 +7,7 @@ export interface CalendarEvent {
   borderColor?: string
   textColor?: string
   editable?: boolean
+  durationEditable?: boolean
   className?: string[]
   extendedProps?: {
     type: number
@@ -33,4 +34,12 @@ export interface Conversation {
   type: 'user' | 'bot' | 'system' | string
   message: string
   sender: string
+}
+
+// Vacation period data structure
+export interface VacationPeriod {
+  start: Date
+  end: Date
+  title?: string
+  duration?: number
 } 

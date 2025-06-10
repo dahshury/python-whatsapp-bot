@@ -6,6 +6,7 @@ import { DataEditor, GridCellKind, GridColumn, Item, TextCell, EditableGridCell 
 import "@glideapps/glide-data-grid/dist/index.css"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import { TableSkeleton } from "./table-skeleton"
 
 interface CalendarEvent {
   id: string
@@ -47,6 +48,8 @@ export function DataTableEditor({
   freeRoam = false,
 }: DataTableEditorProps) {
   const [editingEvents, setEditingEvents] = useState<CalendarEvent[]>([])
+  const [isDirty, setIsDirty] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const { theme } = useTheme()
   const [gridKey, setGridKey] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -143,9 +146,25 @@ export function DataTableEditor({
 
   // Update editing events whenever filtered events change
   useEffect(() => {
-    setEditingEvents(filteredEvents);
-    setGridKey(prevKey => prevKey + 1);
-  }, [filteredEvents]);
+    setIsLoading(true)
+    setEditingEvents(filteredEvents)
+    setGridKey(prevKey => prevKey + 1)
+    setIsDirty(false)
+    
+    // Simulate a small delay to show the skeleton, then hide loading
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+    }, 300)
+    
+    return () => clearTimeout(timer)
+  }, [filteredEvents])
+
+  // Set loading state when drawer opens
+  useEffect(() => {
+    if (open) {
+      setIsLoading(true)
+    }
+  }, [open])
 
   const handleAddEvent = () => {
     const newEvent: CalendarEvent = {
@@ -163,6 +182,7 @@ export function DataTableEditor({
       },
     }
     setEditingEvents((prev) => [...prev, newEvent])
+    setIsDirty(true)
   }
 
   const handleEditEvent = (id: string, field: string, value: string) => {
@@ -192,6 +212,7 @@ export function DataTableEditor({
         return event
       }),
     )
+    setIsDirty(true)
   }
 
   const formatDateRange = () => {
@@ -240,48 +261,45 @@ export function DataTableEditor({
   }
 
   const handleClose = (open: boolean) => {
-    if (!open && editingEvents.length >= 0) {
-      // When closing, deduplicate events before saving
-      
-      // 1. First collect all events that aren't in the selected range
-      const otherEvents = events.filter((event) => {
-        if (!selectedDateRange) return true;
+    if (!open) {
+      if (isDirty) {
+        // When closing, if data has changed, prepare and save it.
         
-        const eventStart = new Date(event.start);
-        
-        if (selectedDateRange.start.includes("T")) {
-          // Time selection
-          const rangeStart = new Date(selectedDateRange.start);
-          const rangeEnd = new Date(selectedDateRange.end || selectedDateRange.start);
-          if (rangeStart.getTime() === rangeEnd.getTime()) {
-            const extendedEnd = new Date(rangeStart);
-            extendedEnd.setHours(rangeStart.getHours() + slotDurationHours);
-            return !(eventStart >= rangeStart && eventStart < extendedEnd);
+        // 1. Filter out events that are not within the currently edited date range.
+        const otherEvents = events.filter((event) => {
+          if (!selectedDateRange) return true;
+          
+          const eventStart = new Date(event.start);
+          
+          if (selectedDateRange.start.includes("T")) {
+            // This is a time-based selection
+            const rangeStart = new Date(selectedDateRange.start);
+            const rangeEnd = new Date(selectedDateRange.end || selectedDateRange.start);
+            
+            if (rangeStart.getTime() === rangeEnd.getTime()) {
+              const extendedEnd = new Date(rangeStart);
+              extendedEnd.setHours(rangeStart.getHours() + slotDurationHours);
+              return eventStart < rangeStart || eventStart >= extendedEnd;
+            }
+            return eventStart < rangeStart || eventStart >= rangeEnd;
+          } else {
+            // This is a full-day or day-range selection
+            const rangeStartDay = new Date(selectedDateRange.start);
+            rangeStartDay.setHours(0, 0, 0, 0);
+            
+            const rangeEndDay = new Date(selectedDateRange.end || selectedDateRange.start);
+            rangeEndDay.setHours(23, 59, 59, 999);
+            
+            return eventStart < rangeStartDay || eventStart > rangeEndDay;
           }
-          return !(eventStart >= rangeStart && eventStart < rangeEnd);
-        } else {
-          // Day selection
-          const rangeStartDay = new Date(selectedDateRange.start);
-          rangeStartDay.setHours(0, 0, 0, 0);
-          
-          const rangeEndDay = new Date(selectedDateRange.end || selectedDateRange.start);
-          rangeEndDay.setHours(23, 59, 59, 999);
-          
-          return !(eventStart >= rangeStartDay && eventStart <= rangeEndDay);
-        }
-      });
-      
-      // 2. Create a set of unique keys for other events to avoid duplicates
-      const otherEventKeys = new Set(otherEvents.map(createUniqueEventId));
-      
-      // 3. Add only edited events that don't duplicate with events outside the range
-      const uniqueEdited = editingEvents.filter(event => {
-        const key = createUniqueEventId(event);
-        return !otherEventKeys.has(key);
-      });
-      
-      // 4. Save the combined set of events
-      onSave([...otherEvents, ...uniqueEdited]);
+        });
+        
+        // 2. Combine the other events with the events that were edited.
+        // The edited events replace the original ones from that date range.
+        const finalEvents = [...otherEvents, ...editingEvents];
+        
+        onSave(finalEvents);
+      }
     }
     onOpenChange(open);
   }
@@ -383,61 +401,17 @@ export function DataTableEditor({
   // Handle cell edits and update events
   const onCellEdited = (cell: Item, newValue: EditableGridCell) => {
     const [col, row] = cell
-    const textCell = newValue as TextCell
-    const value = textCell.data
     const event = editingEvents[row]
-    if (!event) return
-    
-    switch (col) {
-      case 0: // Date
-        handleEditEvent(event.id, "eventDate", value)
-        break
-      case 1: // Time
-        // Format time with minutes zeroed out to match Python's hour-only handling
-        let timeVal = value;
-        if (timeVal.includes(":")) {
-          const [hours, _] = timeVal.split(":");
-          timeVal = `${hours}:00`;
-        }
-        handleEditEvent(event.id, "eventTime", timeVal)
-        break
-      case 2: // Phone
-        handleEditEvent(event.id, "id", value)
-        break
-      case 3: // Type
-        // Map text back to type number with proper Arabic support
-        const typeNumber = value.toLowerCase() === "follow-up" || value === "مراجعة" ? 1 : 0
-        handleEditEvent(event.id, "extendedProps.type", typeNumber.toString())
-        break
-      case 4: // Name
-        handleEditEvent(event.id, "extendedProps.customerName", value)
-        handleEditEvent(event.id, "title", value) // Update title as well for consistency
-        break
-    }
+    const column = getColumns()[col]
+
+    if (newValue.kind !== "text") return
+
+    handleEditEvent(event.id, column.id ?? "", newValue.data)
   }
 
   // Row append handler matching Python's new event creation
   const onRowAppended = () => {
-    // Default time should be 11:00 or 10:00 during Ramadan
-    const defaultHour = 11; // This should be determined by Ramadan status
-    
-    const newEvent: CalendarEvent = {
-      id: "",
-      title: "",
-      start: selectedDateRange?.start ? 
-        `${selectedDateRange.start.split('T')[0]}T${defaultHour.toString().padStart(2, '0')}:00:00` : 
-        new Date().toISOString(),
-      type: "reservation",
-      extendedProps: {
-        customerName: "",
-        phone: "",
-        description: "",
-        status: "pending",
-        type: 0, // Default to check-up (0)
-        cancelled: false
-      },
-    }
-    setEditingEvents((prev) => [...prev, newEvent])
+    handleAddEvent()
   }
 
   // Adaptive theme for dark/light mode
@@ -500,28 +474,34 @@ export function DataTableEditor({
         <div className="flex flex-col gap-4 flex-1 overflow-hidden">
           {/* Events Grid */}
           <div ref={containerRef} className="border rounded-lg overflow-hidden flex-1">
-            <DataEditor
-              key={gridKey}
-              getCellContent={getCellContent}
-              columns={getColumns()}
-              rows={editingEvents.length}
-              onCellEdited={onCellEdited}
-              onRowAppended={onRowAppended}
-              trailingRowOptions={trailingRowOptions}
-              width="100%"
-              height={gridHeight}
-              rowMarkers="checkbox"
-              theme={gridTheme}
-              smoothScrollX
-              smoothScrollY
-              scaleToRem={true}
-              experimental={{
-                // Enable features to improve auto-sizing behavior
-                disableMinimumCellWidth: true,
-                paddingRight: 0
-              }}
-              fillHandle={false}
-            />
+            {isLoading ? (
+              <div className="p-4">
+                <TableSkeleton rows={6} columns={5} className="min-h-[300px]" />
+              </div>
+            ) : (
+              <DataEditor
+                key={gridKey}
+                getCellContent={getCellContent}
+                columns={getColumns()}
+                rows={editingEvents.length}
+                onCellEdited={onCellEdited}
+                onRowAppended={onRowAppended}
+                trailingRowOptions={trailingRowOptions}
+                width="100%"
+                height={gridHeight}
+                rowMarkers="checkbox"
+                theme={gridTheme}
+                smoothScrollX
+                smoothScrollY
+                scaleToRem={true}
+                experimental={{
+                  // Enable features to improve auto-sizing behavior
+                  disableMinimumCellWidth: true,
+                  paddingRight: 0
+                }}
+                fillHandle={false}
+              />
+            )}
           </div>
         </div>
       </DrawerContent>

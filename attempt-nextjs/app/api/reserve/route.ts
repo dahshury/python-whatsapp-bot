@@ -5,7 +5,7 @@ import { callPythonBackend } from '@/lib/backend'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { id, title, date, time, type, max_reservations } = body
+    const { id, title, date, time, type, max_reservations, hijri, ar } = body
 
     // Validate required fields
     if (!id || !title || !date || !time) {
@@ -15,15 +15,18 @@ export async function POST(request: Request) {
       )
     }
 
+    // Call the Python backend with parameters that match reserve_time_slot function
     const backendResponse = await callPythonBackend('/reserve', {
       method: 'POST',
       body: JSON.stringify({
-        id,
-        title,
-        date,
-        time,
-        type: type || 0,
-        max_reservations: max_reservations || 6
+        wa_id: id,                    // WhatsApp ID
+        customer_name: title,         // Customer name
+        date_str: date,               // Date string
+        time_slot: time,              // Time slot
+        reservation_type: type || 0,  // Type (0 for Check-Up, 1 for Follow-Up)
+        hijri: hijri || false,        // Hijri calendar flag
+        max_reservations: max_reservations || 5,  // Max reservations per slot
+        ar: ar || false               // Arabic language flag
       })
     })
 

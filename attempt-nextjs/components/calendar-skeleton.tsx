@@ -1,56 +1,83 @@
-import { Skeleton } from "@/components/ui/skeleton"
+"use client"
 
-export function CalendarSkeleton() {
+import { BlurFade } from "@/components/magicui/blur-fade"
+
+interface CalendarSkeletonProps {
+  isBlurred?: boolean
+  children?: React.ReactNode
+}
+
+export function CalendarSkeleton({ isBlurred = false, children }: CalendarSkeletonProps) {
+  if (isBlurred && children) {
+    // Show blurred version of the actual calendar
   return (
-    <div className="w-full h-full min-h-[600px] bg-white dark:bg-gray-900 rounded-lg shadow-sm p-4">
-      {/* Header with navigation */}
-      <div className="flex items-center justify-between mb-6">
-        {/* Left side - Today and navigation buttons */}
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-16" /> {/* Today button */}
-          <Skeleton className="h-8 w-8" />   {/* Prev button */}
-          <Skeleton className="h-8 w-8" />   {/* Next button */}
+      <BlurFade 
+        duration={0.3} 
+        blur="8px" 
+        direction="down"
+        className="relative"
+      >
+        <div className="relative">
+          {/* Blurred calendar content */}
+          <div className="filter blur-sm opacity-70 pointer-events-none select-none">
+            {children}
         </div>
         
-        {/* Center - Title */}
-        <Skeleton className="h-8 w-48" />
-        
-        {/* Right side - View buttons */}
-        <div className="flex items-center gap-1">
-          <Skeleton className="h-8 w-20" /> {/* Year view */}
-          <Skeleton className="h-8 w-20" /> {/* Month view */}
-          <Skeleton className="h-8 w-20" /> {/* Week view */}
-          <Skeleton className="h-8 w-20" /> {/* List view */}
+          {/* Overlay with subtle loading indicator */}
+          <div className="absolute inset-0 bg-background/20 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex items-center space-x-2 text-muted-foreground">
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm">Updating...</span>
+            </div>
+          </div>
+        </div>
+      </BlurFade>
+    )
+  }
+
+  // Fallback skeleton for initial loading
+  return (
+    <BlurFade duration={0.4} delay={0.1} direction="down">
+      <div className="w-full h-[800px] bg-card rounded-lg border">
+        <div className="p-4">
+          {/* Calendar header skeleton */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center space-x-4">
+              <div className="h-8 w-32 bg-muted animate-pulse rounded" />
+              <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="h-8 w-8 bg-muted animate-pulse rounded" />
+              <div className="h-8 w-8 bg-muted animate-pulse rounded" />
+              <div className="h-8 w-20 bg-muted animate-pulse rounded" />
         </div>
       </div>
       
-      {/* Calendar grid */}
-      <div className="space-y-4">
-        {/* Day headers */}
-        <div className="grid grid-cols-7 gap-2">
+          {/* Calendar grid skeleton */}
+          <div className="grid grid-cols-7 gap-2 mb-4">
           {Array.from({ length: 7 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full" />
+              <div key={i} className="h-8 bg-muted animate-pulse rounded text-center" />
           ))}
         </div>
         
-        {/* Calendar weeks */}
-        {Array.from({ length: 6 }).map((_, weekIndex) => (
-          <div key={weekIndex} className="grid grid-cols-7 gap-2">
-            {Array.from({ length: 7 }).map((_, dayIndex) => (
-              <div key={`${weekIndex}-${dayIndex}`} className="space-y-2">
-                <Skeleton className="h-24 w-full" />
-                {/* Some days might have events - using deterministic pattern */}
-                {(weekIndex + dayIndex) % 3 === 0 && (
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-3/4" />
-                    {(weekIndex + dayIndex) % 5 === 0 && <Skeleton className="h-4 w-1/2" />}
-                  </div>
+          {/* Calendar days skeleton */}
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 35 }).map((_, i) => (
+              <div key={i} className="h-20 bg-muted animate-pulse rounded relative">
+                {/* Random event-like blocks */}
+                {Math.random() > 0.7 && (
+                  <div className="absolute top-1 left-1 right-1 h-4 bg-primary/20 animate-pulse rounded-sm" />
+                )}
+                {Math.random() > 0.8 && (
+                  <div className="absolute top-6 left-1 right-1 h-4 bg-secondary/20 animate-pulse rounded-sm" />
                 )}
               </div>
             ))}
           </div>
-        ))}
+        </div>
       </div>
-    </div>
+    </BlurFade>
   )
 } 
+
+export default CalendarSkeleton 

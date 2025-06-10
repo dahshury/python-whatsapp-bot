@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Switch } from "@/components/ui/switch"
 import { Moon, Sun, Languages, Globe, Eye, EyeOff, Copy, Calendar, Settings } from "lucide-react"
 import { useTheme } from "next-themes"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Popover,
@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { CalendarDays, Clock } from "lucide-react"
+import { useLanguage } from "@/lib/language-context"
 
 interface TopToolbarProps {
   isRTL: boolean
@@ -32,7 +35,6 @@ export function TopToolbar({
   onDualCalendarChange,
 }: TopToolbarProps) {
   const { theme, setTheme } = useTheme()
-  const { toast } = useToast()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -45,36 +47,37 @@ export function TopToolbar({
 
   const handleLanguageToggle = (checked: boolean) => {
     onLanguageChange(checked)
-    toast({
-      title: checked ? "تم التبديل إلى العربية" : "Switched to English",
-      duration: 2000,
-    })
+    toast.success(checked ? "تم التبديل إلى العربية" : "Switched to English")
   }
 
   const handleThemeToggle = (checked: boolean) => {
     const newTheme = checked ? "dark" : "light"
     setTheme(newTheme)
-    toast({
-      title: `Switched to ${newTheme} mode`,
-      duration: 2000,
-    })
+    toast.success(isRTL ? 
+      `تم التبديل إلى الوضع ${newTheme === 'dark' ? 'الليلي' : 'النهاري'}` : 
+      `Switched to ${newTheme} mode`
+    )
   }
 
   const handleFreeRoamToggle = (checked: boolean) => {
     onFreeRoamChange(checked)
-    toast({
-      title: checked ? "Free roam enabled" : "Free roam disabled",
-      description: checked ? "Past events are now visible" : "Past events are now hidden",
-      duration: 2000,
+    toast.success(isRTL ? 
+      (checked ? "تم تفعيل التنقل الحر" : "تم إلغاء التنقل الحر") :
+      (checked ? "Free roam enabled" : "Free roam disabled"), {
+      description: isRTL ?
+        (checked ? "الأحداث السابقة مرئية الآن" : "الأحداث السابقة مخفية الآن") :
+        (checked ? "Past events are now visible" : "Past events are now hidden"),
     })
   }
 
   const handleDualCalendarToggle = (checked: boolean) => {
     onDualCalendarChange(checked)
-    toast({
-      title: checked ? "Dual calendar enabled" : "Dual calendar disabled",
-      description: checked ? "Second calendar is now visible" : "Single calendar view",
-      duration: 2000,
+    toast.success(isRTL ?
+      (checked ? "تم تفعيل التقويم المزدوج" : "تم إلغاء التقويم المزدوج") :
+      (checked ? "Dual calendar enabled" : "Dual calendar disabled"), {
+      description: isRTL ?
+        (checked ? "التقويم الثاني مرئي الآن" : "عرض تقويم واحد") :
+        (checked ? "Second calendar is now visible" : "Single calendar view"),
     })
   }
 

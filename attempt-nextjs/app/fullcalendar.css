@@ -236,8 +236,6 @@ a.fc-col-header-cell-cushion {
   background-color: #EDAE49 !important;
   border-color: #EDAE49 !important;
   color: #1f2937 !important;
-  min-height: 20px !important;
-  padding: 3px 6px !important;
 }
 
 .dark .fc-event.conversation-event {
@@ -252,7 +250,6 @@ a.fc-col-header-cell-cushion {
 /* Style the conversation icon and text */
 .fc-event.conversation-event .fc-event-title {
   font-weight: 600 !important;
-  font-size: 0.8rem !important;
   line-height: 1.3 !important;
   display: flex !important;
   align-items: center !important;
@@ -263,7 +260,7 @@ a.fc-col-header-cell-cushion {
 .fc-event[data-cancelled="true"] {
   background-color: #e5e1e0 !important;
   border-color: #e5e1e0 !important;
-  color: #908584 !important;
+  color: black !important;
 }
 
 /* Cancelled event text styling across all views */
@@ -389,6 +386,13 @@ a.fc-col-header-cell-cushion {
   opacity: 0.9 !important;
   color: white !important;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5) !important;
+}
+
+/* Override color for cancelled events in timegrid */
+.week-view-container .fc-timegrid-event[data-cancelled="true"] .fc-event-title,
+.week-view-container .fc-timegrid-event[data-cancelled="true"] .fc-event-time {
+    color: rgb(46, 46, 46) !important;
+    text-shadow: none !important;
 }
 
 /* Ensure events are visible even when very thin */
@@ -676,13 +680,6 @@ a.fc-col-header-cell-cushion {
 }
 
 /* Ensure conversation events are also visible in free roam */
-[data-free-roam="true"] .conversation-event {
-  min-height: 26px !important;
-  border-radius: 8px !important;
-  border-width: 2px !important;
-  padding: 4px 8px !important;
-}
-
 [data-free-roam="true"] .conversation-event .fc-event-title {
   color: #222 !important;
   text-shadow: 0 1px 3px rgba(255,255,255,0.8) !important;
@@ -731,4 +728,12 @@ a.fc-col-header-cell-cushion {
 .fc-list-event.reservation-type-1:not(.conversation-event):not([data-cancelled="true"]) .fc-list-event-dot {
   border-color: #3688d8 !important;
   background-color: #3688d8 !important;
-} 
+}
+
+/* Styling for past reservations in free roam mode to make them non-interactive */
+.fc-event.past-reservation-freeroam {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+  /* Optional: a more distinct visual cue if needed for debugging */
+  /* border: 1px dashed #9ca3af !important; */
+}
