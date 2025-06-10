@@ -11366,7 +11366,7 @@
 	}
 
 	function normalizeUnits(units) {
-		return units ? unitAliases[units] || units.toLowerCase().replace(/(.)s$/, '$1') : units
+		return units ? unitAliases[units] || units.toLowerCase().replace(/(.)s$/, '$1') : units;
 	}
 
 	function setDate(moment, year, month, date) {

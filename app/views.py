@@ -9,10 +9,11 @@ from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, format_enhanced_vacation_message
-from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id
+from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, undo_cancel_reservation, undo_reserve_time_slot
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
 import datetime
 from zoneinfo import ZoneInfo
+from app.i18n import get_message
 
 router = APIRouter()
 security = HTTPBasic()
@@ -202,7 +203,7 @@ async def api_get_all_reservations(future: bool = Query(True), include_cancelled
     return JSONResponse(content=reservations)
 
 # Reservation creation endpoint
-@router.post("/reservations")
+@router.post("/reserve")
 async def api_reserve_time_slot(payload: dict = Body(...)):
     resp = reserve_time_slot(
         payload.get("wa_id"),
@@ -216,6 +217,11 @@ async def api_reserve_time_slot(payload: dict = Body(...)):
     )
     return JSONResponse(content=resp)
 
+# Reservation creation endpoint (legacy endpoint for backward compatibility)
+@router.post("/reservations")
+async def api_reserve_time_slot_legacy(payload: dict = Body(...)):
+    return await api_reserve_time_slot(payload)
+
 # Cancel reservation endpoint
 @router.post("/reservations/{wa_id}/cancel")
 async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
@@ -223,7 +229,8 @@ async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
         wa_id,
         date_str=payload.get("date_str"),
         hijri=payload.get("hijri", False),
-        ar=payload.get("ar", False)
+        ar=payload.get("ar", False),
+        reservation_id_to_cancel=payload.get("reservation_id_to_cancel")
     )
     return JSONResponse(content=resp)
 
@@ -239,7 +246,8 @@ async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
         max_reservations=payload.get("max_reservations", 5),
         approximate=payload.get("approximate", False),
         hijri=payload.get("hijri", False),
-        ar=payload.get("ar", False)
+        ar=payload.get("ar", False),
+        reservation_id_to_modify=payload.get("reservation_id_to_modify")
     )
     return JSONResponse(content=resp)
 
@@ -264,7 +272,6 @@ async def api_get_message(request: Request, key: str = Query(...), ar: bool = Qu
     params.pop("key", None)
     params.pop("ar", None)
     # Convert ar to bool
-    from app.i18n import get_message
     message = get_message(key, ar, **params)
     return JSONResponse(content={"message": message})
 
@@ -318,3 +325,131 @@ async def api_get_vacation_periods():
     except Exception as e:
         logging.error(f"Error getting vacation periods: {e}")
         return JSONResponse(content=[], status_code=500)
+
+@router.post("/update-vacation-periods")
+async def api_update_vacation_periods(payload: dict = Body(...)):
+    """
+    Update vacation periods configuration.
+    """
+    try:
+        start_dates = payload.get("start_dates", "")
+        durations = payload.get("durations", "")
+        ar = payload.get("ar", False)
+        
+        # Update the configuration
+        config["VACATION_START_DATES"] = start_dates
+        config["VACATION_DURATIONS"] = durations
+        
+        # Save to environment file if using .env
+        import os
+        from dotenv import set_key
+        
+        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+        
+        if os.path.exists(env_path):
+            set_key(env_path, 'VACATION_START_DATES', start_dates)
+            set_key(env_path, 'VACATION_DURATIONS', durations)
+        
+        logging.info(f"Updated vacation periods: start_dates={start_dates}, durations={durations}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": get_message("vacation_periods_updated", ar)
+        })
+        
+    except Exception as e:
+        logging.error(f"Error updating vacation periods: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "message": get_message("vacation_periods_update_failed", ar)
+        }, status_code=500)
+
+@router.post("/undo-vacation-update")
+async def api_undo_vacation_update(payload: dict = Body(...)):
+    """
+    Undo a vacation period update by reverting to original vacation data.
+    """
+    try:
+        original_vacation_data = payload.get("original_vacation_data")
+        ar = payload.get("ar", False)
+        
+        if not original_vacation_data:
+            return JSONResponse(content={
+                "success": False,
+                "message": get_message("vacation_undo_failed", ar)
+            }, status_code=400)
+        
+        # Restore the original vacation periods
+        original_start_dates = original_vacation_data.get("start_dates", "")
+        original_durations = original_vacation_data.get("durations", "")
+        
+        # Update the configuration
+        config["VACATION_START_DATES"] = original_start_dates
+        config["VACATION_DURATIONS"] = original_durations
+        
+        # Save to environment file if using .env
+        import os
+        from dotenv import set_key
+        
+        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+        
+        if os.path.exists(env_path):
+            set_key(env_path, 'VACATION_START_DATES', original_start_dates)
+            set_key(env_path, 'VACATION_DURATIONS', original_durations)
+        
+        logging.info(f"Undone vacation update: restored to start_dates={original_start_dates}, durations={original_durations}")
+        
+        return JSONResponse(content={
+            "success": True,
+            "message": get_message("vacation_update_undone", ar)
+        })
+        
+    except Exception as e:
+        logging.error(f"Error undoing vacation update: {e}")
+        return JSONResponse(content={
+            "success": False,
+            "message": get_message("vacation_undo_failed", ar)
+        }, status_code=500)
+
+# === UNDO ENDPOINTS ===
+
+@router.post("/undo-reserve")
+async def api_undo_reserve_time_slot(payload: dict = Body(...)):
+    """
+    Undo a reservation creation by cancelling the reservation.
+    """
+    resp = undo_reserve_time_slot(
+        payload.get("reservation_id"),
+        ar=payload.get("ar", False)
+    )
+    return JSONResponse(content=resp)
+
+@router.post("/undo-cancel")
+async def api_undo_cancel_reservation(payload: dict = Body(...)):
+    """
+    Undo a reservation cancellation by reinstating the reservation.
+    """
+    resp = undo_cancel_reservation(
+        payload.get("reservation_id"),
+        ar=payload.get("ar", False)
+    )
+    return JSONResponse(content=resp)
+
+@router.post("/undo-modify")
+async def api_undo_modify_reservation(payload: dict = Body(...)):
+    """
+    Undo a reservation modification by reverting to original data.
+    """
+    resp = modify_reservation(
+        payload.get("wa_id"),
+        payload.get("new_date"),
+        payload.get("new_time_slot"),
+        payload.get("new_name"),
+        payload.get("new_type"),
+        max_reservations=payload.get("max_reservations", 5),
+        approximate=payload.get("approximate", False),
+        hijri=payload.get("hijri", False),
+        ar=payload.get("ar", False),
+        reservation_id_to_modify=payload.get("reservation_id_to_modify")
+    )
+    return JSONResponse(content=resp)

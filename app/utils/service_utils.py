@@ -96,49 +96,41 @@ def find_nearest_time_slot(target_slot, available_slots):
         str or None: The nearest available time slot, or None if none found.
     """
     try:
-        target = datetime.datetime.strptime(target_slot, "%I:%M %p")
-    except ValueError:
+        # Use our robust parse_time function
+        target_24h = parse_time(target_slot, to_24h=True)
+        target = datetime.datetime.strptime(target_24h, "%H:%M")
+    except (ValueError, Exception):
         return None
 
     # Get current time
-    now = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
-    current_time = datetime.datetime.combine(
-        now.date(), 
-        datetime.time(now.hour, now.minute),
-        tzinfo=ZoneInfo(config['TIMEZONE'])
-    )
+    now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
+    current_time = now.time()
 
-    best_slot = None
-    best_key = None
+    closest_slot = None
+    min_difference = float('inf')
 
     for slot in available_slots:
         try:
-            slot_time = datetime.datetime.strptime(slot, "%I:%M %p")
-            # Create a datetime with today's date and the slot time
-            slot_datetime = datetime.datetime.combine(
-                now.date(), 
-                datetime.time(slot_time.hour, slot_time.minute),
-                tzinfo=ZoneInfo(config['TIMEZONE'])
-            )
+            # Use our robust parse_time function
+            slot_24h = parse_time(slot, to_24h=True)
+            slot_time = datetime.datetime.strptime(slot_24h, "%H:%M")
             
-            # Skip slots that are in the past
-            if slot_datetime <= current_time:
+            # Check if this slot is in the future
+            if slot_time.time() <= current_time:
                 continue
-                
-            # Calculate the absolute difference in minutes from target
-            diff = abs((slot_time.hour * 60 + slot_time.minute) - (target.hour * 60 + target.minute))
-            # Set direction: 0 if slot_time <= target, 1 if after target
-            direction = 0 if slot_time <= target else 1
-            current_key = (diff, direction)
-            
-            if best_key is None or current_key < best_key:
-                best_key = current_key
-                best_slot = slot
-                
-        except ValueError:
-            continue  # Skip slots that cannot be parsed
 
-    return best_slot
+            # Calculate difference (in minutes)
+            diff = abs((slot_time - target).total_seconds() / 60)
+
+            if diff < min_difference:
+                min_difference = diff
+                closest_slot = slot
+
+        except (ValueError, Exception) as e:
+            logging.error(f"Could not parse slot '{slot}' in find_nearest_time_slot: {e}")
+            continue
+
+    return closest_slot
 
 def get_all_reservations(future=True, include_cancelled=False):
     """
@@ -160,7 +152,7 @@ def get_all_reservations(future=True, include_cancelled=False):
         
         # Base query to get reservations (join with customers table for customer_name)
         base_query = """
-            SELECT r.wa_id, c.customer_name, r.date, r.time_slot, r.type, r.status
+            SELECT r.id, r.wa_id, c.customer_name, r.date, r.time_slot, r.type, r.status
             FROM reservations r
             JOIN customers c ON r.wa_id = c.wa_id
         """
@@ -204,6 +196,7 @@ def get_all_reservations(future=True, include_cancelled=False):
                 reservations[user_id] = []
             
             reservation = {
+                "id": row['id'],
                 "customer_name": row['customer_name'],
                 "date": row['date'],
                 "time_slot": row['time_slot'],
@@ -507,12 +500,19 @@ def parse_time(time_str, to_24h=True):
     
     Returns:
         str: The formatted time string
+        
+    Raises:
+        ValueError: If the time string cannot be parsed in any recognizable format
     """
+    if not time_str or not isinstance(time_str, str):
+        raise ValueError(f"Invalid time string: {time_str}")
+    
     # Replace Arabic AM/PM with English equivalents
     time_str = time_str.replace('ص', 'AM').replace('م', 'PM')
     
     # Normalize the input string
     normalized = re.sub(r'\s+', ' ', time_str.strip().upper())
+    
     try:
         # Parse the string into a datetime object (date is arbitrary)
         dt = parser.parse(normalized)
@@ -529,8 +529,105 @@ def parse_time(time_str, to_24h=True):
                 time_format = "%-I:%M %p"
             return dt.strftime(time_format)
     except Exception as e:
-        logging.error(f"Error while parsing time: {e}")
-        return time_str  # Return original if parsing fails
+        logging.debug(f"Error while parsing time with dateutil: {e}, trying manual parsing")
+        
+        # Manual parsing fallback for common formats
+        try:
+            # Handle 12-hour format (e.g., "11:00 PM", "1:30 AM")
+            if "AM" in normalized or "PM" in normalized:
+                # Extract time part and AM/PM
+                time_part = normalized.replace("AM", "").replace("PM", "").strip()
+                is_pm = "PM" in normalized
+                
+                # Parse hour and minute
+                if ":" in time_part:
+                    hour_str, minute_str = time_part.split(":")
+                    hour = int(hour_str.strip())
+                    minute = int(minute_str.strip())
+                else:
+                    hour = int(time_part.strip())
+                    minute = 0
+                
+                # Validate hour and minute ranges
+                if not (1 <= hour <= 12):
+                    raise ValueError(f"Invalid hour in 12-hour format: {hour}")
+                if not (0 <= minute <= 59):
+                    raise ValueError(f"Invalid minute: {minute}")
+                
+                # Convert to 24-hour format
+                if is_pm and hour != 12:
+                    hour += 12
+                elif not is_pm and hour == 12:
+                    hour = 0
+                
+                # Create datetime object for formatting
+                dt = datetime.datetime(2000, 1, 1, hour, minute)
+                
+                if to_24h:
+                    return dt.strftime("%H:%M")
+                else:
+                    # Format back to 12-hour
+                    if platform.system() == "Windows":
+                        time_format = "%#I:%M %p"
+                    else:
+                        time_format = "%-I:%M %p"
+                    return dt.strftime(time_format)
+            
+            # Handle 24-hour format (e.g., "14:30", "09:00")
+            elif ":" in normalized:
+                hour_str, minute_str = normalized.split(":", 1)  # Only split on first ':'
+                hour = int(hour_str.strip())
+                minute = int(minute_str.strip())
+                
+                # Validate hour and minute ranges
+                if not (0 <= hour <= 23):
+                    raise ValueError(f"Invalid hour in 24-hour format: {hour}")
+                if not (0 <= minute <= 59):
+                    raise ValueError(f"Invalid minute: {minute}")
+                
+                dt = datetime.datetime(2000, 1, 1, hour, minute)
+                
+                if to_24h:
+                    return dt.strftime("%H:%M")
+                else:
+                    if platform.system() == "Windows":
+                        time_format = "%#I:%M %p"
+                    else:
+                        time_format = "%-I:%M %p"
+                    return dt.strftime(time_format)
+            
+            # Handle hour-only format (e.g., "14", "2")
+            else:
+                try:
+                    hour = int(normalized)
+                    if 1 <= hour <= 12:
+                        # Assume 12-hour format, default to AM
+                        if hour == 12:
+                            hour = 0
+                        dt = datetime.datetime(2000, 1, 1, hour, 0)
+                    elif 0 <= hour <= 23:
+                        # 24-hour format
+                        dt = datetime.datetime(2000, 1, 1, hour, 0)
+                    else:
+                        raise ValueError(f"Invalid hour: {hour}")
+                    
+                    if to_24h:
+                        return dt.strftime("%H:%M")
+                    else:
+                        if platform.system() == "Windows":
+                            time_format = "%#I:%M %p"
+                        else:
+                            time_format = "%-I:%M %p"
+                        return dt.strftime(time_format)
+                except ValueError:
+                    pass
+            
+            # If we reach here, we couldn't parse the time
+            raise ValueError(f"Could not parse time format: '{time_str}' (normalized: '{normalized}')")
+            
+        except Exception as manual_error:
+            logging.error(f"Manual time parsing failed for '{time_str}': {manual_error}")
+            raise ValueError(f"Could not parse time '{time_str}': {manual_error}")
 
 def normalize_time_format(time_str, to_24h=True):
     """
@@ -542,6 +639,9 @@ def normalize_time_format(time_str, to_24h=True):
     
     Returns:
         str: The time string in the requested format
+        
+    Raises:
+        ValueError: If the time string cannot be parsed
     """
     try:
         # Try to determine if input is already in 24-hour format
@@ -550,29 +650,44 @@ def normalize_time_format(time_str, to_24h=True):
         if is_24h_format:
             # Input is already in 24h format (HH:MM)
             if to_24h:
-                return time_str  # Already in 24h format
+                # Validate the format by trying to parse it
+                try:
+                    hour, minute = map(int, time_str.split(':'))
+                    if not (0 <= hour <= 23) or not (0 <= minute <= 59):
+                        raise ValueError(f"Invalid time components: {hour}:{minute}")
+                    return time_str  # Already in 24h format
+                except ValueError as e:
+                    raise ValueError(f"Invalid 24-hour time format '{time_str}': {e}")
             else:
                 # Convert from 24h to 12h
-                hour, minute = map(int, time_str.split(':'))
-                dt = datetime.datetime(2000, 1, 1, hour, minute)
-                
-                # Format based on operating system
-                if platform.system() == "Windows":
-                    time_format = "%#I:%M %p"
-                else:
-                    time_format = "%-I:%M %p"
-                return dt.strftime(time_format)
+                try:
+                    hour, minute = map(int, time_str.split(':'))
+                    dt = datetime.datetime(2000, 1, 1, hour, minute)
+                    
+                    # Format based on operating system
+                    if platform.system() == "Windows":
+                        time_format = "%#I:%M %p"
+                    else:
+                        time_format = "%-I:%M %p"
+                    return dt.strftime(time_format)
+                except ValueError as e:
+                    raise ValueError(f"Invalid 24-hour time format '{time_str}': {e}")
         else:
             # Input is probably in 12h format with AM/PM
             if not to_24h:
-                return time_str  # Already in 12h format
+                # Validate the format by trying to parse it
+                try:
+                    parse_time(time_str, to_24h=True)  # Just to validate
+                    return time_str  # Return original if valid
+                except ValueError as e:
+                    raise ValueError(f"Invalid 12-hour time format '{time_str}': {e}")
             else:
                 # Convert from 12h to 24h
                 return parse_time(time_str, to_24h=True)
     
     except Exception as e:
         logging.error(f"Error normalizing time format: {e}")
-        return time_str  # Return original if conversion fails
+        raise ValueError(f"Could not normalize time format '{time_str}': {e}")
 
 def parse_gregorian_date(date_str):
     """
@@ -995,10 +1110,21 @@ def filter_past_time_slots(time_slots_dict, current_time=None):
         current_time = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE'])).time()
     
     # Filter out past time slots
-    return {
-        time: count for time, count in time_slots_dict.items() 
-        if datetime.datetime.strptime(time, "%I:%M %p").time() > current_time
-    }
+    filtered_slots = {}
+    for time_slot, count in time_slots_dict.items():
+        try:
+            # Use our robust parse_time function to handle various formats
+            parsed_time_24h = parse_time(time_slot, to_24h=True)
+            time_obj = datetime.datetime.strptime(parsed_time_24h, "%H:%M").time()
+            
+            if time_obj > current_time:
+                filtered_slots[time_slot] = count
+        except (ValueError, Exception) as e:
+            # If we can't parse the time, log error but keep the slot to be safe
+            logging.error(f"Could not parse time slot '{time_slot}' in filter_past_time_slots: {e}")
+            filtered_slots[time_slot] = count
+    
+    return filtered_slots
 
 def is_valid_date_time(date_str, time_str=None, hijri=False):
     """
@@ -1035,7 +1161,10 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
         
         # If time string is provided, check if it's valid for today
         if time_str:
-            parsed_time_str = parse_time(time_str, to_24h=True)
+            try:
+                parsed_time_str = parse_time(time_str, to_24h=True)
+            except ValueError as time_error:
+                return False, get_message("invalid_time_format", error=str(time_error)), parsed_date_str, None
             
             if date_obj == today:
                 # Convert time to datetime objects for comparison

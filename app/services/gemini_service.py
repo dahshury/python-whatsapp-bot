@@ -14,7 +14,7 @@ from app.utils import retrieve_messages
 from app.decorators import retry_decorator
 from google import genai
 from google.genai import types
-from google.api_core.exceptions import InvalidArgument, ResourceExhausted, NotFound, PermissionDenied, GoogleAPIError
+# from google.api_core.exceptions import InvalidArgument, ResourceExhausted, NotFound, PermissionDenied, GoogleAPIError
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.metrics import FUNCTION_ERRORS, LLM_API_ERRORS, LLM_TOOL_EXECUTION_ERRORS, LLM_RETRY_ATTEMPTS, LLM_EMPTY_RESPONSES
 
