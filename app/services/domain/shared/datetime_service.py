@@ -35,7 +35,7 @@ class DateTimeService(BaseService):
                 return {
                     "status": "current",
                     "message": vacation_message,
-                    "end_date": vacation_end
+                    "end_date": vacation_end.strftime("%Y-%m-%d") if vacation_end else None
                 }
             
             # Check for vacations approaching within 1 month
@@ -63,8 +63,8 @@ class DateTimeService(BaseService):
                             return {
                                 "status": "upcoming",
                                 "message": vacation_message,
-                                "start_date": vacation_start,
-                                "end_date": vacation_end,
+                                "start_date": vacation_start.strftime("%Y-%m-%d"),
+                                "end_date": vacation_end.strftime("%Y-%m-%d"),
                                 "days_until": days_until_vacation
                             }
                     except (ValueError, TypeError) as e:
@@ -112,21 +112,25 @@ class DateTimeService(BaseService):
                 # Add specific vacation dates in both formats
                 if vacation_info["status"] == "current":
                     if vacation_info.get("end_date"):
-                        end_date = vacation_info["end_date"]
+                        end_date_str = vacation_info["end_date"]
+                        end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
                         end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
-                        data["vacation_end_gregorian"] = end_date.strftime("%Y-%m-%d")
+                        data["vacation_end_gregorian"] = end_date_str
                         data["vacation_end_hijri"] = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
                 
                 elif vacation_info["status"] == "upcoming":
-                    start_date = vacation_info["start_date"]
-                    end_date = vacation_info["end_date"]
+                    start_date_str = vacation_info["start_date"]
+                    end_date_str = vacation_info["end_date"]
+                    
+                    start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").date()
+                    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
                     
                     start_hijri = convert.Gregorian(start_date.year, start_date.month, start_date.day).to_hijri()
                     end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
                     
-                    data["vacation_start_gregorian"] = start_date.strftime("%Y-%m-%d")
+                    data["vacation_start_gregorian"] = start_date_str
                     data["vacation_start_hijri"] = f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
-                    data["vacation_end_gregorian"] = end_date.strftime("%Y-%m-%d")
+                    data["vacation_end_gregorian"] = end_date_str
                     data["vacation_end_hijri"] = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
             
             return format_response(True, data=data)
