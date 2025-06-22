@@ -1,0 +1,6 @@
+/* Cancelled Events Feature Styles */
+
+/* General cancelled event styling */
+.fc-event[data-cancelled="true"] .fc-event-title {
+  text-decoration: line-through !important;
+} 

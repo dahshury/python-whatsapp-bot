@@ -23,7 +23,7 @@ import { useCalendarState } from '@/hooks/useCalendarState'
 import { CalendarCore, type CalendarCoreRef } from './calendar-core'
 import { CalendarSkeleton } from './calendar-skeleton'
 import { ErrorBoundary, CalendarErrorFallback } from './error-boundary'
-import { CalendarLegend } from './calendar-legend'
+
 
 // Services and utilities
 import { 
@@ -126,26 +126,42 @@ export function DualCalendarComponent({
     };
   }, [vacationPeriods]);
 
-  // Calculate calendar height
+  // Calculate calendar height based on viewport and view
+  const calculateHeight = useCallback((leftView?: string, rightView?: string) => {
+    const checkView = leftView || leftCalendarState.currentView
+    const checkRightView = rightView || rightCalendarState.currentView
+    
+    if (checkView?.includes('timeGrid') || checkRightView?.includes('timeGrid')) {
+      const viewportHeight = window.innerHeight;
+      const containerTop = 200; // Approximate header height
+      const footerSpace = 40;
+      const availableHeight = viewportHeight - containerTop - footerSpace;
+      return Math.max(availableHeight, 600);
+    } else if (checkView === 'listMonth' || checkRightView === 'listMonth') {
+      // List view needs a specific height to enable scrolling
+      const viewportHeight = window.innerHeight;
+      const containerTop = 200; // Approximate header height
+      const footerSpace = 40;
+      const availableHeight = viewportHeight - containerTop - footerSpace;
+      return Math.max(availableHeight, 400);
+    } else {
+      return 'auto';
+    }
+  }, [leftCalendarState.currentView, rightCalendarState.currentView]);
+
+  // Set initial height and update on resize
   const [calendarHeight, setCalendarHeight] = useState<number | 'auto'>(800)
 
   useEffect(() => {
-    const calculateHeight = () => {
-      if (leftCalendarState.currentView?.includes('timeGrid') || rightCalendarState.currentView?.includes('timeGrid')) {
-        const viewportHeight = window.innerHeight;
-        const containerTop = 200;
-        const footerSpace = 40;
-        const availableHeight = viewportHeight - containerTop - footerSpace;
-        setCalendarHeight(Math.max(availableHeight, 600));
-      } else {
-        setCalendarHeight('auto');
-      }
+    setCalendarHeight(calculateHeight());
+    
+    const handleResize = () => {
+      setCalendarHeight(calculateHeight());
     };
     
-    calculateHeight();
-    window.addEventListener('resize', calculateHeight);
-    return () => window.removeEventListener('resize', calculateHeight);
-  }, [leftCalendarState.currentView, rightCalendarState.currentView]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [calculateHeight]);
 
   // Wrapper for refreshData that shows blur animation
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -219,12 +235,15 @@ export function DualCalendarComponent({
       const newDateFormatted = formatDate(extractedDate)
       const dateChanged = oldDate !== extractedDate
       const timeChanged = oldTime !== newTime
+      const isWeekView = leftCalendarState.currentView.includes('timeGrid') || rightCalendarState.currentView.includes('timeGrid')
 
       if (isRTL) {
         if (dateChanged && timeChanged) {
           return `تم نقل ${customerName} من ${oldDateFormatted} ${oldTime} إلى ${newDateFormatted} ${newTime}`
         } else if (dateChanged) {
-          return `تم نقل ${customerName} من ${oldDateFormatted} إلى ${newDateFormatted}`
+          return isWeekView && timeChanged
+            ? `تم نقل ${customerName} من ${oldDateFormatted} ${oldTime} إلى ${newDateFormatted} ${newTime}`
+            : `تم نقل ${customerName} من ${oldDateFormatted} إلى ${newDateFormatted}`
         } else if (timeChanged) {
           return `تم نقل ${customerName} من ${oldTime} إلى ${newTime}`
         } else {
@@ -234,7 +253,9 @@ export function DualCalendarComponent({
         if (dateChanged && timeChanged) {
           return `Moved ${customerName} from ${oldDateFormatted} ${oldTime} to ${newDateFormatted} ${newTime}`
         } else if (dateChanged) {
-          return `Moved ${customerName} from ${oldDateFormatted} to ${newDateFormatted}`
+          return isWeekView && timeChanged
+            ? `Moved ${customerName} from ${oldDateFormatted} ${oldTime} to ${newDateFormatted} ${newTime}`
+            : `Moved ${customerName} from ${oldDateFormatted} to ${newDateFormatted}`
         } else if (timeChanged) {
           return `Moved ${customerName} from ${oldTime} to ${newTime}`
         } else {
@@ -358,9 +379,6 @@ export function DualCalendarComponent({
   return (
     <ErrorBoundary fallback={CalendarErrorFallback}>
       <div className="flex flex-col gap-4 h-full">
-        {/* Calendar Legend */}
-        <CalendarLegend freeRoam={freeRoam} />
-        
         <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 ${isRefreshing ? 'opacity-75 pointer-events-none' : ''}`}>
         {/* Left Calendar - All Events */}
         <div className="flex flex-col">
@@ -391,7 +409,12 @@ export function DualCalendarComponent({
               onEventChange={handleEventChange}
               onEventReceive={handleEventChange} // Use the same handler for cross-calendar drops
               onViewDidMount={(info) => {
-                if (leftCalendarState.isHydrated) leftCalendarState.setCurrentView(info.view.type);
+                if (leftCalendarState.isHydrated) {
+                  // Immediately set the height for the new view to prevent flicker
+                  const newHeight = calculateHeight(info.view.type, rightCalendarState.currentView);
+                  setCalendarHeight(newHeight);
+                  leftCalendarState.setCurrentView(info.view.type);
+                }
               }}
               onDatesSet={(info) => {
                 if (leftCalendarState.isHydrated) leftCalendarState.setCurrentView(info.view.type);
@@ -430,7 +453,12 @@ export function DualCalendarComponent({
               onEventChange={handleEventChange}
               onEventReceive={handleEventChange} // Use the same handler for cross-calendar drops
               onViewDidMount={(info) => {
-                if (rightCalendarState.isHydrated) rightCalendarState.setCurrentView(info.view.type);
+                if (rightCalendarState.isHydrated) {
+                  // Immediately set the height for the new view to prevent flicker
+                  const newHeight = calculateHeight(leftCalendarState.currentView, info.view.type);
+                  setCalendarHeight(newHeight);
+                  rightCalendarState.setCurrentView(info.view.type);
+                }
               }}
               onDatesSet={(info) => {
                 if (rightCalendarState.isHydrated) rightCalendarState.setCurrentView(info.view.type);

@@ -55,7 +55,7 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
   const fetchOptions = useMemo((): CalendarDataFetchOptions => ({
     freeRoam: options.freeRoam,
     includeCancelled: options.freeRoam,
-    includeConversations: options.freeRoam
+    includeConversations: true
   }), [options.freeRoam])
 
   // Memoize processing options
@@ -157,6 +157,7 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
    * Initial data loading
    */
   useEffect(() => {
+    console.log('[useCalendarEvents] Initial data loading triggered')
     fetchEvents()
   }, [fetchEvents])
 

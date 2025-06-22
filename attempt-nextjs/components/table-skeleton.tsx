@@ -15,19 +15,19 @@ export function TableSkeleton({
 }: TableSkeletonProps) {
   return (
     <div className={`w-full space-y-3 ${className}`}>
-      {/* Table Header */}
-      <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
+      {/* Header */}
+      <div className="table-skeleton-grid" style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}>
         {Array.from({ length: columns }).map((_, i) => (
-          <Skeleton key={`header-${i}`} className="h-8 w-full" />
+          <Skeleton key={i} className="h-8" />
         ))}
       </div>
       
-      {/* Table Rows */}
+      {/* Body */}
       <div className="space-y-2">
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div 
             key={`row-${rowIndex}`} 
-            className="grid gap-3" 
+            className="table-skeleton-grid" 
             style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
           >
             {Array.from({ length: columns }).map((_, colIndex) => (

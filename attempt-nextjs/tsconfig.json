@@ -16,6 +16,7 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
@@ -24,6 +25,9 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "~lib/*": [
+        "components/glide-data-editor-streamlit/*"
       ]
     },
     "target": "ES2017"

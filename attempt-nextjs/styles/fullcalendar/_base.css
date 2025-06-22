@@ -1,0 +1,179 @@
+/* Base FullCalendar Layout and Structure */
+
+/* Page root styles - classes attached to <body> or containers */
+.fc-not-allowed,
+.fc-not-allowed .fc-event { /* override events' custom cursors */
+  cursor: not-allowed;
+}
+
+/* Base layout */
+.fc {
+  display: flex;
+  flex-direction: column;
+  font-size: 1em;
+}
+
+.fc,
+.fc *,
+.fc *:before,
+.fc *:after {
+  box-sizing: border-box;
+}
+
+.fc table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 1em;
+}
+
+.fc th {
+  text-align: center;
+}
+
+.fc th,
+.fc td {
+  vertical-align: top;
+  padding: 0;
+}
+
+.fc a[data-navlink] {
+  cursor: pointer;
+}
+
+.fc a[data-navlink]:hover {
+  text-decoration: underline;
+}
+
+/* Direction */
+.fc-direction-ltr {
+  direction: ltr;
+  text-align: left;
+}
+
+.fc-direction-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Theme standard borders */
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border: 1px solid var(--fc-border-color);
+}
+
+/* Liquid hack for FF */
+.fc-liquid-hack td,
+.fc-liquid-hack th {
+  position: relative;
+}
+
+/* Column header */
+.fc-col-header-cell-cushion {
+  display: inline-block;
+  padding: 2px 4px;
+}
+
+/* Scrollgrid base styles */
+.fc-scrollgrid {
+  border-radius: var(--radius-lg) !important;
+  overflow: hidden !important;
+}
+
+.fc-scrollgrid-section-header > td {
+  border-radius: 0 !important;
+}
+
+.fc-scrollgrid-section-body > td {
+  border-radius: 0 !important;
+}
+
+.fc-scrollgrid-sync-table {
+  width: 100%;
+  height: 100%;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+.fc-scrollgrid-sync-inner {
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Column headers */
+.fc-col-header-cell {
+  border-radius: 0 !important;
+}
+
+a.fc-col-header-cell-cushion {
+  font-size: .85em !important;
+  line-height: 2.2rem !important;
+}
+
+/* Day cells */
+.fc-daygrid-day {
+  border-radius: 0 !important;
+}
+
+/* Background layers */
+.fc-bg-event,
+.fc-non-business,
+.fc-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* Ensure highlight layer is ready for interaction */
+.fc-highlight {
+  background: var(--fc-highlight-color);
+  pointer-events: none;
+  opacity: 1;
+}
+
+.fc-non-business {
+  background: var(--fc-non-business-color);
+}
+
+.fc-bg-event {
+  background: var(--fc-bg-event-color);
+  opacity: var(--fc-bg-event-opacity);
+}
+
+.fc-bg-event .fc-event-title {
+  margin: .5em;
+  font-size: var(--fc-small-font-size);
+  font-style: italic;
+}
+
+/* Keep cell-shaded for specific use cases but remove day state backgrounds */
+.fc-cell-shaded,
+.fc-day-disabled {
+  background: var(--fc-neutral-bg-color);
+}
+
+/* Z-index management */
+.fc-daygrid-day-bg .fc-non-business { z-index: 1; }
+.fc-daygrid-day-bg .fc-bg-event { z-index: 2; }
+.fc-daygrid-day-bg .fc-highlight { z-index: 3; }
+.fc-daygrid-day-number { z-index: 4; }
+.fc-daygrid-week-number { z-index: 5; }
+.fc-daygrid-event {
+  position: relative;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+}
+.fc-daygrid-event.fc-event-mirror { z-index: 7; }
+.fc-daygrid-more-link {
+  position: relative;
+  margin-top: 1px;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+}
+
+/* Reset anchor styles */
+a {
+  color: inherit;
+  text-decoration: inherit;
+} 

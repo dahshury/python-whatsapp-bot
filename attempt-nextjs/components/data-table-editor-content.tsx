@@ -1,11 +1,19 @@
 "use client"
 
-import { useState, useEffect, useRef, useMemo } from "react"
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer"
+import React, { useState, useEffect, useRef, useMemo } from "react"
 import { DataEditor, GridCellKind, GridColumn, Item, TextCell, EditableGridCell } from "@glideapps/glide-data-grid"
-import "@glideapps/glide-data-grid/dist/index.css"
 import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
+import { createGlideTheme } from "@/components/glide_custom_cells/components/utils/streamlitGlideTheme"
+import { useSettings } from "@/lib/settings-context"
+import { InMemoryDataSource } from "@/components/glide_custom_cells/components/core/data-sources/InMemoryDataSource"
+import { DataProvider } from "@/components/glide_custom_cells/components/core/services/DataProvider"
+import dynamic from 'next/dynamic'
+
+const Grid = dynamic(() => import("@/components/glide_custom_cells/components/Grid"), { 
+  ssr: false,
+  loading: () => null
+})
 
 interface CalendarEvent {
   id: string
@@ -35,6 +43,16 @@ interface DataTableEditorProps {
   freeRoam?: boolean
 }
 
+interface DataTableEditorContentProps {
+  dataSource: InMemoryDataSource
+  isRTL: boolean
+  onSave: () => void
+  canSave: boolean
+  isSaving: boolean
+  dataProviderRef: React.MutableRefObject<DataProvider | null>
+  onDataProviderReady?: (provider: DataProvider) => void
+}
+
 export function DataTableEditor({
   open,
   onOpenChange,
@@ -49,9 +67,22 @@ export function DataTableEditor({
   const [editingEvents, setEditingEvents] = useState<CalendarEvent[]>([])
   const [isDirty, setIsDirty] = useState(false)
   const { theme } = useTheme()
+  const { theme: styleTheme } = useSettings() // Get the style theme (e.g., "theme-ghibli-studio")
   const [gridKey, setGridKey] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
+  
+  // Force grid to re-render when theme changes by using a key
+  const [themeKey, setThemeKey] = useState(0)
+  
+  // Update theme key when theme changes
+  React.useEffect(() => {
+    // Small delay to ensure CSS variables are updated
+    const timer = setTimeout(() => {
+      setThemeKey(prev => prev + 1)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [theme, styleTheme])
 
   // Dynamic grid and dialog height based on row count
   const [gridHeight, setGridHeight] = useState(300)
@@ -397,35 +428,8 @@ export function DataTableEditor({
     handleAddEvent()
   }
 
-  // Adaptive theme for dark/light mode
-  const gridTheme = {
-    accentColor: theme === 'dark' ? '#3b82f6' : '#2563eb',
-    accentFg: '#ffffff',
-    accentLight: theme === 'dark' ? '#1e40af' : '#dbeafe',
-    textDark: theme === 'dark' ? '#f8fafc' : '#1e293b',
-    textMedium: theme === 'dark' ? '#cbd5e1' : '#64748b',
-    textLight: theme === 'dark' ? '#94a3b8' : '#94a3b8',
-    textBubble: theme === 'dark' ? '#f8fafc' : '#1e293b',
-    bgIconHeader: theme === 'dark' ? '#374151' : '#f1f5f9',
-    fgIconHeader: theme === 'dark' ? '#d1d5db' : '#64748b',
-    textHeader: theme === 'dark' ? '#f9fafb' : '#374151',
-    textGroupHeader: theme === 'dark' ? '#e5e7eb' : '#4b5563',
-    textHeaderSelected: theme === 'dark' ? '#ffffff' : '#000000',
-    bgCell: theme === 'dark' ? '#1f2937' : '#ffffff',
-    bgCellMedium: theme === 'dark' ? '#374151' : '#f8fafc',
-    bgHeader: theme === 'dark' ? '#111827' : '#f8fafc',
-    bgHeaderHasFocus: theme === 'dark' ? '#1f2937' : '#f1f5f9',
-    bgHeaderHovered: theme === 'dark' ? '#374151' : '#e2e8f0',
-    bgBubble: theme === 'dark' ? '#374151' : '#f1f5f9',
-    bgBubbleSelected: theme === 'dark' ? '#1e40af' : '#3b82f6',
-    bgSearchResult: theme === 'dark' ? '#fbbf24' : '#fcd34d',
-    borderColor: theme === 'dark' ? '#374151' : '#e2e8f0',
-    drilldownBorder: theme === 'dark' ? '#6b7280' : '#9ca3af',
-    linkColor: theme === 'dark' ? '#60a5fa' : '#3b82f6',
-    headerFontStyle: '600 13px',
-    baseFontStyle: '13px',
-    fontFamily: 'Inter, Roboto, -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Ubuntu, noto, arial, sans-serif',
-  }
+  // Re-create theme when either light/dark mode or style theme changes
+  const gridTheme = React.useMemo(() => createGlideTheme(theme === 'dark' ? 'dark' : 'light'), [theme, styleTheme, themeKey])
 
   // Trailing row options for the plus sign
   const trailingRowOptions = {
@@ -433,32 +437,44 @@ export function DataTableEditor({
     sticky: true,
     hint: "", // Remove the "click to add" text
     themeOverride: {
-      bgCell: theme === 'dark' ? '#374151' : '#f8fafc',
-      textMedium: theme === 'dark' ? '#9ca3af' : '#6b7280',
-      borderColor: theme === 'dark' ? '#4b5563' : '#d1d5db',
+      bgCell: gridTheme.bgCellMedium,
+      textMedium: gridTheme.textMedium,
+      borderColor: gridTheme.borderColor,
     }
   }
 
+  if (!open) return null;
+
+  const modalHeight = `${Math.min(gridHeight + 200, typeof window !== 'undefined' ? window.innerHeight * 0.95 : 800)}px`;
+
   return (
-    <Drawer open={open} onOpenChange={handleClose}>
-      <DrawerContent className="max-h-[95vh] flex flex-col p-4" style={{ height: `${Math.min(gridHeight + 200, typeof window !== 'undefined' ? window.innerHeight * 0.95 : 800)}px` }}>
-        <DrawerHeader className="px-0 pb-4">
-          <DrawerTitle className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60"
+      onClick={() => handleClose(false)}
+    >
+      <div
+        className="bg-background rounded-lg shadow-lg flex flex-col p-4 w-[90vw] max-w-5xl max-h-[95vh]"
+        style={{ height: modalHeight }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-0 pb-4">
+          <h2 className={`flex items-center gap-2 text-xl font-semibold ${isRTL ? "flex-row-reverse" : ""}`}>
             {isRTL ? "محرر البيانات" : "Data Editor"} - {formatDateRange()}
             <span className="text-sm font-normal text-muted-foreground">
               ({editingEvents.length} {isRTL ? "أحداث" : "events"})
             </span>
-          </DrawerTitle>
-          <DrawerDescription>
+          </h2>
+          <p className="text-sm text-muted-foreground">
             {isRTL ? "تحرير أحداث التقويم للفترة المحددة" : "Edit calendar events for the selected date range"}
-          </DrawerDescription>
-        </DrawerHeader>
+          </p>
+        </div>
 
+        {/* Events Grid */}
         <div className="flex flex-col gap-4 flex-1 overflow-hidden">
-          {/* Events Grid */}
           <div ref={containerRef} className="border rounded-lg overflow-hidden flex-1">
             <DataEditor
-              key={gridKey}
+              key={`${gridKey}-${themeKey}`}
               getCellContent={getCellContent}
               columns={getColumns()}
               rows={editingEvents.length}
@@ -473,16 +489,55 @@ export function DataTableEditor({
               smoothScrollY
               scaleToRem={true}
               experimental={{
-                // Enable features to improve auto-sizing behavior
                 disableMinimumCellWidth: true,
-                paddingRight: 0
+                paddingRight: 0,
               }}
               fillHandle={false}
             />
           </div>
         </div>
-      </DrawerContent>
-    </Drawer>
-  )
+
+        {/* Actions */}
+        <div className="flex justify-end pt-4 gap-2">
+          <Button variant="secondary" onClick={() => handleClose(false)}>
+            {isRTL ? "إلغاء" : "Cancel"}
+          </Button>
+          <Button onClick={() => handleClose(false)}>
+            {isRTL ? "حفظ" : "Save"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function DataTableEditorContent({
+  dataSource,
+  isRTL,
+  onSave,
+  canSave,
+  isSaving,
+  dataProviderRef,
+  onDataProviderReady
+}: DataTableEditorContentProps) {
+  const [isGridReady, setIsGridReady] = React.useState(false)
+
+  const handleDataProviderReady = React.useCallback((provider: DataProvider) => {
+    dataProviderRef.current = provider
+    setIsGridReady(true)
+    onDataProviderReady?.(provider)
+  }, [dataProviderRef, onDataProviderReady])
+
+  return (
+    <Grid
+      dataSource={dataSource}
+      showThemeToggle={false}
+      fullWidth={true}
+      theme={isRTL ? 'lightRTL' : 'light'}
+      isDarkMode={false}
+      onReady={() => setIsGridReady(true)}
+      onDataProviderReady={handleDataProviderReady}
+    />
+  );
 }
 

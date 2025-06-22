@@ -3,11 +3,13 @@
 import React from 'react'
 import { Button } from '@/components/ui/button'
 import { CalendarSkeleton } from './calendar-skeleton'
+import { AlertCircle, RefreshCw } from 'lucide-react'
 
 interface ErrorBoundaryState {
   hasError: boolean
   error?: Error
   errorInfo?: React.ErrorInfo
+  isRecovering?: boolean
 }
 
 interface ErrorBoundaryProps {
@@ -18,14 +20,11 @@ interface ErrorBoundaryProps {
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, isRecovering: false }
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return {
-      hasError: true,
-      error
-    }
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
+    return { hasError: true, error }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
@@ -48,49 +47,63 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   render() {
-    if (this.state.hasError) {
-      const CustomFallback = this.props.fallback
-      
-      if (CustomFallback) {
-        return <CustomFallback error={this.state.error} retry={this.retry} />
-      }
+    const { hasError, error, isRecovering } = this.state
 
-      // Default fallback UI
+    if (hasError && error) {
       return (
-        <div className="w-full h-full min-h-[600px] flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-900 rounded-lg shadow-sm">
-          <div className="text-center space-y-4 max-w-md">
-            <div className="text-6xl mb-4">⚠️</div>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              Something went wrong
-            </h2>
-            
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="text-left text-sm bg-red-50 dark:bg-red-900/20 p-4 rounded border border-red-200 dark:border-red-800">
-                <summary className="cursor-pointer font-medium text-red-800 dark:text-red-200 mb-2">
-                  Error Details (Development)
+        <div className="w-full h-full min-h-[600px] flex flex-col items-center justify-center p-6 bg-card rounded-lg shadow-sm">
+          <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+          <h2 className="text-2xl font-semibold text-foreground">
+            Something went wrong
+          </h2>
+          <div className="mt-4 p-4 bg-destructive/10 border border-destructive/30 rounded-md max-w-2xl">
+            <p className="text-sm font-mono text-destructive whitespace-pre-wrap">
+              {error.message}
+            </p>
+            {error.stack && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-sm font-medium text-destructive">
+                  Error details
                 </summary>
-                <pre className="whitespace-pre-wrap text-red-700 dark:text-red-300 text-xs overflow-auto">
-                  {this.state.error.message}
-                  {this.state.error.stack && '\n\nStack Trace:\n' + this.state.error.stack}
+                <pre className="mt-2 text-xs text-destructive/80 overflow-x-auto">
+                  {error.stack}
                 </pre>
               </details>
             )}
-            
-            <p className="text-gray-600 dark:text-gray-400">
-              {process.env.NODE_ENV === 'development' 
-                ? 'This might be caused by hot module reloading issues. Try refreshing the page or restarting the development server.'
-                : 'Please refresh the page or try again later.'
-              }
+          </div>
+          <p className="text-muted-foreground">
+            Please refresh the page or try again.
+          </p>
+          <div className="flex gap-2 mt-6">
+            <Button 
+              onClick={() => window.location.reload()}
+              variant="default"
+            >
+              Refresh Page
+            </Button>
+            <Button 
+              onClick={() => this.setState({ hasError: false, error: undefined })}
+              variant="outline"
+            >
+              Try Again
+            </Button>
+          </div>
+        </div>
+      )
+    }
+
+    // Recovery UI
+    if (isRecovering) {
+      return (
+        <div className="absolute inset-0 bg-background/90 flex items-center justify-center">
+          <div className="text-center space-y-4 p-6 bg-card rounded-lg shadow-lg border border-border">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto text-primary" />
+            <h3 className="text-lg font-semibold text-foreground">
+              Recovering...
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              The application is being restored. Please wait...
             </p>
-            
-            <div className="flex gap-3 justify-center">
-              <Button onClick={this.retry} variant="outline">
-                Try Again
-              </Button>
-              <Button onClick={() => window.location.reload()} variant="default">
-                Refresh Page
-              </Button>
-            </div>
           </div>
         </div>
       )
@@ -105,22 +118,22 @@ export function CalendarErrorFallback({ error, retry }: { error?: Error; retry: 
   return (
     <div className="relative">
       <CalendarSkeleton />
-      <div className="absolute inset-0 bg-white/90 dark:bg-gray-900/90 flex items-center justify-center">
-        <div className="text-center space-y-4 p-6 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
+      <div className="absolute inset-0 bg-background/90 flex items-center justify-center">
+        <div className="text-center space-y-4 p-6 bg-card rounded-lg shadow-lg border border-border">
           <div className="text-4xl mb-2">📅💥</div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-lg font-semibold text-foreground">
             Calendar Loading Error
           </h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 max-w-sm">
+          <p className="text-sm text-muted-foreground max-w-sm">
             There was an issue loading the calendar. This is likely a temporary development server issue.
           </p>
           
           {process.env.NODE_ENV === 'development' && error && (
-            <details className="text-left text-xs bg-red-50 dark:bg-red-900/20 p-3 rounded border">
-              <summary className="cursor-pointer font-medium text-red-800 dark:text-red-200">
+            <details className="text-left text-xs bg-destructive/10 p-3 rounded border border-destructive/30">
+              <summary className="cursor-pointer font-medium text-destructive">
                 Error Details
               </summary>
-              <pre className="mt-2 text-red-700 dark:text-red-300 overflow-auto max-h-32">
+              <pre className="mt-2 text-destructive/80 overflow-auto max-h-32">
                 {error.message}
               </pre>
             </details>

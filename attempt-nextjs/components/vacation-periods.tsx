@@ -16,7 +16,7 @@ import { useVacation } from '@/lib/vacation-context'
 import { useLanguage } from '@/lib/language-context'
 import { cn } from '@/lib/utils'
 
-export function VacationPeriods() {
+function VacationPeriodsComponent() {
   const { isRTL } = useLanguage()
   const {
     vacationPeriods,
@@ -27,6 +27,8 @@ export function VacationPeriods() {
     startRecording,
     stopRecording
   } = useVacation()
+
+
 
   if (loading) {
     return (
@@ -160,14 +162,8 @@ export function VacationPeriods() {
         ))
       )}
 
-      {/* Instructions and Add Button */}
-        <div className="flex items-center justify-between pt-1">
-          <p className="text-xs text-muted-foreground">
-            {isRTL 
-              ? "اضغط لتسجيل تاريخ البداية/النهاية"
-              : "Press play to record start/end date"
-            }
-          </p>
+      {/* Add Button */}
+        <div className="flex items-center justify-end pt-1">
           <Button
               size="sm"
               variant="outline"
@@ -177,6 +173,8 @@ export function VacationPeriods() {
               <Plus className="h-3 w-3" />
             </Button>
         </div>
-    </div>
+        </div>
   )
-} 
+}
+
+export const VacationPeriods = React.memo(VacationPeriodsComponent) 

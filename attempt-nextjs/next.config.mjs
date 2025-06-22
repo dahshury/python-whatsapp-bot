@@ -1,3 +1,5 @@
+import path from 'path'
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
@@ -56,6 +58,8 @@ const nextConfig = {
       ...config.resolve.alias,
       // Fix the math.js module resolution issue
       '@glideapps/glide-data-grid/dist/esm/internal/common/math.js': '@glideapps/glide-data-grid/dist/esm/internal/common/math',
+      // Alias Streamlit internal lib path (~lib/*) to the copied directory
+      '~lib': path.resolve(process.cwd(), 'components/glide-data-editor-streamlit/lib'),
     }
     
     // Add fallbacks for Node.js modules
@@ -76,32 +80,28 @@ const nextConfig = {
     
     // Development optimizations to prevent bundle corruption
     if (dev) {
-      // Improve chunk splitting for development
+      // Simplify chunk splitting for development to prevent MIME type issues
       config.optimization = {
         ...config.optimization,
         splitChunks: {
-          ...config.optimization.splitChunks,
           chunks: 'all',
-          maxInitialRequests: 25,
-          minSize: 20000,
           cacheGroups: {
-            ...config.optimization.splitChunks?.cacheGroups,
+            default: {
+              minChunks: 2,
+              priority: -20,
+              reuseExistingChunk: true,
+            },
             vendor: {
               test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
+              priority: -10,
               chunks: 'all',
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              enforce: true,
             },
           },
         },
       }
       
-      // Improve module concatenation
+      // Disable module concatenation to prevent issues
       config.optimization.concatenateModules = false
       
       // Better error handling for corrupted modules

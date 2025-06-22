@@ -9,6 +9,7 @@
 "use client"
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useLanguage } from '@/lib/language-context'
 import { useVacation } from '@/lib/vacation-context'
 import { useSidebar } from '@/components/ui/sidebar'
@@ -24,8 +25,12 @@ import { CalendarCore, type CalendarCoreRef } from './calendar-core'
 import { CalendarSkeleton } from './calendar-skeleton'
 import { ErrorBoundary, CalendarErrorFallback } from './error-boundary'
 import { CalendarEventContextMenu } from './calendar-event-context-menu'
-import { CalendarLegend } from './calendar-legend'
+
 import { DataTableEditorLoading } from './data-table-editor-loading'
+import { useSidebarChatStore } from '@/lib/sidebar-chat-store'
+import { useChatSidebar } from '@/lib/use-chat-sidebar'
+import { HoverCard, HoverCardContent } from '@/components/ui/hover-card'
+import { CustomerStatsCard } from '@/components/customer-stats-card'
 
 // Services and utilities
 import { 
@@ -36,6 +41,7 @@ import {
 import { getTimezone, SLOT_DURATION_HOURS } from '@/lib/calendar-config'
 import { modifyReservation, cancelReservation, getMessage, undoModifyReservation, undoCancelReservation } from '@/lib/api'
 import type { CalendarEvent } from '@/types/calendar'
+import { cn } from '@/lib/utils'
 
 // Lazy load DataTableEditor to improve initial performance
 const LazyDataTableEditor = dynamic(
@@ -60,6 +66,8 @@ export function FullCalendarComponent({
   const { isRTL } = useLanguage()
   const { handleDateClick: handleVacationDateClick, recordingState, setOnVacationUpdated, vacationPeriods } = useVacation()
   const { state: sidebarState } = useSidebar()
+  const { openConversation } = useSidebarChatStore()
+  const { conversations, reservations, fetchConversations } = useChatSidebar()
 
   // Ref for calendar component to access updateSize API
   const calendarRef = useRef<CalendarCoreRef>(null)
@@ -126,6 +134,51 @@ export function FullCalendarComponent({
   const [contextMenuEvent, setContextMenuEvent] = useState<CalendarEvent | null>(null)
   const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number; y: number } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  
+  // Hover card state
+  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null)
+  const [hoverCardPosition, setHoverCardPosition] = useState<{ x: number; y: number; preferBottom?: boolean; eventHeight?: number } | null>(null)
+  const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null)
+  const [closeTimer, setCloseTimer] = useState<NodeJS.Timeout | null>(null)
+  const [isHoverCardClosing, setIsHoverCardClosing] = useState(false)
+  const [isHoveringCard, setIsHoveringCard] = useState(false)
+  const [isHoverCardMounted, setIsHoverCardMounted] = useState(false)
+  const [inactivityTimer, setInactivityTimer] = useState<NodeJS.Timeout | null>(null)
+  const [isMovingToCard, setIsMovingToCard] = useState(false)
+  const [eventRect, setEventRect] = useState<DOMRect | null>(null)
+  const lastMousePosition = useRef({ x: 0, y: 0 })
+  const isHoveringCardRef = useRef(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    isHoveringCardRef.current = isHoveringCard
+  }, [isHoveringCard])
+
+  // Helper to close hover card immediately
+  const closeHoverCardImmediately = useCallback(() => {
+    // Clear all timers
+    if (hoverTimer) {
+      clearTimeout(hoverTimer)
+      setHoverTimer(null)
+    }
+    if (closeTimer) {
+      clearTimeout(closeTimer)
+      setCloseTimer(null)
+    }
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer)
+      setInactivityTimer(null)
+    }
+    
+    // Close hover card without animation
+    setHoveredEventId(null)
+    setHoverCardPosition(null)
+    setIsHoverCardClosing(false)
+    setIsHoverCardMounted(false)
+    setEventRect(null)
+    setIsMovingToCard(false)
+  }, [hoverTimer, closeTimer, inactivityTimer])
 
   // Vacation period checker - memoized for performance
   const isVacationDate: VacationDateChecker = useMemo(() => {
@@ -162,24 +215,38 @@ export function FullCalendarComponent({
     setOnVacationUpdated(handleRefreshWithBlur)
   }, [setOnVacationUpdated, handleRefreshWithBlur])
 
-  // Calculate calendar height based on viewport and view
+  // Fetch conversations when component mounts
   useEffect(() => {
-    const calculateHeight = () => {
-      if (currentView?.includes('timeGrid')) {
-        const viewportHeight = window.innerHeight;
-        const containerTop = 200; // Approximate header height
-        const footerSpace = 40;
-        const availableHeight = viewportHeight - containerTop - footerSpace;
-        setCalendarHeight(Math.max(availableHeight, 600));
-      } else {
-        setCalendarHeight('auto');
-      }
+    fetchConversations()
+  }, [fetchConversations])
+
+  // Calculate calendar height based on viewport and view
+  const calculateHeight = useCallback((viewType?: string) => {
+    const view = viewType || currentView
+    
+    if (view?.includes('timeGrid')) {
+      const viewportHeight = window.innerHeight;
+      const containerTop = 200; // Approximate header height
+      const footerSpace = 40;
+      const availableHeight = viewportHeight - containerTop - footerSpace;
+      return Math.max(availableHeight, 600);
+    } else {
+      // For list view and other views, use auto to let flexbox handle the height
+      return 'auto';
+    }
+  }, [currentView]);
+
+  // Set initial height and update on resize
+  useEffect(() => {
+    setCalendarHeight(calculateHeight());
+    
+    const handleResize = () => {
+      setCalendarHeight(calculateHeight());
     };
     
-    calculateHeight();
-    window.addEventListener('resize', calculateHeight);
-    return () => window.removeEventListener('resize', calculateHeight);
-  }, [currentView]);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [calculateHeight]);
 
   // Smooth updateSize handler called on container resize frames
   const handleUpdateSize = useCallback(() => {
@@ -246,12 +313,15 @@ export function FullCalendarComponent({
       const newDateFormatted = formatDate(extractedDate)
       const dateChanged = oldDate !== extractedDate
       const timeChanged = oldTime !== newTime
+      const isWeekView = currentView.includes('timeGrid')
 
       if (isRTL) {
         if (dateChanged && timeChanged) {
           return `تم نقل ${customerName} من ${oldDateFormatted} ${oldTime} إلى ${newDateFormatted} ${newTime}`
         } else if (dateChanged) {
-          return `تم نقل ${customerName} من ${oldDateFormatted} إلى ${newDateFormatted}`
+          return isWeekView && timeChanged
+            ? `تم نقل ${customerName} من ${oldDateFormatted} ${oldTime} إلى ${newDateFormatted} ${newTime}`
+            : `تم نقل ${customerName} من ${oldDateFormatted} إلى ${newDateFormatted}`
         } else if (timeChanged) {
           return `تم نقل ${customerName} من ${oldTime} إلى ${newTime}`
         } else {
@@ -261,7 +331,9 @@ export function FullCalendarComponent({
         if (dateChanged && timeChanged) {
           return `Moved ${customerName} from ${oldDateFormatted} ${oldTime} to ${newDateFormatted} ${newTime}`
         } else if (dateChanged) {
-          return `Moved ${customerName} from ${oldDateFormatted} to ${newDateFormatted}`
+          return isWeekView && timeChanged
+            ? `Moved ${customerName} from ${oldDateFormatted} ${oldTime} to ${newDateFormatted} ${newTime}`
+            : `Moved ${customerName} from ${oldDateFormatted} to ${newDateFormatted}`
         } else if (timeChanged) {
           return `Moved ${customerName} from ${oldTime} to ${newTime}`
         } else {
@@ -396,7 +468,12 @@ export function FullCalendarComponent({
       setTimeout(() => setShouldLoadEditor(true), 50);
     },
     onEventClick: (info) => {
-      // TODO: Open conversation view
+      const event = info.event
+      const eventType = event.extendedProps?.type
+      
+      // Open chat for all event types (conversations, reservations)
+      // The event.id is the WhatsApp ID for all event types
+      handleOpenConversation(event.id)
     },
     onEventChange: handleEventChange,
     onEventAdd: (info) => {
@@ -497,12 +574,42 @@ export function FullCalendarComponent({
     handleEditReservation(eventId)
   }, [handleEditReservation])
 
-  const handleOpenConversation = useCallback((eventId: string) => {
-    toast.info(isRTL ? "قريباً" : "Coming Soon", {
-      description: isRTL ? "سيتم إضافة فتح المحادثات قريباً" : "Conversation view will be added soon",
-      duration: 3000,
-    })
-  }, [isRTL])
+  const handleOpenConversation = useCallback(async (eventId: string) => {
+    // Find the event to get the customer's WhatsApp ID
+    const event = events.find(e => e.id === eventId)
+    if (!event) {
+      toast.error(isRTL ? "خطأ" : "Error", {
+        description: isRTL ? "لم يتم العثور على الحدث" : "Event not found",
+        duration: 3000,
+      })
+      return
+    }
+
+    const conversationId = event.id
+
+    // Show toast immediately if no conversation exists
+    const existingConversation = conversations[conversationId]
+    if (!existingConversation || existingConversation.length === 0) {
+      const customerName = event.title
+      toast.info(isRTL ? "لا توجد محادثة" : "No Conversation", {
+        id: `no-conversation-${conversationId}-${crypto.randomUUID()}`,
+        description: isRTL
+          ? `لا توجد محادثة مع العميل ${customerName}`
+          : `No conversation exists with customer ${customerName}`,
+        duration: 4000,
+      })
+    }
+
+    // Open the conversation immediately
+    openConversation(conversationId)
+
+    // Fetch fresh data
+    try {
+      await fetchConversations()
+    } catch (error) {
+      console.error('Error fetching conversations:', error)
+    }
+  }, [events, conversations, isRTL, openConversation, fetchConversations])
 
   const handleContextMenu = useCallback((event: CalendarEvent, position: { x: number; y: number }) => {
     setContextMenuEvent(event)
@@ -514,6 +621,265 @@ export function FullCalendarComponent({
     setContextMenuPosition(null)
   }, [])
 
+  // Reset inactivity timer whenever there's interaction
+  const resetInactivityTimer = useCallback(() => {
+    // Don't set inactivity timer if hovering the card
+    if (isHoveringCardRef.current) {
+      return
+    }
+    
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer)
+    }
+    
+    // Set a new timer for 3 seconds of inactivity
+    const timer = setTimeout(() => {
+      if (hoveredEventId && !isHoveringCardRef.current) {
+        // Check if mouse is still on the event before closing
+        if (eventRect) {
+          const mouseX = lastMousePosition.current.x
+          const mouseY = lastMousePosition.current.y
+          
+          const isStillOnEvent = 
+            mouseX >= eventRect.left && 
+            mouseX <= eventRect.right && 
+            mouseY >= eventRect.top && 
+            mouseY <= eventRect.bottom
+          
+          // Don't close if still hovering the event
+          if (isStillOnEvent) {
+            return
+          }
+        }
+        
+        setIsHoverCardClosing(true)
+        
+        setTimeout(() => {
+          setHoveredEventId(null)
+          setHoverCardPosition(null)
+          setIsHoverCardClosing(false)
+          setIsHoverCardMounted(false)
+          setEventRect(null)
+        }, 500) // Animation duration
+      }
+    }, 3000) // 3 seconds of inactivity
+    
+    setInactivityTimer(timer)
+  }, [inactivityTimer, hoveredEventId, eventRect, lastMousePosition])
+
+  // Handle event drag start
+  const handleEventDragStart = useCallback((info: any) => {
+    // Always allow drag to start and close any open hover card
+    setIsDragging(true)
+    // Close hover card immediately when dragging starts
+    closeHoverCardImmediately()
+  }, [closeHoverCardImmediately])
+
+  // Handle event drag stop
+  const handleEventDragStop = useCallback(() => {
+    setIsDragging(false)
+  }, [])
+
+  // Handle event mouse enter
+  const handleEventMouseEnter = useCallback((info: any) => {
+    const event = info.event
+    const el = info.el
+    
+    // Don't show hover card while dragging
+    if (isDragging) {
+      return
+    }
+    
+    // Update mouse position from the event
+    if (info.jsEvent) {
+      lastMousePosition.current = { x: info.jsEvent.clientX, y: info.jsEvent.clientY }
+    }
+    
+    // If we're moving to the card, don't interfere
+    if (isMovingToCard) {
+      return
+    }
+    
+    // Clear inactivity timer when hovering an event
+    if (inactivityTimer) {
+      clearTimeout(inactivityTimer)
+      setInactivityTimer(null)
+    }
+    
+    // Clear any existing timers
+    if (hoverTimer) {
+      clearTimeout(hoverTimer)
+    }
+    if (closeTimer) {
+      clearTimeout(closeTimer)
+      setCloseTimer(null)
+    }
+    
+    // Cancel any closing animation
+    if (isHoverCardClosing) {
+      setIsHoverCardClosing(false)
+    }
+    
+    // If we're hovering a different event and a card is already shown
+    if (hoveredEventId && hoveredEventId !== event.id) {
+      // Don't immediately switch - user might be trying to reach the card
+      return
+    }
+    
+    // If no card is shown, set a timer to show it after delay
+    if (!hoveredEventId) {
+      const timer = setTimeout(() => {
+        // Double-check we're not dragging
+        if (isDragging) {
+          return
+        }
+        
+        const rect = el.getBoundingClientRect()
+        const viewportHeight = window.innerHeight
+        const viewportWidth = window.innerWidth
+        const cardHeight = 250
+        const cardWidth = 300
+        
+        const spaceAbove = rect.top
+        const preferBottom = spaceAbove < cardHeight
+        
+        let xPosition = rect.left + rect.width / 2
+        const halfCardWidth = cardWidth / 2
+        if (xPosition - halfCardWidth < 0) {
+          xPosition = halfCardWidth
+        } else if (xPosition + halfCardWidth > viewportWidth) {
+          xPosition = viewportWidth - halfCardWidth
+        }
+        
+        setHoveredEventId(event.id)
+        setHoverCardPosition({
+          x: xPosition,
+          y: preferBottom ? rect.bottom : rect.top,
+          preferBottom,
+          eventHeight: rect.height
+        })
+        setIsHoverCardClosing(false)
+        setIsHoverCardMounted(false)
+        setEventRect(rect)
+      }, 1500) // 1.5 second delay for initial show
+      
+      setHoverTimer(timer)
+    }
+  }, [hoverTimer, closeTimer, isHoverCardClosing, hoveredEventId, isMovingToCard, inactivityTimer, isDragging])
+
+  // Handle event mouse leave
+  const handleEventMouseLeave = useCallback((info: any) => {
+    const event = info.event
+    
+    // Clear timer if it exists
+    if (hoverTimer) {
+      clearTimeout(hoverTimer)
+      setHoverTimer(null)
+    }
+    
+    // If leaving the currently hovered event, set moving to card state
+    if (hoveredEventId === event.id && hoverCardPosition) {
+      setIsMovingToCard(true)
+      
+      // Set a timer to clear the moving state if user doesn't reach the card
+      const moveTimer = setTimeout(() => {
+        setIsMovingToCard(false)
+        // If not hovering the card, start close process
+        if (!isHoveringCardRef.current) {
+          resetInactivityTimer()
+        }
+      }, 1000) // 1 second to reach the card
+      
+      setCloseTimer(moveTimer)
+    }
+  }, [hoverTimer, hoveredEventId, hoverCardPosition, resetInactivityTimer])
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimer) {
+        clearTimeout(hoverTimer)
+      }
+      if (closeTimer) {
+        clearTimeout(closeTimer)
+      }
+      if (inactivityTimer) {
+        clearTimeout(inactivityTimer)
+      }
+    }
+  }, [hoverTimer, closeTimer, inactivityTimer])
+
+  // Set hover card as mounted after it appears
+  useEffect(() => {
+    if (hoveredEventId && hoverCardPosition && !isHoverCardClosing) {
+      // Use requestAnimationFrame to ensure the initial render happens first
+      requestAnimationFrame(() => {
+        setIsHoverCardMounted(true)
+      })
+    }
+  }, [hoveredEventId, hoverCardPosition, isHoverCardClosing])
+
+  // Global mouse move handler to detect when mouse moves far away
+  useEffect(() => {
+    if (!hoveredEventId || !hoverCardPosition) return
+
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      // Update last mouse position
+      lastMousePosition.current = { x: e.clientX, y: e.clientY }
+      
+      // Skip if we're hovering the card
+      if (isHoveringCardRef.current) return
+
+      // Calculate card boundaries
+      const cardWidth = 300
+      const cardHeight = 250
+      const cardLeft = hoverCardPosition.x - cardWidth / 2
+      const cardRight = hoverCardPosition.x + cardWidth / 2
+      const cardTop = hoverCardPosition.preferBottom 
+        ? hoverCardPosition.y 
+        : hoverCardPosition.y - cardHeight
+      const cardBottom = hoverCardPosition.preferBottom 
+        ? hoverCardPosition.y + cardHeight 
+        : hoverCardPosition.y
+
+      // Check if near the event rect too
+      let isNearEvent = false
+      if (eventRect) {
+        const eventPadding = 50 // Increased padding for more forgiveness
+        isNearEvent = 
+          e.clientX >= eventRect.left - eventPadding && 
+          e.clientX <= eventRect.right + eventPadding &&
+          e.clientY >= eventRect.top - eventPadding && 
+          e.clientY <= eventRect.bottom + eventPadding
+      }
+
+      // Add larger padding around card boundaries
+      const padding = 100 // Increased for more forgiveness
+      const isNearCard = 
+        e.clientX >= cardLeft - padding && 
+        e.clientX <= cardRight + padding &&
+        e.clientY >= cardTop - padding && 
+        e.clientY <= cardBottom + padding
+
+      // If mouse is outside both the card and event areas, start close timer
+      if (!isNearCard && !isNearEvent) {
+        setIsMovingToCard(false)
+        // Start closing immediately
+        setIsHoverCardClosing(true)
+        setTimeout(() => {
+          setHoveredEventId(null)
+          setHoverCardPosition(null)
+          setIsHoverCardClosing(false)
+          setIsHoverCardMounted(false)
+          setEventRect(null)
+        }, 500)
+      }
+    }
+
+    document.addEventListener('mousemove', handleGlobalMouseMove)
+    return () => document.removeEventListener('mousemove', handleGlobalMouseMove)
+  }, [hoveredEventId, hoverCardPosition, isMovingToCard, resetInactivityTimer, isHoverCardMounted, eventRect])
+
   // Show loading state
   if (loading || !isHydrated) {
     return <CalendarSkeleton />
@@ -521,14 +887,13 @@ export function FullCalendarComponent({
 
   const calendarContent = (
     <ErrorBoundary fallback={CalendarErrorFallback}>
-      <div className="flex flex-col gap-4 h-full">
-        {/* Calendar Legend */}
-        <CalendarLegend freeRoam={freeRoam} />
-        
-        <div className="flex-1">
-          <CalendarCore
-          ref={calendarRef}
-          events={processedEvents}
+      <div className="flex h-full flex-1">
+        {/* Main Calendar Area */}
+        <div className="flex flex-col gap-4 w-full h-full">
+          <div className="flex-1 flex flex-col">
+            <CalendarCore
+            ref={calendarRef}
+            events={processedEvents}
         currentView={currentView}
         currentDate={currentDate}
         isRTL={isRTL}
@@ -539,16 +904,45 @@ export function FullCalendarComponent({
         isVacationDate={isVacationDate}
         onDateClick={callbacks.dateClick}
         onSelect={callbacks.select}
-        onEventClick={callbacks.eventClick}
+        onEventClick={(info) => {
+          const event = info.event
+          const eventType = event.extendedProps?.type
+          
+          // Open chat for all event types (conversations, reservations)
+          // The event.id is the WhatsApp ID for all event types
+          handleOpenConversation(event.id)
+          
+          // Call the original callback too if needed
+          if (callbacks.eventClick) {
+            callbacks.eventClick(info)
+          }
+        }}
         onEventChange={handleEventChange}
         onContextMenu={handleContextMenu}
         onViewDidMount={(info) => {
-          if (isHydrated) setCurrentView(info.view.type);
+          if (isHydrated) {
+            // Immediately set the height for the new view to prevent flicker
+            const newHeight = calculateHeight(info.view.type);
+            setCalendarHeight(newHeight);
+            setCurrentView(info.view.type);
+            
+            // Force immediate render for multiMonth view
+            if (info.view.type === 'multiMonthYear') {
+              requestAnimationFrame(() => {
+                calendarRef.current?.updateSize();
+              });
+            }
+          }
         }}
         onDatesSet={(info) => {
           if (isHydrated) setCurrentView(info.view.type);
         }}
         onUpdateSize={handleUpdateSize}
+        onEventMouseEnter={handleEventMouseEnter}
+        onEventMouseLeave={handleEventMouseLeave}
+        onEventDragStart={handleEventDragStart}
+        onEventDragStop={handleEventDragStop}
+        onEventMouseDown={closeHoverCardImmediately}
       />
       
       {/* Context Menu for Events */}
@@ -562,6 +956,87 @@ export function FullCalendarComponent({
         onOpenConversation={handleOpenConversation}
       />
       
+      {/* Hover Card for Events */}
+      {hoveredEventId && hoverCardPosition && !isDragging && (() => {
+        const activeClass = isHoverCardMounted && !isHoverCardClosing ? 'hover-card-active' : ''
+        const exitClass = isHoverCardClosing ? 'hover-card-fade-exit' : 'hover-card-fade-enter'
+        
+        return createPortal(
+          <div
+            className={cn(
+              "fixed z-[50] pointer-events-none w-[300px]"
+            )}
+            style={{
+              left: `${hoverCardPosition.x}px`,
+              top: hoverCardPosition.preferBottom 
+                ? `${hoverCardPosition.y}px`
+                : `${hoverCardPosition.y}px`,
+              transform: hoverCardPosition.preferBottom
+                ? 'translateX(-50%) translateY(20px)'
+                : 'translateX(-50%) translateY(calc(-100% - 20px))'
+            }}
+          >
+            <div 
+              className={cn(
+                "relative pointer-events-auto rounded-md border bg-popover text-popover-foreground shadow-md overflow-visible",
+                exitClass,
+                activeClass
+              )}
+              style={{ 
+                zIndex: 1,
+                // Ensure card doesn't interfere with calendar event interactions
+                pointerEvents: isHoverCardMounted && !isDragging ? 'auto' : 'none'
+              }}
+              onMouseEnter={() => {
+                setIsHoveringCard(true)
+                setIsMovingToCard(false) // Successfully reached the card
+                // Cancel any timers
+                if (closeTimer) {
+                  clearTimeout(closeTimer)
+                  setCloseTimer(null)
+                }
+                if (inactivityTimer) {
+                  clearTimeout(inactivityTimer)
+                  setInactivityTimer(null)
+                }
+                setIsHoverCardClosing(false)
+              }}
+              onMouseLeave={() => {
+                setIsHoveringCard(false)
+                // Start close timer when leaving the card
+                const timer = setTimeout(() => {
+                  if (!isHoveringCard) {
+                    setIsHoverCardClosing(true)
+                    
+                    setTimeout(() => {
+                      setHoveredEventId(null)
+                      setHoverCardPosition(null)
+                      setIsHoverCardClosing(false)
+                      setIsHoverCardMounted(false)
+                      setEventRect(null)
+                    }, 500)
+                  }
+                }, 1000) // 1 second delay before closing
+                
+                setCloseTimer(timer)
+              }}
+            >
+
+              <div style={{ pointerEvents: isHoverCardMounted && !isDragging ? 'auto' : 'none' }}>
+                <CustomerStatsCard
+                  selectedConversationId={hoveredEventId}
+                  conversations={conversations}
+                  reservations={reservations}
+                  isRTL={isRTL}
+                  isHoverCard={true}
+                />
+              </div>
+            </div>
+          </div>,
+          document.body
+        )
+      })()}
+      
       {/* Data Table Editor */}
       <LazyDataTableEditor
         open={editorOpen}
@@ -573,6 +1048,8 @@ export function FullCalendarComponent({
         }}
         slotDurationHours={SLOT_DURATION_HOURS}
         freeRoam={freeRoam}
+        data={[]}
+        calendarRef={calendarRef}
         events={shouldLoadEditor ? (() => {
           let processedEvents = events;
           if (freeRoam) {
@@ -611,7 +1088,10 @@ export function FullCalendarComponent({
           // Event click in table handled
         }}
       />
+          </div>
         </div>
+
+
       </div>
     </ErrorBoundary>
   )

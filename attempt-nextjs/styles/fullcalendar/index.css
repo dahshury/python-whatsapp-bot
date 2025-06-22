@@ -1,0 +1,42 @@
+/* FullCalendar Modular CSS - Main Entry Point */
+/* This file imports all FullCalendar style modules in the correct order */
+
+/* Core styles - loaded first */
+@import "./_variables.css";
+@import "./_base.css";
+@import "./_icons.css";
+@import "./_buttons.css";
+@import "./_toolbar.css";
+@import "./_view-harness.css";
+@import "./_scroller.css";
+@import "./_scrollgrid.css";
+@import "./_popover.css";
+@import "./_sticky.css";
+@import "./_events.css";
+@import "./_h-event.css";
+@import "./_v-event.css";
+@import "./_day-states.css";
+
+/* View-specific styles */
+@import "./views/_daygrid.css";
+@import "./views/_timegrid.css";
+@import "./views/_list.css";
+@import "./views/_multimonth.css";
+@import "./views/_week.css";
+
+/* Feature-specific styles */
+@import "./features/_conversation-events.css";
+@import "./features/_cancelled-events.css";
+@import "./features/_free-roam.css";
+@import "./features/_hover-card.css";
+@import "./features/_context-menu.css";
+
+/* Themes and overrides */
+@import "./_themes.css";
+@import "./_bootstrap.css";
+@import "./_rtl.css";
+@import "./_media.css";
+
+/* Utilities - loaded last */
+@import "./utilities/_performance.css";
+@import "./utilities/_scrollbars.css"; 

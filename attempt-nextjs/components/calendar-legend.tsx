@@ -8,6 +8,7 @@
 "use client"
 
 import { useLanguage } from '@/lib/language-context'
+import { cn } from '@/lib/utils'
 
 interface CalendarLegendProps {
   freeRoam?: boolean
@@ -20,25 +21,25 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
   const legendItems = [
     {
       key: 'check-up',
-      color: '#10b981', // Green - matches the default FullCalendar primary color
+      color: 'var(--fc-reservation-type-0-bg)', // Green - Check-up
       label: isRTL ? 'كشف' : 'Check-up',
       showAlways: true
     },
     {
       key: 'follow-up',
-      color: '#3b82f6', // Blue - matches reservation-type-1 styling
+      color: 'var(--fc-reservation-type-1-bg)', // Blue - Follow-up
       label: isRTL ? 'مراجعة' : 'Follow-up',
       showAlways: true
     },
     {
       key: 'conversation',
-      color: '#EDAE49', // Orange/Yellow - matches conversation-event styling
+      color: 'var(--fc-conversation-bg)', // Orange/Yellow - Conversation
       label: isRTL ? 'محادثة' : 'Conversation',
       showAlways: false // Only show in free roam
     },
     {
       key: 'cancelled',
-      color: '#e5e1e0', // Gray - matches cancelled styling
+      color: 'var(--fc-reservation-cancelled-bg)', // Gray - Cancelled
       label: isRTL ? 'ملغي' : 'Cancelled',
       showAlways: false // Only show in free roam
     }
@@ -47,17 +48,23 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
   const filteredItems = legendItems.filter(item => item.showAlways || freeRoam)
 
   return (
-    <div className={`bg-background border rounded-lg px-3 py-2 ${className}`}>
-      <div className="flex items-center gap-4 flex-wrap">
-        {filteredItems.map((item) => (
+    <div className={cn(
+      "flex items-center justify-center bg-background/50 border rounded-md px-3 py-1.5",
+      className
+    )}>
+      <div className="flex items-center gap-3 text-xs">
+        {filteredItems.map((item, index) => (
           <div key={item.key} className="flex items-center gap-1.5">
-            <div 
-              className="w-3 h-3 rounded-sm flex-shrink-0 border"
+            <div
+              className="w-3 h-3 rounded-sm border border-border/50"
               style={{ backgroundColor: item.color }}
-            ></div>
-            <span className="text-sm font-medium text-foreground">
+            />
+            <span className="font-medium text-muted-foreground whitespace-nowrap">
               {item.label}
             </span>
+            {index < filteredItems.length - 1 && (
+              <span className="text-muted-foreground/50 ml-1">•</span>
+            )}
           </div>
         ))}
       </div>

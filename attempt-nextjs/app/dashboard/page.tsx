@@ -1,29 +1,32 @@
 "use client"
 
-import { DashboardView } from "@/components/dashboard-view"
+import { lazy, Suspense } from "react"
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
-import { Separator } from "@/components/ui/separator"
-import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbPage } from "@/components/ui/breadcrumb"
 import { useLanguage } from "@/lib/language-context"
+import { useSettings } from "@/lib/settings-context"
+import { DashboardSkeleton } from "@/components/dashboard-skeleton"
+import { DockNav } from "@/components/dock-nav"
+
+const DashboardView = lazy(() => 
+  import("@/components/dashboard-view").then(module => ({
+    default: module.DashboardView
+  }))
+)
 
 export default function DashboardPage() {
   const { isRTL } = useLanguage()
+  const { freeRoam } = useSettings()
 
   return (
     <SidebarInset>
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbPage>{isRTL ? "لوحة التحكم" : "Dashboard"}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+      <header className="relative flex h-16 shrink-0 items-center justify-center border-b px-4">
+        <SidebarTrigger className="absolute left-4" />
+        <DockNav className="mt-0" />
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4">
-        <DashboardView />
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardView />
+        </Suspense>
       </div>
     </SidebarInset>
   )

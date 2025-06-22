@@ -23,7 +23,7 @@ import {
   getValidRange,
   SLOT_DURATION_HOURS
 } from '@/lib/calendar-config'
-import '@/app/fullcalendar.css'
+import '@/styles/fullcalendar/index.css'
 
 export interface CalendarCoreProps {
   // Data props
@@ -52,12 +52,19 @@ export interface CalendarCoreProps {
   onViewDidMount?: (info: any) => void
   onEventDidMount?: (info: any) => void
   onDatesSet?: (info: any) => void
+  onEventMouseEnter?: (info: any) => void
+  onEventMouseLeave?: (info: any) => void
+  onEventDragStart?: (info: any) => void
+  onEventDragStop?: (info: any) => void
   
   // Context menu handlers
   onContextMenu?: (event: CalendarEvent, position: { x: number; y: number }) => void
   
   // Resize callback
   onUpdateSize?: () => void
+  
+  // Mouse down handler for events
+  onEventMouseDown?: () => void
   
   // Drag and drop props for dual calendar mode
   droppable?: boolean
@@ -103,13 +110,51 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     onViewDidMount,
     onEventDidMount,
     onDatesSet,
+    onEventMouseEnter,
+    onEventMouseLeave,
+    onEventDragStart,
+    onEventDragStop,
     onContextMenu,
     onUpdateSize,
+    onEventMouseDown,
     droppable,
     onEventReceive,
     onEventLeave,
     eventAllow
   } = props
+  
+  // Optimize events for multiMonth view - simplified event objects
+  const optimizedEvents = useMemo(() => {
+    if (currentView === 'multiMonthYear') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Compare date part only
+      
+      // Return simplified events for multiMonth view
+      return events.map(event => {
+        const eventStartDate = new Date(event.start);
+        const isPastEvent = eventStartDate < today;
+        const isReservation = event.extendedProps?.type !== 2;
+        
+        // Allow dragging for future reservations (both in free roam and normal mode)
+        const allowDrag = !isPastEvent && isReservation;
+        
+        return {
+          ...event,
+          // Allow drag/drop for future reservations in multiMonth
+          editable: event.editable !== false ? allowDrag : false,
+          eventStartEditable: event.editable !== false ? allowDrag : false,
+          eventDurationEditable: false, // Keep duration editing disabled
+          // Simplify extended props
+          extendedProps: {
+            type: event.extendedProps?.type || 0,
+            cancelled: event.extendedProps?.cancelled || false,
+            reservationId: event.extendedProps?.reservationId
+          }
+        }
+      })
+    }
+    return events
+  }, [events, currentView, freeRoam])
 
   const calendarRef = useRef<FullCalendar>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -147,7 +192,15 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
 
   // View-specific overrides: disable validRange for multiMonthYear view
   const viewsProp = useMemo(() => ({
-    multiMonthYear: { validRange: undefined }
+    multiMonthYear: { 
+      validRange: undefined,
+      // Optimize multiMonth view for better performance
+      dayMaxEvents: 3, // Limit events shown per day in multi-month view
+      dayMaxEventRows: 2, // Limit event rows to reduce DOM elements
+      moreLinkClick: 'popover' as const, // Use popover for overflow events
+      eventDisplay: 'block' as const, // Restore block display to keep event background colors
+      displayEventTime: false, // Don't show time in multi-month view
+    }
   }), []);
 
   // Day cell class names with vacation support
@@ -156,17 +209,26 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     // Use local date string comparison to avoid timezone issues
     const currentDateStr = new Date(currentDate.getTime() - currentDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
     const cellDateStr = new Date(cellDate.getTime() - cellDate.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-    
+
+    // Check if this date is in the past
+    const isPastDate = cellDate < new Date();
+
     // Check if this date is a vacation period
     if (isVacationDate && isVacationDate(cellDateStr)) {
-      return 'vacation-day cursor-not-allowed'
+      return 'vacation-day cursor-not-allowed';
     }
-    
+
+    // Disable hover for past dates when not in free roam
+    if (!freeRoam && isPastDate) {
+      return '';
+    }
+
     if (cellDateStr === currentDateStr) {
-      return 'selected-date-cell'; // Remove conflicting Tailwind classes, let CSS handle styling
+      return 'selected-date-cell';
     }
-    return 'hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer';
-  }, [currentDate, isVacationDate]);
+
+    return 'hover:bg-muted cursor-pointer';
+  }, [currentDate, isVacationDate, freeRoam]);
 
   // Day header class names with vacation support
   const getDayHeaderClassNames = useCallback((arg: any) => {
@@ -185,6 +247,10 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
   const handleEventDidMount = useCallback((info: any) => {
     const event = info.event
     const el = info.el
+    const view = info.view
+    
+    // Optimize for multiMonth view - skip heavy operations
+    const isMultiMonth = view.type === 'multiMonthYear'
     
     // Add data attributes for proper styling
     if (event.extendedProps.cancelled) {
@@ -201,49 +267,61 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
       el.classList.add('reservation-type-1')
     }
     
-    // Add context menu functionality
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      
-      if (onContextMenu) {
-        // Convert FullCalendar event to our CalendarEvent type
-        const calendarEvent: CalendarEvent = {
-          id: event.id,
-          title: event.title,
-          start: event.startStr,
-          end: event.endStr || event.startStr,
-          backgroundColor: event.backgroundColor || '',
-          borderColor: event.borderColor || '',
-          editable: true,
-          extendedProps: {
-            type: event.extendedProps?.type || 0,
-            cancelled: event.extendedProps?.cancelled || false,
-            ...event.extendedProps
-          }
-        }
-        
-        onContextMenu(calendarEvent, { x: e.clientX, y: e.clientY })
-      }
+    // Add mousedown handler to notify parent when event interaction starts
+    if (onEventMouseDown) {
+      el.addEventListener('mousedown', onEventMouseDown)
     }
     
-    // Add right-click listener
-    el.addEventListener('contextmenu', handleContextMenu)
+    // Skip context menu for multiMonth view to improve performance
+    if (!isMultiMonth) {
+      // Add context menu functionality
+      const handleContextMenu = (e: MouseEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        
+        if (onContextMenu) {
+          // Convert FullCalendar event to our CalendarEvent type
+          const calendarEvent: CalendarEvent = {
+            id: event.id,
+            title: event.title,
+            start: event.startStr,
+            end: event.endStr || event.startStr,
+            backgroundColor: event.backgroundColor || '',
+            borderColor: event.borderColor || '',
+            editable: true,
+            extendedProps: {
+              type: event.extendedProps?.type || 0,
+              cancelled: event.extendedProps?.cancelled || false,
+              ...event.extendedProps
+            }
+          }
+          
+          onContextMenu(calendarEvent, { x: e.clientX, y: e.clientY })
+        }
+      }
+      
+      // Add right-click listener
+      el.addEventListener('contextmenu', handleContextMenu)
+    }
     
     // Call original handler if provided
     if (onEventDidMount) {
       onEventDidMount(info)
     }
-  }, [onContextMenu, onEventDidMount])
+  }, [onContextMenu, onEventDidMount, onEventMouseDown])
 
   // Handle view mounting
   const handleViewDidMount = useCallback((info: any) => {
+    // Optimize timing based on view type
+    const isMultiMonth = info.view.type === 'multiMonthYear'
+    const delay = isMultiMonth ? 50 : 250 // Faster for multiMonth
+    
     // Single updateSize call after a short delay for view stabilization
     setTimeout(() => {
       if (onUpdateSize) {
         onUpdateSize()
       }
-    }, 250)
+    }, delay)
     
     // Call original handler if provided
     if (onViewDidMount) {
@@ -317,7 +395,7 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
   return (
     <div 
       ref={containerRef} 
-      className={`w-full h-full min-h-[600px] ${currentView !== 'multiMonthYear' ? 'transition-all duration-300 ease-in-out' : ''} ${getCalendarClassNames(currentView)}`}
+      className={`w-full h-full ${currentView === 'listMonth' ? 'flex flex-col' : 'min-h-[600px]'} ${currentView !== 'multiMonthYear' ? 'transition-all duration-300 ease-in-out' : ''} ${getCalendarClassNames(currentView)}`}
       data-free-roam={freeRoam}
     >
       <FullCalendar
@@ -328,7 +406,7 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         initialDate={currentDate}
         height={calendarHeight}
         contentHeight={calendarHeight}
-        events={events}
+        events={optimizedEvents}
         
         // Header configuration
         headerToolbar={{
@@ -380,13 +458,13 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         
         // Multi-month specific options
         multiMonthMaxColumns={3}
-        multiMonthMinWidth={350}
+        multiMonthMinWidth={280}
         fixedWeekCount={false}
         showNonCurrentDates={false}
-        dayMaxEvents={true}
+        dayMaxEvents={currentView === 'multiMonthYear' ? 3 : true}
         moreLinkClick="popover"
         eventDisplay="block"
-        displayEventTime={true}
+        displayEventTime={currentView !== 'multiMonthYear'}
         
         // Interaction control
         eventAllow={handleEventAllow}
@@ -395,7 +473,7 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         eventClassNames="rounded px-1 text-xs"
         dayCellClassNames={getDayCellClassNames}
         dayHeaderClassNames={getDayHeaderClassNames}
-        viewClassNames="bg-white dark:bg-gray-900 rounded-lg shadow-sm"
+        viewClassNames="bg-card rounded-lg shadow-sm"
         
         // Event callbacks
         dateClick={onDateClick}
@@ -405,6 +483,10 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         viewDidMount={handleViewDidMount}
         eventDidMount={handleEventDidMount}
         datesSet={handleDatesSet}
+        eventMouseEnter={onEventMouseEnter}
+        eventMouseLeave={onEventMouseLeave}
+        eventDragStart={onEventDragStart}
+        eventDragStop={onEventDragStop}
         
         // Time grid specific options
         slotLabelFormat={{

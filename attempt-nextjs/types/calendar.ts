@@ -18,6 +18,7 @@ export interface CalendarEvent {
 
 // Reservation payload shape from backend
 export interface Reservation {
+  id?: number         // Database ID of the reservation
   customer_id: string // e.g. WhatsApp ID
   date: string        // YYYY-MM-DD
   time_slot: string   // HH:mm format
@@ -28,12 +29,16 @@ export interface Reservation {
 }
 
 // Conversation message shape from backend
-export interface Conversation {
-  id: number | string
-  timestamp: string   // ISO 8601 date-time
-  type: 'user' | 'bot' | 'system' | string
-  message: string
-  sender: string
+export interface ConversationMessage {
+  role: string        // Role of the sender (user, assistant, etc.)
+  message: string     // The message content
+  time: string        // Time in HH:MM:SS format
+  date: string        // Date in YYYY-MM-DD format
+}
+
+// Conversation data structure - Record of wa_id to array of messages
+export interface Conversations {
+  [wa_id: string]: ConversationMessage[]
 }
 
 // Vacation period data structure

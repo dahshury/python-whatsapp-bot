@@ -1,7 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import localFont from "next/font/local"
 import "./globals.css"
+import "@glideapps/glide-data-grid/dist/index.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
@@ -11,14 +12,25 @@ import { LanguageProvider } from "@/lib/language-context"
 import { SettingsProvider } from "@/lib/settings-context"
 import { VacationProvider } from "@/lib/vacation-context"
 import { ErrorRecoveryInit } from "@/components/error-recovery-init"
-import { TopNav } from "@/components/top-nav"
+import { DockNav } from "@/components/dock-nav"
+import { ThemeWrapper } from "@/components/theme-wrapper"
+import { MainContentWrapper } from "@/components/main-content-wrapper"
 
 // import { GlobalSettings } from "@/components/global-settings"
 
-const inter = Inter({ 
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap"
+// Load Geist font for variable font support
+const geist = localFont({
+  src: "../app/fonts/GeistVF.woff",
+  variable: "--font-geist",
+  display: "swap",
+  weight: "100 900"
+})
+
+const geistMono = localFont({
+  src: "../app/fonts/GeistMonoVF.woff", 
+  variable: "--font-geist-mono",
+  display: "swap",
+  weight: "100 900"
 })
 
 export const metadata: Metadata = {
@@ -38,32 +50,61 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="//fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.variable} font-sans`} suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <body className={`${geist.variable} ${geistMono.variable} font-sans`} suppressHydrationWarning>
+        <ThemeProvider 
+          attribute="class" 
+          defaultTheme="system" 
+          enableSystem 
+          disableTransitionOnChange
+          storageKey="theme-preference"
+        >
           <ErrorRecoveryInit />
           <LanguageProvider>
             <SettingsProvider>
-              <VacationProvider>
-                <div className="flex flex-col h-screen">
-                  <header className="border-b flex justify-center">
-                    <TopNav />
-                  </header>
-                  <div className="flex flex-1 overflow-hidden">
-                    <SidebarProvider>
-                      <AppSidebar />
-                      <main className="flex-1 relative overflow-y-auto">
-                        {children}
-                      </main>
-                    </SidebarProvider>
+              <ThemeWrapper>
+                <VacationProvider>
+                  <div className="flex flex-col h-screen">
+                    <div className="flex flex-1 overflow-hidden">
+                      <SidebarProvider>
+                        <AppSidebar />
+                        <MainContentWrapper>
+                          {children}
+                        </MainContentWrapper>
+                      </SidebarProvider>
+                    </div>
                   </div>
-                </div>
-              </VacationProvider>
-              <UndoManager />
+                </VacationProvider>
+                <UndoManager />
+              </ThemeWrapper>
             </SettingsProvider>
           </LanguageProvider>
-          <Toaster />
+          <Toaster 
+            position="bottom-right"
+            gap={8}
+            toastOptions={{
+              className: 'sonner-toast',
+              descriptionClassName: 'sonner-description',
+              style: {
+                background: 'hsl(var(--card))',
+                color: 'hsl(var(--card-foreground))',
+                border: '1px solid hsl(var(--border))',
+              },
+              classNames: {
+                toast: 'sonner-toast group',
+                title: 'sonner-title',
+                description: 'sonner-description',
+                actionButton: 'sonner-action',
+                cancelButton: 'sonner-cancel',
+                closeButton: 'sonner-close',
+                error: 'sonner-error',
+                success: 'sonner-success',
+                warning: 'sonner-warning',
+                info: 'sonner-info',
+              },
+            }}
+          />
         </ThemeProvider>
-        <div id="portal" style={{ position: 'fixed', left: 0, top: 0, zIndex: 9999 }} />
+        <div id="portal" />
       </body>
     </html>
   )

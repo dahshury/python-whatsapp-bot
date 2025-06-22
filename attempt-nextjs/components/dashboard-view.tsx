@@ -145,10 +145,10 @@ export function DashboardView() {
                     <div
                       className={`w-2 h-2 rounded-full ${
                         activity.type === "reservation"
-                          ? "bg-blue-500"
+                          ? "bg-primary"
                           : activity.type === "conversation"
-                            ? "bg-green-500"
-                            : "bg-red-500"
+                            ? "bg-chart-3"
+                                                         : "bg-destructive"
                       }`}
                     />
                     <div>
