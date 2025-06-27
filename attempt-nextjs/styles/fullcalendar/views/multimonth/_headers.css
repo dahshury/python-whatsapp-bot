@@ -7,16 +7,29 @@
   text-align: center;
   font-weight: bold;
   font-size: 1.1em;
-  background-color: hsl(var(--muted) / 0.3);
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--card)) 0%,
+    hsl(var(--muted) / 0.8) 25%,
+    hsl(var(--muted) / 0.6) 50%,
+    hsl(var(--muted) / 0.4) 75%,
+    hsl(var(--muted) / 0.2) 100%
+  );
   border-bottom: 1px solid hsl(var(--border));
+  border-top: 1px solid hsl(var(--background) / 0.8);
   margin: 0;
   border-radius: var(--fc-multimonth-radius, var(--radius)) var(--fc-multimonth-radius, var(--radius)) 0 0;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   letter-spacing: 0.025em;
   z-index: var(--z-fc-multimonth-header);
   color: hsl(var(--foreground));
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   flex: 1;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.12),
+    0 1px 4px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 hsl(var(--background) / 0.6),
+    inset 0 -1px 0 hsl(var(--muted) / 0.3);
 }
 
 /* Override for multimonth view to ensure font size takes effect */
@@ -25,9 +38,9 @@
   font-size: 1.3em !important;
 }
 
-/* HOVER STATE - STATIC ENHANCEMENT */
+/* HOVER STATE - NO COLOR CHANGE */
 .fc-multimonth-month:hover .fc-multimonth-title {
-  /* Hover styles now defined in _month-container.css */
+  /* Keep the same gradient, don't change colors on hover */
 }
 
 /* Removed subtle top accent */
@@ -41,10 +54,10 @@
   transform: translateZ(0);
 }
 
-/* Style weekday headers with rounded corners - increased size by 30% */
+/* Style weekday headers with rounded corners - original size */
 .fc-multimonth-header-table th {
   position: relative;
-  padding: 0.1em 0;
+  padding: 0.1em 0; /* Reverted to original size */
   font-weight: 600;
   font-size: 0.9em;
   text-transform: uppercase;
@@ -71,6 +84,7 @@
   transition: all 0.2s ease;
   /* Subtle backdrop for glass effect */
   backdrop-filter: blur(2px);
+  /* Original height - no reduction */
 }
 
 /* Override for multimonth view weekday headers */

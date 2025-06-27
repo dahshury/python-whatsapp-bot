@@ -204,20 +204,32 @@
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   white-space: nowrap !important;
+  background: transparent !important;
 }
 
 .fc-timegrid-event .fc-event-title {
   font-size: 0.75rem !important;
   font-weight: 500 !important;
   line-height: 1.2 !important;
-  color: white !important;
+  color: var(--fc-event-text-color) !important;
+  text-shadow: none !important;
+  text-stroke: none !important;
+  -webkit-text-stroke: none !important;
+  outline: none !important;
+  border: none !important;
 }
 
 .fc-timegrid-event .fc-event-time {
   font-size: 0.65rem !important;
   line-height: 1.1 !important;
   opacity: 0.9 !important;
-  color: white !important;
+  color: var(--fc-event-text-color) !important;
+  text-shadow: none !important;
+  text-stroke: none !important;
+  -webkit-text-stroke: none !important;
+  outline: none !important;
+  border: none !important;
+  background: transparent !important;
   white-space: nowrap;
   margin-bottom: 1px;
 }
@@ -226,6 +238,7 @@
 .fc-timegrid-event-short .fc-event-main-frame {
   flex-direction: row;
   overflow: hidden;
+  background: transparent !important;
 }
 
 .fc-timegrid-event-short .fc-event-time:after {
@@ -305,6 +318,10 @@
   display: flex !important;
   align-items: center !important;
   gap: 4px !important;
+  color: var(--fc-event-text-color) !important;
+  text-shadow: none !important;
+  outline: none !important;
+  border: none !important;
 }
 
 /* Vacation styling for all views is centralized in _day-states.css */
@@ -324,6 +341,20 @@
 }
 
 /* Note: Hover styles for timegrid columns are now handled in _day-states.css */
+
+/* COMPREHENSIVE: Ensure all timegrid event text elements have transparent backgrounds */
+.fc-timegrid-event .fc-event-main,
+.fc-timegrid-event .fc-event-main-frame,
+.fc-timegrid-event .fc-event-time,
+.fc-timegrid-event .fc-event-title,
+.fc-timegrid-event .fc-event-title-container,
+.fc-timegrid-event * {
+  background: transparent !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  outline: none !important;
+  border: none !important;
+}
 
 /* Time grid hack - use popover z-index */
 .fc-timegrid .fc-more-popover {

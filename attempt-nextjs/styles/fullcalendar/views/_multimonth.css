@@ -213,8 +213,7 @@
   @apply min-h-0;
 }
 
-/* Disable hover effects in multiMonth view for performance */
-.fc-multimonth .fc-daygrid-day:hover,
-.fc-multimonth .fc-event:hover {
+/* Disable hover effects on day cells in multiMonth view for performance */
+.fc-multimonth .fc-daygrid-day:hover {
   transition: none;
 } 

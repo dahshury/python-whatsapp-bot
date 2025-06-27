@@ -162,10 +162,12 @@
 }
 
 /* =================================================================
-   MORE LINK STYLES - ALL VIEWS
+   MORE LINK STYLES - ALL VIEWS - DISABLED TO RESTORE DEFAULT BEHAVIOR
    ================================================================= */
 
+/* DISABLED - Let FullCalendar handle more link positioning naturally
 /* Base more link styles */
+/*
 .fc-more-link {
   position: relative !important;
   z-index: var(--z-fc-more-popover) !important;
@@ -190,16 +192,20 @@
   text-decoration: none !important;
   transition: all 0.2s ease;
 }
+*/
 
 /* More link hover */
+/*
 .fc-more-link:hover {
   background-color: hsl(var(--accent)) !important;
   transform: translateY(-1px) !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
   text-decoration: none !important;
 }
+*/
 
 /* Dark mode more link */
+/*
 .dark .fc-more-link {
   background-color: hsl(var(--accent) / 0.9) !important;
   border-color: hsl(var(--accent) / 0.8) !important;
@@ -209,6 +215,7 @@
   background-color: hsl(var(--accent)) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
 }
+*/
 
 /* =================================================================
    POPOVER EVENTS STYLING
@@ -224,13 +231,13 @@
   padding: 2px 6px !important;
 }
 
-.fc-popover .fc-event:hover,
+/* .fc-popover .fc-event:hover,
 .fc-more-popover .fc-event:hover {
   transform: translateX(4px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
 }
 
-.dark .fc-popover .fc-event:hover,
+/* .dark .fc-popover .fc-event:hover,
 .dark .fc-more-popover .fc-event:hover {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
 }
@@ -248,6 +255,28 @@
   margin: 2px 0 !important;
 }
 
+/* Past events in popover - decreased opacity */
+.fc-more-popover .fc-event.fc-event-past {
+  opacity: 0.6 !important;
+}
+
+/* Cancelled events in popover - darker appearance */
+.fc-more-popover .fc-event[data-cancelled="true"] {
+  filter: brightness(0.7) saturate(0.8) !important;
+  opacity: 0.9 !important;
+}
+
+/* Cancelled events in popover - stroke text */
+.fc-more-popover .fc-event[data-cancelled="true"] .fc-event-title {
+  text-decoration: line-through !important;
+}
+
+/* Past cancelled events in popover - combine both effects */
+.fc-more-popover .fc-event.fc-event-past[data-cancelled="true"] {
+  opacity: 0.5 !important;
+  filter: brightness(0.6) saturate(0.7) !important;
+}
+
 /* =================================================================
    VIEW-SPECIFIC OVERRIDES
    ================================================================= */
@@ -258,13 +287,18 @@
   z-index: var(--z-fc-more-popover) !important;
 }
 
-/* Multimonth more link - event-like appearance */
+/* Multimonth more link - event-like appearance - DISABLED */
+/*
 .fc-multimonth-multicol .fc-more-link {
   border: 1px solid var(--fc-event-border-color);
   padding: 1px;
-  float: none;
-  display: block;
+  float: none !important;
+  display: block !important;
+  clear: both !important;
+  width: auto !important;
+  margin: 1px 1px 0 1px !important;
 }
+*/
 
 /* Daygrid view specific */
 .fc-daygrid .fc-more-popover {
@@ -276,7 +310,8 @@
   z-index: var(--z-fc-more-popover) !important;
 }
 
-/* Timegrid more link specific styles */
+/* Timegrid more link specific styles - DISABLED */
+/*
 .fc-timegrid-more-link {
   position: absolute !important;
   z-index: var(--z-timegrid-more-link) !important;
@@ -291,8 +326,10 @@
   padding: 3px 2px;
   top: 0;
 }
+*/
 
-/* Timegrid more link positioning */
+/* Timegrid more link positioning - DISABLED */
+/*
 .fc-direction-ltr .fc-timegrid-more-link {
   right: 0;
 }
@@ -300,6 +337,7 @@
 .fc-direction-rtl .fc-timegrid-more-link {
   left: 0;
 }
+*/
 
 /* =================================================================
    THEME INTEGRATION
@@ -316,20 +354,24 @@
   border-bottom: 1px solid hsl(var(--border)) !important;
 }
 
-/* Bootstrap theme support */
+/* Bootstrap theme support - DISABLED */
+/*
 .fc-theme-bootstrap .fc-more-link:hover {
   text-decoration: none;
 }
+*/
 
 /* =================================================================
    ACCESSIBILITY AND INTERACTION
    ================================================================= */
 
-/* Focus states */
+/* Focus states - DISABLED */
+/*
 .fc-more-link:focus {
   outline: 2px solid hsl(var(--accent)) !important;
   outline-offset: 2px;
 }
+*/
 
 .fc-popover-close:focus {
   outline: 2px solid hsl(var(--accent)) !important;
@@ -358,19 +400,22 @@
    RTL SUPPORT
    ================================================================= */
 
-.fc[dir="rtl"] .fc-popover .fc-event:hover,
+/* .fc[dir="rtl"] .fc-popover .fc-event:hover,
 .fc[dir="rtl"] .fc-more-popover .fc-event:hover {
   transform: translateX(-4px);
-}
+} */
 
-/* RTL direction-specific more link positioning */
-.fc-direction-ltr .fc-more-link {
-  float: left;
-}
-
+/* RTL direction-specific more link positioning - DISABLED */
+/*
+.fc-direction-ltr .fc-more-link,
 .fc-direction-rtl .fc-more-link {
-  float: right;
+  float: none !important;
+  clear: both !important;
+  display: block !important;
+  width: auto !important;
+  margin: 1px 1px 0 1px !important;
 }
+*/
 
 /* =================================================================
    PERFORMANCE OPTIMIZATIONS
@@ -400,4 +445,8 @@
   .dark .fc-more-popover {
     background: hsl(var(--card)) !important;
   }
-} 
+}
+
+
+
+/* RTL direction-specific more link positioning */ 

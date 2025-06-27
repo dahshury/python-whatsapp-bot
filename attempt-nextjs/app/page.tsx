@@ -29,6 +29,24 @@ export default function HomePage() {
   const calendarRef = React.useRef<{ calendarRef: React.RefObject<any>, currentView: string }>(null)
   const [currentView, setCurrentView] = React.useState('multiMonthYear')
   
+  // Track the actual calendar ref that gets exposed by FullCalendarComponent
+  const [actualCalendarRef, setActualCalendarRef] = React.useState<React.RefObject<any> | null>(null)
+  
+  // Callback ref to capture the calendar instance when it becomes available
+  const calendarCallbackRef = React.useCallback((calendarInstance: any) => {
+    // Store the full calendar instance in the ref
+    if (calendarRef.current !== calendarInstance) {
+      (calendarRef as React.MutableRefObject<any>).current = calendarInstance
+    }
+    
+    // Update the actual calendar ref state for DockNav
+    if (calendarInstance?.calendarRef) {
+      setActualCalendarRef(calendarInstance.calendarRef)
+    } else {
+      setActualCalendarRef(null)
+    }
+  }, [])
+  
   // Dual calendar refs and view states
   const dualCalendarRef = React.useRef<{ 
     leftCalendarRef: React.RefObject<any>, 
@@ -130,7 +148,7 @@ export default function HomePage() {
           // Single Calendar Mode Header Layout
           <DockNav 
             className="mt-0" 
-            calendarRef={calendarRef?.current?.calendarRef || null}
+            calendarRef={actualCalendarRef}
             currentCalendarView={currentView}
             onCalendarViewChange={setCurrentView}
           />
@@ -153,7 +171,7 @@ export default function HomePage() {
           />
         ) : (
           <FullCalendarComponent 
-            ref={calendarRef}
+            ref={calendarCallbackRef}
             freeRoam={freeRoam} 
             initialView={currentView}
             onViewChange={setCurrentView}

@@ -58,12 +58,17 @@ export function useCalendarToolbar({
       const state = calendarApi.currentData
       if (!state) return
 
-      // Update title - this will use the calendar's locale-aware formatting
-      const viewTitle = state.viewTitle || ""
+      // Prefer internal state title, but fall back to the public API's view.title
+      let viewTitle = ""
+      if (state.viewTitle) {
+        viewTitle = state.viewTitle
+      } else if (calendarApi.view?.title) {
+        viewTitle = calendarApi.view.title
+      }
       setTitle(viewTitle)
 
-      // Update active view from calendar state
-      const viewType = state.viewSpec?.type
+      // Update active view from calendar state or public API fallback
+      const viewType = state.viewSpec?.type || calendarApi.view?.type
       if (viewType) {
         setActiveView(viewType)
       }
@@ -114,45 +119,42 @@ export function useCalendarToolbar({
 
   // Set up event listeners for calendar state changes
   useEffect(() => {
-    if (!calendarRef?.current?.getApi) return
-
-    const calendarApi = calendarRef.current.getApi()
-    if (!calendarApi) return
-
-    // Initial update
-    updateButtonStates()
-
-    // Define all event handlers
-    const handleDatesSet = () => {
-      updateButtonStates()
-    }
-
-    const handleViewDidMount = () => {
-      updateButtonStates()
-    }
-
-    const handleEventSet = () => {
-      // Update on any event changes as they might affect navigation
-      updateButtonStates()
-    }
-
-    // Add event listeners for all relevant calendar events
-    calendarApi.on('datesSet', handleDatesSet)
-    calendarApi.on('viewDidMount', handleViewDidMount)
-    calendarApi.on('eventsSet', handleEventSet)
-
-    // Also listen for any rerenders/updates using a polling mechanism for edge cases
-    // This ensures we catch any state changes that might not emit events
+    // Polling interval to keep attempting updates until the calendar API is ready
     const pollInterval = setInterval(() => {
       updateButtonStates()
     }, 500) // Check every 500ms
 
-    // Cleanup
+    // Once the API becomes available, attach listeners and clear the polling interval
+    if (calendarRef?.current?.getApi) {
+      const calendarApi = calendarRef.current.getApi()
+      if (calendarApi) {
+        // Initial update
+        updateButtonStates()
+
+        // Define event handlers
+        const handleDatesSet = () => updateButtonStates()
+        const handleViewDidMount = () => updateButtonStates()
+        const handleEventSet = () => updateButtonStates()
+
+        calendarApi.on('datesSet', handleDatesSet)
+        calendarApi.on('viewDidMount', handleViewDidMount)
+        calendarApi.on('eventsSet', handleEventSet)
+
+        // Clear polling after successful attachment
+        clearInterval(pollInterval)
+
+        // Cleanup function
+        return () => {
+          calendarApi.off('datesSet', handleDatesSet)
+          calendarApi.off('viewDidMount', handleViewDidMount)
+          calendarApi.off('eventsSet', handleEventSet)
+        }
+      }
+    }
+
+    // Cleanup if effect re-runs or component unmounts
     return () => {
       clearInterval(pollInterval)
-      calendarApi.off('datesSet', handleDatesSet)
-      calendarApi.off('viewDidMount', handleViewDidMount)
-      calendarApi.off('eventsSet', handleEventSet)
     }
   }, [calendarRef, updateButtonStates])
 

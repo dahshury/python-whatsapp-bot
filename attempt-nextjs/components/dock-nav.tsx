@@ -631,15 +631,17 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                       onValueChange={(value) => {
                         setAppTheme(value)
                         const themeName = value === 'theme-default' ? 'Default' : 
-                                        value === 'theme-amethyst-haze' ? 'Amethyst Haze' : 
-                                        value === 'theme-mocha-mousse' ? 'Mocha Mousse' :
-                                        value === 'theme-neo-brutalism' ? 'Neo Brutalism' :
+                                        value === 'theme-claude' ? 'Claude' :
+                                        value === 'theme-art-deco' ? 'Art Deco' :
+                                        value === 'theme-perplexity' ? 'Perplexity' :
                                         value === 'theme-perpetuity' ? 'Perpetuity' :
-                                        value === 'theme-retro-arcade' ? 'Retro Arcade' :
                                         value === 'theme-starry-night' ? 'Starry Night' :
-                                        value === 'theme-ghibli-studio' ? 'Ghibli Studio' :
+                                        value === 'theme-amethyst-haze' ? 'Amethyst Haze' : 
+                                        value === 'theme-t3chat' ? 'T3Chat' :
+                                        value === 'theme-neo-brutalism' ? 'Neo Brutalism' :
                                         value === 'theme-valorant' ? 'Valorant' :
-                                        'Art Deco'
+                                        value === 'theme-retro-arcade' ? 'Retro Arcade' :
+                                        'Ghibli Studio'
                         toast(
                           isRTL
                             ? `تم تغيير المظهر إلى ${themeName}`
@@ -656,9 +658,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="default-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#171717' }}></div>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#a1a1aa' }}></div>
                           </div>
@@ -673,30 +675,48 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="amethyst-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8a79ab' }}></div>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#e6a5b8' }}></div>
                           </div>
                           <span className="text-xs">Amethyst Haze</span>
                         </Label>
                       </div>
-                      <div>
+                                            <div>
                         <RadioGroupItem
-                          value="theme-mocha-mousse"
-                          id="mocha-theme"
+                          value="theme-claude"
+                          id="claude-theme"
                           className="peer sr-only"
                         />
                         <Label
-                          htmlFor="mocha-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          htmlFor="claude-theme"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#b28068' }}></div>
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#d9a066' }}></div>
+                          <div className="flex gap-1 mb-0.5">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#e4d4b7' }}></div>
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#c67b5c' }}></div>
                           </div>
-                          <span className="text-xs">Mocha Mousse</span>
+                          <span className="text-xs">Claude</span>
+                        </Label>
+                      </div>
+
+                      <div>
+                        <RadioGroupItem
+                          value="theme-art-deco"
+                          id="art-deco-theme"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="art-deco-theme"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                        >
+                          <div className="flex gap-1 mb-0.5">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#d4af37' }}></div>
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#cc7a00' }}></div>
+                          </div>
+                          <span className="text-xs">Art Deco</span>
                         </Label>
                       </div>
                       <div>
@@ -707,9 +727,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="brutalism-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded" style={{ backgroundColor: '#ff3333', border: '2px solid #000' }}></div>
                             <div className="w-3 h-3 rounded" style={{ backgroundColor: '#ffff00', border: '2px solid #000' }}></div>
                           </div>
@@ -724,9 +744,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="perpetuity-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#17a2b8' }}></div>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#5ddcdc' }}></div>
                           </div>
@@ -741,9 +761,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="retro-arcade-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#e649a7' }}></div>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#43baba' }}></div>
                           </div>
@@ -758,9 +778,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="starry-night-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#4775a3' }}></div>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#e6c962' }}></div>
                           </div>
@@ -775,9 +795,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="ghibli-studio-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#99b576' }}></div>
                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#d4a576' }}></div>
                           </div>
@@ -792,9 +812,9 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                         />
                         <Label
                           htmlFor="valorant-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
+                          <div className="flex gap-1 mb-0.5">
                             <div className="w-3 h-3 rounded" style={{ backgroundColor: '#ff4655', border: '0px' }}></div>
                             <div className="w-3 h-3 rounded" style={{ backgroundColor: '#ffd700', border: '0px' }}></div>
                           </div>
@@ -803,21 +823,39 @@ export function DockNav({ className = "", currentCalendarView = 'multiMonthYear'
                       </div>
                       <div>
                         <RadioGroupItem
-                          value="theme-art-deco"
-                          id="art-deco-theme"
+                          value="theme-t3chat"
+                          id="t3chat-theme"
                           className="peer sr-only"
                         />
                         <Label
-                          htmlFor="art-deco-theme"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          htmlFor="t3chat-theme"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
                         >
-                          <div className="flex gap-1 mb-1">
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#d4af37' }}></div>
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#cc7a00' }}></div>
+                          <div className="flex gap-1 mb-0.5">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#b4539a' }}></div>
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#e9b8d6' }}></div>
                           </div>
-                          <span className="text-xs">Art Deco</span>
+                          <span className="text-xs">T3Chat</span>
                         </Label>
                       </div>
+                      <div>
+                        <RadioGroupItem
+                          value="theme-perplexity"
+                          id="perplexity-theme"
+                          className="peer sr-only"
+                        />
+                        <Label
+                          htmlFor="perplexity-theme"
+                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                        >
+                          <div className="flex gap-1 mb-0.5">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#4fb3c7' }}></div>
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#2ba3c7' }}></div>
+                          </div>
+                          <span className="text-xs">Perplexity</span>
+                        </Label>
+                      </div>
+
                     </RadioGroup>
                   </div>
                 </TabsContent>

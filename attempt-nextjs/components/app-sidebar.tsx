@@ -25,11 +25,13 @@ import { Separator } from "@/components/ui/separator"
 import { PrayerTimesWidget } from "@/components/prayer-times-widget"
 import { HijriDateDisplay } from "@/components/hijri-date-display"
 import { useLanguage } from "@/lib/language-context"
+import { useSettings } from '@/lib/settings-context'
 import { useChatSidebar } from "@/lib/use-chat-sidebar"
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { isRTL } = useLanguage()
+  const { freeRoam } = useSettings()
   const { setOpenMobile, setOpen, open, openMobile } = useSidebar()
   
   // Always start with calendar tab to prevent hydration mismatch
@@ -131,7 +133,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     if (activeTab === 'chat' && isInitialized) {
       // Set the chat sidebar as open
       setOpenState(true)
-      console.log('[AppSidebar] Chat tab activated - opening sidebar')
+      // Chat tab activated - opening sidebar
     } else if (activeTab !== 'chat') {
       // Set as closed when not on chat tab
       setOpenState(false)

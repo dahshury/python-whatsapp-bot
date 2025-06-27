@@ -46,17 +46,17 @@
   transition: all 0.2s ease;
 }
 
-.week-view-container .fc-timegrid-slot-label-frame:hover .fc-timegrid-slot-label-cushion {
+/* .week-view-container .fc-timegrid-slot-label-frame:hover .fc-timegrid-slot-label-cushion {
   background: linear-gradient(
     135deg,
     hsl(var(--muted) / 0.1) 0%,
     hsl(var(--muted) / 0.15) 100%
   );
   transform: translateX(2px);
-}
+} */
 
 /* Hover effect for time slots */
-.week-view-container .fc-timegrid-slot:hover {
+/* .week-view-container .fc-timegrid-slot:hover {
   background: linear-gradient(
     135deg,
     hsl(var(--muted) / 0.1) 0%,
@@ -68,7 +68,7 @@
     0 2px 4px hsl(var(--muted) / 0.1);
   transform: translateY(-1px);
   z-index: var(--z-fc-week);
-}
+} */
 
 /* Enhanced header styling to match multimonth headers exactly */
 .week-view-container .fc-col-header {
@@ -137,26 +137,29 @@
   height: 100% !important;
 }
 
-/* Enhanced hover effect on the full cell - exact match to multimonth */
+/* Enhanced hover effect on the full cell - DISABLED */
 .fc-timeGridWeek .week-view-container .fc-col-header-cell:hover,
 .fc-timeGridWeek-view .week-view-container .fc-col-header-cell:hover,
 .week-view-container .fc-timegrid .fc-col-header-cell:hover,
 .week-view-container .fc-col-header-cell:hover {
+  /* All hover effects disabled for week view */
   background: linear-gradient(
     135deg,
-    hsl(var(--muted) / 0.1) 0%,
-    hsl(var(--muted) / 0.2) 20%,
-    hsl(var(--muted) / 0.35) 40%,
-    hsl(var(--muted) / 0.4) 50%,
-    hsl(var(--muted) / 0.35) 60%,
-    hsl(var(--muted) / 0.2) 80%,
-    hsl(var(--muted) / 0.1) 100%
+    hsl(var(--muted) / 0.05) 0%,
+    hsl(var(--muted) / 0.15) 20%,
+    hsl(var(--muted) / 0.25) 40%,
+    hsl(var(--muted) / 0.3) 50%,
+    hsl(var(--muted) / 0.25) 60%,
+    hsl(var(--muted) / 0.15) 80%,
+    hsl(var(--muted) / 0.05) 100%
   ) !important;
-  color: hsl(var(--foreground));
+  color: hsl(var(--muted-foreground));
   box-shadow: 
-    inset 0 2px 0 hsl(var(--background) / 0.6),
-    inset 0 -2px 0 hsl(var(--muted) / 0.5),
-    0 2px 4px hsl(var(--muted) / 0.15) !important;
+    inset 0 1px 0 hsl(var(--background) / 0.5),
+    inset 0 -1px 0 hsl(var(--muted) / 0.4),
+    0 1px 2px hsl(var(--muted) / 0.1) !important;
+  transform: none !important;
+  cursor: default !important;
 }
 
 /* Dark mode adjustments with richer gradients - exact match to multimonth */
@@ -185,20 +188,23 @@
 .dark .fc-timeGridWeek-view .week-view-container .fc-col-header-cell:hover,
 .dark .week-view-container .fc-timegrid .fc-col-header-cell:hover,
 .dark .week-view-container .fc-col-header-cell:hover {
+  /* All hover effects disabled for week view in dark mode */
   background: linear-gradient(
     135deg,
-    hsl(var(--muted) / 0.2) 0%,
-    hsl(var(--muted) / 0.3) 20%,
-    hsl(var(--muted) / 0.45) 40%,
-    hsl(var(--muted) / 0.5) 50%,
-    hsl(var(--muted) / 0.45) 60%,
-    hsl(var(--muted) / 0.3) 80%,
-    hsl(var(--muted) / 0.2) 100%
+    hsl(var(--muted) / 0.15) 0%,
+    hsl(var(--muted) / 0.25) 20%,
+    hsl(var(--muted) / 0.35) 40%,
+    hsl(var(--muted) / 0.4) 50%,
+    hsl(var(--muted) / 0.35) 60%,
+    hsl(var(--muted) / 0.25) 80%,
+    hsl(var(--muted) / 0.15) 100%
   ) !important;
   box-shadow: 
-    inset 0 2px 0 rgba(255, 255, 255, 0.08),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
-    0 2px 5px rgba(0, 0, 0, 0.3) !important;
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  transform: none !important;
+  cursor: default !important;
 }
 
 /* Enhanced time axis styling (time bar on the left) */

@@ -1,18 +1,16 @@
 /* Weekday Headers Feature - Enhanced gradients for all calendar views */
 
-/* Base gradient for weekday headers in daygrid views */
+/* Base styling for weekday headers in daygrid views - background defined in _daygrid.css */
 .fc-daygrid .fc-col-header-cell {
   position: relative;
-  padding: 0.5em 0.75em;
+  /* padding removed - defined in _daygrid.css for height control */
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-size: 0.85em;
-  /* Professional solid background instead of gradient */
-  background: hsl(var(--accent) / 0.1) !important;
-  /* Clean border */
-  border-bottom: 2px solid hsl(var(--accent) / 0.3) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  /* background removed - defined in _daygrid.css with beautiful gradients */
+  /* border removed - defined in _daygrid.css */
+  /* box-shadow removed - defined in _daygrid.css */
   /* Smooth transitions */
   transition: all 0.2s ease;
   color: hsl(var(--foreground)) !important;
@@ -29,12 +27,11 @@
   font-size: inherit !important;
 }
 
-/* Enhanced hover effects for daygrid headers */
+/* Hover effects for daygrid headers - DISABLED */
 .fc-daygrid .fc-col-header-cell:hover {
-  background: hsl(var(--accent) / 0.15) !important;
-  border-bottom-color: hsl(var(--accent) / 0.5) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-  transform: translateY(-1px) !important;
+  /* All hover effects disabled for daygrid */
+  transform: none !important;
+  cursor: default !important;
 }
 
 /* Timegrid specific gradient adjustments */
@@ -71,18 +68,17 @@
   transform: translateY(-1px) !important;
 }
 
-/* Dark mode adjustments with richer gradients */
+/* Dark mode adjustments - background defined in _daygrid.css */
 .dark .fc-daygrid .fc-col-header-cell {
-  background: hsl(var(--accent) / 0.15) !important;
-  border-bottom-color: hsl(var(--accent) / 0.4) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+  /* background removed - defined in _daygrid.css with beautiful gradients */
+  /* border removed - defined in _daygrid.css */
+  /* box-shadow removed - defined in _daygrid.css */
 }
 
 .dark .fc-daygrid .fc-col-header-cell:hover {
-  background: hsl(var(--accent) / 0.2) !important;
-  border-bottom-color: hsl(var(--accent) / 0.5) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
-  transform: translateY(-1px) !important;
+  /* All hover effects disabled for daygrid in dark mode */
+  transform: none !important;
+  cursor: default !important;
 }
 
 /* Timegrid dark mode gradient */

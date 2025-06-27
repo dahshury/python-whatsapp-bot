@@ -58,9 +58,37 @@
   cursor: pointer;
 }
 
-.fc a[data-navlink]:hover {
-  text-decoration: underline;
-}
+  .fc a[data-navlink]:hover {
+    text-decoration: underline;
+  }
+
+  /* OVERRIDE: Disable all event and slot hover effects */
+  .fc-event:hover,
+  .fc-timegrid-event:hover,
+  .fc-daygrid-event:hover,
+  .fc-list-event:hover,
+  .fc-timegrid-slot:hover,
+  .fc-timegrid-slots td:hover,
+  .fc-timegrid-col:hover .fc-timegrid-slot,
+  .fc-event:hover * {
+    background-color: inherit !important;
+    border-color: inherit !important;
+    box-shadow: inherit !important;
+    transform: none !important;
+    filter: none !important;
+    opacity: inherit !important;
+    transition: none !important;
+    z-index: inherit !important;
+    cursor: default !important;
+  }
+
+  /* ENSURE: Time slots in disabled days remain clickable for calendar navigation */
+  .fc-timegrid-col.fc-day-disabled .fc-timegrid-slot,
+  .fc-timegrid-col.fc-day-disabled .fc-timegrid-slot-lane,
+  .fc-timegrid-col.fc-day-disabled {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
 
 /* Direction */
 .fc-direction-ltr {
@@ -124,7 +152,7 @@
 
 a.fc-col-header-cell-cushion {
   font-size: .85em;
-  line-height: 2.2rem;
+  line-height: 1.6rem;
 }
 
 /* Day cells */

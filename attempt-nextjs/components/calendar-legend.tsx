@@ -36,12 +36,6 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
       color: 'var(--fc-conversation-bg)', // Orange/Yellow - Conversation
       label: isRTL ? 'محادثة' : 'Conversation',
       showAlways: false // Only show in free roam
-    },
-    {
-      key: 'cancelled',
-      color: 'var(--fc-reservation-cancelled-bg)', // Gray - Cancelled
-      label: isRTL ? 'ملغي' : 'Cancelled',
-      showAlways: false // Only show in free roam
     }
   ]
 

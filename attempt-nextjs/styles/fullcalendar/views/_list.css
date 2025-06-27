@@ -128,9 +128,9 @@
 }
 
 /* Underline link when hovering over any part of row */
-.fc-list-event.fc-event-forced-url:hover a {
+/* .fc-list-event.fc-event-forced-url:hover a {
   text-decoration: underline;
-}
+} */
 
 /* Empty list message */
 .fc-list-empty {

@@ -49,11 +49,18 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
   // After conversationOptions memo
   const conversationOptions = React.useMemo(() => {
     return Object.keys(conversations).map(waId => {
-      // Try to get customer name from active reservations
+      // Try to get customer name from any reservation (always check all since we fetch all data)
       let customerName = null
       const customerReservations = reservations[waId]
-      if (customerReservations?.[0]?.customer_name) {
-        customerName = customerReservations[0].customer_name
+      
+      if (customerReservations && customerReservations.length > 0) {
+        // Check ALL reservations to find any customer name
+        for (const reservation of customerReservations) {
+          if (reservation.customer_name) {
+            customerName = reservation.customer_name
+            break
+          }
+        }
       }
       
       const messageCount = conversations[waId]?.length || 0
@@ -316,7 +323,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
             <HoverCardContent 
               ref={hoverCardRef}
               className="w-[300px] p-0 z-50" 
-              align="start"
+              align="center"
               sideOffset={5}
               onMouseEnter={() => {
                 // Clear any close timer when entering hover card

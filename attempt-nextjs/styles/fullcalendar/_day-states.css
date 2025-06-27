@@ -129,7 +129,7 @@
 }
 
 /* Add hover effect via pseudo-element to not interfere with events */
-.fc-timegrid td.fc-timegrid-col:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover::after {
+/* .fc-timegrid td.fc-timegrid-col:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover::after {
   content: '';
   position: absolute;
   top: 0;
@@ -139,13 +139,13 @@
   background-color: hsl(var(--accent) / 0.08);
   pointer-events: none;
   z-index: var(--z-background);
-}
+} */
 
 /* Timegrid slot hover - for individual time slots in the background */
-.fc-timegrid-slots td:not(.fc-timegrid-axis):hover {
+/* .fc-timegrid-slots td:not(.fc-timegrid-axis):hover {
   background-color: hsl(var(--accent) / 0.05) !important;
   cursor: pointer;
-}
+} */
 
 /* =================================
    SELECTED STATE
@@ -214,14 +214,14 @@
 }
 
 /* Dark mode timegrid hover */
-.dark .fc-timegrid td.fc-timegrid-col:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover::after {
+/* .dark .fc-timegrid td.fc-timegrid-col:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover::after {
   background-color: hsl(var(--accent) / 0.12);
-}
+} */
 
-.dark .fc-timegrid-slots td:not(.fc-timegrid-axis):hover {
+/* .dark .fc-timegrid-slots td:not(.fc-timegrid-axis):hover {
   background-color: hsl(var(--accent) / 0.08) !important;
   cursor: pointer;
-}
+} */
 
 /* =================================
    VACATION DAYS & PERIODS
@@ -316,10 +316,10 @@
   position: relative !important;
 }
 
-/* Prevent interaction with vacation day slots in timegrid */
-.fc-timegrid-col.vacation-day .fc-timegrid-slot-lane {
+/* Prevent interaction with vacation day slots in timegrid - but allow clicks for navigation */
+/* .fc-timegrid-col.vacation-day .fc-timegrid-slot-lane {
   pointer-events: none !important;
-}
+} */
 
 .fc-timegrid-col.vacation-day::before {
   content: '';

@@ -91,14 +91,14 @@
 
 /* Removed the ::before pseudo-element that was creating gradient stripes */
 
-/* Month title styling */
+/* Month title styling - background defined in _headers.css */
 .fc-multimonth-title {
   padding: 0.1em;
   text-align: center;
   font-weight: 700;
   font-size: 1.235em !important;
   line-height: 0.3;
-  background: hsl(var(--card));
+  /* background removed - defined in _headers.css with gradient */
   border-bottom: 1px solid hsl(var(--border) / 0.2);
   border-radius: var(--radius) var(--radius) 0 0;
   border: none;
@@ -115,9 +115,9 @@
   will-change: transform, background-color, border-color;
 }
 
-/* Month title hover */
+/* Month title hover - background handled in _headers.css */
 .fc-multimonth-title:hover {
-  background: hsl(var(--card));
+  /* background removed - handled in _headers.css */
   border-bottom-color: hsl(var(--border) / 0.3);
   box-shadow: none;
   transform: translate3d(0, -1px, 0);

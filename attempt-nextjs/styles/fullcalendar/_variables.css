@@ -25,7 +25,7 @@
   --fc-event-selected-overlay-color: rgba(0, 0, 0, 0.25);
 
   /* Event state colors */
-  --fc-event-hover-bg-color: hsl(var(--accent) / 0.1);
+  /* --fc-event-hover-bg-color: hsl(var(--accent) / 0.1); */
   --fc-event-past-opacity: 0.6;
   --fc-event-past-bg-color: hsl(var(--muted));
   --fc-event-past-text-color: hsl(var(--muted-foreground));

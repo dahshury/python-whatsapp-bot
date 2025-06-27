@@ -4,7 +4,7 @@
 .dark {
   --fc-page-bg-color: hsl(var(--background));
   --fc-event-selected-overlay-color: rgba(255, 255, 255, 0.15);
-  --fc-event-hover-bg-color: hsl(var(--accent) / 0.2);
+  /* --fc-event-hover-bg-color: hsl(var(--accent) / 0.2); */
   --fc-event-past-opacity: 0.5;
   --fc-event-disabled-opacity: 0.6;
 }

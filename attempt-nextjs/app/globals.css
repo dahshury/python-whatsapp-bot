@@ -12,13 +12,15 @@
 /* Theme definitions */
 @import "../styles/themes/themes.css";
 @import "../styles/themes/theme-default.css";
-@import "../styles/themes/theme-mocha-mousse.css";
+@import "../styles/themes/theme-claude.css";
 @import "../styles/themes/theme-neo-brutalism.css";
 @import "../styles/themes/theme-perpetuity.css";
 @import "../styles/themes/theme-retro-arcade.css";
 @import "../styles/themes/theme-starry-night.css";
 @import "../styles/themes/theme-ghibli-studio.css";
 @import "../styles/themes/theme-valorant.css";
+@import "../styles/themes/theme-t3chat.css";
+@import "../styles/themes/theme-perplexity.css";
 @import "../styles/themes/theme-art-deco.css";
 
 /* Utility classes */

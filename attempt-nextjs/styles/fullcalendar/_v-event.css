@@ -11,12 +11,14 @@
 .fc-v-event .fc-event-main {
   color: var(--fc-event-text-color);
   height: 100%;
+  background: transparent !important;
 }
 
 .fc-v-event .fc-event-main-frame {
   height: 100%;
   display: flex;
   flex-direction: column;
+  background: transparent !important;
 }
 
 .fc-v-event .fc-event-time {
@@ -24,12 +26,14 @@
   flex-shrink: 0;
   max-height: 100%;
   overflow: hidden;
+  background: transparent !important;
 }
 
 .fc-v-event .fc-event-title-container { /* a container for the sticky cushion */
   flex-grow: 1;
   flex-shrink: 1;
   min-height: 0; /* important for allowing to shrink all the way */
+  background: transparent !important;
 }
 
 .fc-v-event .fc-event-title { /* will have fc-sticky on it */
@@ -37,6 +41,7 @@
   bottom: 0;
   max-height: 100%; /* clip overflow */
   overflow: hidden;
+  background: transparent !important;
 }
 
 /* Multi-day event styling */

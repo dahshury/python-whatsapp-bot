@@ -140,15 +140,18 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         const isPastEvent = eventStartDate < today;
         const isReservation = event.extendedProps?.type !== 2;
         
-        // Allow dragging for future reservations (both in free roam and normal mode)
+        // In free roam mode: allow dragging for future reservations only
+        // In normal mode: allow dragging for future reservations only
         const allowDrag = !isPastEvent && isReservation;
         
         return {
           ...event,
-          // Allow drag/drop for future reservations in multiMonth
+          // Allow drag/drop for future reservations only
           editable: event.editable !== false ? allowDrag : false,
           eventStartEditable: event.editable !== false ? allowDrag : false,
           eventDurationEditable: false, // Keep duration editing disabled
+          // In free roam mode, past events should remain clickable (don't set to false)
+          // FullCalendar will still allow clicks even if editable is false
           // Simplify extended props
           extendedProps: {
             type: event.extendedProps?.type || 0,
@@ -200,15 +203,18 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     multiMonthYear: {
       validRange: undefined,
       displayEventTime: false as const,
-      dayMaxEventRows: 3,
+      dayMaxEvents: true,
+      dayMaxEventRows: true,
       moreLinkClick: 'popover' as const
     },
     dayGridMonth: {
-      dayMaxEventRows: 3,
+      dayMaxEvents: true,
+      dayMaxEventRows: true,
       moreLinkClick: 'popover' as const
     },
     dayGridWeek: {
-      dayMaxEventRows: 3,
+      dayMaxEvents: true,
+      dayMaxEventRows: true,
       moreLinkClick: 'popover' as const
     }
   }), []);
@@ -471,7 +477,8 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         multiMonthMinWidth={280}
         fixedWeekCount={false}
         showNonCurrentDates={false}
-        dayMaxEventRows={3}
+        dayMaxEvents={true}
+        dayMaxEventRows={true}
         moreLinkClick="popover"
         eventDisplay="block"
         displayEventTime={currentView !== 'multiMonthYear'}

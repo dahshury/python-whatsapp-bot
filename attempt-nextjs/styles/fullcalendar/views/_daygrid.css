@@ -103,82 +103,7 @@
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-/* Block event - the space between the block and the top of the day cell */
-.fc-daygrid-event {
-  position: relative; /* for abspos resizer */
-  white-space: nowrap;
-  border-radius: 3px;
-  font-size: var(--fc-small-font-size);
-}
 
-/* Make sure the events and their elements maintain theme colors */
-.fc-daygrid-event .fc-event-main {
-  padding: 1px 3px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-height: 16px; /* Ensure minimum height for events */
-}
-
-.fc-daygrid-event .fc-event-title {
-  font-size: 0.75rem;
-  font-weight: 500;
-  line-height: 1.2;
-  color: white;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.fc-daygrid-event .fc-event-time {
-  font-size: 0.65rem;
-  line-height: 1.1;
-  opacity: 0.9;
-  color: white;
-  white-space: nowrap;
-  margin-right: 4px;
-}
-
-/* Ensure proper resizer visibility and interaction */
-.fc-daygrid-event .fc-event-resizer {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  overflow: hidden;
-  z-index: var(--z-calendar-week-number);
-  cursor: ew-resize;
-  display: none;
-}
-
-.fc-daygrid-event:hover .fc-event-resizer {
-  display: block;
-}
-
-.fc-daygrid-event .fc-event-resizer:before {
-  content: "";
-  position: absolute;
-  z-index: var(--z-base);
-  top: 50%;
-  transform: translateY(-50%);
-  width: 5px;
-  height: 80%;
-  max-height: 100%;
-}
-
-.fc-direction-ltr .fc-daygrid-event .fc-event-resizer:before {
-  right: -2px;
-}
-
-.fc-direction-rtl .fc-daygrid-event .fc-event-resizer:before {
-  left: -2px;
-}
 
 /* Ensure proper layering for mirror events */
 .fc-daygrid-event.fc-event-mirror {
@@ -327,4 +252,57 @@
 
 .fc-direction-rtl .fc-daygrid-event .fc-event-time {
   margin-left: 3px;
-} 
+}
+
+/* ========================================
+ * DAYGRID COLUMN HEADER GRADIENTS
+ * Beautiful gradients for weekday headers exclusively in daygrid view
+ * ======================================== */
+
+/* Light mode gradient for daygrid column headers */
+.fc-daygrid .fc-col-header-cell,
+.fc-daygrid th.fc-col-header-cell {
+
+  border-bottom: 2px solid hsl(var(--accent) / 0.3) !important;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 1px 3px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 hsl(var(--background) / 0.6),
+    inset 0 -1px 0 hsl(var(--accent) / 0.2) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+  /* Set height to 1.6 for daygrid */
+  padding: 0.3em 0.75em !important;
+  height: 1.6em !important;
+  min-height: 1.6em !important;
+  line-height: 1.1 !important;
+  /* Increase size to 1.6 */
+  font-size: 1em !important;
+}
+
+/* Ensure cushion doesn't override height */
+.fc-daygrid .fc-col-header-cell-cushion,
+.fc-daygrid .fc-col-header-cell a.fc-col-header-cell-cushion {
+  line-height: 1.1 !important;
+  padding: 0 !important;
+  height: auto !important;
+  font-size: inherit !important;
+}
+
+/* Dark mode gradient for daygrid column headers */
+.dark .fc-daygrid .fc-col-header-cell {
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--card)) 0%,
+    hsl(var(--accent) / 0.3) 25%,
+    hsl(var(--accent) / 0.25) 50%,
+    hsl(var(--accent) / 0.2) 75%,
+    hsl(var(--accent) / 0.15) 100%
+  ) !important;
+  border-bottom-color: hsl(var(--accent) / 0.4) !important;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.2),
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}

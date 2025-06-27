@@ -157,7 +157,7 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
    * Initial data loading
    */
   useEffect(() => {
-    console.log('[useCalendarEvents] Initial data loading triggered')
+
     fetchEvents()
   }, [fetchEvents])
 

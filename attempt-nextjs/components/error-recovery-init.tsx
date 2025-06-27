@@ -7,7 +7,7 @@ export function ErrorRecoveryInit() {
   useEffect(() => {
     // Additional client-side initialization if needed
     if (process.env.NODE_ENV === 'development') {
-      console.info('🛡️ Error recovery system initialized')
+      // Error recovery system initialized
       
       // Add global keyboard shortcut for manual recovery (Ctrl+Shift+R)
       const handleKeydown = (event: KeyboardEvent) => {

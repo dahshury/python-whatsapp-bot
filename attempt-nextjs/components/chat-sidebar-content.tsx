@@ -147,7 +147,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   const previousConversationIdRef = useRef<string | null>(null)
 
   // Log the data state
-  console.log('[ChatSidebarContent] Conversations:', Object.keys(conversations).length, 'Reservations:', Object.keys(reservations).length)
+      // Debug: Conversations and reservations loaded
 
   const currentConversation = selectedConversationId ? conversations[selectedConversationId] || [] : []
 
