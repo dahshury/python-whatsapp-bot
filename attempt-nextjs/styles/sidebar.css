@@ -200,4 +200,104 @@
 
 [dir="rtl"] [data-state="open"] .sidebar-chevron {
   transform: rotate(270deg);
+}
+
+/* Sidebar-specific styles */
+
+/* Sidebar trigger transitions */
+.sidebar-trigger-fade {
+  transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+}
+
+/* Ensure smooth sidebar transitions */
+[data-sidebar] {
+  transition: width 200ms ease-in-out, transform 200ms ease-in-out;
+}
+
+/* Mobile sidebar backdrop */
+@media (max-width: 768px) {
+  [data-sidebar-mobile-backdrop] {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-sidebar);
+    background-color: rgba(0, 0, 0, 0.5);
+    transition: opacity 200ms ease-in-out;
+  }
+  
+  [data-sidebar-mobile-backdrop][data-state="closed"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  
+  [data-sidebar-mobile-backdrop][data-state="open"] {
+    opacity: 1;
+  }
+}
+
+/* Sidebar content animations */
+[data-sidebar="sidebar"][data-state="open"] {
+  animation: sidebar-slide-in 200ms ease-out;
+}
+
+[data-sidebar="sidebar"][data-state="closed"] {
+  animation: sidebar-slide-out 200ms ease-in;
+}
+
+@keyframes sidebar-slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sidebar-slide-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* RTL support */
+[dir="rtl"] [data-sidebar="sidebar"][data-state="open"] {
+  animation: sidebar-slide-in-rtl 200ms ease-out;
+}
+
+[dir="rtl"] [data-sidebar="sidebar"][data-state="closed"] {
+  animation: sidebar-slide-out-rtl 200ms ease-in;
+}
+
+@keyframes sidebar-slide-in-rtl {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sidebar-slide-out-rtl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* Chat sidebar specific styles - Enhanced styling */
+
+/* Sidebar navigation list - reduce padding */
+.sidebar-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px; /* Minimal gap between items */
+  z-index: var(--z-sidebar) !important;
 } 

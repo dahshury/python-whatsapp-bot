@@ -6,8 +6,22 @@
 /* Font Awesome CSS for icons used by Tempus Dominus */
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
-/* Theme integration for Tempus Dominus */
-@import "./tempus-dominus.css"; 
+/* Global Styles Imports */
 
-/* Themed Scrollbar Styles */
-@import "./themed-scrollbar.css"; 
+/* Core styles */
+@import 'base.css';
+@import 'fonts.css';
+@import 'utilities.css';
+/* Z-index variables now imported from glide_custom_cells component */
+@import '../components/glide_custom_cells/styles/_z-index.css';
+
+/* Component styles */
+@import 'component-overrides.css';
+@import 'markdown.css';
+@import 'sidebar.css';
+@import 'portal.css';
+@import 'phone-input.css';
+@import 'sonner.css';
+@import 'table-skeleton.css';
+@import 'tempus-dominus.css';
+@import 'themed-scrollbar.css'; 

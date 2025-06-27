@@ -50,8 +50,7 @@
   --fc-conversation-border: #EDAE49;
 
   /* More link colors */
-  --fc-more-link-bg-color: hsl(var(--muted));
-  --fc-more-link-text-color: hsl(var(--muted-foreground));
+  /* More link colors moved to _popover-unified.css */
 
   /* Event resizer */
   --fc-event-resizer-thickness: 8px;

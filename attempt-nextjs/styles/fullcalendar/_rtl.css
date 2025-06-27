@@ -59,13 +59,7 @@
   margin-right: 2px;
 }
 
-.fc-direction-ltr .fc-daygrid-more-link {
-  float: left;
-}
-
-.fc-direction-rtl .fc-daygrid-more-link {
-  float: right;
-}
+/* More link direction styles moved to _popover-unified.css */
 
 .fc-direction-ltr .fc-daygrid-week-number {
   left: 0;

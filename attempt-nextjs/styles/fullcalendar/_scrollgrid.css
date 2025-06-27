@@ -62,7 +62,7 @@
 .fc-scrollgrid-section-sticky > * {
   background: var(--fc-page-bg-color);
   position: sticky;
-  z-index: 3;
+  z-index: var(--z-fc-scrollgrid);
 }
 
 .fc-scrollgrid-section-header.fc-scrollgrid-section-sticky > * {

@@ -8,7 +8,7 @@
 
 "use client"
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { useLanguage } from '@/lib/language-context'
 import { useVacation } from '@/lib/vacation-context'
 import { useSidebar } from '@/components/ui/sidebar'
@@ -39,20 +39,56 @@ interface DualCalendarComponentProps {
   freeRoam?: boolean
   initialView?: string
   initialDate?: string
+  initialLeftView?: string
+  initialRightView?: string
+  onViewChange?: (view: string) => void
+  onLeftViewChange?: (view: string) => void
+  onRightViewChange?: (view: string) => void
 }
 
-export function DualCalendarComponent({ 
+export const DualCalendarComponent = React.forwardRef<
+  { leftCalendarRef: React.RefObject<CalendarCoreRef>, rightCalendarRef: React.RefObject<CalendarCoreRef>, leftView: string, rightView: string },
+  DualCalendarComponentProps
+>(({ 
   freeRoam = false, 
   initialView = 'multiMonthYear',
-  initialDate
-}: DualCalendarComponentProps) {
+  initialDate,
+  initialLeftView,
+  initialRightView,
+  onViewChange,
+  onLeftViewChange,
+  onRightViewChange
+}, ref) => {
   const { isRTL } = useLanguage()
   const { handleDateClick: handleVacationDateClick, recordingState, setOnVacationUpdated, vacationPeriods } = useVacation()
-  const { state: sidebarState } = useSidebar()
+  const { state: sidebarState, open: sidebarOpen } = useSidebar()
 
   // Refs for both calendars
   const leftCalendarRef = useRef<CalendarCoreRef>(null)
   const rightCalendarRef = useRef<CalendarCoreRef>(null)
+
+  // Calendar state management for both calendars
+  // For dual calendars, we use the specific initial views passed in
+  // and don't rely on the shared localStorage 'calendar-view' key
+  const leftCalendarState = useCalendarState({
+    freeRoam,
+    initialView: initialLeftView || 'multiMonthYear',
+    initialDate,
+  })
+
+  const rightCalendarState = useCalendarState({
+    freeRoam,
+    initialView: initialRightView || 'multiMonthYear',
+    initialDate,
+  })
+
+  // Expose refs to parent - must be after state declaration but before any conditional returns
+  React.useImperativeHandle(ref, () => ({
+    leftCalendarRef,
+    rightCalendarRef,
+    leftView: leftCalendarState.currentView,
+    rightView: rightCalendarState.currentView
+  }), [leftCalendarState.currentView, rightCalendarState.currentView])
 
   // Calendar events management
   const { 
@@ -65,19 +101,6 @@ export function DualCalendarComponent({
     freeRoam,
     isRTL,
     autoRefresh: false
-  })
-
-  // Calendar state management for both calendars
-  const leftCalendarState = useCalendarState({
-    freeRoam,
-    initialView,
-    initialDate
-  })
-
-  const rightCalendarState = useCalendarState({
-    freeRoam,
-    initialView,
-    initialDate
   })
 
   // Process events to mark past reservations as non-editable in free roam mode
@@ -126,42 +149,71 @@ export function DualCalendarComponent({
     };
   }, [vacationPeriods]);
 
-  // Calculate calendar height based on viewport and view
-  const calculateHeight = useCallback((leftView?: string, rightView?: string) => {
-    const checkView = leftView || leftCalendarState.currentView
-    const checkRightView = rightView || rightCalendarState.currentView
+  // Calculate calendar height based on viewport for each calendar individually
+  const calculateLeftHeight = useCallback(() => {
+    const viewportHeight = window.innerHeight;
+    const headerHeight = 64; // Header with sidebar trigger and dock nav
+    const containerPadding = 8; // p-1 on both top and bottom (4px * 2)
+    const footerSpace = 4; // Minimal buffer
     
-    if (checkView?.includes('timeGrid') || checkRightView?.includes('timeGrid')) {
-      const viewportHeight = window.innerHeight;
-      const containerTop = 200; // Approximate header height
-      const footerSpace = 40;
-      const availableHeight = viewportHeight - containerTop - footerSpace;
-      return Math.max(availableHeight, 600);
-    } else if (checkView === 'listMonth' || checkRightView === 'listMonth') {
-      // List view needs a specific height to enable scrolling
-      const viewportHeight = window.innerHeight;
-      const containerTop = 200; // Approximate header height
-      const footerSpace = 40;
-      const availableHeight = viewportHeight - containerTop - footerSpace;
-      return Math.max(availableHeight, 400);
-    } else {
+    const availableHeight = viewportHeight - headerHeight - containerPadding - footerSpace;
+    
+    // For list view and multiMonth view, use auto to let content determine height
+    if (leftCalendarState.currentView === 'listMonth' || leftCalendarState.currentView === 'multiMonthYear') {
       return 'auto';
     }
-  }, [leftCalendarState.currentView, rightCalendarState.currentView]);
+    
+    // For all other views, use calculated height
+    return Math.max(availableHeight, 600);
+  }, [leftCalendarState.currentView]);
 
-  // Set initial height and update on resize
-  const [calendarHeight, setCalendarHeight] = useState<number | 'auto'>(800)
+  const calculateRightHeight = useCallback(() => {
+    const viewportHeight = window.innerHeight;
+    const headerHeight = 64; // Header with sidebar trigger and dock nav
+    const containerPadding = 8; // p-1 on both top and bottom (4px * 2)
+    const footerSpace = 4; // Minimal buffer
+    
+    const availableHeight = viewportHeight - headerHeight - containerPadding - footerSpace;
+    
+    // For list view and multiMonth view, use auto to let content determine height
+    if (rightCalendarState.currentView === 'listMonth' || rightCalendarState.currentView === 'multiMonthYear') {
+      return 'auto';
+    }
+    
+    // For all other views, use calculated height
+    return Math.max(availableHeight, 600);
+  }, [rightCalendarState.currentView]);
+
+  // Set initial heights and update on resize
+  const [leftCalendarHeight, setLeftCalendarHeight] = useState<number | 'auto'>(800)
+  const [rightCalendarHeight, setRightCalendarHeight] = useState<number | 'auto'>(800)
 
   useEffect(() => {
-    setCalendarHeight(calculateHeight());
+    setLeftCalendarHeight(calculateLeftHeight());
+    setRightCalendarHeight(calculateRightHeight());
     
     const handleResize = () => {
-      setCalendarHeight(calculateHeight());
+      setLeftCalendarHeight(calculateLeftHeight());
+      setRightCalendarHeight(calculateRightHeight());
     };
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [calculateHeight]);
+  }, [calculateLeftHeight, calculateRightHeight]);
+
+  // Update calendar size when sidebar state changes
+  useEffect(() => {
+    // Small delay to allow CSS transition to start
+    const timer = setTimeout(() => {
+      setLeftCalendarHeight(calculateLeftHeight());
+      setRightCalendarHeight(calculateRightHeight());
+      // Update both calendars
+      leftCalendarRef.current?.updateSize();
+      rightCalendarRef.current?.updateSize();
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [sidebarOpen, calculateLeftHeight, calculateRightHeight]);
 
   // Wrapper for refreshData that shows blur animation
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -378,97 +430,87 @@ export function DualCalendarComponent({
 
   return (
     <ErrorBoundary fallback={CalendarErrorFallback}>
-      <div className="flex flex-col gap-4 h-full">
-        <div className={`grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 ${isRefreshing ? 'opacity-75 pointer-events-none' : ''}`}>
-        {/* Left Calendar - All Events */}
-        <div className="flex flex-col">
-          <div className="mb-2 text-center">
-            <h3 className="text-lg font-semibold text-foreground">
-              {isRTL ? "التقويم الأيسر" : "Left Calendar"}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {isRTL ? "اسحب الأحداث بين التقويمين" : "Drag events between calendars"}
-            </p>
-          </div>
-          <div className="flex-1 border rounded-lg p-2">
-            <CalendarCore
-              ref={leftCalendarRef}
-              events={processedLeftEvents}
-              currentView={leftCalendarState.currentView}
-              currentDate={leftCalendarState.currentDate}
-              isRTL={isRTL}
-              freeRoam={freeRoam}
-              slotTimes={leftCalendarState.slotTimes}
-              slotTimesKey={leftCalendarState.slotTimesKey}
-              calendarHeight={calendarHeight}
-              isVacationDate={isVacationDate}
-              droppable={true}
-              onDateClick={leftCallbacks.dateClick}
-              onSelect={leftCallbacks.select}
-              onEventClick={leftCallbacks.eventClick}
-              onEventChange={handleEventChange}
-              onEventReceive={handleEventChange} // Use the same handler for cross-calendar drops
-              onViewDidMount={(info) => {
-                if (leftCalendarState.isHydrated) {
-                  // Immediately set the height for the new view to prevent flicker
-                  const newHeight = calculateHeight(info.view.type, rightCalendarState.currentView);
-                  setCalendarHeight(newHeight);
-                  leftCalendarState.setCurrentView(info.view.type);
-                }
-              }}
-              onDatesSet={(info) => {
-                if (leftCalendarState.isHydrated) leftCalendarState.setCurrentView(info.view.type);
-              }}
-              onUpdateSize={handleLeftUpdateSize}
-            />
-          </div>
+      <div className={`flex h-full gap-4 ${isRefreshing ? 'opacity-75 pointer-events-none' : ''}`}>
+        {/* Left Calendar */}
+        <div className="flex-1 border rounded-lg p-2 overflow-hidden">
+          <CalendarCore
+            ref={leftCalendarRef}
+            events={processedLeftEvents}
+            currentView={leftCalendarState.currentView}
+            currentDate={leftCalendarState.currentDate}
+            isRTL={isRTL}
+            freeRoam={freeRoam}
+            slotTimes={leftCalendarState.slotTimes}
+            slotTimesKey={leftCalendarState.slotTimesKey}
+            calendarHeight={leftCalendarHeight}
+            isVacationDate={isVacationDate}
+            droppable={true}
+            onDateClick={leftCallbacks.dateClick}
+            onSelect={leftCallbacks.select}
+            onEventClick={leftCallbacks.eventClick}
+            onEventChange={handleEventChange}
+            onEventReceive={handleEventChange}
+            onViewChange={onLeftViewChange}
+            onViewDidMount={(info) => {
+              if (leftCalendarState.isHydrated) {
+                const newHeight = calculateLeftHeight();
+                setLeftCalendarHeight(newHeight);
+                leftCalendarState.setCurrentView(info.view.type);
+                onLeftViewChange?.(info.view.type);
+              }
+            }}
+            onDatesSet={(info) => {
+              if (leftCalendarState.isHydrated) {
+                leftCalendarState.setCurrentView(info.view.type);
+                onLeftViewChange?.(info.view.type);
+              }
+            }}
+            onUpdateSize={handleLeftUpdateSize}
+            onNavDate={leftCalendarState.setCurrentDate}
+          />
         </div>
 
-        {/* Right Calendar - All Events */}
-        <div className="flex flex-col">
-          <div className="mb-2 text-center">
-            <h3 className="text-lg font-semibold text-foreground">
-              {isRTL ? "التقويم الأيمن" : "Right Calendar"}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {isRTL ? "اسحب الأحداث بين التقويمين" : "Drag events between calendars"}
-            </p>
-          </div>
-          <div className="flex-1 border rounded-lg p-2">
-            <CalendarCore
-              ref={rightCalendarRef}
-              events={processedRightEvents}
-              currentView={rightCalendarState.currentView}
-              currentDate={rightCalendarState.currentDate}
-              isRTL={isRTL}
-              freeRoam={freeRoam}
-              slotTimes={rightCalendarState.slotTimes}
-              slotTimesKey={rightCalendarState.slotTimesKey}
-              calendarHeight={calendarHeight}
-              isVacationDate={isVacationDate}
-              droppable={true}
-              onDateClick={rightCallbacks.dateClick}
-              onSelect={rightCallbacks.select}
-              onEventClick={rightCallbacks.eventClick}
-              onEventChange={handleEventChange}
-              onEventReceive={handleEventChange} // Use the same handler for cross-calendar drops
-              onViewDidMount={(info) => {
-                if (rightCalendarState.isHydrated) {
-                  // Immediately set the height for the new view to prevent flicker
-                  const newHeight = calculateHeight(leftCalendarState.currentView, info.view.type);
-                  setCalendarHeight(newHeight);
-                  rightCalendarState.setCurrentView(info.view.type);
-                }
-              }}
-              onDatesSet={(info) => {
-                if (rightCalendarState.isHydrated) rightCalendarState.setCurrentView(info.view.type);
-              }}
-              onUpdateSize={handleRightUpdateSize}
-            />
-          </div>
-        </div>
+        {/* Right Calendar */}
+        <div className="flex-1 border rounded-lg p-2 overflow-hidden">
+          <CalendarCore
+            ref={rightCalendarRef}
+            events={processedRightEvents}
+            currentView={rightCalendarState.currentView}
+            currentDate={rightCalendarState.currentDate}
+            isRTL={isRTL}
+            freeRoam={freeRoam}
+            slotTimes={rightCalendarState.slotTimes}
+            slotTimesKey={rightCalendarState.slotTimesKey}
+            calendarHeight={rightCalendarHeight}
+            isVacationDate={isVacationDate}
+            droppable={true}
+            onDateClick={rightCallbacks.dateClick}
+            onSelect={rightCallbacks.select}
+            onEventClick={rightCallbacks.eventClick}
+            onEventChange={handleEventChange}
+            onEventReceive={handleEventChange}
+            onViewChange={onRightViewChange}
+            onViewDidMount={(info) => {
+              if (rightCalendarState.isHydrated) {
+                const newHeight = calculateRightHeight();
+                setRightCalendarHeight(newHeight);
+                rightCalendarState.setCurrentView(info.view.type);
+                onRightViewChange?.(info.view.type);
+              }
+            }}
+            onDatesSet={(info) => {
+              if (rightCalendarState.isHydrated) {
+                rightCalendarState.setCurrentView(info.view.type);
+                onRightViewChange?.(info.view.type);
+              }
+            }}
+            onUpdateSize={handleRightUpdateSize}
+            onNavDate={rightCalendarState.setCurrentDate}
+          />
         </div>
       </div>
     </ErrorBoundary>
   )
-} 
+})
+
+DualCalendarComponent.displayName = 'DualCalendarComponent' 

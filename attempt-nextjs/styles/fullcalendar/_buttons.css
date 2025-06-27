@@ -44,21 +44,23 @@
 
 /* Primary button coloring */
 .fc-button-primary {
-  color: var(--fc-button-text-color);
-  background-color: var(--fc-button-bg-color);
-  border-color: var(--fc-button-border-color);
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: var(--radius);
 }
 
 .fc-button-primary:hover {
-  color: var(--fc-button-text-color);
-  background-color: var(--fc-button-hover-bg-color);
-  border-color: var(--fc-button-hover-border-color);
+  background-color: hsl(var(--primary) / 0.9);
+  border-color: hsl(var(--primary) / 0.9);
+  color: hsl(var(--primary-foreground));
 }
 
 .fc-button-primary:disabled {
-  color: var(--fc-button-text-color);
-  background-color: var(--fc-button-bg-color);
-  border-color: var(--fc-button-border-color);
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  opacity: 0.65;
 }
 
 .fc-button-primary:focus {
@@ -95,7 +97,7 @@
 }
 
 .fc-button-group > .fc-button:hover {
-  z-index: 1;
+  z-index: var(--z-fc-button);
 }
 
 /* Remove border radius from middle buttons in groups */

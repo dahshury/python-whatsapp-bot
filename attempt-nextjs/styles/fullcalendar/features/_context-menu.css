@@ -3,5 +3,5 @@
 /* Context menu container */
 .fc-context-menu {
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-context-menu);
 } 

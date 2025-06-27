@@ -116,7 +116,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
         
           {/* Tooltip positioned inside message bubble at bottom right */}
           <div className={cn(
-            "absolute z-10 px-1.5 py-0.5 text-[9px] bg-background/90 text-muted-foreground rounded",
+            "absolute sidebar-chat-tooltip px-1.5 py-0.5 text-[9px] bg-background/90 text-muted-foreground rounded",
             "bottom-1 right-1",
             "transition-all duration-150 ease-out origin-bottom-right",
             showTooltip 
@@ -289,7 +289,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
       <div className={cn("flex flex-col h-full bg-card relative", className)}>
         {/* Loading overlay with blur effect */}
         {isLoadingConversation && (
-          <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 chat-loading-overlay bg-background/50 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-sm text-muted-foreground">
@@ -336,7 +336,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
     <div className={cn("flex flex-col h-full bg-card relative", className)}>
       {/* Loading overlay with blur effect */}
       {isLoadingConversation && (
-        <div className="absolute inset-0 z-10 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+        <div className="absolute inset-0 chat-loading-overlay bg-background/50 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-2">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             <p className="text-sm text-muted-foreground">

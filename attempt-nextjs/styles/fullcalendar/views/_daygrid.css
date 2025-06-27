@@ -1,27 +1,224 @@
-/* Daygrid View Styles */
+/* Daygrid View Styles - Specific to Daygrid */
+
+/* GPU ACCELERATION FOR DAYGRID */
+.fc-daygrid {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: contents;
+}
 
 /* Daygrid body */
 .fc-daygrid-body {
   position: relative;
-  z-index: 1; /* container inner z-index's because <tr>s can't do it */
+  z-index: var(--z-base); /* container inner z-index's because <tr>s can't do it */
+  /* GPU acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Today highlighting */
-.fc-daygrid-day.fc-day-today {
-  background-color: var(--fc-today-bg-color);
+/* GPU acceleration for tables */
+.fc-daygrid table {
+  width: 100%;
+  table-layout: fixed;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
-/* Daygrid event base styles */
-.fc-daygrid-event {
+/* Note: Table border-spacing styles are in features/_grid-layout.css */
+
+/* Daygrid specific overrides for day frame */
+.fc-daygrid .fc-daygrid-day-frame {
+  min-height: 100%;
+}
+
+/* Z-index management for day background layers */
+.fc-daygrid-day-bg {
+  position: relative; /* container for layers */
+}
+
+/* Background layers - using centralized z-index variables */
+.fc-daygrid-day-bg .fc-non-business { z-index: var(--z-calendar-day-bg-non-business); }
+.fc-daygrid-day-bg .fc-bg-event { z-index: var(--z-calendar-day-bg-event); }
+
+/* Day header */
+.fc-daygrid-day-top {
+  position: relative; /* for absolute positioning of day-number and week-number */
+  border-radius: 0 !important;
+}
+
+.fc-daygrid-day-number {
   position: relative;
-  white-space: nowrap;
-  border-radius: var(--radius-sm);
-  font-size: var(--fc-small-font-size);
-  z-index: 6; /* above other day content */
+  display: inline-block;
+  color: hsl(var(--muted-foreground));
+  font-weight: 600;
+  line-height: 1;
+  padding: 4px;
+  margin: 1px 2px 0 0;
 }
 
+.fc-daygrid-week-number {
+  position: absolute;
+  z-index: var(--z-calendar-week-number);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  text-align: center;
+}
+
+.fc-direction-ltr .fc-daygrid-week-number {
+  left: 0;
+  border-radius: 0 0 3px 0;
+}
+
+.fc-direction-rtl .fc-daygrid-week-number {
+  right: 0;
+  border-radius: 0 0 0 3px;
+}
+
+/* More link - styles moved to _popover-unified.css */
+
+/* Event */
+.fc-daygrid-dot-event {
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+  flex-direction: row;
+}
+
+.fc-daygrid-dot-event .fc-event-title {
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0; /* important for allowing shrinkage past content size */
+  overflow: hidden;
+  font-weight: bold;
+}
+
+.fc-daygrid-dot-event:hover,
+.fc-daygrid-dot-event.fc-event-mirror {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Block event - the space between the block and the top of the day cell */
+.fc-daygrid-event {
+  position: relative; /* for abspos resizer */
+  white-space: nowrap;
+  border-radius: 3px;
+  font-size: var(--fc-small-font-size);
+}
+
+/* Make sure the events and their elements maintain theme colors */
+.fc-daygrid-event .fc-event-main {
+  padding: 1px 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 16px; /* Ensure minimum height for events */
+}
+
+.fc-daygrid-event .fc-event-title {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: white;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.fc-daygrid-event .fc-event-time {
+  font-size: 0.65rem;
+  line-height: 1.1;
+  opacity: 0.9;
+  color: white;
+  white-space: nowrap;
+  margin-right: 4px;
+}
+
+/* Ensure proper resizer visibility and interaction */
+.fc-daygrid-event .fc-event-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  overflow: hidden;
+  z-index: var(--z-calendar-week-number);
+  cursor: ew-resize;
+  display: none;
+}
+
+.fc-daygrid-event:hover .fc-event-resizer {
+  display: block;
+}
+
+.fc-daygrid-event .fc-event-resizer:before {
+  content: "";
+  position: absolute;
+  z-index: var(--z-base);
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 80%;
+  max-height: 100%;
+}
+
+.fc-direction-ltr .fc-daygrid-event .fc-event-resizer:before {
+  right: -2px;
+}
+
+.fc-direction-rtl .fc-daygrid-event .fc-event-resizer:before {
+  left: -2px;
+}
+
+/* Ensure proper layering for mirror events */
 .fc-daygrid-event.fc-event-mirror {
-  z-index: 7; /* above normal events */
+  z-index: var(--z-calendar-event-mirror);
+  opacity: 0.75;
+}
+
+/* Positioning for balanced vs natural */
+.fc-daygrid-body-balanced .fc-daygrid-day-events {
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+.fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+  position: relative;
+  min-height: 2em;
+}
+
+.fc-daygrid-body-natural .fc-daygrid-day-events {
+  margin-bottom: 0 !important;
+}
+
+/* Event harness absolute positioning */
+.fc-daygrid-event-harness-abs {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.fc-daygrid-bg-harness {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+/* Event mirror */
+.fc-daygrid-event.fc-event-mirror {
+  z-index: var(--z-calendar-event-mirror); /* above normal events */
 }
 
 /* The rectangle ("block") style of event */
@@ -61,6 +258,7 @@
   bottom: -10px;
 }
 
+/* Dot event marker */
 .fc-daygrid-event-dot {
   margin: 0 4px;
   box-sizing: content-box;
@@ -68,111 +266,10 @@
   height: 0;
   border: calc(var(--fc-daygrid-event-dot-width) / 2) solid var(--fc-event-border-color);
   border-radius: calc(var(--fc-daygrid-event-dot-width) / 2);
-}
-
-/* Help things clear margins of inner content */
-.fc-daygrid-day-frame:before,
-.fc-daygrid-day-frame:after,
-.fc-daygrid-day-events:before,
-.fc-daygrid-day-events:after,
-.fc-daygrid-event-harness:before,
-.fc-daygrid-event-harness:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-/* Daygrid body and structure */
-.fc-daygrid-day-frame {
-  position: relative;
-  min-height: 100%;
-  overflow: hidden !important;
-}
-
-.fc-daygrid-day-bg {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-}
-
-/* Z-index management for day background layers */
-.fc-daygrid-day-bg .fc-non-business { z-index: 1; }
-.fc-daygrid-day-bg .fc-bg-event { z-index: 2; }
-.fc-daygrid-day-bg .fc-highlight { z-index: 3; }
-
-/* Cell top */
-.fc-daygrid-day-top {
-  display: flex;
-  flex-direction: row-reverse;
-  padding: 5px !important;
-  font-size: .75em !important;
-  color: hsl(var(--muted-foreground)) !important;
-}
-
-.dark .fc-daygrid-day-top {
-  color: hsl(var(--muted-foreground)) !important;
-}
-
-.fc-day-other .fc-daygrid-day-top {
-  opacity: 0.3;
-}
-
-/* Day number */
-.fc-daygrid-day-number {
-  position: relative;
-  z-index: 4;
-  padding: 4px;
-}
-
-.fc-daygrid-month-start {
-  font-weight: bold;
-  font-size: 1.1em;
-}
-
-/* Event container */
-.fc-daygrid-day-events {
-  margin-top: 1px;
-}
-
-/* Positioning for balanced vs natural */
-.fc-daygrid-body-balanced .fc-daygrid-day-events {
-  position: absolute;
-  left: 0;
-  right: 0;
-}
-
-.fc-daygrid-body-unbalanced .fc-daygrid-day-events {
-  position: relative;
-  min-height: 2em;
-}
-
-.fc-daygrid-body-natural .fc-daygrid-day-events {
-  margin-bottom: 1em;
-}
-
-/* Event harness */
-.fc-daygrid-event-harness {
-  position: relative;
-}
-
-.fc-daygrid-event-harness-abs {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-}
-
-.fc-daygrid-bg-harness {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-}
-
-/* Events */
-.fc-daygrid-event {
-  margin-top: 1px;
+  /* GPU acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* Cell bottom */
@@ -183,40 +280,8 @@
 
 .fc-daygrid-day-bottom:before,
 .fc-daygrid-day-bottom:after {
-  content: "";
-  display: table;
-  clear: both;
-}
-
-.fc-daygrid-more-link {
-  position: relative;
-  z-index: 4;
-  margin-top: 1px;
-  max-width: 100%;
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  overflow: hidden;
-  white-space: nowrap;
-  line-height: 1;
-  cursor: pointer;
-  background-color: var(--fc-more-link-bg-color);
-  color: var(--fc-more-link-text-color);
-}
-
-.fc-daygrid-more-link:hover {
-  background-color: hsl(var(--muted) / 0.8);
-}
-
-/* Week number */
-.fc-daygrid-week-number {
-  position: absolute;
-  z-index: 5;
-  top: 0;
-  padding: 2px;
-  min-width: 1.5em;
-  text-align: center;
-  background-color: var(--fc-neutral-bg-color);
-  color: var(--fc-neutral-text-color);
+  display: none !important;
+  content: none !important;
 }
 
 /* Popover */
@@ -225,34 +290,7 @@
   padding: 10px;
 }
 
-/* Direction-specific styles */
-.fc-direction-ltr .fc-daygrid-event.fc-event-start,
-.fc-direction-rtl .fc-daygrid-event.fc-event-end {
-  margin-left: 2px;
-}
-
-.fc-direction-ltr .fc-daygrid-event.fc-event-end,
-.fc-direction-rtl .fc-daygrid-event.fc-event-start {
-  margin-right: 2px;
-}
-
-.fc-direction-ltr .fc-daygrid-more-link {
-  float: left;
-}
-
-.fc-direction-rtl .fc-daygrid-more-link {
-  float: right;
-}
-
-.fc-direction-ltr .fc-daygrid-week-number {
-  left: 0;
-  border-radius: 0 0 3px 0;
-}
-
-.fc-direction-rtl .fc-daygrid-week-number {
-  right: 0;
-  border-radius: 0 0 0 3px;
-}
+/* Direction-specific more link - moved to _rtl.css */
 
 /* Liquid hack */
 .fc-liquid-hack .fc-daygrid-day-frame {
@@ -282,13 +320,11 @@
   gap: 4px !important;
 }
 
-/* Spacing between time and title */
+/* Direction-specific event spacing */
 .fc-direction-ltr .fc-daygrid-event .fc-event-time {
   margin-right: 3px;
 }
 
 .fc-direction-rtl .fc-daygrid-event .fc-event-time {
   margin-left: 3px;
-}
-
- 
+} 

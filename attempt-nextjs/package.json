@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:clean": "rm -rf .next && next dev",
-    "dev:reset": "rm -rf .next node_modules/.cache && npm install && next dev",
+    "dev": "next dev --turbo",
+    "dev:clean": "rm -rf .next && next dev --turbo",
+    "dev:reset": "rm -rf .next node_modules/.cache && npm install && next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

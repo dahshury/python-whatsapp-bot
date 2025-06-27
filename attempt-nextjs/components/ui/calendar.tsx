@@ -179,7 +179,8 @@ function CalendarDayButton({
 
   const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
-    if (modifiers.focused) ref.current?.focus()
+    // Disabled to prevent auto-selection appearance
+    // if (modifiers.focused) ref.current?.focus()
   }, [modifiers.focused])
 
   return (

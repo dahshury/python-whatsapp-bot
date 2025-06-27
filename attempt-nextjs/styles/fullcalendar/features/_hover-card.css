@@ -10,17 +10,25 @@
 
 /* Hover card container */
 .fc-hover-card-container {
-  position: fixed;
-  z-index: 100;
+  position: absolute;
   pointer-events: none;
-  width: var(--fc-hover-card-width);
+  z-index: var(--z-hover-card);
+  border-radius: var(--radius);
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  max-width: 300px;
+  padding: 0;
 }
 
 /* Hover card content wrapper */
 .fc-hover-card-content {
   position: relative;
-  pointer-events: auto;
-  z-index: 1;
+  z-index: var(--z-base);
+  padding: 12px;
+  color: hsl(var(--popover-foreground));
+  font-size: 0.875rem;
+  line-height: 1.4;
 }
 
 /* Invisible bridge for smooth transition between event and card */

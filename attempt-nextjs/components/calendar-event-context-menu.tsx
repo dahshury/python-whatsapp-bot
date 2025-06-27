@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useLanguage } from '@/lib/language-context'
 import type { CalendarEvent } from '@/types/calendar'
+import { Z_INDEX } from '@/lib/z-index'
 
 interface CalendarEventContextMenuProps {
   event: CalendarEvent | null
@@ -106,7 +107,7 @@ export function CalendarEventContextMenu({
         position: 'fixed',
         left: position.x,
         top: position.y,
-        zIndex: 9999
+        zIndex: Z_INDEX.CONTEXT_MENU
       }}
       onClick={(e) => e.stopPropagation()}
     >

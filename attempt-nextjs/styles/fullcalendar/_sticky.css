@@ -11,5 +11,5 @@
 
 /* Z-index for sticky elements */
 .fc-sticky {
-  z-index: 3;
+  z-index: var(--z-fc-sticky);
 } 

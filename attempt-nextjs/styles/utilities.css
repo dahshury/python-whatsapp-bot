@@ -52,4 +52,38 @@
   transition: none !important;
   animation: none !important;
   transform: none !important;
+}
+
+.combobox-trigger-stable[data-state="closed"] {
+  transition: none !important;
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Prevent automatic focus styling that causes auto-selection appearance */
+.glide-grid-container *:focus:not([data-allow-focus="true"]) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Specifically target dialog close buttons and other UI elements */
+button:focus:not([data-allow-focus="true"]),
+[role="button"]:focus:not([data-allow-focus="true"]) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Global prevention of auto-focus styling */
+*:focus:not([data-allow-focus="true"]):not(input):not(textarea):not(select) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Disable focus styles on dialogs and modal elements */
+[role="dialog"] *:focus:not([data-allow-focus="true"]),
+[role="alertdialog"] *:focus:not([data-allow-focus="true"]),
+.dialog *:focus:not([data-allow-focus="true"]),
+.modal *:focus:not([data-allow-focus="true"]) {
+  outline: none !important;
+  box-shadow: none !important;
 } 

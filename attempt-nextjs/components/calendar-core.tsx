@@ -23,7 +23,6 @@ import {
   getValidRange,
   SLOT_DURATION_HOURS
 } from '@/lib/calendar-config'
-import '@/styles/fullcalendar/index.css'
 
 export interface CalendarCoreProps {
   // Data props
@@ -56,6 +55,7 @@ export interface CalendarCoreProps {
   onEventMouseLeave?: (info: any) => void
   onEventDragStart?: (info: any) => void
   onEventDragStop?: (info: any) => void
+  onViewChange?: (view: string) => void
   
   // Context menu handlers
   onContextMenu?: (event: CalendarEvent, position: { x: number; y: number }) => void
@@ -71,6 +71,9 @@ export interface CalendarCoreProps {
   onEventReceive?: (info: any) => void
   onEventLeave?: (info: any) => void
   eventAllow?: (dropInfo: any, draggedEvent: any) => boolean
+  
+  // Add to CalendarCoreProps after onViewChange
+  onNavDate?: (date: Date) => void
 }
 
 // Export the ref type for parent components
@@ -114,9 +117,11 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     onEventMouseLeave,
     onEventDragStart,
     onEventDragStop,
+    onViewChange,
     onContextMenu,
     onUpdateSize,
     onEventMouseDown,
+    onNavDate,
     droppable,
     onEventReceive,
     onEventLeave,
@@ -192,14 +197,19 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
 
   // View-specific overrides: disable validRange for multiMonthYear view
   const viewsProp = useMemo(() => ({
-    multiMonthYear: { 
+    multiMonthYear: {
       validRange: undefined,
-      // Optimize multiMonth view for better performance
-      dayMaxEvents: 3, // Limit events shown per day in multi-month view
-      dayMaxEventRows: 2, // Limit event rows to reduce DOM elements
-      moreLinkClick: 'popover' as const, // Use popover for overflow events
-      eventDisplay: 'block' as const, // Restore block display to keep event background colors
-      displayEventTime: false, // Don't show time in multi-month view
+      displayEventTime: false as const,
+      dayMaxEventRows: 3,
+      moreLinkClick: 'popover' as const
+    },
+    dayGridMonth: {
+      dayMaxEventRows: 3,
+      moreLinkClick: 'popover' as const
+    },
+    dayGridWeek: {
+      dayMaxEventRows: 3,
+      moreLinkClick: 'popover' as const
     }
   }), []);
 
@@ -342,7 +352,11 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     if (onDatesSet) {
       onDatesSet(info)
     }
-  }, [onUpdateSize, onDatesSet])
+    // Notify parent of navigated date (first visible date)
+    if (onNavDate) {
+      onNavDate(info.view.currentStart)
+    }
+  }, [onUpdateSize, onDatesSet, onNavDate])
 
   // Update calendar size when container changes
   useLayoutEffect(() => {
@@ -408,12 +422,8 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         contentHeight={calendarHeight}
         events={optimizedEvents}
         
-        // Header configuration
-        headerToolbar={{
-          left: 'today prev,next',
-          center: 'title',
-          right: 'multiMonthYear,dayGridMonth,timeGridWeek,listMonth'
-        }}
+        // Header configuration - disable native toolbar since we use dock navbar
+        headerToolbar={false}
         
         // Enhanced calendar options
         editable={true}
@@ -461,7 +471,7 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         multiMonthMinWidth={280}
         fixedWeekCount={false}
         showNonCurrentDates={false}
-        dayMaxEvents={currentView === 'multiMonthYear' ? 3 : true}
+        dayMaxEventRows={3}
         moreLinkClick="popover"
         eventDisplay="block"
         displayEventTime={currentView !== 'multiMonthYear'}

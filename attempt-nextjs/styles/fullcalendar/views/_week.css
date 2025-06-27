@@ -1,129 +1,241 @@
-/* Week View Specific Styles */
+/* Week View Specific Styles - Essential styling only */
 
-/* Special styling for the week view */
-.week-view-container .fc-timegrid-slot {
-  height: 4em !important;
-}
-
-.week-view-container .fc-timegrid-slot-lane {
-  min-height: 4em !important;
-}
-
-.week-view-container .fc-timegrid-slot-minor {
-  border-top-style: none !important;
-}
-
-.week-view-container .fc-timegrid-now-indicator-line {
-  z-index: 4 !important;
-}
-
-
-
-/* Week View Container specific styles */
+/* GPU acceleration for smooth scrolling */
 .week-view-container {
   height: 100%;
   display: flex;
   flex-direction: column;
+  /* GPU acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
 }
 
-.week-view-container .fc-view-harness {
-  flex: 1;
-  min-height: 0;
-  height: auto !important;
+
+/* Minor time slots (half-hour marks) */
+.week-view-container .fc-timegrid-slot-minor {
+  border-top: 1px dashed hsl(var(--border) / 0.2) !important;
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.5) 0%,
+    hsl(var(--muted) / 0.02) 50%,
+    hsl(var(--card) / 0.5) 100%
+  );
+  opacity: 0.7;
 }
 
-.week-view-container .fc-timegrid-slots {
-  font-size: 0.9em !important;
-}
-
-/* Improve week view slot heights for better readability */
-.week-view-container .fc-timegrid-slot {
-  height: 4em !important;
-  min-height: 4em !important;
-  border-bottom: 1px solid rgba(0,0,0,0.05) !important;
-}
-
-.dark .week-view-container .fc-timegrid-slot {
-  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-}
-
-/* Improve time labels */
-.week-view-container .fc-timegrid-axis-cushion {
-  font-weight: 400 !important;
+/* Time slot labels */
+.week-view-container .fc-timegrid-slot-label {
+  font-weight: 600;
+  font-size: 0.85em;
   color: hsl(var(--muted-foreground));
-  padding: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
-/* Make event boxes more visible in timeGrid */
-.week-view-container .fc-timegrid-event {
-  border-radius: var(--radius-sm) !important;
-  border-width: 2px !important;
-  padding: 2px 4px !important;
-  margin: 1px 2px !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-  min-height: 18px !important;
+.week-view-container .fc-timegrid-slot-label-cushion {
+  padding: 4px 8px;
+  display: inline-block;
+  border-radius: var(--radius);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.05) 0%,
+    hsl(var(--muted) / 0.1) 100%
+  );
+  transition: all 0.2s ease;
 }
 
-.dark .week-view-container .fc-timegrid-event {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.25) !important;
+.week-view-container .fc-timegrid-slot-label-frame:hover .fc-timegrid-slot-label-cushion {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.1) 0%,
+    hsl(var(--muted) / 0.15) 100%
+  );
+  transform: translateX(2px);
 }
 
-/* Improve current time indicator */
-.week-view-container .fc-timegrid-now-indicator-line {
-  border-width: 1px !important;
-  border-style: solid !important;
-  border-color: hsl(var(--destructive)) !important;
-  z-index: 5 !important;
+/* Hover effect for time slots */
+.week-view-container .fc-timegrid-slot:hover {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.1) 0%,
+    hsl(var(--muted) / 0.15) 50%,
+    hsl(var(--muted) / 0.1) 100%
+  );
+  box-shadow: 
+    inset 0 2px 0 hsl(var(--background) / 0.6),
+    0 2px 4px hsl(var(--muted) / 0.1);
+  transform: translateY(-1px);
+  z-index: var(--z-fc-week);
 }
 
-.week-view-container .fc-timegrid-now-indicator-arrow {
-  border-color: hsl(var(--destructive)) !important;
-  width: 8px !important;
-  height: 8px !important;
+/* Enhanced header styling to match multimonth headers exactly */
+.week-view-container .fc-col-header {
+  /* GPU acceleration */
+  transform: translateZ(0);
 }
 
-/* Make sure header cells have correct height */
+/* Use very specific selectors to override feature styles */
+.fc-timeGridWeek .week-view-container .fc-col-header-cell,
+.fc-timeGridWeek-view .week-view-container .fc-col-header-cell,
+.week-view-container .fc-timegrid .fc-col-header-cell,
 .week-view-container .fc-col-header-cell {
-  height: 50px !important;
-  vertical-align: middle !important;
-}
-
-.week-view-container .fc-col-header-cell-cushion {
+  position: relative;
+  padding: 0.12em 0 !important;
   font-weight: 600 !important;
-  padding: 8px 4px !important;
-  text-decoration: none !important;
+  font-size: 0.9em !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  /* Fancy multi-stop gradient with depth - exact match to multimonth */
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.05) 0%,
+    hsl(var(--muted) / 0.15) 20%,
+    hsl(var(--muted) / 0.25) 40%,
+    hsl(var(--muted) / 0.3) 50%,
+    hsl(var(--muted) / 0.25) 60%,
+    hsl(var(--muted) / 0.15) 80%,
+    hsl(var(--muted) / 0.05) 100%
+  ) !important;
+  /* Multiple borders for depth effect */
+  border-bottom: 1px solid hsl(var(--border) / 0.2) !important;
+  box-shadow: 
+    inset 0 1px 0 hsl(var(--background) / 0.5),
+    inset 0 -1px 0 hsl(var(--muted) / 0.4),
+    0 1px 2px hsl(var(--muted) / 0.1) !important;
+  /* Smooth transitions */
+  transition: all 0.2s ease;
+  /* Subtle backdrop for glass effect */
+  backdrop-filter: blur(2px);
+  /* Override any other styling */
+  border-radius: 0 !important;
+  text-align: center !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-top: none !important;
 }
 
-/* Remove unnecessary scrollbars when possible */
-.week-view-container .fc-scroller {
-  overflow: hidden !important;
+/* Override weekday cushion - just inherit from parent */
+.fc-timeGridWeek .week-view-container .fc-col-header-cell-cushion,
+.fc-timeGridWeek-view .week-view-container .fc-col-header-cell-cushion,
+.week-view-container .fc-timegrid .fc-col-header-cell-cushion,
+.week-view-container .fc-col-header-cell-cushion {
+  display: block;
+  padding: 0 !important;
+  font-size: inherit !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font-weight: inherit !important;
+  text-transform: inherit !important;
+  letter-spacing: inherit !important;
+  border-radius: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 
-.week-view-container .fc-scroller-liquid-absolute {
-  position: relative !important;
-  overflow: hidden !important;
+/* Enhanced hover effect on the full cell - exact match to multimonth */
+.fc-timeGridWeek .week-view-container .fc-col-header-cell:hover,
+.fc-timeGridWeek-view .week-view-container .fc-col-header-cell:hover,
+.week-view-container .fc-timegrid .fc-col-header-cell:hover,
+.week-view-container .fc-col-header-cell:hover {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.1) 0%,
+    hsl(var(--muted) / 0.2) 20%,
+    hsl(var(--muted) / 0.35) 40%,
+    hsl(var(--muted) / 0.4) 50%,
+    hsl(var(--muted) / 0.35) 60%,
+    hsl(var(--muted) / 0.2) 80%,
+    hsl(var(--muted) / 0.1) 100%
+  ) !important;
+  color: hsl(var(--foreground));
+  box-shadow: 
+    inset 0 2px 0 hsl(var(--background) / 0.6),
+    inset 0 -2px 0 hsl(var(--muted) / 0.5),
+    0 2px 4px hsl(var(--muted) / 0.15) !important;
 }
 
-/* Only add scrollbars when needed */
-@media screen and (max-height: 800px) {
-  .week-view-container .fc-scroller {
-    overflow-y: auto !important;
+/* Dark mode adjustments with richer gradients - exact match to multimonth */
+.dark .fc-timeGridWeek .week-view-container .fc-col-header-cell,
+.dark .fc-timeGridWeek-view .week-view-container .fc-col-header-cell,
+.dark .week-view-container .fc-timegrid .fc-col-header-cell,
+.dark .week-view-container .fc-col-header-cell {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.15) 0%,
+    hsl(var(--muted) / 0.25) 20%,
+    hsl(var(--muted) / 0.35) 40%,
+    hsl(var(--muted) / 0.4) 50%,
+    hsl(var(--muted) / 0.35) 60%,
+    hsl(var(--muted) / 0.25) 80%,
+    hsl(var(--muted) / 0.15) 100%
+  ) !important;
+  border-bottom-color: hsl(var(--border) / 0.3);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .fc-timeGridWeek .week-view-container .fc-col-header-cell:hover,
+.dark .fc-timeGridWeek-view .week-view-container .fc-col-header-cell:hover,
+.dark .week-view-container .fc-timegrid .fc-col-header-cell:hover,
+.dark .week-view-container .fc-col-header-cell:hover {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.2) 0%,
+    hsl(var(--muted) / 0.3) 20%,
+    hsl(var(--muted) / 0.45) 40%,
+    hsl(var(--muted) / 0.5) 50%,
+    hsl(var(--muted) / 0.45) 60%,
+    hsl(var(--muted) / 0.3) 80%,
+    hsl(var(--muted) / 0.2) 100%
+  ) !important;
+  box-shadow: 
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.5),
+    0 2px 5px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Enhanced time axis styling (time bar on the left) */
+.week-view-container .fc-timegrid-axis {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--muted) / 0.1) 100%
+  );
+  border-right: 2px solid hsl(var(--border) / 0.2);
+  /* GPU acceleration */
+  transform: translateZ(0);
+}
+
+/* Column background for today - solid color */
+.week-view-container .fc-timegrid-col.fc-day-today {
+  background: hsl(var(--primary) / 0.03) !important;
+}
+
+/* Dark mode enhancements - matching multimonth exactly */
+.dark .week-view-container .fc-timegrid-col.fc-day-today {
+  background: hsl(var(--primary) / 0.08) !important;
+}
+
+/* Performance optimizations */
+.week-view-container .fc-timegrid-slots,
+.week-view-container .fc-timegrid-cols,
+.week-view-container .fc-timegrid-body {
+  /* GPU acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Reduce complexity on lower-end devices */
+@media (prefers-reduced-motion: reduce) {
+  .week-view-container * {
+    transition: none !important;
+    animation: none !important;
   }
 } 
-
-/* Use highlight for time slot selection */
-.week-view-container .fc-timegrid .fc-highlight {
-  background: var(--fc-highlight-color) !important;
-  opacity: 1 !important;
-} 
-
-/* Ensure immediate visual feedback on selection */
-.week-view-container .fc-highlight,
-.week-view-container .fc-timegrid-bg .fc-highlight,
-.week-view-container .fc-timegrid-slots .fc-highlight {
-  background: var(--fc-highlight-color) !important;
-  opacity: 1 !important;
-  pointer-events: none !important;
-}
-
- 

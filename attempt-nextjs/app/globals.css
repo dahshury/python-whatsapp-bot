@@ -10,16 +10,16 @@
 @import "../styles/fonts.css";
 
 /* Theme definitions */
-@import "../styles/themes.css";
-@import "../styles/theme-default.css";
-@import "../styles/theme-mocha-mousse.css";
-@import "../styles/theme-neo-brutalism.css";
-@import "../styles/theme-perpetuity.css";
-@import "../styles/theme-retro-arcade.css";
-@import "../styles/theme-starry-night.css";
-@import "../styles/theme-ghibli-studio.css";
-@import "../styles/theme-valorant.css";
-@import "../styles/theme-art-deco.css";
+@import "../styles/themes/themes.css";
+@import "../styles/themes/theme-default.css";
+@import "../styles/themes/theme-mocha-mousse.css";
+@import "../styles/themes/theme-neo-brutalism.css";
+@import "../styles/themes/theme-perpetuity.css";
+@import "../styles/themes/theme-retro-arcade.css";
+@import "../styles/themes/theme-starry-night.css";
+@import "../styles/themes/theme-ghibli-studio.css";
+@import "../styles/themes/theme-valorant.css";
+@import "../styles/themes/theme-art-deco.css";
 
 /* Utility classes */
 @import "../styles/utilities.css";
@@ -34,8 +34,8 @@
 @import "../styles/markdown.css";
 @import "../styles/component-overrides.css";
 
-/* Calendar styles */
-@import "../styles/fullcalendar/index.css";
-
 /* Theme inline configuration - must be loaded after all theme definitions */
-@import "../styles/theme-inline.css";
+@import "../styles/themes/theme-inline.css";
+
+/* Calendar styles - Load LAST to ensure highest specificity */
+@import "../styles/fullcalendar/index.css";

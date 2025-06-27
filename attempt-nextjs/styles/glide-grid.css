@@ -408,7 +408,7 @@
   .click-outside-ignore {
     outline-width: 2px !important;
     outline-offset: -1px !important;
-    z-index: 999999 !important;
+    z-index: var(--z-grid-editor-max) !important;
   }
   
   /* Ensure grid renders properly */
@@ -421,14 +421,14 @@
     position: absolute;
     top: 8px;
     right: 8px;
-    z-index: 1;
+    z-index: var(--z-base);
   }
   
   /* Ensure proper layering */
   body > .gdg-d19meir1,
   body > .glide-data-grid-overlay-editor,
   body > .click-outside-ignore {
-    z-index: 999999 !important;
+    z-index: var(--z-grid-editor-max) !important;
   }
 
 /* BeautifulWrapper Component Styles */

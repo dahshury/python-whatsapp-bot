@@ -118,13 +118,13 @@
 .fc-multimonth-singlecol .fc-multimonth-header {
   position: relative;
   top: 0;
-  z-index: 2;
+  z-index: var(--z-fc-multimonth-variant-primary);
   background: var(--fc-page-bg-color);
 }
 
 .fc-multimonth-singlecol .fc-multimonth-daygrid {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-fc-multimonth-variant-secondary);
 }
 
 .fc-multimonth-singlecol .fc-multimonth-header-table,
@@ -146,13 +146,7 @@
   padding: 0;
 }
 
-/* More-link look like an event */
-.fc-multimonth-multicol .fc-daygrid-more-link {
-  border: 1px solid var(--fc-event-border-color);
-  padding: 1px;
-  float: none;
-  display: block;
-}
+/* More-link styles moved to _popover-unified.css */
 
 /* Compact variant */
 .fc-multimonth-compact {

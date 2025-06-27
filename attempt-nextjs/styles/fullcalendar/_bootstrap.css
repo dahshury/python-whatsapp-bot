@@ -5,9 +5,7 @@
   color: inherit; /* natural color for navlinks */
 }
 
-.fc-theme-bootstrap .fc-more-link:hover {
-  text-decoration: none;
-}
+/* More link bootstrap styles moved to _popover-unified.css */
 
 /* Bootstrap 5 Theme */
 .fc-theme-bootstrap5 a:not([href]) {

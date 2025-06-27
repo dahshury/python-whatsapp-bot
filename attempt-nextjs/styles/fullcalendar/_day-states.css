@@ -138,7 +138,7 @@
   bottom: 0;
   background-color: hsl(var(--accent) / 0.08);
   pointer-events: none;
-  z-index: 0;
+  z-index: var(--z-background);
 }
 
 /* Timegrid slot hover - for individual time slots in the background */
@@ -233,7 +233,7 @@
   border-color: hsl(var(--destructive)) !important;
   opacity: 0.3 !important;
   pointer-events: none !important;
-  z-index: 1 !important;
+  z-index: var(--z-fc-day-cell-content) !important;
 }
 
 /* Specific styling for background events */
@@ -306,7 +306,7 @@
   bottom: 0 !important;
   background-color: hsl(var(--destructive) / 0.2) !important;
   pointer-events: none !important;
-  z-index: 1 !important;
+  z-index: var(--z-background) !important;
 }
 
 /* Week/Timegrid View */
@@ -330,7 +330,7 @@
   bottom: 0 !important;
   background-color: hsl(var(--destructive) / 0.2) !important;
   pointer-events: none !important;
-  z-index: 1 !important;
+  z-index: var(--z-background) !important;
 }
 
 /* Week/Timegrid Header cells for vacation days */
@@ -355,7 +355,7 @@
 .fc-daygrid-day.vacation-day .fc-daygrid-day-events,
 .fc-timegrid-col.vacation-day .fc-timegrid-events {
   position: relative !important;
-  z-index: 2 !important;
+  z-index: var(--z-calendar-events) !important;
 }
 
 /* Dark mode adjustments for vacation days */
@@ -388,6 +388,7 @@
 .dark .fc-daygrid-day.vacation-day::before,
 .dark .fc-timegrid-col.vacation-day::before {
   background-color: hsl(var(--destructive) / 0.25) !important;
+  z-index: var(--z-background) !important;
 }
 
 

@@ -18,6 +18,7 @@ import { DataProvider } from "./glide_custom_cells/components/core/services/Data
 import { Button } from "@/components/ui/button"
 import { ColumnTypeRegistry } from "./glide_custom_cells/components/core/services/ColumnTypeRegistry"
 import { formatDateRangeWithHijri } from "@/lib/hijri-utils"
+import { useDialogOverlayPortal } from "./glide_custom_cells/components/ui/DialogPortal"
 
 const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), { 
   ssr: false,
@@ -100,6 +101,9 @@ export function DataTableEditor({
   
   // Force grid to re-render when theme changes by using a key
   const [themeKey, setThemeKey] = useState(0)
+  
+  // Use the dialog overlay portal to move overlay editors outside dialog
+  useDialogOverlayPortal()
   
   // Update theme key when theme changes
   React.useEffect(() => {
@@ -1300,7 +1304,7 @@ export function DataTableEditor({
       {/* Custom backdrop since modal={false} */}
       {open && (
         <div 
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 dialog-backdrop bg-black/80 backdrop-blur-sm"
           onClick={(e) => {
             // Check if the click target is the backdrop itself, not a child element
             if (e.target === e.currentTarget) {
@@ -1318,7 +1322,8 @@ export function DataTableEditor({
       
       <Dialog open={open} onOpenChange={onOpenChange} modal={false}>
         <DialogContent 
-          className="max-w-6xl w-full h-auto max-h-[90vh] p-0 flex flex-col overflow-visible z-40"
+          className="max-w-6xl w-full h-auto max-h-[90vh] p-0 flex flex-col overflow-visible dialog-content"
+          style={{ zIndex: 2000 }}
           aria-describedby="data-editor-description"
           onPointerDownOutside={(e) => {
             // Check if the click is on a Grid overlay or Tempus Dominus picker

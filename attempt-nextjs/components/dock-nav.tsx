@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   Calendar,
   BarChart3,
@@ -15,7 +15,11 @@ import {
   Plane,
   Settings2,
   View,
-  Palette
+  Palette,
+  ChevronLeft,
+  ChevronRight,
+  CalendarDays,
+  Loader2
 } from "lucide-react"
 import { useTheme } from "next-themes"
 
@@ -39,26 +43,89 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { VacationPeriods } from "@/components/vacation-periods"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { getCalendarViewOptions } from "@/components/calendar-toolbar"
+import { useCalendarToolbar } from "@/hooks/useCalendarToolbar"
 
-export function DockNav({ className = "" }: { className?: string } = {}) {
+interface DockNavProps {
+  className?: string
+  currentCalendarView?: string
+  calendarRef?: React.RefObject<any> | null
+  onCalendarViewChange?: (view: string) => void
+  navigationOnly?: boolean
+  variant?: 'default' | 'left' | 'right'
+}
+
+export function DockNav({ className = "", currentCalendarView = 'multiMonthYear', calendarRef, onCalendarViewChange, navigationOnly = false, variant = 'default' }: DockNavProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const { isRTL, setIsRTL } = useLanguage()
   const { freeRoam, setFreeRoam, showDualCalendar, setShowDualCalendar, theme: appTheme, setTheme: setAppTheme } =
     useSettings()
   const { recordingState } = useVacation()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState("general")
+  const [activeTab, setActiveTab] = React.useState("view")
+  const [isHoveringDate, setIsHoveringDate] = React.useState(false)
+  
+  // Create a stable ref if none provided
+  const fallbackRef = React.useRef<any>(null)
+  const effectiveCalendarRef = calendarRef || fallbackRef
+
+  // Check if we're on the calendar page
+  const isCalendarPage = pathname === "/"
+
+  // Use the custom hook for calendar navigation logic
+  // Pass the actual ref only when on calendar page and ref exists
+  const {
+    title,
+    activeView,
+    isPrevDisabled,
+    isNextDisabled,
+    isTodayDisabled,
+    handlePrev: originalHandlePrev,
+    handleNext: originalHandleNext,
+    handleToday: originalHandleToday
+  } = useCalendarToolbar({
+    calendarRef: isCalendarPage && calendarRef ? calendarRef : fallbackRef,
+    currentView: currentCalendarView,
+    freeRoam,
+    onViewChange: onCalendarViewChange
+  })
+
+  // Wrapped navigation handlers that switch to calendar page if needed
+  const handlePrev = React.useCallback(() => {
+    if (!isCalendarPage) {
+      router.push("/")
+    } else {
+      originalHandlePrev()
+    }
+  }, [isCalendarPage, router, originalHandlePrev])
+
+  const handleNext = React.useCallback(() => {
+    if (!isCalendarPage) {
+      router.push("/")
+    } else {
+      originalHandleNext()
+    }
+  }, [isCalendarPage, router, originalHandleNext])
+
+  const handleToday = React.useCallback(() => {
+    if (!isCalendarPage) {
+      router.push("/")
+    } else {
+      originalHandleToday()
+    }
+  }, [isCalendarPage, router, originalHandleToday])
 
   React.useEffect(() => {
     setMounted(true)
   }, [])
 
-  // Reset to general tab if vacation tab is selected but disabled
+  // Reset to view tab if vacation tab is selected but disabled
   const viewMode = freeRoam ? "freeRoam" : showDualCalendar ? "dual" : "default"
   React.useEffect(() => {
     if (activeTab === "vacation" && viewMode !== "default") {
-      setActiveTab("general")
+      setActiveTab("view")
     }
   }, [viewMode, activeTab])
 
@@ -93,6 +160,18 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
     )
   }
 
+  const handleCalendarViewChange = (view: string) => {
+    if (calendarRef?.current) {
+      const api = calendarRef.current.getApi?.()
+      if (api) {
+        api.changeView(view)
+      }
+    }
+    onCalendarViewChange?.(view)
+  }
+
+  const viewOptions = getCalendarViewOptions(isRTL)
+
   const isRecording = recordingState.periodIndex !== null
 
   const isActive = (href: string) => {
@@ -105,63 +184,265 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
     return null
   }
 
+
+
+  // Define navigation buttons with proper arrow directions for RTL - sized for dock
+  const prevButton = (
+    <DockIcon>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={!isCalendarPage ? "ghost" : "ghost"}
+            size="icon"
+            onClick={handlePrev}
+            disabled={isCalendarPage && isPrevDisabled}
+            className="size-9 rounded-full transition-all duration-200"
+          >
+            {/* In RTL, use right arrow for previous (pointing outward) */}
+            {isRTL ? <ChevronRight className="size-4" /> : <ChevronLeft className="size-4" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isRTL ? "السابق" : "Previous"}</p>
+        </TooltipContent>
+      </Tooltip>
+    </DockIcon>
+  )
+
+  const nextButton = (
+    <DockIcon>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant={!isCalendarPage ? "ghost" : "ghost"}
+            size="icon"
+            onClick={handleNext}
+            disabled={isCalendarPage && isNextDisabled}
+            className="size-9 rounded-full transition-all duration-200"
+          >
+            {/* In RTL, use left arrow for next (pointing outward) */}
+            {isRTL ? <ChevronLeft className="size-4" /> : <ChevronRight className="size-4" />}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{isRTL ? "التالي" : "Next"}</p>
+        </TooltipContent>
+      </Tooltip>
+    </DockIcon>
+  )
+
   return (
     <TooltipProvider>
-      <Dock direction="middle" className={cn("mt-4", className)}>
+      <Dock direction="middle" className={cn("mt-4 h-auto min-h-[44px]", className)}>
         {/* Navigation Items */}
-        <DockIcon>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/"
-                aria-label={isRTL ? "التقويم" : "Calendar"}
-                className={cn(
-                  buttonVariants({ 
-                    variant: isActive("/") ? "default" : "ghost", 
-                    size: "icon" 
-                  }),
-                  "size-9 rounded-full transition-all duration-200",
-                  isActive("/") && "shadow-lg"
-                )}
-              >
-                <Calendar className="size-4" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isRTL ? "التقويم" : "Calendar"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </DockIcon>
+        {navigationOnly ? (
+          // Navigation-only mode for dual calendar
+          <>
+            {/* Left side navigation button (Previous in LTR, Next in RTL) */}
+            {isRTL ? nextButton : prevButton}
+            
+            {/* Date text as clickable button to go to today - NOT using DockIcon to allow custom width */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToday}
+                  disabled={isTodayDisabled}
+                  onMouseEnter={() => setIsHoveringDate(true)}
+                  onMouseLeave={() => setIsHoveringDate(false)}
+                  className={cn(
+                    "h-9 w-[200px] rounded-full relative group overflow-hidden",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    "transition-all duration-200",
+                    !isTodayDisabled && "cursor-pointer"
+                  )}
+                >
+                  {/* Show calendar icon when hovering or date text when not */}
+                  <span className={cn(
+                    "absolute inset-0 flex items-center justify-center transition-all duration-200",
+                    isHoveringDate && !isTodayDisabled ? "opacity-0 scale-75" : "opacity-100 scale-100"
+                  )}>
+                    <span className="text-lg font-medium px-2">
+                      {/* Show full date text or loading state */}
+                      {title ? (
+                        title
+                      ) : isCalendarPage ? (
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                      ) : (
+                        "Calendar"
+                      )}
+                    </span>
+                  </span>
+                  
+                  {/* Calendar icon that appears on hover */}
+                  <CalendarDays 
+                    className={cn(
+                      "absolute inset-0 m-auto transition-all duration-200",
+                      "size-4",
+                      isHoveringDate && !isTodayDisabled
+                        ? "opacity-100 scale-100" 
+                        : "opacity-0 scale-75"
+                    )}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="flex items-center gap-1.5">
+                  {isTodayDisabled ? (
+                    <>
+                      {title}
+                      <span className="text-muted-foreground text-xs">
+                        ({isRTL ? "أنت بالفعل في اليوم الحالي" : "Already showing today"})
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      {isRTL ? "الذهاب إلى اليوم" : "Go to today"}
+                      <span className="text-muted-foreground text-xs">({title})</span>
+                    </>
+                  )}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            
+            {/* Right side navigation button (Next in LTR, Previous in RTL) */}
+            {isRTL ? prevButton : nextButton}
+          </>
+        ) : !isCalendarPage ? (
+          <DockIcon>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link
+                  href="/"
+                  aria-label={isRTL ? "التقويم" : "Calendar"}
+                  className={cn(
+                    buttonVariants({ 
+                      variant: "ghost", 
+                      size: "icon" 
+                    }),
+                    "size-9 rounded-full transition-all duration-200"
+                  )}
+                >
+                  <Calendar className="size-4" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isRTL ? "التقويم" : "Calendar"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </DockIcon>
+        ) : (
+          <>
+            {/* Calendar Navigation Controls - sized for dock */}
+            {/* Left side navigation button (Previous in LTR, Next in RTL) */}
+            {isRTL ? nextButton : prevButton}
+            
+            {/* Date text as clickable button to go to today - NOT using DockIcon to allow custom width */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToday}
+                  disabled={isTodayDisabled}
+                  onMouseEnter={() => setIsHoveringDate(true)}
+                  onMouseLeave={() => setIsHoveringDate(false)}
+                  className={cn(
+                    "h-9 w-[320px] rounded-full relative group overflow-hidden",
+                    "hover:bg-accent hover:text-accent-foreground",
+                    "transition-all duration-200",
+                    !isTodayDisabled && "cursor-pointer"
+                  )}
+                >
+                  {/* Show calendar icon when hovering or date text when not */}
+                  <span className={cn(
+                    "absolute inset-0 flex items-center justify-center transition-all duration-200",
+                    isHoveringDate && !isTodayDisabled ? "opacity-0 scale-75" : "opacity-100 scale-100"
+                  )}>
+                    <span className="text-2xl font-medium px-2">
+                      {/* Show full date text or loading state */}
+                      {title ? (
+                        title
+                      ) : isCalendarPage ? (
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                      ) : (
+                        "Calendar"
+                      )}
+                    </span>
+                  </span>
+                  
+                  {/* Calendar icon that appears on hover */}
+                  <CalendarDays 
+                    className={cn(
+                      "absolute inset-0 m-auto transition-all duration-200",
+                      "size-4",
+                      isHoveringDate && !isTodayDisabled
+                        ? "opacity-100 scale-100" 
+                        : "opacity-0 scale-75"
+                    )}
+                  />
+                  
 
-        <DockIcon>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Link
-                href="/dashboard"
-                aria-label={isRTL ? "لوحة التحكم" : "Dashboard"}
-                className={cn(
-                  buttonVariants({ 
-                    variant: isActive("/dashboard") ? "default" : "ghost", 
-                    size: "icon" 
-                  }),
-                  "size-9 rounded-full transition-all duration-200",
-                  isActive("/dashboard") && "shadow-lg"
-                )}
-              >
-                <BarChart3 className="size-4" />
-              </Link>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{isRTL ? "لوحة التحكم" : "Dashboard"}</p>
-            </TooltipContent>
-          </Tooltip>
-        </DockIcon>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="flex items-center gap-1.5">
+                  {isTodayDisabled ? (
+                    <>
+                      {title}
+                      <span className="text-muted-foreground text-xs">
+                        ({isRTL ? "أنت بالفعل في اليوم الحالي" : "Already showing today"})
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      {isRTL ? "الذهاب إلى اليوم" : "Go to today"}
+                      <span className="text-muted-foreground text-xs">({title})</span>
+                    </>
+                  )}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+            
+            {/* Right side navigation button (Next in LTR, Previous in RTL) */}
+            {isRTL ? prevButton : nextButton}
+          </>
+        )}
 
-        {/* Separator */}
-        <Separator orientation="vertical" className="h-full py-2" />
+        {!navigationOnly && (
+          <>
+            <DockIcon>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/dashboard"
+                    aria-label={isRTL ? "لوحة التحكم" : "Dashboard"}
+                    className={cn(
+                      buttonVariants({ 
+                        variant: isActive("/dashboard") ? "default" : "ghost", 
+                        size: "icon" 
+                      }),
+                      "size-9 rounded-full transition-all duration-200",
+                      isActive("/dashboard") && "shadow-lg"
+                    )}
+                  >
+                    <BarChart3 className="size-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{isRTL ? "لوحة التحكم" : "Dashboard"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </DockIcon>
 
-        {/* Settings Popover */}
-        <DockIcon>
+            {/* Separator */}
+            <Separator orientation="vertical" className="h-full py-2" />
+
+            {/* Settings Popover */}
+            <DockIcon>
           <Popover>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -183,7 +464,7 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
 
             <PopoverContent 
               align="center"
-              className="w-auto max-w-[500px]"
+              className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
               onInteractOutside={(e) => {
                 if (isRecording) {
                   e.preventDefault();
@@ -191,14 +472,14 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
               }}
             >
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="general">
-                    <Settings2 className="h-4 w-4 mr-2" />
-                    {isRTL ? "عام" : "General"}
-                  </TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 bg-muted/40 backdrop-blur-sm">
                   <TabsTrigger value="view">
                     <View className="h-4 w-4 mr-2" />
                     {isRTL ? "العرض" : "View"}
+                  </TabsTrigger>
+                  <TabsTrigger value="general">
+                    <Settings2 className="h-4 w-4 mr-2" />
+                    {isRTL ? "عام" : "General"}
                   </TabsTrigger>
                   <TabsTrigger 
                     value="vacation" 
@@ -228,7 +509,7 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
                 <TabsContent value="general" className="pt-4">
                   <div className="space-y-4">
                     {/* Language Toggle */}
-                    <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center justify-between rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
                       <div className="space-y-0.5">
                         <Label className="text-sm font-medium flex items-center gap-2">
                           <Languages className="h-4 w-4" />
@@ -250,64 +531,80 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
                 </TabsContent>
 
                 <TabsContent value="view" className="pt-4 space-y-4">
-                  {/* View Mode Radio Group */}
-                  <div className="space-y-3 rounded-lg border p-3">
-                    <Label className="text-sm font-medium flex items-center gap-2">
-                      <Eye className="h-4 w-4" />
-                      {isRTL ? "وضع العرض" : "View Mode"}
-                    </Label>
-                    <RadioGroup
-                      value={viewMode}
-                      onValueChange={handleViewModeChange}
-                      className="grid grid-cols-3 gap-2"
-                    >
-                      <div>
-                        <RadioGroupItem
-                          value="default"
-                          id="default-view-tab"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="default-view-tab"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
-                        >
-                          <Calendar className="mb-1 h-4 w-4" />
-                          {isRTL ? "الافتراضي" : "Default"}
-                        </Label>
+                  {/* Combined View Settings */}
+                  <div className="space-y-3 rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
+                    {/* Header with View Mode selector on the right */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Eye className="h-4 w-4" />
+                        <span className="text-sm font-medium">{isRTL ? "إعدادات العرض" : "View Settings"}</span>
                       </div>
-                      <div>
-                        <RadioGroupItem
-                          value="freeRoam"
-                          id="free-roam-view-tab"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="free-roam-view-tab"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                      
+                      {/* Compact View Mode Selector */}
+                      <div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
+                        <button
+                          onClick={() => handleViewModeChange("default")}
+                          className={cn(
+                            "px-2 py-1 text-xs rounded transition-colors",
+                            viewMode === "default" 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
                         >
-                          <Eye className="mb-1 h-4 w-4" />
-                          {isRTL ? "التنقل الحر" : "Free Roam"}
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="dual"
-                          id="dual-view-tab"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="dual-view-tab"
-                          className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-sm"
+                          {isRTL ? "افتراضي" : "Default"}
+                        </button>
+                        <button
+                          onClick={() => handleViewModeChange("freeRoam")}
+                          className={cn(
+                            "px-2 py-1 text-xs rounded transition-colors",
+                            viewMode === "freeRoam" 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
                         >
-                          <Copy className="mb-1 h-4 w-4" />
+                          {isRTL ? "حر" : "Free"}
+                        </button>
+                        <button
+                          onClick={() => handleViewModeChange("dual")}
+                          className={cn(
+                            "px-2 py-1 text-xs rounded transition-colors",
+                            viewMode === "dual" 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
                           {isRTL ? "مزدوج" : "Dual"}
-                        </Label>
+                        </button>
                       </div>
+                    </div>
+
+                    {/* Calendar View Options - Available for all view modes */}
+                    <RadioGroup
+                      value={activeView || currentCalendarView}
+                      onValueChange={handleCalendarViewChange}
+                      className="grid grid-cols-4 gap-2"
+                    >
+                      {viewOptions.map((option) => (
+                        <div key={option.value}>
+                          <RadioGroupItem
+                            value={option.value}
+                            id={`calendar-view-${option.value}`}
+                            className="peer sr-only"
+                          />
+                          <Label
+                            htmlFor={`calendar-view-${option.value}`}
+                            className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-2 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-xs"
+                          >
+                            <option.icon className="mb-1 h-3.5 w-3.5" />
+                            {option.label}
+                          </Label>
+                        </div>
+                      ))}
                     </RadioGroup>
                   </div>
 
                   {/* Theme Selector */}
-                  <div className="space-y-3 rounded-lg border p-3 relative">
+                  <div className="space-y-3 rounded-lg border p-3 relative bg-background/40 backdrop-blur-sm">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Palette className="h-4 w-4" />
@@ -525,13 +822,19 @@ export function DockNav({ className = "" }: { className?: string } = {}) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="vacation">
-                  {activeTab === "vacation" && <VacationPeriods />}
+                <TabsContent value="vacation" className="pt-4">
+                  <div className="space-y-4">
+                    <div className="rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
+                      {activeTab === "vacation" && <VacationPeriods />}
+                    </div>
+                  </div>
                 </TabsContent>
               </Tabs>
             </PopoverContent>
           </Popover>
         </DockIcon>
+          </>
+        )}
       </Dock>
     </TooltipProvider>
   )

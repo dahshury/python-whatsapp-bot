@@ -1,0 +1,113 @@
+/* Event Styling Feature - Shared event styles for all calendar views */
+
+/* EVENT BASE STYLING */
+.fc-multimonth .fc-daygrid-event,
+.fc-daygrid .fc-daygrid-event {
+  position: relative;
+  white-space: nowrap;
+  border-radius: calc(var(--radius-sm) * 0.75) !important;
+  font-size: var(--fc-small-font-size);
+  z-index: var(--z-calendar-event);
+  margin: 0 1px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding: 1px 1px !important;
+  transition: transform 0.2s ease;
+  display: block !important;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, filter;
+}
+
+/* Event title */
+.fc-multimonth .fc-event-title,
+.fc-daygrid .fc-event-title {
+  max-width: 100%;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* EVENT HOVER */
+.fc-multimonth .fc-event:hover,
+.fc-daygrid .fc-daygrid-event:hover {
+  transform: translate3d(0, -1px, 0) !important;
+  filter: brightness(1.1);
+  z-index: var(--z-fc-free-roam) !important;
+  cursor: pointer;
+}
+
+/* EVENT TYPE COLORS */
+.fc-multimonth .fc-event.reservation-type-0,
+.fc-daygrid .fc-event.reservation-type-0 {
+  background: #4caf50 !important;
+  box-shadow: 0 1px 3px rgba(76, 175, 80, 0.3) !important;
+  border: 1px solid rgba(76, 175, 80, 0.5) !important;
+}
+
+.fc-multimonth .fc-event.reservation-type-1,
+.fc-daygrid .fc-event.reservation-type-1 {
+  background: #3688d8 !important;
+  box-shadow: 0 1px 3px rgba(54, 136, 216, 0.3) !important;
+  border: 1px solid rgba(54, 136, 216, 0.5) !important;
+}
+
+.fc-multimonth .fc-event.conversation-event,
+.fc-daygrid .fc-event.conversation-event {
+  background: #EDAE49 !important;
+  box-shadow: 0 1px 3px rgba(237, 174, 73, 0.3) !important;
+  border: 1px solid rgba(237, 174, 73, 0.5) !important;
+}
+
+/* MORE LINK - styles moved to _popover-unified.css */
+
+/* EVENT HARNESS */
+.fc-multimonth .fc-daygrid-event-harness,
+.fc-daygrid .fc-daygrid-event-harness {
+  position: relative;
+  margin: 0 !important;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* OVERRIDE EVENT SPACING */
+.fc-multimonth .fc-daygrid-event,
+.fc-daygrid .fc-daygrid-event {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Override clearfix to prevent spacing */
+.fc-multimonth .fc-daygrid-day-events:before,
+.fc-multimonth .fc-daygrid-day-events:after,
+.fc-multimonth .fc-daygrid-event-harness:before,
+.fc-multimonth .fc-daygrid-event-harness:after,
+.fc-daygrid .fc-daygrid-day-events:before,
+.fc-daygrid .fc-daygrid-day-events:after,
+.fc-daygrid .fc-daygrid-event-harness:before,
+.fc-daygrid .fc-daygrid-event-harness:after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Event Styling Feature */
+
+/* Standard event styling */
+.fc-event-main {
+  position: relative;
+  z-index: var(--z-calendar-event);
+}
+
+/* Special event styling */
+.fc-event-special {
+  position: relative;
+  z-index: var(--z-hover-effects) !important;
+}
+
+/* Today's events styling */
+.fc-event-today {
+  position: relative;
+  z-index: var(--z-calendar-day-number);
+} 

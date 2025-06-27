@@ -30,11 +30,12 @@
   font-family: var(--font-sans) !important;
   font-size: 0.875rem !important;
   
-  /* Enhanced focus styles */
+  /* Disable enhanced focus styles that cause auto-selection appearance
   *:focus {
     outline: none !important;
     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
   }
+  */
 }
 
 /* Light theme specific */
@@ -515,8 +516,19 @@
 }
 
 /* Ensure proper z-index */
-.tempus-dominus-widget {
-  z-index: 999999 !important;
+.tempus-dominus-widget,
+.dropdown-menu[data-popper-placement] {
+  z-index: var(--z-date-picker) !important;
+}
+
+/* Special case: when Tempus Dominus appears in dialog context, use dialog overlay z-index */
+[role="dialog"] .tempus-dominus-widget,
+[data-radix-dialog-content] .tempus-dominus-widget,
+body > .tempus-dominus-widget[data-dialog-context="true"],
+/* When dialog is open (indicated by dialog-backdrop class), all Tempus Dominus widgets should use dialog overlay z-index */
+body:has(.dialog-backdrop) .tempus-dominus-widget,
+body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
+  z-index: var(--z-dialog-overlays) !important;
 }
 
 /* Animation classes */
@@ -535,7 +547,9 @@
 
 .tempus-dominus-widget button:focus {
   outline: none !important;
+  /* Disabled to prevent auto-selection appearance
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+  */
 }
 
 /* Theme-specific adjustments for different theme classes */
