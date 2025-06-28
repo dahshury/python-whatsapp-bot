@@ -1,18 +1,4 @@
-/* Conversation Events Feature Styles */
-
-/* Hide time display for conversation events */
-.fc-event.conversation-event .fc-event-time {
-  display: none;
-}
-
-/* Style the conversation icon and text */
-.fc-event.conversation-event .fc-event-title {
-  font-weight: 600 !important;
-  line-height: 1.3 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-}
+/* Conversation Events Feature Styles - Free Roam Mode Only */
 
 /* Enhanced styles for conversation events in free roam mode */
 [data-free-roam="true"] .conversation-event .fc-event-title {
@@ -26,20 +12,4 @@
 /* Dark mode conversation events in free roam */
 .dark [data-free-roam="true"] .conversation-event .fc-event-title {
   color: hsl(var(--foreground)) !important;
-}
-
-/* Conversation Events Styling */
-
-/* WhatsApp conversation events (excluding list view) */
-.fc-event.conversation-event:not(.fc-list-event) {
-  font-weight: 600 !important;
-  background-color: var(--fc-conversation-bg) !important;
-  border-color: var(--fc-conversation-border) !important;
-  color: hsl(var(--background)) !important;
-}
-
-.dark .fc-event.conversation-event:not(.fc-list-event) {
-  color: hsl(var(--foreground)) !important;
-}
-
- 
+} 

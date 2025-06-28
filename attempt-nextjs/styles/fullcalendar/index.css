@@ -7,6 +7,7 @@
 
 /* Core styles - loaded first */
 @import "./_variables.css";
+@import "./_universal.css";
 @import "./_base.css";
 @import "./_icons.css";
 @import "./_buttons.css";
@@ -16,7 +17,6 @@
 @import "./_scrollgrid.css";
 @import "./features/_popover-unified.css";
 @import "./_sticky.css";
-@import "./_events.css";
 @import "./_h-event.css";
 @import "./_v-event.css";
 @import "./_day-states.css";
@@ -26,7 +26,6 @@
 @import "./views/_timegrid.css";
 @import "./views/_list.css";
 @import "./views/_multimonth.css";
-@import "./views/_week.css";
 
 /* Detailed multimonth styles - load after basic multimonth */
 @import "./views/multimonth/_base.css";
@@ -42,7 +41,6 @@
 @import "./features/_day-cell-base.css";
 @import "./features/_day-states.css";
 @import "./features/_day-hover-effects.css";
-@import "./features/_event-styling.css";
 @import "./features/_weekday-headers.css";
 @import "./features/_dark-mode.css";
 
@@ -56,6 +54,9 @@
 /* Week view header overrides - must load after features */
 @import "./views/_week-header-override.css";
 
+/* Day view overrides - disable hover effects */
+@import "./views/_day.css";
+
 /* Themes and overrides */
 @import "./_themes.css";
 @import "./_bootstrap.css";
@@ -64,6 +65,6 @@
 
 /* Utilities - loaded last */
 @import "./utilities/_performance.css";
-@import "./utilities/_scrollbars.css"; 
+@import "./utilities/_scrollbars.css";
 
 /* Utilities - loaded last */ 

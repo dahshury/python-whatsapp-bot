@@ -1,39 +1,17 @@
 /* Free Roam Mode Feature Styles */
 
-/* Free roam mode specific styling for better visibility */
-[data-free-roam="true"] .fc-timegrid-event {
-  min-height: 28px !important;
-  border-radius: var(--radius-md) !important;
-  border-width: 2px !important;
-  margin: 2px 3px !important;
-  padding: 4px 8px !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-  font-weight: 500 !important;
-}
-
-.dark [data-free-roam="true"] .fc-timegrid-event {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
-}
-
-[data-free-roam="true"] .fc-timegrid-event .fc-event-title {
-  font-size: 0.85rem !important;
-  font-weight: 500 !important;
-  line-height: 1.3 !important;
-  letter-spacing: 0.5px !important;
-}
-
-[data-free-roam="true"] .fc-timegrid-event .fc-event-time {
-  font-size: 0.75rem !important;
-  line-height: 1.2 !important;
-  margin-bottom: 2px !important;
-  font-weight: 400 !important;
-}
-
 /* Enhanced hover effects for free roam events */
 /* [data-free-roam="true"] .fc-timegrid-event:hover {
   transform: scale(1.02) !important;
   transition: transform 0.1s ease !important;
   z-index: var(--z-fc-free-roam) !important;
 } */
+
+/* Ensure event titles are visible in free roam (use text color variable) */
+[data-free-roam="true"] .fc-timegrid-event .fc-event-title,
+[data-free-roam="true"] .fc-timegrid-event .fc-event-time,
+[data-free-roam="true"] .fc-timegrid-event .fc-event-main {
+  color: var(--fc-event-text-color) !important;
+}
 
  

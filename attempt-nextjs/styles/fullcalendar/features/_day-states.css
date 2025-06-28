@@ -262,4 +262,26 @@
 .dark .fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
   background: hsl(var(--primary)) !important;
   box-shadow: 0 0 6px hsl(var(--primary) / 0.7);
+}
+
+/* ==================================================
+   DISABLE DAYGRID HOVER GLOW IN ALL VIEWS
+   ================================================== */
+
+/* Remove background, shadow, and transition on hover for any daygrid day */
+.fc-daygrid .fc-daygrid-day:hover,
+.fc-daygrid .fc-daygrid-day:hover .fc-daygrid-day-frame {
+  background: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+/* Explicitly disable hover effects for timeGridDay's all-day daygrid header cell */
+.fc-timeGridDay-view .fc-daygrid-day:hover,
+.fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-frame {
+  background: inherit !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
 } 

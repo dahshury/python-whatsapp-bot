@@ -8,7 +8,7 @@
 
 'use client'
 
-import { useRef, useLayoutEffect, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { useRef, useLayoutEffect, useMemo, useCallback, forwardRef, useImperativeHandle, useEffect } from 'react'
 import FullCalendar from '@fullcalendar/react'
 import multiMonthPlugin from '@fullcalendar/multimonth'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -358,8 +358,10 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     if (onDatesSet) {
       onDatesSet(info)
     }
-    // Notify parent of navigated date (first visible date)
-    if (onNavDate) {
+    
+    // Only call onNavDate for non-timegrid views to avoid conflicts with slot time switching
+    // In timegrid views, dateClick handles the date updates directly
+    if (onNavDate && !info.view.type.includes('timeGrid')) {
       onNavDate(info.view.currentStart)
     }
   }, [onUpdateSize, onDatesSet, onNavDate])
@@ -412,10 +414,21 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     return true // Default to allow
   }, [freeRoam, eventAllow])
 
+  // // Navigate calendar when currentDate prop changes
+  // useEffect(() => {
+  //   if (calendarRef.current) {
+  //     const api = calendarRef.current.getApi();
+  //     const viewStart = api.getDate(); // current anchor date
+  //     if (viewStart.getTime() !== currentDate.getTime()) {
+  //       api.gotoDate(currentDate);
+  //     }
+  //   }
+  // }, [currentDate]);
+
   return (
     <div 
       ref={containerRef} 
-      className={`w-full h-full ${currentView === 'listMonth' ? 'flex flex-col' : 'min-h-[600px]'} ${currentView !== 'multiMonthYear' ? 'transition-all duration-300 ease-in-out' : ''} ${getCalendarClassNames(currentView)}`}
+      className={`w-full h-full ${currentView === 'listMonth' ? 'flex flex-col' : 'min-h-[600px]'} ${getCalendarClassNames(currentView)}`}
       data-free-roam={freeRoam}
     >
       <FullCalendar

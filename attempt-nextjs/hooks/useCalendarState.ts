@@ -106,18 +106,13 @@ export function useCalendarState(options: CalendarStateOptions): UseCalendarStat
   }, [currentDate, isHydrated])
 
   /**
-   * Update slot times when dependencies change
-   */
-  useEffect(() => {
-    setSlotTimesKey(prevKey => prevKey + 1)
-  }, [options.freeRoam, currentDate, currentView])
-
-  /**
    * Set current view with validation
    */
   const setCurrentView = useCallback((view: string) => {
     if (view !== currentView) {
       setCurrentViewState(view)
+      // Manually increment slotTimesKey when view changes
+      setSlotTimesKey(prevKey => prevKey + 1)
     }
   }, [currentView])
 
@@ -127,18 +122,16 @@ export function useCalendarState(options: CalendarStateOptions): UseCalendarStat
   const setCurrentDate = useCallback((date: Date) => {
     if (date.getTime() !== currentDate.getTime()) {
       setCurrentDateState(date)
+      // Manually increment slotTimesKey when date changes
+      setSlotTimesKey(prevKey => prevKey + 1)
     }
-  }, [currentDate])
+  }, [currentDate, slotTimesKey])
 
   /**
    * Update slot times with optional force refresh
    */
   const updateSlotTimes = useCallback((date: Date, force = false) => {
-    // In free roam mode, slot times never change (always 00:00-24:00)
-    if (options.freeRoam && !force) {
-      return
-    }
-
+    // Calculate slot times directly without relying on state
     const oldSlotTimes = getSlotTimes(currentDate, options.freeRoam, currentView)
     const newSlotTimes = getSlotTimes(date, options.freeRoam, currentView)
 
@@ -147,14 +140,17 @@ export function useCalendarState(options: CalendarStateOptions): UseCalendarStat
       oldSlotTimes.slotMinTime !== newSlotTimes.slotMinTime || 
       oldSlotTimes.slotMaxTime !== newSlotTimes.slotMaxTime
 
-    if (isTimeChange || force) {
-      setIsChangingHours(isTimeChange)
-      setCurrentDate(date)
-      setSlotTimesKey(prev => prev + 1)
-    } else {
-      setCurrentDate(date)
+    // Update the current date - this will trigger setCurrentDate's slotTimesKey increment
+    if (date.getTime() !== currentDate.getTime()) {
+      setCurrentDateState(date)
     }
-  }, [currentDate, currentView, options.freeRoam, setCurrentDate])
+
+    // Force slot time update if times changed (and not in free roam) or if forced
+    if ((isTimeChange && !options.freeRoam) || force) {
+      setIsChangingHours(isTimeChange)
+      setSlotTimesKey(prev => prev + 1)
+    }
+  }, [currentDate, currentView, options.freeRoam, slotTimesKey])
 
   return {
     currentView,

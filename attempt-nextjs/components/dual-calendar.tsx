@@ -44,6 +44,10 @@ interface DualCalendarComponentProps {
   onViewChange?: (view: string) => void
   onLeftViewChange?: (view: string) => void
   onRightViewChange?: (view: string) => void
+  // Add events props to avoid duplicate API calls
+  events?: CalendarEvent[]
+  loading?: boolean
+  onRefreshData?: () => Promise<void>
 }
 
 export const DualCalendarComponent = React.forwardRef<
@@ -57,7 +61,10 @@ export const DualCalendarComponent = React.forwardRef<
   initialRightView,
   onViewChange,
   onLeftViewChange,
-  onRightViewChange
+  onRightViewChange,
+  events: externalEvents,
+  loading: externalLoading,
+  onRefreshData: externalRefreshData
 }, ref) => {
   const { isRTL } = useLanguage()
   const { handleDateClick: handleVacationDateClick, recordingState, setOnVacationUpdated, vacationPeriods } = useVacation()
@@ -90,18 +97,25 @@ export const DualCalendarComponent = React.forwardRef<
     rightView: rightCalendarState.currentView
   }), [leftCalendarState.currentView, rightCalendarState.currentView])
 
-  // Calendar events management
-  const { 
-    events: allEvents, 
-    loading, 
-    error, 
-    refetchEvents,
-    refreshData
-  } = useCalendarEvents({
+  // Calendar events management - avoid duplicate API calls when external events provided
+  const localEventsState = !externalEvents ? useCalendarEvents({
     freeRoam,
     isRTL,
     autoRefresh: false
-  })
+  }) : {
+    events: [],
+    loading: false,
+    error: null,
+    refreshData: async () => {},
+    refetchEvents: async () => {},
+    invalidateCache: () => {}
+  }
+
+  // Use external events if provided, otherwise use local state
+  const allEvents = externalEvents ?? localEventsState.events
+  const loading = externalLoading ?? localEventsState.loading
+  const error = localEventsState.error
+  const refreshData = externalRefreshData ?? localEventsState.refreshData
 
   // Process events to mark past reservations as non-editable in free roam mode
   const processedAllEvents = useMemo(() => {
