@@ -7,7 +7,7 @@ import type { CalendarCoreRef } from './calendar-core'
 
 // Lazy load DataTableEditor to improve initial performance
 const LazyDataTableEditor = dynamic(
-  () => import('./data-table-editor-refactored').then(mod => ({ default: mod.DataTableEditor })), 
+  () => import('./data-table-editor').then(mod => ({ default: mod.DataTableEditor })), 
   {
     ssr: false,
     loading: () => <GridLoadingState showSkeleton={true} skeletonRows={5} skeletonColumns={5} />

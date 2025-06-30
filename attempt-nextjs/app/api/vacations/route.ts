@@ -14,15 +14,26 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       console.error('Backend vacation periods API failed:', response.status, response.statusText)
-      return NextResponse.json([], { status: response.status })
+      return NextResponse.json({ 
+        success: false, 
+        message: `Backend API failed: ${response.statusText}`,
+        data: [] 
+      }, { status: response.status })
     }
 
     const vacationPeriods = await response.json()
     
-    return NextResponse.json(vacationPeriods)
+    return NextResponse.json({ 
+      success: true, 
+      data: vacationPeriods 
+    })
     
   } catch (error) {
     console.error('Error fetching vacation periods:', error)
-    return NextResponse.json([], { status: 500 })
+    return NextResponse.json({ 
+      success: false, 
+      message: error instanceof Error ? error.message : 'Unknown error',
+      data: [] 
+    }, { status: 500 })
   }
 } 

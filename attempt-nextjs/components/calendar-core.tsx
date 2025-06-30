@@ -414,6 +414,44 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     return true // Default to allow
   }, [freeRoam, eventAllow])
 
+  // Add state to track events being processed
+  const processingEvents = useRef(new Set<string>())
+
+  // Enhanced event change handler with processing state management
+  const handleEventChangeWithProcessing = useCallback(async (info: any) => {
+    const eventId = info.event.id
+    
+    // Prevent multiple simultaneous changes for the same event
+    if (processingEvents.current.has(eventId)) {
+      console.log(`Event ${eventId} is already being processed, reverting...`)
+      info.revert()
+      return
+    }
+
+    // Mark event as being processed
+    processingEvents.current.add(eventId)
+    
+    // Add visual indication that event is being processed
+    const eventEl = info.el
+    if (eventEl) {
+      eventEl.classList.add('processing')
+    }
+
+    try {
+      if (onEventChange) {
+        await onEventChange(info)
+      }
+    } finally {
+      // Always clean up processing state
+      processingEvents.current.delete(eventId)
+      
+      // Restore visual state
+      if (eventEl) {
+        eventEl.classList.remove('processing')
+      }
+    }
+  }, [onEventChange])
+
   // // Navigate calendar when currentDate prop changes
   // useEffect(() => {
   //   if (calendarRef.current) {
@@ -505,11 +543,11 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         dayHeaderClassNames={getDayHeaderClassNames}
         viewClassNames="bg-card rounded-lg shadow-sm"
         
-        // Event callbacks
+        // Event callbacks - use enhanced handler for eventChange
         dateClick={onDateClick}
         select={onSelect}
         eventClick={onEventClick}
-        eventChange={onEventChange}
+        eventChange={handleEventChangeWithProcessing}
         viewDidMount={handleViewDidMount}
         eventDidMount={handleEventDidMount}
         datesSet={handleDatesSet}

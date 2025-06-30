@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { CustomerStatsCard } from '@/components/customer-stats-card'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import type { Conversations, Reservation } from '@/types/calendar'
+import { useCustomerData } from '@/lib/customer-data-context'
 import { useSidebarChatStore } from '@/lib/sidebar-chat-store'
 
 interface ConversationComboboxProps {
@@ -46,30 +47,19 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
   const hoverCardRef = useRef<HTMLDivElement>(null)
   const { setLoadingConversation } = useSidebarChatStore()
 
-  // After conversationOptions memo
+  // Use centralized customer data instead of processing locally
+  const { customers } = useCustomerData()
+
+  // Create conversation options from centralized customer data
   const conversationOptions = React.useMemo(() => {
-    return Object.keys(conversations).map(waId => {
-      // Try to get customer name from any reservation (always check all since we fetch all data)
-      let customerName = null
-      const customerReservations = reservations[waId]
-      
-      if (customerReservations && customerReservations.length > 0) {
-        // Check ALL reservations to find any customer name
-        for (const reservation of customerReservations) {
-          if (reservation.customer_name) {
-            customerName = reservation.customer_name
-            break
-          }
-        }
-      }
-      
-      const messageCount = conversations[waId]?.length || 0
-      const lastMessage = conversations[waId]?.[conversations[waId].length - 1]
+    return customers.map(customer => {
+      const messageCount = conversations[customer.phone]?.length || 0
+      const lastMessage = conversations[customer.phone]?.[conversations[customer.phone].length - 1]
       
       return {
-        value: waId,
-        label: customerName ? `${customerName} (${waId})` : waId,
-        customerName,
+        value: customer.phone,
+        label: customer.name ? `${customer.name} (${customer.phone})` : customer.phone,
+        customerName: customer.name,
         messageCount,
         lastMessage,
         hasConversation: true
@@ -81,7 +71,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
       const bTime = new Date(`${b.lastMessage.date} ${b.lastMessage.time}`)
       return bTime.getTime() - aTime.getTime()
     })
-  }, [conversations, reservations])
+  }, [customers, conversations])
 
   // Current index for navigation (must be after conversationOptions is defined)
   const currentIndex = conversationOptions.findIndex(opt => opt.value === selectedConversationId)

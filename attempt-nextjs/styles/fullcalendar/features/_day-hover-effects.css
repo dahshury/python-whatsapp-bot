@@ -73,11 +73,11 @@
   border-radius: calc(var(--radius) * 0.75) !important;
 }
 
-/* Only animate on hover, not on scroll */
-.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover,
+/* Only animate on hover, not on scroll - DISABLED FOR PERFORMANCE */
+/* .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover,
 .fc-daygrid .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover {
   transition: transform 0.2s ease;
-}
+} */
 
 /* DARK MODE HOVER ADJUSTMENTS */
 .dark .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day):hover .fc-daygrid-day-frame,

@@ -13,14 +13,13 @@ import { useLanguage } from '@/lib/language-context'
 import { ConversationCombobox } from '@/components/conversation-combobox'
 import type { ConversationMessage, Conversations, Reservation } from '@/types/calendar'
 import { marked } from 'marked'
+import { useCustomerData } from '@/lib/customer-data-context'
 import { useSidebarChatStore } from '@/lib/sidebar-chat-store'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { toast } from 'sonner'
 
 interface ChatSidebarContentProps {
   selectedConversationId: string | null
-  conversations: Conversations
-  reservations: Record<string, Reservation[]>
   onConversationSelect: (conversationId: string) => void
   onRefresh?: () => void
   className?: string
@@ -133,8 +132,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 
 export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   selectedConversationId,
-  conversations,
-  reservations,
   onConversationSelect,
   onRefresh,
   className
@@ -145,6 +142,9 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const previousConversationIdRef = useRef<string | null>(null)
+
+  // Use centralized customer data
+  const { conversations, reservations, loading } = useCustomerData()
 
   // Log the data state
       // Debug: Conversations and reservations loaded

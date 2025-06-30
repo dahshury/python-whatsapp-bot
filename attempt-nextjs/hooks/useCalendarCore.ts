@@ -114,10 +114,11 @@ export function useCalendarCore({ freeRoam, initialView, initialDate }: UseCalen
     handleRefreshWithBlur,
     openConversation,
     fetchConversations,
-    addEvent: () => {}, // Placeholder - events are managed through data refresh
-    updateEvent: () => {}, // Placeholder - events are managed through data refresh
-    removeEvent: () => {}, // Placeholder - events are managed through data refresh
-    dataTableEditor
+    addEvent: eventsState.addEvent,
+    updateEvent: eventsState.updateEvent,
+    removeEvent: eventsState.removeEvent,
+    dataTableEditor,
+    calendarRef  // Pass calendar ref for direct event manipulation
   })
 
   // Use hover card directly without wrapper (drag state already handled inside)

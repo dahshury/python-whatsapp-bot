@@ -204,6 +204,12 @@
 
 /* Sidebar-specific styles */
 
+/* Animated sidebar trigger styles */
+.animated-sidebar-trigger {
+  transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;
+  will-change: opacity, transform;
+}
+
 /* Sidebar trigger transitions */
 .sidebar-trigger-fade {
   transition: opacity 300ms ease-in-out, transform 300ms ease-in-out;

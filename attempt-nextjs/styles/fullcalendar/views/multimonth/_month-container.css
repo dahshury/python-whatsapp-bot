@@ -22,6 +22,9 @@
   -webkit-backface-visibility: hidden;
   will-change: transform, box-shadow;
   perspective: 1000px;
+  /* Lazy-render off-screen months for better performance */
+  content-visibility: auto;
+  contain-intrinsic-size: 360px 480px;
 }
 
 /* Removed border accent animation */

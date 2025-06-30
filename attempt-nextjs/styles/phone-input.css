@@ -162,12 +162,15 @@
   /* Hover card phone input */
   .phone-input-hover-card {
     font-size: 14px !important;
+    max-width: 180px !important;
+    width: 100% !important;
   }
 
   .phone-input-hover-card input {
     font-size: 14px !important;
     font-family: monospace !important;
     padding: 0 2px !important;
+    text-align: center !important;
   }
 
   .phone-input-hover-card .PhoneInputCountrySelect {
@@ -177,6 +180,14 @@
   .phone-input-hover-card .PhoneInputCountryFlag {
     width: 1.05em !important;
     height: 0.8em !important;
+  }
+
+  /* Ensure hover card phone input container is properly centered */
+  .phone-input-hover-card .PhoneInput {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
   }
 
   /* Hide dropdown arrow for all disabled phone inputs */

@@ -66,11 +66,15 @@ const config: Config = {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
-  		fontFamily: {
-  			sans: ['var(--font-sans)', 'sans-serif'],
-  			serif: ['var(--font-serif)', 'serif'],
-  			mono: ['var(--font-mono)', 'monospace']
-  		},
+  				fontFamily: {
+			sans: ['var(--font-sans)', 'sans-serif'],
+			serif: ['var(--font-serif)', 'serif'],
+			mono: ['var(--font-mono)', 'monospace']
+		},
+		gridTemplateColumns: {
+			'24': 'repeat(24, minmax(0, 1fr))',
+			'25': 'repeat(25, minmax(0, 1fr))'
+		},
   		keyframes: {
   			'accordion-down': {
   				from: {

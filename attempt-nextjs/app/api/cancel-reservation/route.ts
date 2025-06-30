@@ -5,7 +5,7 @@ import { callPythonBackend } from '@/lib/backend'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { id, date } = body
+    const { id, date, isRTL } = body
     
     // Validate required fields
     if (!id || !date) {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({ 
         date_str: date, // Python backend expects 'date_str', not 'date'
         hijri: false,   // Default to Gregorian calendar
-        ar: false       // Default to English messages
+        ar: isRTL || false  // Use the passed language setting
       })
     })
     

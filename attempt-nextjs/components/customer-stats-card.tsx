@@ -106,25 +106,25 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
           {/* Fixed Customer Info Section */}
           <div className={`${isHoverCard ? 'space-y-1' : 'space-y-2'}`}>
             {/* Header with Avatar on left, Name and Phone in center */}
-            <div className="flex items-center gap-3">
-              <Avatar className={isHoverCard ? "h-8 w-8" : "h-10 w-10"}>
+            <div className={`flex items-center ${isHoverCard ? 'gap-2' : 'gap-3'}`}>
+              <Avatar className={isHoverCard ? "h-8 w-8 flex-shrink-0" : "h-10 w-10 flex-shrink-0"}>
                 <AvatarFallback className={`bg-primary/10 text-primary ${isHoverCard ? "text-sm" : "text-base"}`}>
                   {customerName ? customerName.charAt(0).toUpperCase() : <User className={isHoverCard ? "h-4 w-4" : "h-5 w-5"} />}
                 </AvatarFallback>
               </Avatar>
               
-              <div className="flex-1 flex flex-col items-center justify-center text-center">
+              <div className={`flex-1 flex flex-col items-center justify-center text-center ${isHoverCard ? 'min-w-0 px-1' : ''}`}>
                 {customerName ? (
-                  <div className={`font-medium ${isHoverCard ? "text-xs" : "text-sm"}`}>
+                  <div className={`font-medium ${isHoverCard ? "text-xs" : "text-sm"} truncate w-full`}>
                     {customerName}
                   </div>
                 ) : (
-                  <div className={`text-muted-foreground ${isHoverCard ? "text-xs" : "text-sm"}`}>
+                  <div className={`text-muted-foreground ${isHoverCard ? "text-xs" : "text-sm"} truncate w-full`}>
                     {isRTL ? "عميل غير معروف" : "Unknown Customer"}
                   </div>
                 )}
                 
-                <div className={`${isHoverCard ? 'scale-90' : ''} mt-0.5`}>
+                <div className={`${isHoverCard ? 'scale-90 w-full' : 'w-full'} mt-0.5 flex justify-center`}>
                   <PhoneInput
                     value={formattedPhone}
                     onChange={() => {}}
@@ -137,11 +137,13 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
                 </div>
               </div>
               
+              <div className={`flex-shrink-0 ${isHoverCard ? 'w-6 flex justify-center' : ''}`}>
               <InlineCopyBtn 
                 text={selectedConversationId} 
                 isRTL={isRTL}
-                className="opacity-60 hover:opacity-100 flex-shrink-0"
+                  className="opacity-60 hover:opacity-100"
               />
+              </div>
             </div>
             
             {/* Stats Section */}

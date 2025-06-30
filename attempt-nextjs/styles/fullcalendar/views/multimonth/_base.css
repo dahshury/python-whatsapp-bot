@@ -29,6 +29,9 @@
   -webkit-backface-visibility: hidden;
   perspective: 1000px;
   will-change: scroll-position;
+  /* Stabilize scrollbar space and isolate scroll behavior */
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 /* Note: Basic grid layout styles (flex, align-items) are in features/_grid-layout.css */

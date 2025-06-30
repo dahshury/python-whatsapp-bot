@@ -2,11 +2,12 @@
 
 import React from "react"
 import dynamic from "next/dynamic"
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarInset } from "@/components/ui/sidebar"
+import { AnimatedSidebarTrigger } from "@/components/animated-sidebar-trigger"
+import { NotificationsButton } from "@/components/notifications-button"
 import { useLanguage } from "@/lib/language-context"
 import { useSettings } from "@/lib/settings-context"
 import { CalendarSkeleton } from "@/components/calendar-skeleton"
-import { CalendarLegend } from "@/components/calendar-legend"
 import { DockNav } from "@/components/dock-nav"
 import { DockNavSimple } from "@/components/dock-nav-simple"
 
@@ -97,9 +98,10 @@ export default function HomePage() {
 
   return (
     <SidebarInset>
+      {/* Animated Sidebar Trigger with Legend */}
+      <AnimatedSidebarTrigger freeRoam={freeRoam} />
+      
       <header className="relative flex h-16 shrink-0 items-center border-b px-4">
-        <SidebarTrigger className="absolute left-4" />
-        
         {showDualCalendar ? (
           // Dual Calendar Mode Header Layout
           <div className="flex-1 flex items-center justify-between gap-4">
@@ -146,16 +148,18 @@ export default function HomePage() {
           </div>
         ) : (
           // Single Calendar Mode Header Layout
+          <div className="flex-1 flex justify-center">
           <DockNav 
             className="mt-0" 
             calendarRef={actualCalendarRef}
             currentCalendarView={currentView}
             onCalendarViewChange={setCurrentView}
           />
+          </div>
         )}
         
         <div className="absolute right-4">
-          <CalendarLegend freeRoam={freeRoam} className="h-10" />
+          <NotificationsButton />
         </div>
       </header>
       <div className="flex flex-1 flex-col gap-4 p-4 h-[calc(100vh-4rem)]">

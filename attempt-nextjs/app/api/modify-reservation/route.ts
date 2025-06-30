@@ -5,7 +5,7 @@ import { callPythonBackend } from '@/lib/backend'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { id, date, time, title, type, approximate, max_reservations } = body
+    const { id, date, time, title, type, approximate, max_reservations, isRTL } = body
 
     // Validate required fields
     if (!id || !date || !time) {
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         approximate: approximate || false,
         max_reservations: max_reservations || 6,
         hijri: false,             // Always false for this API
-        ar: false                 // Could be made configurable later
+        ar: isRTL || false        // Use the passed language setting
       })
     })
 

@@ -26,7 +26,7 @@ import { PrayerTimesWidget } from "@/components/prayer-times-widget"
 import { HijriDateDisplay } from "@/components/hijri-date-display"
 import { useLanguage } from "@/lib/language-context"
 import { useSettings } from '@/lib/settings-context'
-import { useChatSidebar } from "@/lib/use-chat-sidebar"
+import { useConversationsData, useReservationsData } from "@/lib/unified-data-provider"
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -37,58 +37,87 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   // Always start with calendar tab to prevent hydration mismatch
   const [activeTab, setActiveTab] = useState('calendar')
   
-  const {
-    selectedConversationId,
-    conversations,
-    reservations,
-    loading: chatLoading,
-    openConversation,
-    closeSidebar,
-    selectConversation,
-    refreshData,
-    fetchConversations,
-    setOpenState,
-    isInitialized,
-    isOpen: isChatOpen
-  } = useChatSidebar({ autoRefresh: false })
+  // Use unified data provider
+  const { conversations, isLoading: conversationsLoading } = useConversationsData()
+  const { reservations, isLoading: reservationsLoading } = useReservationsData()
+  const chatLoading = conversationsLoading || reservationsLoading
   
   const { 
     shouldOpenChat, 
     conversationIdToOpen, 
     clearOpenRequest,
     isLoadingConversation,
-    setLoadingConversation
+    setLoadingConversation,
+    openConversation
   } = useSidebarChatStore()
 
-  // Get customer name from conversations and reservations
-  const getCustomerName = useCallback((waId: string) => {
-    // First check if we have a customer name from reservations
-    if (reservations[waId]) {
-      for (const res of reservations[waId]) {
-        if (res.customer_name) {
-          return res.customer_name
-        }
-      }
-    }
-    
-    return null
-  }, [reservations])
+  // Local chat state
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
-  // Prepare data for ConversationCombobox
-  const conversationOptions = useMemo(() => {
-    return Object.keys(conversations).map(waId => {
-      const customerName = getCustomerName(waId)
-      const messageCount = conversations[waId]?.length || 0
-      const lastMessage = conversations[waId]?.[conversations[waId].length - 1]
-      
-      return {
-        waId,
-        customerName,
-        messageCount,
-        lastMessage
+  const selectConversation = useCallback((conversationId: string) => {
+    setSelectedConversationId(conversationId)
+    setIsChatOpen(true)
+    setLoadingConversation(false)
+  }, [setLoadingConversation])
+
+  const closeSidebar = useCallback(() => {
+    setIsChatOpen(false)
+  }, [])
+
+  const setOpenState = useCallback((isOpen: boolean) => {
+    setIsChatOpen(isOpen)
+  }, [])
+
+  const refreshData = async () => {
+    // This will be handled by the unified provider
+  }
+
+  const isInitialized = !chatLoading
+
+  // Build customers list from unified data
+  const customers = useMemo(() => {
+    const customerMap = new Map()
+    
+    // Add customers from conversations
+    Object.keys(conversations).forEach(waId => {
+      if (!customerMap.has(waId)) {
+        customerMap.set(waId, {
+          phone: waId,
+          formattedPhone: waId.startsWith('+') ? waId : `+${waId}`
+        })
       }
     })
-  }, [conversations, getCustomerName])
+    
+    // Add customer names from reservations  
+    Object.entries(reservations).forEach(([waId, customerReservations]) => {
+      if (Array.isArray(customerReservations) && customerReservations.length > 0) {
+        const customerName = customerReservations.find((r: any) => r.customer_name)?.customer_name
+        if (customerName) {
+          const existing = customerMap.get(waId)
+          if (existing) {
+            existing.name = customerName
+          } else {
+            customerMap.set(waId, {
+              phone: waId,
+              name: customerName,
+              formattedPhone: waId.startsWith('+') ? waId : `+${waId}`
+            })
+          }
+        }
+      }
+    })
+    
+    return Array.from(customerMap.values())
+  }, [conversations, reservations])
+  const conversationOptions = useMemo(() => {
+    return customers.map(customer => ({
+      waId: customer.phone,
+      customerName: customer.name,
+      messageCount: conversations[customer.phone]?.length || 0,
+      lastMessage: conversations[customer.phone]?.[conversations[customer.phone].length - 1]
+    }))
+  }, [customers, conversations])
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -208,17 +237,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent className="p-0 bg-sidebar">
         {activeTab === 'calendar' ? (
           <div className="space-y-4">
-            {/* Hijri Date Display */}
-            {isRTL && (
-              <SidebarGroup className="p-4 pb-2">
-                <SidebarGroupContent>
-                  <HijriDateDisplay className="justify-center text-base" />
-                </SidebarGroupContent>
-              </SidebarGroup>
-            )}
-            
             {/* Prayer Times */}
-            <SidebarGroup className="p-4 pt-2">
+            <SidebarGroup className="p-4">
               <SidebarGroupLabel className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 {isRTL ? "مواقيت الصلاة" : "Prayer Times"}
@@ -231,8 +251,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ) : (
           <ChatSidebarContent
             selectedConversationId={selectedConversationId}
-            conversations={conversations}
-            reservations={reservations}
             onConversationSelect={selectConversation}
             onRefresh={refreshData}
             className="flex-1"

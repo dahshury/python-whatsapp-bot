@@ -17,6 +17,7 @@ interface UseDataTableSaveHandlerProps {
   onEventAdded?: (event: CalendarEvent) => void
   onEventModified?: (eventId: string, event: CalendarEvent) => void
   onEventCancelled?: (eventId: string) => void
+  refreshCustomerData?: () => Promise<void>
 }
 
 export function useDataTableSaveHandler({
@@ -29,7 +30,8 @@ export function useDataTableSaveHandler({
   validateAllCells,
   onEventAdded,
   onEventModified,
-  onEventCancelled
+  onEventCancelled,
+  refreshCustomerData
 }: UseDataTableSaveHandlerProps) {
   const [isSaving, setIsSaving] = useState(false)
   const operationsServiceRef = useRef<DataTableOperationsService | null>(null)
@@ -39,7 +41,10 @@ export function useDataTableSaveHandler({
   }, [calendarRef])
 
   const handleSaveChanges = useCallback(async () => {
+    console.log('🚀 useDataTableSaveHandler: handleSaveChanges called')
+    
     if (!dataProviderRef.current) {
+      console.error('❌ No data provider available')
       toast.error(getMessage('system_error_try_later', isRTL), {
         duration: 5000,
       })
@@ -47,6 +52,7 @@ export function useDataTableSaveHandler({
     }
 
     if (isSaving) {
+      console.log('⏳ Already saving, skipping...')
       return
     }
     
@@ -75,17 +81,27 @@ export function useDataTableSaveHandler({
       const changesJson = editingState.toJson(columnsForParsing as any)
       const changes: EditingChanges = JSON.parse(changesJson)
       
+      console.log('📝 Changes detected:', {
+        changesJson,
+        changes,
+        hasDeletedRows: (changes.deleted_rows?.length ?? 0) > 0,
+        hasEditedRows: changes.edited_rows && Object.keys(changes.edited_rows).length > 0,
+        hasAddedRows: (changes.added_rows?.length ?? 0) > 0
+      })
+      
       let hasErrors = false
       let successfulOperations: any[] = []
 
       const calendarApi = getCalendarApi()
       
-      if (!operationsServiceRef.current || operationsServiceRef.current['calendarApi'] !== calendarApi) {
+      if (!operationsServiceRef.current || 
+          operationsServiceRef.current['calendarApi'] !== calendarApi) {
         operationsServiceRef.current = new DataTableOperationsService(
           calendarApi,
           isRTL,
           slotDurationHours,
-          freeRoam
+          freeRoam,
+          refreshCustomerData
         )
       }
 
@@ -115,7 +131,8 @@ export function useDataTableSaveHandler({
       if (changes.added_rows && changes.added_rows.length > 0) {
         const result = await operations.processAdditions(
           changes.added_rows,
-          onEventAdded
+          onEventAdded,
+          onEventCancelled
         )
         hasErrors = hasErrors || result.hasErrors
         successfulOperations = [...successfulOperations, ...result.successfulOperations]
@@ -153,7 +170,8 @@ export function useDataTableSaveHandler({
     gridRowToEventMapRef,
     onEventCancelled,
     onEventAdded,
-    onEventModified
+    onEventModified,
+    refreshCustomerData
   ])
 
   return {

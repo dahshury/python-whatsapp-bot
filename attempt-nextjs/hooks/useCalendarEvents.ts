@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import type { CalendarEvent } from '@/types/calendar'
-import { getCalendarDataService, type CalendarDataFetchOptions } from '@/lib/calendar-data-service'
+import { useReservationsData, useConversationsData, useVacationsData } from '@/lib/unified-data-provider'
 import { 
   getReservationEventProcessor, 
   type ReservationProcessingOptions 
@@ -32,6 +32,9 @@ export interface CalendarEventsActions {
   refetchEvents: () => Promise<void>
   invalidateCache: () => void
   refreshData: () => Promise<void>
+  addEvent: (event: CalendarEvent) => void
+  updateEvent: (id: string, updatedEvent: Partial<CalendarEvent>) => void
+  removeEvent: (id: string) => void
 }
 
 export type UseCalendarEventsReturn = CalendarEventsState & CalendarEventsActions
@@ -47,16 +50,34 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
     lastUpdated: null
   })
 
-  // Memoize services to prevent unnecessary re-instantiation
-  const dataService = useMemo(() => getCalendarDataService(), [])
+  // Use unified data provider instead of calendar data service
+  const { 
+    reservations, 
+    isLoading: reservationsLoading, 
+    error: reservationsError, 
+    refresh: refreshReservations 
+  } = useReservationsData()
+  
+  const { 
+    conversations, 
+    isLoading: conversationsLoading, 
+    error: conversationsError, 
+    refresh: refreshConversations 
+  } = useConversationsData()
+  
+  const { 
+    vacations: vacationPeriods, 
+    isLoading: vacationsLoading, 
+    error: vacationsError, 
+    refresh: refreshVacations 
+  } = useVacationsData()
+
+  // Memoize event processor to prevent unnecessary re-instantiation
   const eventProcessor = useMemo(() => getReservationEventProcessor(), [])
 
-  // Memoize fetch options to prevent unnecessary effect triggers
-  const fetchOptions = useMemo((): CalendarDataFetchOptions => ({
-    freeRoam: options.freeRoam,
-    includeCancelled: options.freeRoam,
-    includeConversations: true
-  }), [options.freeRoam])
+  // Combine loading and error states
+  const isDataLoading = reservationsLoading || conversationsLoading || vacationsLoading
+  const dataError = reservationsError || conversationsError || vacationsError
 
   // Memoize processing options
   const processingOptions = useMemo((): Omit<ReservationProcessingOptions, 'vacationPeriods'> => ({
@@ -65,37 +86,44 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
   }), [options.freeRoam, options.isRTL])
 
   /**
-   * Fetch and process calendar events
+   * Process calendar events from unified data
    */
-  const fetchEvents = useCallback(async (): Promise<void> => {
+  const processEvents = useCallback((): void => {
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
+      setState(prev => ({ ...prev, loading: isDataLoading, error: dataError }))
 
-      // Fetch calendar data
-      const calendarData = await dataService.fetchCalendarData(fetchOptions)
+      // Only process if we have data and no errors
+      if (!isDataLoading && !dataError && reservations && conversations && vacationPeriods) {
+        // Process events
+        const fullProcessingOptions: ReservationProcessingOptions = {
+          ...processingOptions,
+          vacationPeriods
+        }
 
-      // Process events
-      const fullProcessingOptions: ReservationProcessingOptions = {
-        ...processingOptions,
-        vacationPeriods: calendarData.vacationPeriods
+        const processedEvents = eventProcessor.generateCalendarEvents(
+          reservations,
+          conversations,
+          fullProcessingOptions
+        )
+
+        setState(prev => ({
+          ...prev,
+          events: processedEvents,
+          loading: false,
+          error: null,
+          lastUpdated: new Date()
+        }))
+      } else if (dataError) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: dataError,
+          lastUpdated: new Date()
+        }))
       }
 
-      const processedEvents = eventProcessor.generateCalendarEvents(
-        calendarData.reservations,
-        calendarData.conversations,
-        fullProcessingOptions
-      )
-
-      setState(prev => ({
-        ...prev,
-        events: processedEvents,
-        loading: false,
-        error: null,
-        lastUpdated: new Date()
-      }))
-
     } catch (error) {
-      console.error('Error fetching calendar events:', error)
+      console.error('Error processing calendar events:', error)
       setState(prev => ({
         ...prev,
         loading: false,
@@ -103,63 +131,74 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
         lastUpdated: new Date()
       }))
     }
-  }, [dataService, eventProcessor, fetchOptions, processingOptions])
+  }, [isDataLoading, dataError, reservations, conversations, vacationPeriods, eventProcessor, processingOptions])
 
   /**
-   * Refresh events by invalidating cache and refetching
+   * Refresh events by refreshing unified data
    */
   const refreshData = useCallback(async (): Promise<void> => {
     try {
-      setState(prev => ({ ...prev, loading: true, error: null }))
-
-      // Refresh data with cache invalidation
-      const calendarData = await dataService.refreshData(fetchOptions)
-
-      // Process events
-      const fullProcessingOptions: ReservationProcessingOptions = {
-        ...processingOptions,
-        vacationPeriods: calendarData.vacationPeriods
-      }
-
-      const processedEvents = eventProcessor.generateCalendarEvents(
-        calendarData.reservations,
-        calendarData.conversations,
-        fullProcessingOptions
-      )
-
-      setState(prev => ({
-        ...prev,
-        events: processedEvents,
-        loading: false,
-        error: null,
-        lastUpdated: new Date()
-      }))
-
+      // Refresh all data sources
+      await Promise.all([
+        refreshReservations(),
+        refreshConversations(),
+        refreshVacations()
+      ])
+      // processEvents will be called automatically via useEffect when data updates
     } catch (error) {
       console.error('Error refreshing calendar events:', error)
-      setState(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-        lastUpdated: new Date()
-      }))
     }
-  }, [dataService, eventProcessor, fetchOptions, processingOptions])
+  }, [refreshReservations, refreshConversations, refreshVacations])
 
   /**
-   * Invalidate cache without refetching
+   * Invalidate cache without refetching (kept for compatibility)
    */
   const invalidateCache = useCallback((): void => {
-    dataService.invalidateCache()
-  }, [dataService])
+    // No-op since unified provider handles caching
+    console.log('invalidateCache called - unified provider handles caching')
+  }, [])
 
   /**
-   * Initial data loading
+   * Add event to local state
+   */
+  const addEvent = useCallback((event: CalendarEvent): void => {
+    setState(prev => ({
+      ...prev,
+      events: [...prev.events, event],
+      lastUpdated: new Date()
+    }))
+  }, [])
+
+  /**
+   * Update event in local state
+   */
+  const updateEvent = useCallback((id: string, updatedEvent: Partial<CalendarEvent>): void => {
+    setState(prev => ({
+      ...prev,
+      events: prev.events.map(event => 
+        event.id === id ? { ...event, ...updatedEvent } : event
+      ),
+      lastUpdated: new Date()
+    }))
+  }, [])
+
+  /**
+   * Remove event from local state
+   */
+  const removeEvent = useCallback((id: string): void => {
+    setState(prev => ({
+      ...prev,
+      events: prev.events.filter(event => event.id !== id),
+      lastUpdated: new Date()
+    }))
+  }, [])
+
+  /**
+   * Process events when data changes
    */
   useEffect(() => {
-
-    fetchEvents()
-  }, [fetchEvents])
+    processEvents()
+  }, [processEvents])
 
   /**
    * Auto-refresh functionality
@@ -168,16 +207,19 @@ export function useCalendarEvents(options: UseCalendarEventsOptions): UseCalenda
     if (!options.autoRefresh) return
 
     const interval = setInterval(() => {
-      fetchEvents()
+      refreshData()
     }, options.refreshInterval || 5 * 60 * 1000) // Default 5 minutes
 
     return () => clearInterval(interval)
-  }, [options.autoRefresh, options.refreshInterval, fetchEvents])
+  }, [options.autoRefresh, options.refreshInterval, refreshData])
 
   return {
     ...state,
-    refetchEvents: fetchEvents,
+    refetchEvents: refreshData, // Use refreshData instead of fetchEvents
     invalidateCache,
-    refreshData
+    refreshData,
+    addEvent,
+    updateEvent,
+    removeEvent
   }
 } 
