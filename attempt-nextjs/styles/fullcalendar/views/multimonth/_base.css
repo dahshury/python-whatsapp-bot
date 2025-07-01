@@ -1,4 +1,10 @@
-/* Multi-Month View Base Container Styles */
+/* Multimonth View Base Container Styles
+ * Responsibility: Core layout and structure for multimonth calendar view
+ * Dependencies: CSS variables from _variables.css, grid layout from features/_grid-layout.css
+ * Usage: Applied to .fc-multimonth containers and month grid structures
+ * Features: GPU acceleration, scroll optimization, responsive layout, border management
+ * Note: Optimized for performance with GPU layers and smooth scrolling
+ */
 
 /* Remove any outer wrapper styling that might interfere */
 .fc-multiMonthYear-view {

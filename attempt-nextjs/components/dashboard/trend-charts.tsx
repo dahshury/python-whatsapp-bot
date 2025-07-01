@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { motion } from "framer-motion"
+import { useEffect, useState, useMemo, useId } from "react"
 import {
   LineChart,
   Line,
@@ -43,6 +44,55 @@ interface TrendChartsProps {
   isRTL: boolean
 }
 
+// Hook to get theme colors for charts
+function useThemeColors() {
+  const [colors, setColors] = useState({
+    primary: "hsl(var(--chart-1))",
+    secondary: "hsl(var(--chart-2))",
+    tertiary: "hsl(var(--chart-3))",
+    quaternary: "hsl(var(--chart-4))",
+    quinary: "hsl(var(--chart-5))",
+    background: "hsl(var(--background))",
+    foreground: "hsl(var(--foreground))",
+    muted: "hsl(var(--muted))",
+    border: "hsl(var(--border))",
+    card: "hsl(var(--card))"
+  })
+
+  useEffect(() => {
+    const updateColors = () => {
+      const root = document.documentElement
+      const computedStyle = getComputedStyle(root)
+      
+      setColors({
+        primary: `hsl(${computedStyle.getPropertyValue('--chart-1')})`,
+        secondary: `hsl(${computedStyle.getPropertyValue('--chart-2')})`,
+        tertiary: `hsl(${computedStyle.getPropertyValue('--chart-3')})`,
+        quaternary: `hsl(${computedStyle.getPropertyValue('--chart-4')})`,
+        quinary: `hsl(${computedStyle.getPropertyValue('--chart-5')})`,
+        background: `hsl(${computedStyle.getPropertyValue('--background')})`,
+        foreground: `hsl(${computedStyle.getPropertyValue('--foreground')})`,
+        muted: `hsl(${computedStyle.getPropertyValue('--muted')})`,
+        border: `hsl(${computedStyle.getPropertyValue('--border')})`,
+        card: `hsl(${computedStyle.getPropertyValue('--card')})`
+      })
+    }
+
+    updateColors()
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(updateColors)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return colors
+}
+
 export function TrendCharts({
   dailyTrends,
   typeDistribution,
@@ -53,10 +103,33 @@ export function TrendCharts({
   customerSegments,
   isRTL
 }: TrendChartsProps) {
-  const colors = [
-    "#8884d8", "#82ca9d", "#ffc658", "#ff7300", "#00ff00", 
-    "#0088fe", "#00c49f", "#ffbb28", "#ff8042", "#8dd1e1"
+  const themeColors = useThemeColors()
+  const id = useId()
+  const gradReservations = `colorReservations_${id}`
+  const gradCancellations = `colorCancellations_${id}`
+  const gradModifications = `colorModifications_${id}`
+
+  const chartColors = [
+    themeColors.primary,
+    themeColors.secondary,
+    themeColors.tertiary,
+    themeColors.quaternary,
+    themeColors.quinary,
+    themeColors.primary,
+    themeColors.secondary,
+    themeColors.tertiary,
+    themeColors.quaternary,
+    themeColors.quinary
   ]
+
+  // Custom tooltip style
+  const tooltipStyle = {
+    backgroundColor: themeColors.card,
+    border: `1px solid ${themeColors.border}`,
+    borderRadius: '8px',
+    fontSize: '12px',
+    color: themeColors.foreground
+  }
 
   // Helper function to translate day names
   const translateDayName = (dayName: string, isShort = false) => {
@@ -81,14 +154,24 @@ export function TrendCharts({
     return key ? i18n.getMessage(key, isRTL) : dayName
   }
 
-  // Transform daily trends data with translated dates
-  const transformedDailyTrends = dailyTrends.map(trend => ({
-    ...trend,
-    displayDate: new Date(trend.date).toLocaleDateString(isRTL ? 'ar' : 'en', { 
-      month: 'short', 
-      day: 'numeric' 
-    })
-  }))
+  // Transform daily trends data with translated dates (memoized for performance)
+  const transformedDailyTrends = useMemo(() => {
+    return dailyTrends.map(trend => ({
+      ...trend,
+      displayDate: new Date(trend.date).toLocaleDateString(isRTL ? 'ar' : 'en', { 
+        month: 'short', 
+        day: 'numeric' 
+      })
+    }))
+  }, [dailyTrends, isRTL])
+
+  // Generate a key based on the date range to force chart re-render when data changes
+  const chartKey = useMemo(() => {
+    if (dailyTrends.length === 0) return 'empty'
+    const first = dailyTrends[0].date
+    const last = dailyTrends[dailyTrends.length - 1].date
+    return `${first}_${last}_${dailyTrends.length}`
+  }, [dailyTrends])
 
   // Transform type distribution with translated labels
   const transformedTypeDistribution = typeDistribution.map(type => ({
@@ -197,62 +280,61 @@ export function TrendCharts({
           <CardContent>
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={transformedDailyTrends}>
+                <AreaChart key={chartKey} data={transformedDailyTrends}>
                   <defs>
-                    <linearGradient id="colorReservations" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                    <linearGradient id={gradReservations} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={themeColors.primary} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={themeColors.primary} stopOpacity={0}/>
                     </linearGradient>
-                    <linearGradient id="colorCancellations" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                    <linearGradient id={gradCancellations} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={themeColors.secondary} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={themeColors.secondary} stopOpacity={0}/>
                     </linearGradient>
-                    <linearGradient id="colorModifications" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#ff7300" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#ff7300" stopOpacity={0}/>
+                    <linearGradient id={gradModifications} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={themeColors.tertiary} stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor={themeColors.tertiary} stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
                   <XAxis 
                     dataKey="displayDate"
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: themeColors.foreground }}
+                    stroke={themeColors.foreground}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
                   <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                    labelStyle={{ fontWeight: 'bold' }}
+                    contentStyle={tooltipStyle}
+                    labelStyle={{ fontWeight: 'bold', color: themeColors.foreground }}
                   />
                   <Area
                     type="monotone"
                     dataKey="reservations"
-                    stroke="#8884d8"
+                    stroke={themeColors.primary}
                     strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#colorReservations)"
+                    fill={`url(#${gradReservations})`}
                     name={i18n.getMessage('dashboard_reservations', isRTL)}
+                    isAnimationActive={false}
                   />
                   <Area
                     type="monotone"
                     dataKey="cancellations"
-                    stroke="#82ca9d"
+                    stroke={themeColors.secondary}
                     strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#colorCancellations)"
+                    fill={`url(#${gradCancellations})`}
                     name={i18n.getMessage('kpi_cancellations', isRTL)}
+                    isAnimationActive={false}
                   />
                   <Area
                     type="monotone"
                     dataKey="modifications"
-                    stroke="#ff7300"
+                    stroke={themeColors.tertiary}
                     strokeWidth={2}
                     fillOpacity={1}
-                    fill="url(#colorModifications)"
+                    fill={`url(#${gradModifications})`}
                     name={i18n.getMessage('operation_modifications', isRTL)}
+                    isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -260,8 +342,6 @@ export function TrendCharts({
           </CardContent>
         </Card>
       </motion.div>
-
-
 
       {/* Type Distribution */}
       <motion.div
@@ -282,23 +362,16 @@ export function TrendCharts({
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    fill="#8884d8"
+                    fill={themeColors.primary}
                     dataKey="count"
                     nameKey="label"
                     label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                   >
                     {transformedTypeDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
+                  <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -320,26 +393,20 @@ export function TrendCharts({
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={transformedTimeSlots}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
                   <XAxis 
                     dataKey="time"
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 11, fill: themeColors.foreground }}
+                    stroke={themeColors.foreground}
                     angle={-45}
                     textAnchor="end"
                     height={60}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
+                  <YAxis tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+                  <Tooltip contentStyle={tooltipStyle} />
                   <Bar 
                     dataKey="count" 
-                    fill="#8884d8" 
+                    fill={themeColors.primary} 
                     radius={[4, 4, 0, 0]}
                     name={i18n.getMessage('dashboard_reservations', isRTL)}
                   />
@@ -365,29 +432,23 @@ export function TrendCharts({
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={transformedDayOfWeekData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
                   <XAxis 
                     dataKey="day"
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: themeColors.foreground }}
+                    stroke={themeColors.foreground}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
+                  <YAxis tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+                  <Tooltip contentStyle={tooltipStyle} />
                   <Bar 
                     dataKey="reservations" 
-                    fill="#8884d8" 
+                    fill={themeColors.primary} 
                     radius={[4, 4, 0, 0]}
                     name={i18n.getMessage('dashboard_reservations', isRTL)}
                   />
                   <Bar 
                     dataKey="cancellations" 
-                    fill="#82ca9d" 
+                    fill={themeColors.secondary} 
                     radius={[4, 4, 0, 0]}
                     name={i18n.getMessage('kpi_cancellations', isRTL)}
                   />
@@ -413,34 +474,28 @@ export function TrendCharts({
             <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyTrends}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
                   <XAxis 
                     dataKey="month"
-                    tick={{ fontSize: 12 }}
+                    tick={{ fontSize: 12, fill: themeColors.foreground }}
+                    stroke={themeColors.foreground}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
+                  <YAxis tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+                  <Tooltip contentStyle={tooltipStyle} />
                   <Line
                     type="monotone"
                     dataKey="reservations"
-                    stroke="#8884d8"
+                    stroke={themeColors.primary}
                     strokeWidth={3}
-                    dot={{ r: 5 }}
+                    dot={{ r: 5, fill: themeColors.primary }}
                     name={i18n.getMessage('dashboard_reservations', isRTL)}
                   />
                   <Line
                     type="monotone"
                     dataKey="conversations"
-                    stroke="#82ca9d"
+                    stroke={themeColors.secondary}
                     strokeWidth={3}
-                    dot={{ r: 5 }}
+                    dot={{ r: 5, fill: themeColors.secondary }}
                     name={i18n.getMessage('msg_messages', isRTL)}
                   />
                 </LineChart>
@@ -471,22 +526,15 @@ export function TrendCharts({
                     dataKey="count"
                     data={transformedFunnelData}
                     isAnimationActive
-                    fill="#8884d8"
+                    fill={themeColors.primary}
                     nameKey="stage"
                   >
-                    <LabelList position="center" fill="#fff" fontSize={10} />
+                    <LabelList position="center" fill={themeColors.background} fontSize={10} />
                     {transformedFunnelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Funnel>
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
+                  <Tooltip contentStyle={tooltipStyle} />
                 </FunnelChart>
               </ResponsiveContainer>
             </div>
@@ -513,22 +561,15 @@ export function TrendCharts({
                     cx="50%"
                     cy="50%"
                     outerRadius={100}
-                    fill="#8884d8"
+                    fill={themeColors.primary}
                     dataKey="count"
                     label={({ segment, percentage }) => `${segment} ${percentage.toFixed(1)}%`}
                   >
                     {transformedCustomerSegments.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: 'white',
-                      border: '1px solid #ccc',
-                      borderRadius: '8px',
-                      fontSize: '12px'
-                    }}
-                  />
+                  <Tooltip contentStyle={tooltipStyle} />
                 </PieChart>
               </ResponsiveContainer>
             </div>

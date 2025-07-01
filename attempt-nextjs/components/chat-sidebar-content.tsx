@@ -2,12 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react'
 import { format } from 'date-fns'
-import { Send, MessageSquare, User, Bot, Clock } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { MessageSquare, User, Bot, Clock, Smile } from 'lucide-react'
 import { ThemedScrollbar } from '@/components/themed-scrollbar'
 import { useScrollbarVariant } from '@/hooks/useScrollbarVariant'
 import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/lib/language-context'
 import { ConversationCombobox } from '@/components/conversation-combobox'
@@ -17,6 +16,14 @@ import { useCustomerData } from '@/lib/customer-data-context'
 import { useSidebarChatStore } from '@/lib/sidebar-chat-store'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { toast } from 'sonner'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  EmojiPicker,
+  EmojiPickerContent,
+  EmojiPickerFooter,
+  EmojiPickerSearch
+} from '@/components/ui/emoji-picker'
+import { i18n } from '@/lib/i18n'
 
 interface ChatSidebarContentProps {
   selectedConversationId: string | null
@@ -30,6 +37,180 @@ interface MessageBubbleProps {
   isUser: boolean
 }
 
+// Enhanced chat input with shadcn Textarea and 24h inactivity check
+const BasicChatInput: React.FC<{
+  onSend: (text: string) => void
+  disabled?: boolean
+  placeholder?: string
+  isSending?: boolean
+  messages?: ConversationMessage[]
+}> = ({ onSend, disabled = false, placeholder = "Type message...", isSending = false, messages = [] }) => {
+  const { isRTL } = useLanguage()
+  const [text, setText] = useState('')
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Check if conversation is inactive (last message > 24 hours ago)
+  const isInactive = React.useMemo(() => {
+    if (!messages.length) return true // No messages = inactive
+    
+    const lastMessage = messages[messages.length - 1]
+    if (!lastMessage.date || !lastMessage.time) return false
+    
+    try {
+      const lastMessageDateTime = new Date(`${lastMessage.date}T${lastMessage.time}`)
+      const now = new Date()
+      const hoursDiff = (now.getTime() - lastMessageDateTime.getTime()) / (1000 * 60 * 60)
+      return hoursDiff > 24
+    } catch (error) {
+      console.warn('Error parsing message timestamp:', error)
+      return false
+    }
+  }, [messages])
+
+  const isActuallyDisabled = disabled || isInactive
+
+  // Auto-expand textarea
+  const adjustHeight = () => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      // Reset to minimum height first
+      textarea.style.height = '32px'
+      
+      // Calculate new height based on content, with minimum of 32px (h-8)
+      const scrollHeight = textarea.scrollHeight
+      const maxHeight = window.innerHeight * 0.4 // 40vh
+      const newHeight = Math.max(32, Math.min(scrollHeight, maxHeight))
+      
+      textarea.style.height = `${newHeight}px`
+    }
+  }
+
+  useEffect(() => {
+    adjustHeight()
+  }, [text])
+
+  // Handle emoji selection
+  const handleEmojiSelect = ({ emoji }: { emoji: string }) => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      const start = textarea.selectionStart
+      const end = textarea.selectionEnd
+      const newText = text.slice(0, start) + emoji + text.slice(end)
+      setText(newText)
+      
+      // Restore cursor position after emoji insertion
+      setTimeout(() => {
+        const newCursorPos = start + emoji.length
+        textarea.setSelectionRange(newCursorPos, newCursorPos)
+        textarea.focus()
+      }, 0)
+    }
+    setEmojiOpen(false)
+  }
+
+  return (
+    <div className="space-y-2">
+      {isInactive && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-md border border-muted">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">
+            {messages.length === 0 
+              ? i18n.getMessage('chat_start_conversation', isRTL)
+              : i18n.getMessage('chat_messaging_unavailable', isRTL)
+            }
+          </span>
+        </div>
+      )}
+      
+      <div className="flex gap-2 items-start">
+        <Textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              if (text.trim() && !isActuallyDisabled && !isSending) {
+                onSend(text.trim())
+                setText('')
+              }
+            }
+          }}
+          placeholder={placeholder}
+          disabled={isActuallyDisabled}
+          className={cn(
+            "flex-1 text-xs resize-none",
+            "overflow-hidden transition-all duration-200",
+            "border-border bg-background",
+            "focus-visible:ring-1 focus-visible:ring-ring",
+            "h-8 max-h-[40vh] py-0.5 px-3 leading-6", // Minimal padding and proper line height for exact 32px match
+            isInactive && "opacity-60 cursor-not-allowed"
+          )}
+          rows={1}
+        />
+        
+        {/* Emoji Picker Button */}
+        <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={isActuallyDisabled}
+              className={cn(
+                "inline-flex items-center justify-center rounded-md border border-border bg-background px-2 h-8 w-8 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none transition-colors flex-shrink-0"
+              )}
+            >
+              <Smile className="h-3.5 w-3.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent 
+            className="w-fit p-0" 
+            side="top" 
+            align="end"
+            sideOffset={8}
+          >
+            <EmojiPicker 
+              className="h-[342px] rounded-lg border shadow-md"
+              onEmojiSelect={handleEmojiSelect}
+            >
+              <EmojiPickerSearch placeholder="Search emoji..." />
+              <EmojiPickerContent />
+              <EmojiPickerFooter />
+            </EmojiPicker>
+          </PopoverContent>
+        </Popover>
+
+        {/* Send Button */}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            if (text.trim() && !isActuallyDisabled && !isSending) {
+              onSend(text.trim())
+              setText('')
+            }
+          }}
+          disabled={!text.trim() || isActuallyDisabled || isSending}
+          className={cn(
+            "inline-flex items-center justify-center rounded-md bg-primary px-2 h-8 w-8 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors flex-shrink-0"
+          )}
+        >
+          {isSending ? (
+            <div className="animate-spin rounded-full h-3 w-3 border-b border-primary-foreground"></div>
+          ) : (
+            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m21.854 2.147-10.94 10.939" />
+            </svg>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // Configure marked for safe HTML
 marked.setOptions({
   breaks: true,
@@ -37,22 +218,22 @@ marked.setOptions({
 })
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
-  const [showTooltip, setShowTooltip] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   
-  const formatTime = (timeStr: string) => {
+  const formatDateTime = (dateStr: string, timeStr: string) => {
     try {
-      // Handle various time formats
-      if (timeStr.includes('AM') || timeStr.includes('PM')) {
-        return timeStr
-      }
-      // Convert 24-hour format to 12-hour format
-      const [hours, minutes] = timeStr.split(':')
-      const hour = parseInt(hours)
-      const ampm = hour >= 12 ? 'PM' : 'AM'
-      const hour12 = hour % 12 || 12
-      return `${hour12}:${minutes} ${ampm}`
+      const date = new Date(`${dateStr} ${timeStr}`)
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' })
+      const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      const formattedTime = date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit', 
+        hour12: true 
+      })
+      return `${dayName}, ${formattedDate} • ${formattedTime}`
     } catch {
-      return timeStr
+      // Fallback to original format if parsing fails
+      return `${dateStr} • ${timeStr}`
     }
   }
 
@@ -65,65 +246,48 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
     }
   }, [message.message])
 
-  const handleMouseEnter = () => {
-      setShowTooltip(true)
-  }
-
-  const handleMouseLeave = () => {
-    setShowTooltip(false)
-  }
-
   return (
-    <div 
-      className={cn(
-        "w-full py-0.5 px-2 group" // Added group class for hover
-      )}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      <div className="relative">
-        <div 
-          className={cn(
-            "rounded-lg p-2.5 mx-auto max-w-4xl relative", // Added relative positioning
-            // Message-specific backgrounds - only user messages have backgrounds
-            isUser
-              ? "bg-muted"
-              : ""
-          )}
-        >
-          <div className="flex gap-2 items-start">
-            {/* Avatar - rounded rectangle style */}
-            <div className={cn(
-              "flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium",
-              isUser 
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted-foreground text-background"
-            )}>
-              {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
-            </div>
-            
-            <div className="flex-1 min-w-0">
-              {/* Message content with markdown - no label */}
-              <div 
-                className="text-sm prose prose-sm max-w-none
-                  prose-p:my-0.5 prose-headings:mt-1.5 prose-headings:mb-0.5 prose-ul:my-0.5 prose-ol:my-0.5
-                  prose-li:my-0 prose-pre:my-0.5 prose-code:text-xs"
-                dangerouslySetInnerHTML={{ __html: messageHtml }}
-              />
+    <div className="w-full py-1 px-2">
+      <div 
+        className={cn(
+          "rounded-lg p-2.5 pb-8 mx-auto max-w-4xl relative",
+          // Message-specific backgrounds - only user messages have backgrounds
+          isUser
+            ? "bg-muted"
+            : ""
+        )}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className="flex gap-2 items-start">
+          {/* Avatar - rounded rectangle style */}
+          <div className={cn(
+            "flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium",
+            isUser 
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted-foreground text-background"
+          )}>
+            {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            {/* Message content with markdown */}
+            <div 
+              className="text-sm prose prose-sm max-w-none
+                prose-p:my-0.5 prose-headings:mt-1.5 prose-headings:mb-0.5 prose-ul:my-0.5 prose-ol:my-0.5
+                prose-li:my-0 prose-pre:my-0.5 prose-code:text-xs"
+              dangerouslySetInnerHTML={{ __html: messageHtml }}
+            />
           </div>
         </div>
         
-          {/* Tooltip positioned inside message bubble at bottom right */}
-          <div className={cn(
-            "absolute sidebar-chat-tooltip px-1.5 py-0.5 text-[9px] bg-background/90 text-muted-foreground rounded",
-            "bottom-1 right-1",
-            "transition-all duration-150 ease-out origin-bottom-right",
-            showTooltip 
-              ? "opacity-100 scale-100" 
-              : "opacity-0 scale-95 pointer-events-none"
-          )}>
-            {formatTime(message.time)}
-          </div>
+        {/* Timestamp positioned inside the rounded container */}
+        <div className={cn(
+          "absolute bottom-2 right-3 flex items-center gap-1 text-[10px] transition-colors",
+          isHovered ? "text-muted-foreground/80" : "text-muted-foreground/50"
+        )}>
+          <Clock className="h-2.5 w-2.5" />
+          <span>{formatDateTime(message.date, message.time)}</span>
         </div>
       </div>
     </div>
@@ -138,27 +302,38 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 }) => {
   const { isRTL } = useLanguage()
   const { isLoadingConversation, setLoadingConversation } = useSidebarChatStore()
-  const [messageInput, setMessageInput] = useState('')
   const [isSending, setIsSending] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const previousConversationIdRef = useRef<string | null>(null)
 
   // Use centralized customer data
   const { conversations, reservations, loading } = useCustomerData()
+  
+  // Local state for additional messages (not optimistic - only added on success)
+  const [additionalMessages, setAdditionalMessages] = useState<Record<string, ConversationMessage[]>>({})
 
   // Log the data state
       // Debug: Conversations and reservations loaded
 
   const currentConversation = selectedConversationId ? conversations[selectedConversationId] || [] : []
+  
+  // Combine real messages with additional messages for this conversation
+  const conversationAdditional = selectedConversationId ? (additionalMessages[selectedConversationId] || []) : []
+  const allMessages = [...currentConversation, ...conversationAdditional]
 
   // Sort messages by date and time
   const sortedMessages = React.useMemo(() => {
-    return [...currentConversation].sort((a, b) => {
+    return [...allMessages].sort((a, b) => {
       const aTime = new Date(`${a.date} ${a.time}`)
       const bTime = new Date(`${b.date} ${b.time}`)
       return aTime.getTime() - bTime.getTime()
     })
-  }, [currentConversation])
+  }, [allMessages])
+
+  // Clear additional messages when conversation changes  
+  useEffect(() => {
+    setAdditionalMessages({})
+  }, [selectedConversationId])
 
   // Monitor when conversation data and rendering is complete
   useEffect(() => {
@@ -189,97 +364,84 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [sortedMessages])
 
-  // Send message function
-  const sendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversationId || isSending) return
+
+
+  // Send message function - called by BasicChatInput
+  const handleSendMessage = async (messageText: string) => {
+    if (!selectedConversationId || isSending) return
 
     setIsSending(true)
+    
     try {
       const now = new Date()
       const currentDate = format(now, 'yyyy-MM-dd')
-      const currentTime = format(now, 'HH:mm:ss')
-      
+      const currentTime = format(now, 'HH:mm')
+
       // Send WhatsApp message
       const sendResponse = await fetch('/api/message/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           wa_id: selectedConversationId,
-          text: messageInput
+          text: messageText
         })
       })
 
       if (!sendResponse.ok) {
-        throw new Error('Failed to send message')
+        const errorData = await sendResponse.json()
+        throw new Error(errorData.message || 'Failed to send message')
       }
 
-      // Append message to conversation
+      // Append message to conversation database
       const appendResponse = await fetch(`/api/message/append?wa_id=${selectedConversationId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           role: 'admin',
-          message: messageInput,
+          message: messageText,
           date: currentDate,
           time: currentTime
         })
       })
 
       if (!appendResponse.ok) {
-        throw new Error('Failed to append message to conversation')
+        const errorData = await appendResponse.json()
+        throw new Error(errorData.message || 'Failed to append message to conversation')
       }
 
-      // Clear input and refresh conversations
-      setMessageInput('')
-      
-      // Refresh the conversations to get the latest messages
-      if (onRefresh) {
-        onRefresh()
+      // SUCCESS: Add message directly to local state (no refresh needed)
+      const newMessage: ConversationMessage = {
+        role: 'admin',
+        message: messageText,
+        date: currentDate,
+        time: currentTime
       }
+      
+      setAdditionalMessages(prev => ({
+        ...prev,
+        [selectedConversationId]: [...(prev[selectedConversationId] || []), newMessage]
+      }))
+      
+      // Show success toast
+      toast.success(i18n.getMessage('chat_message_sent', isRTL))
       
     } catch (error) {
       console.error('Error sending message:', error)
+      const errorMessage = `${i18n.getMessage('chat_message_failed', isRTL)}: ${error instanceof Error ? error.message : 'Unknown error'}`
+      toast.error(errorMessage)
     } finally {
       setIsSending(false)
     }
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
-  }
 
-  // Check if chat input should be disabled
-  const isInputDisabled = React.useMemo(() => {
-    // First check if there's no conversation at all
-    if (!sortedMessages.length) return true // Disable if no messages
-    
-    // Then check for 24h lockout
-    const lastUserMessage = [...sortedMessages].reverse().find(msg => msg.role === 'user')
-    if (!lastUserMessage) return false
 
-    try {
-      const lastMessageTime = new Date(`${lastUserMessage.date} ${lastUserMessage.time}`)
-      const now = new Date()
-      const hoursSinceLastMessage = (now.getTime() - lastMessageTime.getTime()) / (1000 * 60 * 60)
-      return hoursSinceLastMessage > 24
-    } catch {
-      return false
-    }
-  }, [sortedMessages])
-  
-  // Determine the reason for disabling
-  const disableReason = React.useMemo(() => {
-    if (!sortedMessages.length) {
-      return isRTL ? "لا توجد محادثة مع هذا العميل" : "No conversation with this customer"
-    }
-    if (isInputDisabled && sortedMessages.length > 0) {
-      return isRTL ? "الدردشة مقفلة بسبب عدم النشاط لمدة 24 ساعة" : "Chat locked due to 24h inactivity"
-    }
-    return null
-  }, [sortedMessages, isInputDisabled, isRTL])
+  // Simple input state - no complex calculations
+  const hasConversationSelected = !!selectedConversationId
+  const inputDisabled = !hasConversationSelected || isSending
+  const inputPlaceholder = hasConversationSelected 
+    ? i18n.getMessage('chat_type_message', isRTL)
+    : i18n.getMessage('chat_no_conversation', isRTL)
 
   // Show combobox only when we have data
   const shouldShowCombobox = Object.keys(conversations).length > 0
@@ -293,7 +455,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
             <div className="flex flex-col items-center gap-2">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               <p className="text-sm text-muted-foreground">
-                {isRTL ? "جاري تحميل المحادثة..." : "Loading conversation..."}
+                {i18n.getMessage('chat_loading_conversation', isRTL)}
               </p>
             </div>
           </div>
@@ -311,7 +473,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
             />
           ) : (
             <div className="text-xs text-muted-foreground text-center py-2">
-              {isRTL ? "جاري تحميل المحادثات..." : "Loading conversations..."}
+              {i18n.getMessage('chat_loading_conversations', isRTL)}
             </div>
           )}
         </div>
@@ -322,8 +484,8 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
             <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
             <p className="text-sm">
               {shouldShowCombobox 
-                ? (isRTL ? "ابحث واختر محادثة لبدء الدردشة" : "Search and select a conversation to start chatting")
-                : (isRTL ? "لا توجد محادثات متاحة" : "No conversations available")
+                ? i18n.getMessage('chat_select_conversation', isRTL)
+                : i18n.getMessage('chat_no_conversations', isRTL)
               }
             </p>
           </div>
@@ -340,7 +502,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
           <div className="flex flex-col items-center gap-2">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             <p className="text-sm text-muted-foreground">
-              {isRTL ? "جاري تحميل المحادثة..." : "Loading conversation..."}
+              {i18n.getMessage('chat_loading_conversation', isRTL)}
             </p>
           </div>
         </div>
@@ -363,7 +525,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
         className="flex-1 bg-card scrollbar-autohide chat-scrollbar" 
         style={{ height: '100%' }}
         noScrollX={true}
-        rtl={isRTL}
+        rtl={false}
       >
         <div className="space-y-0">
           {sortedMessages.length === 0 ? (
@@ -371,10 +533,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
               <div className="text-center">
                 <MessageSquare className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
                 <p className="text-sm">
-                  {isRTL 
-                    ? "لا توجد رسائل في هذه المحادثة" 
-                    : "No messages in this conversation"
-                  }
+                  {i18n.getMessage('chat_no_messages', isRTL)}
                 </p>
               </div>
             </div>
@@ -391,37 +550,15 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
         </div>
       </ThemedScrollbar>
 
-      {/* Message Input */}
-      <div className="p-3 border-t border-sidebar-border bg-card">
-        <div className="flex gap-2">
-          <Input
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={isInputDisabled 
-              ? (isRTL ? "الدردشة مقفلة..." : "Chat locked...")
-              : (isRTL ? "اكتب رسالة..." : "Type message...")
-            }
-            disabled={isInputDisabled || isSending}
-            title={disableReason || undefined}
-            className={cn(
-              "flex-1 text-xs h-8",
-              (isInputDisabled || isSending) && "opacity-60 cursor-not-allowed bg-muted text-muted-foreground border-border"
-            )}
-          />
-          <Button
-            onClick={sendMessage}
-            disabled={!messageInput.trim() || isInputDisabled || isSending}
-            size="sm"
-            className="px-2 h-8"
-          >
-            {isSending ? (
-              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-            ) : (
-              <Send className="h-3 w-3" />
-            )}
-          </Button>
-        </div>
+      {/* Message Input - Enhanced textarea with 24h inactivity detection */}
+      <div className="p-3 border-t border-sidebar-border bg-card max-h-[50vh] overflow-hidden">
+        <BasicChatInput
+          onSend={handleSendMessage}
+          disabled={inputDisabled}
+          placeholder={inputPlaceholder}
+          isSending={isSending}
+          messages={sortedMessages}
+        />
       </div>
     </div>
   )

@@ -3,6 +3,7 @@
  * 
  * Displays a minimized help icon that expands to show legend on hover.
  * Shows conversations and cancellations only in free roam mode.
+ * Shows vacation periods when they exist.
  */
 
 "use client"
@@ -10,6 +11,7 @@
 import React from 'react'
 import { Info } from 'lucide-react'
 import { useLanguage } from '@/lib/language-context'
+import { useVacation } from '@/lib/vacation-context'
 import { cn } from '@/lib/utils'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 
@@ -20,6 +22,7 @@ interface CalendarLegendProps {
 
 export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLegendProps) {
   const { isRTL } = useLanguage()
+  const { vacationPeriods } = useVacation()
 
   const legendItems = [
     {
@@ -39,10 +42,21 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
       color: 'var(--fc-conversation-bg)', // Orange/Yellow - Conversation
       label: isRTL ? 'محادثة' : 'Conversation',
       showAlways: false // Only show in free roam
+    },
+    {
+      key: 'vacation',
+      color: 'hsl(var(--vacation-bg) / var(--vacation-bg-opacity))', // Orange - Vacation (match actual event opacity)
+      label: isRTL ? 'إجازة' : 'Vacation',
+      showAlways: false, // Only show when vacation periods exist
+      showWhenVacationExists: true
     }
   ]
 
-  const filteredItems = legendItems.filter(item => item.showAlways || freeRoam)
+  const filteredItems = legendItems.filter(item => 
+    item.showAlways || 
+    (freeRoam && item.key === 'conversation') ||
+    (item.showWhenVacationExists && vacationPeriods.length > 0)
+  )
 
   return (
     <HoverCard openDelay={200} closeDelay={100}>
@@ -50,16 +64,16 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
         <button
           className={cn(
             "flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-background/95 to-background/90 border border-border/60 rounded-lg shadow-sm hover:shadow-md hover:border-border/80 transition-all duration-200 backdrop-blur-sm",
-      className
+            className
           )}
           aria-label={isRTL ? "إظهار دليل الألوان" : "Show color legend"}
         >
           <Info className="h-3 w-3 text-muted-foreground/80" />
           <div className="flex items-center gap-0.5">
-            {filteredItems.slice(0, 3).map((item, index) => (
+            {filteredItems.slice(0, 4).map((item, index) => (
               <div
                 key={item.key}
-                className="w-1.5 h-1.5 rounded-full border border-white/30 shadow-sm"
+                className="w-1.5 h-1.5 rounded-full shadow-sm"
                 style={{ backgroundColor: item.color }}
               />
             ))}
@@ -81,16 +95,16 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
             {filteredItems.map((item) => (
               <div key={item.key} className="flex items-center gap-2">
                 <div
-                  className="w-3 h-3 rounded-sm border border-border/50 flex-shrink-0 shadow-sm"
-              style={{ backgroundColor: item.color }}
-            />
+                  className="w-3 h-3 rounded-sm flex-shrink-0 shadow-sm"
+                  style={{ backgroundColor: item.color }}
+                />
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-              {item.label}
-            </span>
+                  {item.label}
+                </span>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
       </HoverCardContent>
     </HoverCard>
   )

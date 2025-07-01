@@ -56,6 +56,10 @@
   --sidebar-border: 220 13% 91%;
   --sidebar-ring: 217.2 91.2% 59.8%;
   
+  /* Calendar vacation background colors */
+  --vacation-bg: 25 95% 53%; /* Orange-based vacation color - distinct from events and today */
+  --vacation-bg-opacity: 0.12; /* Subtle background opacity */
+  
   /* Font variables - each theme can define its own fonts */
   --font-sans: 'Your Sans Font', var(--font-sans-stack);
   --font-serif: 'Your Serif Font', var(--font-serif-stack);
@@ -108,6 +112,10 @@
   --sidebar-accent-foreground: 240 4.8% 95.9%;
   --sidebar-border: 240 3.7% 15.9%;
   --sidebar-ring: 217.2 91.2% 59.8%;
+  
+  /* Calendar vacation background colors - dark mode */
+  --vacation-bg: 35 91% 65%; /* Warmer orange for dark mode visibility */
+  --vacation-bg-opacity: 0.15; /* Slightly higher opacity for dark mode */
   
   /* Dark mode shadows remain the same usually */
   --shadow-2xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);

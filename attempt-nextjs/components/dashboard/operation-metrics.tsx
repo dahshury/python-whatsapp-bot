@@ -58,12 +58,12 @@ function OperationMetricCard({ title, icon, attempts, success, failures, isRTL }
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-green-600" />
-                <span className="text-green-600">{success}</span>
+                <CheckCircle className="h-3 w-3 text-chart-1" />
+                <span className="text-chart-1">{success}</span>
               </div>
               <div className="flex items-center gap-1">
-                <XCircle className="h-3 w-3 text-red-600" />
-                <span className="text-red-600">{failures}</span>
+                <XCircle className="h-3 w-3 text-destructive" />
+                <span className="text-destructive">{failures}</span>
               </div>
             </div>
             

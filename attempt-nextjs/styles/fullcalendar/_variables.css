@@ -1,4 +1,11 @@
-/* FullCalendar CSS Variables - Theme Adapted */
+/* FullCalendar CSS Variables - Theme Integration
+ * Responsibility: Centralized CSS variables for FullCalendar theming and color management
+ * Dependencies: Theme CSS variables (--background, --foreground, --primary, etc.)
+ * Usage: Referenced throughout all FullCalendar CSS files for consistent theming
+ * Features: Event colors, button states, backgrounds, indicators, view-specific variables
+ * Note: Changes here propagate to all calendar components - test across all themes
+ */
+
 :root {
   /* Font sizes */
   --fc-small-font-size: .85em;
@@ -25,7 +32,6 @@
   --fc-event-selected-overlay-color: rgba(0, 0, 0, 0.25);
 
   /* Event state colors */
-  /* --fc-event-hover-bg-color: hsl(var(--accent) / 0.1); */
   --fc-event-past-opacity: 0.6;
   --fc-event-past-bg-color: hsl(var(--muted));
   --fc-event-past-text-color: hsl(var(--muted-foreground));
@@ -45,9 +51,6 @@
   --fc-reservation-type-1-border: #3688d8;
   --fc-conversation-bg: #EDAE49; /* Conversation - Orange/Yellow */
   --fc-conversation-border: #EDAE49;
-
-  /* More link colors */
-  /* More link colors moved to _popover-unified.css */
 
   /* Event resizer */
   --fc-event-resizer-thickness: 8px;

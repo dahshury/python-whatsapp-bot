@@ -14,4 +14,22 @@
   color: var(--fc-event-text-color) !important;
 }
 
+/* CRITICAL FIX: Prevent text color inheritance on hover for past events in free roam mode */
+[data-free-roam="true"] .fc-event.fc-event-past:hover,
+[data-free-roam="true"] .fc-event.fc-event-past:hover *,
+[data-free-roam="true"] .fc-event.fc-event-past:hover .fc-event-title,
+[data-free-roam="true"] .fc-event.fc-event-past:hover .fc-event-time,
+[data-free-roam="true"] .fc-event.fc-event-past:hover .fc-event-main {
+  color: var(--fc-event-text-color) !important;
+}
+
+/* Also apply to daygrid events in free roam mode */
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover *,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover .fc-event-title,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover .fc-event-time,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover .fc-event-main {
+  color: var(--fc-event-text-color) !important;
+}
+
  

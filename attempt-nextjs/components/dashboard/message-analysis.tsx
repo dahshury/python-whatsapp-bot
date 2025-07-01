@@ -19,6 +19,7 @@ import { useCustomerData } from "@/lib/customer-data-context"
 import { HoverCard, HoverCardTrigger, HoverCardContent } from "@/components/ui/hover-card"
 import { CustomerStatsCard } from "@/components/customer-stats-card"
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store"
+import { cn } from "@/lib/utils"
 
 interface MessageAnalysisProps {
   messageHeatmap: MessageHeatmapData[]
@@ -103,12 +104,22 @@ export function MessageAnalysis({
 
   const getIntensity = (count: number) => {
     const intensity = count / maxCount
-    if (intensity === 0) return 'bg-gray-100'
-    if (intensity < 0.2) return 'bg-blue-100'
-    if (intensity < 0.4) return 'bg-blue-200'
-    if (intensity < 0.6) return 'bg-blue-300'
-    if (intensity < 0.8) return 'bg-blue-400'
-    return 'bg-blue-500'
+    if (intensity === 0) return 'bg-muted/5 border-border/20'
+    if (intensity < 0.2) return 'bg-chart-1/10 border-chart-1/20 text-chart-1'
+    if (intensity < 0.4) return 'bg-chart-1/25 border-chart-1/30 text-chart-1'
+    if (intensity < 0.6) return 'bg-chart-1/50 border-chart-1/40 text-foreground'
+    if (intensity < 0.8) return 'bg-chart-1/75 border-chart-1/50 text-foreground'
+    return 'bg-chart-1 border-chart-1 text-primary-foreground'
+  }
+
+  const getIntensityLabel = (count: number) => {
+    const intensity = count / maxCount
+    if (intensity === 0) return 'No messages'
+    if (intensity < 0.2) return 'Very Low'
+    if (intensity < 0.4) return 'Low'
+    if (intensity < 0.6) return 'Medium'
+    if (intensity < 0.8) return 'High'
+    return 'Very High'
   }
 
   const paginatedCustomers = limitedCustomers.slice(
@@ -292,70 +303,182 @@ export function MessageAnalysis({
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
       >
-        <Card>
-          <CardHeader>
-            <CardTitle>{i18n.getMessage('msg_volume_heatmap', isRTL)}</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              {i18n.getMessage('msg_activity_patterns', isRTL)}
-            </p>
+        <Card className="overflow-hidden">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-chart-1" />
+                  {i18n.getMessage('msg_volume_heatmap', isRTL)}
+                </CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {i18n.getMessage('msg_activity_patterns', isRTL)}
+                </p>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-chart-1">{maxCount}</div>
+                <p className="text-xs text-muted-foreground">Peak Messages</p>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {/* Hour labels row */}
-              <div className="flex items-center">
-                <div className="w-12 flex-shrink-0"></div>
-                <div className="flex flex-1">
+          <CardContent className="pb-6">
+            <div className="space-y-4">
+              {/* Enhanced Header with time indicators */}
+              <div className="flex items-center mb-3">
+                <div className="w-16 flex-shrink-0"></div>
+                <div className="flex flex-1 relative">
                   {hours.map(hour => (
                     <div 
                       key={hour} 
-                      className="flex-1 text-center text-muted-foreground text-[10px] leading-tight min-w-[18px]"
+                      className="flex-1 text-center text-muted-foreground text-xs font-medium min-w-[24px] relative"
                     >
                       {hour.toString().padStart(2, '0')}
+                      {/* Time period indicators */}
+                      {hour === 6 && (
+                        <div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-3 font-medium">
+                          Morning
+                        </div>
+                      )}
+                      {hour === 12 && (
+                        <div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-2 font-medium">
+                          Afternoon
+                        </div>
+                      )}
+                      {hour === 18 && (
+                        <div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-4 font-medium">
+                          Evening
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
-                </div>
+              </div>
                 
-              {/* Days and heatmap rows */}
-              {daysOrder.map(day => (
-                <div key={day} className="flex items-center">
-                  <div className="w-12 flex-shrink-0 text-muted-foreground text-[10px] text-right pr-2 leading-tight">
-                    {translateDayName(day).slice(0, 3)}
+              {/* Enhanced heatmap grid */}
+              <div className="space-y-1">
+                {daysOrder.map((day, dayIndex) => (
+                  <div key={day} className="flex items-center group">
+                    <div className="w-16 flex-shrink-0 text-sm font-medium text-foreground text-right pr-3">
+                      <div className="bg-accent/20 px-2 py-1 rounded-md border">
+                        {translateDayName(day).slice(0, 3)}
+                      </div>
                     </div>
-                  <div className="flex flex-1">
-                    {hours.map(hour => {
-                      const count = getHeatmapValue(day, hour)
-                      return (
-                        <div
-                          key={`${day}-${hour}`}
-                          className={`relative flex-1 aspect-square ${getIntensity(count)} hover:scale-110 transition-transform cursor-default min-w-[18px] border border-gray-300/30`}
-                          style={{ minHeight: '18px' }}
-                          title={`${translateDayName(day)} ${hour}:00 - ${count} ${i18n.getMessage('msg_messages', isRTL)}`}
-                        >
-                          {count > 0 && (
-                            <span className="absolute inset-0 flex items-center justify-center text-[8px] font-medium text-gray-800 select-none">
-                              {count}
-                            </span>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
+                    <div className="flex flex-1 gap-[1px]">
+                      {hours.map(hour => {
+                        const count = getHeatmapValue(day, hour)
+                        const intensity = count / maxCount
+                        return (
+                          <motion.div
+                            key={`${day}-${hour}`}
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: (dayIndex * 24 + hour) * 0.002 }}
+                            className={`
+                              relative flex-1 aspect-square ${getIntensity(count)} 
+                              hover:scale-105 hover:shadow-lg hover:z-10 
+                              transition-all duration-200 cursor-pointer 
+                              min-w-[24px] min-h-[24px] rounded border-2
+                              group-hover:shadow-sm
+                            `}
+                            title={`${translateDayName(day)} ${hour.toString().padStart(2, '0')}:00\n${count} ${i18n.getMessage('msg_messages', isRTL)}\n${getIntensityLabel(count)} activity`}
+                            whileHover={{ 
+                              scale: 1.1,
+                              zIndex: 20,
+                              boxShadow: "0 8px 25px -8px rgba(0,0,0,0.3)"
+                            }}
+                          >
+                            {count > 0 && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <span className="text-xs font-bold select-none">
+                                  {count > 99 ? '99+' : count}
+                                </span>
+                              </div>
+                            )}
+                            {/* Peak indicator */}
+                            {count === maxCount && (
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-chart-3 rounded-full border-2 border-background shadow-sm">
+                                <div className="absolute inset-0 bg-chart-3 rounded-full animate-pulse"></div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
+              </div>
                 
-                {/* Legend */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground mt-4">
-                <span>{i18n.getMessage('msg_less', isRTL)}</span>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 bg-gray-100 border border-gray-300/30"></div>
-                  <div className="w-4 h-4 bg-blue-100 border border-gray-300/30"></div>
-                  <div className="w-4 h-4 bg-blue-200 border border-gray-300/30"></div>
-                  <div className="w-4 h-4 bg-blue-300 border border-gray-300/30"></div>
-                  <div className="w-4 h-4 bg-blue-400 border border-gray-300/30"></div>
-                  <div className="w-4 h-4 bg-blue-500 border border-gray-300/30"></div>
+              {/* Enhanced legend with gradient and statistics */}
+              <div className="mt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{i18n.getMessage('msg_less', isRTL)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>{i18n.getMessage('msg_more', isRTL)}</span>
+                  </div>
                 </div>
-                <span>{i18n.getMessage('msg_more', isRTL)}</span>
+                
+                {/* Gradient legend */}
+                <div className="relative">
+                  <div className="h-4 rounded-full overflow-hidden border border-border/50 shadow-inner">
+                    <div className="h-full bg-gradient-to-r from-muted/20 via-chart-1/30 via-chart-1/60 to-chart-1"></div>
+                  </div>
+                  <div className="flex justify-between mt-2 text-xs text-muted-foreground">
+                    <span>0</span>
+                    <span>{Math.floor(maxCount * 0.25)}</span>
+                    <span>{Math.floor(maxCount * 0.5)}</span>
+                    <span>{Math.floor(maxCount * 0.75)}</span>
+                    <span>{maxCount}</span>
+                  </div>
+                </div>
+
+                {/* Activity insights */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
+                  <div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
+                    <div className="text-xs text-muted-foreground">Peak Hour</div>
+                    <div className="text-sm font-semibold text-chart-1">
+                      {(() => {
+                        const peakData = messageHeatmap.reduce((peak, current) => 
+                          current.count > peak.count ? current : peak
+                        , { hour: 0, count: 0 })
+                        return `${peakData.hour.toString().padStart(2, '0')}:00`
+                      })()}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
+                    <div className="text-xs text-muted-foreground">Busiest Day</div>
+                    <div className="text-sm font-semibold text-chart-2">
+                      {(() => {
+                        const dayTotals = daysOrder.map(day => ({
+                          day,
+                          total: messageHeatmap
+                            .filter(d => d.weekday === day)
+                            .reduce((sum, d) => sum + d.count, 0)
+                        }))
+                        const busiestDay = dayTotals.reduce((peak, current) => 
+                          current.total > peak.total ? current : peak
+                        )
+                        return translateDayName(busiestDay.day).slice(0, 3)
+                      })()}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
+                    <div className="text-xs text-muted-foreground">Total Messages</div>
+                    <div className="text-sm font-semibold text-chart-3">
+                      {messageHeatmap.reduce((sum, d) => sum + d.count, 0).toLocaleString()}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
+                    <div className="text-xs text-muted-foreground">Avg/Hour</div>
+                    <div className="text-sm font-semibold text-chart-4">
+                      {(messageHeatmap.reduce((sum, d) => sum + d.count, 0) / (24 * 7)).toFixed(1)}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -481,19 +604,43 @@ export function MessageAnalysis({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>{i18n.getMessage('msg_most_common_words', isRTL)}</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {isRTL ? "الكلمات الأكثر شيوعاً في المحادثات" : "Most frequently used words in conversations"}
-              </p>
+          <Card className="h-full border-0 shadow-lg bg-gradient-to-br from-card via-card to-accent/5">
+            <CardHeader className="pb-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <MessageSquare className="h-5 w-5 text-chart-1" />
+                    {i18n.getMessage('msg_most_common_words', isRTL)}
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    {isRTL ? "الكلمات الأكثر شيوعاً في المحادثات" : "Most frequently used words in conversations"}
+                  </p>
+                </div>
+                
+                {/* Legend */}
+                <div className="flex flex-col gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-sm bg-chart-1 shadow-sm"></div>
+                      <span className="text-muted-foreground font-medium">Customers</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded-sm bg-chart-2 shadow-sm"></div>
+                      <span className="text-muted-foreground font-medium">Assistant</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            <CardContent className="pt-0">
+              <div className="space-y-4 max-h-[400px] overflow-y-auto">
                 {enhancedWordFrequency.map((word, index) => {
                   const maxCount = Math.max(...enhancedWordFrequency.map(w => w.totalCount))
-                  const customerPercentage = (word.customerCount / maxCount) * 100
-                  const assistantPercentage = (word.assistantCount / maxCount) * 100
+                  const customerPercentage = (word.customerCount / word.totalCount) * 100
+                  const assistantPercentage = (word.assistantCount / word.totalCount) * 100
+                  const isTopWord = index < 3
                   
                   return (
                     <motion.div
@@ -501,60 +648,128 @@ export function MessageAnalysis({
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className="space-y-1"
+                      className={cn(
+                        "group relative p-3 rounded-lg border transition-all duration-200",
+                        "hover:shadow-md hover:border-accent/50 hover:bg-accent/5",
+                        isTopWord && "bg-accent/10 border-accent/30"
+                      )}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <span className="text-sm font-medium text-muted-foreground w-6">
-                            #{index + 1}
-                          </span>
-                          <span className="text-sm font-medium">{word.word}</span>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold transition-colors",
+                            isTopWord 
+                              ? "bg-chart-1 text-primary-foreground shadow-sm"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {index + 1}
+                          </div>
+                          <div className="space-y-1">
+                            <span className={cn(
+                              "font-semibold transition-colors",
+                              isTopWord ? "text-chart-1" : "text-foreground"
+                            )}>
+                              {word.word}
+                            </span>
+                            <div className="text-xs text-muted-foreground">
+                              {word.totalCount} total uses
+                            </div>
+                          </div>
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {word.totalCount}
-                        </span>
+                        
+                        {/* Top 3 indicator */}
+                        {isTopWord && (
+                          <div className="flex items-center gap-1 px-2 py-1 bg-chart-1/10 rounded-full border border-chart-1/20">
+                            <TrendingUp className="h-3 w-3 text-chart-1" />
+                            <span className="text-xs font-medium text-chart-1">Top {index + 1}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center justify-end space-x-3">
-                        {/* Combined usage indicators */}
-                        <div className="flex items-center space-x-2 text-xs">
-                          <div className="flex items-center space-x-1">
-                            <div className="w-3 h-3 bg-blue-500 rounded-sm"></div>
-                            <span className="text-blue-600">{word.customerCount}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <div className="w-3 h-3 bg-green-500 rounded-sm"></div>
-                            <span className="text-green-600">{word.assistantCount}</span>
+                      
+                      {/* Enhanced progress bar */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Usage Distribution</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-chart-1 font-medium">{word.customerCount}</span>
+                            <span className="text-chart-2 font-medium">{word.assistantCount}</span>
                           </div>
                         </div>
-                        {/* Combined progress bar with numbers inside */}
-                        <div className="w-32 h-8 bg-gray-200 rounded-md overflow-hidden relative">
+                        
+                        <div className="relative h-6 bg-muted/50 rounded-full overflow-hidden border border-border/50 shadow-inner">
                           <div className="h-full flex">
-                            <div 
-                              className="bg-blue-500 transition-all duration-300 relative flex items-center justify-center"
-                              style={{ width: `${(word.customerCount / word.totalCount) * 100}%` }}
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${customerPercentage}%` }}
+                              transition={{ delay: index * 0.05, duration: 0.8, ease: "easeOut" }}
+                              className="bg-gradient-to-r from-chart-1 to-chart-1/80 relative flex items-center justify-center shadow-sm"
                             >
-                              {word.customerCount > 0 && (
-                                <span className="text-white text-xs font-medium absolute inset-0 flex items-center justify-center">
+                              {word.customerCount > 0 && customerPercentage > 15 && (
+                                <span className="text-xs font-bold text-primary-foreground drop-shadow-sm">
                                   {word.customerCount}
                                 </span>
                               )}
-                            </div>
-                            <div 
-                              className="bg-green-500 transition-all duration-300 relative flex items-center justify-center"
-                              style={{ width: `${(word.assistantCount / word.totalCount) * 100}%` }}
+                            </motion.div>
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${assistantPercentage}%` }}
+                              transition={{ delay: index * 0.05 + 0.2, duration: 0.8, ease: "easeOut" }}
+                              className="bg-gradient-to-r from-chart-2 to-chart-2/80 relative flex items-center justify-center shadow-sm"
                             >
-                              {word.assistantCount > 0 && (
-                                <span className="text-white text-xs font-medium absolute inset-0 flex items-center justify-center">
+                              {word.assistantCount > 0 && assistantPercentage > 15 && (
+                                <span className="text-xs font-bold text-primary-foreground drop-shadow-sm">
                                   {word.assistantCount}
                                 </span>
                               )}
-                            </div>
+                            </motion.div>
+                          </div>
+                          
+                          {/* Subtle gradient overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none"></div>
+                        </div>
+                        
+                        {/* Percentage breakdown */}
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1 text-chart-1">
+                            <div className="w-2 h-2 rounded-full bg-chart-1"></div>
+                            <span className="font-medium">{customerPercentage.toFixed(0)}%</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-chart-2">
+                            <span className="font-medium">{assistantPercentage.toFixed(0)}%</span>
+                            <div className="w-2 h-2 rounded-full bg-chart-2"></div>
                           </div>
                         </div>
                       </div>
+                      
+                      {/* Hover glow effect */}
+                      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-chart-1/5 via-transparent to-chart-2/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                     </motion.div>
                   )
                 })}
+              </div>
+              
+              {/* Summary statistics */}
+              <div className="mt-6 pt-4 border-t border-border/50">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold text-chart-1">
+                      {enhancedWordFrequency.reduce((sum, w) => sum + w.customerCount, 0)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Customer Words</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold text-chart-2">
+                      {enhancedWordFrequency.reduce((sum, w) => sum + w.assistantCount, 0)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Assistant Words</div>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="text-sm font-semibold text-foreground">
+                      {enhancedWordFrequency.reduce((sum, w) => sum + w.totalCount, 0)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Total Usage</div>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

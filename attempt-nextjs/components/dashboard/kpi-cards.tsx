@@ -47,11 +47,11 @@ function KPICard({ title, value, description, icon, trend, progress, variant = '
   const getVariantClasses = () => {
     switch (variant) {
       case 'success':
-        return 'border-green-200 bg-green-50/50'
+        return 'border-chart-1/30 bg-chart-1/10'
       case 'warning':
-        return 'border-yellow-200 bg-yellow-50/50'
+        return 'border-chart-3/30 bg-chart-3/10'
       case 'danger':
-        return 'border-red-200 bg-red-50/50'
+        return 'border-destructive/30 bg-destructive/10'
       default:
         return ''
     }
@@ -100,8 +100,8 @@ function KPICard({ title, value, description, icon, trend, progress, variant = '
                   variant={trend.isPositive ? "default" : "secondary"}
                   className={`text-xs flex-shrink-0 ${
                     trend.isPositive 
-                      ? 'bg-green-100 text-green-800 hover:bg-green-100' 
-                      : 'bg-red-100 text-red-800 hover:bg-red-100'
+                      ? 'bg-chart-1/20 text-chart-1 hover:bg-chart-1/20' 
+                      : 'bg-destructive/20 text-destructive hover:bg-destructive/20'
                   }`}
                 >
                   {trend.isPositive ? '+' : ''}{trend.value.toFixed(1)}%

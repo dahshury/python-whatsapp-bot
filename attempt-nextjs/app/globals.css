@@ -1,12 +1,6 @@
 /* External library imports - MUST come first in CSS */
 @import "../styles/imports.css";
 
-/* Base styles - Tailwind directives and CSS variables */
-@import "../styles/base.css";
-
-/* Font system */
-@import "../styles/fonts.css";
-
 /* Theme definitions */
 @import "../styles/themes/themes.css";
 @import "../styles/themes/theme-default.css";
@@ -21,24 +15,8 @@
 @import "../styles/themes/theme-perplexity.css";
 @import "../styles/themes/theme-art-deco.css";
 
-/* Utility classes */
-@import "../styles/utilities.css";
-
-/* Component styles */
-@import "../styles/glide-grid.css";
-@import "../styles/phone-input.css";
-@import "../styles/portal.css";
-@import "../styles/table-skeleton.css";
-@import "../styles/sidebar.css";
-@import "../styles/sonner.css";
-@import "../styles/markdown.css";
-@import "../styles/component-overrides.css";
-
 /* Theme inline configuration - must be loaded after all theme definitions */
 @import "../styles/themes/theme-inline.css";
-
-/* Calendar styles - Load LAST to ensure highest specificity */
-@import "../styles/fullcalendar/index.css";
 
 /* Global Error Suppression for React Timekeeper Issues */
 @layer base {
@@ -85,4 +63,6 @@
 .fc-event.processing .fc-event-time {
   user-select: none;
 }
+
+
 

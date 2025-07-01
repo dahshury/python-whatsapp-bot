@@ -26,14 +26,21 @@ import { i18n } from "@/lib/i18n"
 
 export function EnhancedDashboardView() {
   const { isRTL } = useLanguage()
-  const { dashboardData, isLoading, error, lastUpdated, refresh, reprocess } = useDashboardData()
-  const [isUsingMockData, setIsUsingMockData] = useState(false)
+  
+  // Initialize with last 30 days as default for both UI and data loading
+  const defaultDateRange = React.useMemo(() => ({
+    from: subDays(new Date(), 30),
+    to: new Date()
+  }), [])
+  
   const [filters, setFilters] = useState<DashboardFilters>({
-    dateRange: {
-      from: subDays(new Date(), 30),
-      to: new Date()
-    }
+    dateRange: defaultDateRange
   })
+
+  // Use smart data loading that fetches filtered data directly from backend
+  const { dashboardData, isLoading, error, lastUpdated, refresh: refreshDashboard } = useDashboardData()
+  const [isUsingMockData, setIsUsingMockData] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Calculate days count properly
   const daysCount = React.useMemo(() => {
@@ -41,15 +48,33 @@ export function EnhancedDashboardView() {
     return differenceInDays(filters.dateRange.to, filters.dateRange.from) + 1
   }, [filters.dateRange])
 
-  // Reprocess dashboard data when filters change (no API calls)
+  // Smart initialization: load with 30-day filter immediately
   useEffect(() => {
-    // Only reprocess if we already have dashboard data and filters changed
-    if (dashboardData && filters) {
-      reprocess(filters).catch(err => {
-        console.error('Dashboard data reprocessing error:', err)
+    if (!isInitialized && !isLoading && !dashboardData) {
+      // Initialize with 30-day filter from the start - no "load all then filter" approach
+      // NOTE: This requires backend API support for from_date/to_date parameters
+      // Backend should filter data before returning to maximize performance
+      refreshDashboard(filters).then(() => {
+        setIsInitialized(true)
+      }).catch(err => {
+        console.error('Dashboard smart initialization error:', err)
       })
     }
-  }, [filters, reprocess]) // Use reprocess instead of refresh to avoid API calls
+  }, [isInitialized, isLoading, dashboardData, refreshDashboard, filters])
+
+  // When filters change, fetch new filtered data directly from backend
+  useEffect(() => {
+    if (isInitialized && dashboardData) {
+      // Debounce filter changes to avoid too many requests
+      const timeoutId = setTimeout(() => {
+        refreshDashboard(filters).catch(err => {
+          console.error('Dashboard filter refresh error:', err)
+        })
+      }, 300) // 300ms debounce
+
+      return () => clearTimeout(timeoutId)
+    }
+  }, [filters, refreshDashboard, isInitialized, dashboardData])
 
   // Check if using mock data
   useEffect(() => {
@@ -87,7 +112,12 @@ export function EnhancedDashboardView() {
     })
   }
 
-
+  // Helper function to check if a specific day range is currently active
+  const isDateRangeActive = (days: number) => {
+    return filters.dateRange?.from && 
+           differenceInDays(new Date(), filters.dateRange.from) === days &&
+           Math.abs(differenceInDays(filters.dateRange.to, new Date())) <= 1
+  }
 
   const handleExport = () => {
     if (!dashboardData) return
@@ -121,14 +151,14 @@ export function EnhancedDashboardView() {
       <div className="min-h-[400px] flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
-            <div className="text-red-500 mb-4">
+            <div className="text-destructive mb-4">
               <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
               </svg>
             </div>
             <h3 className="text-lg font-semibold mb-2">{i18n.getMessage('dashboard_error_title', isRTL)}</h3>
             <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => refresh(filters)} variant="outline">
+            <Button onClick={() => refreshDashboard(filters)} variant="outline">
               {i18n.getMessage('dashboard_try_again', isRTL)}
             </Button>
           </CardContent>
@@ -148,11 +178,11 @@ export function EnhancedDashboardView() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{i18n.getMessage('dashboard_title', isRTL)}</h1>
           <p className="text-muted-foreground">
-            {i18n.getMessage('dashboard_subtitle', isRTL)}
+            {i18n.getMessage('dashboard_subtitle', isRTL) || 'Showing all available data. Use date filters to view specific timeframes.'}
           </p>
           {isUsingMockData && (
-            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-sm text-blue-800">
+            <div className="mt-2 p-3 bg-accent/10 border border-accent/20 rounded-lg">
+              <p className="text-sm text-accent-foreground">
                 <strong>{i18n.getMessage('dashboard_demo_mode', isRTL)}:</strong> {i18n.getMessage('dashboard_demo_description', isRTL)}
               </p>
             </div>
@@ -161,7 +191,7 @@ export function EnhancedDashboardView() {
             <p className="text-xs text-muted-foreground mt-1">
               {i18n.getMessage('dashboard_last_updated', isRTL)} {format(lastUpdated, 'PPp')}
               {isUsingMockData && (
-                <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                <span className="ml-2 px-2 py-1 bg-chart-3/20 text-chart-3 text-xs rounded-full">
                   {i18n.getMessage('dashboard_demo_data', isRTL)}
                 </span>
               )}
@@ -173,7 +203,7 @@ export function EnhancedDashboardView() {
         <div className="flex flex-col lg:flex-row items-start lg:items-center gap-3">
           <div className="flex flex-col gap-2">
             {/* Days and Reservations badges row */}
-            {filters.dateRange && dashboardData && (
+            {dashboardData && (
               <div className="flex items-center gap-2 self-start">
                 <Badge variant="secondary">
                   {daysCount} {i18n.getMessage('dashboard_days', isRTL)}
@@ -194,22 +224,24 @@ export function EnhancedDashboardView() {
               <div className="flex items-center gap-2">
                 <Button
                   onClick={handleSevenDaysClick}
-                  variant="outline"
+                  variant={
+                    isDateRangeActive(7) ? "default" : "outline"
+                  }
                   size="sm"
                 >
                   {i18n.getMessage('dashboard_seven_days', isRTL)}
                 </Button>
                 <Button
                   onClick={handleThirtyDaysClick}
-                  variant="outline"
+                  variant={
+                    isDateRangeActive(30) ? "default" : "outline"
+                  }
                   size="sm"
                 >
                   {i18n.getMessage('dashboard_thirty_days', isRTL)}
                 </Button>
               </div>
               
-
-
               <Button
                 onClick={handleExport}
                 variant="outline"
@@ -279,7 +311,7 @@ export function EnhancedDashboardView() {
             
             {/* Quick Overview Charts */}
             <TrendCharts
-              dailyTrends={dashboardData.dailyTrends} // Use filtered data from date picker
+              dailyTrends={dashboardData.dailyTrends}
               typeDistribution={dashboardData.typeDistribution}
               timeSlots={dashboardData.timeSlots}
               dayOfWeekData={dashboardData.dayOfWeekData}
@@ -333,29 +365,29 @@ export function EnhancedDashboardView() {
                 <CardContent>
                   <div className="space-y-2 text-sm">
                     {dashboardData.conversationAnalysis.responseTimeStats.avg <= 2 && (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-green-800">
+                      <div className="p-3 bg-chart-1/20 border border-chart-1/30 rounded-lg">
+                        <p className="text-chart-1">
                           {i18n.getMessage('response_time_excellent', isRTL)}
                         </p>
                       </div>
                     )}
                     {dashboardData.conversationAnalysis.responseTimeStats.avg > 2 && dashboardData.conversationAnalysis.responseTimeStats.avg <= 5 && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-blue-800">
+                      <div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
+                        <p className="text-chart-2">
                           {i18n.getMessage('response_time_good', isRTL)}
                         </p>
                       </div>
                     )}
                     {dashboardData.conversationAnalysis.responseTimeStats.avg > 5 && dashboardData.conversationAnalysis.responseTimeStats.avg <= 10 && (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-yellow-800">
+                      <div className="p-3 bg-chart-3/20 border border-chart-3/30 rounded-lg">
+                        <p className="text-chart-3">
                           {i18n.getMessage('response_time_needs_improvement', isRTL)}
                         </p>
                       </div>
                     )}
                     {dashboardData.conversationAnalysis.responseTimeStats.avg > 10 && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-red-800">
+                      <div className="p-3 bg-destructive/20 border border-destructive/30 rounded-lg">
+                        <p className="text-destructive">
                           {i18n.getMessage('response_time_poor', isRTL)}
                         </p>
                       </div>
@@ -372,22 +404,22 @@ export function EnhancedDashboardView() {
                 <CardContent>
                   <div className="space-y-2 text-sm">
                     {dashboardData.conversationAnalysis.avgMessagesPerCustomer >= 20 && (
-                      <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-green-800">
+                      <div className="p-3 bg-chart-1/20 border border-chart-1/30 rounded-lg">
+                        <p className="text-chart-1">
                           {i18n.getMessage('conversation_insight_high', isRTL)}
                         </p>
                       </div>
                     )}
                     {dashboardData.conversationAnalysis.avgMessagesPerCustomer >= 10 && dashboardData.conversationAnalysis.avgMessagesPerCustomer < 20 && (
-                      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-blue-800">
+                      <div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
+                        <p className="text-chart-2">
                           {i18n.getMessage('conversation_insight_medium', isRTL)}
                         </p>
                       </div>
                     )}
                     {dashboardData.conversationAnalysis.avgMessagesPerCustomer < 10 && (
-                      <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-yellow-800">
+                      <div className="p-3 bg-chart-3/20 border border-chart-3/30 rounded-lg">
+                        <p className="text-chart-3">
                           {i18n.getMessage('conversation_insight_low', isRTL)}
                         </p>
                       </div>
@@ -403,38 +435,38 @@ export function EnhancedDashboardView() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                      <h4 className="font-semibold text-blue-900">{i18n.getMessage('dashboard_peak_hours_title', isRTL)}</h4>
-                      <p className="text-blue-800 text-sm mt-1">
+                    <div className="p-4 bg-accent/10 rounded-lg border-l-4 border-accent">
+                      <h4 className="font-semibold text-accent-foreground">{i18n.getMessage('dashboard_peak_hours_title', isRTL)}</h4>
+                      <p className="text-accent-foreground/80 text-sm mt-1">
                         {i18n.getMessage('dashboard_peak_hours_desc', isRTL)}
                       </p>
-                      <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+                      <span className="inline-block mt-2 px-2 py-1 bg-accent/20 text-accent text-xs rounded-full">
                         {i18n.getMessage('demo_data_warning', isRTL)}
                       </span>
                     </div>
                     
-                    <div className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500">
-                      <h4 className="font-semibold text-green-900">{i18n.getMessage('dashboard_customer_retention_title', isRTL)}</h4>
-                      <p className="text-green-800 text-sm mt-1">
+                    <div className="p-4 bg-chart-1/10 rounded-lg border-l-4 border-chart-1">
+                      <h4 className="font-semibold text-chart-1">{i18n.getMessage('dashboard_customer_retention_title', isRTL)}</h4>
+                      <p className="text-chart-1/80 text-sm mt-1">
                         {isRTL ? 
                           `${dashboardData.stats.returningRate.toFixed(1)}% من العملاء يعودون لحجوزات أخرى. هذا يدل على رضا جيد عن الخدمة.` :
                           `${dashboardData.stats.returningRate.toFixed(1)}% of customers return for follow-up appointments. This indicates good service satisfaction.`
                         }
                       </p>
-                      <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                      <span className="inline-block mt-2 px-2 py-1 bg-chart-1/20 text-chart-1 text-xs rounded-full">
                         {i18n.getMessage('real_data_available', isRTL)}
                       </span>
                     </div>
 
-                    <div className="p-4 bg-orange-50 rounded-lg border-l-4 border-orange-500">
-                      <h4 className="font-semibold text-orange-900">{i18n.getMessage('dashboard_response_time_title', isRTL)}</h4>
-                      <p className="text-orange-800 text-sm mt-1">
+                    <div className="p-4 bg-chart-3/10 rounded-lg border-l-4 border-chart-3">
+                      <h4 className="font-semibold text-chart-3">{i18n.getMessage('dashboard_response_time_title', isRTL)}</h4>
+                      <p className="text-chart-3/80 text-sm mt-1">
                         {isRTL ? 
                           `متوسط زمن الاستجابة هو ${dashboardData.stats.avgResponseTime.toFixed(1)} دقيقة. فكر في تطبيق ردود تلقائية للاستفسارات الشائعة.` :
                           `Average response time is ${dashboardData.stats.avgResponseTime.toFixed(1)} minutes. Consider implementing automated responses for common queries.`
                         }
                       </p>
-                      <span className="inline-block mt-2 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
+                      <span className="inline-block mt-2 px-2 py-1 bg-chart-3/20 text-chart-3 text-xs rounded-full">
                         {i18n.getMessage('real_data_available', isRTL)}
                       </span>
                     </div>

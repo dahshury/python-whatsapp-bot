@@ -31,9 +31,10 @@ import {
   type CalendarCallbackHandlers,
   type VacationDateChecker
 } from '@/lib/calendar-callbacks'
+import { VacationEventsService } from '@/lib/vacation-events-service'
 import { getTimezone, SLOT_DURATION_HOURS } from '@/lib/calendar-config'
 import { modifyReservation, undoModifyReservation } from '@/lib/api'
-import type { CalendarEvent } from '@/types/calendar'
+import type { CalendarEvent, VacationPeriod } from '@/types/calendar'
 
 interface DualCalendarComponentProps {
   freeRoam?: boolean
@@ -144,12 +145,13 @@ export const DualCalendarComponent = React.forwardRef<
   const processedLeftEvents = processedAllEvents;
   const processedRightEvents = processedAllEvents;
 
-  // Vacation period checker
+  // Vacation period checker (for drag/drop validation only, styling handled by background events)
   const isVacationDate: VacationDateChecker = useMemo(() => {
-    // Use vacation periods from vacation context
-    if (vacationPeriods.length === 0) return () => false;
-    
     return (dateStr: string) => {
+      if (vacationPeriods.length === 0) {
+        return false;
+      }
+      
       for (const period of vacationPeriods) {
         // Create date strings from vacation period dates using same format as dateStr
         const vacationStart = `${period.start.getFullYear()}-${String(period.start.getMonth() + 1).padStart(2, '0')}-${String(period.start.getDate()).padStart(2, '0')}`
@@ -404,15 +406,15 @@ export const DualCalendarComponent = React.forwardRef<
   }, []);
 
   // Calendar callback handlers for both calendars
-  const leftCallbackHandlers: CalendarCallbackHandlers = {
+  const leftCallbackHandlers: CalendarCallbackHandlers = useMemo(() => ({
     onOpenDataEditor: () => {} // Empty for now, dual calendar doesn't need data editor
-  }
+  }), [])
 
-  const rightCallbackHandlers: CalendarCallbackHandlers = {
+  const rightCallbackHandlers: CalendarCallbackHandlers = useMemo(() => ({
     onOpenDataEditor: () => {} // Empty for now, dual calendar doesn't need data editor
-  }
+  }), [])
 
-  const leftCallbacks = createCalendarCallbacks(
+  const leftCallbacks = useMemo(() => createCalendarCallbacks(
     leftCallbackHandlers, 
     freeRoam, 
     getTimezone(), 
@@ -420,9 +422,9 @@ export const DualCalendarComponent = React.forwardRef<
     isVacationDate,
     // Only pass vacation click handler when actively recording
     recordingState.periodIndex !== null && recordingState.field !== null ? handleVacationDateClick : undefined
-  )
+  ), [leftCallbackHandlers, freeRoam, leftCalendarState.currentDate, isVacationDate, recordingState.periodIndex, recordingState.field, handleVacationDateClick])
 
-  const rightCallbacks = createCalendarCallbacks(
+  const rightCallbacks = useMemo(() => createCalendarCallbacks(
     rightCallbackHandlers, 
     freeRoam, 
     getTimezone(), 
@@ -430,12 +432,28 @@ export const DualCalendarComponent = React.forwardRef<
     isVacationDate,
     // Only pass vacation click handler when actively recording
     recordingState.periodIndex !== null && recordingState.field !== null ? handleVacationDateClick : undefined
-  )
+  ), [rightCallbackHandlers, freeRoam, rightCalendarState.currentDate, isVacationDate, recordingState.periodIndex, recordingState.field, handleVacationDateClick])
 
-  // Register calendar refresh callback with vacation context
+  // Register vacation events update callback using FullCalendar's native event management
   useEffect(() => {
-    setOnVacationUpdated(handleRefreshWithBlur)
-  }, [setOnVacationUpdated, handleRefreshWithBlur])
+    const updateVacationEvents = async (vacationPeriods: VacationPeriod[]) => {
+      console.log('🔄 [DUAL-CALENDAR] Updating vacation events using FullCalendar API...')
+      // Update vacation events in both calendars using FullCalendar's native event management
+      const leftApi = leftCalendarRef.current?.getApi()
+      const rightApi = rightCalendarRef.current?.getApi()
+      
+      if (leftApi) {
+        VacationEventsService.updateVacationEvents(leftApi, vacationPeriods)
+        console.log('🔄 [DUAL-CALENDAR] Left calendar vacation events updated')
+      }
+      if (rightApi) {
+        VacationEventsService.updateVacationEvents(rightApi, vacationPeriods)
+        console.log('🔄 [DUAL-CALENDAR] Right calendar vacation events updated')
+      }
+    }
+
+    setOnVacationUpdated(updateVacationEvents)
+  }, [setOnVacationUpdated])
 
   // Show loading state
   if (loading || !leftCalendarState.isHydrated || !rightCalendarState.isHydrated) {

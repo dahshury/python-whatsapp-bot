@@ -1,4 +1,14 @@
-/* Cancelled Events Feature Styles */
+/* Cancelled Events Feature Styles
+ * Responsibility: Styling for cancelled reservation events across all calendar views
+ * Dependencies: CSS variables from _variables.css for event type colors
+ * Usage: Applied to elements with data-cancelled="true" attribute
+ * Features: Strike-through text, darkened appearance, free roam mode support
+ * Note: Maintains event type colors but with reduced opacity and saturation
+ */
+
+/* =================================================================
+   GENERAL CANCELLED EVENT STYLING
+   ================================================================= */
 
 /* General cancelled event styling - stroke text and darker appearance for all cancelled events */
 .fc-event[data-cancelled="true"] .fc-event-title {
@@ -10,6 +20,10 @@
   filter: brightness(0.7) saturate(0.8) !important;
   opacity: 0.9 !important;
 }
+
+/* =================================================================
+   FREE ROAM MODE CANCELLED EVENTS
+   ================================================================= */
 
 /* Free roam mode: Cancelled events look like normal events but darker with stroke */
 body[data-free-roam="true"] .fc-event.reservation-cancelled:not(.fc-list-event) {

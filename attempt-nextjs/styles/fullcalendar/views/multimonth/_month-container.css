@@ -157,4 +157,15 @@
     opacity: 1;
     transform: translate3d(0, 0, 0);
   }
+}
+
+/* Dark mode month container */
+.dark .fc-multimonth-month {
+  border-color: hsl(var(--border) / 0.7) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dark .fc-multimonth-month:hover {
+  border-color: hsl(var(--border)) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 } 

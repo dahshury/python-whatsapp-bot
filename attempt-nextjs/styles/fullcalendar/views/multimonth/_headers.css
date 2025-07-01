@@ -176,4 +176,26 @@
 /* Ensure proper text centering */
 .fc-multimonth-header-table th {
   text-align: center;
+}
+
+/* Dark mode month titles */
+.dark .fc-multimonth-title {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(
+    to top,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.8) 40%,
+    hsl(var(--card) / 0.4) 70%,
+    transparent 100%
+  );
+}
+
+.dark .fc-multimonth-title:hover {
+  background: linear-gradient(
+    to top,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.9) 40%,
+    hsl(var(--card) / 0.5) 70%,
+    transparent 100%
+  );
 } 

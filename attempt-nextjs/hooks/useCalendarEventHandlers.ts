@@ -81,20 +81,13 @@ export function useCalendarEventHandlers({
 
   // Context menu handlers
   const handleCancelReservation = useCallback(async (eventId: string) => {
-    // Debug calendar API access (for future cancel undo optimizations)
-    const getCalendarApi = calendarRef?.current ? () => {
-      console.log('Cancel: Calendar ref current:', !!calendarRef.current)
-      return calendarRef.current!.getApi()
-    } : undefined
-    
     await handleCancelReservationService({
       eventId,
       events,
       isRTL,
-      onRefresh: handleRefreshWithBlur,
-      getCalendarApi
+      onRefresh: handleRefreshWithBlur
     })
-  }, [events, isRTL, handleRefreshWithBlur, calendarRef])
+  }, [events, isRTL, handleRefreshWithBlur])
 
   const handleViewDetails = useCallback((eventId: string) => {
     const event = events.find(e => e.id === eventId)

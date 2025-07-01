@@ -1,4 +1,10 @@
-/* TimeGrid View Styles */
+/* FullCalendar TimeGrid View Styles
+ * Responsibility: Styling for time-based views (week, day) including slots, events, and axis
+ * Dependencies: CSS variables from _variables.css, z-index values from utilities/_z-index.css
+ * Usage: Applied to .fc-timegrid elements in week and day views
+ * Features: Time slots, event positioning, now indicator, axis styling, event sizing
+ * Note: Includes optimizations for smooth scrolling and performance
+ */
 
 /* General timegrid structure */
 .fc-timegrid .fc-daygrid-body { /* the all-day daygrid within the timegrid view */

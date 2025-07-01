@@ -35,6 +35,11 @@
   --sidebar-accent-foreground: 223.8136 0% 9.0527%; /* hsl(223.8136 0.0000% 9.0527%) */
   --sidebar-border: 223.8136 0.0001% 89.8161%; /* hsl(223.8136 0.0001% 89.8161%) */
   --sidebar-ring: 223.8136 0% 63.0163%; /* hsl(223.8136 0.0000% 63.0163%) */
+  
+  /* Calendar vacation background colors */
+  --vacation-bg: 25 95% 53%; /* Orange-based vacation color - distinct from events and today */
+  --vacation-bg-opacity: 0.12; /* Subtle background opacity */
+  
   --font-sans: var(--font-sans-stack);
   --font-serif: var(--font-serif-stack);
   --font-mono: var(--font-mono-stack);
@@ -85,6 +90,11 @@
   --sidebar-accent-foreground: 223.8136 0.0004% 98.0256%; /* hsl(223.8136 0.0004% 98.0256%) */
   --sidebar-border: 223.8136 0% 15.5096%; /* hsl(223.8136 0.0000% 15.5096%) */
   --sidebar-ring: 223.8136 0% 32.1993%; /* hsl(223.8136 0.0000% 32.1993%) */
+  
+  /* Calendar vacation background colors - dark mode */
+  --vacation-bg: 35 91% 65%; /* Warmer orange for dark mode visibility */
+  --vacation-bg-opacity: 0.15; /* Slightly higher opacity for dark mode */
+  
   --font-sans: var(--font-sans-stack);
   --font-serif: var(--font-serif-stack);
   --font-mono: var(--font-mono-stack);

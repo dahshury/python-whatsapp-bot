@@ -136,26 +136,6 @@
   font-weight: 400;
 }
 
-/* VACATION DAYS */
-.fc-multimonth .fc-daygrid-day.vacation-day:not(.fc-day-past) .fc-daygrid-day-frame,
-.fc-daygrid .fc-daygrid-day.vacation-day:not(.fc-day-past) .fc-daygrid-day-frame {
-  background: hsl(var(--destructive) / 0.15);
-}
-
-.fc-multimonth .fc-daygrid-day.vacation-day,
-.fc-daygrid .fc-daygrid-day.vacation-day {
-  pointer-events: none !important;
-}
-
-/* Vacation day events should still be visible but not interactive */
-.fc-multimonth .fc-daygrid-day.vacation-day .fc-event,
-.fc-daygrid .fc-daygrid-day.vacation-day .fc-event {
-  pointer-events: none;
-  opacity: 0.7;
-  position: relative !important;
-  z-index: var(--z-fc-multimonth-variant-primary) !important;
-}
-
 /* SELECTED DATE STYLING */
 .fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled) .fc-daygrid-day-frame,
 .fc-daygrid .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled) .fc-daygrid-day-frame {

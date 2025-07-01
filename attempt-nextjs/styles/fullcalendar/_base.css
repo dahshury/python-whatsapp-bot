@@ -1,4 +1,9 @@
-/* Base FullCalendar Layout and Structure */
+/* FullCalendar Base Layout and Structure
+ * Responsibility: Core FullCalendar layout, theme integration, and fundamental styling
+ * Dependencies: CSS variables from _variables.css, z-index values from utilities/_z-index.css
+ * Usage: Applied to all FullCalendar views as the foundation layer
+ * Important: Changes here affect all calendar views - test thoroughly across views
+ */
 
 .fc {
   /* Core theme integration */

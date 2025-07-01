@@ -1,0 +1,6 @@
+export { SettingsPopover } from './settings-popover'
+export { SettingsTabs } from './settings-tabs'
+export { ThemeSelector } from './theme-selector'
+export { ViewSettings } from './view-settings'
+export { GeneralSettings } from './general-settings'
+export { THEME_OPTIONS, getThemeName } from './theme-data' 

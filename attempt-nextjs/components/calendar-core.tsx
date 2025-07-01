@@ -23,6 +23,7 @@ import {
   getValidRange,
   SLOT_DURATION_HOURS
 } from '@/lib/calendar-config'
+import { cn } from '@/lib/utils'
 
 export interface CalendarCoreProps {
   // Data props
@@ -219,7 +220,7 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     }
   }), []);
 
-  // Day cell class names with vacation support
+  // Day cell class names (vacation styling now handled by background events)
   const getDayCellClassNames = useCallback((arg: any) => {
     const cellDate = arg.date;
     // Use local date string comparison to avoid timezone issues
@@ -229,35 +230,27 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
     // Check if this date is in the past
     const isPastDate = cellDate < new Date();
 
-    // Check if this date is a vacation period
-    if (isVacationDate && isVacationDate(cellDateStr)) {
-      return 'vacation-day cursor-not-allowed';
-    }
+    // Add vacation-day class for cells inside any vacation period
+    const vacationClass = isVacationDate && isVacationDate(cellDateStr) ? 'vacation-day' : '';
 
     // Disable hover for past dates when not in free roam
     if (!freeRoam && isPastDate) {
-      return '';
+      return vacationClass;
     }
 
     if (cellDateStr === currentDateStr) {
-      return 'selected-date-cell';
+      return cn('selected-date-cell', vacationClass);
     }
 
-    return 'hover:bg-muted cursor-pointer';
-  }, [currentDate, isVacationDate, freeRoam]);
+    return cn(vacationClass, 'hover:bg-muted cursor-pointer');
+  }, [currentDate, freeRoam, isVacationDate]);
 
-  // Day header class names with vacation support
+  // Day header class names (vacation styling now handled by background events)
   const getDayHeaderClassNames = useCallback((arg: any) => {
-    const cellDate = arg.date;
-    const cellDateStr = cellDate.toISOString().split('T')[0];
-    
-    // Check if this date is a vacation period
-    if (isVacationDate && isVacationDate(cellDateStr)) {
-      return 'vacation-day cursor-not-allowed'
-    }
-    
+    // Note: Vacation styling is now handled by FullCalendar background events
+    // No need to check isVacationDate here
     return '';
-  }, [isVacationDate]);
+  }, []);
 
   // Handle event mounting with context menu support
   const handleEventDidMount = useCallback((info: any) => {

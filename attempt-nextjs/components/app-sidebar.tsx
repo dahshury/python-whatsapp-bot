@@ -34,46 +34,48 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { freeRoam } = useSettings()
   const { setOpenMobile, setOpen, open, openMobile } = useSidebar()
   
-  // Always start with calendar tab to prevent hydration mismatch
-  const [activeTab, setActiveTab] = useState('calendar')
-  
   // Use unified data provider
   const { conversations, isLoading: conversationsLoading } = useConversationsData()
   const { reservations, isLoading: reservationsLoading } = useReservationsData()
   const chatLoading = conversationsLoading || reservationsLoading
   
+  // Use enhanced persistent chat store
   const { 
     shouldOpenChat, 
     conversationIdToOpen, 
     clearOpenRequest,
     isLoadingConversation,
     setLoadingConversation,
-    openConversation
+    openConversation,
+    selectedConversationId,
+    activeTab,
+    isChatSidebarOpen,
+    _hasHydrated,
+    setSelectedConversation,
+    setActiveTab,
+    setChatSidebarOpen
   } = useSidebarChatStore()
 
-  // Local chat state
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null)
-  const [isChatOpen, setIsChatOpen] = useState(false)
-
   const selectConversation = useCallback((conversationId: string) => {
-    setSelectedConversationId(conversationId)
-    setIsChatOpen(true)
+    setSelectedConversation(conversationId)
+    setActiveTab('chat')
+    setChatSidebarOpen(true)
     setLoadingConversation(false)
-  }, [setLoadingConversation])
+  }, [setSelectedConversation, setActiveTab, setChatSidebarOpen, setLoadingConversation])
 
   const closeSidebar = useCallback(() => {
-    setIsChatOpen(false)
-  }, [])
+    setChatSidebarOpen(false)
+  }, [setChatSidebarOpen])
 
   const setOpenState = useCallback((isOpen: boolean) => {
-    setIsChatOpen(isOpen)
-  }, [])
+    setChatSidebarOpen(isOpen)
+  }, [setChatSidebarOpen])
 
   const refreshData = async () => {
     // This will be handled by the unified provider
   }
 
-  const isInitialized = !chatLoading
+  const isInitialized = !chatLoading && _hasHydrated
 
   // Build customers list from unified data
   const customers = useMemo(() => {
@@ -110,6 +112,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     
     return Array.from(customerMap.values())
   }, [conversations, reservations])
+
   const conversationOptions = useMemo(() => {
     return customers.map(customer => ({
       waId: customer.phone,
@@ -155,28 +158,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [activeTab, conversationOptions, selectedConversationId, selectConversation])
+  }, [activeTab, conversationOptions, selectedConversationId, selectConversation, setLoadingConversation])
 
-  // Fetch data when switching to chat tab
+  // Auto-open sidebar when switching to chat tab or when hydrated with chat tab active
   useEffect(() => {
-    if (activeTab === 'chat' && isInitialized) {
-      // Set the chat sidebar as open
-      setOpenState(true)
-      // Chat tab activated - opening sidebar
-    } else if (activeTab !== 'chat') {
-      // Set as closed when not on chat tab
-      setOpenState(false)
+    if (isInitialized) {
+      // Debug logging
+      console.log('App sidebar state after initialization:', {
+        activeTab,
+        selectedConversationId,
+        isChatSidebarOpen,
+        _hasHydrated
+      })
+      
+      if (activeTab === 'chat') {
+        // Set the chat sidebar as open
+        setOpenState(true)
+      } else {
+        // Set as closed when not on chat tab
+        setOpenState(false)
+      }
     }
-  }, [activeTab, isInitialized, setOpenState])
-
-  // Handle initial tab state after hydration when conversation is restored
-  useEffect(() => {
-    if (isInitialized && selectedConversationId && isChatOpen) {
-      setActiveTab('chat')
-      // Only auto-open sidebar if it's not explicitly closed by user
-      // Don't interfere with user's sidebar state preference
-    }
-  }, [isInitialized, selectedConversationId, isChatOpen])
+  }, [activeTab, isInitialized, setOpenState, selectedConversationId, isChatSidebarOpen, _hasHydrated])
 
   // Listen for chat open requests from calendar
   useEffect(() => {
@@ -185,16 +188,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (!open) setOpen(true)
       if (!openMobile) setOpenMobile(true)
       
-      // Switch to chat tab
-      setActiveTab('chat')
+      // Use the store's openConversation method which handles all state updates
+      openConversation(conversationIdToOpen)
       
-      // Select the conversation directly - data is already loaded by CalendarDataService
-      selectConversation(conversationIdToOpen)
-      
-      // Don't clear loading state here - it will be cleared when data is ready
+      // Clear the request
       clearOpenRequest()
     }
-  }, [shouldOpenChat, conversationIdToOpen, selectConversation, clearOpenRequest, setOpen, setOpenMobile, open, openMobile])
+  }, [shouldOpenChat, conversationIdToOpen, openConversation, clearOpenRequest, setOpen, setOpenMobile, open, openMobile])
+
+  // Handle tab clicks
+  const handleTabChange = useCallback((tab: 'calendar' | 'chat') => {
+    setActiveTab(tab)
+    if (tab === 'chat') {
+      setChatSidebarOpen(true)
+    }
+  }, [setActiveTab, setChatSidebarOpen])
 
   return (
     <Sidebar {...props} className="bg-sidebar">
@@ -207,7 +215,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         {/* Tab Navigation */}
         <div className="flex space-x-0.5 bg-muted p-0.5 rounded-md border border-border">
           <button
-            onClick={() => setActiveTab('calendar')}
+            onClick={() => handleTabChange('calendar')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-medium transition-all duration-200 border ${
               activeTab === 'calendar'
                 ? 'bg-background text-foreground shadow-sm border-border'
@@ -218,10 +226,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             {isRTL ? "التقويم" : "Calendar"}
           </button>
           <button
-            onClick={() => {
-              setActiveTab('chat')
-              // Don't trigger data fetch here - data is already loaded by CalendarDataService
-            }}
+            onClick={() => handleTabChange('chat')}
             className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-sm text-xs font-medium transition-all duration-200 border ${
               activeTab === 'chat'
                 ? 'bg-background text-foreground shadow-sm border-border'
@@ -257,8 +262,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           />
         )}
       </SidebarContent>
-
-
     </Sidebar>
   )
 }
+

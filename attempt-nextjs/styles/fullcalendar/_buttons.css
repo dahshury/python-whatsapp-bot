@@ -1,4 +1,9 @@
-/* FullCalendar Button Styles */
+/* FullCalendar Button Styles
+ * Responsibility: Styling for all FullCalendar buttons (navigation, today, view switching)
+ * Dependencies: CSS variables from _variables.css for theme colors
+ * Usage: Applied to .fc-button, .fc-button-primary, and .fc-button-group elements
+ * Features: Button groups, hover states, focus states, disabled states
+ */
 
 .fc-button {
   overflow: visible;

@@ -1,12 +1,15 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { CalendarCoreRef } from '@/components/calendar-core'
+import type { VacationPeriod } from '@/types/calendar'
+import { VacationEventsService } from '@/lib/vacation-events-service'
 
 interface UseCalendarInitializationProps {
   calculateHeight: () => number | 'auto'
   sidebarOpen?: boolean
   refreshData: () => Promise<void>
-  setOnVacationUpdated: (callback: () => Promise<void>) => void
+  setOnVacationUpdated: (callback: (vacationPeriods: VacationPeriod[]) => Promise<void>) => void
   fetchConversations: () => void
+  calendarRef?: React.RefObject<CalendarCoreRef>
 }
 
 export function useCalendarInitialization({
@@ -14,7 +17,8 @@ export function useCalendarInitialization({
   sidebarOpen,
   refreshData,
   setOnVacationUpdated,
-  fetchConversations
+  fetchConversations,
+  calendarRef
 }: UseCalendarInitializationProps) {
   const [calendarHeight, setCalendarHeight] = useState<number | 'auto'>(800)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -30,10 +34,20 @@ export function useCalendarInitialization({
     }
   }, [refreshData])
 
-  // Register calendar refresh callback with vacation context
+  // Register vacation events update callback using FullCalendar's native event management
   useEffect(() => {
-    setOnVacationUpdated(handleRefreshWithBlur)
-  }, [setOnVacationUpdated, handleRefreshWithBlur])
+    const updateVacationEvents = async (vacationPeriods: VacationPeriod[]) => {
+      console.log('🔄 [CALENDAR-INIT] Updating vacation events using FullCalendar API...')
+      if (calendarRef?.current) {
+        const api = calendarRef.current.getApi()
+        if (api) {
+          VacationEventsService.updateVacationEvents(api, vacationPeriods)
+          console.log('🔄 [CALENDAR-INIT] Vacation events updated via FullCalendar API')
+        }
+      }
+    }
+    setOnVacationUpdated(updateVacationEvents)
+  }, [setOnVacationUpdated, calendarRef])
 
   // Fetch conversations when component mounts
   useEffect(() => {

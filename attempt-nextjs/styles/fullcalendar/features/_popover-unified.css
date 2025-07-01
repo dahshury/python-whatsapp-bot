@@ -1,5 +1,10 @@
-/* FullCalendar Popover Styles - Unified for All Views */
-/* This file contains ALL popover-related CSS for FullCalendar across all views */
+/* FullCalendar Popover Styles - Unified for All Views
+ * Responsibility: All popover-related styling across FullCalendar views
+ * Dependencies: CSS variables from _variables.css, z-index values from utilities/_z-index.css
+ * Usage: Applied to .fc-popover, .fc-more-popover, and related elements
+ * Features: Animations, theming, event styling, responsive design, accessibility
+ * Note: Unified approach ensures consistent popover behavior across all views
+ */
 
 /* =================================================================
    CORE POPOVER ANIMATIONS AND KEYFRAMES
@@ -162,62 +167,6 @@
 }
 
 /* =================================================================
-   MORE LINK STYLES - ALL VIEWS - DISABLED TO RESTORE DEFAULT BEHAVIOR
-   ================================================================= */
-
-/* DISABLED - Let FullCalendar handle more link positioning naturally
-/* Base more link styles */
-/*
-.fc-more-link {
-  position: relative !important;
-  z-index: var(--z-fc-more-popover) !important;
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  background-color: hsl(var(--accent) / 0.8) !important;
-  color: hsl(var(--accent-foreground)) !important;
-  border: 1px solid hsl(var(--accent)) !important;
-  border-radius: var(--radius-sm) !important;
-  padding: 1px 4px !important;
-  font-size: 0.65rem !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  text-align: center !important;
-  margin: 0 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
-  overflow: visible !important;
-  white-space: nowrap !important;
-  float: none !important;
-  margin-top: 1px !important;
-  text-decoration: none !important;
-  transition: all 0.2s ease;
-}
-*/
-
-/* More link hover */
-/*
-.fc-more-link:hover {
-  background-color: hsl(var(--accent)) !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-  text-decoration: none !important;
-}
-*/
-
-/* Dark mode more link */
-/*
-.dark .fc-more-link {
-  background-color: hsl(var(--accent) / 0.9) !important;
-  border-color: hsl(var(--accent) / 0.8) !important;
-}
-
-.dark .fc-more-link:hover {
-  background-color: hsl(var(--accent)) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
-}
-*/
-
-/* =================================================================
    POPOVER EVENTS STYLING
    ================================================================= */
 
@@ -229,17 +178,6 @@
   cursor: pointer;
   font-size: 0.75rem !important;
   padding: 2px 6px !important;
-}
-
-/* .fc-popover .fc-event:hover,
-.fc-more-popover .fc-event:hover {
-  transform: translateX(4px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* .dark .fc-popover .fc-event:hover,
-.dark .fc-more-popover .fc-event:hover {
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
 }
 
 /* Ensure popover body shows only overflow events */
@@ -287,19 +225,6 @@
   z-index: var(--z-fc-more-popover) !important;
 }
 
-/* Multimonth more link - event-like appearance - DISABLED */
-/*
-.fc-multimonth-multicol .fc-more-link {
-  border: 1px solid var(--fc-event-border-color);
-  padding: 1px;
-  float: none !important;
-  display: block !important;
-  clear: both !important;
-  width: auto !important;
-  margin: 1px 1px 0 1px !important;
-}
-*/
-
 /* Daygrid view specific */
 .fc-daygrid .fc-more-popover {
   z-index: var(--z-fc-more-popover) !important;
@@ -309,35 +234,6 @@
 .fc-timegrid .fc-more-popover {
   z-index: var(--z-fc-more-popover) !important;
 }
-
-/* Timegrid more link specific styles - DISABLED */
-/*
-.fc-timegrid-more-link {
-  position: absolute !important;
-  z-index: var(--z-timegrid-more-link) !important;
-  cursor: pointer !important;
-  margin-bottom: 1px !important;
-  font-size: var(--fc-small-font-size) !important;
-  border-radius: var(--radius-sm) !important;
-  box-shadow: 0px 0px 0px 1px var(--fc-page-bg-color) !important;
-}
-
-.fc-timegrid-more-link-inner {
-  padding: 3px 2px;
-  top: 0;
-}
-*/
-
-/* Timegrid more link positioning - DISABLED */
-/*
-.fc-direction-ltr .fc-timegrid-more-link {
-  right: 0;
-}
-
-.fc-direction-rtl .fc-timegrid-more-link {
-  left: 0;
-}
-*/
 
 /* =================================================================
    THEME INTEGRATION
@@ -354,31 +250,14 @@
   border-bottom: 1px solid hsl(var(--border)) !important;
 }
 
-/* Bootstrap theme support - DISABLED */
-/*
-.fc-theme-bootstrap .fc-more-link:hover {
-  text-decoration: none;
-}
-*/
-
 /* =================================================================
    ACCESSIBILITY AND INTERACTION
    ================================================================= */
-
-/* Focus states - DISABLED */
-/*
-.fc-more-link:focus {
-  outline: 2px solid hsl(var(--accent)) !important;
-  outline-offset: 2px;
-}
-*/
 
 .fc-popover-close:focus {
   outline: 2px solid hsl(var(--accent)) !important;
   outline-offset: 2px;
 }
-
-/* Z-index handled in centralized _z-index.css file */
 
 /* =================================================================
    RESPONSIVE ADJUSTMENTS
@@ -395,27 +274,6 @@
     max-height: 250px;
   }
 }
-
-/* =================================================================
-   RTL SUPPORT
-   ================================================================= */
-
-/* .fc[dir="rtl"] .fc-popover .fc-event:hover,
-.fc[dir="rtl"] .fc-more-popover .fc-event:hover {
-  transform: translateX(-4px);
-} */
-
-/* RTL direction-specific more link positioning - DISABLED */
-/*
-.fc-direction-ltr .fc-more-link,
-.fc-direction-rtl .fc-more-link {
-  float: none !important;
-  clear: both !important;
-  display: block !important;
-  width: auto !important;
-  margin: 1px 1px 0 1px !important;
-}
-*/
 
 /* =================================================================
    PERFORMANCE OPTIMIZATIONS
@@ -445,8 +303,4 @@
   .dark .fc-more-popover {
     background: hsl(var(--card)) !important;
   }
-}
-
-
-
-/* RTL direction-specific more link positioning */ 
+} 

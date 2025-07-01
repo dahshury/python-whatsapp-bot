@@ -78,7 +78,8 @@ export function useCalendarCore({ freeRoam, initialView, initialDate }: UseCalen
     sidebarOpen,
     refreshData: eventsState.refreshData,
     setOnVacationUpdated,
-    fetchConversations
+    fetchConversations,
+    calendarRef
   })
 
   // Vacation date checker
@@ -137,7 +138,7 @@ export function useCalendarCore({ freeRoam, initialView, initialDate }: UseCalen
   })
 
   // Create calendar callbacks with vacation support
-  const callbacks = createCalendarCallbacks(
+  const callbacks = useMemo(() => createCalendarCallbacks(
     callbackHandlers, 
     freeRoam, 
     getTimezone(), 
@@ -147,7 +148,7 @@ export function useCalendarCore({ freeRoam, initialView, initialDate }: UseCalen
     calendarState.setCurrentDate,
     calendarState.updateSlotTimes,
     calendarState.currentView
-  )
+  ), [callbackHandlers, freeRoam, calendarState.currentDate, isVacationDate, recordingState.periodIndex, recordingState.field, handleVacationDateClick, calendarState.setCurrentDate, calendarState.updateSlotTimes, calendarState.currentView])
 
   // Handle update size with ref
   const handleUpdateSize = () => updateSize(calendarRef)

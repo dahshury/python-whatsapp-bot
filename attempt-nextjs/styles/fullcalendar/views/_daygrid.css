@@ -1,4 +1,24 @@
-/* Daygrid View Styles - Specific to Daygrid */
+/**
+ * DAYGRID VIEW STYLES - MONTH/WEEK GRID LAYOUT
+ * ============================================
+ * 
+ * Responsibility: Daygrid view specific styling (month/week grid layouts)
+ * - Daygrid table layout and spacing
+ * - Day cell styling and event positioning
+ * - Event styling specific to daygrid layout
+ * - Column header gradients and styling
+ * - Dark mode adaptations for daygrid
+ * 
+ * Dependencies: CSS variables from theme files, GPU acceleration features
+ * Used by: Month view, week view (when using daygrid)
+ * 
+ * Note: Vacation styling is handled in features/_vacation-events.css
+ * Note: Universal day styling is in _universal.css
+ */
+
+/* =================================================================
+   DAYGRID CORE LAYOUT
+   ================================================================= */
 
 /* GPU ACCELERATION FOR DAYGRID */
 .fc-daygrid {
@@ -305,4 +325,30 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     inset 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode base daygrid styles */
+.dark .fc-daygrid .fc-daygrid-day {
+  background: transparent !important;
+}
+
+.dark .fc-daygrid .fc-daygrid-day-frame {
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 hsl(var(--background) / 0.1);
+  border-color: hsl(var(--border) / 0.2);
+}
+
+.dark .fc-daygrid .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(.fc-day-disabled) .fc-daygrid-day-frame {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.98) 100%
+  ) !important;
+}
+
+/* Dark mode text */
+.dark .fc-daygrid .fc-daygrid-day-top {
+  color: hsl(var(--muted-foreground)) !important;
 }

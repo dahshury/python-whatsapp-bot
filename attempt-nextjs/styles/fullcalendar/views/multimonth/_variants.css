@@ -1,4 +1,14 @@
-/* Layout Variants and Scrollbar Styles */
+/* Multimonth View Layout Variants and Scrollbar Styles
+ * Responsibility: Layout variants (single-column, multi-column, compact) and custom scrollbars
+ * Dependencies: CSS variables from _variables.css, z-index values
+ * Usage: Applied to .fc-multimonth variants for different display modes
+ * Features: Single-column stacking, multi-column grid, compact sizing, enhanced scrollbars
+ * Note: Scrollbar styling provides better visual integration with theme system
+ */
+
+/* =================================================================
+   LAYOUT VARIANT OVERRIDES
+   ================================================================= */
 
 /* Remove the outer multimonth view container styling completely */
 .fc-multiMonthYear-view.fc-view.fc-multimonth {
@@ -9,6 +19,10 @@
   padding: 0 !important;
   margin: 0 !important;
 }
+
+/* =================================================================
+   SINGLE COLUMN VARIANT
+   ================================================================= */
 
 /* Single column variant */
 .fc-multimonth-singlecol .fc-multimonth {
@@ -61,6 +75,10 @@
   border-bottom-style: hidden;
 }
 
+/* =================================================================
+   MULTI-COLUMN VARIANT
+   ================================================================= */
+
 /* Multi-column variant */
 .fc-multimonth-multicol {
   line-height: 1;
@@ -69,6 +87,10 @@
 .fc-multimonth-multicol .fc-multimonth-month {
   padding: 0;
 }
+
+/* =================================================================
+   COMPACT VARIANT
+   ================================================================= */
 
 /* Compact variant */
 .fc-multimonth-compact {
@@ -89,7 +111,10 @@
   font-size: 1em;
 }
 
-/* ULTRA PREMIUM SCROLLBAR STYLING */
+/* =================================================================
+   ENHANCED SCROLLBAR STYLING
+   ================================================================= */
+
 .fc-multimonth::-webkit-scrollbar {
   width: 12px;
   height: 12px;
@@ -143,7 +168,7 @@
     );
 }
 
-/* FIREFOX SCROLLBAR STYLING */
+/* Firefox scrollbar support */
 .fc-multimonth {
   scrollbar-width: thin;
   scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--muted) / 0.2);

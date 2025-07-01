@@ -1,21 +1,29 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import type { Conversation } from '@/types/calendar'
+import type { Conversations } from '@/types/calendar'
 import { callPythonBackend } from '@/lib/backend'
 
 export async function GET(req: NextRequest) {
   try {
     const url = new URL(req.url)
-    const recent = url.searchParams.get('recent')
-    const limit = url.searchParams.get('limit')
+    const fromDate = url.searchParams.get('from_date') // YYYY-MM-DD format
+    const toDate = url.searchParams.get('to_date')     // YYYY-MM-DD format
     
     // Build parameters for Python backend
     const params = new URLSearchParams()
-    if (recent !== null) params.set('recent', recent)
-    if (limit !== null) params.set('limit', limit)
     
-    const endpoint = params.toString() ? `/conversations?${params}` : '/conversations'
-    const backendResponse = await callPythonBackend(endpoint)
+    // Add date range filtering if provided
+    if (fromDate) {
+      params.append('from_date', fromDate)
+    }
+    if (toDate) {
+      params.append('to_date', toDate)
+    }
+    
+    // Make request to Python backend with date filtering
+    const backendResponse = await callPythonBackend(
+      params.toString() ? `/conversations?${params}` : '/conversations'
+    )
     
     // The Python backend should return the data in the expected format
     // { success: true, data: Record<string, Conversation[]> }
