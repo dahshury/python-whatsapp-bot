@@ -20,7 +20,8 @@ import type { CalendarEvent } from '@/types/calendar'
 import { 
   getBusinessHours, 
   getValidRange,
-  SLOT_DURATION_HOURS
+  SLOT_DURATION_HOURS,
+  TIMEZONE
 } from '@/lib/calendar-config'
 import { cn } from '@/lib/utils'
 
@@ -360,6 +361,15 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
   useLayoutEffect(() => {
     if (!calendarRef.current || !containerRef.current) return
 
+    // Debug timezone information
+    const now = new Date()
+    const utcTime = now.toISOString()
+    const localTime = now.toString()
+    const dayName = now.toLocaleDateString('en-US', { weekday: 'long' })
+    const timezone_env = process.env.NEXT_PUBLIC_TIMEZONE || 'Not Set'
+    console.log(`🕐 Calendar Debug - Local: ${localTime} (${dayName}), UTC: ${utcTime}`)
+    console.log(`⚙️ FullCalendar TimeZone Config: ${TIMEZONE} (env: ${timezone_env})`)
+
     // Initial sizing - immediate
     calendarRef.current.getApi().updateSize()
 
@@ -508,9 +518,10 @@ export const CalendarCore = forwardRef<CalendarCoreRef, CalendarCoreProps>((prop
         slotMinTime={slotTimes.slotMinTime}
         slotMaxTime={slotTimes.slotMaxTime}
         
-        // Localization
+        // Localization and Timezone (critical - matches Python implementation)
         locale={isRTL ? arLocale : "en"}
         direction={isRTL ? "rtl" : "ltr"}
+        timeZone={TIMEZONE} // ✅ Critical: Set timezone like Python calendar_view.py
 
         firstDay={6} // Saturday as first day
         aspectRatio={1.4}

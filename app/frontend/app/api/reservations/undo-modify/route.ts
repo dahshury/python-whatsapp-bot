@@ -14,19 +14,19 @@ export async function POST(request: Request) {
     }
 
     // The Python `modify_reservation` function expects parameters like:
-    // wa_id, new_date, new_time_slot, new_name, new_type, reservation_id_to_modify
-    // Ensure originalData from the client maps to these.
+    // wa_id, new_date, new_time_slot, new_name, new_type, max_reservations, approximate, hijri, ar, reservation_id_to_modify
+    // Ensure originalData from the client maps to these with proper defaults.
     const payloadForPython = {
       wa_id: originalData.wa_id, // This must be present in originalData
       new_date: originalData.date,
       new_time_slot: originalData.time_slot,
       new_name: originalData.customer_name,
       new_type: originalData.type,
-      reservation_id_to_modify: reservationId, // Crucial: target specific reservation
+      max_reservations: 6, // Frontend allows 6 per slot for calendar operations
+      approximate: false, // For undo, we want exact revert, no approximation
+      hijri: false, // Default value for undo operations
       ar: ar || false,
-      // max_reservations, approximate, hijri might not be needed for a direct revert,
-      // or should be part of originalData if they influenced the original state.
-      // For simplicity, assuming direct revert.
+      reservation_id_to_modify: reservationId, // Crucial: target specific reservation
     };
     
     if (!payloadForPython.wa_id) {
@@ -41,10 +41,14 @@ export async function POST(request: Request) {
       body: JSON.stringify(payloadForPython)
     });
 
-    if (pythonResponse.success) {
+    console.log(`Python backend response for undo-modify:`, pythonResponse);
+
+    if (pythonResponse && pythonResponse.success) {
       return NextResponse.json(pythonResponse);
     } else {
-      return NextResponse.json({ success: false, message: pythonResponse.message || 'Undo modification failed in backend.' }, { status: 500 });
+      const errorMessage = pythonResponse?.message || 'Undo modification failed in backend.';
+      console.error(`Undo modification failed:`, errorMessage, pythonResponse);
+      return NextResponse.json({ success: false, message: errorMessage }, { status: 500 });
     }
 
   } catch (error: any) {

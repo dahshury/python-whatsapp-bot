@@ -5,29 +5,29 @@ import { callPythonBackend } from '@/lib/backend'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { id, wa_id, reservation_id, date, time, title, type, approximate, max_reservations, isRTL } = body
+    const { id, date, time, title, type, approximate } = body
 
-    // Validate required fields - we need wa_id for the backend
-    if (!wa_id || !date || !time) {
+    // Validate required fields
+    if (!id || !date || !time) {
       return NextResponse.json(
-        { success: false, message: 'Missing required fields: wa_id, date, time' },
+        { success: false, message: 'Missing required fields: id, date, time' },
         { status: 400 }
       )
     }
 
-    // Call the correct Python backend endpoint with WhatsApp ID
-    const backendResponse = await callPythonBackend(`/reservations/${wa_id}/modify`, {
+    // Call the Python backend endpoint directly - id is the WhatsApp ID
+    // Match working Streamlit implementation: NO max_reservations for modifications
+    const backendResponse = await callPythonBackend(`/reservations/${id}/modify`, {
       method: 'POST',
       body: JSON.stringify({
-        new_date: date,           // Map 'date' to 'new_date'
-        new_time_slot: time,      // Map 'time' to 'new_time_slot'
-        new_name: title,          // Map 'title' to 'new_name'
-        new_type: type || 0,      // Map 'type' to 'new_type'
+        new_date: date,
+        new_time_slot: time,
+        new_name: title,
+        new_type: type || 0,
         approximate: approximate || false,
-        max_reservations: max_reservations || 6, // Frontend allows 6, AI agent uses 5
-        hijri: false,             // Always false for this API
-        ar: isRTL || false,       // Use the passed language setting
-        reservation_id_to_modify: reservation_id // Pass specific reservation ID if available
+        max_reservations: 6, // Frontend allows 6 per user request
+        hijri: false,
+        ar: false
       })
     })
 

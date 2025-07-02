@@ -250,32 +250,103 @@ export const DualCalendarComponent = React.forwardRef<
     
     // Check if the new date falls within a vacation period
     const newDate = event.start
-    const newDateString = newDate.toISOString().split('T')[0]
+    const newDateString = newDate.getFullYear() + '-' + 
+                         String(newDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(newDate.getDate()).padStart(2, '0')
     
     if (isVacationDate(newDateString)) {
       info.revert()
       return
     }
     
-    const extractedDate = event.start.toISOString().split('T')[0]
-    const newTime = event.start.toLocaleTimeString('en-US', { 
-      hour12: true, 
-      hour: 'numeric',
-      minute: '2-digit'
-    })
+    // 🔍 DEBUGGING: FullCalendar is configured with timeZone='Asia/Riyadh' so event.start should be correct
+    console.log(`🔍 DUAL CALENDAR Drop Debug (timeZone='Asia/Riyadh'):`)
+    console.log(`   event.start: ${event.start}`)
+    console.log(`   event.start toString(): ${event.start.toString()}`)
+    console.log(`   Browser timezone offset: ${event.start.getTimezoneOffset()} minutes from UTC`)
+    
+    // 🚨 CRITICAL FIX: FullCalendar timezone bug correction (same fix as main calendar)
+    // FullCalendar with timeZone='Asia/Riyadh' displays times correctly but interprets drags in UTC
+    // When user drags to 1 PM visual, FullCalendar returns 4 PM local (which is 1 PM UTC)
+    
+    console.log(`🔧 DUAL CALENDAR Debug:`)
+    console.log(`   Original event.start: ${event.start}`)
+    console.log(`   event.start.toISOString(): ${event.start.toISOString()}`)
+    
+    const isTimegridView = leftCalendarState.currentView.toLowerCase().includes('timegrid') || 
+                          rightCalendarState.currentView.toLowerCase().includes('timegrid')
+    
+    // Extract date normally
+    const extractedDate = event.start.getFullYear() + '-' + 
+                         String(event.start.getMonth() + 1).padStart(2, '0') + '-' + 
+                         String(event.start.getDate()).padStart(2, '0')
+    
+    // Extract UTC time (which represents the visual time user dragged to)
+    const utcDate = new Date(event.start.toISOString())
+    let visualHour = utcDate.getUTCHours()
+    let visualMinute = utcDate.getUTCMinutes()
+    
+    // For timegrid views: Round to nearest valid slot (11 AM, 1 PM, 3 PM)
+    // For other views: Keep exact time for backend approximation
+    if (isTimegridView) {
+      const validSlotHours = [11, 13, 15] // 11 AM, 1 PM, 3 PM in 24-hour format
+      const draggedHour24 = visualHour + (visualMinute >= 30 ? 1 : 0) // Round up if >= 30 minutes
+      
+      // Find nearest valid slot hour
+      let nearestSlotHour = validSlotHours[0]
+      let minDiff = Math.abs(draggedHour24 - validSlotHours[0])
+      
+      for (const slotHour of validSlotHours) {
+        const diff = Math.abs(draggedHour24 - slotHour)
+        if (diff < minDiff) {
+          minDiff = diff
+          nearestSlotHour = slotHour
+        }
+      }
+      
+      // Update visual time to nearest slot
+      visualHour = nearestSlotHour
+      visualMinute = 0
+      
+      console.log(`🎯 Dual calendar timegrid slot rounding: ${draggedHour24}:${utcDate.getUTCMinutes().toString().padStart(2, '0')} → ${visualHour}:00`)
+    }
+    
+    // Create proper 12-hour format time string from visual time
+    const isPM = visualHour >= 12
+    const displayHour = visualHour === 0 ? 12 : (visualHour > 12 ? visualHour - 12 : visualHour)
+    const newTime = `${displayHour}:${visualMinute.toString().padStart(2, '0')} ${isPM ? 'PM' : 'AM'}`
+    
+    console.log(`   Visual time corrected: ${newTime} (${isTimegridView ? 'timegrid' : 'other'} view)`)
+    
+    // Debug timezone info for drag and drop
+    console.log(`🔄 DUAL CALENDAR DRAG & DROP DEBUG:`)
+    console.log(`   Event ID: ${event.id}`)
+    console.log(`   Original event.start: ${event.start}`)
+    console.log(`   Original timezone offset: ${event.start.getTimezoneOffset()} minutes`)
+    console.log(`   Extracted date (LOCAL): ${extractedDate}`)
+    console.log(`   Extracted time (LOCAL): ${newTime}`)
+    console.log(`   UTC ISO (for reference): ${event.start.toISOString()}`)
     
     const eventType = event.extendedProps.type || 0
     const customerName = event.title
 
-    // Store original data for undo functionality
+    // Store original data for undo functionality - use same timezone extraction method for consistency
     const originalData = {
       wa_id: event.id,
-      date: oldEvent?.start ? oldEvent.start.toISOString().split('T')[0] : extractedDate,
-      time_slot: oldEvent?.start ? oldEvent.start.toLocaleTimeString('en-US', { 
-        hour12: true, 
-        hour: 'numeric',
-        minute: '2-digit'
-      }) : newTime,
+      date: oldEvent?.start ? (
+        oldEvent.start.getFullYear() + '-' + 
+        String(oldEvent.start.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(oldEvent.start.getDate()).padStart(2, '0')
+      ) : extractedDate,
+      time_slot: oldEvent?.start ? (() => {
+        // 🚨 FIX: Apply same timezone extraction to original event
+        const oldUtcDate = new Date(oldEvent.start.toISOString())
+        const oldVisualHour = oldUtcDate.getUTCHours()
+        const oldVisualMinute = oldUtcDate.getUTCMinutes()
+        const oldIsPM = oldVisualHour >= 12
+        const oldDisplayHour = oldVisualHour === 0 ? 12 : (oldVisualHour > 12 ? oldVisualHour - 12 : oldVisualHour)
+        return `${oldDisplayHour}:${oldVisualMinute.toString().padStart(2, '0')} ${oldIsPM ? 'PM' : 'AM'}`
+      })() : newTime,
       customer_name: customerName,
       type: eventType
     }
@@ -283,12 +354,16 @@ export const DualCalendarComponent = React.forwardRef<
     const generateChangeDescription = () => {
       if (!oldEvent?.start) return isRTL ? "تم تحديث الحجز" : "Reservation updated"
 
-      const oldDate = oldEvent.start.toISOString().split('T')[0]
-      const oldTime = oldEvent.start.toLocaleTimeString('en-US', { 
-        hour12: true, 
-        hour: 'numeric',
-        minute: '2-digit'
-      })
+      const oldDate = oldEvent.start.getFullYear() + '-' + 
+                     String(oldEvent.start.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(oldEvent.start.getDate()).padStart(2, '0')
+      // 🚨 FIX: Apply same timezone extraction to old time for display
+      const oldUtcDate = new Date(oldEvent.start.toISOString())
+      const oldVisualHour = oldUtcDate.getUTCHours()
+      const oldVisualMinute = oldUtcDate.getUTCMinutes()
+      const oldIsPM = oldVisualHour >= 12
+      const oldDisplayHour = oldVisualHour === 0 ? 12 : (oldVisualHour > 12 ? oldVisualHour - 12 : oldVisualHour)
+      const oldTime = `${oldDisplayHour}:${oldVisualMinute.toString().padStart(2, '0')} ${oldIsPM ? 'PM' : 'AM'}`
 
       const formatDate = (dateStr: string) => {
         const date = new Date(dateStr)
@@ -333,17 +408,24 @@ export const DualCalendarComponent = React.forwardRef<
     }
     
     try {
-      const result = await modifyReservation({
+      // Different behavior for timegrid vs other views:
+      // - Timegrid views: approximate=false (snap to exact hour, don't jump to different slots)
+      // - Other views: approximate=true (find nearest available slot)
+      const useApproximate = !isTimegridView
+      
+      const requestData = {
         id: event.id,
-        wa_id: event.id, // The event ID is actually the WhatsApp ID
-        reservation_id: event.extendedProps?.reservationId, // Pass specific reservation ID
         date: extractedDate,
         time: newTime,
+        title: event.title, // Include customer name
         type: eventType, // Preserve the original type
-        approximate: true,
-        max_reservations: 6, // Enforce proper capacity limits
-        isRTL: isRTL
-      })
+        approximate: useApproximate
+      }
+      console.log(`   Old data: ${originalData.date} ${originalData.time_slot}`)
+      console.log(`   New data: ${extractedDate} ${newTime}`)
+      console.log(`   Sending to backend:`, requestData)
+      
+      const result = await modifyReservation(requestData)
       
       if (result.success) {
         toast.success(isRTL ? "تم تحديث الحجز" : "Reservation Updated", {
@@ -397,6 +479,14 @@ export const DualCalendarComponent = React.forwardRef<
         description: (isRTL ? "حدث خطأ في الشبكة، يرجى التحقق من اتصالك" : "A network error occurred, please check your connection"),
         duration: 5000,
       })
+    }
+
+    // After correcting visualHour/visualMinute and computing newTime, sync event.start for timegrid views
+    if (isTimegridView) {
+      const newStartLocal = new Date(
+        `${extractedDate}T${visualHour.toString().padStart(2, '0')}:${visualMinute.toString().padStart(2, '0')}:00`
+      )
+      event.setStart(newStartLocal) // Ensure FullCalendar uses exact rounded slot
     }
   }, [isVacationDate, isRTL, handleRefreshWithBlur])
 
