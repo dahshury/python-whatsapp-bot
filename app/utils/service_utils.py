@@ -492,11 +492,17 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
 
 def parse_time(time_str, to_24h=True):
     """
-    Parse a time string and convert it to the specified format.
+    Parse and normalize a time string from various formats into either 24-hour or 12-hour format.
+    
+    Supports multiple input formats:
+    - 12-hour format: "2:30 PM", "11:00 AM", "2 PM"
+    - 24-hour format: "14:30", "23:00", "09:15"
+    - Hour-only formats: "14", "2"
     
     Parameters:
-        time_str (str): A time string in any recognizable format
-        to_24h (bool): If True, returns time in 24-hour format (HH:MM), otherwise in 12-hour format (h:MM AM/PM)
+        time_str (str): The time string to parse
+        to_24h (bool): If True, returns 24-hour format (HH:MM), 
+                      if False, returns 12-hour format (H:MM AM/PM)
     
     Returns:
         str: The formatted time string
@@ -991,16 +997,26 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
         
     """
     try:
+        # 🔍 DEBUG LOGGING FOR TIME SLOTS GENERATION
+        logging.info(f"🔍 get_time_slots called:")
+        logging.info(f"   📍 Input date_str: '{date_str}'")
+        logging.info(f"   📍 Input check_vacation: {check_vacation}")
+        logging.info(f"   📍 Input to_24h: {to_24h}")
+        logging.info(f"   📍 Input interval: {interval}")
+        
         now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
+        logging.info(f"   📍 Current time (backend timezone): {now}")
         
         # Convert date_str to date_obj if date_str is provided
         if date_str is not None:
             # First validate the date using is_valid_date_time
             is_valid, error_message, parsed_date_str, _ = is_valid_date_time(date_str)
             if not is_valid:
+                logging.error(f"   ❌ Date validation failed: {error_message}")
                 return format_response(False, message=error_message)
                 
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
+            logging.info(f"   📍 Parsed date object: {date_obj}")
         else:
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
             # Ensure the provided date_obj is not in the past
@@ -1010,11 +1026,14 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
         # Check if the date falls within a vacation period
         if check_vacation:
             is_vacation, vacation_message = is_vacation_period(date_obj)
+            logging.info(f"   📍 Vacation check: is_vacation={is_vacation}")
             if is_vacation:
+                logging.warning(f"   ❌ Date {date_obj} is in vacation period: {vacation_message}")
                 return format_response(False, message=vacation_message)
         
         # Get day of week (0=Monday, 6=Sunday)
         day_of_week = date_obj.weekday()
+        logging.info(f"   📍 Day of week: {day_of_week} (0=Monday, 6=Sunday)")
         
         # Set default schedule if not provided
         if schedule is None:
@@ -1028,28 +1047,38 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
                 6: [11, 17]   # Sunday: 11 AM to 5 PM
             }
         
+        logging.info(f"   📍 Schedule for day {day_of_week}: {schedule.get(day_of_week)}")
+        
         # Check if the day is a non-working day
         if schedule.get(day_of_week) is None:
+            logging.warning(f"   ❌ Day {day_of_week} is a non-working day")
             return format_response(False, message=get_message("non_working_day"))
         
         # Check if the date falls within Ramadan
         hijri_date = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
         is_ramadan = hijri_date.month == 9
+        logging.info(f"   📍 Hijri date: {hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}")
+        logging.info(f"   📍 Is Ramadan: {is_ramadan}")
         
         # Define time slots in 12-hour format based on day and Ramadan status
         if is_ramadan:
             # Ramadan hours override regular schedule
             available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, interval)}
+            logging.info(f"   📍 Generated Ramadan slots: {list(available_12h.keys())}")
         else:
             # Use the configured schedule for this day
             day_schedule = schedule.get(day_of_week, [11, 17])
             start_hour, end_hour = day_schedule
+            logging.info(f"   📍 Day schedule: start_hour={start_hour}, end_hour={end_hour}")
             available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(start_hour, end_hour, interval)}
+            logging.info(f"   📍 Generated regular slots: {list(available_12h.keys())}")
         
         # Filter out past time slots if the date is today
         if date_obj == now.date():
             current_time = now.time()
+            logging.info(f"   📍 Filtering past slots for today, current time: {current_time}")
             available_12h = filter_past_time_slots(available_12h, current_time)
+            logging.info(f"   📍 Slots after filtering past times: {list(available_12h.keys())}")
         
         # Convert to 24-hour format if requested
         if to_24h:
@@ -1057,8 +1086,10 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
             for slot_12h, count in available_12h.items():
                 slot_24h = normalize_time_format(slot_12h, to_24h=True)
                 available_24h[slot_24h] = count
+            logging.info(f"   ✅ Final 24h slots: {list(available_24h.keys())}")
             return available_24h
         
+        logging.info(f"   ✅ Final 12h slots: {list(available_12h.keys())}")
         return available_12h
         
     except Exception as e:

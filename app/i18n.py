@@ -31,6 +31,7 @@ MESSAGES = {
     "phone_invalid": {"en": "Invalid phone number: {error}", "ar": "رقم الهاتف غير صالح: {error}"},
     "phone_validation_error": {"en": "Phone validation error.", "ar": "خطأ في التحقق من صحة رقم الهاتف."},
     "invalid_reservation_type": {"en": "Invalid reservation type. Must be 0 or 1.", "ar": "نوع الحجز غير صالح. يجب أن يكون 0 أو 1."},
+    "invalid_time_slot_for_date": {"en": "Invalid time slot {slot} for date {date}. Valid slots are: {valid_slots}", "ar": "وقت غير صالح {slot} للتاريخ {date}. الأوقات الصالحة هي: {valid_slots}"},
     "no_slots_available_approx": {"en": "No available time slot found for approximation.", "ar": "لم يتم العثور على موعد متاح للتقريب."},
     "no_changes_made": {"en": "No changes were made as no new details were provided.", "ar": "لم يتم إجراء أي تغييرات كونه لم يتم تقديم تفاصيل جديدة."},
     "all_slots_fully_booked": {"en": "All slots are fully booked for this date. Please choose another date.", "ar": "جميع المواعيد محجوزة. يرجى اختيار تاريخ آخر."},
@@ -68,6 +69,7 @@ MESSAGES = {
     "reservation_not_found_id": {"en": "Reservation with ID {id} not found.", "ar": "لم يتم العثور على حجز بالمعرف {id}."},
     "no_actual_change_made": {"en": "No actual changes were made to the reservation.", "ar": "لم يتم إجراء أي تغييرات فعلية على الحجز."},
     "slot_unavailable_approx_not_impl": {"en": "The requested slot is unavailable, and finding an approximate slot is not yet fully implemented.", "ar": "الوقت المطلوب غير متاح، ولم يتم تنفيذ ميزة إيجاد وقت تقريبي بالكامل بعد."},
+    "no_slots_available_on_date": {"en": "No available time slots found on {date}. Please choose another date.", "ar": "لا توجد مواعيد متاحة في {date}. يرجى اختيار تاريخ آخر."},
     "reservation_modified_successfully": {"en": "Reservation modified successfully.", "ar": "تم تعديل الحجز بنجاح."},
     "cancellation_failed_specific": {"en": "Failed to cancel reservation with ID {id}. It might be already cancelled or not exist.", "ar": "فشل إلغاء الحجز بالمعرف {id}. قد يكون ملغى بالفعل أو غير موجود."},
     "reservation_already_cancelled": {"en": "Reservation with ID {id} is already cancelled.", "ar": "الحجز بالمعرف {id} ملغى بالفعل."},
@@ -83,6 +85,7 @@ MESSAGES = {
     "customer_name_no_change": {"en": "Customer name is the same, no update performed.", "ar": "اسم العميل مطابق، لم يتم إجراء تحديث."},
     "customer_name_updated": {"en": "Customer name updated successfully.", "ar": "تم تحديث اسم العميل بنجاح."},
     "customer_name_update_failed": {"en": "Failed to update customer name.", "ar": "فشل تحديث اسم العميل."},
+    "update_failed": {"en": "Update failed.", "ar": "فشل التحديث."},
     
     # Calendar view messages
     "cannot_select_past": {"en": "Cannot select past time slots.", "ar": "لا يمكن اختيار مواعيد سابقة."},

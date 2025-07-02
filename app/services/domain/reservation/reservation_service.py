@@ -347,6 +347,31 @@ class ReservationService(BaseService):
                 parsed_new_date_str = temp_parsed_date
                 parsed_new_time_str = temp_parsed_time
 
+                # *** CRITICAL VALIDATION: Check if time slot is valid for the date ***
+                if new_time_slot:  # Only validate if time_slot was actually provided
+                    from app.utils.service_utils import get_time_slots
+                    valid_slots_result = get_time_slots(parsed_new_date_str, check_vacation=True, to_24h=False)
+                    
+                    # Check if get_time_slots returned an error (vacation, non-working day, etc.)
+                    if isinstance(valid_slots_result, dict) and not valid_slots_result.get("success", True):
+                        return format_response(False, message=valid_slots_result.get("message", "Invalid date for reservations"))
+                    
+                    # valid_slots_result should be a dict of {time_slot: count}
+                    if not isinstance(valid_slots_result, dict):
+                        return format_response(False, message=get_message("system_error_generic", ar, error="Failed to get valid time slots"))
+                    
+                    valid_time_slots = list(valid_slots_result.keys())
+                    # Convert the requested time to 12-hour format for comparison with valid slots
+                    from app.utils.service_utils import normalize_time_format
+                    requested_time_12h = normalize_time_format(parsed_new_time_str, to_24h=False)
+                    
+                    if requested_time_12h not in valid_time_slots:
+                        slots_str = ', '.join(valid_time_slots) if valid_time_slots else "None available"
+                        return format_response(False, message=get_message("invalid_time_slot_for_date", ar, 
+                                                                         slot=requested_time_12h, 
+                                                                         date=parsed_new_date_str,
+                                                                         valid_slots=slots_str))
+
                 # Check if date/time actually changed
                 if parsed_new_date_str != reservation_to_modify.date or parsed_new_time_str != reservation_to_modify.time_slot:
                     changes_made = True
@@ -367,13 +392,57 @@ class ReservationService(BaseService):
                     res for res in current_reservations_in_new_slot if res.id != reservation_to_modify.id
                 ])
 
+                # Enhanced logging for capacity debugging
+                self.logger.info(f"🎯 CAPACITY CHECK: slot={normalize_time_format(parsed_new_time_str, to_24h=False)} date={parsed_new_date_str}")
+                self.logger.info(f"🎯 Current reservations in slot: {count_other_reservations}/{max_reservations} (excluding moving reservation {reservation_to_modify.id})")
+                self.logger.info(f"🎯 Approximate mode: {approximate}")
+
                 if count_other_reservations >= max_reservations:
                     if approximate:
-                        # Attempt to find nearest available slot (simplified example)
-                        # This needs more robust implementation in AvailabilityService
-                        return format_response(False, message=get_message("slot_unavailable_approx_not_impl", ar))
+                        # Try to find nearest available slot on the same date
+                        self.logger.info(f"🔄 APPROXIMATE: Slot {parsed_new_time_str} on {parsed_new_date_str} is full ({count_other_reservations}/{max_reservations}), searching for nearest available slot")
+                        
+                        # Get available slots for the target date
+                        availability_result = self.availability_service.get_available_time_slots(parsed_new_date_str, max_reservations, hijri=False)
+                        if not availability_result.get("success", False):
+                            return format_response(False, message=get_message("slot_fully_booked", ar))
+                        
+                        # Extract available slots
+                        result_data = availability_result.get("data", {})
+                        if isinstance(result_data, dict):
+                            available_slots = result_data.get("time_slots", [])
+                        else:
+                            available_slots = result_data if isinstance(result_data, list) else []
+                        
+                        if not available_slots:
+                            return format_response(False, message=get_message("no_slots_available_on_date", ar, date=parsed_new_date_str))
+                        
+                        # Convert requested time to 12-hour format for comparison
+                        requested_time_12h = normalize_time_format(parsed_new_time_str, to_24h=False)
+                        
+                        # Find nearest available time slot using the helper function
+                        from app.utils.service_utils import find_nearest_time_slot
+                        nearest_slot = find_nearest_time_slot(requested_time_12h, available_slots)
+                        
+                        if not nearest_slot:
+                            return format_response(False, message=get_message("no_slots_available_on_date", ar, date=parsed_new_date_str))
+                        
+                        # Convert the nearest slot back to 24-hour format for database storage
+                        nearest_slot_24h = normalize_time_format(nearest_slot, to_24h=True)
+                        
+                        self.logger.info(f"🔄 APPROXIMATE: Found nearest available slot: {nearest_slot} (24h: {nearest_slot_24h}) for original request {requested_time_12h}")
+                        
+                        # Update the parsed time to use the nearest available slot
+                        parsed_new_time_str = nearest_slot_24h
+                        
+                        # Log the automatic adjustment for user feedback
+                        self.logger.info(f"🔄 APPROXIMATE: Automatically adjusted reservation from {requested_time_12h} to {nearest_slot}")
+                        
                     else:
+                        self.logger.info(f"❌ EXACT MODE: Slot {normalize_time_format(parsed_new_time_str, to_24h=False)} is full ({count_other_reservations}/{max_reservations}), rejecting modification")
                         return format_response(False, message=get_message("slot_fully_booked", ar))
+                else:
+                    self.logger.info(f"✅ CAPACITY OK: Slot has space ({count_other_reservations}/{max_reservations}), proceeding with modification")
                 
                 reservation_to_modify.date = parsed_new_date_str
                 reservation_to_modify.time_slot = parsed_new_time_str
@@ -469,11 +538,11 @@ class ReservationService(BaseService):
                 # We need to get IDs before they are cancelled.
                 active_reservations_on_date = [
                     res for res in self.reservation_repository.find_by_wa_id(wa_id, include_past=True) # Get all to find by date
-                    if res.date == parsed_target_date.strftime('%Y-%m-%d') and res.status == 'active'
+                    if res.date == parsed_target_date and res.status == 'active'
                 ]
 
                 if not active_reservations_on_date:
-                    return format_response(False, message=get_message("no_reservation_on_date", ar, date=parsed_target_date.strftime('%Y-%m-%d')))
+                    return format_response(False, message=get_message("no_reservation_on_date", ar, date=parsed_target_date))
 
                 # Filter to only future reservations
                 future_reservations_on_date = [
@@ -482,7 +551,7 @@ class ReservationService(BaseService):
                 ]
                 
                 if not future_reservations_on_date:
-                    return format_response(False, message=get_message("no_future_reservations_on_date", ar, date=parsed_target_date.strftime('%Y-%m-%d')))
+                    return format_response(False, message=get_message("no_future_reservations_on_date", ar, date=parsed_target_date))
 
                 for res in future_reservations_on_date:
                     if self.reservation_repository.cancel_by_id(res.id): # Use cancel_by_id for individual tracking
@@ -490,7 +559,7 @@ class ReservationService(BaseService):
                         cancelled_count += 1
                 
                 if cancelled_count == 0 and future_reservations_on_date: # Should not happen if logic is correct
-                     return format_response(False, message=get_message("cancellation_failed_date", ar, date=parsed_target_date.strftime('%Y-%m-%d')))
+                     return format_response(False, message=get_message("cancellation_failed_date", ar, date=parsed_target_date))
 
 
             else: # Cancel all active future reservations for the wa_id

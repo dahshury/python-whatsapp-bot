@@ -96,4 +96,42 @@ users.yaml
 test.ipynb
 
 private/
+backups/
 st2.py
+
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+app/frontend/node_modules
+app/frontend/.pnp
+app/frontend/.pnp.js
+app/frontend/.yarn/install-state.gz
+
+# testing
+app/frontend/coverage
+
+# next.js
+app/frontend/.next/
+app/frontend/out/
+
+# production
+app/frontend/build
+
+# misc
+app/frontend/.DS_Store
+app/frontend/*.pem
+
+# debug
+app/frontend/npm-debug.log*
+app/frontend/yarn-debug.log*
+app/frontend/yarn-error.log*
+
+# local env files
+app/frontend/.env*.local
+
+# vercel
+app/frontend/.vercel
+
+# typescript
+app/frontend/*.tsbuildinfo
+app/frontend/next-env.d.ts
