@@ -5,7 +5,7 @@ import inspect
 from app.config import config, load_config
 from anthropic import Anthropic, AnthropicError, APITimeoutError, APIConnectionError, BadRequestError, RateLimitError, AuthenticationError
 from app.utils.http_client import sync_client
-from app.utils import retrieve_messages
+from app.utils.service_utils import retrieve_messages
 from app.decorators import retry_decorator
 import datetime
 from zoneinfo import ZoneInfo
@@ -91,7 +91,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     tz = timezone or "UTC"
     
     # Get conversation history
-    input_chat = retrieve_messages(wa_id)
+    input_chat = asyncio.run(retrieve_messages(wa_id))
     
     # Prepare API request arguments, with optional thinking inclusion
     def prepare_request_args(enable_thinking=False):

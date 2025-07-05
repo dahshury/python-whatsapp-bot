@@ -1,29 +1,34 @@
-import { useState, useCallback } from 'react'
-import type { CalendarEvent } from '@/types/calendar'
+import { useCallback, useState } from "react";
+import type { CalendarEvent } from "@/types/calendar";
 
 interface ContextMenuPosition {
-  x: number
-  y: number
+	x: number;
+	y: number;
 }
 
 export function useCalendarContextMenu() {
-  const [contextMenuEvent, setContextMenuEvent] = useState<CalendarEvent | null>(null)
-  const [contextMenuPosition, setContextMenuPosition] = useState<ContextMenuPosition | null>(null)
+	const [contextMenuEvent, setContextMenuEvent] =
+		useState<CalendarEvent | null>(null);
+	const [contextMenuPosition, setContextMenuPosition] =
+		useState<ContextMenuPosition | null>(null);
 
-  const handleContextMenu = useCallback((event: CalendarEvent, position: ContextMenuPosition) => {
-    setContextMenuEvent(event)
-    setContextMenuPosition(position)
-  }, [])
+	const handleContextMenu = useCallback(
+		(event: CalendarEvent, position: ContextMenuPosition) => {
+			setContextMenuEvent(event);
+			setContextMenuPosition(position);
+		},
+		[],
+	);
 
-  const handleCloseContextMenu = useCallback(() => {
-    setContextMenuEvent(null)
-    setContextMenuPosition(null)
-  }, [])
+	const handleCloseContextMenu = useCallback(() => {
+		setContextMenuEvent(null);
+		setContextMenuPosition(null);
+	}, []);
 
-  return {
-    contextMenuEvent,
-    contextMenuPosition,
-    handleContextMenu,
-    handleCloseContextMenu
-  }
-} 
+	return {
+		contextMenuEvent,
+		contextMenuPosition,
+		handleContextMenu,
+		handleCloseContextMenu,
+	};
+}

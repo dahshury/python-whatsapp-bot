@@ -1,44 +1,53 @@
-FROM python:3.10-slim
+FROM node:22-alpine
 
-# Set working directory
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create a non-root user for security
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Set working directory and ensure correct ownership
 WORKDIR /app
+RUN chown nextjs:nodejs /app
 
-# Ensure the app directory is on Python's module search path
-ENV PYTHONPATH=/app
+# Copy package files with correct ownership
+COPY --chown=nextjs:nodejs app/frontend/package*.json ./
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Switch to non-root user for npm operations
+USER nextjs
 
-# Install uv for better package management
-RUN pip install --no-cache-dir uv
+# Install dependencies (npm ci now has permissions to create node_modules)
+RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
 
-# Copy Python package meta files and install dependencies
-COPY requirements-frontend.in ./
+# Copy source code with correct ownership
+COPY --chown=nextjs:nodejs app/frontend/ ./
 
-# Install dependencies using uv (excluding problematic ones)
-# Note: streamlit and streamlit-calendar will be installed via pip
-RUN uv pip install --system --no-cache-dir -r requirements-frontend.in
+# Ensure .env file has correct permissions (after copy to avoid overwrite)
+RUN chmod 644 ./.env 2>/dev/null || true
 
-# Install problematic packages separately using pip
-RUN pip install --no-cache-dir streamlit streamlit-calendar
+# Accept build arguments for backend URL
+ARG PYTHON_BACKEND_URL=http://localhost:8000
+ARG BACKEND_URL=http://localhost:8000
 
-# Build the streamlit-calendar component frontend assets
-RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm \
-    && cd /usr/local/lib/python3.10/site-packages/streamlit_calendar/frontend \
-    && npm ci \
-    && npm run build \
-    && rm -rf /var/lib/apt/lists/*
+# Set environment variables for production
+ENV NODE_ENV=production
+ENV PORT=8501
+ENV HOSTNAME="0.0.0.0"
+# Enable turbopack for faster builds and runtime
+ENV TURBOPACK=1
+# Node.js 22 performance optimizations
+ENV NODE_OPTIONS="--max-old-space-size=2048"
+# Set backend URLs as environment variables
+ENV PYTHON_BACKEND_URL=$PYTHON_BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
 
-# Copy only the necessary frontend files
-COPY app/frontend/ app/frontend/
-COPY app/services/ app/services/
-COPY app/config.py app/config.py
-COPY .streamlit/ .streamlit/
+# Build the Next.js application with turbopack (skip linting for Docker build)
+RUN ESLINT_NO_DEV_ERRORS=true npm run build
 
-# Expose Streamlit default port
+# Expose the frontend port (same as old Streamlit port)
 EXPOSE 8501
 
-# Run the Streamlit dashboard
-CMD ["streamlit", "run", "app/frontend/dashboard.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"] 
+# Use dumb-init for proper signal handling and run as non-root
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["npm", "run", "start"] 

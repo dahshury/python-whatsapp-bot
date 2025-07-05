@@ -144,7 +144,7 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
     return text, response.created_at
 
 @retry_decorator
-def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True, timezone=None):
+async def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True, timezone=None):
     """
     Run the OpenAI Responses API with existing conversation context.
     Returns (response_text, date_str, time_str).
@@ -164,7 +164,7 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
     tz = timezone or "UTC"
     
     # Retrieve message history using centralized service
-    input_chat = retrieve_messages(wa_id)
+    input_chat = await retrieve_messages(wa_id)
     # Call the synchronous Responses API function
     try:
         new_message, created_at = run_responses(

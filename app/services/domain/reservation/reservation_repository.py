@@ -1,22 +1,21 @@
-import sqlite3
 from typing import List, Optional
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from app.db import get_connection
+from app.database import get_connection
 from .reservation_models import Reservation, ReservationType
 
 
 class ReservationRepository:
     """
     Repository for reservation data access operations.
-    Implements repository pattern to abstract data access.
+    Implements repository pattern to abstract data access using PostgreSQL.
     """
     
     def __init__(self, timezone: str = "UTC"):
         """Initialize repository with timezone configuration."""
         self.timezone = timezone
     
-    def find_by_wa_id(self, wa_id: str, include_past: bool = False) -> List[Reservation]:
+    async def find_by_wa_id(self, wa_id: str, include_past: bool = False) -> List[Reservation]:
         """
         Find all reservations for a customer.
         
@@ -27,18 +26,16 @@ class ReservationRepository:
         Returns:
             List of Reservation instances
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(
+            rows = await connection.fetchall(
                 """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
                           r.cancelled_at, r.created_at, r.updated_at, c.customer_name
                    FROM reservations r 
                    JOIN customers c ON r.wa_id = c.wa_id 
-                   WHERE r.wa_id = ? AND r.status = 'active'""",
-                (wa_id,)
+                   WHERE r.wa_id = $1 AND r.status = 'active'""",
+                [wa_id]
             )
-            rows = cursor.fetchall()
             
             reservations = []
             now = datetime.now(tz=ZoneInfo(self.timezone))
@@ -63,10 +60,10 @@ class ReservationRepository:
             
             return reservations
             
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error finding reservations for {wa_id}: {e}")
     
-    def find_active_by_slot(self, date_str: str, time_slot: str) -> List[Reservation]:
+    async def find_active_by_slot(self, date_str: str, time_slot: str) -> List[Reservation]:
         """
         Find active reservations for a specific date and time slot.
         
@@ -77,18 +74,16 @@ class ReservationRepository:
         Returns:
             List of active reservations for the slot
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(
+            rows = await connection.fetchall(
                 """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
                           r.cancelled_at, r.created_at, r.updated_at, c.customer_name
                    FROM reservations r 
                    JOIN customers c ON r.wa_id = c.wa_id 
-                   WHERE r.date = ? AND r.time_slot = ? AND r.status = 'active'""",
-                (date_str, time_slot)
+                   WHERE r.date = $1 AND r.time_slot = $2 AND r.status = 'active'""",
+                [date_str, time_slot]
             )
-            rows = cursor.fetchall()
             
             return [
                 Reservation(
@@ -106,10 +101,10 @@ class ReservationRepository:
                 for row in rows
             ]
             
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error finding reservations for slot {date_str} {time_slot}: {e}")
     
-    def find_cancelled_reservation(self, wa_id: str, date_str: str, time_slot: str) -> Optional[Reservation]:
+    async def find_cancelled_reservation(self, wa_id: str, date_str: str, time_slot: str) -> Optional[Reservation]:
         """
         Find a cancelled reservation that can be reinstated.
         
@@ -121,18 +116,16 @@ class ReservationRepository:
         Returns:
             Cancelled reservation if found, None otherwise
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(
+            row = await connection.fetchone(
                 """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
                           r.cancelled_at, r.created_at, r.updated_at, c.customer_name
                    FROM reservations r 
                    JOIN customers c ON r.wa_id = c.wa_id 
-                   WHERE r.wa_id = ? AND r.date = ? AND r.time_slot = ? AND r.status = 'cancelled'""",
-                (wa_id, date_str, time_slot)
+                   WHERE r.wa_id = $1 AND r.date = $2 AND r.time_slot = $3 AND r.status = 'cancelled'""",
+                [wa_id, date_str, time_slot]
             )
-            row = cursor.fetchone()
             
             if row:
                 return Reservation(
@@ -149,10 +142,10 @@ class ReservationRepository:
                 )
             return None
             
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error finding cancelled reservation: {e}")
     
-    def find_by_id(self, reservation_id: int) -> Optional[Reservation]:
+    async def find_by_id(self, reservation_id: int) -> Optional[Reservation]:
         """
         Find a reservation by its ID.
         
@@ -162,18 +155,16 @@ class ReservationRepository:
         Returns:
             Reservation instance if found, None otherwise.
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(
+            row = await connection.fetchone(
                 """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
                           r.cancelled_at, r.created_at, r.updated_at, c.customer_name
                    FROM reservations r
                    LEFT JOIN customers c ON r.wa_id = c.wa_id
-                   WHERE r.id = ?""",
-                (reservation_id,)
+                   WHERE r.id = $1""",
+                [reservation_id]
             )
-            row = cursor.fetchone()
             
             if row:
                 return Reservation(
@@ -186,13 +177,13 @@ class ReservationRepository:
                     cancelled_at=row["cancelled_at"],
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
-                    customer_name=row["customer_name"] # May be None if customer deleted or inconsistent state
+                    customer_name=row["customer_name"]  # May be None if customer deleted or inconsistent state
                 )
             return None
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error finding reservation by ID {reservation_id}: {e}")
     
-    def save(self, reservation: Reservation) -> int:
+    async def save(self, reservation: Reservation) -> int:
         """
         Save a new reservation to database.
         
@@ -202,29 +193,32 @@ class ReservationRepository:
         Returns:
             ID of the newly created reservation
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
+            conn = await connection.connect()
+            async with conn.transaction():
+                result = await connection.execute(
+                    """INSERT INTO reservations (wa_id, date, time_slot, type, status, created_at, updated_at) 
+                       VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                       RETURNING id""",
+                    [reservation.wa_id, reservation.date, reservation.time_slot, 
+                     reservation.type.value, reservation.status]
+                )
+                
+                # Get the returned ID
+                row = await connection.fetchone(
+                    """SELECT id FROM reservations 
+                       WHERE wa_id = $1 AND date = $2 AND time_slot = $3 AND type = $4 
+                       ORDER BY created_at DESC LIMIT 1""",
+                    [reservation.wa_id, reservation.date, reservation.time_slot, reservation.type.value]
+                )
+                
+                return row["id"] if row else None
             
-            cursor.execute(
-                """INSERT INTO reservations (wa_id, date, time_slot, type, status, created_at, updated_at) 
-                   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
-                (reservation.wa_id, reservation.date, reservation.time_slot, 
-                 reservation.type.value, reservation.status)
-            )
-            
-            reservation_id = cursor.lastrowid
-            conn.commit()
-            return reservation_id
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error saving reservation: {e}")
     
-    def update(self, reservation: Reservation) -> bool:
+    async def update(self, reservation: Reservation) -> bool:
         """
         Update an existing reservation.
         
@@ -234,34 +228,24 @@ class ReservationRepository:
         Returns:
             True if update was successful, False otherwise
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            cursor.execute(
-                """UPDATE reservations 
-                   SET date = ?, time_slot = ?, type = ?, status = ?, cancelled_at = ?, updated_at = CURRENT_TIMESTAMP
-                   WHERE id = ?""",
-                (reservation.date, reservation.time_slot, reservation.type.value, 
-                 reservation.status, reservation.cancelled_at, reservation.id)
-            )
-            
-            success = cursor.rowcount > 0
-            if success:
-                conn.commit()
-            else:
-                conn.rollback()
+            conn = await connection.connect()
+            async with conn.transaction():
+                result = await connection.execute(
+                    """UPDATE reservations 
+                       SET date = $1, time_slot = $2, type = $3, status = $4, cancelled_at = $5, updated_at = CURRENT_TIMESTAMP
+                       WHERE id = $6""",
+                    [reservation.date, reservation.time_slot, reservation.type.value, 
+                     reservation.status, reservation.cancelled_at, reservation.id]
+                )
                 
-            return success
+                return result.get('changes', 0) > 0
             
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error updating reservation: {e}")
     
-    def cancel_by_id(self, reservation_id: int) -> bool:
+    async def cancel_by_id(self, reservation_id: int) -> bool:
         """
         Cancel a reservation by its ID.
         
@@ -271,32 +255,23 @@ class ReservationRepository:
         Returns:
             True if cancellation was successful, False otherwise.
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
+            conn = await connection.connect()
+            async with conn.transaction():
+                result = await connection.execute(
+                    """UPDATE reservations
+                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                       WHERE id = $1 AND status = 'active'""",
+                    [reservation_id]
+                )
+                
+                return result.get('changes', 0) > 0
             
-            cursor.execute(
-                """UPDATE reservations
-                   SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                   WHERE id = ? AND status = 'active'""",
-                (reservation_id,)
-            )
-            
-            success = cursor.rowcount > 0
-            if success:
-                conn.commit()
-            else:
-                conn.rollback() # Rollback if no row was updated (e.g., already cancelled or not found)
-            return success
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error cancelling reservation: {e}")
     
-    def reinstate_by_id(self, reservation_id: int) -> bool:
+    async def reinstate_by_id(self, reservation_id: int) -> bool:
         """
         Reinstate a cancelled reservation by its ID.
         
@@ -306,32 +281,23 @@ class ReservationRepository:
         Returns:
             True if reinstatement was successful, False otherwise.
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
+            conn = await connection.connect()
+            async with conn.transaction():
+                result = await connection.execute(
+                    """UPDATE reservations
+                       SET status = 'active', cancelled_at = NULL, updated_at = CURRENT_TIMESTAMP
+                       WHERE id = $1 AND status = 'cancelled'""",
+                    [reservation_id]
+                )
+                
+                return result.get('changes', 0) > 0
             
-            cursor.execute(
-                """UPDATE reservations
-                   SET status = 'active', cancelled_at = NULL, updated_at = CURRENT_TIMESTAMP
-                   WHERE id = ? AND status = 'cancelled'""",
-                (reservation_id,)
-            )
-            
-            success = cursor.rowcount > 0
-            if success:
-                conn.commit()
-            else:
-                conn.rollback() # Rollback if no row was updated (e.g., already active or not found)
-            return success
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        except Exception as e:
+            raise RuntimeError(f"Error reinstating reservation: {e}")
     
-    def cancel_by_wa_id(self, wa_id: str, date_str: Optional[str] = None) -> int:
+    async def cancel_by_wa_id(self, wa_id: str, date_str: Optional[str] = None) -> int:
         """
         Cancel reservations for a customer.
         
@@ -342,39 +308,28 @@ class ReservationRepository:
         Returns:
             Number of reservations cancelled
         """
-        conn = get_connection()
+        connection = await get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            if date_str is None:
-                # Cancel all active reservations
-                cursor.execute(
-                    """UPDATE reservations 
-                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                       WHERE wa_id = ? AND status = 'active'""",
-                    (wa_id,)
-                )
-            else:
-                # Cancel reservations for specific date
-                cursor.execute(
-                    """UPDATE reservations 
-                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                       WHERE wa_id = ? AND date = ? AND status = 'active'""",
-                    (wa_id, date_str)
-                )
-            
-            cancelled_count = cursor.rowcount
-            
-            if cancelled_count > 0:
-                conn.commit()
-            else:
-                conn.rollback()
+            conn = await connection.connect()
+            async with conn.transaction():
+                if date_str is None:
+                    # Cancel all active reservations
+                    result = await connection.execute(
+                        """UPDATE reservations 
+                           SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                           WHERE wa_id = $1 AND status = 'active'""",
+                        [wa_id]
+                    )
+                else:
+                    # Cancel reservations for specific date
+                    result = await connection.execute(
+                        """UPDATE reservations 
+                           SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                           WHERE wa_id = $1 AND date = $2 AND status = 'active'""",
+                        [wa_id, date_str]
+                    )
                 
-            return cancelled_count
+                return result.get('changes', 0)
             
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close() 
+        except Exception as e:
+            raise RuntimeError(f"Error cancelling reservations for {wa_id}: {e}") 

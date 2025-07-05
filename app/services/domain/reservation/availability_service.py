@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Optional
 from zoneinfo import ZoneInfo
 from hijri_converter import convert
 from ..shared.base_service import BaseService
-from .reservation_repository import ReservationRepository
+from .postgres_reservation_repository import get_reservation_repository
 from app.utils import (
     format_response, get_time_slots, parse_date, 
     normalize_time_format, is_vacation_period, find_vacation_end_date,
@@ -19,15 +19,24 @@ class AvailabilityService(BaseService):
     Handles time slot availability and appointment searching.
     """
     
-    def __init__(self, reservation_repository: Optional[ReservationRepository] = None, **kwargs):
+    def __init__(self, timezone: str = "Asia/Riyadh", **kwargs):
         """
         Initialize availability service with dependency injection.
         
         Args:
-            reservation_repository: Repository for reservation data access
+            timezone: The timezone for the service
         """
         super().__init__(**kwargs)
-        self.reservation_repository = reservation_repository or ReservationRepository(self.timezone)
+        self.timezone = timezone
+        
+        # Define available time slots
+        self.time_slots = [
+            "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
+            "12:00", "12:30", "13:00", "13:30", "14:00", "14:30",
+            "15:00", "15:30", "16:00", "16:30", "17:00", "17:30",
+            "18:00", "18:30", "19:00", "19:30", "20:00", "20:30",
+            "21:00", "21:30", "22:00"
+        ]
     
     def get_service_name(self) -> str:
         return "AvailabilityService"
@@ -141,7 +150,7 @@ class AvailabilityService(BaseService):
             # Check current reservations for each time slot
             for slot_12h, slot_24h in time_format_map.items():
                 try:
-                    active_reservations = self.reservation_repository.find_active_by_slot(parsed_date_str, slot_24h)
+                    active_reservations = get_reservation_repository().find_active_by_slot(parsed_date_str, slot_24h)
                     all_slots[slot_12h] = len(active_reservations)
                 except Exception as e:
                     self.logger.error(f"Error checking slot {slot_24h} on {parsed_date_str}: {e}")
@@ -344,7 +353,7 @@ class AvailabilityService(BaseService):
                 
                 try:
                     # Check reservation count for the closest slot
-                    active_reservations = self.reservation_repository.find_active_by_slot(gregorian_date_str, closest_slot_24h)
+                    active_reservations = get_reservation_repository().find_active_by_slot(gregorian_date_str, closest_slot_24h)
                     count = len(active_reservations)
                     
                     # Add date if the slot has availability
@@ -402,3 +411,185 @@ class AvailabilityService(BaseService):
             return format_response(False, message=get_message("invalid_date_format", error=str(ve)))
         except Exception as e:
             return self._handle_error("search_available_appointments", e)
+
+    async def get_available_slots(self, date: str, reservation_type: int) -> List[str]:
+        """
+        Get available time slots for a specific date and reservation type
+        
+        Args:
+            date: Date in YYYY-MM-DD format
+            reservation_type: Type of reservation (0 or 1)
+            
+        Returns:
+            List of available time slots
+        """
+        try:
+            repository = await get_reservation_repository()
+            
+            # Get existing reservations for the date
+            existing_reservations = await repository.get_reservations_by_date(date, include_cancelled=False)
+            
+            # Get booked time slots
+            booked_slots = {res.time_slot for res in existing_reservations}
+            
+            # Filter available slots
+            available_slots = [slot for slot in self.time_slots if slot not in booked_slots]
+            
+            return available_slots
+            
+        except Exception as e:
+            print(f"Error getting available slots: {e}")
+            return []
+    
+    async def is_slot_available(self, date: str, time_slot: str, exclude_reservation_id: int = None) -> bool:
+        """
+        Check if a specific time slot is available
+        
+        Args:
+            date: Date in YYYY-MM-DD format
+            time_slot: Time slot to check
+            exclude_reservation_id: Reservation ID to exclude from check (for updates)
+            
+        Returns:
+            True if slot is available, False otherwise
+        """
+        try:
+            repository = await get_reservation_repository()
+            
+            # Get existing reservations for the date
+            existing_reservations = await repository.get_reservations_by_date(date, include_cancelled=False)
+            
+            # Check if slot is taken (excluding specific reservation if provided)
+            for res in existing_reservations:
+                if res.time_slot == time_slot and res.id != exclude_reservation_id:
+                    return False
+            
+            return True
+            
+        except Exception as e:
+            print(f"Error checking slot availability: {e}")
+            return False
+    
+    async def get_daily_availability_summary(self, date: str) -> Dict[str, Any]:
+        """
+        Get availability summary for a specific date
+        
+        Args:
+            date: Date in YYYY-MM-DD format
+            
+        Returns:
+            Dict containing availability summary
+        """
+        try:
+            repository = await get_reservation_repository()
+            
+            # Get reservations for the date
+            reservations = await repository.get_reservations_by_date(date, include_cancelled=False)
+            
+            total_slots = len(self.time_slots)
+            booked_slots = len(reservations)
+            available_slots = total_slots - booked_slots
+            
+            # Group by reservation type
+            type_0_count = len([r for r in reservations if r.type == ReservationType.TYPE_0])
+            type_1_count = len([r for r in reservations if r.type == ReservationType.TYPE_1])
+            
+            return {
+                "date": date,
+                "total_slots": total_slots,
+                "booked_slots": booked_slots,
+                "available_slots": available_slots,
+                "occupancy_rate": round((booked_slots / total_slots) * 100, 2) if total_slots > 0 else 0,
+                "reservations_by_type": {
+                    "type_0": type_0_count,
+                    "type_1": type_1_count
+                }
+            }
+            
+        except Exception as e:
+            print(f"Error getting daily availability summary: {e}")
+            return {"error": str(e)}
+    
+    async def get_weekly_availability(self, start_date: str) -> Dict[str, Dict[str, Any]]:
+        """
+        Get availability summary for a week starting from the given date
+        
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            
+        Returns:
+            Dict with daily availability summaries for the week
+        """
+        try:
+            start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
+            weekly_summary = {}
+            
+            for i in range(7):  # 7 days in a week
+                current_date = start_datetime + datetime.timedelta(days=i)
+                date_str = current_date.strftime("%Y-%m-%d")
+                
+                daily_summary = await self.get_daily_availability_summary(date_str)
+                weekly_summary[date_str] = daily_summary
+            
+            return weekly_summary
+            
+        except Exception as e:
+            print(f"Error getting weekly availability: {e}")
+            return {"error": str(e)}
+    
+    def get_next_available_slots(self, date: str, available_slots: List[str], count: int = 3) -> List[str]:
+        """
+        Get the next few available slots for a date
+        
+        Args:
+            date: Date in YYYY-MM-DD format
+            available_slots: List of available time slots
+            count: Number of slots to return
+            
+        Returns:
+            List of next available time slots
+        """
+        try:
+            now = datetime.now(ZoneInfo(self.timezone))
+            date_obj = datetime.strptime(date, "%Y-%m-%d").date()
+            
+            # If it's today, filter out past time slots
+            if date_obj == now.date():
+                current_time = now.strftime("%H:%M")
+                available_slots = [slot for slot in available_slots if slot > current_time]
+            
+            # Sort and return the next few slots
+            available_slots.sort()
+            return available_slots[:count]
+            
+        except Exception as e:
+            print(f"Error getting next available slots: {e}")
+            return []
+    
+    def is_business_hours(self, time_slot: str) -> bool:
+        """
+        Check if a time slot is within business hours
+        
+        Args:
+            time_slot: Time slot in HH:MM format
+            
+        Returns:
+            True if within business hours, False otherwise
+        """
+        return time_slot in self.time_slots
+    
+    def get_time_slot_display(self, time_slot: str) -> str:
+        """
+        Get display format for a time slot
+        
+        Args:
+            time_slot: Time slot in HH:MM format
+            
+        Returns:
+            Formatted time slot string
+        """
+        try:
+            time_obj = datetime.strptime(time_slot, "%H:%M")
+            return time_obj.strftime("%I:%M %p")  # 12-hour format with AM/PM
+        except:
+            return time_slot  # Return original if parsing fails

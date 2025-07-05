@@ -5,9 +5,9 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import { FullscreenProvider } from "../components/contexts/FullscreenContext";
 
 export default function MyApp({ Component, pageProps }: AppProps) {
-  return (
-    <FullscreenProvider>
-      <Component {...pageProps} />
-    </FullscreenProvider>
-  );
-} 
+	return (
+		<FullscreenProvider>
+			<Component {...pageProps} />
+		</FullscreenProvider>
+	);
+}

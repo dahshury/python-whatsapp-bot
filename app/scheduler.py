@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR
 
 from app.config import config, get
-from app.utils.service_utils import get_tomorrow_reservations, parse_time
+from app.utils.service_utils import get_all_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
 from app.metrics import monitor_system_metrics, FUNCTION_ERRORS, SCHEDULER_JOB_MISSED, BACKUP_SCRIPT_FAILURES
 
@@ -30,24 +30,38 @@ async def send_reminders_job():
     logging.info("Starting scheduled reminders job")
     
     try:
-        # Fetch tomorrow's reservations
-        response = get_tomorrow_reservations()
-        logging.info(f"get_tomorrow_reservations response: {response}")
+        # Calculate tomorrow's date
+        today = datetime.datetime.now(tz=ZoneInfo(tz))
+        tomorrow = today + datetime.timedelta(days=1)
+        tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
+        
+        # Fetch all future reservations
+        response = await get_all_reservations(future=True, include_cancelled=False)
+        logging.info(f"get_all_reservations response: {response}")
         
         if not response.get("success", False):
             error_msg = response.get("message", "Unknown error")
-            logging.error(f"Failed to get tomorrow's reservations: {error_msg}")
+            logging.error(f"Failed to get reservations: {error_msg}")
             FUNCTION_ERRORS.labels(function="send_reminders_job").inc()
             return
             
-        reservations = response.get("data", [])
-        if not reservations:
+        # Filter for tomorrow's reservations only
+        tomorrow_reservations = []
+        all_reservations = response.get("data", {})
+        for wa_id, user_reservations in all_reservations.items():
+            for reservation in user_reservations:
+                if reservation.get("date") == tomorrow_date_str:
+                    # Add wa_id to reservation for template sending
+                    reservation["wa_id"] = wa_id
+                    tomorrow_reservations.append(reservation)
+        
+        if not tomorrow_reservations:
             logging.info("No reservations found for tomorrow")
             return
         
-        logging.info(f"Found {len(reservations)} reservations for tomorrow")
+        logging.info(f"Found {len(tomorrow_reservations)} reservations for tomorrow")
         
-        for reservation in reservations:
+        for reservation in tomorrow_reservations:
             try:
                 # Prepare template components
                 components = [
@@ -75,7 +89,7 @@ async def send_reminders_job():
                 
                 # Log the message in the conversation history
                 now = datetime.datetime.now(tz=ZoneInfo(tz))
-                append_message(
+                await append_message(
                     reservation["wa_id"], 
                     "secretary", 
                     message,

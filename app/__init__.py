@@ -37,6 +37,8 @@ def create_app():
     # Configure CORS
     origins = [
         "http://localhost",
+        "http://localhost:3000", # Next.js default port
+        "http://127.0.0.1:3000", # Next.js default port IP-based origin
         "http://localhost:8080", # Common port for live-server or similar dev servers
         "http://127.0.0.1:8080", # Adding the specific IP-based origin
         "http://localhost:3831", # React dev server port

@@ -1,6 +1,26 @@
 # Local docker-compose configuration
 
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: postgres_server
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=reservation_system
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/docker-entrypoint-initdb.d
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reservation_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -10,39 +30,38 @@ services:
       - .env
     ports:
       - '8000:8000'
+      - '8765:8765'  # WebSocket port for real-time updates
     depends_on:
-      - prometheus
+      postgres:
+        condition: service_healthy
+      prometheus:
+        condition: service_started
     environment:
       - ENV=${ENVIRONMENT:-development}
-      - BACKEND_URL=http://backend:8000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=reservation_system
+      - WEBSOCKET_HOST=0.0.0.0
+      - WEBSOCKET_PORT=8765
     volumes:
       - ${MOUNT_BACKEND:-./app:/app/app}
       - ./run.py:/app/run.py
       - ./requirements-backend.in:/app/requirements-backend.in
-      - ./threads_db.sqlite:/app/data/threads_db.sqlite
       - ./.env:/app/.env
       - ./scripts:/app/scripts
       - ./backups:/app/backups
       - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     restart: on-failure
-    command: >
-      sh -c "mkdir -p /app/data &&
-             if [ -f /app/data/threads_db.sqlite ]; then
-               echo 'Database already exists in data volume'
-             elif [ -f /app/threads_db.sqlite ]; then
-               echo 'Copying database from project root to volume...'
-               cp /app/threads_db.sqlite /app/data/
-             elif [ -f threads_db.sqlite ]; then
-               echo 'Copying database from working directory to volume...'
-               cp threads_db.sqlite /app/data/
-             else
-               echo 'WARNING: No database found in any location!'
-             fi &&
-             uvicorn run:app --host 0.0.0.0 --port 8000"
+
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        PYTHON_BACKEND_URL: http://backend:8000
+        BACKEND_URL: http://backend:8000
     container_name: reservation_frontend
     env_file:
       - .env
@@ -51,13 +70,17 @@ services:
     depends_on:
       - backend
     environment:
-      - ENV=${ENVIRONMENT:-development}
+      - ENV=${ENVIRONMENT:-production}
+      - NODE_ENV=production
+      - PORT=8501
+      - HOSTNAME=0.0.0.0
+      - PYTHON_BACKEND_URL=http://backend:8000
+      - BACKEND_URL=http://backend:8000
     volumes:
-      - ${MOUNT_FRONTEND:-./app/frontend:/app/app/frontend}
+      # Only mount .env file, not the entire source code for production
       - ./.env:/app/.env
-      - ./users.yaml:/app/users.yaml
-      - ./.streamlit:/app/.streamlit
     restart: on-failure
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -85,7 +108,6 @@ services:
       - '9093:9093'
     restart: on-failure
 
-
   # Alertmanager Discord adapter: formats alerts into rich embeds
   discord-adapter:
     image: benjojo/alertmanager-discord:latest
@@ -97,3 +119,6 @@ services:
     ports:
       - '9094:9094'
     restart: on-failure
+
+volumes:
+  postgres_data:

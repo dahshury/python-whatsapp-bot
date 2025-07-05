@@ -10,7 +10,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from app.config import config, load_config
-from app.utils import retrieve_messages
+from app.utils.service_utils import retrieve_messages
 from app.decorators import retry_decorator
 from google import genai
 from google.genai import types
@@ -27,9 +27,16 @@ TIMEZONE = config.get("TIMEZONE")
 # Create system prompt 
 SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
 
-# Initialize the Gemini API client
-client = genai.Client(api_key=GEMINI_API_KEY)
-logging.getLogger("google.genai").setLevel(logging.DEBUG)
+# Lazy initialization of Gemini client (avoid SSL issues at import time)
+_client = None
+
+def get_gemini_client():
+    """Get or create the Gemini client instance."""
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=GEMINI_API_KEY)
+        logging.getLogger("google.genai").setLevel(logging.DEBUG)
+    return _client
 
 def map_gemini_error(e):
     """Map Google Gemini exceptions to standardized error types"""
@@ -305,6 +312,7 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
         logging.info(f"Making Gemini API request for {wa_id}")
         
         # Create the model with the specified model name
+        client = get_gemini_client()  # Use lazy initialization
         model_instance = client.get_genai_model(model)
         
         # Generate content with function calling

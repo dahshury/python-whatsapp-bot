@@ -4,18 +4,21 @@ from zoneinfo import ZoneInfo
 from hijri_converter import convert
 from ..shared.base_service import BaseService
 from ..customer.customer_service import CustomerService
-from .reservation_repository import ReservationRepository
+from .postgres_reservation_repository import get_reservation_repository
 from .reservation_models import Reservation, ReservationType
 from .availability_service import AvailabilityService
-from app.utils import (
+from app.utils.service_utils import (
     format_response, fix_unicode_sequence, parse_date, 
-    normalize_time_format, is_valid_date_time, validate_reservation_type,
-    find_nearest_time_slot, make_thread
+    normalize_time_format, is_valid_date_time, validate_reservation_type, make_thread,
+    find_nearest_time_slot
 )
 from app.i18n import get_message
 from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
+# Import WebSocket manager for real-time updates
+from app.services.websocket_manager import websocket_manager
+import asyncio
 
 
 class ReservationService(BaseService):
@@ -25,7 +28,7 @@ class ReservationService(BaseService):
     """
     
     def __init__(self, 
-                 reservation_repository: Optional[ReservationRepository] = None,
+                 reservation_repository: Optional[get_reservation_repository] = None,
                  customer_service: Optional[CustomerService] = None,
                  availability_service: Optional[AvailabilityService] = None,
                  **kwargs):
@@ -38,7 +41,7 @@ class ReservationService(BaseService):
             availability_service: Service for availability checking
         """
         super().__init__(**kwargs)
-        self.reservation_repository = reservation_repository or ReservationRepository(self.timezone)
+        self.reservation_repository = reservation_repository or get_reservation_repository()
         self.customer_service = customer_service or CustomerService(**kwargs)
         self.availability_service = availability_service or AvailabilityService(
             reservation_repository=self.reservation_repository, **kwargs
@@ -46,6 +49,34 @@ class ReservationService(BaseService):
     
     def get_service_name(self) -> str:
         return "ReservationService"
+    
+    def _broadcast_reservation_update(self, action: str, reservation_data: Dict[str, Any]) -> None:
+        """
+        Broadcast reservation updates via WebSocket in a non-blocking way.
+        
+        Args:
+            action: The action performed (created, updated, cancelled, reinstated)
+            reservation_data: The reservation data to broadcast
+        """
+        try:
+            # Run the async broadcast in a separate thread to avoid blocking
+            def run_broadcast():
+                try:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(websocket_manager.broadcast_reservation_update(action, reservation_data))
+                    loop.close()
+                except Exception as e:
+                    self.logger.error(f"Error broadcasting reservation update: {e}")
+            
+            # Run in a separate thread to avoid blocking the main operation
+            import threading
+            thread = threading.Thread(target=run_broadcast, daemon=True)
+            thread.start()
+            
+        except Exception as e:
+            # Don't fail the main operation if WebSocket broadcast fails
+            self.logger.error(f"Failed to start WebSocket broadcast thread: {e}")
     
     def get_customer_reservations(self, wa_id: str, include_past: bool = False) -> Dict[str, Any]:
         """
@@ -65,7 +96,7 @@ class ReservationService(BaseService):
                 return validation_error
             
             # Get reservations from repository
-            reservations = self.reservation_repository.find_by_wa_id(wa_id, include_past)
+            reservations = self.reservation_repository.get_reservations_by_customer(wa_id, include_past)
             
             # Convert to dict format for compatibility
             reservation_list = []
@@ -154,7 +185,7 @@ class ReservationService(BaseService):
                                                                  slot=display_time_slot, slots=slots_str))
             
             # Check for existing active reservations
-            existing_reservations = self.reservation_repository.find_by_wa_id(wa_id)
+            existing_reservations = self.reservation_repository.get_reservations_by_customer(wa_id)
             future_reservations = [res for res in existing_reservations if res.is_future(datetime.datetime.now(tz=ZoneInfo(self.timezone)))]
             
             if future_reservations:
@@ -170,7 +201,7 @@ class ReservationService(BaseService):
                 )
             
             # Ensure customer record exists
-            self.customer_service.get_or_create_customer(wa_id, customer_name)
+            self.customer_service.ensure_customer_exists(wa_id)
             
             # Check if there's a cancelled reservation for this exact slot that can be reinstated
             cancelled_reservation = self.reservation_repository.find_cancelled_reservation(wa_id, parsed_date_str, parsed_time_str)
@@ -180,9 +211,21 @@ class ReservationService(BaseService):
                 cancelled_reservation.activate()
                 cancelled_reservation.type = ReservationType(reservation_type)
                 
-                success = self.reservation_repository.update(cancelled_reservation)
+                success = self.reservation_repository.update_reservation(cancelled_reservation.id, date=parsed_date_str, time_slot=parsed_time_str, type=reservation_type)
                 if not success:
                     return self._handle_error("reserve_time_slot", Exception("Failed to reinstate reservation"), ar)
+                
+                # Broadcast WebSocket update for reinstated reservation
+                reservation_data = {
+                    "id": cancelled_reservation.id,
+                    "wa_id": wa_id,
+                    "customer_name": customer_name,
+                    "date": parsed_date_str,
+                    "time_slot": display_time_slot,
+                    "type": reservation_type,
+                    "status": "active"
+                }
+                self._broadcast_reservation_update("reinstated", reservation_data)
                 
                 return format_response(True, data={
                     "reservation_id": cancelled_reservation.id,
@@ -206,9 +249,21 @@ class ReservationService(BaseService):
                 status='active'
             )
             
-            reservation_id = self.reservation_repository.save(new_reservation)
+            reservation_id = self.reservation_repository.create_reservation(wa_id, parsed_date_str, parsed_time_str, reservation_type)
             if not reservation_id:
                 return self._handle_error("reserve_time_slot", Exception("Failed to save reservation"), ar)
+            
+            # Broadcast WebSocket update for new reservation
+            reservation_data = {
+                "id": reservation_id,
+                "wa_id": wa_id,
+                "customer_name": customer_name,
+                "date": parsed_date_str,
+                "time_slot": display_time_slot,
+                "type": reservation_type,
+                "status": "active"
+            }
+            self._broadcast_reservation_update("created", reservation_data)
             
             return format_response(True, data={
                 "reservation_id": reservation_id,
@@ -272,7 +327,7 @@ class ReservationService(BaseService):
                     return format_response(False, message=get_message("reservation_not_found_id", ar, id=reservation_id_to_modify)) # Generic error for security
             else:
                 # Get upcoming reservations for the customer
-                reservations = self.reservation_repository.find_by_wa_id(wa_id, include_past=False)
+                reservations = self.reservation_repository.get_reservations_by_customer(wa_id, include_past=False)
                 future_reservations = [res for res in reservations if res.is_future(now)]
                 
                 if not future_reservations:
@@ -449,7 +504,7 @@ class ReservationService(BaseService):
 
             # Persist changes
             # The reservation_to_modify object has all the updated fields now.
-            update_success = self.reservation_repository.update(reservation_to_modify)
+            update_success = self.reservation_repository.update_reservation(reservation_to_modify.id, date=parsed_new_date_str, time_slot=parsed_new_time_str, type=reservation_to_modify.type.value)
             
             if not update_success:
                 return self._handle_error("modify_reservation", Exception("Failed to update reservation in DB"), ar)
@@ -458,6 +513,18 @@ class ReservationService(BaseService):
             hijri_date_obj_new = convert.Gregorian(*map(int, reservation_to_modify.date.split('-'))).to_hijri()
             hijri_date_str_new = f"{hijri_date_obj_new.year}-{hijri_date_obj_new.month:02d}-{hijri_date_obj_new.day:02d}"
             display_time_slot_new = normalize_time_format(reservation_to_modify.time_slot, to_24h=False)
+            
+            # Broadcast WebSocket update for modified reservation
+            reservation_data = {
+                "id": reservation_to_modify.id,
+                "wa_id": reservation_to_modify.wa_id,
+                "customer_name": reservation_to_modify.customer_name,
+                "date": reservation_to_modify.date,
+                "time_slot": display_time_slot_new,
+                "type": reservation_to_modify.type.value,
+                "status": reservation_to_modify.status
+            }
+            self._broadcast_reservation_update("updated", reservation_data)
             
             return format_response(True, data={
                 "reservation_id": reservation_to_modify.id,
@@ -519,12 +586,12 @@ class ReservationService(BaseService):
                 if not reservation.is_future(now):
                     return format_response(False, message=get_message("cannot_cancel_past_reservation", ar, id=reservation_id_to_cancel))
 
-                success = self.reservation_repository.cancel_by_id(reservation_id_to_cancel)
+                success = self.reservation_repository.cancel_reservation(reservation_id_to_cancel)
                 if success:
                     cancelled_ids.append(reservation_id_to_cancel)
                     cancelled_count = 1
                 else:
-                    # cancel_by_id returns False if already cancelled or not found, but we checked found.
+                    # cancel_reservation returns False if already cancelled or not found, but we checked found.
                     # So this implies it was already cancelled, or an unexpected DB issue.
                     # Re-fetch to confirm status if needed, or assume prior check was enough.
                     return format_response(False, message=get_message("cancellation_failed_specific", ar, id=reservation_id_to_cancel))
@@ -537,7 +604,7 @@ class ReservationService(BaseService):
                 # Find active reservations for that date for the customer
                 # We need to get IDs before they are cancelled.
                 active_reservations_on_date = [
-                    res for res in self.reservation_repository.find_by_wa_id(wa_id, include_past=True) # Get all to find by date
+                    res for res in self.reservation_repository.get_reservations_by_customer(wa_id, include_past=True) # Get all to find by date
                     if res.date == parsed_target_date and res.status == 'active'
                 ]
 
@@ -554,7 +621,7 @@ class ReservationService(BaseService):
                     return format_response(False, message=get_message("no_future_reservations_on_date", ar, date=parsed_target_date))
 
                 for res in future_reservations_on_date:
-                    if self.reservation_repository.cancel_by_id(res.id): # Use cancel_by_id for individual tracking
+                    if self.reservation_repository.cancel_reservation(res.id): # Use cancel_reservation for individual tracking
                         cancelled_ids.append(res.id)
                         cancelled_count += 1
                 
@@ -565,7 +632,7 @@ class ReservationService(BaseService):
             else: # Cancel all active future reservations for the wa_id
                 # Get IDs of all active future reservations before cancelling
                 active_future_reservations = [
-                    res for res in self.reservation_repository.find_by_wa_id(wa_id, include_past=False) # only active future ones
+                    res for res in self.reservation_repository.get_reservations_by_customer(wa_id, include_past=False) # only active future ones
                     if res.status == 'active' # Redundant check, but safe
                 ]
                 
@@ -575,13 +642,32 @@ class ReservationService(BaseService):
                 for res in active_future_reservations:
                     cancelled_ids.append(res.id) # Store IDs before batch operation (or rely on repo return)
 
-                # The repository method cancel_by_wa_id (with date_str=None) handles this.
+                # The repository method cancel_reservation (with date_str=None) handles this.
                 # It returns the count of affected rows.
-                cancelled_count = self.reservation_repository.cancel_by_wa_id(wa_id, date_str=None)
+                cancelled_count = self.reservation_repository.cancel_reservation(wa_id, date_str=None)
                 # If cancelled_count is 0 and we had active_future_reservations, it's an issue.
                 # If cancelled_ids were populated based on a prior fetch, use that.
 
             if cancelled_count > 0:
+                # Broadcast WebSocket updates for cancelled reservations
+                for reservation_id in cancelled_ids:
+                    try:
+                        # Get the cancelled reservation details for broadcasting
+                        cancelled_reservation = self.reservation_repository.find_by_id(reservation_id)
+                        if cancelled_reservation:
+                            reservation_data = {
+                                "id": cancelled_reservation.id,
+                                "wa_id": cancelled_reservation.wa_id,
+                                "customer_name": cancelled_reservation.customer_name,
+                                "date": cancelled_reservation.date,
+                                "time_slot": normalize_time_format(cancelled_reservation.time_slot, to_24h=False),
+                                "type": cancelled_reservation.type.value,
+                                "status": "cancelled"
+                            }
+                            self._broadcast_reservation_update("cancelled", reservation_data)
+                    except Exception as e:
+                        self.logger.error(f"Error broadcasting cancellation for reservation {reservation_id}: {e}")
+                
                 return format_response(True, message=get_message("reservations_cancelled_successfully", ar, count=cancelled_count), data={"cancelled_ids": cancelled_ids})
             else:
                 # This path could be hit if no reservations were found to cancel, or if cancellation failed for some reason
@@ -613,7 +699,7 @@ class ReservationService(BaseService):
             if reservation.status == 'active':
                 return format_response(True, message=get_message("reservation_already_active", ar, id=reservation_id), data={"reservation_id": reservation_id})
 
-            success = self.reservation_repository.reinstate_by_id(reservation_id)
+            success = self.reservation_repository.reinstate_reservation(reservation_id)
             if success:
                 # Fetch the reinstated reservation to return its details
                 reinstated_reservation = self.reservation_repository.find_by_id(reservation_id)
@@ -621,6 +707,18 @@ class ReservationService(BaseService):
                     hijri_date_obj = convert.Gregorian(*map(int, reinstated_reservation.date.split('-'))).to_hijri()
                     hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
                     display_time_slot = normalize_time_format(reinstated_reservation.time_slot, to_24h=False)
+                    
+                    # Broadcast WebSocket update for reinstated reservation
+                    reservation_data = {
+                        "id": reinstated_reservation.id,
+                        "wa_id": reinstated_reservation.wa_id,
+                        "customer_name": reinstated_reservation.customer_name,
+                        "date": reinstated_reservation.date,
+                        "time_slot": display_time_slot,
+                        "type": reinstated_reservation.type.value,
+                        "status": reinstated_reservation.status
+                    }
+                    self._broadcast_reservation_update("reinstated", reservation_data)
                     
                     return format_response(True, message=get_message("reservation_reinstated", ar, id=reservation_id), data={
                         "reservation_id": reinstated_reservation.id,
@@ -631,7 +729,7 @@ class ReservationService(BaseService):
                         "customer_name": reinstated_reservation.customer_name,
                         "status": reinstated_reservation.status
                     })
-                else: # Should not happen if reinstate_by_id was successful
+                else: # Should not happen if reinstate_reservation was successful
                      return self._handle_error("undo_cancel_reservation_by_id", Exception("Failed to fetch reinstated reservation"), ar)
             else:
                 # This means it was not in 'cancelled' state or db error
@@ -659,8 +757,25 @@ class ReservationService(BaseService):
             if reservation.status == 'cancelled':
                  return format_response(True, message=get_message("reservation_already_cancelled", ar), data={"cancelled_ids": [reservation_id]})
 
-            success = self.reservation_repository.cancel_by_id(reservation_id)
+            success = self.reservation_repository.cancel_reservation(reservation_id)
             if success:
+                # Broadcast WebSocket update for cancelled reservation (undo reserve)
+                try:
+                    cancelled_reservation = self.reservation_repository.find_by_id(reservation_id)
+                    if cancelled_reservation:
+                        reservation_data = {
+                            "id": cancelled_reservation.id,
+                            "wa_id": cancelled_reservation.wa_id,
+                            "customer_name": cancelled_reservation.customer_name,
+                            "date": cancelled_reservation.date,
+                            "time_slot": normalize_time_format(cancelled_reservation.time_slot, to_24h=False),
+                            "type": cancelled_reservation.type.value,
+                            "status": "cancelled"
+                        }
+                        self._broadcast_reservation_update("cancelled", reservation_data)
+                except Exception as e:
+                    self.logger.error(f"Error broadcasting undo reserve for reservation {reservation_id}: {e}")
+                
                 return format_response(True, message=get_message("reservation_cancelled_for_undo", ar, id=reservation_id), data={"cancelled_ids": [reservation_id]})
             else:
                  # This implies it was not 'active' or a DB error.

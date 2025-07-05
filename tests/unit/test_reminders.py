@@ -18,7 +18,7 @@ configure_logging()
 class TestReminders(unittest.TestCase):
     """Test cases for the reminders functionality"""
     
-    @patch('app.scheduler.get_tomorrow_reservations')
+    @patch('app.scheduler.get_all_reservations')
     @patch('app.scheduler.send_whatsapp_template')
     @patch('app.scheduler.append_message')
     async def test_send_reminder_to_specific_number(self, mock_append_message, mock_send_template, mock_get_reservations):
@@ -27,16 +27,17 @@ class TestReminders(unittest.TestCase):
         test_wa_id = "201017419800"
         test_time_slot = "11:00 AM"
         
-        # Mock the database response
+        # Mock the database response - get_all_reservations returns data grouped by wa_id
         mock_reservation = {
-            'wa_id': test_wa_id,
             'time_slot': test_time_slot,
             'customer_name': 'Test Customer',
             'date': (datetime.datetime.now() + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
         }
         mock_get_reservations.return_value = {
             'success': True,
-            'data': [mock_reservation]
+            'data': {
+                test_wa_id: [mock_reservation]
+            }
         }
         
         # Mock the template response

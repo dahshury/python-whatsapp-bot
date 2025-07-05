@@ -1,0 +1,16 @@
+{
+  "name": "whatsapp-bot-libsql",
+  "version": "1.0.0",
+  "description": "WhatsApp bot with LibSQL vector search support",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "@libsql/client": "^0.14.0"
+  },
+  "scripts": {
+    "test-libsql": "node test-libsql.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

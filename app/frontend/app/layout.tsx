@@ -1,59 +1,83 @@
-import type React from "react"
-import type { Metadata } from "next"
-import localFont from "next/font/local"
-import "./globals.css"
-import "@glideapps/glide-data-grid/dist/index.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { SidebarProvider } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
-import { Toaster } from "sonner"
-import { UndoManager } from "@/components/UndoManager"
-import { LanguageProvider } from "@/lib/language-context"
-import { SettingsProvider } from "@/lib/settings-context"
-import { VacationProvider } from "@/lib/vacation-context"
-import { CustomerDataProvider } from "@/lib/customer-data-context"
-import { UnifiedDataProvider } from "@/lib/unified-data-provider"
-import { ErrorRecoveryInit } from "@/components/error-recovery-init"
-import { DockNav } from "@/components/dock-nav"
-import { ThemeWrapper } from "@/components/theme-wrapper"
-import { MainContentWrapper } from "@/components/main-content-wrapper"
+import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
+import type React from "react";
+import "./globals.css";
+import "@glideapps/glide-data-grid/dist/index.css";
+import { Toaster } from "sonner";
+import { AppSidebar } from "@/components/app-sidebar";
+import { ErrorRecoveryInit } from "@/components/error-recovery-init";
+import { MainContentWrapper } from "@/components/main-content-wrapper";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeWrapper } from "@/components/theme-wrapper";
+import { UndoManager } from "@/components/UndoManager";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { BackendConnectionProvider } from "@/lib/backend-connection-provider";
+import { CustomerDataProvider } from "@/lib/customer-data-context";
+import { LanguageProvider } from "@/lib/language-context";
+import { SettingsProvider } from "@/lib/settings-context";
+import { UnifiedDataProvider } from "@/lib/unified-data-provider";
+import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
+import { VacationProvider } from "@/lib/vacation-context";
 
 // import { GlobalSettings } from "@/components/global-settings"
 
 // Load Geist font for variable font support
 const geist = localFont({
-  src: "../app/fonts/GeistVF.woff",
-  variable: "--font-geist",
-  display: "swap",
-  weight: "100 900"
-})
+	src: "../app/fonts/GeistVF.woff",
+	variable: "--font-geist",
+	display: "swap",
+	weight: "100 900",
+});
 
 const geistMono = localFont({
-  src: "../app/fonts/GeistMonoVF.woff", 
-  variable: "--font-geist-mono",
-  display: "swap",
-  weight: "100 900"
-})
+	src: "../app/fonts/GeistMonoVF.woff",
+	variable: "--font-geist-mono",
+	display: "swap",
+	weight: "100 900",
+});
 
 export const metadata: Metadata = {
-  title: "WhatsApp Bot Dashboard",
-  description: "Real-time dashboard for WhatsApp bot management",
-}
+	title: "Reservation Manager | WhatsApp Bot Dashboard",
+	description: "Comprehensive reservation management system with WhatsApp integration, calendar scheduling, and real-time customer communication",
+	keywords: ["reservations", "calendar", "WhatsApp", "booking", "scheduling", "appointments"],
+	authors: [{ name: "Reservation Manager Team" }],
+	icons: {
+		icon: [
+			{ url: "/favicon.svg", type: "image/svg+xml" },
+		],
+	},
+	manifest: "/site.webmanifest",
+};
+
+export const viewport: Viewport = {
+	width: "device-width",
+	initialScale: 1,
+	themeColor: "#2563eb",
+};
 
 export default function RootLayout({
-  children,
+	children,
 }: {
-  children: React.ReactNode
+	children: React.ReactNode;
 }) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Font optimization */}
-        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
+	return (
+		<html lang="en" suppressHydrationWarning>
+			<head>
+				{/* Favicon links for better browser compatibility */}
+				<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+				<link rel="icon" href="/favicon.svg" sizes="any" />
+				<link rel="manifest" href="/site.webmanifest" />
+				
+				{/* Font optimization */}
+				<link rel="dns-prefetch" href="//fonts.googleapis.com" />
+				<link
+					rel="preconnect"
+					href="https://fonts.gstatic.com"
+					crossOrigin="anonymous"
+				/>
+				<script
+					dangerouslySetInnerHTML={{
+						__html: `
               // Global console error suppression for React Timekeeper issues
               (function() {
                 if (typeof window !== 'undefined') {
@@ -96,69 +120,74 @@ export default function RootLayout({
                 }
               })();
             `,
-          }}
-        />
-      </head>
-      <body className={`${geist.variable} ${geistMono.variable} font-sans`} suppressHydrationWarning>
-        <ThemeProvider 
-          attribute="class" 
-          defaultTheme="system" 
-          enableSystem 
-          disableTransitionOnChange
-          storageKey="theme-preference"
-        >
-          <ErrorRecoveryInit />
-          <LanguageProvider>
-            <SettingsProvider>
-              <UnifiedDataProvider>
-                <ThemeWrapper>
-                  <VacationProvider>
-                    <CustomerDataProvider>
-                      <div className="flex flex-col h-screen">
-                        <div className="flex flex-1 overflow-hidden">
-                          <SidebarProvider>
-                            <AppSidebar />
-                            <MainContentWrapper>
-                              {children}
-                            </MainContentWrapper>
-                          </SidebarProvider>
-                        </div>
-                      </div>
-                    </CustomerDataProvider>
-                  </VacationProvider>
-                  <UndoManager />
-                </ThemeWrapper>
-              </UnifiedDataProvider>
-            </SettingsProvider>
-          </LanguageProvider>
-          <Toaster 
-            position="bottom-right"
-            gap={8}
-            toastOptions={{
-              className: 'sonner-toast',
-              descriptionClassName: 'sonner-description',
-              style: {
-                background: 'hsl(var(--card))',
-                color: 'hsl(var(--card-foreground))',
-                border: '1px solid hsl(var(--border))',
-              },
-              classNames: {
-                toast: 'sonner-toast group',
-                title: 'sonner-title',
-                description: 'sonner-description',
-                actionButton: 'sonner-action',
-                cancelButton: 'sonner-cancel',
-                closeButton: 'sonner-close',
-                error: 'sonner-error',
-                success: 'sonner-success',
-                warning: 'sonner-warning',
-                info: 'sonner-info',
-              },
-            }}
-          />
-        </ThemeProvider>
-        <div id="portal" />
-      </body>
-    </html>
-  )
+					}}
+				/>
+			</head>
+			<body
+				className={`${geist.variable} ${geistMono.variable} font-sans`}
+				suppressHydrationWarning
+			>
+				<ThemeProvider
+					attribute="class"
+					defaultTheme="system"
+					enableSystem
+					disableTransitionOnChange
+					storageKey="theme-preference"
+				>
+					<ErrorRecoveryInit />
+					<LanguageProvider>
+						<SettingsProvider>
+												<BackendConnectionProvider>
+						<WebSocketDataProvider>
+							<UnifiedDataProvider>
+								<ThemeWrapper>
+								<VacationProvider>
+									<CustomerDataProvider>
+										<div className="flex flex-col h-screen">
+											<div className="flex flex-1 overflow-hidden">
+												<SidebarProvider>
+													<AppSidebar />
+													<MainContentWrapper>{children}</MainContentWrapper>
+												</SidebarProvider>
+											</div>
+										</div>
+									</CustomerDataProvider>
+								</VacationProvider>
+								<UndoManager />
+							</ThemeWrapper>
+							</UnifiedDataProvider>
+						</WebSocketDataProvider>
+					</BackendConnectionProvider>
+					</SettingsProvider>
+				</LanguageProvider>
+					<Toaster
+						position="bottom-right"
+						gap={8}
+						toastOptions={{
+							className: "sonner-toast",
+							descriptionClassName: "sonner-description",
+							style: {
+								background: "hsl(var(--card))",
+								color: "hsl(var(--card-foreground))",
+								border: "1px solid hsl(var(--border))",
+							},
+							classNames: {
+								toast: "sonner-toast group",
+								title: "sonner-title",
+								description: "sonner-description",
+								actionButton: "sonner-action",
+								cancelButton: "sonner-cancel",
+								closeButton: "sonner-close",
+								error: "sonner-error",
+								success: "sonner-success",
+								warning: "sonner-warning",
+								info: "sonner-info",
+							},
+						}}
+					/>
+				</ThemeProvider>
+				<div id="portal" />
+			</body>
+		</html>
+	);
 }

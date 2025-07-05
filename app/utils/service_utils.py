@@ -11,7 +11,7 @@ from dateutil import parser  # Requires: pip install python-dateutil
 from hijri_converter import convert
 
 from app.config import config
-from app.db import get_connection
+from app.database import get_connection
 from app.i18n import get_message
 
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
@@ -58,30 +58,6 @@ def fix_unicode_sequence(customer_name):
         except Exception as e:
             logging.warning(f"Failed to decode Unicode in customer name: {e}")
     return customer_name
-
-
-def get_tomorrow_reservations():
-    """
-    Retrieve reservations for tomorrow from the database.
-    
-    Returns:
-        list: A list of reservation records for tomorrow.
-    """
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        # Calculate tomorrow's date
-        today = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
-        tomorrow = today + datetime.timedelta(days=1)
-        tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
-        # Query the database for reservations for tomorrow
-        cursor.execute("SELECT * FROM reservations WHERE date = ?", (tomorrow_date_str,))
-        rows = cursor.fetchall()
-        conn.close()
-        return format_response(True, data=[dict(r) for r in rows])
-    except Exception as e:
-        logging.error(f"get_tomorrow_reservations failed, error: {e}")
-        return format_response(False, message=get_message("system_error_generic", error=str(e)))
 
 def find_nearest_time_slot(target_slot, available_slots):
     """
@@ -132,7 +108,7 @@ def find_nearest_time_slot(target_slot, available_slots):
 
     return closest_slot
 
-def get_all_reservations(future=True, include_cancelled=False):
+async def get_all_reservations(future=True, include_cancelled=False):
     """
     Retrieve all reservations from the database.
     
@@ -147,8 +123,7 @@ def get_all_reservations(future=True, include_cancelled=False):
              Each reservation dict contains customer_name, date, time_slot, type, and cancelled flag.
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
+        connection = await get_connection()
         
         # Base query to get reservations (join with customers table for customer_name)
         base_query = """
@@ -157,15 +132,17 @@ def get_all_reservations(future=True, include_cancelled=False):
             JOIN customers c ON r.wa_id = c.wa_id
         """
         
-        # Build WHERE conditions
+        # Build WHERE conditions and parameters
         where_conditions = []
         params = []
+        param_count = 0
         
         # Add date filter if future is True
         if future:
             # Use timezone-aware date for today
             today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
-            where_conditions.append("r.date >= ?")
+            param_count += 1
+            where_conditions.append(f"r.date >= ${param_count}")
             params.append(today)
         
         # Add status filter based on include_cancelled
@@ -181,10 +158,7 @@ def get_all_reservations(future=True, include_cancelled=False):
         main_query = base_query + where_clause + " ORDER BY r.wa_id ASC, r.date ASC, r.time_slot ASC"
         
         # Execute the query
-        cursor.execute(main_query, params)
-        rows = cursor.fetchall()
-        
-        conn.close()
+        rows = await connection.fetchall(main_query, params)
 
         # Structuring the output as a grouped dictionary
         reservations = {}
@@ -213,7 +187,7 @@ def get_all_reservations(future=True, include_cancelled=False):
         logging.error(f"get_all_reservations failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary"))
 
-def get_all_conversations(wa_id=None, recent=None, limit=0):
+async def get_all_conversations(wa_id=None, recent=None, limit=0):
     """
     Get all conversations for a specific user (wa_id) from the database. If no wa_id is provided, all conversations in the database are returned.
     Group them by wa_id, then sort by date and time.
@@ -222,8 +196,7 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
     If `limit` is provided and greater than 0, it limits the number of messages returned per user to the most recent n messages.
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
+        connection = await get_connection()
 
         # Determine the date filter based on the 'recent' parameter
         now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
@@ -248,10 +221,10 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
             query = """
                 SELECT DISTINCT wa_id
                 FROM conversation 
-                WHERE date || ' ' || time >= ?
+                WHERE CONCAT(date, ' ', time) >= $1
             """
-            cursor.execute(query, (start_date.strftime("%Y-%m-%d %H:%M"),))
-            recent_wa_ids = [row['wa_id'] for row in cursor.fetchall()]
+            recent_rows = await connection.fetchall(query, [start_date.strftime("%Y-%m-%d %H:%M")])
+            recent_wa_ids = [row['wa_id'] for row in recent_rows]
 
         # Now get all conversations for the filtered wa_ids or specific wa_id
         if wa_id:
@@ -260,22 +233,22 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
                 query = """
                     SELECT wa_id, role, message, date, time 
                     FROM conversation 
-                    WHERE wa_id = ? 
+                    WHERE wa_id = $1 
                     ORDER BY date DESC, time DESC
-                    LIMIT ?
+                    LIMIT $2
                 """
-                cursor.execute(query, (wa_id, limit))
+                rows = await connection.fetchall(query, [wa_id, limit])
             else:
                 query = """
                     SELECT wa_id, role, message, date, time 
                     FROM conversation 
-                    WHERE wa_id = ? 
+                    WHERE wa_id = $1 
                     ORDER BY date ASC, time ASC
                 """
-                cursor.execute(query, (wa_id,))
+                rows = await connection.fetchall(query, [wa_id])
         elif recent_wa_ids:
             # Use the list of wa_ids that have recent messages
-            placeholders = ','.join(['?'] * len(recent_wa_ids))
+            placeholders = ','.join([f'${i+1}' for i in range(len(recent_wa_ids))])
             if limit > 0:
                 # This is more complex - we need to get the most recent n messages for each user
                 # We'll handle this after fetching all messages
@@ -292,7 +265,7 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
                     WHERE wa_id IN ({placeholders})
                     ORDER BY wa_id ASC, date ASC, time ASC
                 """
-            cursor.execute(query, recent_wa_ids)
+            rows = await connection.fetchall(query, recent_wa_ids)
         else:
             if limit > 0:
                 # We'll handle the limit per user after fetching
@@ -307,10 +280,7 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
                     FROM conversation 
                     ORDER BY wa_id ASC, date ASC, time ASC
                 """
-            cursor.execute(query)
-
-        rows = cursor.fetchall()
-        conn.close()
+            rows = await connection.fetchall(query, [])
 
         # Structuring the output as a grouped dictionary
         conversations = {}
@@ -332,7 +302,7 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
         logging.error(f"get_all_conversations failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary"))
     
-def append_message(wa_id, role, message, date_str, time_str):
+async def append_message(wa_id, role, message, date_str, time_str):
     """
     Append a message to the conversation database for a given WhatsApp user.
     Ensures that a customer record exists in the 'customers' table and then inserts
@@ -350,23 +320,59 @@ def append_message(wa_id, role, message, date_str, time_str):
         None
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        # Ensure a customer record exists for this wa_id
-        cursor.execute(
-            "INSERT OR IGNORE INTO customers (wa_id, customer_name) VALUES (?, ?)",
-            (wa_id, None)
+        connection = await get_connection()
+        # Ensure a customer record exists for this wa_id (PostgreSQL equivalent of INSERT OR IGNORE)
+        await connection.execute(
+            "INSERT INTO customers (wa_id, customer_name) VALUES ($1, $2) ON CONFLICT (wa_id) DO NOTHING",
+            [wa_id, None]
         )
         # Insert the conversation message
-        cursor.execute(
-            "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
-            (wa_id, role, message, date_str, time_str)
+        await connection.execute(
+            "INSERT INTO conversation (wa_id, role, message, date, time) VALUES ($1, $2, $3, $4, $5)",
+            [wa_id, role, message, date_str, time_str]
         )
-        conn.commit()
+        
+        # Broadcast WebSocket update for new conversation message
+        try:
+            # Get customer name for the broadcast
+            customer_row = await connection.fetchone("SELECT customer_name FROM customers WHERE wa_id = $1", [wa_id])
+            customer_name = customer_row["customer_name"] if customer_row else None
+            
+            # Prepare message data for WebSocket broadcast
+            conversation_data = {
+                "wa_id": wa_id,
+                "customer_name": customer_name,
+                "role": role,
+                "message": message,
+                "date": date_str,
+                "time": time_str,
+                "timestamp": f"{date_str} {time_str}"
+            }
+            
+            # Import and broadcast via WebSocket (in a non-blocking way)
+            def broadcast_conversation_update():
+                try:
+                    import asyncio
+                    from app.services.websocket_manager import websocket_manager
+                    
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(websocket_manager.broadcast_conversation_update(conversation_data))
+                    loop.close()
+                except Exception as e:
+                    logging.error(f"Error broadcasting conversation update: {e}")
+            
+            # Run broadcast in a separate thread to avoid blocking
+            import threading
+            thread = threading.Thread(target=broadcast_conversation_update, daemon=True)
+            thread.start()
+            
+        except Exception as e:
+            # Don't fail the main operation if WebSocket broadcast fails
+            logging.error(f"Failed to broadcast conversation update: {e}")
+            
     except Exception as e:
         logging.error(f"Error appending message to database: {e}")
-    finally:
-        conn.close()
 
 def get_lock(wa_id):
     """
@@ -404,15 +410,15 @@ def is_valid_number(phone_number, ar=False):
         # General phone validation error
         return format_response(False, message=get_message("phone_validation_error", ar=ar))
 
-def retrieve_messages(wa_id):
+async def retrieve_messages(wa_id):
     """
     Retrieve message history for a user from the database and format for service consumption.
     """
     try:
         # Ensure a thread record exists
-        make_thread(wa_id)
+        await make_thread(wa_id)
         # Use centralized conversation retrieval
-        response = get_all_conversations(wa_id=wa_id)
+        response = await get_all_conversations(wa_id=wa_id)
         if not response.get("success", False):
             return []
         data = response.get("data", {})
@@ -429,7 +435,7 @@ def retrieve_messages(wa_id):
         logging.error(f"Error retrieving messages from database: {e}")
         return []
 
-def make_thread(wa_id, customer_name=None):
+async def make_thread(wa_id, customer_name=None):
     """
     Ensures that a customer record exists for the given WhatsApp ID (wa_id).
     If no customer record exists for the provided wa_id, a new record is inserted
@@ -441,36 +447,34 @@ def make_thread(wa_id, customer_name=None):
     Returns:
         None
     """
-    conn = get_connection()
-    cursor = conn.cursor()
+    connection = await get_connection()
 
     # First, check if customer exists
-    cursor.execute("SELECT customer_name FROM customers WHERE wa_id = ?", (wa_id,))
-    existing = cursor.fetchone()
+    existing = await connection.fetchone("SELECT customer_name FROM customers WHERE wa_id = $1", [wa_id])
     
     if existing is None:
         # Customer doesn't exist, create new record
-        cursor.execute(
-            "INSERT INTO customers (wa_id, customer_name) VALUES (?, ?)",
-            (wa_id, customer_name)
+        await connection.execute(
+            "INSERT INTO customers (wa_id, customer_name) VALUES ($1, $2)",
+            [wa_id, customer_name]
         )
     else:
         # Customer exists, update fields that are currently NULL/empty
         updates = []
         params = []
+        param_count = 0
         
         # Only update customer_name if provided and current value is NULL/empty
         if customer_name is not None and (existing["customer_name"] is None or existing["customer_name"].strip() == ""):
-            updates.append("customer_name = ?")
+            param_count += 1
+            updates.append(f"customer_name = ${param_count}")
             params.append(customer_name)
         
         # Execute update if there are changes
         if updates:
+            param_count += 1
             params.append(wa_id)  # Add wa_id for WHERE clause
-            cursor.execute(f"UPDATE customers SET {', '.join(updates)} WHERE wa_id = ?", params)
-    
-    conn.commit()
-    conn.close()
+            await connection.execute(f"UPDATE customers SET {', '.join(updates)} WHERE wa_id = ${param_count}", params)
         
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
@@ -1210,7 +1214,7 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
     except Exception as e:
         return False, get_message("invalid_date_format", error=str(e)), None, None
 
-def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
+async def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
     """
     Hard delete reservation(s) for a customer, handling three cases:
     1) both date and time_slot: delete that specific slot
@@ -1239,27 +1243,24 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
             return format_response(False, message=get_message("invalid_time", ar))
 
     # Perform deletion
-    conn = get_connection()
-    cursor = conn.cursor()
+    connection = await get_connection()
     if parsed_date is not None and parsed_time is not None:
-        cursor.execute(
-            "DELETE FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ?",
-            (wa_id, parsed_date, parsed_time)
+        result = await connection.execute(
+            "DELETE FROM reservations WHERE wa_id = $1 AND date = $2 AND time_slot = $3",
+            [wa_id, parsed_date, parsed_time]
         )
     elif parsed_date is not None:
-        cursor.execute(
-            "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
-            (wa_id, parsed_date)
+        result = await connection.execute(
+            "DELETE FROM reservations WHERE wa_id = $1 AND date = $2",
+            [wa_id, parsed_date]
         )
     else:
-        cursor.execute(
-            "DELETE FROM reservations WHERE wa_id = ?",
-            (wa_id,)
+        result = await connection.execute(
+            "DELETE FROM reservations WHERE wa_id = $1",
+            [wa_id]
         )
 
-    removed = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
+    removed = result.get('changes', 0) > 0
 
     # Standardized response message
     if removed:
@@ -1268,7 +1269,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
         key = "system_error_contact_secretary"
     return format_response(removed, message=get_message(key, ar))
 
-def delete_user(wa_id):
+async def delete_user(wa_id):
     """
     Hard delete user(s) from the database, and all their data.
     """
@@ -1278,11 +1279,8 @@ def delete_user(wa_id):
         return is_valid
 
     # Perform deletion
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
-    cursor.execute("DELETE FROM conversation WHERE wa_id = ?", (wa_id,))
-    cursor.execute("DELETE FROM customers WHERE wa_id = ?", (wa_id,))
-    conn.commit()
-    conn.close()
+    connection = await get_connection()
+    await connection.execute("DELETE FROM reservations WHERE wa_id = $1", [wa_id])
+    await connection.execute("DELETE FROM conversation WHERE wa_id = $1", [wa_id])
+    await connection.execute("DELETE FROM customers WHERE wa_id = $1", [wa_id])
     return format_response(True, message=get_message("user_deleted"))

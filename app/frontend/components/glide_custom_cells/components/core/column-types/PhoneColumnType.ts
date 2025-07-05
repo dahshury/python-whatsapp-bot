@@ -1,159 +1,190 @@
-import { GridCell, GridCellKind, EditableGridCell, Theme } from "@glideapps/glide-data-grid";
-import { IColumnType } from "../interfaces/IColumnType";
-import { ColumnDataType, IColumnDefinition, IColumnFormatting } from "../interfaces/IDataSource";
-import { PhoneInputCell } from "../../PhoneInputCell";
-import { isValidPhoneNumber, parsePhoneNumber, formatPhoneNumberIntl } from "react-phone-number-input";
-import { messages } from "../../utils/i18n";
+import {
+	type EditableGridCell,
+	type GridCell,
+	GridCellKind,
+	type Theme,
+} from "@glideapps/glide-data-grid";
+import {
+	formatPhoneNumberIntl,
+	isValidPhoneNumber,
+	parsePhoneNumber,
+} from "react-phone-number-input";
+import type { PhoneInputCell } from "../../PhoneInputCell";
 import { customerAutoFillService } from "../../services/CustomerAutoFillService";
+import { messages } from "../../utils/i18n";
+import type { IColumnType } from "../interfaces/IColumnType";
+import {
+	ColumnDataType,
+	type IColumnDefinition,
+	type IColumnFormatting,
+} from "../interfaces/IDataSource";
 
 export class PhoneColumnType implements IColumnType {
-  id = "phone";
-  dataType = ColumnDataType.PHONE;
+	id = "phone";
+	dataType = ColumnDataType.PHONE;
 
-  createCell(
-    value: any,
-    column: IColumnDefinition,
-    theme: Partial<Theme>,
-    isDarkTheme: boolean,
-    rowContext?: any
-  ): GridCell {
-    // Ensure phone is in E.164 format for storage
-    const phone = this.parseValue(value, column);
-    // Format only for display
-    const displayPhone = this.formatValue(phone, column.formatting);
+	createCell(
+		value: any,
+		column: IColumnDefinition,
+		_theme: Partial<Theme>,
+		isDarkTheme: boolean,
+		rowContext?: any,
+	): GridCell {
+		// Ensure phone is in E.164 format for storage
+		const phone = this.parseValue(value, column);
+		// Format only for display
+		const displayPhone = this.formatValue(phone, column.formatting);
 
-    // Get row index for customer auto-fill
-    console.log('🔍 PhoneColumnType createCell - rowContext:', rowContext);
-    const rowIndex = rowContext?.row ?? 0;
-    console.log('🔍 PhoneColumnType createCell - extracted rowIndex:', rowIndex);
-    
-    // Create customer select handler for auto-fill functionality
-    const onCustomerSelect = customerAutoFillService.createCustomerSelectHandler(rowIndex);
+		// Get row index for customer auto-fill
+		console.log("🔍 PhoneColumnType createCell - rowContext:", rowContext);
+		const rowIndex = rowContext?.row ?? 0;
+		console.log(
+			"🔍 PhoneColumnType createCell - extracted rowIndex:",
+			rowIndex,
+		);
 
-    const cell = {
-      kind: GridCellKind.Custom,
-      data: {
-        kind: "phone-input-cell",
-        phone: phone,  // Store in E.164 format
-        displayPhone: displayPhone,  // Display formatted version
-        isDarkTheme: isDarkTheme,
-        onCustomerSelect: onCustomerSelect, // Add customer auto-fill callback
-      },
-      copyData: displayPhone,
-      allowOverlay: true,
-    } as PhoneInputCell;
+		// Create customer select handler for auto-fill functionality
+		const onCustomerSelect =
+			customerAutoFillService.createCustomerSelectHandler(rowIndex);
 
-    // Validate and store error details
-    const validation = this.validateValue(phone, column);
-    if (!validation.isValid) {
-      (cell as any).isMissingValue = true;
-      (cell as any).validationError = validation.error;
-    }
+		const cell = {
+			kind: GridCellKind.Custom,
+			data: {
+				kind: "phone-input-cell",
+				phone: phone, // Store in E.164 format
+				displayPhone: displayPhone, // Display formatted version
+				isDarkTheme: isDarkTheme,
+				onCustomerSelect: onCustomerSelect, // Add customer auto-fill callback
+			},
+			copyData: displayPhone,
+			allowOverlay: true,
+		} as PhoneInputCell;
 
-    return cell;
-  }
+		// Validate and store error details
+		const validation = this.validateValue(phone, column);
+		if (!validation.isValid) {
+			(cell as any).isMissingValue = true;
+			(cell as any).validationError = validation.error;
+		}
 
-  getCellValue(cell: GridCell): any {
-    if (cell.kind === GridCellKind.Custom && (cell as any).data?.kind === "phone-input-cell") {
-      return (cell as any).data.phone;
-    }
-    return "";
-  }
+		return cell;
+	}
 
-  validateValue(value: any, column: IColumnDefinition): { isValid: boolean; error?: string } {
-    const phoneNumber = String(value || "").trim();
+	getCellValue(cell: GridCell): any {
+		if (
+			cell.kind === GridCellKind.Custom &&
+			(cell as any).data?.kind === "phone-input-cell"
+		) {
+			return (cell as any).data.phone;
+		}
+		return "";
+	}
 
-    if (column.isRequired && !phoneNumber) {
-      return { isValid: false, error: messages.validation.required(column.title || column.name || 'Phone number') };
-    }
+	validateValue(
+		value: any,
+		column: IColumnDefinition,
+	): { isValid: boolean; error?: string } {
+		const phoneNumber = String(value || "").trim();
 
-    if (phoneNumber) {
-      try {
-        // Use isValidPhoneNumber which is more robust
-        if (!isValidPhoneNumber(phoneNumber)) {
-          return { isValid: false, error: messages.validation.invalidPhone() };
-        }
-      } catch {
-        // If isValidPhoneNumber throws an error, treat as invalid
-        return { isValid: false, error: messages.validation.invalidPhone() };
-      }
-    }
+		if (column.isRequired && !phoneNumber) {
+			return {
+				isValid: false,
+				error: messages.validation.required(
+					column.title || column.name || "Phone number",
+				),
+			};
+		}
 
-    return { isValid: true };
-  }
+		if (phoneNumber) {
+			try {
+				// Use isValidPhoneNumber which is more robust
+				if (!isValidPhoneNumber(phoneNumber)) {
+					return { isValid: false, error: messages.validation.invalidPhone() };
+				}
+			} catch {
+				// If isValidPhoneNumber throws an error, treat as invalid
+				return { isValid: false, error: messages.validation.invalidPhone() };
+			}
+		}
 
-  formatValue(value: any, formatting?: IColumnFormatting): string {
-    if (!value) return "";
+		return { isValid: true };
+	}
 
-    const phoneStr = String(value);
-    
-    // For display purposes, use proper international formatting
-    if (formatting?.pattern === "display" && phoneStr.startsWith('+')) {
-      try {
-        const parsed = parsePhoneNumber(phoneStr);
-        if (parsed) {
-          return formatPhoneNumberIntl(phoneStr);
-        }
-      } catch {
-        // If formatting fails, return original
-        return phoneStr;
-      }
-    }
+	formatValue(value: any, formatting?: IColumnFormatting): string {
+		if (!value) return "";
 
-    // Return as-is if no formatting needed or if formatting fails
-    return phoneStr;
-  }
+		const phoneStr = String(value);
 
-  parseValue(input: any, column: IColumnDefinition): any {
-    if (!input) return "";
-    
-    const inputStr = String(input).trim();
-    
-    // If already in E.164 format and valid, return as-is
-    if (inputStr.startsWith('+')) {
-      try {
-        const parsed = parsePhoneNumber(inputStr);
-        return parsed ? parsed.format('E.164') : inputStr;
-      } catch {
-        // If parsing fails, return the original string to avoid crashes
-        return inputStr;
-      }
-    }
-    
-    // Try to parse with default country (SA for Saudi Arabia)
-    try {
-      const parsed = parsePhoneNumber(inputStr, 'SA');
-      if (parsed) {
-        return parsed.format('E.164');
-      }
-    } catch {
-      // Parsing failed, try without default country
-    }
-    
-    // Try parsing without default country
-    try {
-      const parsed = parsePhoneNumber(inputStr);
-      if (parsed) {
-        return parsed.format('E.164');
-      }
-    } catch {
-      // Final fallback - return original string to avoid crashes
-      // The validation will mark it as invalid
-    }
-    
-    // Return original input to avoid crashes - validation will handle marking as invalid
-    return inputStr;
-  }
+		// For display purposes, use proper international formatting
+		if (formatting?.pattern === "display" && phoneStr.startsWith("+")) {
+			try {
+				const parsed = parsePhoneNumber(phoneStr);
+				if (parsed) {
+					return formatPhoneNumberIntl(phoneStr);
+				}
+			} catch {
+				// If formatting fails, return original
+				return phoneStr;
+			}
+		}
 
-  getDefaultValue(column: IColumnDefinition): any {
-    return column.defaultValue || "";
-  }
+		// Return as-is if no formatting needed or if formatting fails
+		return phoneStr;
+	}
 
-  canEdit(column: IColumnDefinition): boolean {
-    return column.isEditable !== false;
-  }
+	parseValue(input: any, _column: IColumnDefinition): any {
+		if (!input) return "";
 
-  createEditableCell(cell: GridCell, column: IColumnDefinition): EditableGridCell {
-    return cell as EditableGridCell;
-  }
-} 
+		const inputStr = String(input).trim();
+
+		// If already in E.164 format and valid, return as-is
+		if (inputStr.startsWith("+")) {
+			try {
+				const parsed = parsePhoneNumber(inputStr);
+				return parsed ? parsed.format("E.164") : inputStr;
+			} catch {
+				// If parsing fails, return the original string to avoid crashes
+				return inputStr;
+			}
+		}
+
+		// Try to parse with default country (SA for Saudi Arabia)
+		try {
+			const parsed = parsePhoneNumber(inputStr, "SA");
+			if (parsed) {
+				return parsed.format("E.164");
+			}
+		} catch {
+			// Parsing failed, try without default country
+		}
+
+		// Try parsing without default country
+		try {
+			const parsed = parsePhoneNumber(inputStr);
+			if (parsed) {
+				return parsed.format("E.164");
+			}
+		} catch {
+			// Final fallback - return original string to avoid crashes
+			// The validation will mark it as invalid
+		}
+
+		// Return original input to avoid crashes - validation will handle marking as invalid
+		return inputStr;
+	}
+
+	getDefaultValue(column: IColumnDefinition): any {
+		return column.defaultValue || "";
+	}
+
+	canEdit(column: IColumnDefinition): boolean {
+		return column.isEditable !== false;
+	}
+
+	createEditableCell(
+		cell: GridCell,
+		_column: IColumnDefinition,
+	): EditableGridCell {
+		return cell as EditableGridCell;
+	}
+}

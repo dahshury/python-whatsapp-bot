@@ -70,7 +70,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.prod.yml,prometheus/**,.streamlit/**,users.yaml"
+          source: "docker-compose.prod.yml,prometheus/**"
           target: "/home/ubuntu/python-whatsapp-bot"
           overwrite: true
 
@@ -102,9 +102,9 @@ jobs:
               if [ ! -f .env ]; then
                 echo "WARNING: .env not found"
               fi
-              # Warn if threads_db.sqlite doesn't exist
-              if [ ! -f threads_db.sqlite ]; then
-                echo "WARNING: threads_db.sqlite not found"
+              # Warn if threads_db_turso.sqlite doesn't exist
+              if [ ! -f threads_db_turso.sqlite ]; then
+                echo "WARNING: threads_db_turso.sqlite not found - please run migration"
               fi
 
               # First, clean up space BEFORE pulling new images

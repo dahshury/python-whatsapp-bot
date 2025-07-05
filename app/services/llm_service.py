@@ -43,7 +43,7 @@ class BaseLLMService(abc.ABC):
         self.openai_store = True
     
     @abc.abstractmethod
-    def run(self, wa_id: str):
+    async def run(self, wa_id: str):
         """
         Execute the LLM request using the service and return a tuple (response_text, date_str, time_str).
         """
@@ -51,7 +51,7 @@ class BaseLLMService(abc.ABC):
 
 
 class AnthropicService(BaseLLMService):
-    def run(self, wa_id: str):
+    async def run(self, wa_id: str):
         return run_claude(
             wa_id=wa_id, 
             model=self.claude_model,
@@ -64,7 +64,7 @@ class AnthropicService(BaseLLMService):
 
 
 class GeminiService(BaseLLMService):
-    def run(self, wa_id: str):
+    async def run(self, wa_id: str):
         return run_gemini(
             wa_id=wa_id, 
             model=self.gemini_model,
@@ -75,8 +75,8 @@ class GeminiService(BaseLLMService):
 
 
 class OpenAIService(BaseLLMService):
-    def run(self, wa_id: str):
-        return run_openai(
+    async def run(self, wa_id: str):
+        return await run_openai(
             wa_id=wa_id, 
             model=self.openai_model,
             system_prompt=self.system_prompt,

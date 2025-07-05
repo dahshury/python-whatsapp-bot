@@ -183,12 +183,12 @@ async def api_send_whatsapp_template(payload: dict = Body(...)):
 
 @router.get("/conversations")
 async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):
-    conversations = get_all_conversations(recent=recent, limit=limit)
+    conversations = await get_all_conversations(recent=recent, limit=limit)
     return JSONResponse(content=conversations)
 
 @router.post("/conversations/{wa_id}")
 async def api_append_message(wa_id: str, payload: dict = Body(...)):
-    append_message(
+    await append_message(
         wa_id,
         payload.get("role"),
         payload.get("message"),
@@ -199,7 +199,7 @@ async def api_append_message(wa_id: str, payload: dict = Body(...)):
 
 @router.get("/reservations")
 async def api_get_all_reservations(future: bool = Query(True), include_cancelled: bool = Query(False)):
-    reservations = get_all_reservations(future=future, include_cancelled=include_cancelled)
+    reservations = await get_all_reservations(future=future, include_cancelled=include_cancelled)
     return JSONResponse(content=reservations)
 
 # Reservation creation endpoint

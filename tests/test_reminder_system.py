@@ -62,7 +62,7 @@ class MockReservation:
 class ReminderSystemTests(unittest.TestCase):
     """Test cases for the WhatsApp reminder system"""
     
-    @patch('app.scheduler.get_tomorrow_reservations')
+    @patch('app.scheduler.get_all_reservations')
     @patch('app.scheduler.append_message')
     async def test_send_reminders_with_mock_data(self, mock_append, mock_get_reservations):
         """Test the reminder system with mocked data"""
@@ -70,10 +70,12 @@ class ReminderSystemTests(unittest.TestCase):
         test_wa_id = "201017419800"
         reservation = MockReservation(test_wa_id)
         
-        # Mock get_tomorrow_reservations to return our test data
+        # Mock get_all_reservations to return our test data - grouped by wa_id
         mock_get_reservations.return_value = {
             "success": True,
-            "data": [reservation.to_dict()]
+            "data": {
+                test_wa_id: [reservation.to_dict()]
+            }
         }
         
         # Run the reminder job

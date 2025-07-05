@@ -288,7 +288,7 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
         
         # Check for messages that might already be processed
         # Get last 5 messages to check for duplicates
-        response = get_all_conversations(wa_id=wa_id, limit=5)
+        response = await get_all_conversations(wa_id=wa_id, limit=5)
         if response.get("success", False):
             messages = response.get("data", {}).get(wa_id) or response.get("data", {}).get(str(wa_id), [])
             
@@ -299,7 +299,7 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
                     return None
         
         # Save the user message BEFORE running LLM
-        append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
+        await append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
         
         # Call LLM function: async -> get coroutine, sync -> run in thread
         try:
@@ -310,7 +310,7 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
             new_message, assistant_date_str, assistant_time_str = await call
             
             if new_message:
-                append_message(wa_id, 'assistant', new_message, 
+                await append_message(wa_id, 'assistant', new_message, 
                               date_str=assistant_date_str, time_str=assistant_time_str)
                 return new_message
             else:
