@@ -189,6 +189,79 @@ ngrok http 8000
 
 Then configure your webhook URL as: `https://your-ngrok-url.ngrok.io/webhook`
 
+## Development
+
+### Code Quality and Linting
+
+This project uses [Ruff](https://github.com/astral-sh/ruff) for fast Python linting and code formatting. Ruff is configured in `pyproject.toml` and replaces multiple tools (flake8, isort, black, etc.) with a single, extremely fast tool.
+
+#### Installing Ruff
+
+Ruff is included in the development dependencies:
+
+```bash
+pip install -r requirements-backend.in
+```
+
+#### Using Ruff
+
+You can run Ruff directly or use the convenience script:
+
+**Using the convenience script:**
+```bash
+# Check code (no changes)
+python scripts/lint.py
+
+# Check code with auto-fix
+python scripts/lint.py --fix
+
+# Check only (no formatting)
+python scripts/lint.py --check
+```
+
+**Using Ruff directly:**
+```bash
+# Check for issues
+ruff check .
+
+# Check and fix issues automatically
+ruff check --fix .
+
+# Format code
+ruff format .
+
+# Check formatting without making changes
+ruff format --check .
+```
+
+#### Pre-commit Integration
+
+Consider setting up a pre-commit hook to run Ruff automatically:
+
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Set up the git hook
+pre-commit install
+```
+
+#### Editor Integration
+
+Ruff has excellent editor support:
+- **VS Code**: Install the official Ruff extension
+- **PyCharm**: Use the Ruff plugin
+- **Vim/Neovim**: Use vim-ruff or integrate with your existing setup
+
+#### Configuration
+
+Ruff configuration is in `pyproject.toml`. Key settings include:
+- **Line length**: 88 characters (same as Black)
+- **Target Python version**: 3.8+
+- **Enabled rules**: Comprehensive set including pyflakes, pycodestyle, isort, and more
+- **Exclusions**: Frontend code, migrations, and build directories are excluded
+- **Per-file ignores**: Tests and scripts have relaxed rules where appropriate
+
 ## Monitoring and Alerts
 
 The application includes a complete monitoring stack:

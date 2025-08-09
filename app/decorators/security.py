@@ -1,8 +1,15 @@
-import logging
 import hashlib
 import hmac
-from fastapi import Request, HTTPException
+
+from fastapi import HTTPException, Request
+
 from app.config import config
+from app.infrastructure.logging import get_web_logger
+
+
+# Set up domain-specific logger
+logger = get_web_logger()
+
 
 def validate_signature(payload: str, signature: str) -> bool:
     """
@@ -15,17 +22,18 @@ def validate_signature(payload: str, signature: str) -> bool:
     ).hexdigest()
     return hmac.compare_digest(expected_signature, signature)
 
+
 async def verify_signature(request: Request):
     """
     Dependency for FastAPI to ensure that incoming requests are signed correctly.
     """
     signature_header = request.headers.get("X-Hub-Signature-256", "")
     if not signature_header.startswith("sha256="):
-        logging.info("Signature missing or improperly formatted")
+        logger.info("Signature missing or improperly formatted")
         raise HTTPException(status_code=403, detail="Invalid signature")
     signature = signature_header[7:]  # Remove 'sha256='
     body = await request.body()
     payload = body.decode("utf-8")
     if not validate_signature(payload, signature):
-        logging.info("Signature verification failed!")
+        logger.info("Signature verification failed!")
         raise HTTPException(status_code=403, detail="Invalid signature")

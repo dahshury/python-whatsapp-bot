@@ -1,1 +1,1 @@
-# Shared domain services and utilities 
+# Shared domain services and utilities

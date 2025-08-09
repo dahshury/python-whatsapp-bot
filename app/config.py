@@ -1,12 +1,24 @@
-import os
-from dotenv import load_dotenv
 import logging
+import os
 import sys
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Tuple, Union
+
+from dotenv import load_dotenv
 
 
-def load_config():
+# Note: Infrastructure logging cannot be used here due to circular imports
+# This module is imported during infrastructure setup
+
+# Create a minimal logger for config errors
+config_logger = logging.getLogger("config")
+
+
+def load_config() -> None:
     load_dotenv(override=True, encoding="utf-8")
-    
+
+
 load_config()
 
 config = {
@@ -18,90 +30,88 @@ config = {
     "APP_URL": os.getenv("APP_URL"),
     "VERIFY_TOKEN": os.getenv("VERIFY_TOKEN"),
     "VERSION": os.getenv("VERSION"),
-    
     "BUSINESS_ADDRESS": os.getenv("BUSINESS_ADDRESS"),
     "BUSINESS_LATITUDE": os.getenv("BUSINESS_LATITUDE"),
     "BUSINESS_LONGITUDE": os.getenv("BUSINESS_LONGITUDE"),
     "BUSINESS_NAME": os.getenv("BUSINESS_NAME"),
-    
     "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
     "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
     "LLM_PROVIDER": os.getenv("LLM_PROVIDER", "anthropic"),
     "OPENAI_ASSISTANT_ID": os.getenv("OPENAI_ASSISTANT_ID"),
     "VEC_STORE_ID": os.getenv("VEC_STORE_ID"),
-    
     "SYSTEM_PROMPT": os.getenv("SYSTEM_PROMPT"),
     "TIMEZONE": os.getenv("TIMEZONE", "Asia/Riyadh"),
     "UNSUPPORTED_MEDIA_MESSAGE": os.getenv("UNSUPPORTED_MEDIA_MESSAGE"),
-    
     "VACATION_DURATIONS": os.getenv("VACATION_DURATIONS"),
     "VACATION_MESSAGE": os.getenv("VACATION_MESSAGE"),
     "VACATION_START_DATES": os.getenv("VACATION_START_DATES"),
-    
 }
 
-def configure_logging():
+
+def configure_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler(sys.stdout)]
+        handlers=[logging.StreamHandler(sys.stdout)],
     )
     # Silence verbose APScheduler INFO logs
-    logging.getLogger('apscheduler').setLevel(logging.WARNING)
+    logging.getLogger("apscheduler").setLevel(logging.WARNING)
     # Silence OpenAI client debug logs and HTTPX library logs
-    logging.getLogger('openai').setLevel(logging.WARNING)
-    logging.getLogger('openai._base_client').setLevel(logging.WARNING)
-    logging.getLogger('httpx').setLevel(logging.WARNING)
-    # Silence Uvicorn HTTP access logs (quiet GET /metrics and other access)  
-    logging.getLogger('uvicorn.access').setLevel(logging.WARNING)
+    logging.getLogger("openai").setLevel(logging.WARNING)
+    logging.getLogger("openai._base_client").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    # Silence Uvicorn HTTP access logs (quiet GET /metrics and other access)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-def update_env_variable(key, value):
+
+def update_env_variable(key: str, value: str) -> bool:
     """
     Updates a single environment variable in the .env file
-    
+
     Args:
         key (str): The environment variable name
         value (str): The new value to set
     """
     # Get the .env file path
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
-    
+    env_path = Path(__file__).parent.parent / ".env"
+
     # Check if .env file exists
-    if not os.path.exists(env_path):
-        logging.error(f".env file not found at {env_path}")
+    if not env_path.exists():
+        config_logger.error(f".env file not found at {env_path}")
         return False
-    
+
     # Read the current .env file
-    with open(env_path, 'r', encoding='utf-8') as file:
+    with env_path.open(encoding="utf-8") as file:
         lines = file.readlines()
-    
+
     # Find and update the specific variable
     updated = False
     for i, line in enumerate(lines):
         if line.strip().startswith(f"{key}="):
-            lines[i] = f"{key}=\"{value}\"\n"
+            lines[i] = f'{key}="{value}"\n'
             updated = True
             break
-    
+
     # If the variable doesn't exist, add it
     if not updated:
-        lines.append(f"{key}=\"{value}\"\n")
-    
+        lines.append(f'{key}="{value}"\n')
+
     # Write the updated content back to the .env file
-    with open(env_path, 'w', encoding='utf-8') as file:
+    with env_path.open("w", encoding="utf-8") as file:
         file.writelines(lines)
-    
+
     # Also update the in-memory config
     config[key] = value
     # Update the environment variable in the current process
     os.environ[key] = value
-    
+
     return True
 
-def update_vacation_settings(start_date, end_date, message):
+
+def update_vacation_settings(start_date: str, end_date: str, message: str) -> Tuple[bool, str]:
     """
     Updates vacation settings in the .env file
-    
+
     Args:
         start_date (str): Vacation start date in YYYY-MM-DD format
         end_date (str): Vacation end date in YYYY-MM-DD format
@@ -109,30 +119,33 @@ def update_vacation_settings(start_date, end_date, message):
     """
     if start_date and end_date:
         # Calculate duration in days (inclusive)
-        from datetime import datetime
         start = datetime.strptime(start_date, "%Y-%m-%d")
         end = datetime.strptime(end_date, "%Y-%m-%d")
         # Add 1 to make it inclusive: if start=May 31 and end=June 19, duration should be 20 days
         duration = (end - start).days + 1
-        
+
         # Update the environment variables
         update_env_variable("VACATION_START_DATES", start_date)
         update_env_variable("VACATION_DURATIONS", str(duration))
         if message:
             update_env_variable("VACATION_MESSAGE", message)
-        
-        return True, f"Vacation settings updated: {start_date} to {end_date} ({duration} days)"
-    
+
+        return (
+            True,
+            f"Vacation settings updated: {start_date} to {end_date} ({duration} days)",
+        )
+
     return False, "Invalid dates provided"
 
-def get(key, default=None):
+
+def get(key: Union[str, list], default: Any = None) -> Any:
     """
     Get a configuration value by key, with an optional default value.
-    
+
     Args:
         key (str or list): The configuration key or a list of keys to try in order
         default: The default value to return if the key is not found
-        
+
     Returns:
         The configuration value or the default value
     """
@@ -142,5 +155,5 @@ def get(key, default=None):
             if value is not None:
                 return value
         return default
-    
+
     return config.get(key, default)

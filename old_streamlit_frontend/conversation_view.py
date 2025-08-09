@@ -114,7 +114,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options=options,
                 index=index,
                 label_visibility="collapsed",
-                key=f"conversation_selectbox",
+                key="conversation_selectbox",
             )
         # Right arrow
         with col3:
@@ -125,7 +125,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 disabled=(index == len(options) - 1),
                 use_container_width=True
             )
-        sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key=f"data_divider")
+        sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key="data_divider")
         # Handle navigation button clicks
         if prev_btn and len(options) > 0:
             new_index = (index - 1) % len(options)
@@ -258,7 +258,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                                 raise ValueError("Invalid time format")
                         last_dt = datetime.datetime(last_date.year, last_date.month, last_date.day, t.hour, t.minute, t.second, tzinfo=tz)
                         disabled = (now - last_dt).total_seconds() > 86400
-                    except:
+                    except (ValueError, TypeError, AttributeError):
                         disabled = False
                 else:
                     disabled = False

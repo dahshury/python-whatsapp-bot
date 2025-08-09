@@ -124,7 +124,7 @@ def render_statistics(is_gregorian=True):
             data = r.json().get('data', {}).get('result', [])
             if data:
                 return float(data[0]['value'][1])
-        except:
+        except (requests.RequestException, ValueError, KeyError, TypeError, IndexError):
             return None
 
     # Define the metrics to fetch: label -> Prometheus query
@@ -329,7 +329,7 @@ def render_statistics(is_gregorian=True):
             def parse_slot(s):
                 try:
                     return _dt.datetime.strptime(s.strip(), '%H:%M').time()
-                except:
+                except (ValueError, TypeError, AttributeError):
                     return _dt.datetime.strptime(parse_time(s, to_24h=True), '%H:%M').time()
                 
             df_slots['slot_time'] = df_slots['time_slot'].apply(parse_slot)

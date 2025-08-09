@@ -1,23 +1,38 @@
-import logging
+import asyncio
+import contextlib
+import inspect
 import json
 import re
-import httpx
-import asyncio
-from app.config import config
-from .logging_utils import log_http_response
-from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message, get_all_conversations
-import inspect
-from app.utils.http_client import ensure_client_healthy
-from app.metrics import WHATSAPP_MESSAGE_FAILURES
+from typing import Any, Dict, Optional
 
-async def send_whatsapp_message(wa_id, text):
+import httpx
+
+from app.config import config
+from app.infrastructure.logging import get_whatsapp_logger
+from app.metrics import WHATSAPP_MESSAGE_FAILURES
+from app.utils.http_client import ensure_client_healthy
+from app.utils.service_utils import (
+    append_message,
+    get_all_conversations,
+    get_lock,
+    parse_unix_timestamp,
+)
+
+from .logging_utils import log_http_response
+
+
+# Set up domain-specific logger
+logger = get_whatsapp_logger()
+
+
+async def send_whatsapp_message(wa_id: str, text: str):
     """
     Sends a text message using the WhatsApp API.
-    
+
     Args:
         wa_id (str): The recipient's WhatsApp ID.
         text (str): The text message to be sent.
-        
+
     Returns:
         Response: If successful, returns the response object.
         tuple: If an error occurs, returns a tuple containing a JSON response and an HTTP status code.
@@ -31,21 +46,21 @@ async def send_whatsapp_message(wa_id, text):
         "type": "text",
         "text": {"preview_url": False, "body": text},
     }
-    
+
     return await _send_whatsapp_request(payload, "message")
 
 
-async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""):
+async def send_whatsapp_location(wa_id: str, latitude: float, longitude: float, name: str = "", address: str = ""):
     """
     Sends a location message using the WhatsApp API.
-    
+
     Args:
         wa_id (str): The recipient's WhatsApp ID.
         latitude (float): The latitude of the location.
         longitude (float): The longitude of the location.
         name (str, optional): The name of the location or business.
         address (str, optional): The address of the location or business.
-    
+
     Returns:
         dict: A dictionary indicating the status and a message.
               - On success: {"status": "success", "message": "Location sent successfully"}
@@ -61,46 +76,54 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
             "latitude": latitude,
             "longitude": longitude,
             "name": name,
-            "address": address
-        }
+            "address": address,
+        },
     }
 
     try:
         response = await _send_whatsapp_request(payload, "location message")
-        
+
         # Check if response is an error tuple
         if isinstance(response, tuple):
             return response
-            
+
         # Check if response is None
         if not response:
             WHATSAPP_MESSAGE_FAILURES.inc()  # Track any response failures
-            return {"status": "error", "message": "Empty response when sending location"}, 500
-            
+            return {
+                "status": "error",
+                "message": "Empty response when sending location",
+            }, 500
+
         # Fully consume the response but don't close it
         await response.aread()
         # Don't explicitly close the response to keep the connection alive
         # for subsequent requests (managed by the HTTP client)
-            
-        return {"status": "success", "message": "Location sent successfully"}
-        
-    except Exception as e:
-        logging.error(f"Exception in send_whatsapp_location: {e}")
+
+    except (httpx.RequestError, ValueError, KeyError):
+        logger.exception("Exception in send_whatsapp_location")
         WHATSAPP_MESSAGE_FAILURES.inc()  # Track exceptions as message failures
-        return {"status": "error", "message": f"Failed to send location message: {str(e)}"}, 500
+        return {
+            "status": "error",
+            "message": "Failed to send location message",
+        }, 500
+    else:
+        return {"status": "success", "message": "Location sent successfully"}
 
 
-async def send_whatsapp_template(wa_id, template_name, language="en_US", components=None):
+async def send_whatsapp_template(
+    wa_id, template_name, language="en_US", components=None
+):
     """
     Sends a template message using the WhatsApp API.
-    
+
     Args:
         wa_id (str): The recipient's WhatsApp ID.
         template_name (str): The name of the template to use.
         language (str, optional): The language of the template. Defaults to "en_US".
         components (list, optional): List of component objects containing parameters for the template.
             Example: [{"type": "body", "parameters": [{"type": "text", "text": "value"}]}]
-    
+
     Returns:
         Response: If successful, returns the response object.
         tuple: If an error occurs, returns a tuple containing a JSON response and an HTTP status code.
@@ -112,152 +135,154 @@ async def send_whatsapp_template(wa_id, template_name, language="en_US", compone
         "recipient_type": "individual",
         "to": wa_id,
         "type": "template",
-        "template": {
-            "name": template_name,
-            "language": {
-                "code": language
-            }
-        }
+        "template": {"name": template_name, "language": {"code": language}},
     }
-    
+
     # Add components if provided
     if components:
         payload["template"]["components"] = components
-    
+
     return await _send_whatsapp_request(payload, "template message")
 
 
-async def _send_whatsapp_request(payload, message_type):
+async def _send_whatsapp_request(payload: Dict[str, Any], message_type: str):
     """
     Helper function to send WhatsApp API requests.
-    
+
     Args:
         payload (dict): The request payload.
         message_type (str): Type of message for error logging.
-        
+
     Returns:
         Response or tuple: Response object or error tuple.
     """
     data = json.dumps(payload)
-    
+
     headers = {
         "Content-type": "application/json",
         "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
     }
     url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
-    
+
     response = None
     try:
         # Get the global client, ensuring it's healthy
         client = await ensure_client_healthy()
-        
+
         response = await client.post(url, content=data, headers=headers)
         response.raise_for_status()
         log_http_response(response)
-        return response
-        
+
     except httpx.TimeoutException:
-        logging.error(f"Timeout occurred while sending {message_type}")
+        logger.exception("Timeout occurred while sending %s", message_type)
         if response:
-            try:
+            with contextlib.suppress(Exception):
                 response.close()
-            except Exception:
-                pass
         return {"status": "error", "message": "Request timed out"}, 408
-    except (httpx.TransportError, httpx.NetworkError, RuntimeError) as e:
-        logging.error(f"Transport or network error when sending {message_type}: {e}")
+    except (httpx.TransportError, httpx.NetworkError, RuntimeError):
+        logger.exception("Transport or network error when sending %s", message_type)
         WHATSAPP_MESSAGE_FAILURES.inc()  # Track transport/network errors
         if response:
-            try:
+            with contextlib.suppress(Exception):
                 response.close()
-            except Exception:
-                pass
-        return {"status": "error", "message": f"Connection error when sending {message_type}"}, 500
-    except httpx.RequestError as e:
-        logging.error(f"Request failed when sending {message_type}: {e}")
+        return {
+            "status": "error",
+            "message": f"Connection error when sending {message_type}",
+        }, 500
+    except httpx.RequestError:
+        logger.exception("Request failed when sending %s", message_type)
         if response:
-            try:
+            with contextlib.suppress(Exception):
                 response.close()
-            except Exception:
-                pass
         return {"status": "error", "message": f"Failed to send {message_type}"}, 500
+    else:
+        return response
 
 
-async def process_whatsapp_message(body, run_llm_function):
+async def process_whatsapp_message(body: Dict[str, Any], run_llm_function) -> None:
     """
     Processes an incoming WhatsApp message and generates a response using the provided LLM function.
-    
+
     Args:
         body (dict): The incoming message payload from WhatsApp webhook.
         run_llm_function (callable): The function to use for generating responses.
-        
+
     Returns:
         None
     """
     try:
         wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
         message = body["entry"][0]["changes"][0]["value"]["messages"][0]
-        message_type = message.get('type')
-        if message_type in ['audio', 'image']:
+        message_type = message.get("type")
+        if message_type in ["audio", "image"]:
             # Handle media messages
             response_text = process_text_for_whatsapp(
-                config.get('UNSUPPORTED_MEDIA_MESSAGE', "I'm sorry, I can't process audio or image files yet.")
+                config.get(
+                    "UNSUPPORTED_MEDIA_MESSAGE",
+                    "I'm sorry, I can't process audio or image files yet.",
+                )
             )
             await send_whatsapp_message(wa_id, response_text)
-            
+
         try:
             message_body = message["text"]["body"]
         except KeyError:
-            logging.info(f"Unable to process message type: {message.get('type', 'unknown')}")
+            logger.info(
+                "Unable to process message type: %s", message.get("type", "unknown")
+            )
             message_body = None
-            
+
         if message_body:
-            timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
+            timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0][
+                "timestamp"
+            ]
             if run_llm_function is None:
-                logging.error("No LLM function provided for processing message")
+                logger.error("No LLM function provided for processing message")
                 return
-                
-            response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
-            
+
+            response_text = await generate_response(
+                message_body, wa_id, timestamp, run_llm_function
+            )
+
             # Only send a response if we got one back from the LLM
             if response_text:
                 response_text = process_text_for_whatsapp(response_text)
                 await send_whatsapp_message(wa_id, response_text)
-            
-    except Exception as e:
-        logging.error(f"Error processing WhatsApp message: {e}", exc_info=True)
+
+    except (KeyError, ValueError, TypeError):
+        logger.error("Error processing WhatsApp message", exc_info=True)
 
 
-def process_text_for_whatsapp(text):
+def process_text_for_whatsapp(text: str) -> str:
     """
     Process text to be compatible with WhatsApp formatting.
-    
+
     Args:
         text (str): The text to process.
-        
+
     Returns:
         str: Processed text with WhatsApp-compatible formatting.
     """
     # Remove content within square brackets
     text = re.sub(r"\【.*?\】", "", text).strip()
-    
+
     # Convert markdown-style bold to WhatsApp bold
     text = re.sub(r"\*\*(.*?)\*\*", r"*\1*", text)
-    
+
     return text
 
 
-def is_valid_whatsapp_message(body):
+def is_valid_whatsapp_message(body: Dict[str, Any]) -> bool:
     """
     Check if the incoming webhook event has a valid WhatsApp message structure.
-    
+
     Args:
         body (dict): The webhook payload to validate.
-        
+
     Returns:
         bool: True if the message has a valid structure, False otherwise.
     """
-    return (
+    return bool(
         body.get("object")
         and body.get("entry")
         and body["entry"][0].get("changes")
@@ -267,40 +292,51 @@ def is_valid_whatsapp_message(body):
     )
 
 
-async def generate_response(message_body, wa_id, timestamp, run_llm_function):
+async def generate_response(message_body: str, wa_id: str, timestamp: int, run_llm_function) -> Optional[str]:
     """
     Generate a response from Claude and update the conversation.
     Uses a per-user lock to ensure that concurrent calls for the same user
     do not run simultaneously.
-    
+
     Args:
         message_body (str): The message text from the user.
         wa_id (str): The user's WhatsApp ID.
         timestamp (int): Unix timestamp of the message.
         run_llm_function (callable): Function to generate AI responses.
-        
+
     Returns:
         str or None: The generated response text, or None if no valid response was generated.
     """
     lock = get_lock(wa_id)
     async with lock:
         date_str, time_str = parse_unix_timestamp(timestamp)
-        
+
         # Check for messages that might already be processed
         # Get last 5 messages to check for duplicates
         response = await get_all_conversations(wa_id=wa_id, limit=5)
         if response.get("success", False):
-            messages = response.get("data", {}).get(wa_id) or response.get("data", {}).get(str(wa_id), [])
-            
+            messages = response.get("data", {}).get(wa_id) or response.get(
+                "data", {}
+            ).get(str(wa_id), [])
+
             # Check if this message is already in the conversation history
             for msg in messages:
-                if msg["role"] == "user" and msg["message"] == message_body and msg["time"] == time_str:
-                    logging.warning(f"Duplicate message detected for wa_id={wa_id}: '{message_body}'. Skipping processing.")
+                if (
+                    msg["role"] == "user"
+                    and msg["message"] == message_body
+                    and msg["time"] == time_str
+                ):
+                    logger.warning(
+                        "Duplicate message detected for wa_id=%s: '%s'. Skipping processing.",
+                        wa_id, message_body
+                    )
                     return None
-        
+
         # Save the user message BEFORE running LLM
-        await append_message(wa_id, 'user', message_body, date_str=date_str, time_str=time_str)
-        
+        await append_message(
+            wa_id, "user", message_body, date_str=date_str, time_str=time_str
+        )
+
         # Call LLM function: async -> get coroutine, sync -> run in thread
         try:
             if inspect.iscoroutinefunction(run_llm_function):
@@ -308,14 +344,21 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
             else:
                 call = asyncio.to_thread(run_llm_function, wa_id)
             new_message, assistant_date_str, assistant_time_str = await call
-            
+
             if new_message:
-                await append_message(wa_id, 'assistant', new_message, 
-                              date_str=assistant_date_str, time_str=assistant_time_str)
+                await append_message(
+                    wa_id,
+                    "assistant",
+                    new_message,
+                    date_str=assistant_date_str,
+                    time_str=assistant_time_str,
+                )
                 return new_message
             else:
-                logging.warning(f"Empty or None response received from LLM for wa_id={wa_id}")
+                logger.warning(
+                    "Empty or None response received from LLM for wa_id=%s", wa_id
+                )
                 return None
-        except Exception as e:
-            logging.error(f"Error generating response: {e}")
+        except (ValueError, KeyError, OSError):
+            logger.exception("Error generating response")
             return None

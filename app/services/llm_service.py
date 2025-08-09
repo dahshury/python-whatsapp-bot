@@ -1,25 +1,32 @@
 # app/services/llm_service.py
 import abc
-import logging
+from typing import Tuple
+
 from app.config import config, get
+from app.infrastructure.logging import get_service_logger
 from app.services.anthropic_service import run_claude
 from app.services.gemini_service import run_gemini
 from app.services.openai_service import run_openai
 
 
+# Set up domain-specific logger
+logger = get_service_logger()
+
+
 class BaseLLMService(abc.ABC):
     """
     Abstract base class for LLM services. Subclasses must implement the `run` method.
-    
+
     Centralizes all default values for all LLM services.
     """
+
     def __init__(self):
         # Common configuration for all LLM services
         self.system_prompt = config.get("SYSTEM_PROMPT")
         self.max_tokens = 4096
         self.timezone = config.get("TIMEZONE", "UTC")
         self.stream = False
-        
+
         # Default LLM-specific configurations
         # Claude
         self.claude_model = "claude-sonnet-4-20250514"
@@ -29,21 +36,21 @@ class BaseLLMService(abc.ABC):
         if self.enable_thinking:
             self.claude_thinking = {
                 "type": "enabled",
-                "budget_tokens": self.thinking_budget_tokens
+                "budget_tokens": self.thinking_budget_tokens,
             }
-        
+
         # Gemini
         self.gemini_model = "gemini-2.5-pro-preview-05-06"
-        
+
         # OpenAI
         self.openai_model = "o3"
         self.openai_reasoning_effort = "high"
         self.openai_reasoning_summary = "auto"
         self.openai_text_format = "text"
         self.openai_store = True
-    
+
     @abc.abstractmethod
-    async def run(self, wa_id: str):
+    async def run(self, wa_id: str) -> Tuple[str, str, str]:
         """
         Execute the LLM request using the service and return a tuple (response_text, date_str, time_str).
         """
@@ -51,33 +58,33 @@ class BaseLLMService(abc.ABC):
 
 
 class AnthropicService(BaseLLMService):
-    async def run(self, wa_id: str):
+    async def run(self, wa_id: str) -> Tuple[str, str, str]:
         return run_claude(
-            wa_id=wa_id, 
+            wa_id=wa_id,
             model=self.claude_model,
             system_prompt=self.system_prompt,
             max_tokens=self.max_tokens,
             thinking=self.claude_thinking,
             stream=self.stream,
-            timezone=self.timezone
+            timezone=self.timezone,
         )
 
 
 class GeminiService(BaseLLMService):
-    async def run(self, wa_id: str):
+    async def run(self, wa_id: str) -> Tuple[str, str, str]:
         return run_gemini(
-            wa_id=wa_id, 
+            wa_id=wa_id,
             model=self.gemini_model,
             system_prompt=self.system_prompt,
             max_tokens=self.max_tokens,
-            timezone=self.timezone
+            timezone=self.timezone,
         )
 
 
 class OpenAIService(BaseLLMService):
-    async def run(self, wa_id: str):
+    async def run(self, wa_id: str) -> Tuple[str, str, str]:
         return await run_openai(
-            wa_id=wa_id, 
+            wa_id=wa_id,
             model=self.openai_model,
             system_prompt=self.system_prompt,
             max_tokens=self.max_tokens,
@@ -85,7 +92,7 @@ class OpenAIService(BaseLLMService):
             reasoning_summary=self.openai_reasoning_summary,
             text_format=self.openai_text_format,
             store=self.openai_store,
-            timezone=self.timezone
+            timezone=self.timezone,
         )
 
 
@@ -96,7 +103,7 @@ def get_llm_service():
     Defaults to 'anthropic'.
     """
     provider = get("LLM_PROVIDER", "anthropic").lower()
-    logging.info(f"LLM provider configured as: {provider}")
+    logger.info("LLM provider configured as: %s", provider)
     if provider == "anthropic":
         return AnthropicService()
     elif provider == "gemini":
@@ -104,4 +111,4 @@ def get_llm_service():
     elif provider == "openai":
         return OpenAIService()
     else:
-        raise ValueError(f"Unknown LLM_PROVIDER: {provider}") 
+        raise ValueError(f"Unknown LLM_PROVIDER: {provider}")

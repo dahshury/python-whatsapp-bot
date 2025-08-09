@@ -1,14 +1,12 @@
 {
-  "name": "whatsapp-bot-libsql",
+  "name": "whatsapp-bot-postgresql",
   "version": "1.0.0",
-  "description": "WhatsApp bot with LibSQL vector search support",
+  "description": "WhatsApp bot with PostgreSQL and pgvector support",
   "main": "index.js",
   "type": "module",
-  "dependencies": {
-    "@libsql/client": "^0.14.0"
-  },
+  "dependencies": {},
   "scripts": {
-    "test-libsql": "node test-libsql.js"
+    "migrate": "python scripts/migrate_sqlite_to_postgresql.py"
   },
   "engines": {
     "node": ">=18.0.0"
