@@ -13,6 +13,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy project metadata for dependency installation
 COPY pyproject.toml ./
+# Include README to satisfy build metadata during editable install
+COPY README.md ./
 
 # Install uv and sync frontend environment (shared + frontend extras) into .venv
 RUN pip install --no-cache-dir uv \

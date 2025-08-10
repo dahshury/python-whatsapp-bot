@@ -10,6 +10,8 @@ RUN mkdir -p /root/.config/rclone
 
 # Copy project metadata for dependency installation
 COPY pyproject.toml ./
+# Include README to satisfy build metadata during editable install
+COPY README.md ./
 
 # Install uv and sync backend environment (shared + backend extras) into .venv
 RUN pip install --no-cache-dir uv \
