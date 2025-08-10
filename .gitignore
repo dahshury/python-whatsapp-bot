@@ -97,3 +97,6 @@ test.ipynb
 
 private/
 st2.py
+app/frontend/node_modules
+app/frontend/next-env.d.ts
+app/frontend/.next

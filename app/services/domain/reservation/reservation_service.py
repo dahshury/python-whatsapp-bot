@@ -461,19 +461,19 @@ class ReservationService(BaseService):
                     return format_response(False, message=get_message("cancellation_failed_specific", ar, id=reservation_id_to_cancel))
 
             elif date_str: # Cancel specific reservation by date for the wa_id
-                parsed_target_date = parse_date(date_str, hijri)
-                if not parsed_target_date:
+                parsed_target_date_str = parse_date(date_str, hijri)
+                if not parsed_target_date_str:
                     return format_response(False, message=get_message("invalid_date_format", ar))
                 
                 # Find active reservations for that date for the customer
                 # We need to get IDs before they are cancelled.
                 active_reservations_on_date = [
                     res for res in self.reservation_repository.find_by_wa_id(wa_id, include_past=True) # Get all to find by date
-                    if res.date == parsed_target_date.strftime('%Y-%m-%d') and res.status == 'active'
+                    if res.date == parsed_target_date_str and res.status == 'active'
                 ]
 
                 if not active_reservations_on_date:
-                    return format_response(False, message=get_message("no_reservation_on_date", ar, date=parsed_target_date.strftime('%Y-%m-%d')))
+                    return format_response(False, message=get_message("no_reservation_on_date", ar, date=parsed_target_date_str))
 
                 # Filter to only future reservations
                 future_reservations_on_date = [
@@ -482,7 +482,7 @@ class ReservationService(BaseService):
                 ]
                 
                 if not future_reservations_on_date:
-                    return format_response(False, message=get_message("no_future_reservations_on_date", ar, date=parsed_target_date.strftime('%Y-%m-%d')))
+                    return format_response(False, message=get_message("no_future_reservations_on_date", ar, date=parsed_target_date_str))
 
                 for res in future_reservations_on_date:
                     if self.reservation_repository.cancel_by_id(res.id): # Use cancel_by_id for individual tracking
@@ -490,7 +490,7 @@ class ReservationService(BaseService):
                         cancelled_count += 1
                 
                 if cancelled_count == 0 and future_reservations_on_date: # Should not happen if logic is correct
-                     return format_response(False, message=get_message("cancellation_failed_date", ar, date=parsed_target_date.strftime('%Y-%m-%d')))
+                     return format_response(False, message=get_message("cancellation_failed_date", ar, date=parsed_target_date_str))
 
 
             else: # Cancel all active future reservations for the wa_id
