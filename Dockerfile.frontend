@@ -13,11 +13,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy project metadata for dependency installation
 COPY pyproject.toml ./
-COPY uv.lock ./
 
 # Install uv and sync frontend environment (shared + frontend extras) into .venv
 RUN pip install --no-cache-dir uv \
-    && (uv sync --extra frontend --no-dev --frozen || uv sync --extra frontend --no-dev) \
+    && uv sync --extra frontend --no-dev \
     && /app/.venv/bin/python -c "import streamlit, streamlit_calendar; print('frontend ok')"
 
 # Ensure the uv-created venv is used at runtime

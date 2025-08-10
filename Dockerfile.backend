@@ -10,11 +10,10 @@ RUN mkdir -p /root/.config/rclone
 
 # Copy project metadata for dependency installation
 COPY pyproject.toml ./
-COPY uv.lock ./
 
 # Install uv and sync backend environment (shared + backend extras) into .venv
 RUN pip install --no-cache-dir uv \
-    && (uv sync --extra backend --no-dev --frozen || uv sync --extra backend --no-dev)
+    && uv sync --extra backend --no-dev
 
 # Ensure the uv-created venv is used at runtime
 ENV PATH="/app/.venv/bin:${PATH}"
