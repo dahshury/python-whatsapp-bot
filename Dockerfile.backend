@@ -33,7 +33,6 @@ COPY app/utils/ app/utils/
 COPY app/services/ app/services/
 COPY app/decorators/ app/decorators/
 COPY scripts/ /app/scripts/
-COPY tests/ tests/
 
 # Create data directory for persistent storage
 RUN mkdir -p /app/data
