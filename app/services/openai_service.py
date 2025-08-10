@@ -88,11 +88,19 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
 
     # Log request payload
     response = client.responses.create(**kwargs)
-    # handle any function calls
-    while True:
+    # handle any function calls with maximum iteration limit to prevent infinite loops
+    max_iterations = 10
+    iteration_count = 0
+    
+    while iteration_count < max_iterations:
         fc_items = [item for item in response.output if item.type == "function_call"]
         if not fc_items:
+            logging.debug(f"OpenAI function call loop completed after {iteration_count} iterations")
             break
+            
+        iteration_count += 1
+        logging.info(f"OpenAI function call iteration {iteration_count}/{max_iterations}, processing {len(fc_items)} function calls")
+        
         input_items = []
         for fc in fc_items:
             args = json.loads(getattr(fc, "arguments", "{}"))
@@ -123,9 +131,11 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
             else:
                 result = {}
                 LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=fc.name, provider="openai").inc()
+                logging.warning(f"Function {fc.name} not found in FUNCTION_MAPPING")
                 
             input_items.append({"type":"function_call","call_id":fc.call_id,"name":fc.name,"arguments":fc.arguments})
             input_items.append({"type":"function_call_output","call_id":fc.call_id,"output":json.dumps(result)})
+        
         # submit function call outputs
         kwargs = {
             "model": model,
@@ -134,7 +144,15 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
             "store": store,
             "previous_response_id": response.id  # Link to previous response
         }
-        response = client.responses.create(**kwargs)
+        
+        try:
+            response = client.responses.create(**kwargs)
+        except Exception as e:
+            logging.error(f"Error creating OpenAI response in iteration {iteration_count}: {e}")
+            break
+    
+    if iteration_count >= max_iterations:
+        logging.warning(f"OpenAI function call loop reached maximum iterations ({max_iterations}), breaking to prevent infinite loop")
     # extract assistant message
     msg_items = [item for item in response.output if item.type == "message" and getattr(item, "role", None) == "assistant"]
     text = None

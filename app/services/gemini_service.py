@@ -314,9 +314,17 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
             tools=[types.Tool(function_declarations=function_declarations)]
         )
         
-        # Process function calls if present
-        while hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'function_calls') and response.candidates[0].function_calls:
+        # Process function calls if present with maximum iteration limit to prevent infinite loops
+        max_iterations = 10
+        iteration_count = 0
+        
+        while (hasattr(response, 'candidates') and response.candidates and 
+               hasattr(response.candidates[0], 'function_calls') and response.candidates[0].function_calls and
+               iteration_count < max_iterations):
+            
+            iteration_count += 1
             function_calls = response.candidates[0].function_calls
+            logging.info(f"Gemini function call iteration {iteration_count}/{max_iterations}, processing {len(function_calls)} function calls")
             
             # Process each function call
             for function_call in function_calls:
@@ -381,11 +389,20 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                 )
             
             # Generate follow-up response
-            response = model_instance.generate_content(
-                contents,
-                generation_config=generation_config,
-                tools=[types.Tool(function_declarations=function_declarations)]
-            )
+            try:
+                response = model_instance.generate_content(
+                    contents,
+                    generation_config=generation_config,
+                    tools=[types.Tool(function_declarations=function_declarations)]
+                )
+            except Exception as e:
+                logging.error(f"Error generating Gemini follow-up response in iteration {iteration_count}: {e}")
+                break
+        
+        if iteration_count >= max_iterations:
+            logging.warning(f"Gemini function call loop reached maximum iterations ({max_iterations}), breaking to prevent infinite loop")
+        else:
+            logging.debug(f"Gemini function call loop completed after {iteration_count} iterations")
         
         # Extract final text response
         if hasattr(response, 'text'):

@@ -25,6 +25,11 @@ services:
       - ./backups:/app/backups
       - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     command: >
       sh -c "mkdir -p /app/data &&
              if [ -f /app/data/threads_db.sqlite ]; then
@@ -58,6 +63,11 @@ services:
       - ./users.yaml:/app/users.yaml
       - ./.streamlit:/app/.streamlit
     restart: on-failure
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus

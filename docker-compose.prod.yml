@@ -13,6 +13,11 @@ services:
       - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     depends_on:
       - prometheus
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   frontend:
     image: dahshury/python-whatsapp-bot-frontend:latest
@@ -24,6 +29,11 @@ services:
       - ./.env:/app/.env
       - ./users.yaml:/app/users.yaml
       - ./.streamlit:/app/.streamlit
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   prometheus:
     image: prom/prometheus:latest
@@ -36,6 +46,12 @@ services:
       - '9090:9090'
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=24h'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   alertmanager:
     image: prom/alertmanager:v0.28.0
@@ -45,6 +61,11 @@ services:
     ports:
       - '9093:9093'
     restart: always
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   discord-adapter:
     image: benjojo/alertmanager-discord:latest
@@ -56,3 +77,8 @@ services:
       - LISTEN_ADDRESS=0.0.0.0:9094
     ports:
       - '9094:9094'
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

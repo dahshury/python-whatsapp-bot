@@ -1,26 +1,55 @@
-FROM python:3.10-slim
-
-RUN apt-get update && apt-get install -y build-essential python3-dev libuv1-dev sqlite3 zip rclone && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
+###############################
+# Builder: install deps only  #
+###############################
+FROM python:3.10-slim AS builder
 WORKDIR /app
 
-# Create rclone config directory
-RUN mkdir -p /root/.config/rclone
+# Build tooling only in builder
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    python3-dev \
+    libuv1-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy project metadata for dependency installation
 COPY pyproject.toml ./
 # Include README to satisfy build metadata during editable install
 COPY README.md ./
 
-# Install uv and sync backend environment (shared + backend extras) into .venv
+# Install uv and resolve the backend environment into .venv
 RUN pip install --no-cache-dir uv \
-    && uv sync --extra backend --no-dev
+    && uv sync --extra backend --no-dev \
+    && uv cache clean \
+    && rm -rf /root/.cache
+
+###############################
+# Runtime: slim final image   #
+###############################
+FROM python:3.10-slim AS runtime
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="python-whatsapp-bot-backend"
+LABEL org.opencontainers.image.description="Backend service for python-whatsapp-bot"
+LABEL com.dahshury.prunable="true"
+
+# Minimal runtime OS deps only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    zip \
+    rclone \
+    && rm -rf /var/lib/apt/lists/*
 
 # Ensure the uv-created venv is used at runtime
 ENV PATH="/app/.venv/bin:${PATH}"
 
-# Copy only the backend code (not frontend)
+# Create required directories
+RUN mkdir -p /root/.config/rclone \
+    && mkdir -p /app/data \
+    && mkdir -p /app/backups
+
+# Bring the resolved virtualenv from the builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy only backend code (not frontend)
 COPY run.py .
 COPY app/config.py app/config.py
 COPY app/__init__.py app/__init__.py
@@ -34,12 +63,6 @@ COPY app/services/ app/services/
 COPY app/decorators/ app/decorators/
 COPY scripts/ /app/scripts/
 
-# Create data directory for persistent storage
-RUN mkdir -p /app/data
-RUN mkdir -p /app/backups
-
-# Note: We'll handle database copy in the docker-compose command instead
-
 # Set environment variable to point to persisted database location
 ENV DB_PATH=/app/data/threads_db.sqlite
 
@@ -47,4 +70,4 @@ ENV DB_PATH=/app/data/threads_db.sqlite
 EXPOSE 8000
 
 # Default command runs the FastAPI app; scheduler starts automatically
-CMD ["python", "run.py"] 
+CMD ["python", "run.py"]

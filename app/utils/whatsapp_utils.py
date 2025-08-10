@@ -3,12 +3,17 @@ import json
 import re
 import httpx
 import asyncio
+from collections import deque
 from app.config import config
 from .logging_utils import log_http_response
 from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message, get_all_conversations
 import inspect
 from app.utils.http_client import ensure_client_healthy
 from app.metrics import WHATSAPP_MESSAGE_FAILURES
+
+# In-memory LRU of recently processed WhatsApp message IDs to avoid duplicate processing
+_recent_message_ids_queue: deque[str] = deque(maxlen=1000)
+_recent_message_ids_set = set()
 
 async def send_whatsapp_message(wa_id, text):
     """
@@ -140,11 +145,27 @@ async def _send_whatsapp_request(payload, message_type):
     """
     data = json.dumps(payload)
     
+    # Check for missing configuration
+    if not config.get('ACCESS_TOKEN'):
+        logging.error("WhatsApp ACCESS_TOKEN is missing from configuration")
+        return {"status": "error", "message": "Missing ACCESS_TOKEN"}, 500
+    
+    if not config.get('PHONE_NUMBER_ID'):
+        logging.error("WhatsApp PHONE_NUMBER_ID is missing from configuration")
+        return {"status": "error", "message": "Missing PHONE_NUMBER_ID"}, 500
+    
+    if not config.get('VERSION'):
+        logging.error("WhatsApp API VERSION is missing from configuration")
+        return {"status": "error", "message": "Missing VERSION"}, 500
+    
     headers = {
         "Content-type": "application/json",
         "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
     }
     url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
+    
+    logging.debug(f"WhatsApp API request URL: {url}")
+    logging.debug(f"WhatsApp API payload: {data[:200]}..." if len(data) > 200 else f"WhatsApp API payload: {data}")
     
     response = None
     try:
@@ -152,7 +173,18 @@ async def _send_whatsapp_request(payload, message_type):
         client = await ensure_client_healthy()
         
         response = await client.post(url, content=data, headers=headers)
-        response.raise_for_status()
+        
+        # Check for HTTP errors and log WhatsApp API error details
+        if response.status_code >= 400:
+            try:
+                error_body = response.json()
+                logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {error_body}")
+            except:
+                logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {response.text}")
+            
+            # Return error tuple instead of raising exception to prevent retries
+            return {"status": "error", "message": f"WhatsApp API error {response.status_code}"}, response.status_code
+        
         log_http_response(response)
         return response
         
@@ -203,7 +235,14 @@ async def process_whatsapp_message(body, run_llm_function):
             response_text = process_text_for_whatsapp(
                 config.get('UNSUPPORTED_MEDIA_MESSAGE', "I'm sorry, I can't process audio or image files yet.")
             )
-            await send_whatsapp_message(wa_id, response_text)
+            try:
+                result = await send_whatsapp_message(wa_id, response_text)
+                if isinstance(result, tuple):
+                    logging.error(f"WhatsApp unsupported media message sending failed: {result[0]}")
+                else:
+                    logging.info(f"WhatsApp unsupported media message sent successfully to {wa_id}")
+            except Exception as e:
+                logging.error(f"Exception while sending unsupported media message to {wa_id}: {e}", exc_info=True)
             
         try:
             message_body = message["text"]["body"]
@@ -222,10 +261,80 @@ async def process_whatsapp_message(body, run_llm_function):
             # Only send a response if we got one back from the LLM
             if response_text:
                 response_text = process_text_for_whatsapp(response_text)
-                await send_whatsapp_message(wa_id, response_text)
+                try:
+                    result = await send_whatsapp_message(wa_id, response_text)
+                    # Check if sending failed (returns error tuple)
+                    if isinstance(result, tuple):
+                        logging.error(f"WhatsApp message sending failed: {result[0]}")
+                    else:
+                        logging.info(f"WhatsApp message sent successfully to {wa_id}")
+                except Exception as e:
+                    # Don't let WhatsApp sending failures trigger LLM retries
+                    logging.error(f"Exception while sending WhatsApp message to {wa_id}: {e}", exc_info=True)
             
     except Exception as e:
         logging.error(f"Error processing WhatsApp message: {e}", exc_info=True)
+
+
+async def test_whatsapp_api_config():
+    """
+    Test WhatsApp API configuration by sending a minimal request.
+    Returns tuple: (success: bool, message: str, details: dict)
+    """
+    try:
+        # Basic configuration check
+        required_configs = ['ACCESS_TOKEN', 'PHONE_NUMBER_ID', 'VERSION']
+        missing = [key for key in required_configs if not config.get(key)]
+        if missing:
+            return False, f"Missing configuration: {', '.join(missing)}", {}
+        
+        # Test payload - minimal valid request
+        test_payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual", 
+            "to": "000000000000",  # Invalid number that should fail gracefully
+            "type": "text",
+            "text": {"body": "test"}
+        }
+        
+        data = json.dumps(test_payload)
+        headers = {
+            "Content-type": "application/json",
+            "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
+        }
+        url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
+        
+        client = await ensure_client_healthy()
+        response = await client.post(url, content=data, headers=headers)
+        
+        details = {
+            "status_code": response.status_code,
+            "url": url,
+            "phone_number_id": config['PHONE_NUMBER_ID'],
+            "version": config['VERSION']
+        }
+        
+        try:
+            response_body = response.json()
+            details["response"] = response_body
+        except:
+            details["response"] = response.text
+        
+        if response.status_code == 400:
+            # Expected for invalid phone number - this means auth is working
+            if "Invalid phone number" in str(details.get("response", "")):
+                return True, "WhatsApp API configuration is valid (auth working)", details
+        elif response.status_code == 401:
+            return False, "WhatsApp API authentication failed - check ACCESS_TOKEN", details
+        elif response.status_code == 403:
+            return False, "WhatsApp API access forbidden - check business verification", details
+        elif response.status_code == 404:
+            return False, "WhatsApp API endpoint not found - check PHONE_NUMBER_ID/VERSION", details
+        
+        return False, f"Unexpected WhatsApp API response: {response.status_code}", details
+        
+    except Exception as e:
+        return False, f"WhatsApp API test failed: {str(e)}", {"error": str(e)}
 
 
 def process_text_for_whatsapp(text):

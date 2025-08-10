@@ -1,12 +1,10 @@
-FROM python:3.10-slim
-
-# Set working directory
+###############################
+# Builder: install deps only  #
+###############################
+FROM python:3.10-slim AS builder
 WORKDIR /app
 
-# Ensure the app directory is on Python's module search path
-ENV PYTHONPATH=/app
-
-# Install system dependencies
+# Build tooling only in builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
@@ -16,13 +14,29 @@ COPY pyproject.toml ./
 # Include README to satisfy build metadata during editable install
 COPY README.md ./
 
-# Install uv and sync frontend environment (shared + frontend extras) into .venv
+# Install uv and resolve the frontend environment into .venv
 RUN pip install --no-cache-dir uv \
     && uv sync --extra frontend --no-dev \
-    && /app/.venv/bin/python -c "import streamlit, streamlit_calendar; print('frontend ok')"
+    && /app/.venv/bin/python -c "import streamlit, streamlit_calendar; print('frontend ok')" \
+    && uv cache clean \
+    && rm -rf /root/.cache
+
+###############################
+# Runtime: slim final image   #
+###############################
+FROM python:3.10-slim AS runtime
+WORKDIR /app
+
+LABEL org.opencontainers.image.title="python-whatsapp-bot-frontend"
+LABEL org.opencontainers.image.description="Frontend (Streamlit) for python-whatsapp-bot"
+LABEL com.dahshury.prunable="true"
 
 # Ensure the uv-created venv is used at runtime
 ENV PATH="/app/.venv/bin:${PATH}"
+ENV PYTHONPATH=/app
+
+# Bring the resolved virtualenv from the builder
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy only the necessary frontend files
 COPY app/frontend/ app/frontend/
@@ -34,4 +48,4 @@ COPY .streamlit/ .streamlit/
 EXPOSE 8501
 
 # Run the Streamlit dashboard
-CMD ["streamlit", "run", "app/frontend/dashboard.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"] 
+CMD ["streamlit", "run", "app/frontend/dashboard.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true"]

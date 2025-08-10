@@ -3,6 +3,7 @@ import httpx
 import openai
 import logging
 from anthropic import AnthropicError, RateLimitError, APIStatusError, APIError, APIConnectionError
+from openai import APITimeoutError
 from app.metrics import RETRY_ATTEMPTS, RETRY_LAST_TIMESTAMP
 import time
 import functools
@@ -33,7 +34,10 @@ def retry_decorator(func):
             APIError,
             APIConnectionError,
             openai.APIConnectionError,
-            Exception
+            openai.APIError,
+            openai.RateLimitError,
+            APITimeoutError,
+            # Removed generic Exception to prevent retrying business logic errors
         )),
         after=_record_retry
     )(func)

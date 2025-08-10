@@ -7,7 +7,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
-from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template
+from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template, test_whatsapp_api_config
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, format_enhanced_vacation_message
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, undo_cancel_reservation, undo_reserve_time_slot
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
@@ -48,7 +48,9 @@ async def webhook_get(
 async def _process_and_release(body, run_llm_function):
     """Process a WhatsApp message and release the semaphore when done."""
     try:
+        logging.info("Starting WhatsApp message processing")
         await process_whatsapp_message_util(body, run_llm_function)
+        logging.info("WhatsApp message processing completed successfully")
     except Exception as e:
         logging.error(f"ERROR PROCESSING WHATSAPP MESSAGE: {e}", exc_info=True)
         logging.error("=============== FULL ERROR DETAILS ===============")
@@ -180,6 +182,16 @@ async def api_send_whatsapp_template(payload: dict = Body(...)):
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
     return JSONResponse(content=response.json())
+
+@router.get("/whatsapp/test-config")
+async def api_test_whatsapp_config():
+    """Test WhatsApp API configuration and connectivity."""
+    success, message, details = await test_whatsapp_api_config()
+    return JSONResponse(content={
+        "success": success,
+        "message": message,
+        "details": details
+    })
 
 @router.get("/conversations")
 async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):

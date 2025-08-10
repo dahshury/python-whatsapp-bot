@@ -1,3 +1,45 @@
+# VCS
+.git
+.github
+.gitignore
+
+# Python caches
+**/__pycache__/
+**/.mypy_cache/
+**/.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+
+# Local envs
+.env
+.venv
+venv
+env
+
+# Editors/IDEs
+.vscode
+.idea
+
+# Tests and notebooks (not needed for images)
+tests/
+test.ipynb
+
+# Node/Next artifacts
+app/frontend/node_modules/
+app/frontend/.next/
+app/frontend/tsconfig.tsbuildinfo
+attempt-nextjs/
+
+# OS and misc
+.DS_Store
+
+# Media and backups (not used in build)
+media/
+backups/
+
+# UV lock can be omitted from build context (we resolve at build time)
+uv.lock
 # Ignore Python cache and environment files
 __pycache__/
 *.pyc
