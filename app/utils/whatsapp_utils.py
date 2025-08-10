@@ -229,6 +229,19 @@ async def process_whatsapp_message(body, run_llm_function):
     try:
         wa_id = body["entry"][0]["changes"][0]["value"]["contacts"][0]["wa_id"]
         message = body["entry"][0]["changes"][0]["value"]["messages"][0]
+        message_id = message.get("id")
+
+        # Idempotency: skip already processed message IDs (Meta may deliver duplicates)
+        if message_id:
+            if message_id in _recent_message_ids_set:
+                logging.warning(f"Duplicate delivery detected for message_id={message_id}. Skipping.")
+                return
+            _recent_message_ids_queue.append(message_id)
+            _recent_message_ids_set.add(message_id)
+            # Trim set to queue size if needed
+            while len(_recent_message_ids_set) > _recent_message_ids_queue.maxlen:
+                evicted = _recent_message_ids_queue.popleft()
+                _recent_message_ids_set.discard(evicted)
         message_type = message.get('type')
         if message_type in ['audio', 'image']:
             # Handle media messages
@@ -263,9 +276,9 @@ async def process_whatsapp_message(body, run_llm_function):
                 response_text = process_text_for_whatsapp(response_text)
                 try:
                     result = await send_whatsapp_message(wa_id, response_text)
-                    # Check if sending failed (returns error tuple)
+                    # Log non-2xx responses and continue gracefully
                     if isinstance(result, tuple):
-                        logging.error(f"WhatsApp message sending failed: {result[0]}")
+                        logging.warning(f"WhatsApp send returned error: {result}")
                     else:
                         logging.info(f"WhatsApp message sent successfully to {wa_id}")
                 except Exception as e:

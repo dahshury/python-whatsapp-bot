@@ -205,7 +205,7 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
         
     if new_message:
         logging.info(f"OpenAI runner produced message: {new_message[:50]}...")
-        date_str, time_str = parse_unix_timestamp(created_at, timezone=tz)
+        date_str, time_str = parse_unix_timestamp(created_at)
         return new_message, date_str, time_str
         
     logging.warning(f"OpenAI runner returned no message for wa_id={wa_id}")
