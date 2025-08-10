@@ -2,7 +2,7 @@ import logging
 import asyncio
 import json
 import inspect
-from app.config import config, load_config
+from app.config import config
 from anthropic import Anthropic, AnthropicError, APITimeoutError, APIConnectionError, BadRequestError, RateLimitError, AuthenticationError
 from app.utils.http_client import sync_client
 from app.utils import retrieve_messages
@@ -10,7 +10,7 @@ from app.decorators import retry_decorator
 import datetime
 from zoneinfo import ZoneInfo
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
-from app.metrics import LLM_API_ERRORS, LLM_RETRY_ATTEMPTS, LLM_TOOL_EXECUTION_ERRORS, LLM_EMPTY_RESPONSES, LLM_ERROR_TYPES
+from app.metrics import LLM_API_ERRORS, LLM_RETRY_ATTEMPTS, LLM_TOOL_EXECUTION_ERRORS, LLM_EMPTY_RESPONSES
 
 ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY")
 
@@ -260,10 +260,10 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     except Exception as e:
         # Handle and log API errors
         error_type = map_anthropic_error(e)
-        logging.error(f"======================================================")
+        logging.error("======================================================")
         logging.error(f"CLAUDE API ERROR for wa_id={wa_id}: {e} (type: {error_type})")
-        logging.error(f"This error will trigger the retry mechanism")
-        logging.error(f"======================================================")
+        logging.error("This error will trigger the retry mechanism")
+        logging.error("======================================================")
         LLM_API_ERRORS.labels(provider="anthropic", error_type=error_type).inc()
         LLM_RETRY_ATTEMPTS.labels(provider="anthropic", error_type=error_type).inc()
         raise  # Re-raise for retry

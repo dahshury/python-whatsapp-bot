@@ -2,10 +2,7 @@ import unittest
 import os
 import time
 import requests
-import httpx
-import json
 from prometheus_client import Counter, REGISTRY
-from unittest.mock import patch, MagicMock
 
 class TestAlertmanagerDiscordIntegration(unittest.TestCase):
     def setUp(self):

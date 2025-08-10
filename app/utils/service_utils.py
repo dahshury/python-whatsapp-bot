@@ -3,7 +3,7 @@ import logging
 import platform
 import re
 import datetime
-from datetime import date, timedelta
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 import phonenumbers
@@ -1196,7 +1196,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     if date_str:
         try:
             parsed_date = parse_date(date_str, hijri=hijri)
-        except Exception as e:
+        except Exception:
             return format_response(False, message=get_message("invalid_date", ar))
 
     # Parse time if provided
@@ -1204,7 +1204,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     if time_slot:
         try:
             parsed_time = normalize_time_format(time_slot, to_24h=True)
-        except Exception as e:
+        except Exception:
             return format_response(False, message=get_message("invalid_time", ar))
 
     # Perform deletion

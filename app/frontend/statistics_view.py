@@ -10,9 +10,6 @@ import datetime as dt
 import re
 from collections import Counter
 import plotly.graph_objects as go
-from wordcloud import WordCloud
-import matplotlib.pyplot as plt
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 def render_statistics(is_gregorian=True):
     # Title
@@ -128,19 +125,6 @@ def render_statistics(is_gregorian=True):
             return None
 
     # Define the metrics to fetch: label -> Prometheus query
-    prom_metrics = {
-        'CPU (%)': 'process_cpu_percent',
-        'Memory (MB)': 'process_memory_bytes',
-        'Res Attempts': 'reservations_requested_total',
-        'Res Success': 'reservations_successful_total',
-        'Res Failures': 'reservations_failed_total',
-        'Canc Attempts': 'reservations_cancellation_requested_total',
-        'Canc Success': 'reservations_cancellation_successful_total',
-        'Canc Failures': 'reservations_cancellation_failed_total',
-        'Mod Attempts': 'reservations_modification_requested_total',
-        'Mod Success': 'reservations_modification_successful_total',
-        'Mod Failures': 'reservations_modification_failed_total'
-    }
 
     # Interactive charts
     tab_names = ['KPIs & Metrics', 'Trends', 'Type Mix', 'Time Slots', 'Conversion Funnel', 'Messages', 'Insights']
@@ -369,7 +353,6 @@ def render_statistics(is_gregorian=True):
                     norm = base_norm
                 
                 # Store both raw and normalized values for reference
-                raw_per_day = base_norm
                 
                 # Format for display
                 label = t.strftime('%I:%M %p').lstrip('0')

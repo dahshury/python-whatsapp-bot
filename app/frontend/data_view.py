@@ -3,11 +3,9 @@ import time
 
 import pandas as pd
 import streamlit as st
-import streamlit_antd_components as sac
-from hijri_converter import Gregorian
 
 from . import is_ramadan, format_date_for_display, get_event_time_range, filter_events_by_date_time
-from .whatsapp_client import cancel_reservation, modify_id, modify_reservation, reserve_time_slot, parse_time, get_message
+from .whatsapp_client import cancel_reservation, modify_id, modify_reservation, reserve_time_slot, get_message
 
 def reset_data_editor(success=True):
     time.sleep(3 if success else 5)
@@ -216,7 +214,7 @@ def render_view(is_gregorian, show_title=True):
                     for row_idx in widget_state["deleted_rows"]:
                         orig_row = df.iloc[row_idx]
                         result = cancel_reservation(orig_row['id'], str(orig_row['date']), ar=not is_gregorian)
-                        if result.get("success", "") == True:
+                        if result.get("success", ""):
                             deleted+=1                        
                         else:
                             st.error(result.get("message", ""))
@@ -234,7 +232,7 @@ def render_view(is_gregorian, show_title=True):
                         if change and not orig_row.equals(curr_row):
                             if 'id' in change:
                                 result = modify_id(str(orig_row['id']), str(change['id']), ar=not is_gregorian)
-                                if result.get("success", "") == True:
+                                if result.get("success", ""):
                                     # Localized success message for wa_id modification
                                     st.success(get_message("wa_id_modified", ar=not is_gregorian))
                                     modified+=1
@@ -255,7 +253,7 @@ def render_view(is_gregorian, show_title=True):
                                     0 if curr_row['type'] in ["كشف", "Check-up"] else 1,
                                     ar=not is_gregorian
                                 )
-                                if result.get("success", "") == True:
+                                if result.get("success", ""):
                                     modified+=1
                                 else:
                                     st.error(result.get("message", ""))
@@ -293,7 +291,7 @@ def render_view(is_gregorian, show_title=True):
                             max_reservations=6,
                             ar=not is_gregorian
                         )
-                        if result.get("success", "") == True:
+                        if result.get("success", ""):
                             added+=1
                         else:
                             st.error(result.get("message", ""))

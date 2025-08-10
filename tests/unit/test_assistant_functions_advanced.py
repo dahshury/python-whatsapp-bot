@@ -3,7 +3,6 @@ from unittest import mock
 import datetime
 from zoneinfo import ZoneInfo
 import sys
-import os
 from pathlib import Path
 
 # Add the project root to the path so we can import app modules

@@ -1,10 +1,9 @@
 import datetime
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional
 from zoneinfo import ZoneInfo
 from hijri_converter import convert
 from .base_service import BaseService
 from app.utils import format_response, is_vacation_period, find_vacation_end_date, format_enhanced_vacation_message
-from app.i18n import get_message
 from app.config import config
 
 

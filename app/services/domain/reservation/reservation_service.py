@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from zoneinfo import ZoneInfo
 from hijri_converter import convert
 from ..shared.base_service import BaseService
@@ -9,8 +9,7 @@ from .reservation_models import Reservation, ReservationType
 from .availability_service import AvailabilityService
 from app.utils import (
     format_response, fix_unicode_sequence, parse_date, 
-    normalize_time_format, is_valid_date_time, validate_reservation_type,
-    find_nearest_time_slot, make_thread
+    normalize_time_format, is_valid_date_time, validate_reservation_type
 )
 from app.i18n import get_message
 from app.decorators.metrics_decorators import (

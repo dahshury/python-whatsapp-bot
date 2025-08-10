@@ -1,9 +1,7 @@
 import unittest
 from unittest import mock
 import datetime
-from zoneinfo import ZoneInfo
 import sys
-import os
 from pathlib import Path
 
 # Add the project root to the path so we can import app modules
@@ -13,21 +11,9 @@ from app.services.assistant_functions import (
     send_business_location,
     get_current_datetime,
     modify_id,
-    modify_reservation,
-    get_customer_reservations,
     reserve_time_slot,
-    delete_reservation,
     cancel_reservation,
-    get_available_time_slots,
-    search_available_appointments
-)
-from app.utils import (
-    is_valid_number,
-    send_whatsapp_location,
-    parse_date,
-    normalize_time_format,
-    is_vacation_period,
-    get_time_slots
+    get_available_time_slots
 )
 
 

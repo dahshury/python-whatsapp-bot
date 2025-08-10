@@ -10,7 +10,7 @@ import streamlit_antd_components as sac
 from streamlit_calendar import calendar
 
 from . import get_ramadan_dates, is_ramadan, subtract_ramadan_from_normal
-from . import format_date_for_display, get_event_time_range, update_date_time_selection
+from . import update_date_time_selection
 from .whatsapp_client import get_all_reservations, get_all_conversations, parse_date, parse_time, modify_reservation, get_message
 from .data_view import render_view
 
@@ -268,7 +268,7 @@ def render_cal(is_gregorian, free_roam):
             })
             # Enforce validRange for navigation when not free_roam
             if st.session_state.selected_view_id != "multiMonthYear":
-                big_cal_options["validRange"] = {"start": datetime.datetime.now().isoformat()}
+                big_cal_options["validRange"] = {"start": datetime.datetime.today().isoformat()}
         # In free_roam mode, allow full navigation and events
         else:
             # No constraints: remove any potential limiting keys
@@ -638,7 +638,7 @@ def render_cal(is_gregorian, free_roam):
             # The modify_reservation function will handle approximation when approximate=True
             ev_type = big_cal_response.get("eventChange", {}).get("event", {}).get("extendedProps").get("type")
             result = modify_reservation(event['id'], str(new_start_date), formatted_time, str(event['title']), ev_type, approximate=True, ar=not is_gregorian)
-            if result.get("success", "") == True:
+            if result.get("success", ""):
                 st.toast(get_message("reservation_changed", ar=not is_gregorian))
                 reset_calendar(True, new_start_date)
             else:

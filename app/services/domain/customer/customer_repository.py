@@ -1,5 +1,5 @@
 import sqlite3
-from typing import Optional, List
+from typing import Optional
 from app.db import get_connection
 from .customer_models import Customer
 
@@ -53,7 +53,7 @@ class CustomerRepository:
             )
             conn.commit()
             return True
-        except Exception as e:
+        except Exception:
             conn.rollback()
             return False
         finally:

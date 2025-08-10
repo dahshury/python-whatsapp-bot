@@ -9,7 +9,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR
 
-from app.config import config, get
+from app.config import config
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
 from app.metrics import monitor_system_metrics, FUNCTION_ERRORS, SCHEDULER_JOB_MISSED, BACKUP_SCRIPT_FAILURES

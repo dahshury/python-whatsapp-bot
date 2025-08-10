@@ -1,5 +1,5 @@
 import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 from zoneinfo import ZoneInfo
 from hijri_converter import convert
 from ..shared.base_service import BaseService
@@ -7,7 +7,7 @@ from .reservation_repository import ReservationRepository
 from app.utils import (
     format_response, get_time_slots, parse_date, 
     normalize_time_format, is_vacation_period, find_vacation_end_date,
-    find_nearest_time_slot, format_enhanced_vacation_message
+    format_enhanced_vacation_message
 )
 from app.i18n import get_message
 from app.config import config
@@ -106,7 +106,7 @@ class AvailabilityService(BaseService):
         """
         try:
             # Get current date/time in configured timezone
-            now = datetime.datetime.now(tz=ZoneInfo(self.timezone))
+            datetime.datetime.now(tz=ZoneInfo(self.timezone))
             
             # Process date - convert from Hijri if needed
             try:
@@ -136,7 +136,7 @@ class AvailabilityService(BaseService):
             }
             
             # Reverse mapping (24-hour to 12-hour) for results
-            reverse_map = {v: k for k, v in time_format_map.items()}
+            {v: k for k, v in time_format_map.items()}
 
             # Check current reservations for each time slot
             for slot_12h, slot_24h in time_format_map.items():

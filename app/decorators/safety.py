@@ -1,4 +1,4 @@
-from tenacity import retry, wait_exponential, stop_after_delay, retry_if_exception_type, RetryError
+from tenacity import retry, wait_exponential, stop_after_delay, retry_if_exception_type
 import httpx
 import openai
 import logging

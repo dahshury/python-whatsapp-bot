@@ -6,7 +6,7 @@ from app.config import config
 from openai import OpenAI
 from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, BadRequestError
 from app.utils import parse_unix_timestamp
-from app.utils.service_utils import get_connection, retrieve_messages
+from app.utils.service_utils import retrieve_messages
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.utils.http_client import sync_client
@@ -52,7 +52,7 @@ def map_openai_error(e):
     else:
         return "unknown"
 
-def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True):
+def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True, verbosity="low"):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp.
     
     Args:
@@ -71,7 +71,7 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
         "model": model,
         "input": input_chat,
         "instructions": system_prompt,
-        "text": {"format": {"type": text_format}},
+        "text": {"format": {"type": text_format}, "verbosity": verbosity},
         "reasoning": {"effort": reasoning_effort, "summary": reasoning_summary},
         "tools": FUNCTION_DEFINITIONS,
         "store": store
@@ -162,7 +162,7 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
     return text, response.created_at
 
 @retry_decorator
-def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True, timezone=None):
+def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True, timezone=None, verbosity="low"):
     """
     Run the OpenAI Responses API with existing conversation context.
     Returns (response_text, date_str, time_str).
@@ -179,7 +179,6 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
         timezone (str, optional): Timezone for timestamps.
     """
     # Use timezone from parameters or fallback to UTC
-    tz = timezone or "UTC"
     
     # Retrieve message history using centralized service
     input_chat = retrieve_messages(wa_id)
@@ -194,7 +193,8 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
             reasoning_effort,
             reasoning_summary,
             text_format,
-            store
+            store,
+            verbosity
         )
     except Exception as e:
         error_type = map_openai_error(e)

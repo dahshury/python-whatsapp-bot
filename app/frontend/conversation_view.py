@@ -114,7 +114,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 options=options,
                 index=index,
                 label_visibility="collapsed",
-                key=f"conversation_selectbox",
+                key="conversation_selectbox",
             )
         # Right arrow
         with col3:
@@ -125,7 +125,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                 disabled=(index == len(options) - 1),
                 use_container_width=True
             )
-        sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key=f"data_divider")
+        sac.divider(label='Data', icon='layout-text-sidebar-reverse', align='center', color='gray', key="data_divider")
         # Handle navigation button clicks
         if prev_btn and len(options) > 0:
             new_index = (index - 1) % len(options)
@@ -219,7 +219,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                             
                             # Format to 12-hour for display
                             formatted_timestamp = time_obj.strftime("%I:%M %p")
-                        except Exception as e:
+                        except Exception:
                             # If parse fails, use as is
                             formatted_timestamp = raw_timestamp
                     else:
@@ -275,7 +275,7 @@ def render_conversation(conversations, is_gregorian, reservations):
                     datetime_obj = datetime.datetime.now(tz)
                     curr_date = datetime_obj.date().isoformat()
                     curr_time = datetime_obj.strftime("%H:%M:%S")  # Store in 24-hour format with seconds
-                    display_time = datetime_obj.strftime("%I:%M %p")  # For display in UI
+                    datetime_obj.strftime("%I:%M %p")  # For display in UI
                     new_message = {
                         "role": st.session_state["username"],
                         "message": prompt,

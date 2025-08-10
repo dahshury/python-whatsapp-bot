@@ -55,8 +55,7 @@ class Reservation:
         Returns:
             True if reservation is in the future
         """
-        from datetime import datetime, time
-        from zoneinfo import ZoneInfo
+        from datetime import datetime
         from app.utils.service_utils import parse_time
         
         # Parse reservation date and time

@@ -132,13 +132,12 @@ def modify_id(old_wa_id, new_wa_id, ar=False):
     """
     try:
         is_valid_wa_id = is_valid_number(new_wa_id, ar)
-        if isinstance(is_valid_wa_id, dict) and is_valid_wa_id.get("success") == False:
+        if isinstance(is_valid_wa_id, dict) and not is_valid_wa_id.get("success"):
             return is_valid_wa_id
         
         if old_wa_id == new_wa_id:
-            message = "The new wa_id is the same as the old wa_id."
             if ar:
-                message = "رقم الواتساب الجديد هو نفسه رقم الواتساب القديم."
+                pass
             return format_response(True, message=get_message("wa_id_same", ar))
 
         conn = get_connection()
@@ -203,7 +202,7 @@ def modify_reservation(wa_id, new_date=None, new_time_slot=None, new_name=None, 
     try:        
         # Phone number validation
         is_valid_wa_id = is_valid_number(wa_id, ar)
-        if is_valid_wa_id != True:
+        if not is_valid_wa_id:
             return is_valid_wa_id
         
         # Ensure there is something to modify
@@ -406,7 +405,7 @@ def get_customer_reservations(wa_id, include_past=False):
         Exception: Catches and logs any exceptions, returning a formatted error message
     """
     is_valid_wa_id = is_valid_number(wa_id)
-    if is_valid_wa_id != True:
+    if not is_valid_wa_id:
         return is_valid_wa_id
     try:
         now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
@@ -487,7 +486,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         Exception: For technical failures like database errors, exceptions are raised instead of returning error responses
     """
     is_valid_wa_id = is_valid_number(wa_id, ar)
-    if is_valid_wa_id != True:
+    if not is_valid_wa_id:
         return is_valid_wa_id
     
     if not customer_name:
@@ -568,7 +567,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
             if cursor.rowcount < 1:
                 conn.rollback()
                 FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
-                logging.error(f"reserve_time_slot reinstatement failed - no rows affected")
+                logging.error("reserve_time_slot reinstatement failed - no rows affected")
                 return format_response(False, message=get_message("system_error_contact_secretary", ar))
                 
             conn.commit()
@@ -599,7 +598,7 @@ def reserve_time_slot(wa_id, customer_name, date_str, time_slot, reservation_typ
         if cursor.rowcount < 1:
             conn.rollback()
             FUNCTION_ERRORS.labels(function="reserve_time_slot").inc()
-            logging.error(f"reserve_time_slot insert failed - no rows affected")
+            logging.error("reserve_time_slot insert failed - no rows affected")
             return format_response(False, message=get_message("system_error_contact_secretary", ar))
             
         conn.commit()
@@ -662,7 +661,7 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
     """
     try:
         is_valid_wa_id = is_valid_number(wa_id, ar)
-        if is_valid_wa_id != True:
+        if not is_valid_wa_id:
             return is_valid_wa_id
             
         # Retrieve and unpack active reservations
@@ -726,7 +725,7 @@ def cancel_reservation(wa_id, date_str=None, hijri=False, ar=False):
             # Verify operations succeeded
             if cancel_count == 0:
                 conn.rollback()
-                logging.error(f"cancel_reservation failed: no rows updated")
+                logging.error("cancel_reservation failed: no rows updated")
                 return format_response(False, message=get_message("reservation_not_found", ar))
                 
             conn.commit()
@@ -787,7 +786,7 @@ def get_available_time_slots(date_str, max_reservations=5, hijri=False):
     """
     try:
         # Get current date/time in Saudi Arabia timezone
-        now = datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
+        datetime.datetime.now(tz=ZoneInfo(TIMEZONE))
         
         # Process date - convert from Hijri if needed
         try:

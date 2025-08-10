@@ -13,13 +13,11 @@ Default wa_id: 201017419800
 """
 
 import asyncio
-import logging
 import sys
 import os
 import datetime
-import json
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 # Add project root to path
@@ -27,7 +25,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from app.config import configure_logging, config
 from app.scheduler import send_reminders_job
-from app.utils.whatsapp_utils import send_whatsapp_template, append_message
+from app.utils.whatsapp_utils import send_whatsapp_template
 
 # Configure logging
 configure_logging()
@@ -136,10 +134,10 @@ async def run_tests(specific_wa_id=None):
         # Otherwise run the full test suite
         # Create a test suite with our test case
         loader = unittest.TestLoader()
-        suite = loader.loadTestsFromTestCase(ReminderSystemTests)
+        loader.loadTestsFromTestCase(ReminderSystemTests)
         
         # Run the tests
-        runner = unittest.TextTestRunner()
+        unittest.TextTestRunner()
         
         # We need to run the async test in the event loop
         async def run_test_case():
