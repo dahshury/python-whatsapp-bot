@@ -74,8 +74,12 @@ def get_tomorrow_reservations():
         today = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
         tomorrow = today + datetime.timedelta(days=1)
         tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
-        # Query the database for reservations for tomorrow
-        cursor.execute("SELECT * FROM reservations WHERE date = ?", (tomorrow_date_str,))
+        # Query the database for ACTIVE reservations for tomorrow
+        # Ensure cancelled reservations are excluded from reminder runs
+        cursor.execute(
+            "SELECT * FROM reservations WHERE date = ? AND status = 'active'",
+            (tomorrow_date_str,)
+        )
         rows = cursor.fetchall()
         conn.close()
         return format_response(True, data=[dict(r) for r in rows])

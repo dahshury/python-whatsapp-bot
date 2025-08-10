@@ -49,6 +49,10 @@ async def send_reminders_job():
         
         for reservation in reservations:
             try:
+                # Defensive: skip non-active reservations if any slipped through
+                if reservation.get("status") and reservation.get("status") != "active":
+                    logging.info(f"Skipping non-active reservation for {reservation.get('wa_id')} status={reservation.get('status')}")
+                    continue
                 # Prepare template components
                 components = [
                     {"type": "body", "parameters": [{"type": "text", "text": reservation["time_slot"]}]}
