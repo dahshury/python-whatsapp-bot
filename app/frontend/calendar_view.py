@@ -268,7 +268,7 @@ def render_cal(is_gregorian, free_roam):
             })
             # Enforce validRange for navigation when not free_roam
             if st.session_state.selected_view_id != "multiMonthYear":
-                big_cal_options["validRange"] = {"start": datetime.datetime.today().isoformat()}
+                big_cal_options["validRange"] = {"start": datetime.date.today().isoformat()}
         # In free_roam mode, allow full navigation and events
         else:
             # No constraints: remove any potential limiting keys
