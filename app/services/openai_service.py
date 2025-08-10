@@ -14,6 +14,7 @@ from app.metrics import FUNCTION_ERRORS, LLM_API_ERRORS, LLM_TOOL_EXECUTION_ERRO
 
 # API key is still needed at module level for client initialization
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
+VEC_STORE_ID = config["VEC_STORE_ID"]
 client = OpenAI(api_key=OPENAI_API_KEY, http_client=sync_client)
 
 # Define available functions as tools for Responses API from central definitions
@@ -77,14 +78,14 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
         "store": store
     }
     
-    # vec_id = config.get("VEC_STORE_ID")
-    # # Add vector store and file_search tool if configured
-    # if vec_id:
-    #     # Add file_search tool with vector_store_ids
-    #     kwargs["tools"] = FUNCTION_DEFINITIONS + [{
-    #         "type": "file_search",
-    #         "vector_store_ids": [vec_id]
-    #     }]
+    vec_id = config.get("VEC_STORE_ID")
+    # Add vector store and file_search tool if configured
+    if vec_id:
+        # Add file_search tool with vector_store_ids
+        kwargs["tools"] = FUNCTION_DEFINITIONS + [{
+            "type": "file_search",
+            "vector_store_ids": [vec_id]
+        }]
 
     # Log request payload
     response = client.responses.create(**kwargs)

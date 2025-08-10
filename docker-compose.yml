@@ -18,7 +18,6 @@ services:
     volumes:
       - ${MOUNT_BACKEND:-./app:/app/app}
       - ./run.py:/app/run.py
-      - ./requirements-backend.in:/app/requirements-backend.in
       - ./threads_db.sqlite:/app/data/threads_db.sqlite
       - ./.env:/app/.env
       - ./scripts:/app/scripts

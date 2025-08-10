@@ -40,6 +40,22 @@ def render_statistics(is_gregorian=True):
         return
     conv_data = conv_resp['data'] or {}
 
+    # Build conversations DataFrame once for reuse across tabs and KPIs
+    conv_rows_all = []
+    for wa_id, msgs in conv_data.items():
+        for m in msgs or []:
+            conv_rows_all.append({
+                'wa_id': wa_id,
+                'date': m.get('date'),
+                'time': m.get('time'),
+                'message': m.get('message', '')
+            })
+    df_conv = pd.DataFrame(conv_rows_all)
+    if df_conv.empty:
+        df_conv = pd.DataFrame(columns=['wa_id', 'date', 'time', 'message', 'date_dt'])
+    else:
+        df_conv.loc[:, 'date_dt'] = pd.to_datetime(df_conv['date'])
+
     # Initialize session state to persist tab selection after filter
     if 'active_tab' not in st.session_state:
         st.session_state.active_tab = 0
@@ -95,6 +111,38 @@ def render_statistics(is_gregorian=True):
             else:
                 st.warning("No data available in selected date range")
     
+    # Align conversation data to the active date range (based on reservations range)
+    # Determine active start/end dates from the (possibly filtered) reservations
+    active_start_date = df_res['date_dt'].min().date()
+    active_end_date = df_res['date_dt'].max().date()
+
+    # Filter conversations to the same active date window
+    if not df_conv.empty:
+        conv_mask = (df_conv['date_dt'].dt.date >= active_start_date) & (df_conv['date_dt'].dt.date <= active_end_date)
+        df_conv = df_conv.loc[conv_mask].copy()
+
+    # Prepare daily messaging aggregates across the full calendar span (including zero-message days)
+    calendar_days = (active_end_date - active_start_date).days + 1
+    if calendar_days < 1:
+        calendar_days = 1
+    if not df_conv.empty:
+        date_index = pd.date_range(active_start_date, active_end_date, freq='D').date
+        daily_messages = df_conv.groupby(df_conv['date_dt'].dt.date).size().reindex(date_index, fill_value=0)
+        daily_active_users = (
+            df_conv.groupby(df_conv['date_dt'].dt.date)['wa_id']
+            .nunique()
+            .reindex(date_index, fill_value=0)
+        )
+        total_messages = int(df_conv.shape[0])
+        avg_messages_per_day = float(daily_messages.mean())
+        avg_users_per_day = float(daily_active_users.mean())
+        avg_messages_per_user_per_day = float(avg_messages_per_day / avg_users_per_day) if avg_users_per_day > 0 else 0.0
+    else:
+        total_messages = 0
+        avg_messages_per_day = 0.0
+        avg_users_per_day = 0.0
+        avg_messages_per_user_per_day = 0.0
+
     # Show date range summary
     date_range = df_res['date_dt'].dt.date.nunique()
     st.caption(f"Showing data across {date_range} days from {df_res['date_dt'].min().date()} to {df_res['date_dt'].max().date()}")
@@ -139,6 +187,14 @@ def render_statistics(is_gregorian=True):
         c2.metric('Total Cancellations', total_cancel)
         c3.metric('Unique Customers', unique_customers)
         c4.metric('Conversion Rate', f"{conversion_rate:.1%}")
+
+        # Messaging KPIs
+        st.subheader("Messaging KPIs")
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric('Total Messages', total_messages)
+        m2.metric('Avg Messages / Day', f"{avg_messages_per_day:.1f}")
+        m3.metric('Avg Users Messaging / Day', f"{avg_users_per_day:.1f}")
+        m4.metric('Avg Msgs / User / Day', f"{avg_messages_per_user_per_day:.2f}")
         
         st.subheader("System Metrics")
         # Display Prometheus metrics in a cleaner grid
@@ -426,31 +482,17 @@ def render_statistics(is_gregorian=True):
 
     # Messages tab: user message stats
     with tabs[5]:
-        # Flatten conversation into DataFrame
-        conv_rows = []
-        for wa_id, msgs in conv_data.items():
-            for m in msgs or []:
-                conv_rows.append({
-                    'wa_id': wa_id,
-                    'date': m.get('date'),
-                    'time': m.get('time'),
-                    'message': m.get('message', '')
-                })
-        df_conv = pd.DataFrame(conv_rows)
         if df_conv.empty:
             st.info('No conversation data available')
             return
-            
-        # Apply global date filter to conversation data
-        df_conv.loc[:, 'date_dt'] = pd.to_datetime(df_conv['date'])
-        if submit_button and isinstance(dr, tuple) and len(dr) == 2:
-            start_date, end_date = dr
-            mask = (df_conv['date_dt'].dt.date >= start_date) & (df_conv['date_dt'].dt.date <= end_date)
-            df_filtered = df_conv.loc[mask].copy()
-            if not df_filtered.empty:
-                df_conv = df_filtered
-            else:
-                st.warning("No message data available in selected date range")
+
+        # Messaging KPIs for this period
+        st.subheader("Messaging KPIs")
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        mc1.metric('Total Messages', total_messages)
+        mc2.metric('Avg Messages / Day', f"{avg_messages_per_day:.1f}")
+        mc3.metric('Avg Users Messaging / Day', f"{avg_users_per_day:.1f}")
+        mc4.metric('Avg Msgs / User / Day', f"{avg_messages_per_user_per_day:.2f}")
 
         # Clean and unify time
         df_conv.loc[:, 'time_clean'] = df_conv['time'].apply(lambda t: parse_time(t, to_24h=True) if isinstance(t, str) else '')
