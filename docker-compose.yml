@@ -45,22 +45,17 @@ services:
              uvicorn run:app --host 0.0.0.0 --port 8000"
   frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.frontend
+      context: ./app/frontend
+      dockerfile: Dockerfile
     container_name: reservation_frontend
     env_file:
       - .env
     ports:
-      - '8501:8501'
+      - '3000:3000'
     depends_on:
       - backend
     environment:
       - ENV=${ENVIRONMENT:-development}
-    volumes:
-      - ${MOUNT_FRONTEND:-./app/frontend:/app/app/frontend}
-      - ./.env:/app/.env
-      - ./users.yaml:/app/users.yaml
-      - ./.streamlit:/app/.streamlit
     restart: on-failure
     logging:
       driver: json-file

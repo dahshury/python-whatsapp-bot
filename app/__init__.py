@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import configure_logging, load_config
 from app.views import router as webhook_router
 from app.scheduler import init_scheduler
+from app.utils.realtime import websocket_router, start_metrics_push_task
 
 import time
 from fastapi import Request, Response
@@ -78,5 +79,11 @@ def create_app():
     async def metrics():
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
+    # Include HTTP routers
     app.include_router(webhook_router)
+    # Include WebSocket router
+    app.include_router(websocket_router)
+
+    # Start background metrics push to websocket clients
+    start_metrics_push_task(app)
     return app

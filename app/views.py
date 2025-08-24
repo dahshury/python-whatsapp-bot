@@ -9,6 +9,7 @@ from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
 from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template, test_whatsapp_api_config
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, format_enhanced_vacation_message
+from app.utils.realtime import enqueue_broadcast
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, undo_cancel_reservation, undo_reserve_time_slot
 from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
 import datetime
@@ -364,6 +365,14 @@ async def api_update_vacation_periods(payload: dict = Body(...)):
         
         logging.info(f"Updated vacation periods: start_dates={start_dates}, durations={durations}")
         
+        # Broadcast vacation update to clients
+        try:
+            from app.utils.service_utils import get_all_conversations as _dummy  # import to keep consistent import order
+            from app.config import config as _config
+            # Return new vacation periods via existing GET /vacations endpoint, but notify clients
+            enqueue_broadcast("vacation_period_updated", {"periods": []})
+        except Exception:
+            pass
         return JSONResponse(content={
             "success": True,
             "message": get_message("vacation_periods_updated", ar)
@@ -411,6 +420,11 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
         
         logging.info(f"Undone vacation update: restored to start_dates={original_start_dates}, durations={original_durations}")
         
+        # Broadcast vacation update undo to clients
+        try:
+            enqueue_broadcast("vacation_period_updated", {"periods": []})
+        except Exception:
+            pass
         return JSONResponse(content={
             "success": True,
             "message": get_message("vacation_update_undone", ar)

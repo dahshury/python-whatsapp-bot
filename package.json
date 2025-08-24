@@ -1,0 +1,21 @@
+{
+  "name": "python-whatsapp-bot-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": [
+    "app/frontend"
+  ],
+  "packageManager": "pnpm@10",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "dev": "pnpm --filter ./app/frontend dev",
+    "build": "pnpm --filter ./app/frontend build",
+    "start": "pnpm --filter ./app/frontend start",
+    "lint": "pnpm --filter ./app/frontend lint"
+  }
+}
+
+

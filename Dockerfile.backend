@@ -1,14 +1,14 @@
 ###############################
 # Builder: install deps only  #
 ###############################
-FROM python:3.10-slim AS builder
+FROM python:3.12-slim AS builder
 WORKDIR /app
 
 # Build tooling only in builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
-    python3-dev \
-    libuv1-dev \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy project metadata for dependency installation
@@ -16,8 +16,10 @@ COPY pyproject.toml ./
 # Include README to satisfy build metadata during editable install
 COPY README.md ./
 
-# Install uv and resolve the backend environment into .venv
-RUN pip install --no-cache-dir uv \
+# Install uv without pip and resolve the backend environment into .venv
+ENV PATH="/root/.local/bin:${PATH}"
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -y \
+    && uv --version \
     && uv sync --extra backend --no-dev \
     && uv cache clean \
     && rm -rf /root/.cache
@@ -25,7 +27,7 @@ RUN pip install --no-cache-dir uv \
 ###############################
 # Runtime: slim final image   #
 ###############################
-FROM python:3.10-slim AS runtime
+FROM python:3.12-slim AS runtime
 WORKDIR /app
 
 LABEL org.opencontainers.image.title="python-whatsapp-bot-backend"
@@ -36,6 +38,7 @@ LABEL com.dahshury.prunable="true"
 RUN apt-get update && apt-get install -y --no-install-recommends \
     zip \
     rclone \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure the uv-created venv is used at runtime

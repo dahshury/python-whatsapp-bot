@@ -24,11 +24,9 @@ services:
     container_name: reservation_frontend
     restart: always
     ports:
-      - '8501:8501'
-    volumes:
-      - ./.env:/app/.env
-      - ./users.yaml:/app/users.yaml
-      - ./.streamlit:/app/.streamlit
+      - '3000:3000'
+    environment:
+      - NODE_ENV=production
     logging:
       driver: json-file
       options:

@@ -1,8 +1,9 @@
-import sqlite3
 from typing import List, Optional
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from app.db import get_connection
+from sqlalchemy import select, and_, update
+from sqlalchemy.orm import joinedload
+from app.db import get_session, ReservationModel, CustomerModel
 from .reservation_models import Reservation, ReservationType
 
 
@@ -27,44 +28,43 @@ class ReservationRepository:
         Returns:
             List of Reservation instances
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
-                          r.cancelled_at, r.created_at, r.updated_at, c.customer_name
-                   FROM reservations r 
-                   JOIN customers c ON r.wa_id = c.wa_id 
-                   WHERE r.wa_id = ? AND r.status = 'active'""",
-                (wa_id,)
-            )
-            rows = cursor.fetchall()
-            
-            reservations = []
-            now = datetime.now(tz=ZoneInfo(self.timezone))
-            
-            for row in rows:
-                reservation = Reservation(
-                    id=row["id"],
-                    wa_id=row["wa_id"],
-                    date=row["date"],
-                    time_slot=row["time_slot"],
-                    type=ReservationType(row["type"]),
-                    status=row["status"],
-                    cancelled_at=row["cancelled_at"],
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
-                    customer_name=row["customer_name"]
+        with get_session() as session:
+            stmt = (
+                select(
+                    ReservationModel.id,
+                    ReservationModel.wa_id,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                    ReservationModel.cancelled_at,
+                    ReservationModel.created_at,
+                    ReservationModel.updated_at,
+                    CustomerModel.customer_name,
                 )
-                
-                # Include based on past/future filter
-                if include_past or reservation.is_future(now):
-                    reservations.append(reservation)
-            
-            return reservations
-            
-        finally:
-            conn.close()
+                .join(CustomerModel, ReservationModel.wa_id == CustomerModel.wa_id)
+                .where(and_(ReservationModel.wa_id == wa_id, ReservationModel.status == "active"))
+            )
+            rows = session.execute(stmt).all()
+
+        reservations: List[Reservation] = []
+        now = datetime.now(tz=ZoneInfo(self.timezone))
+        for r in rows:
+            reservation = Reservation(
+                id=r.id,
+                wa_id=r.wa_id,
+                date=r.date,
+                time_slot=r.time_slot,
+                type=ReservationType(r.type),
+                status=r.status,
+                cancelled_at=r.cancelled_at,
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+                customer_name=r.customer_name,
+            )
+            if include_past or reservation.is_future(now):
+                reservations.append(reservation)
+        return reservations
     
     def find_active_by_slot(self, date_str: str, time_slot: str) -> List[Reservation]:
         """
@@ -77,37 +77,46 @@ class ReservationRepository:
         Returns:
             List of active reservations for the slot
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
-                          r.cancelled_at, r.created_at, r.updated_at, c.customer_name
-                   FROM reservations r 
-                   JOIN customers c ON r.wa_id = c.wa_id 
-                   WHERE r.date = ? AND r.time_slot = ? AND r.status = 'active'""",
-                (date_str, time_slot)
-            )
-            rows = cursor.fetchall()
-            
-            return [
-                Reservation(
-                    id=row["id"],
-                    wa_id=row["wa_id"],
-                    date=row["date"],
-                    time_slot=row["time_slot"],
-                    type=ReservationType(row["type"]),
-                    status=row["status"],
-                    cancelled_at=row["cancelled_at"],
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
-                    customer_name=row["customer_name"]
+        with get_session() as session:
+            stmt = (
+                select(
+                    ReservationModel.id,
+                    ReservationModel.wa_id,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                    ReservationModel.cancelled_at,
+                    ReservationModel.created_at,
+                    ReservationModel.updated_at,
+                    CustomerModel.customer_name,
                 )
-                for row in rows
-            ]
-            
-        finally:
-            conn.close()
+                .join(CustomerModel, ReservationModel.wa_id == CustomerModel.wa_id)
+                .where(
+                    and_(
+                        ReservationModel.date == date_str,
+                        ReservationModel.time_slot == time_slot,
+                        ReservationModel.status == "active",
+                    )
+                )
+            )
+            rows = session.execute(stmt).all()
+
+        return [
+            Reservation(
+                id=r.id,
+                wa_id=r.wa_id,
+                date=r.date,
+                time_slot=r.time_slot,
+                type=ReservationType(r.type),
+                status=r.status,
+                cancelled_at=r.cancelled_at,
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+                customer_name=r.customer_name,
+            )
+            for r in rows
+        ]
     
     def find_cancelled_reservation(self, wa_id: str, date_str: str, time_slot: str) -> Optional[Reservation]:
         """
@@ -121,36 +130,47 @@ class ReservationRepository:
         Returns:
             Cancelled reservation if found, None otherwise
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
-                          r.cancelled_at, r.created_at, r.updated_at, c.customer_name
-                   FROM reservations r 
-                   JOIN customers c ON r.wa_id = c.wa_id 
-                   WHERE r.wa_id = ? AND r.date = ? AND r.time_slot = ? AND r.status = 'cancelled'""",
-                (wa_id, date_str, time_slot)
-            )
-            row = cursor.fetchone()
-            
-            if row:
-                return Reservation(
-                    id=row["id"],
-                    wa_id=row["wa_id"],
-                    date=row["date"],
-                    time_slot=row["time_slot"],
-                    type=ReservationType(row["type"]),
-                    status=row["status"],
-                    cancelled_at=row["cancelled_at"],
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
-                    customer_name=row["customer_name"]
+        with get_session() as session:
+            stmt = (
+                select(
+                    ReservationModel.id,
+                    ReservationModel.wa_id,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                    ReservationModel.cancelled_at,
+                    ReservationModel.created_at,
+                    ReservationModel.updated_at,
+                    CustomerModel.customer_name,
                 )
-            return None
-            
-        finally:
-            conn.close()
+                .join(CustomerModel, ReservationModel.wa_id == CustomerModel.wa_id)
+                .where(
+                    and_(
+                        ReservationModel.wa_id == wa_id,
+                        ReservationModel.date == date_str,
+                        ReservationModel.time_slot == time_slot,
+                        ReservationModel.status == "cancelled",
+                    )
+                )
+            )
+            row = session.execute(stmt).first()
+
+        if row:
+            r = row
+            return Reservation(
+                id=r.id,
+                wa_id=r.wa_id,
+                date=r.date,
+                time_slot=r.time_slot,
+                type=ReservationType(r.type),
+                status=r.status,
+                cancelled_at=r.cancelled_at,
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+                customer_name=r.customer_name,
+            )
+        return None
     
     def find_by_id(self, reservation_id: int) -> Optional[Reservation]:
         """
@@ -162,35 +182,39 @@ class ReservationRepository:
         Returns:
             Reservation instance if found, None otherwise.
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """SELECT r.id, r.wa_id, r.date, r.time_slot, r.type, r.status,
-                          r.cancelled_at, r.created_at, r.updated_at, c.customer_name
-                   FROM reservations r
-                   LEFT JOIN customers c ON r.wa_id = c.wa_id
-                   WHERE r.id = ?""",
-                (reservation_id,)
-            )
-            row = cursor.fetchone()
-            
-            if row:
-                return Reservation(
-                    id=row["id"],
-                    wa_id=row["wa_id"],
-                    date=row["date"],
-                    time_slot=row["time_slot"],
-                    type=ReservationType(row["type"]),
-                    status=row["status"],
-                    cancelled_at=row["cancelled_at"],
-                    created_at=row["created_at"],
-                    updated_at=row["updated_at"],
-                    customer_name=row["customer_name"] # May be None if customer deleted or inconsistent state
+        with get_session() as session:
+            stmt = (
+                select(
+                    ReservationModel.id,
+                    ReservationModel.wa_id,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                    ReservationModel.cancelled_at,
+                    ReservationModel.created_at,
+                    ReservationModel.updated_at,
+                    CustomerModel.customer_name,
                 )
-            return None
-        finally:
-            conn.close()
+                .join(CustomerModel, ReservationModel.wa_id == CustomerModel.wa_id, isouter=True)
+                .where(ReservationModel.id == reservation_id)
+            )
+            row = session.execute(stmt).first()
+        if row:
+            r = row
+            return Reservation(
+                id=r.id,
+                wa_id=r.wa_id,
+                date=r.date,
+                time_slot=r.time_slot,
+                type=ReservationType(r.type),
+                status=r.status,
+                cancelled_at=r.cancelled_at,
+                created_at=r.created_at,
+                updated_at=r.updated_at,
+                customer_name=r.customer_name,
+            )
+        return None
     
     def save(self, reservation: Reservation) -> int:
         """
@@ -202,27 +226,18 @@ class ReservationRepository:
         Returns:
             ID of the newly created reservation
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            cursor.execute(
-                """INSERT INTO reservations (wa_id, date, time_slot, type, status, created_at, updated_at) 
-                   VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)""",
-                (reservation.wa_id, reservation.date, reservation.time_slot, 
-                 reservation.type.value, reservation.status)
+        with get_session() as session:
+            db_obj = ReservationModel(
+                wa_id=reservation.wa_id,
+                date=reservation.date,
+                time_slot=reservation.time_slot,
+                type=int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
+                status=reservation.status,
             )
-            
-            reservation_id = cursor.lastrowid
-            conn.commit()
-            return reservation_id
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+            session.add(db_obj)
+            session.commit()
+            session.refresh(db_obj)
+            return int(db_obj.id)
     
     def update(self, reservation: Reservation) -> bool:
         """
@@ -234,32 +249,23 @@ class ReservationRepository:
         Returns:
             True if update was successful, False otherwise
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            cursor.execute(
-                """UPDATE reservations 
-                   SET date = ?, time_slot = ?, type = ?, status = ?, cancelled_at = ?, updated_at = CURRENT_TIMESTAMP
-                   WHERE id = ?""",
-                (reservation.date, reservation.time_slot, reservation.type.value, 
-                 reservation.status, reservation.cancelled_at, reservation.id)
+        with get_session() as session:
+            result = (
+                session.query(ReservationModel)
+                .filter(ReservationModel.id == reservation.id)
+                .update(
+                    {
+                        ReservationModel.date: reservation.date,
+                        ReservationModel.time_slot: reservation.time_slot,
+                        ReservationModel.type: int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
+                        ReservationModel.status: reservation.status,
+                        ReservationModel.cancelled_at: reservation.cancelled_at,
+                    },
+                    synchronize_session=False,
+                )
             )
-            
-            success = cursor.rowcount > 0
-            if success:
-                conn.commit()
-            else:
-                conn.rollback()
-                
-            return success
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+            session.commit()
+            return result > 0
     
     def cancel_by_id(self, reservation_id: int) -> bool:
         """
@@ -271,30 +277,20 @@ class ReservationRepository:
         Returns:
             True if cancellation was successful, False otherwise.
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            cursor.execute(
-                """UPDATE reservations
-                   SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                   WHERE id = ? AND status = 'active'""",
-                (reservation_id,)
+        with get_session() as session:
+            result = (
+                session.query(ReservationModel)
+                .filter(ReservationModel.id == reservation_id, ReservationModel.status == "active")
+                .update(
+                    {
+                        ReservationModel.status: "cancelled",
+                        ReservationModel.cancelled_at: datetime.utcnow(),
+                    },
+                    synchronize_session=False,
+                )
             )
-            
-            success = cursor.rowcount > 0
-            if success:
-                conn.commit()
-            else:
-                conn.rollback() # Rollback if no row was updated (e.g., already cancelled or not found)
-            return success
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+            session.commit()
+            return result > 0
     
     def reinstate_by_id(self, reservation_id: int) -> bool:
         """
@@ -306,30 +302,20 @@ class ReservationRepository:
         Returns:
             True if reinstatement was successful, False otherwise.
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            cursor.execute(
-                """UPDATE reservations
-                   SET status = 'active', cancelled_at = NULL, updated_at = CURRENT_TIMESTAMP
-                   WHERE id = ? AND status = 'cancelled'""",
-                (reservation_id,)
+        with get_session() as session:
+            result = (
+                session.query(ReservationModel)
+                .filter(ReservationModel.id == reservation_id, ReservationModel.status == "cancelled")
+                .update(
+                    {
+                        ReservationModel.status: "active",
+                        ReservationModel.cancelled_at: None,
+                    },
+                    synchronize_session=False,
+                )
             )
-            
-            success = cursor.rowcount > 0
-            if success:
-                conn.commit()
-            else:
-                conn.rollback() # Rollback if no row was updated (e.g., already active or not found)
-            return success
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+            session.commit()
+            return result > 0
     
     def cancel_by_wa_id(self, wa_id: str, date_str: Optional[str] = None) -> int:
         """
@@ -342,39 +328,34 @@ class ReservationRepository:
         Returns:
             Number of reservations cancelled
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
+        with get_session() as session:
             if date_str is None:
-                # Cancel all active reservations
-                cursor.execute(
-                    """UPDATE reservations 
-                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                       WHERE wa_id = ? AND status = 'active'""",
-                    (wa_id,)
+                result = (
+                    session.query(ReservationModel)
+                    .filter(ReservationModel.wa_id == wa_id, ReservationModel.status == "active")
+                    .update(
+                        {
+                            ReservationModel.status: "cancelled",
+                            ReservationModel.cancelled_at: datetime.utcnow(),
+                        },
+                        synchronize_session=False,
+                    )
                 )
             else:
-                # Cancel reservations for specific date
-                cursor.execute(
-                    """UPDATE reservations 
-                       SET status = 'cancelled', cancelled_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                       WHERE wa_id = ? AND date = ? AND status = 'active'""",
-                    (wa_id, date_str)
+                result = (
+                    session.query(ReservationModel)
+                    .filter(
+                        ReservationModel.wa_id == wa_id,
+                        ReservationModel.date == date_str,
+                        ReservationModel.status == "active",
+                    )
+                    .update(
+                        {
+                            ReservationModel.status: "cancelled",
+                            ReservationModel.cancelled_at: datetime.utcnow(),
+                        },
+                        synchronize_session=False,
+                    )
                 )
-            
-            cancelled_count = cursor.rowcount
-            
-            if cancelled_count > 0:
-                conn.commit()
-            else:
-                conn.rollback()
-                
-            return cancelled_count
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close() 
+            session.commit()
+            return int(result)

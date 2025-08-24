@@ -1,85 +1,105 @@
-import sqlite3
 import os
-import logging
+from typing import Generator
+
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    create_engine,
+    func,
+)
+from sqlalchemy.orm import declarative_base, relationship, sessionmaker, scoped_session, Session
 
 # Define the SQLite database file path
 # Use environment variable if set, otherwise default to current working directory
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.getcwd(), "threads_db.sqlite"))
 
-def get_connection():
-    """Return a new SQLite connection with rows as dictionaries."""
-    # Use WAL journaling and longer timeout to handle concurrent access
-    conn = sqlite3.connect(DB_PATH, timeout=30)
-    conn.row_factory = sqlite3.Row
-    try:
-        # Enable Write-Ahead Logging and set busy_timeout for concurrency
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA busy_timeout = 5000;")
-    except Exception:
-        pass
-    return conn
+# SQLAlchemy engine and session factory
+engine = create_engine(
+    f"sqlite:///{DB_PATH}", echo=False, future=True, connect_args={"check_same_thread": False}
+)
+SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True))
 
-def initialize_db():
-    """Initialize the SQLite database and create necessary tables and indexes if they don't exist."""
-    try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        # Table for customers (renamed from threads, now includes customer_name)
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS customers (
-            wa_id TEXT PRIMARY KEY,
-            customer_name TEXT
-        )
-        """)
-        
-        # Table for conversation messages
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS conversation (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            wa_id TEXT,
-            role TEXT,
-            message TEXT,
-            date TEXT,
-            time TEXT,
-            FOREIGN KEY (wa_id) REFERENCES customers(wa_id)
-        )
-        """)
-        
-        # Table for reservations with soft deletion support
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS reservations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            wa_id TEXT,
-            date TEXT,
-            time_slot TEXT,
-            type INTEGER CHECK(type IN (0, 1)),
-            status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'cancelled')),
-            cancelled_at TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (wa_id) REFERENCES customers(wa_id)
-        )
-        """)
-        
-        # Create Indexes if they don't exist
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_customers_wa_id ON customers(wa_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_wa_id ON reservations(wa_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_date_time ON reservations(date, time_slot);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_wa_id_status ON reservations(wa_id, status);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_reservations_date_time_status ON reservations(date, time_slot, status);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_wa_id ON conversation(wa_id);")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_conversation_wa_id_date_time ON conversation(wa_id, date, time);")
-        
-        conn.commit()
-    except Exception as e:
-        logging.error(f"Error creating database tables or indexes, {e}")
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
+# Declarative Base
+Base = declarative_base()
 
-# Initialize the database upon module import
-initialize_db()
+
+class CustomerModel(Base):
+    __tablename__ = "customers"
+
+    wa_id = Column(String, primary_key=True)
+    customer_name = Column(String, nullable=True)
+
+    __table_args__ = (
+        Index("idx_customers_wa_id", "wa_id"),
+    )
+
+
+class ConversationModel(Base):
+    __tablename__ = "conversation"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    wa_id = Column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
+    role = Column(String, nullable=True)
+    message = Column(Text, nullable=True)
+    date = Column(String, nullable=True)
+    time = Column(String, nullable=True)
+
+    customer = relationship("CustomerModel", backref="conversations")
+
+    __table_args__ = (
+        Index("idx_conversation_wa_id", "wa_id"),
+        Index("idx_conversation_wa_id_date_time", "wa_id", "date", "time"),
+    )
+
+
+class ReservationModel(Base):
+    __tablename__ = "reservations"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    wa_id = Column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
+    date = Column(String, nullable=False, index=True)
+    time_slot = Column(String, nullable=False, index=True)
+    type = Column(Integer, nullable=False)
+    status = Column(String, nullable=False, default="active")
+    cancelled_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, server_default=func.current_timestamp())
+    updated_at = Column(
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    customer = relationship("CustomerModel", backref="reservations")
+
+    __table_args__ = (
+        CheckConstraint("type IN (0, 1)", name="ck_reservations_type"),
+        CheckConstraint("status IN ('active','cancelled')", name="ck_reservations_status"),
+        Index("idx_reservations_wa_id", "wa_id"),
+        Index("idx_reservations_date_time", "date", "time_slot"),
+        Index("idx_reservations_status", "status"),
+        Index("idx_reservations_wa_id_status", "wa_id", "status"),
+        Index("idx_reservations_date_time_status", "date", "time_slot", "status"),
+    )
+
+
+def init_models() -> None:
+    """Create database tables if they do not exist."""
+    Base.metadata.create_all(bind=engine)
+
+
+def get_session() -> Session:
+    """Get a new SQLAlchemy session.
+
+    Returns a session that the caller must close. Prefer usage as:
+        with get_session() as session:
+            ...
+    """
+    return SessionLocal()
+
+
+# Initialize tables on import to preserve previous behavior
+init_models()

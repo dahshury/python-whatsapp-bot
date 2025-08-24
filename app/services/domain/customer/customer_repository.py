@@ -1,6 +1,6 @@
-import sqlite3
 from typing import Optional
-from app.db import get_connection
+from sqlalchemy import select, update
+from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
 from .customer_models import Customer
 
 
@@ -20,18 +20,11 @@ class CustomerRepository:
         Returns:
             Customer instance if found, None otherwise
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("SELECT wa_id, customer_name FROM customers WHERE wa_id = ?", (wa_id,))
-            row = cursor.fetchone()
-            
-            if row:
-                return Customer(wa_id=row["wa_id"], customer_name=row["customer_name"])
+        with get_session() as session:
+            db_customer = session.get(CustomerModel, wa_id)
+            if db_customer:
+                return Customer(wa_id=db_customer.wa_id, customer_name=db_customer.customer_name)
             return None
-            
-        finally:
-            conn.close()
     
     def save(self, customer: Customer) -> bool:
         """
@@ -43,21 +36,17 @@ class CustomerRepository:
         Returns:
             True if save was successful, False otherwise
         """
-        conn = get_connection()
         try:
-            cursor = conn.cursor()
-            cursor.execute(
-                """INSERT OR REPLACE INTO customers (wa_id, customer_name) 
-                   VALUES (?, ?)""",
-                (customer.wa_id, customer.customer_name)
-            )
-            conn.commit()
-            return True
+            with get_session() as session:
+                existing = session.get(CustomerModel, customer.wa_id)
+                if existing is None:
+                    session.add(CustomerModel(wa_id=customer.wa_id, customer_name=customer.customer_name))
+                else:
+                    existing.customer_name = customer.customer_name
+                session.commit()
+                return True
         except Exception:
-            conn.rollback()
             return False
-        finally:
-            conn.close()
     
     def update_wa_id(self, old_wa_id: str, new_wa_id: str) -> int:
         """
@@ -70,34 +59,17 @@ class CustomerRepository:
         Returns:
             Total number of rows affected across all tables
         """
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
-            cursor.execute("BEGIN IMMEDIATE")
-            
-            # Update customers table
-            cursor.execute("UPDATE customers SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-            cust_rows = cursor.rowcount
-            
-            # Update conversation table
-            cursor.execute("UPDATE conversation SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-            conv_rows = cursor.rowcount
-            
-            # Update reservations table
-            cursor.execute("UPDATE reservations SET wa_id = ? WHERE wa_id = ?", (new_wa_id, old_wa_id))
-            res_rows = cursor.rowcount
-            
-            total_rows = cust_rows + conv_rows + res_rows
-            
+        with get_session() as session:
+            # Update customers
+            cust_rows = session.query(CustomerModel).filter(CustomerModel.wa_id == old_wa_id).update({CustomerModel.wa_id: new_wa_id}, synchronize_session=False)
+            # Update conversation
+            conv_rows = session.query(ConversationModel).filter(ConversationModel.wa_id == old_wa_id).update({ConversationModel.wa_id: new_wa_id}, synchronize_session=False)
+            # Update reservations
+            res_rows = session.query(ReservationModel).filter(ReservationModel.wa_id == old_wa_id).update({ReservationModel.wa_id: new_wa_id}, synchronize_session=False)
+
+            total_rows = (cust_rows or 0) + (conv_rows or 0) + (res_rows or 0)
             if total_rows > 0:
-                conn.commit()
+                session.commit()
             else:
-                conn.rollback()
-                
+                session.rollback()
             return total_rows
-            
-        except sqlite3.Error:
-            conn.rollback()
-            raise
-        finally:
-            conn.close() 

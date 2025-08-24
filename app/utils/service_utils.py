@@ -11,8 +11,11 @@ from dateutil import parser  # Requires: pip install python-dateutil
 from hijri_converter import convert
 
 from app.config import config
-from app.db import get_connection
+from sqlalchemy import select, text, and_, func
+from sqlalchemy.orm import Session
+from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
 from app.i18n import get_message
+from app.utils.realtime import enqueue_broadcast
 
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
@@ -68,21 +71,41 @@ def get_tomorrow_reservations():
         list: A list of reservation records for tomorrow.
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
         # Calculate tomorrow's date
         today = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
         tomorrow = today + datetime.timedelta(days=1)
         tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
-        # Query the database for ACTIVE reservations for tomorrow
-        # Ensure cancelled reservations are excluded from reminder runs
-        cursor.execute(
-            "SELECT * FROM reservations WHERE date = ? AND status = 'active'",
-            (tomorrow_date_str,)
-        )
-        rows = cursor.fetchall()
-        conn.close()
-        return format_response(True, data=[dict(r) for r in rows])
+
+        with get_session() as session:
+            stmt = (
+                select(
+                    ReservationModel.id,
+                    ReservationModel.wa_id,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                )
+                .where(
+                    and_(
+                        ReservationModel.date == tomorrow_date_str,
+                        ReservationModel.status == "active",
+                    )
+                )
+            )
+            rows = session.execute(stmt).all()
+            data = [
+                {
+                    "id": r.id,
+                    "wa_id": r.wa_id,
+                    "date": r.date,
+                    "time_slot": r.time_slot,
+                    "type": r.type,
+                    "status": r.status,
+                }
+                for r in rows
+            ]
+        return format_response(True, data=data)
     except Exception as e:
         logging.error(f"get_tomorrow_reservations failed, error: {e}")
         return format_response(False, message=get_message("system_error_generic", error=str(e)))
@@ -151,66 +174,50 @@ def get_all_reservations(future=True, include_cancelled=False):
              Each reservation dict contains customer_name, date, time_slot, type, and cancelled flag.
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        
-        # Base query to get reservations (join with customers table for customer_name)
-        base_query = """
-            SELECT r.id, r.wa_id, c.customer_name, r.date, r.time_slot, r.type, r.status
-            FROM reservations r
-            JOIN customers c ON r.wa_id = c.wa_id
-        """
-        
-        # Build WHERE conditions
-        where_conditions = []
-        params = []
-        
-        # Add date filter if future is True
-        if future:
-            # Use timezone-aware date for today
-            today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
-            where_conditions.append("r.date >= ?")
-            params.append(today)
-        
-        # Add status filter based on include_cancelled
-        if not include_cancelled:
-            where_conditions.append("r.status = 'active'")
-        
-        # Combine WHERE conditions
-        where_clause = ""
-        if where_conditions:
-            where_clause = " WHERE " + " AND ".join(where_conditions)
-        
-        # Complete the query with where clause and ordering
-        main_query = base_query + where_clause + " ORDER BY r.wa_id ASC, r.date ASC, r.time_slot ASC"
-        
-        # Execute the query
-        cursor.execute(main_query, params)
-        rows = cursor.fetchall()
-        
-        conn.close()
+        with get_session() as session:
+            stmt = (
+                select(
+                    ReservationModel.id,
+                    ReservationModel.wa_id,
+                    CustomerModel.customer_name,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                )
+                .join(CustomerModel, ReservationModel.wa_id == CustomerModel.wa_id)
+            )
 
-        # Structuring the output as a grouped dictionary
+            filters = []
+            if future:
+                today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
+                filters.append(ReservationModel.date >= today)
+            if not include_cancelled:
+                filters.append(ReservationModel.status == "active")
+
+            if filters:
+                stmt = stmt.where(and_(*filters))
+
+            stmt = stmt.order_by(ReservationModel.wa_id.asc(), ReservationModel.date.asc(), ReservationModel.time_slot.asc())
+
+            rows = session.execute(stmt).all()
+
         reservations = {}
-        
-        # Process reservations
-        for row in rows:
-            user_id = row['wa_id']
+        for r in rows:
+            user_id = r.wa_id
             if user_id not in reservations:
                 reservations[user_id] = []
-            
-            reservation = {
-                "id": row['id'],
-                "customer_name": row['customer_name'],
-                "date": row['date'],
-                "time_slot": row['time_slot'],
-                "type": row['type'],
-                "cancelled": row['status'] == 'cancelled'
-            }
-            
-            reservations[user_id].append(reservation)
+            reservations[user_id].append(
+                {
+                    "id": r.id,
+                    "customer_name": r.customer_name,
+                    "date": r.date,
+                    "time_slot": r.time_slot,
+                    "type": r.type,
+                    "cancelled": r.status == "cancelled",
+                }
+            )
 
-        # Return grouped reservations in standardized format
         return format_response(True, data=reservations)
 
     except Exception as e:
@@ -226,110 +233,81 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
     If `limit` is provided and greater than 0, it limits the number of messages returned per user to the most recent n messages.
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-
-        # Determine the date filter based on the 'recent' parameter
-        now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
-        if recent == 'year':
-            # One full year back from now
-            start_date = now - timedelta(days=365)
-        elif recent == 'month':
-            # One full month back from now
-            start_date = now - timedelta(days=30)
-        elif recent == 'week':
-            # One full week back from now
-            start_date = now - timedelta(days=7)
-        elif recent == 'day':
-            # One full day back from now
-            start_date = now - timedelta(days=1)
-        else:
-            start_date = None
-
-        # First, get the list of wa_ids that have messages in the recent period
-        recent_wa_ids = []
-        if start_date and not wa_id:
-            query = """
-                SELECT DISTINCT wa_id
-                FROM conversation 
-                WHERE date || ' ' || time >= ?
-            """
-            cursor.execute(query, (start_date.strftime("%Y-%m-%d %H:%M"),))
-            recent_wa_ids = [row['wa_id'] for row in cursor.fetchall()]
-
-        # Now get all conversations for the filtered wa_ids or specific wa_id
-        if wa_id:
-            if limit > 0:
-                # Get the most recent n messages for the specific user
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE wa_id = ? 
-                    ORDER BY date DESC, time DESC
-                    LIMIT ?
-                """
-                cursor.execute(query, (wa_id, limit))
+        with get_session() as session:
+            # Determine the date filter based on the 'recent' parameter
+            now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
+            if recent == 'year':
+                start_date = now - timedelta(days=365)
+            elif recent == 'month':
+                start_date = now - timedelta(days=30)
+            elif recent == 'week':
+                start_date = now - timedelta(days=7)
+            elif recent == 'day':
+                start_date = now - timedelta(days=1)
             else:
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE wa_id = ? 
-                    ORDER BY date ASC, time ASC
-                """
-                cursor.execute(query, (wa_id,))
-        elif recent_wa_ids:
-            # Use the list of wa_ids that have recent messages
-            placeholders = ','.join(['?'] * len(recent_wa_ids))
-            if limit > 0:
-                # This is more complex - we need to get the most recent n messages for each user
-                # We'll handle this after fetching all messages
-                query = f"""
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE wa_id IN ({placeholders})
-                    ORDER BY wa_id ASC, date DESC, time DESC
-                """
-            else:
-                query = f"""
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    WHERE wa_id IN ({placeholders})
-                    ORDER BY wa_id ASC, date ASC, time ASC
-                """
-            cursor.execute(query, recent_wa_ids)
-        else:
-            if limit > 0:
-                # We'll handle the limit per user after fetching
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    ORDER BY wa_id ASC, date DESC, time DESC
-                """
-            else:
-                query = """
-                    SELECT wa_id, role, message, date, time 
-                    FROM conversation 
-                    ORDER BY wa_id ASC, date ASC, time ASC
-                """
-            cursor.execute(query)
+                start_date = None
 
-        rows = cursor.fetchall()
-        conn.close()
+            recent_wa_ids = []
+            if start_date and not wa_id:
+                recent_stmt = text(
+                    "SELECT DISTINCT wa_id FROM conversation WHERE (date || ' ' || time) >= :threshold"
+                )
+                threshold = start_date.strftime("%Y-%m-%d %H:%M")
+                recent_wa_ids = [row.wa_id for row in session.execute(recent_stmt, {"threshold": threshold}).all()]
 
-        # Structuring the output as a grouped dictionary
+            rows = []
+            if wa_id:
+                base_stmt = select(
+                    ConversationModel.wa_id,
+                    ConversationModel.role,
+                    ConversationModel.message,
+                    ConversationModel.date,
+                    ConversationModel.time,
+                ).where(ConversationModel.wa_id == wa_id)
+                if limit > 0:
+                    stmt = base_stmt.order_by(ConversationModel.date.desc(), ConversationModel.time.desc()).limit(limit)
+                else:
+                    stmt = base_stmt.order_by(ConversationModel.date.asc(), ConversationModel.time.asc())
+                rows = session.execute(stmt).all()
+            elif recent_wa_ids:
+                base_stmt = select(
+                    ConversationModel.wa_id,
+                    ConversationModel.role,
+                    ConversationModel.message,
+                    ConversationModel.date,
+                    ConversationModel.time,
+                ).where(ConversationModel.wa_id.in_(recent_wa_ids))
+                if limit > 0:
+                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.desc(), ConversationModel.time.desc())
+                else:
+                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.asc(), ConversationModel.time.asc())
+                rows = session.execute(stmt).all()
+            else:
+                base_stmt = select(
+                    ConversationModel.wa_id,
+                    ConversationModel.role,
+                    ConversationModel.message,
+                    ConversationModel.date,
+                    ConversationModel.time,
+                )
+                if limit > 0:
+                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.desc(), ConversationModel.time.desc())
+                else:
+                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.asc(), ConversationModel.time.asc())
+                rows = session.execute(stmt).all()
+
         conversations = {}
-        for row in rows:
-            user_id = row['wa_id']
+        for r in rows:
+            user_id = r.wa_id
             if user_id not in conversations:
                 conversations[user_id] = []
             conversations[user_id].append({
-                "role": row['role'],
-                "message": row['message'],
-                "date": row['date'],
-                "time": row['time']
+                "role": r.role,
+                "message": r.message,
+                "date": r.date,
+                "time": r.time,
             })
 
-        # Return grouped conversations in standardized format
         return format_response(True, data=conversations)
 
     except Exception as e:
@@ -354,23 +332,31 @@ def append_message(wa_id, role, message, date_str, time_str):
         None
     """
     try:
-        conn = get_connection()
-        cursor = conn.cursor()
-        # Ensure a customer record exists for this wa_id
-        cursor.execute(
-            "INSERT OR IGNORE INTO customers (wa_id, customer_name) VALUES (?, ?)",
-            (wa_id, None)
-        )
-        # Insert the conversation message
-        cursor.execute(
-            "INSERT INTO conversation (wa_id, role, message, date, time) VALUES (?, ?, ?, ?, ?)",
-            (wa_id, role, message, date_str, time_str)
-        )
-        conn.commit()
+        with get_session() as session:
+            existing = session.get(CustomerModel, wa_id)
+            if existing is None:
+                session.add(CustomerModel(wa_id=wa_id, customer_name=None))
+                session.flush()
+            session.add(
+                ConversationModel(
+                    wa_id=wa_id,
+                    role=role,
+                    message=message,
+                    date=date_str,
+                    time=time_str,
+                )
+            )
+            session.commit()
+        try:
+            enqueue_broadcast(
+                "conversation_new_message",
+                {"wa_id": wa_id, "role": role, "message": message, "date": date_str, "time": time_str},
+                affected_entities=[wa_id],
+            )
+        except Exception:
+            pass
     except Exception as e:
         logging.error(f"Error appending message to database: {e}")
-    finally:
-        conn.close()
 
 def get_lock(wa_id):
     """
@@ -445,36 +431,17 @@ def make_thread(wa_id, customer_name=None):
     Returns:
         None
     """
-    conn = get_connection()
-    cursor = conn.cursor()
-
-    # First, check if customer exists
-    cursor.execute("SELECT customer_name FROM customers WHERE wa_id = ?", (wa_id,))
-    existing = cursor.fetchone()
-    
-    if existing is None:
-        # Customer doesn't exist, create new record
-        cursor.execute(
-            "INSERT INTO customers (wa_id, customer_name) VALUES (?, ?)",
-            (wa_id, customer_name)
-        )
-    else:
-        # Customer exists, update fields that are currently NULL/empty
-        updates = []
-        params = []
-        
-        # Only update customer_name if provided and current value is NULL/empty
-        if customer_name is not None and (existing["customer_name"] is None or existing["customer_name"].strip() == ""):
-            updates.append("customer_name = ?")
-            params.append(customer_name)
-        
-        # Execute update if there are changes
-        if updates:
-            params.append(wa_id)  # Add wa_id for WHERE clause
-            cursor.execute(f"UPDATE customers SET {', '.join(updates)} WHERE wa_id = ?", params)
-    
-    conn.commit()
-    conn.close()
+    with get_session() as session:
+        existing = session.get(CustomerModel, wa_id)
+        if existing is None:
+            session.add(CustomerModel(wa_id=wa_id, customer_name=customer_name))
+        else:
+            if (
+                customer_name is not None
+                and (existing.customer_name is None or str(existing.customer_name).strip() == "")
+            ):
+                existing.customer_name = customer_name
+        session.commit()
         
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
@@ -1212,27 +1179,36 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
             return format_response(False, message=get_message("invalid_time", ar))
 
     # Perform deletion
-    conn = get_connection()
-    cursor = conn.cursor()
-    if parsed_date is not None and parsed_time is not None:
-        cursor.execute(
-            "DELETE FROM reservations WHERE wa_id = ? AND date = ? AND time_slot = ?",
-            (wa_id, parsed_date, parsed_time)
-        )
-    elif parsed_date is not None:
-        cursor.execute(
-            "DELETE FROM reservations WHERE wa_id = ? AND date = ?",
-            (wa_id, parsed_date)
-        )
-    else:
-        cursor.execute(
-            "DELETE FROM reservations WHERE wa_id = ?",
-            (wa_id,)
-        )
+    with get_session() as session:
+        removed_count = 0
+        if parsed_date is not None and parsed_time is not None:
+            removed_count = (
+                session.query(ReservationModel)
+                .filter(
+                    ReservationModel.wa_id == wa_id,
+                    ReservationModel.date == parsed_date,
+                    ReservationModel.time_slot == parsed_time,
+                )
+                .delete(synchronize_session=False)
+            )
+        elif parsed_date is not None:
+            removed_count = (
+                session.query(ReservationModel)
+                .filter(
+                    ReservationModel.wa_id == wa_id,
+                    ReservationModel.date == parsed_date,
+                )
+                .delete(synchronize_session=False)
+            )
+        else:
+            removed_count = (
+                session.query(ReservationModel)
+                .filter(ReservationModel.wa_id == wa_id)
+                .delete(synchronize_session=False)
+            )
+        session.commit()
 
-    removed = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
+    removed = removed_count > 0
 
     # Standardized response message
     if removed:
@@ -1251,11 +1227,9 @@ def delete_user(wa_id):
         return is_valid
 
     # Perform deletion
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM reservations WHERE wa_id = ?", (wa_id,))
-    cursor.execute("DELETE FROM conversation WHERE wa_id = ?", (wa_id,))
-    cursor.execute("DELETE FROM customers WHERE wa_id = ?", (wa_id,))
-    conn.commit()
-    conn.close()
+    with get_session() as session:
+        session.query(ReservationModel).filter(ReservationModel.wa_id == wa_id).delete(synchronize_session=False)
+        session.query(ConversationModel).filter(ConversationModel.wa_id == wa_id).delete(synchronize_session=False)
+        session.query(CustomerModel).filter(CustomerModel.wa_id == wa_id).delete(synchronize_session=False)
+        session.commit()
     return format_response(True, message=get_message("user_deleted"))

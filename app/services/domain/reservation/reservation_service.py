@@ -15,6 +15,7 @@ from app.i18n import get_message
 from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
+from app.utils.realtime import enqueue_broadcast
 
 
 class ReservationService(BaseService):
@@ -183,13 +184,29 @@ class ReservationService(BaseService):
                 if not success:
                     return self._handle_error("reserve_time_slot", Exception("Failed to reinstate reservation"), ar)
                 
-                return format_response(True, data={
+                result = format_response(True, data={
                     "reservation_id": cancelled_reservation.id,
                     "gregorian_date": parsed_date_str,
                     "hijri_date": hijri_date_str,
                     "time_slot": display_time_slot,
                     "type": reservation_type
                 }, message=get_message("reservation_successful", ar))
+                try:
+                    enqueue_broadcast(
+                        "reservation_reinstated",
+                        {
+                            "id": cancelled_reservation.id,
+                            "wa_id": wa_id,
+                            "date": parsed_date_str,
+                            "time_slot": parsed_time_str,
+                            "type": reservation_type,
+                            "customer_name": customer_name,
+                        },
+                        affected_entities=[wa_id],
+                    )
+                except Exception:
+                    pass
+                return result
             
             # Check capacity one more time before creating new reservation
             active_reservations = self.reservation_repository.find_active_by_slot(parsed_date_str, parsed_time_str)
@@ -209,13 +226,30 @@ class ReservationService(BaseService):
             if not reservation_id:
                 return self._handle_error("reserve_time_slot", Exception("Failed to save reservation"), ar)
             
-            return format_response(True, data={
+            result = format_response(True, data={
                 "reservation_id": reservation_id,
                 "gregorian_date": parsed_date_str,
                 "hijri_date": hijri_date_str,
                 "time_slot": display_time_slot,
                 "type": reservation_type
             }, message=get_message("reservation_successful", ar))
+            # Broadcast reservation created
+            try:
+                enqueue_broadcast(
+                    "reservation_created",
+                    {
+                        "id": reservation_id,
+                        "wa_id": wa_id,
+                        "date": parsed_date_str,
+                        "time_slot": parsed_time_str,
+                        "type": reservation_type,
+                        "customer_name": customer_name,
+                    },
+                    affected_entities=[wa_id],
+                )
+            except Exception:
+                pass
+            return result
             
         except Exception as e:
             return self._handle_error("reserve_time_slot", e, ar)
@@ -389,7 +423,7 @@ class ReservationService(BaseService):
             hijri_date_str_new = f"{hijri_date_obj_new.year}-{hijri_date_obj_new.month:02d}-{hijri_date_obj_new.day:02d}"
             display_time_slot_new = normalize_time_format(reservation_to_modify.time_slot, to_24h=False)
             
-            return format_response(True, data={
+            result = format_response(True, data={
                 "reservation_id": reservation_to_modify.id,
                 "gregorian_date": reservation_to_modify.date,
                 "hijri_date": hijri_date_str_new,
@@ -399,6 +433,24 @@ class ReservationService(BaseService):
                 "original_data": original_data, # Data before modification for undo
                 "status": reservation_to_modify.status # current status
             }, message=get_message("reservation_modified_successfully", ar))
+            # Broadcast reservation updated
+            try:
+                enqueue_broadcast(
+                    "reservation_updated",
+                    {
+                        "id": reservation_to_modify.id,
+                        "wa_id": reservation_to_modify.wa_id,
+                        "date": reservation_to_modify.date,
+                        "time_slot": reservation_to_modify.time_slot,
+                        "type": reservation_to_modify.type.value,
+                        "customer_name": reservation_to_modify.customer_name,
+                        "status": reservation_to_modify.status,
+                    },
+                    affected_entities=[reservation_to_modify.wa_id],
+                )
+            except Exception:
+                pass
+            return result
             
         except Exception as e:
             return self._handle_error("modify_reservation", e, ar)
@@ -453,6 +505,14 @@ class ReservationService(BaseService):
                 if success:
                     cancelled_ids.append(reservation_id_to_cancel)
                     cancelled_count = 1
+                    try:
+                        enqueue_broadcast(
+                            "reservation_cancelled",
+                            {"id": reservation_id_to_cancel, "wa_id": reservation.wa_id, "date": reservation.date, "time_slot": reservation.time_slot},
+                            affected_entities=[reservation.wa_id],
+                        )
+                    except Exception:
+                        pass
                 else:
                     # cancel_by_id returns False if already cancelled or not found, but we checked found.
                     # So this implies it was already cancelled, or an unexpected DB issue.
@@ -487,6 +547,10 @@ class ReservationService(BaseService):
                     if self.reservation_repository.cancel_by_id(res.id): # Use cancel_by_id for individual tracking
                         cancelled_ids.append(res.id)
                         cancelled_count += 1
+                        try:
+                            enqueue_broadcast("reservation_cancelled", {"id": res.id, "wa_id": res.wa_id, "date": res.date, "time_slot": res.time_slot}, affected_entities=[res.wa_id])
+                        except Exception:
+                            pass
                 
                 if cancelled_count == 0 and future_reservations_on_date: # Should not happen if logic is correct
                      return format_response(False, message=get_message("cancellation_failed_date", ar, date=parsed_target_date_str))
@@ -510,9 +574,15 @@ class ReservationService(BaseService):
                 cancelled_count = self.reservation_repository.cancel_by_wa_id(wa_id, date_str=None)
                 # If cancelled_count is 0 and we had active_future_reservations, it's an issue.
                 # If cancelled_ids were populated based on a prior fetch, use that.
+                if cancelled_count > 0:
+                    try:
+                        enqueue_broadcast("reservation_cancelled", {"wa_id": wa_id}, affected_entities=[wa_id])
+                    except Exception:
+                        pass
 
             if cancelled_count > 0:
-                return format_response(True, message=get_message("reservations_cancelled_successfully", ar, count=cancelled_count), data={"cancelled_ids": cancelled_ids})
+                result = format_response(True, message=get_message("reservations_cancelled_successfully", ar, count=cancelled_count), data={"cancelled_ids": cancelled_ids})
+                return result
             else:
                 # This path could be hit if no reservations were found to cancel, or if cancellation failed for some reason
                 # The messages like "no_future_reservations" or "no_reservation_on_date" should catch most cases.
