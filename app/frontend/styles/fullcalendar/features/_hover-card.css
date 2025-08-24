@@ -1,0 +1,49 @@
+/* Hover Card Feature Styles */
+
+/* Hover card dimensions and offsets */
+:root {
+	--fc-hover-card-width: 300px;
+	--fc-hover-card-height: 250px;
+	--fc-hover-card-offset: 10px;
+	--fc-hover-card-bridge-height: 24px;
+}
+
+/* Hover card container */
+.fc-hover-card-container {
+	position: absolute;
+	pointer-events: none;
+	z-index: var(--z-hover-card);
+	border-radius: var(--radius);
+	background: hsl(var(--popover));
+	border: 1px solid hsl(var(--border));
+	box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+	max-width: 300px;
+	padding: 0;
+}
+
+/* Hover card content wrapper */
+.fc-hover-card-content {
+	position: relative;
+	z-index: var(--z-base);
+	padding: 12px;
+	color: hsl(var(--popover-foreground));
+	font-size: 0.875rem;
+	line-height: 1.4;
+}
+
+/* Invisible bridge for smooth transition between event and card */
+.fc-hover-card-bridge {
+	position: absolute;
+	width: 100%;
+	height: var(--fc-hover-card-bridge-height);
+	pointer-events: none;
+}
+
+/* Extended hit area for hover card */
+.fc-hover-card-hit-area {
+	position: absolute;
+	inset: -16px; /* -4 * 4px = -16px from -inset-4 */
+	pointer-events: none;
+}
+
+/* Animation classes are defined in component-overrides.css */

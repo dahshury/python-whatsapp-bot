@@ -1,0 +1,235 @@
+/**
+ * UNIVERSAL FULLCALENDAR STYLES
+ * ==============================
+ *
+ * Responsibility: Cross-view styling that applies to ALL calendar views
+ * - Universal event colors and styling (reservation types, conversation events)
+ * - Universal date states (today, past, disabled)
+ * - Universal hover effects management
+ * - Universal event styling overrides
+ * - Universal past event styling
+ *
+ * Dependencies: CSS variables from _variables.css and theme files
+ * Used by: All calendar views as base styling layer
+ *
+ * Note: View-specific overrides should go in their respective view files
+ * Note: Feature-specific styles should go in features/ directory
+ */
+
+/* =================================
+   UNIVERSAL EVENT COLORS & STYLES
+   ================================= */
+
+/* Base event styling for all views */
+.fc-event {
+	border-radius: var(--radius) !important;
+	font-weight: 500 !important;
+}
+
+/* Typed event variables mapping (centralized) */
+.reservation-type-0 {
+	--fc-typed-bg: var(--fc-reservation-type-0-bg);
+	--fc-typed-grad-end: var(--fc-reservation-type-0-bg-grad-end);
+}
+.reservation-type-1 {
+	--fc-typed-bg: var(--fc-reservation-type-1-bg);
+	--fc-typed-grad-end: var(--fc-reservation-type-1-bg-grad-end);
+}
+
+/* Force override of inline backgroundColor styles for typed events */
+.fc-event[style*="background-color"]:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
+	background-color: var(--fc-typed-bg) !important;
+	background-image: none !important;
+	border-color: var(--fc-typed-bg) !important;
+	border-radius: var(--radius) !important;
+}
+
+.fc-event[style*="background-color"].conversation-event:not(.fc-list-event) {
+	background: var(--fc-conversation-bg) !important;
+	border-color: var(--fc-conversation-bg) !important;
+}
+
+/* Typed events - base style (centralized) */
+.fc-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
+	background-color: var(--fc-typed-bg) !important;
+	background-image: none !important;
+	border-color: var(--fc-typed-bg) !important;
+	color: var(--fc-event-text-color) !important;
+	border-radius: var(--radius) !important;
+}
+
+/* Typed events - hover style (centralized) */
+.fc-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event):hover,
+.fc-daygrid-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event):hover,
+.fc-timegrid-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event):hover {
+	background-image: linear-gradient(135deg, var(--fc-typed-bg) 0%, var(--fc-typed-grad-end) 100%) !important;
+	filter: saturate(1.05) brightness(1.02);
+	border-color: var(--fc-typed-bg) !important;
+	color: var(--fc-event-text-color) !important;
+	border-radius: var(--radius) !important;
+}
+
+/* Typed events - wrappers (centralized) */
+.fc-h-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.fc-v-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.fc-daygrid-block-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
+	background-color: var(--fc-typed-bg) !important;
+	background-image: none !important;
+	border-color: var(--fc-typed-bg) !important;
+	color: var(--fc-event-text-color) !important;
+	border-radius: var(--radius) !important;
+}
+
+/* (Replaced by centralized hover above) */
+
+/* Conversation events (Orange) */
+.fc-event.conversation-event:not(.fc-list-event) {
+	background: var(--fc-conversation-bg) !important;
+	border-color: var(--fc-conversation-bg) !important;
+	color: hsl(var(--background)) !important;
+}
+
+.dark .fc-event.conversation-event:not(.fc-list-event) {
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Conversation event title styling */
+.fc-event.conversation-event .fc-event-title {
+	font-weight: 600 !important;
+	line-height: 1.3 !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+	color: var(--fc-event-text-color) !important;
+	text-shadow: none !important;
+	outline: none !important;
+	border: none !important;
+}
+
+/* Cancelled events - universal styling */
+.fc-event[data-cancelled="true"] .fc-event-title {
+	text-decoration: line-through !important;
+}
+
+.fc-event[data-cancelled="true"]:not(.fc-list-event) {
+	filter: brightness(0.7) saturate(0.8) !important;
+	opacity: 0.9 !important;
+}
+
+/* UNIVERSAL EVENT HOVER EFFECTS - KEEP APPEARANCE, NO TRANSFORMS */
+.fc-event:hover,
+.fc-daygrid-event:hover,
+.fc-timegrid-event:hover,
+.fc-list-event:hover {
+	transform: none !important;
+	box-shadow: none !important;
+	cursor: pointer !important;
+}
+
+/* =================================
+   UNIVERSAL DATE STATES & COLORS
+   ================================= */
+
+/* TODAY - Universal styling */
+.fc-day-today,
+.fc-timegrid-col.fc-day-today {
+	background: hsl(var(--primary) / 0.03) !important;
+	position: relative !important;
+}
+
+.dark .fc-day-today {
+	background: hsl(var(--primary) / 0.08) !important;
+}
+
+/* PAST DATES - Universal styling */
+.fc-day-past:not(.fc-day-other) {
+	background-color: hsl(var(--muted) / 0.4) !important;
+	opacity: 0.7 !important;
+}
+
+.dark .fc-day-past:not(.fc-day-other) {
+	background-color: hsl(var(--muted) / 0.6) !important;
+	opacity: 0.5 !important;
+}
+
+/* DISABLED DATES - Universal styling */
+.fc-day-disabled:not(.fc-day-other) {
+	background: repeating-linear-gradient(
+		135deg,
+		transparent,
+		transparent 12px,
+		hsl(var(--muted) / 0.4) 12px,
+		hsl(var(--muted) / 0.4) 14px
+	) !important;
+	background-color: hsl(var(--muted) / 0.1) !important;
+}
+
+.dark .fc-day-disabled:not(.fc-day-other) {
+	background: repeating-linear-gradient(
+		135deg,
+		transparent,
+		transparent 12px,
+		hsl(var(--muted) / 0.4) 12px,
+		hsl(var(--muted) / 0.4) 14px
+	) !important;
+	background-color: hsl(var(--muted) / 0.2) !important;
+}
+
+/* =================================
+   UNIVERSAL DATE HOVER EFFECTS
+   ================================= */
+
+/* Date hover for eligible days only */
+.fc-day:not(.fc-day-past):not(.fc-day-disabled):hover {
+	background-color: hsl(var(--accent) / 0.15) !important;
+	box-shadow: inset 0 0 0 1px hsl(var(--accent) / 0.4) !important;
+	cursor: pointer !important;
+	transition: all 0.2s ease !important;
+}
+
+.dark .fc-day:not(.fc-day-past):not(.fc-day-disabled):hover {
+	background-color: hsl(var(--accent) / 0.25) !important;
+	box-shadow: inset 0 0 0 1px hsl(var(--accent) / 0.5) !important;
+}
+
+/* Selected date highlighting */
+.fc-day.selected-date-cell,
+.selected-date-cell {
+	background-color: hsl(var(--accent)) !important;
+	color: hsl(var(--accent-foreground)) !important;
+}
+
+/* Highlight/selection overlay */
+.fc-highlight {
+	background: hsl(var(--primary) / 0.2) !important;
+	opacity: 1 !important;
+	pointer-events: none !important;
+}
+
+/* =================================
+   FREE ROAM MODE OVERRIDES
+   ================================= */
+
+/* Remove custom coloring for past/disabled days in free roam */
+[data-free-roam="true"] .fc-day-disabled,
+[data-free-roam="true"] .fc-day-past {
+	background-color: transparent !important;
+	opacity: 1 !important;
+}
+
+/* Allow past events to be clickable in free roam mode */
+[data-free-roam="true"] .fc-day-past .fc-event {
+	pointer-events: auto !important;
+	cursor: pointer !important;
+}
+
+/* Past events - reduce opacity across all views */
+.fc-event.fc-event-past:not(.fc-list-event):not(:hover) {
+	opacity: var(--fc-event-past-opacity) !important;
+	color: inherit !important;
+}
+
+/* Dark mode past events - slightly lower opacity */
+.dark .fc-event.fc-event-past:not(.fc-list-event) {
+	opacity: calc(var(--fc-event-past-opacity) - 0.1) !important;
+}

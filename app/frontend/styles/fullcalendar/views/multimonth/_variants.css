@@ -1,0 +1,177 @@
+/* Multimonth View Layout Variants and Scrollbar Styles
+ * Responsibility: Layout variants (single-column, multi-column, compact) and custom scrollbars
+ * Dependencies: CSS variables from _variables.css, z-index values
+ * Usage: Applied to .fc-multimonth variants for different display modes
+ * Features: Single-column stacking, multi-column grid, compact sizing, enhanced scrollbars
+ * Note: Scrollbar styling provides better visual integration with theme system
+ */
+
+/* =================================================================
+   LAYOUT VARIANT OVERRIDES
+   ================================================================= */
+
+/* Remove the outer multimonth view container styling completely */
+.fc-multiMonthYear-view.fc-view.fc-multimonth {
+	background: transparent !important;
+	border: none !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+/* =================================================================
+   SINGLE COLUMN VARIANT
+   ================================================================= */
+
+/* Single column variant */
+.fc-multimonth-singlecol .fc-multimonth {
+	position: relative;
+	gap: 0;
+	padding: 0;
+	/* Remove outer container border/rectangle in single calendar mode */
+	border: none;
+	border-radius: 0;
+	background-color: transparent;
+}
+
+.fc-multimonth-singlecol .fc-multimonth-month {
+	border-radius: 0;
+	border-left: none;
+	border-right: none;
+	margin-bottom: -1px;
+}
+
+.fc-multimonth-singlecol .fc-multimonth-month:first-child {
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
+}
+
+.fc-multimonth-singlecol .fc-multimonth-month:last-child {
+	border-bottom-left-radius: var(--radius);
+	border-bottom-right-radius: var(--radius);
+	margin-bottom: 0;
+}
+
+.fc-multimonth-singlecol .fc-multimonth-header {
+	position: relative;
+	top: 0;
+	z-index: var(--z-fc-multimonth-variant-primary);
+	background: var(--fc-page-bg-color);
+}
+
+.fc-multimonth-singlecol .fc-multimonth-daygrid {
+	position: relative;
+	z-index: var(--z-fc-multimonth-variant-secondary);
+}
+
+.fc-multimonth-singlecol .fc-multimonth-header-table,
+.fc-multimonth-singlecol .fc-multimonth-daygrid-table {
+	border-left-style: hidden;
+	border-right-style: hidden;
+}
+
+.fc-multimonth-singlecol
+	.fc-multimonth-month:last-child
+	.fc-multimonth-daygrid-table {
+	border-bottom-style: hidden;
+}
+
+/* =================================================================
+   MULTI-COLUMN VARIANT
+   ================================================================= */
+
+/* Multi-column variant */
+.fc-multimonth-multicol {
+	line-height: 1;
+}
+
+.fc-multimonth-multicol .fc-multimonth-month {
+	padding: 0;
+}
+
+/* =================================================================
+   COMPACT VARIANT
+   ================================================================= */
+
+/* Compact variant */
+.fc-multimonth-compact {
+	line-height: 1;
+}
+
+.fc-multimonth-compact .fc-multimonth-month {
+	font-size: 0.9em;
+}
+
+.fc-multimonth-compact .fc-multimonth-header-table,
+.fc-multimonth-compact .fc-multimonth-daygrid-table {
+	font-size: 0.9em;
+}
+
+.fc-multimonth-compact .fc-multimonth-title {
+	padding: 0.5em 0;
+	font-size: 1em;
+}
+
+/* =================================================================
+   ENHANCED SCROLLBAR STYLING
+   ================================================================= */
+
+.fc-multimonth::-webkit-scrollbar {
+	width: 12px;
+	height: 12px;
+}
+
+.fc-multimonth::-webkit-scrollbar-track {
+	background: linear-gradient(
+		90deg,
+		hsl(var(--background)) 0%,
+		hsl(var(--muted) / 0.2) 50%,
+		hsl(var(--background)) 100%
+	);
+	border-radius: var(--radius);
+	box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.fc-multimonth::-webkit-scrollbar-thumb {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--primary) / 0.6) 0%,
+		hsl(var(--accent) / 0.6) 50%,
+		hsl(var(--secondary) / 0.6) 100%
+	);
+	border-radius: var(--radius);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+	box-shadow:
+		0 2px 8px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 rgba(255, 255, 255, 0.2);
+	transition: all 0.3s ease;
+}
+
+.fc-multimonth::-webkit-scrollbar-thumb:hover {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--primary) / 0.8) 0%,
+		hsl(var(--accent) / 0.8) 50%,
+		hsl(var(--secondary) / 0.8) 100%
+	);
+	box-shadow:
+		0 4px 12px rgba(0, 0, 0, 0.3),
+		inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.fc-multimonth::-webkit-scrollbar-thumb:active {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--primary)) 0%,
+		hsl(var(--accent)) 50%,
+		hsl(var(--secondary)) 100%
+	);
+}
+
+/* Firefox scrollbar support */
+.fc-multimonth {
+	scrollbar-width: thin;
+	scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--muted) / 0.2);
+}

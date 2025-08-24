@@ -1,0 +1,69 @@
+/* Grid Layout Feature - Shared grid layout styles for calendar views */
+
+/* CREATE GAPS BETWEEN CELLS */
+/* For multimonth tables */
+.fc-multimonth-header-table {
+	border-collapse: separate !important;
+	border-spacing: 0 !important;
+}
+
+.fc-multimonth-daygrid-table {
+	border-collapse: separate !important;
+	border-spacing: 4px !important;
+	margin: -4px !important;
+	width: calc(100% + 8px) !important;
+}
+
+/* For daygrid tables */
+.fc-daygrid-body-balanced .fc-scrollgrid-sync-table,
+.fc-daygrid-body-unbalanced .fc-scrollgrid-sync-table {
+	border-collapse: separate !important;
+	border-spacing: 4px !important;
+	margin: -4px !important;
+	width: calc(100% + 8px) !important;
+}
+
+/* Month container grid layout */
+.fc-multimonth {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	padding: 1rem;
+	align-items: flex-start; /* Prevent months from stretching vertically */
+}
+
+/* Individual month container flex settings */
+.fc-multimonth-month {
+	flex: 1 1 calc(33.333% - 0.67rem); /* 3 columns with gap */
+	min-width: 260px; /* Minimum width for readability */
+	display: flex;
+	flex-direction: column;
+	align-self: start; /* Prevent vertical stretching */
+}
+
+/* Month daygrid flex settings */
+.fc-multimonth-daygrid {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto; /* Allow growth based on content */
+	align-items: flex-start; /* Prevent horizontal stretching */
+	width: 100%;
+	padding: 0.25em 0 0 0;
+}
+
+/* Fixed table heights */
+.fc-multimonth-daygrid-table tr {
+	height: 4em !important;
+}
+
+.fc-multimonth-daygrid-table td {
+	height: 4em !important;
+	padding: 0 !important;
+}
+
+/* Ensure tables fit properly */
+.fc-multimonth-header-table,
+.fc-multimonth-daygrid-table {
+	width: 100%;
+	table-layout: fixed;
+}

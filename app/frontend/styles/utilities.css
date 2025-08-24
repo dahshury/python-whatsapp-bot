@@ -1,0 +1,125 @@
+/* Custom utility classes */
+.text-balance {
+	text-wrap: balance;
+}
+
+/* Theme-aware rounded utilities */
+.rounded-theme {
+	border-radius: var(--radius);
+}
+
+.rounded-theme-xl {
+	border-radius: calc(var(--radius) + 4px);
+}
+
+.rounded-theme-2xl {
+	border-radius: calc(var(--radius) + 8px);
+}
+
+.rounded-theme-none {
+	border-radius: 0;
+}
+
+.rounded-t-theme {
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
+}
+
+.rounded-b-theme {
+	border-bottom-left-radius: var(--radius);
+	border-bottom-right-radius: var(--radius);
+}
+
+/* Gradient Utilities - Theme-aware */
+.bg-gradient-primary {
+	background-image: var(--gradient-primary);
+	background-size: 200% 200%;
+	background-position: center;
+}
+
+.bg-gradient-accent {
+	background-image: var(--gradient-accent);
+	background-size: 200% 200%;
+	background-position: center;
+}
+
+.bg-gradient-muted {
+	background-image: var(--gradient-muted);
+}
+
+.bg-gradient-sidebar {
+	background-image: var(--gradient-sidebar);
+}
+
+.text-gradient-primary {
+	background-image: var(--gradient-primary);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+.shadow-theme-soft {
+	box-shadow: var(--shadow);
+}
+
+.shadow-theme-elevated {
+	box-shadow: var(--shadow-lg);
+}
+
+.combobox-trigger-stable {
+	transition: none !important;
+	animation: none !important;
+	transform: none !important;
+	opacity: 1 !important;
+}
+
+.combobox-trigger-stable * {
+	transition: none !important;
+	animation: none !important;
+}
+
+/* Prevent any animations on state changes */
+.combobox-trigger-stable:hover,
+.combobox-trigger-stable:focus,
+.combobox-trigger-stable:focus-visible,
+.combobox-trigger-stable:active,
+.combobox-trigger-stable[data-state="open"],
+.combobox-trigger-stable[data-state="closed"] {
+	transition: none !important;
+	animation: none !important;
+	transform: none !important;
+}
+
+.combobox-trigger-stable[data-state="closed"] {
+	transition: none !important;
+	animation: none !important;
+	transform: none !important;
+}
+
+/* Prevent automatic focus styling that causes auto-selection appearance */
+.glide-grid-container *:focus:not([data-allow-focus="true"]) {
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+/* Specifically target dialog close buttons and other UI elements */
+button:focus:not([data-allow-focus="true"]),
+[role="button"]:focus:not([data-allow-focus="true"]) {
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+/* Global prevention of auto-focus styling */
+*:focus:not([data-allow-focus="true"]):not(input):not(textarea):not(select) {
+	outline: none !important;
+	box-shadow: none !important;
+}
+
+/* Disable focus styles on dialogs and modal elements */
+[role="dialog"] *:focus:not([data-allow-focus="true"]),
+[role="alertdialog"] *:focus:not([data-allow-focus="true"]),
+.dialog *:focus:not([data-allow-focus="true"]),
+.modal *:focus:not([data-allow-focus="true"]) {
+	outline: none !important;
+	box-shadow: none !important;
+}

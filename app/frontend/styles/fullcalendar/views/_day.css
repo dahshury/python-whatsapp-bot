@@ -1,0 +1,225 @@
+/**
+ * DAY VIEW STYLES - TIME GRID DAY VIEW SPECIFIC
+ * ==============================================
+ *
+ * Responsibility: Styling specific to day view (timeGridDay)
+ * - Day view specific hover effects and interactions
+ * - Day view header and layout adjustments
+ * - Day view event positioning and styling
+ * - Dark mode adaptations for day view
+ *
+ * Dependencies: CSS variables from theme files, base FullCalendar styles
+ * Used by: TimeGrid day view only
+ *
+ * Note: Vacation day styling is handled in features/_vacation-events.css
+ * Note: General timegrid styles are in _timegrid.css
+ */
+
+/* =================================================================
+   DAY VIEW HOVER EFFECTS
+   ================================================================= */
+
+/* Day view specific hover for eligible days */
+.fc-timeGridDay-view .fc-daygrid-day:hover,
+.fc-timeGridDay-view .fc-timegrid-col:hover,
+.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Comprehensive hover effect disabling for day view */
+.fc-timeGridDay-view .fc-daygrid-day:hover,
+.fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-past):hover,
+.fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-disabled):hover,
+.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Disable fc-daygrid-day-bg hover effects in day view */
+.fc-timeGridDay-view .fc-daygrid-day-bg:hover,
+.fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-bg,
+.fc-timeGridDay-view .fc-daygrid-day-bg {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Disable day frame hover effects in day view */
+.fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-past):not(
+		.fc-day-disabled
+	):not(.fc-day-today):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-frame,
+.fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day-frame,
+.fc-timeGridDay-view
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
+		.fc-day-disabled
+	):hover
+	.fc-daygrid-day-frame,
+.fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-frame {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Disable day number hover effects in day view */
+.fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-disabled):not(
+		.fc-day-past
+	):not(.fc-day-today):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-number,
+.fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(.fc-day-past):hover
+	.fc-daygrid-day-number,
+.fc-timeGridDay-view
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
+		.fc-day-past
+	):hover
+	.fc-daygrid-day-number,
+.fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-number {
+	color: inherit !important;
+	font-weight: inherit !important;
+	transform: none !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Disable column header hover effects in day view */
+.fc-timeGridDay-view .fc-col-header-cell:hover,
+.fc-timeGridDay-view .fc-col-header-cell-cushion:hover,
+.fc-timeGridDay-view th.fc-col-header-cell:hover {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Disable timegrid slot hover effects */
+.fc-timeGridDay-view .fc-timegrid-slot:hover,
+.fc-timeGridDay-view .fc-timegrid-slot-minor:hover,
+.fc-timeGridDay-view .fc-timegrid-slot-label:hover {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* ========================================
+ * DARK MODE OVERRIDES
+ * Ensure dark mode hover effects are also disabled
+ * ======================================== */
+
+/* Dark mode fc-daygrid-day hover overrides */
+.dark .fc-timeGridDay-view .fc-daygrid-day:hover,
+.dark .fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-past):hover,
+.dark .fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-disabled):hover,
+.dark
+	.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Dark mode fc-daygrid-day-frame hover overrides */
+.dark .fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-frame,
+.dark
+	.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day-frame {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Dark mode fc-daygrid-day-bg hover overrides */
+.dark .fc-timeGridDay-view .fc-daygrid-day-bg:hover,
+.dark .fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-bg,
+.dark .fc-timeGridDay-view .fc-daygrid-day-bg {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* Dark mode column header hover overrides */
+.dark .fc-timeGridDay-view .fc-col-header-cell:hover {
+	transform: none !important;
+	box-shadow: none !important;
+	background-color: inherit !important;
+	background: inherit !important;
+	border-color: inherit !important;
+	color: inherit !important;
+	cursor: default !important;
+	transition: none !important;
+}
+
+/* ========================================
+ * FC-DAYGRID-DAY INTERACTION OVERRIDES
+ * Disable cursor changes and transitions for fc-daygrid-day elements
+ * ======================================== */
+
+/* Remove interactive cursors from fc-daygrid-day and fc-daygrid-day-bg in day view */
+.fc-timeGridDay-view .fc-daygrid-day,
+.fc-timeGridDay-view .fc-daygrid-day-bg {
+	cursor: default !important;
+}
+
+/* Ensure no transitions occur on fc-daygrid-day and fc-daygrid-day-bg hover */
+.fc-timeGridDay-view .fc-daygrid-day:hover,
+.fc-timeGridDay-view .fc-daygrid-day-bg:hover {
+	transition: none !important;
+}
+
+/* Remove any residual hover effects from fc-daygrid-day and fc-daygrid-day-bg */
+.fc-timeGridDay-view .fc-daygrid-day:hover,
+.fc-timeGridDay-view .fc-daygrid-day-bg:hover {
+	animation: none !important;
+	transform: none !important;
+	box-shadow: inherit !important;
+	background: inherit !important;
+	border: inherit !important;
+	color: inherit !important;
+	opacity: inherit !important;
+}

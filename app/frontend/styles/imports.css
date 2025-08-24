@@ -1,0 +1,144 @@
+/**
+ * =========================================================================
+ * MAIN CSS ARCHITECTURE - CENTRALIZED IMPORT MANAGEMENT
+ * =========================================================================
+ *
+ * This file serves as the single entry point for ALL application styles.
+ * It follows a strict loading order to ensure proper CSS cascade and specificity.
+ *
+ * ARCHITECTURE PRINCIPLES:
+ * ========================
+ * 1. Separation of Concerns: Each file has a single, well-defined responsibility
+ * 2. Feature Modularity: Related styles are grouped in feature-specific files
+ * 3. Cross-View Consistency: Universal styles apply across all calendar views
+ * 4. Performance Optimization: GPU acceleration and efficient selectors
+ * 5. Maintainability: Clear documentation and logical organization
+ *
+ * LOADING ORDER RATIONALE:
+ * ========================
+ * 1. External Libraries: Must load first to avoid conflicts
+ * 2. Z-Index Variables: Critical for proper layering across all components
+ * 3. Core Styles: Foundation styles that other files depend on
+ * 4. FullCalendar: Complete calendar system with proper dependency chain
+ * 5. Components: UI components that may override calendar styles
+ *
+ * FULLCALENDAR ARCHITECTURE:
+ * ==========================
+ * Core Layer: _variables.css → _universal.css → _base.css
+ * View Layer: _daygrid.css, _timegrid.css, _multimonth.css, etc.
+ * Feature Layer: features/_vacation-events.css, features/_conversation-events.css
+ * Theme Layer: _themes.css, _bootstrap.css, _rtl.css
+ *
+ * FEATURE MODULES:
+ * ================
+ * - _vacation-events.css: Complete vacation system (ALL vacation-related styles)
+ * - _conversation-events.css: Conversation event styling and behavior
+ * - _cancelled-events.css: Cancelled event visual treatment
+ * - _free-roam.css: Free roam mode overrides and behavior
+ * - _day-hover-effects.css: Interactive day cell hover animations
+ *
+ * Dependencies: CSS custom properties from theme files
+ * Performance: GPU acceleration enabled for smooth animations
+ * Accessibility: High contrast mode and screen reader support
+ */
+
+/* External Library Imports - MUST come first */
+@import "@eonasdan/tempus-dominus/dist/css/tempus-dominus.min.css";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* =================================
+   Z-INDEX VARIABLES (CRITICAL FIRST)
+   ================================= */
+@import "../components/glide_custom_cells/styles/_z-index.css";
+
+/* =================================
+   CORE STYLES
+   ================================= */
+@import "base.css";
+@import "fonts.css";
+@import "utilities.css";
+
+/* =================================
+   FULLCALENDAR STYLES
+   ================================= */
+
+/* Core FullCalendar styles - loaded first */
+@import "fullcalendar/_variables.css";
+@import "fullcalendar/_universal.css";
+@import "fullcalendar/_base.css";
+@import "fullcalendar/_icons.css";
+@import "fullcalendar/_buttons.css";
+@import "fullcalendar/_toolbar.css";
+@import "fullcalendar/_view-harness.css";
+@import "fullcalendar/_scroller.css";
+@import "fullcalendar/_scrollgrid.css";
+@import "fullcalendar/features/_popover-unified.css";
+@import "fullcalendar/_sticky.css";
+@import "fullcalendar/_h-event.css";
+@import "fullcalendar/_v-event.css";
+@import "fullcalendar/_day-states.css";
+
+/* View-specific styles */
+@import "fullcalendar/views/_daygrid.css";
+@import "fullcalendar/views/_timegrid.css";
+@import "fullcalendar/views/_list.css";
+@import "fullcalendar/views/_multimonth.css";
+
+/* Detailed multimonth styles - load after basic multimonth */
+@import "fullcalendar/views/multimonth/_base.css";
+@import "fullcalendar/views/multimonth/_headers.css";
+@import "fullcalendar/views/multimonth/_month-container.css";
+@import "fullcalendar/views/multimonth/_day-cells.css";
+@import "fullcalendar/views/multimonth/_events.css";
+@import "fullcalendar/views/multimonth/_variants.css";
+@import "fullcalendar/views/multimonth/_dark-mode.css";
+
+/* Core feature-specific styles - load before specialized features */
+@import "fullcalendar/features/_grid-layout.css";
+@import "fullcalendar/features/_day-cell-base.css";
+@import "fullcalendar/features/_day-states.css";
+@import "fullcalendar/features/_day-hover-effects.css";
+@import "fullcalendar/features/_weekday-headers.css";
+
+/* Specialized feature styles */
+@import "fullcalendar/features/_conversation-events.css";
+@import "fullcalendar/features/_cancelled-events.css";
+@import "fullcalendar/features/_vacation-events.css";
+@import "fullcalendar/features/_free-roam.css";
+@import "fullcalendar/features/_hover-card.css";
+@import "fullcalendar/features/_context-menu.css";
+
+/* Week view header overrides - must load after features */
+@import "fullcalendar/views/_week-header-override.css";
+
+/* Day view overrides - disable hover effects */
+@import "fullcalendar/views/_day.css";
+
+/* Themes and overrides */
+@import "fullcalendar/_themes.css";
+@import "fullcalendar/_bootstrap.css";
+@import "fullcalendar/_rtl.css";
+@import "fullcalendar/_media.css";
+
+/* Gradient overrides - must load after FullCalendar base files */
+@import "fullcalendar/_gradients.css";
+
+/* Utilities - loaded last */
+@import "fullcalendar/utilities/_performance.css";
+@import "fullcalendar/utilities/_scrollbars.css";
+
+/* =================================
+   COMPONENT STYLES
+   ================================= */
+@import "component-overrides.css";
+@import "markdown.css";
+@import "sidebar.css";
+@import "portal.css";
+@import "phone-input.css";
+@import "sonner.css";
+@import "table-skeleton.css";
+@import "tempus-dominus.css";
+@import "timekeeper.css";
+@import "themed-scrollbar.css";
+@import "emoji-picker.css";
+@import "glide-grid.css";

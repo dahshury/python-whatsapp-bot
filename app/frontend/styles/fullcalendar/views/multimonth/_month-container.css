@@ -1,0 +1,176 @@
+/* Individual Month Container Styles */
+
+/* Individual month container - CLEAN EDITION */
+.fc-multimonth-month {
+	contain: layout style paint;
+	border: 1px solid hsl(var(--border));
+	border-radius: var(--fc-multimonth-radius, var(--radius));
+	overflow: hidden;
+	background: hsl(var(--card));
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+	transition:
+		transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+		box-shadow 0.3s ease;
+	flex: 1 1 calc(33.333% - 0.67rem); /* 3 columns with gap - adjusted for 1rem gap */
+	min-width: 260px; /* Minimum width for readability */
+	position: relative;
+	margin: 0;
+	display: flex;
+	flex-direction: column;
+	align-self: start; /* Prevent vertical stretching */
+	/* GPU acceleration */
+	transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	will-change: transform, box-shadow;
+	perspective: 1000px;
+	/* Lazy-render off-screen months for better performance */
+	content-visibility: auto;
+	contain-intrinsic-size: 360px 480px;
+}
+
+/* Removed border accent animation */
+
+/* Ensure roundness is applied to the actual month containers */
+.fc .fc-multimonth-month,
+.fc-multimonth-view .fc-multimonth-month {
+	border-radius: var(--fc-multimonth-radius, var(--radius)) !important;
+	overflow: hidden !important;
+}
+
+/* SUBTLE HOVER EFFECT */
+.fc-multimonth-month:hover {
+	transform: translate3d(0, -2px, 0);
+	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+	border-color: hsl(var(--border) / 0.8);
+}
+
+/* Month daygrid - ensure consistent padding */
+.fc-multimonth-daygrid {
+	background: transparent;
+	position: relative;
+	z-index: var(--z-fc-multimonth-container);
+	overflow: hidden;
+	padding: 0;
+	padding-top: 0.125em; /* Minimal gap after month title */
+	padding-bottom: 0 !important;
+	margin-bottom: 0 !important;
+	display: flex;
+	flex-direction: column;
+	/* GPU acceleration for content */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* Ensure the daygrid body fills the container */
+.fc-multimonth-daygrid-body {
+	width: 100% !important;
+	margin: 0 !important;
+	padding: 0 !important;
+	display: flex;
+	flex-direction: column;
+	/* GPU acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* Ensure consistent table sizing */
+.fc-multimonth-month table {
+	width: 100% !important;
+	margin: 0 !important;
+	/* GPU acceleration for tables */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* Ensure the inner daygrid respects the rounded corners */
+.fc-multimonth-month .fc-multimonth-daygrid {
+	border-radius: 0 0 var(--fc-multimonth-radius, var(--radius))
+		var(--fc-multimonth-radius, var(--radius)) !important;
+	overflow: hidden !important;
+	padding-bottom: 0 !important;
+	margin-bottom: 0 !important;
+}
+
+/* Removed the ::before pseudo-element that was creating gradient stripes */
+
+/* Month title styling - background defined in _headers.css */
+.fc-multimonth-title {
+	padding: 0.1em;
+	text-align: center;
+	font-weight: 700;
+	font-size: 1.235em !important;
+	line-height: 0.3;
+	/* background removed - defined in _headers.css with gradient */
+	border-bottom: 1px solid hsl(var(--border) / 0.2);
+	border-radius: var(--radius) var(--radius) 0 0;
+	border: none;
+	position: relative;
+	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	margin-bottom: 0.125em; /* Reduced from 0.25em */
+	box-shadow: none;
+	flex-shrink: 0; /* Don't allow title to shrink */
+	overflow: hidden; /* Prevent gradient overflow */
+	/* GPU acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	will-change: transform, background-color, border-color;
+}
+
+/* Month title hover - background handled in _headers.css */
+.fc-multimonth-title:hover {
+	/* background removed - handled in _headers.css */
+	border-bottom-color: hsl(var(--border) / 0.3);
+	box-shadow: none;
+	transform: translate3d(0, -1px, 0);
+}
+
+/* Month daygrid */
+.fc-multimonth .fc-multimonth-daygrid {
+	padding: 0;
+	padding-top: 0.125em; /* Minimal gap after month title */
+	padding-bottom: 0 !important;
+	margin-bottom: 0 !important;
+	display: flex;
+	flex-direction: column;
+	min-height: 0; /* Allow shrinking */
+}
+
+/* Add transition to month containers for smooth animations */
+.fc-multimonth-month {
+	transition:
+		opacity 0.3s ease-in-out,
+		transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Style for scrolling animation */
+.fc-multimonth-month.fc-scrolling-enter {
+	opacity: 0;
+	animation: fadeInUp 0.4s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 20px, 0);
+	}
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+/* Dark mode month container */
+.dark .fc-multimonth-month {
+	border-color: hsl(var(--border) / 0.7) !important;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.dark .fc-multimonth-month:hover {
+	border-color: hsl(var(--border)) !important;
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}

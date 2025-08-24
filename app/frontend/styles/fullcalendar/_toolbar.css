@@ -1,0 +1,62 @@
+/* FullCalendar Toolbar Styles */
+
+.fc-toolbar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	background-color: hsl(var(--card)) !important;
+	border-bottom: 1px solid hsl(var(--border)) !important;
+	padding: 0.5rem 1rem;
+}
+
+.fc-toolbar.fc-header-toolbar {
+	margin-bottom: 1.5em;
+	border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.fc-toolbar.fc-footer-toolbar {
+	margin-top: 1.5em;
+	border-radius: 0 0 var(--radius) var(--radius);
+	border-bottom: none;
+	border-top: 1px solid hsl(var(--border));
+}
+
+.fc-toolbar-title {
+	font-size: 1.75em;
+	margin: 0;
+	font-weight: 600;
+	color: hsl(var(--foreground));
+}
+
+/* Toolbar chunks */
+.fc-toolbar-chunk {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* Direction-specific spacing */
+.fc-direction-ltr .fc-toolbar > * > :not(:first-child) {
+	margin-left: 0.75em;
+}
+
+.fc-direction-rtl .fc-toolbar > * > :not(:first-child) {
+	margin-right: 0.75em;
+}
+
+/* RTL support for toolbar */
+.fc-direction-rtl .fc-toolbar-ltr {
+	flex-direction: row-reverse;
+}
+
+/* Ensure proper alignment in toolbar */
+.fc-toolbar .fc-button-group,
+.fc-toolbar > * > * {
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+/* Today button specific styling */
+.fc-toolbar .fc-today-button:disabled {
+	opacity: 0.65;
+}

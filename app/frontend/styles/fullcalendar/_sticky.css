@@ -1,0 +1,15 @@
+/* Sticky Positioning Support */
+
+.fc-sticky {
+	position: sticky;
+}
+
+/* Theme-aware sticky backgrounds */
+.fc-sticky {
+	background-color: var(--fc-page-bg-color);
+}
+
+/* Z-index for sticky elements */
+.fc-sticky {
+	z-index: var(--z-fc-sticky);
+}

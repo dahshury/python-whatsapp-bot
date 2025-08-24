@@ -1,0 +1,17 @@
+/* Event Styles for Multi-Month View - Specific overrides */
+
+/* Enhanced event styling in multiMonth view */
+.fc-multimonth .fc-event {
+	@apply text-xs leading-tight;
+	box-shadow: none !important;
+}
+
+.fc-multimonth .fc-event-title {
+	@apply truncate;
+}
+
+/* Dot events get a subtle glow */
+.fc-multimonth .fc-daygrid-event-dot {
+	width: 5px !important;
+	height: 5px !important;
+}

@@ -1,0 +1,65 @@
+/**
+ * DAY STATES - CORE DATE STATE MANAGEMENT
+ * =======================================
+ *
+ * Responsibility: Core date state styling that applies across all calendar views
+ * - Today highlighting and current date indicators
+ * - Past date styling and opacity management
+ * - Future date appearance
+ * - Disabled date styling and interaction prevention
+ *
+ * Dependencies: CSS variables from theme files
+ * Used by: All calendar views for basic date state indication
+ *
+ * Note: Vacation-specific styling is handled in features/_vacation-events.css
+ * Note: View-specific date styling should go in respective view files
+ */
+
+/* =================================================================
+   TODAY STYLING
+   ================================================================= */
+
+/* Today highlighting across all views */
+.fc-day-today {
+	background-color: hsl(var(--accent) / 0.1) !important;
+	position: relative;
+}
+
+.fc-day-today::after {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border: 2px solid hsl(var(--primary) / 0.3);
+	pointer-events: none;
+	border-radius: inherit;
+}
+
+/* =================================================================
+   PAST DATE STYLING
+   ================================================================= */
+
+/* Past dates - reduced opacity and muted appearance */
+.fc-day-past {
+	opacity: 0.6 !important;
+	background-color: hsl(var(--muted) / 0.2) !important;
+}
+
+/* =================================================================
+   DISABLED DATE STYLING
+   ================================================================= */
+
+/* Disabled dates - stripe pattern and interaction prevention */
+.fc-day-disabled {
+	background: repeating-linear-gradient(
+		45deg,
+		transparent,
+		transparent 10px,
+		hsl(var(--muted) / 0.1) 10px,
+		hsl(var(--muted) / 0.1) 20px
+	) !important;
+	pointer-events: none !important;
+	cursor: not-allowed !important;
+}

@@ -1,0 +1,189 @@
+/**
+ * DAY HOVER EFFECTS - INTERACTIVE DAY CELL STYLING
+ * ================================================
+ *
+ * Responsibility: Day cell hover and interaction effects across calendar views
+ * - Day cell hover animations and visual feedback
+ * - Day number hover effects
+ * - Active/pressed day cell styling
+ * - Cross-view hover consistency (daygrid, multimonth)
+ *
+ * Dependencies: CSS variables from theme files, z-index variables
+ * Used by: Daygrid and multimonth views for interactive day cells
+ *
+ * Note: Vacation day hover prevention is handled in features/_vacation-events.css
+ * Note: View-specific hover behavior should override here if needed
+ */
+
+/* =================================================================
+   DAY CELL HOVER EFFECTS
+   ================================================================= */
+
+/* Enhanced day cell hover - smooth transform and shadow effects */
+.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-frame,
+.fc-daygrid
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-frame {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--muted) / 0.15) 0%,
+		hsl(var(--muted) / 0.25) 100%
+	);
+	border-color: hsl(var(--muted) / 0.4);
+	border-radius: calc(var(--radius) * 0.75) !important;
+	transform: translateY(-3px) scale(1.02);
+	box-shadow:
+		0 8px 16px rgba(0, 0, 0, 0.15),
+		0 4px 8px rgba(0, 0, 0, 0.1),
+		0 2px 4px rgba(0, 0, 0, 0.05),
+		inset 0 1px 0 hsl(var(--background) / 0.8);
+	z-index: var(--z-fc-free-roam);
+}
+
+/* Special hover for selected/highlighted dates */
+.fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(
+		.fc-day-disabled
+	):hover
+	.fc-daygrid-day-frame,
+.fc-multimonth
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
+		.fc-day-disabled
+	):hover
+	.fc-daygrid-day-frame,
+.fc-daygrid
+	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day-frame,
+.fc-daygrid
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
+		.fc-day-disabled
+	):hover
+	.fc-daygrid-day-frame {
+	background: hsl(var(--primary) / 0.3) !important;
+	border-color: hsl(var(--primary) / 0.7) !important;
+	border-radius: calc(var(--radius) * 0.75) !important;
+	box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+}
+
+/* Special hover for today */
+.fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-frame,
+.fc-daygrid
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-frame {
+	background: hsl(var(--accent) / 0.35);
+	transform: translateY(-2px);
+	border-color: hsl(var(--accent) / 0.7) !important;
+	box-shadow: 0 4px 12px hsl(var(--accent) / 0.3);
+	border-radius: calc(var(--radius) * 0.75) !important;
+}
+
+/* =================================================================
+   DAY NUMBER HOVER EFFECTS
+   ================================================================= */
+
+/* Hover effect for day numbers */
+.fc-multimonth .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-number,
+.fc-daygrid
+	.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-number {
+	background: hsl(var(--muted) / 0.3);
+	color: hsl(var(--muted-foreground));
+	transform: scale(1.05);
+}
+
+/* Special hover for selected/highlighted day numbers */
+.fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(
+		.fc-day-past
+	):hover
+	.fc-daygrid-day-number,
+.fc-multimonth
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
+		.fc-day-past
+	):hover
+	.fc-daygrid-day-number,
+.fc-daygrid
+	.fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(.fc-day-past):hover
+	.fc-daygrid-day-number,
+.fc-daygrid
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
+		.fc-day-past
+	):hover
+	.fc-daygrid-day-number {
+	background: hsl(var(--primary) / 0.4);
+	color: hsl(var(--primary-foreground));
+}
+
+/* Special hover for today's number */
+.fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-number,
+.fc-daygrid
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-number {
+	background: hsl(var(--accent) / 0.45);
+	color: hsl(var(--accent-foreground));
+}
+
+/* =================================================================
+   ACTIVE/CLICK STATE EFFECTS
+   ================================================================= */
+
+/* Active/pressed day cell styling */
+.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
+	.fc-daygrid-day-frame,
+.fc-daygrid
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
+	.fc-daygrid-day-frame {
+	transform: translateY(0);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	border-radius: calc(var(--radius) * 0.75) !important;
+}
+
+/* Only animate on hover, not on scroll - DISABLED FOR PERFORMANCE */
+/* .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover,
+.fc-daygrid .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
+  transition: transform 0.2s ease;
+} */
+
+/* =================================================================
+   DARK MODE HOVER ADJUSTMENTS
+   ================================================================= */
+
+/* Enhanced dark mode hover effects */
+.dark .fc-multimonth
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day-frame,
+.dark
+	.fc-daygrid
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day-frame {
+	transform: translateY(-3px) scale(1.02);
+	box-shadow:
+		0 12px 24px rgba(0, 0, 0, 0.4),
+		0 8px 16px rgba(0, 0, 0, 0.3),
+		0 4px 8px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 hsl(var(--background) / 0.2);
+}
+
+/* Day cell hover effects */
+.fc-day-hover-effect {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: var(--fc-highlight-color);
+	opacity: 0;
+	transition: opacity 0.2s ease;
+	pointer-events: none;
+	z-index: var(--z-hover-effects);
+}

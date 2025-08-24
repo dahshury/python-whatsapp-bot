@@ -1,0 +1,427 @@
+/**
+ * Global Z-Index CSS Variables - Centralized Layering System
+ *
+ * This file defines the centralized z-index scale with proper hierarchy:
+ * 1. Calendar (base layer): 0-100
+ * 2. Dialog backdrop: 1000
+ * 3. Dialog content: 2000
+ * 4. Data cell editors & widgets: 3000
+ * 5. Fullscreen mode: 8000
+ * 6. Discard changes dialog: 9000
+ */
+
+:root {
+	/* ========================================
+   * LAYER 1: CALENDAR & BASE UI (0-100)
+   * ======================================== */
+	--z-background: 0;
+	--z-calendar-day-bg-non-business: 1;
+	--z-calendar-day-bg-event: 2;
+	--z-calendar-vacation-bg: 3;
+	--z-calendar-day-bg-highlight: 4;
+	--z-calendar-day-number: 5;
+	--z-calendar-week-number: 6;
+	--z-calendar-event: 7;
+	--z-calendar-event-mirror: 8;
+	--z-base: 1;
+	--z-sticky-header: 10;
+	--z-calendar-events: 20;
+	--z-hover-effects: 30;
+	--z-sidebar: 49;
+	--z-dropdown: 50;
+	--z-hover-card: 2600;
+	--z-tooltip: 70;
+	--z-popover: 80;
+	--z-context-menu: 90;
+	--z-sidebar-chat-overlay: 150;
+	--z-sidebar-chat-tooltip: 160;
+
+	/* ========================================
+   * FULLCALENDAR INTERNAL LAYERS
+   * ======================================== */
+	--z-fc-scrollgrid: 3;
+	--z-fc-sticky: 3;
+	--z-fc-button: 1;
+	--z-fc-multimonth-header: 1;
+	--z-fc-multimonth-container: 1;
+	--z-fc-multimonth-variant-primary: 2;
+	--z-fc-multimonth-variant-secondary: 1;
+	--z-fc-week: 1;
+	--z-fc-day-cell-base: 4;
+	--z-fc-day-cell-content: 1;
+	--z-fc-free-roam: 10;
+	--z-calendar-dragging: 85;
+	--z-timegrid-more-link: 95;
+	--z-fc-more-popover: 2500;
+
+	/* ========================================
+   * GLIDE DATA GRID LAYERS (Base grid only)
+   * ======================================== */
+	--z-grid-base: 1;
+	--z-grid-cell: 1;
+	--z-grid-header: 10;
+	--z-grid-header-active: 11;
+	--z-grid-selection: 20;
+	--z-grid-hover: 25;
+
+	/* ========================================
+   * LAYER 2: DIALOG BACKDROP (1000)
+   * ======================================== */
+	--z-dialog-backdrop: 1000;
+
+	/* ========================================
+   * LAYER 3: DIALOG CONTENT (2000)
+   * ======================================== */
+	--z-dialog-content: 2000;
+
+	/* ========================================
+   * LAYER 4: DATA CELL EDITORS & WIDGETS (3000)
+   * ======================================== */
+	--z-dialog-overlays: 3000;
+	--z-grid-editor: 3100;
+	--z-grid-dropdown: 3200;
+	--z-grid-menu: 3300;
+	--z-grid-tooltip: 3400;
+	--z-grid-overlay: 3500;
+	--z-grid-overlay-editor: 3600;
+	--z-date-picker: 3700;
+	--z-date-picker-widget: 3800;
+	--z-grid-modal: 3900;
+
+	/* ========================================
+   * LAYER 5: FULLSCREEN MODE (8000)
+   * ======================================== */
+	--z-fullscreen-backdrop: 8000;
+	--z-fullscreen-content: 8100;
+	--z-grid-fullscreen: 8200;
+
+	/* ========================================
+   * LAYER 6: DISCARD CHANGES DIALOG (9000)
+   * ======================================== */
+	--z-confirmation-backdrop: 9000;
+	--z-confirmation-content: 9100;
+
+	/* ========================================
+   * LEGACY/COMPATIBILITY
+   * ======================================== */
+	--z-modal-backdrop: 4000;
+	--z-modal-content: 4100;
+	--z-grid-editor-max: 3600;
+
+	/* ========================================
+   * EMERGENCY/DEBUG LAYERS (50000+)
+   * ======================================== */
+	--z-debug-overlay: 50000;
+}
+
+/* ========================================
+ * CUSTOM DIALOG ANIMATIONS
+ * ======================================== */
+
+@keyframes dialog-appear {
+	from {
+		opacity: 0;
+		transform: translate(-50%, -50%) scale(0.95);
+	}
+	to {
+		opacity: 1;
+		transform: translate(-50%, -50%) scale(1);
+	}
+}
+
+.dialog-content {
+	animation: dialog-appear 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ========================================
+ * GLIDE DATA GRID SPECIFIC OVERRIDES
+ * ======================================== */
+
+/* Grid container and base elements */
+.gdg-wmyidgi {
+	z-index: var(--z-grid-base);
+}
+
+/* Grid overlay editors - critical priority */
+.gdg-d19meir1,
+.glide-data-grid-overlay-editor,
+.click-outside-ignore {
+	z-index: var(--z-grid-overlay-editor) !important;
+}
+
+/* Grid editor maximum priority for critical operations */
+.grid-editor-critical,
+.gdg-d19meir1.gdg-style {
+	z-index: var(--z-grid-editor-max) !important;
+}
+
+/* Grid cell overlays */
+.gdg-cell-overlay {
+	z-index: var(--z-grid-overlay) !important;
+}
+
+/* Grid menus and dropdowns */
+.gdg-menu,
+.gdg-dropdown {
+	z-index: var(--z-grid-menu) !important;
+}
+
+/* Grid tooltips */
+.gdg-tooltip {
+	z-index: var(--z-grid-tooltip) !important;
+}
+
+/* Grid fullscreen mode */
+.gdg-fullscreen-overlay {
+	z-index: var(--z-grid-fullscreen) !important;
+}
+
+/* ========================================
+ * FULLCALENDAR SPECIFIC OVERRIDES
+ * ======================================== */
+
+/* Calendar internal layering */
+.fc-daygrid-day-bg .fc-non-business {
+	z-index: var(--z-calendar-day-bg-non-business) !important;
+}
+
+.fc-daygrid-day-bg .fc-bg-event {
+	z-index: var(--z-calendar-day-bg-event) !important;
+}
+
+/* Vacation background events - higher than other bg events, lower than regular events */
+.fc-bg-event.vacation-background-event,
+.vacation-background-event {
+	z-index: var(--z-calendar-vacation-bg) !important;
+}
+
+.fc-daygrid-day-bg .fc-highlight {
+	z-index: var(--z-calendar-day-bg-highlight) !important;
+}
+
+.fc-daygrid-day-number {
+	z-index: var(--z-calendar-day-number) !important;
+}
+
+.fc-daygrid-week-number {
+	z-index: var(--z-calendar-week-number) !important;
+}
+
+.fc-daygrid-event,
+.fc-timegrid-event {
+	z-index: var(--z-calendar-event) !important;
+}
+
+.fc-daygrid-event.fc-event-mirror {
+	z-index: var(--z-calendar-event-mirror) !important;
+}
+
+/* Calendar context menus and popovers */
+.fc-popover,
+[data-fc-popover],
+.fc-more-popover {
+	z-index: var(--z-fc-more-popover) !important;
+}
+
+/* Calendar hover cards - force high z-index */
+.fc-hover-card-container {
+	z-index: var(--z-hover-card) !important;
+}
+
+/* Force hover card portal to appear above all calendar elements */
+.calendar-hover-card-portal,
+[class*="hover-card"] {
+	z-index: var(--z-hover-card) !important;
+}
+
+/* Calendar dragging events */
+.fc-event-dragging {
+	z-index: var(--z-calendar-dragging) !important;
+}
+
+/* Timegrid more links - DISABLED */
+/*
+.fc-timegrid-more-link {
+  z-index: var(--z-timegrid-more-link) !important;
+}
+*/
+
+/* FullCalendar more links and popovers - multimonth specific - DISABLED */
+/*
+.fc-multimonth .fc-more-popover,
+.fc-multimonth .fc-more-link,
+.fc-more-link {
+  z-index: var(--z-fc-more-popover) !important;
+}
+*/
+
+/* ========================================
+ * GLOBAL UI COMPONENT OVERRIDES
+ * ======================================== */
+
+/* Date picker components */
+.tempus-dominus-widget,
+.dropdown-menu[data-popper-placement] {
+	z-index: var(--z-date-picker) !important;
+}
+
+/* Bootstrap date picker widget */
+.bootstrap-datetimepicker-widget {
+	z-index: var(--z-date-picker-widget) !important;
+}
+
+/* Tooltips */
+[role="tooltip"],
+.tooltip {
+	z-index: var(--z-tooltip) !important;
+}
+
+/* Dropdowns */
+[role="listbox"],
+[role="menu"],
+.dropdown-menu:not([data-popper-placement]) {
+	z-index: var(--z-dropdown) !important;
+}
+
+/* Popovers */
+[data-radix-popper-content-wrapper],
+.popover-content {
+	z-index: var(--z-popover) !important;
+}
+
+/* Sidebar */
+.sidebar-nav {
+	z-index: var(--z-sidebar) !important;
+}
+
+/* Side chat components */
+.sidebar-chat-overlay,
+.chat-loading-overlay {
+	z-index: var(--z-sidebar-chat-overlay) !important;
+}
+
+.sidebar-chat-tooltip,
+.chat-message-tooltip {
+	z-index: var(--z-sidebar-chat-tooltip) !important;
+}
+
+/* Modal components */
+.modal-backdrop,
+.portal-backdrop {
+	z-index: var(--z-modal-backdrop) !important;
+}
+
+.modal-content,
+.portal-content {
+	z-index: var(--z-modal-content) !important;
+}
+
+/* Confirmation dialogs */
+.unsaved-changes-backdrop,
+.confirmation-backdrop {
+	z-index: var(--z-confirmation-backdrop) !important;
+	position: fixed !important;
+}
+
+.unsaved-changes-content,
+.confirmation-content {
+	z-index: var(--z-confirmation-content) !important;
+	position: fixed !important;
+}
+
+/* Fullscreen overlays */
+.fullscreen-backdrop {
+	z-index: var(--z-fullscreen-backdrop) !important;
+}
+
+.fullscreen-content {
+	z-index: var(--z-fullscreen-content) !important;
+}
+
+/* Debug overlays */
+.debug-overlay {
+	z-index: var(--z-debug-overlay) !important;
+}
+
+/* ========================================
+ * DIALOG COMPONENT OVERRIDES
+ * ======================================== */
+
+/* Custom dialog backdrop */
+.dialog-backdrop {
+	z-index: var(--z-dialog-backdrop) !important;
+}
+
+/* Custom dialog content class */
+.dialog-content {
+	z-index: var(--z-dialog-content) !important;
+}
+
+/* Override Radix UI dialog z-50 default */
+[data-radix-dialog-content].z-50 {
+	z-index: var(--z-dialog-content) !important;
+}
+
+/* Override Radix UI overlay z-50 default */
+[data-radix-dialog-overlay].z-50 {
+	z-index: var(--z-dialog-backdrop) !important;
+}
+
+/* All overlay elements that should appear above dialog */
+.gdg-d19meir1,
+.glide-data-grid-overlay-editor,
+.click-outside-ignore,
+select,
+.column-menu,
+.enhanced-column-menu,
+.glide-column-menu,
+[data-radix-popper-content-wrapper],
+[data-radix-select-content],
+[data-radix-dropdown-menu-content],
+[data-radix-popover-content],
+[data-radix-tooltip-content],
+[data-radix-hover-card-content],
+[data-radix-context-menu-content],
+.tempus-dominus-widget,
+.td-picker,
+.td-overlay,
+.td-widget,
+.tempus-dominus,
+.react-tel-input .country-list,
+.phone-input-dropdown,
+.dropdown-menu,
+.select-dropdown,
+.autocomplete-dropdown,
+.combobox-dropdown {
+	z-index: var(--z-dialog-overlays) !important;
+}
+
+/* Force positioned elements to use dialog overlay z-index - REMOVED as too broad */
+
+/* ========================================
+ * NUCLEAR OVERRIDES - Force proper layering
+ * ======================================== */
+
+/* Ensure dialog content is visible with proper z-index */
+[data-radix-dialog-content] {
+	z-index: var(--z-dialog-content) !important;
+}
+
+/* Also apply to any element with dialog-content class */
+.dialog-content[data-radix-dialog-content] {
+	z-index: var(--z-dialog-content) !important;
+}
+
+/* Specific elements that must appear ABOVE dialog */
+.gdg-d19meir1,
+.glide-data-grid-overlay-editor,
+.tempus-dominus-widget,
+select,
+[data-radix-select-content],
+[data-radix-dropdown-menu-content],
+.column-menu,
+.enhanced-column-menu,
+.gdg-dropdown,
+.dropdown-menu {
+	z-index: var(--z-dialog-overlays) !important;
+}

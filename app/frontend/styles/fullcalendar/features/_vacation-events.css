@@ -1,0 +1,307 @@
+/**
+ * VACATION SYSTEM - COMPLETE FEATURE MODULE
+ * ==========================================
+ *
+ * Responsibility: All vacation-related styling across ALL calendar views
+ * - Vacation background events (semi-transparent overlays)
+ * - Vacation day styling (disabled/blocked days)
+ * - Vacation day hover states and interactions
+ * - Dark mode vacation styling
+ * - Cross-view compatibility (daygrid, timegrid, multimonth, list)
+ *
+ * Dependencies: CSS variables from theme files (--vacation-bg, --vacation-bg-opacity)
+ * Used by: All calendar views when vacation periods are active
+ */
+
+/* =================================================================
+   VACATION BACKGROUND EVENTS
+   ================================================================= */
+
+/**
+ * Semi-transparent background overlays for vacation periods
+ * Applied as background events that span the vacation duration
+ */
+.fc-bg-event.vacation-background-event,
+.vacation-background-event {
+	background-color: hsl(var(--vacation-bg) / var(--vacation-bg-opacity)) !important;
+	border: none !important;
+	pointer-events: none !important;
+	/* Z-index is handled by centralized z-index system */
+}
+
+/* Cross-view compatibility for vacation background events */
+.fc-daygrid .fc-bg-event.vacation-background-event,
+.fc-timegrid .fc-bg-event.vacation-background-event,
+.fc-multimonth .fc-bg-event.vacation-background-event,
+.fc-list .fc-bg-event.vacation-background-event {
+	background-color: hsl(var(--vacation-bg) / var(--vacation-bg-opacity)) !important;
+}
+
+/* =================================================================
+   VACATION BACKGROUND EVENT HEIGHT CONSTRAINTS
+   ================================================================= */
+
+/**
+ * Critical height fixes for month and multimonth views
+ * Prevents vacation events from extending beyond day cell boundaries
+ */
+.fc-daygrid .fc-bg-event.vacation-background-event,
+.fc-multimonth .fc-bg-event.vacation-background-event {
+	/* Critical height constraints */
+	height: 100% !important;
+	max-height: none !important; /* Remove height limit that might affect color rendering */
+	min-height: 0 !important;
+	overflow: hidden !important;
+
+	/* Critical positioning */
+	position: absolute !important;
+	top: 0 !important;
+	left: 0 !important;
+	right: 0 !important;
+	bottom: 0 !important;
+
+	/* Remove any margins/padding that could cause overflow */
+	margin: 0 !important;
+	padding: 0 !important;
+
+	/* Ensure contained within parent */
+	box-sizing: border-box !important;
+}
+
+/* Specific constraints for vacation events within day cells */
+.fc-daygrid-day .fc-bg-event.vacation-background-event,
+.fc-multimonth .fc-daygrid-day .fc-bg-event.vacation-background-event {
+	/* Force absolute positioning within the day cell */
+	position: absolute !important;
+	inset: 0 !important; /* Modern shorthand for top:0, right:0, bottom:0, left:0 */
+
+	/* Critical: prevent any dimension overflow */
+	width: 100% !important;
+	height: 100% !important;
+	max-width: 100% !important;
+	max-height: none !important; /* Remove height limit that might affect color rendering */
+	min-width: 0 !important;
+	min-height: 0 !important;
+
+	/* Prevent content overflow */
+	overflow: hidden !important;
+
+	/* Remove any transforms or scaling that might cause issues */
+	transform: none !important;
+
+	/* Ensure proper stacking */
+	z-index: var(--z-calendar-day-bg-event) !important;
+}
+
+/* Multimonth specific height enforcement */
+.fc-multimonth .fc-daygrid-day {
+	position: relative !important; /* Ensure positioning context for absolute children */
+}
+
+.fc-multimonth .fc-daygrid-day .fc-bg-event.vacation-background-event {
+	/* Ensure consistent rendering in multimonth view */
+	max-height: none !important;
+	height: 100% !important;
+
+	/* Remove clip-path that might affect color rendering */
+	clip-path: none !important;
+
+	/* Ensure consistent color rendering */
+	background-color: hsl(var(--vacation-bg) / var(--vacation-bg-opacity)) !important;
+	opacity: 1 !important;
+}
+
+/* =================================================================
+   VACATION DAYS - DISABLED DAY STYLING
+   ================================================================= */
+
+/**
+ * Vacation days are disabled days that users cannot interact with
+ * They have distinct styling to indicate they're unavailable
+ */
+
+/* Universal vacation day styling - base appearance */
+.fc-day.vacation-day {
+	background-color: hsl(var(--destructive) / 0.15) !important;
+	cursor: not-allowed !important;
+	position: relative !important;
+}
+
+.dark .fc-day.vacation-day {
+	background-color: hsl(var(--destructive) / 0.2) !important;
+}
+
+/* Vacation day hover prevention */
+.fc-day.vacation-day:hover {
+	background-color: hsl(var(--destructive) / 0.15) !important;
+	box-shadow: none !important;
+	cursor: not-allowed !important;
+	transition: none !important;
+}
+
+.dark .fc-day.vacation-day:hover {
+	background-color: hsl(var(--destructive) / 0.2) !important;
+}
+
+.dark .fc-daygrid-day.vacation-day::before,
+.dark .fc-timegrid-col.vacation-day::before {
+	background-color: hsl(var(--destructive) / 0.25) !important;
+}
+
+/* Prevent selection highlight on vacation days */
+.fc-daygrid-day.vacation-day .fc-highlight,
+.vacation-day .fc-highlight {
+	display: none !important;
+	background: none !important;
+	opacity: 0 !important;
+}
+
+/* Ensure vacation day events are visible above the overlay */
+.fc-daygrid-day.vacation-day .fc-daygrid-day-events {
+	z-index: var(--z-calendar-events) !important;
+}
+
+/* =================================================================
+   VACATION DAY FRAME STYLING (View-Specific)
+   ================================================================= */
+
+/**
+ * Vacation day frame styling for different views
+ * Provides consistent appearance across daygrid and multimonth views
+ */
+
+/* Make vacation days non-interactive */
+.fc-multimonth .fc-daygrid-day.vacation-day,
+.fc-daygrid .fc-daygrid-day.vacation-day {
+	pointer-events: none !important;
+}
+
+/* Vacation day events should still be visible but not interactive */
+.fc-multimonth .fc-daygrid-day.vacation-day .fc-event,
+.fc-daygrid .fc-daygrid-day.vacation-day .fc-event {
+	pointer-events: none;
+	opacity: 0.7;
+	position: relative !important;
+	z-index: var(--z-fc-multimonth-variant-primary) !important;
+}
+
+/* =================================================================
+   DAY VIEW VACATION STYLING
+   ================================================================= */
+
+/**
+ * Specific vacation styling for day view
+ * Handles the unique layout and interaction patterns of day view
+ */
+
+/* Disable vacation day hover effects in day view */
+.fc-timeGridDay-view .fc-day.vacation-day:hover {
+	background-color: hsl(var(--destructive) / 0.15) !important;
+	box-shadow: none !important;
+	cursor: not-allowed !important;
+	transition: none !important;
+	transform: none !important;
+	filter: none !important;
+	opacity: inherit !important;
+}
+
+/* Dark mode vacation day hover overrides for day view */
+.dark .fc-timeGridDay-view .fc-day.vacation-day:hover {
+	background-color: hsl(var(--destructive) / 0.2) !important;
+	box-shadow: none !important;
+	cursor: not-allowed !important;
+	transition: none !important;
+	transform: none !important;
+	filter: none !important;
+	opacity: inherit !important;
+}
+
+/* =================================================================
+   DARK MODE VACATION STYLING
+   ================================================================= */
+
+/**
+ * Enhanced dark mode styling for vacation elements
+ * Provides better visibility and contrast in dark themes
+ */
+
+/* Dark mode vacation styling for better visibility */
+.dark .fc-multimonth
+	.fc-daygrid-day.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame,
+.dark
+	.fc-daygrid
+	.fc-daygrid-day.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	opacity: 0.9;
+}
+
+/* =================================================================
+   HIGH CONTRAST MODE SUPPORT
+   ================================================================= */
+
+/**
+ * Accessibility: High-contrast mode support for vacation elements
+ * Increases opacity and adds borders for better visibility
+ */
+@media (prefers-contrast: high) {
+	.fc-bg-event.vacation-background-event,
+	.vacation-background-event {
+		background-color: hsl(var(--vacation-bg) / 0.25) !important;
+		border: 1px solid hsl(var(--vacation-bg) / 0.5) !important;
+	}
+}
+
+/* =================================================================
+   FREE ROAM MODE VACATION EXCLUSIONS
+   ================================================================= */
+
+/**
+ * Free roam mode specific behavior for vacation days
+ * Maintains vacation restrictions even in free roam mode
+ */
+
+/* Remove custom coloring for past/disabled days in free roam, but keep vacation styling */
+[data-free-roam="true"] .fc-day-disabled:not(.vacation-day),
+[data-free-roam="true"] .fc-day-past:not(.vacation-day) {
+	background-color: transparent !important;
+	opacity: 1 !important;
+}
+
+/* =================================================================
+   HIGH-SPECIFICITY VACATION TODAY OVERRIDES
+   ================================================================= */
+
+/**
+ * Override today's styling when it falls on a vacation day
+ * Uses same specificity patterns as today styling to ensure proper override
+ */
+
+/* Frame styling override - matches today frame specificity */
+.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+.fc-daygrid-day-frame {
+	background: hsl(var(--destructive) / 0.2) !important;
+	background-image: none !important;
+}
+
+/* Multimonth frame styling override - highest specificity */
+.fc-multimonth .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	background: hsl(var(--destructive) / 0.2) !important;
+	background-image: none !important;
+}
+
+/* Dark mode overrides */
+.dark .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	background: hsl(var(--destructive) / 0.3) !important;
+	background-image: none !important;
+}
+
+.dark
+	.fc-multimonth
+	.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	background: hsl(var(--destructive) / 0.3) !important;
+	background-image: none !important;
+}

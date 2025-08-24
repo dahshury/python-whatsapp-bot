@@ -1,0 +1,18 @@
+/* Custom Scrollbar Styles */
+
+/* Custom scrollbar for list view */
+.fc-list-view .fc-scroller::-webkit-scrollbar {
+	@apply w-2;
+}
+
+.fc-list-view .fc-scroller::-webkit-scrollbar-track {
+	@apply bg-muted;
+}
+
+.fc-list-view .fc-scroller::-webkit-scrollbar-thumb {
+	@apply bg-muted-foreground/30 rounded-full;
+}
+
+.fc-list-view .fc-scroller::-webkit-scrollbar-thumb:hover {
+	@apply bg-muted-foreground/50;
+}

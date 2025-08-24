@@ -1,0 +1,323 @@
+/* Sidebar Component Styles */
+
+/* Sidebar Base Styles */
+.bg-sidebar {
+	background-color: hsl(var(--sidebar-background));
+	background-image: var(--gradient-sidebar);
+}
+
+.text-sidebar-foreground {
+	color: hsl(var(--sidebar-foreground));
+}
+
+.border-sidebar-border {
+	border-color: hsl(var(--sidebar-border));
+}
+
+/* Sidebar Ring Focus */
+.ring-sidebar-ring {
+	--tw-ring-color: hsl(var(--sidebar-ring));
+}
+
+.focus-visible\:ring-sidebar-ring:focus-visible {
+	--tw-ring-color: hsl(var(--sidebar-ring));
+}
+
+/* Sidebar Hover States */
+.hover\:bg-sidebar:hover {
+	background-color: hsl(var(--sidebar-background));
+	background-image: var(--gradient-sidebar);
+}
+
+.hover\:after\:bg-sidebar-border:hover::after {
+	background-color: hsl(var(--sidebar-border));
+}
+
+/* Sidebar Accent */
+.bg-sidebar-accent {
+	background-color: hsl(var(--sidebar-accent));
+	background-image: var(--gradient-accent);
+}
+
+.hover\:bg-sidebar-accent:hover {
+	background-color: hsl(var(--sidebar-accent));
+	background-image: var(--gradient-accent);
+}
+
+.text-sidebar-accent-foreground {
+	color: hsl(var(--sidebar-accent-foreground));
+}
+
+.hover\:text-sidebar-accent-foreground:hover {
+	color: hsl(var(--sidebar-accent-foreground));
+}
+
+/* Sidebar Primary */
+.bg-sidebar-primary {
+	background-color: hsl(var(--sidebar-primary));
+	background-image: var(--gradient-primary);
+}
+
+.hover\:bg-sidebar-primary:hover {
+	background-color: hsl(var(--sidebar-primary));
+}
+
+.text-sidebar-primary-foreground {
+	color: hsl(var(--sidebar-primary-foreground));
+}
+
+.hover\:text-sidebar-primary-foreground:hover {
+	color: hsl(var(--sidebar-primary-foreground));
+}
+
+/* Sidebar Menu Item States */
+.data-\[active\=true\]\:bg-sidebar-accent[data-active="true"] {
+	background-color: hsl(var(--sidebar-accent));
+}
+
+.data-\[active\=true\]\:text-sidebar-accent-foreground[data-active="true"] {
+	color: hsl(var(--sidebar-accent-foreground));
+}
+
+.data-\[state\=open\]\:bg-sidebar-accent[data-state="open"] {
+	background-color: hsl(var(--sidebar-accent));
+}
+
+.data-\[state\=open\]\:text-sidebar-accent-foreground[data-state="open"] {
+	color: hsl(var(--sidebar-accent-foreground));
+}
+
+/* Sidebar Group Label */
+.text-sidebar-foreground\/70 {
+	color: hsl(var(--sidebar-foreground) / 0.7);
+}
+
+/* Sidebar Sheet Content for Mobile */
+.sheet-content-sidebar {
+	background-color: hsl(var(--sidebar-background));
+	background-image: var(--gradient-sidebar);
+	color: hsl(var(--sidebar-foreground));
+}
+
+/* Sidebar Separator */
+.bg-sidebar-border {
+	background-color: hsl(var(--sidebar-border));
+}
+
+/* Sidebar Transitions */
+.sidebar-transition {
+	transition-property: width, transform, opacity;
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+	transition-duration: 200ms;
+}
+
+/* Sidebar Icon Mode */
+.group-data-\[collapsible\=icon\]\:w-\[--sidebar-width-icon\][data-collapsible="icon"] {
+	width: var(--sidebar-width-icon);
+}
+
+/* Sidebar Offcanvas Mode */
+.group-data-\[collapsible\=offcanvas\]\:left-\[calc\(var\(--sidebar-width\)\*-1\)\][data-collapsible="offcanvas"] {
+	left: calc(var(--sidebar-width) * -1);
+}
+
+.group-data-\[collapsible\=offcanvas\]\:right-\[calc\(var\(--sidebar-width\)\*-1\)\][data-collapsible="offcanvas"] {
+	right: calc(var(--sidebar-width) * -1);
+}
+
+/* Sidebar Menu Badge */
+.sidebar-menu-badge {
+	background-color: hsl(var(--sidebar-primary));
+	background-image: var(--gradient-primary);
+	color: hsl(var(--sidebar-primary-foreground));
+	font-size: 0.625rem;
+	padding: 0.125rem 0.375rem;
+	border-radius: 9999px;
+}
+
+/* Sidebar Skeleton Loading States */
+.sidebar-skeleton {
+	background-color: hsl(var(--sidebar-accent) / 0.5);
+	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.5;
+	}
+}
+
+/* Sidebar scrollbar styles removed - now handled by react-scrollbars-custom */
+
+/* Sidebar Collapsed State Animations */
+[data-state="collapsed"] .sidebar-label {
+	opacity: 0;
+	transform: translateX(-0.5rem);
+}
+
+[data-state="expanded"] .sidebar-label {
+	opacity: 1;
+	transform: translateX(0);
+}
+
+/* Sidebar Icon Rotation for Collapsible Items */
+.sidebar-chevron {
+	transition: transform 200ms ease;
+}
+
+[data-state="open"] .sidebar-chevron {
+	transform: rotate(90deg);
+}
+
+/* Sidebar Active Indicator */
+.sidebar-active-indicator {
+	position: absolute;
+	left: 0;
+	top: 50%;
+	transform: translateY(-50%);
+	width: 0.25rem;
+	height: 1.5rem;
+	background-color: hsl(var(--sidebar-primary));
+	border-radius: 0 0.25rem 0.25rem 0;
+	opacity: 0;
+	transition: opacity 200ms ease;
+}
+
+[data-active="true"] .sidebar-active-indicator {
+	opacity: 1;
+}
+
+/* RTL Support */
+[dir="rtl"] .sidebar-active-indicator {
+	left: auto;
+	right: 0;
+	border-radius: 0.25rem 0 0 0.25rem;
+}
+
+[dir="rtl"] [data-state="collapsed"] .sidebar-label {
+	transform: translateX(0.5rem);
+}
+
+[dir="rtl"] .sidebar-chevron {
+	transform: rotate(180deg);
+}
+
+[dir="rtl"] [data-state="open"] .sidebar-chevron {
+	transform: rotate(270deg);
+}
+
+/* Sidebar-specific styles */
+
+/* Animated sidebar trigger styles */
+.animated-sidebar-trigger {
+	transition:
+		opacity 300ms ease-in-out,
+		transform 300ms ease-in-out;
+	will-change: opacity, transform;
+}
+
+/* Sidebar trigger transitions */
+.sidebar-trigger-fade {
+	transition:
+		opacity 300ms ease-in-out,
+		transform 300ms ease-in-out;
+}
+
+/* Ensure smooth sidebar transitions */
+[data-sidebar] {
+	transition:
+		width 200ms ease-in-out,
+		transform 200ms ease-in-out;
+}
+
+/* Mobile sidebar backdrop */
+@media (max-width: 768px) {
+	[data-sidebar-mobile-backdrop] {
+		position: fixed;
+		inset: 0;
+		z-index: var(--z-sidebar);
+		background-color: rgba(0, 0, 0, 0.5);
+		transition: opacity 200ms ease-in-out;
+	}
+
+	[data-sidebar-mobile-backdrop][data-state="closed"] {
+		opacity: 0;
+		pointer-events: none;
+	}
+
+	[data-sidebar-mobile-backdrop][data-state="open"] {
+		opacity: 1;
+	}
+}
+
+/* Sidebar content animations */
+[data-sidebar="sidebar"][data-state="open"] {
+	animation: sidebar-slide-in 200ms ease-out;
+}
+
+[data-sidebar="sidebar"][data-state="closed"] {
+	animation: sidebar-slide-out 200ms ease-in;
+}
+
+@keyframes sidebar-slide-in {
+	from {
+		transform: translateX(-100%);
+	}
+	to {
+		transform: translateX(0);
+	}
+}
+
+@keyframes sidebar-slide-out {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(-100%);
+	}
+}
+
+/* RTL support */
+[dir="rtl"] [data-sidebar="sidebar"][data-state="open"] {
+	animation: sidebar-slide-in-rtl 200ms ease-out;
+}
+
+[dir="rtl"] [data-sidebar="sidebar"][data-state="closed"] {
+	animation: sidebar-slide-out-rtl 200ms ease-in;
+}
+
+@keyframes sidebar-slide-in-rtl {
+	from {
+		transform: translateX(100%);
+	}
+	to {
+		transform: translateX(0);
+	}
+}
+
+@keyframes sidebar-slide-out-rtl {
+	from {
+		transform: translateX(0);
+	}
+	to {
+		transform: translateX(100%);
+	}
+}
+
+/* Chat sidebar specific styles - Enhanced styling */
+
+/* Sidebar navigation list - reduce padding */
+.sidebar-nav {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	gap: 1px; /* Minimal gap between items */
+	z-index: var(--z-sidebar) !important;
+}

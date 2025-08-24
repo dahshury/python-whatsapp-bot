@@ -1,0 +1,221 @@
+/* FullCalendar Base Layout and Structure
+ * Responsibility: Core FullCalendar layout, theme integration, and fundamental styling
+ * Dependencies: CSS variables from _variables.css, z-index values from utilities/_z-index.css
+ * Usage: Applied to all FullCalendar views as the foundation layer
+ * Important: Changes here affect all calendar views - test thoroughly across views
+ */
+
+.fc {
+	/* Core theme integration */
+	direction: ltr;
+	text-align: left;
+	color: hsl(var(--foreground));
+	background-color: hsl(var(--background));
+	/* Force our CSS variables */
+	--fc-border-color: hsl(var(--border));
+	--fc-page-bg-color: hsl(var(--background));
+	--fc-neutral-bg-color: hsl(var(--muted) / 0.3);
+	--fc-neutral-text-color: hsl(var(--muted-foreground));
+	--fc-today-bg-color: hsl(var(--accent) / 0.15);
+	--fc-highlight-color: hsl(var(--accent) / 0.3);
+	--fc-event-bg-color: hsl(var(--primary));
+	--fc-event-border-color: hsl(var(--primary));
+	--fc-event-text-color: hsl(var(--primary-foreground));
+
+	/* Layout properties */
+	display: flex;
+	flex-direction: column;
+	font-size: 1em;
+}
+
+/* Border box model */
+.fc,
+.fc *,
+.fc *:before,
+.fc *:after {
+	box-sizing: border-box;
+}
+
+/* Table properties */
+.fc table {
+	border-collapse: collapse;
+	border-spacing: 0;
+	font-size: 1em;
+}
+
+/* Page root styles - classes attached to <body> or containers */
+.fc-not-allowed,
+.fc-not-allowed .fc-event {
+	/* override events' custom cursors */
+	cursor: not-allowed;
+}
+
+.fc th {
+	text-align: center;
+}
+
+.fc th,
+.fc td {
+	vertical-align: top;
+	padding: 0;
+}
+
+.fc a[data-navlink] {
+	cursor: pointer;
+}
+
+.fc a[data-navlink]:hover {
+	text-decoration: underline;
+}
+
+/* Direction */
+.fc-direction-ltr {
+	direction: ltr;
+	text-align: left;
+}
+
+.fc-direction-rtl {
+	direction: rtl;
+	text-align: right;
+}
+
+/* Theme standard borders */
+.fc-theme-standard td,
+.fc-theme-standard th {
+	border: 1px solid var(--fc-border-color);
+}
+
+/* Liquid hack for FF */
+.fc-liquid-hack td,
+.fc-liquid-hack th {
+	position: relative;
+}
+
+/* Column header */
+.fc-col-header-cell-cushion {
+	display: inline-block;
+	padding: 2px 4px;
+}
+
+/* Scrollgrid base styles */
+.fc-scrollgrid {
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+
+.fc-scrollgrid-section-header > td {
+	border-radius: 0;
+}
+
+.fc-scrollgrid-section-body > td {
+	border-radius: 0;
+}
+
+.fc-scrollgrid-sync-table {
+	width: 100%;
+	height: 100%;
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+.fc-scrollgrid-sync-inner {
+	overflow: hidden;
+	height: 100%;
+}
+
+/* Column headers */
+.fc-col-header-cell {
+	border-radius: 0;
+}
+
+a.fc-col-header-cell-cushion {
+	font-size: 0.85em;
+	line-height: 1.6rem;
+}
+
+/* Day cells */
+.fc-daygrid-day {
+	border-radius: 0;
+}
+
+/* Background layers */
+.fc-bg-event,
+.fc-non-business,
+.fc-highlight {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+/* Ensure highlight layer is ready for interaction */
+.fc-highlight {
+	background: var(--fc-highlight-color);
+	pointer-events: none;
+	opacity: 1;
+}
+
+.fc-non-business {
+	background: var(--fc-non-business-color);
+	pointer-events: none;
+}
+
+.fc-bg-event {
+	background: var(--fc-bg-event-color);
+	opacity: var(--fc-bg-event-opacity);
+}
+
+.fc-bg-event .fc-event-title {
+	margin: 0.5em;
+	font-size: var(--fc-small-font-size);
+	font-style: italic;
+}
+
+/* Z-index management - using centralized variables */
+.fc-daygrid-day-bg .fc-non-business {
+	z-index: var(--z-calendar-day-bg-non-business);
+}
+.fc-daygrid-day-bg .fc-bg-event {
+	z-index: var(--z-calendar-day-bg-event);
+}
+.fc-daygrid-day-bg .fc-highlight {
+	z-index: var(--z-calendar-day-bg-highlight);
+}
+.fc-daygrid-day-number {
+	z-index: var(--z-calendar-day-number);
+}
+.fc-daygrid-week-number {
+	z-index: var(--z-calendar-week-number);
+}
+.fc-daygrid-event {
+	position: relative;
+	white-space: nowrap;
+	border-radius: var(--radius-sm);
+}
+.fc-daygrid-event.fc-event-mirror {
+	z-index: var(--z-calendar-event-mirror);
+}
+/* More link base styles moved to _popover-unified.css */
+
+/* Reset anchor styles */
+a {
+	color: inherit;
+	text-decoration: inherit;
+}
+
+/* THEME BORDER RADIUS CONSISTENCY - All calendar views */
+.fc,
+.fc .fc-view-harness,
+.fc .fc-view,
+.fc .fc-daygrid,
+.fc .fc-list,
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid-section {
+	border-radius: var(--radius);
+}
+
+.fc .fc-daygrid-day-frame,
+.fc .fc-list-day-cushion {
+	border-radius: calc(var(--radius) * 0.75);
+}

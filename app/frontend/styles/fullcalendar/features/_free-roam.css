@@ -1,0 +1,33 @@
+/* Free Roam Mode Feature Styles */
+
+/* Enhanced hover effects for free roam events */
+/* [data-free-roam="true"] .fc-timegrid-event:hover {
+  transform: scale(1.02) !important;
+  transition: transform 0.1s ease !important;
+  z-index: var(--z-fc-free-roam) !important;
+} */
+
+/* Ensure event titles are visible in free roam (use text color variable) */
+[data-free-roam="true"] .fc-timegrid-event .fc-event-title,
+[data-free-roam="true"] .fc-timegrid-event .fc-event-time,
+[data-free-roam="true"] .fc-timegrid-event .fc-event-main {
+	color: var(--fc-event-text-color) !important;
+}
+
+/* CRITICAL FIX: Prevent text color inheritance on hover for past events in free roam mode */
+[data-free-roam="true"] .fc-event.fc-event-past:hover,
+[data-free-roam="true"] .fc-event.fc-event-past:hover *,
+[data-free-roam="true"] .fc-event.fc-event-past:hover .fc-event-title,
+[data-free-roam="true"] .fc-event.fc-event-past:hover .fc-event-time,
+[data-free-roam="true"] .fc-event.fc-event-past:hover .fc-event-main {
+	color: var(--fc-event-text-color) !important;
+}
+
+/* Also apply to daygrid events in free roam mode */
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover *,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover .fc-event-title,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover .fc-event-time,
+[data-free-roam="true"] .fc-daygrid-event.fc-event-past:hover .fc-event-main {
+	color: var(--fc-event-text-color) !important;
+}

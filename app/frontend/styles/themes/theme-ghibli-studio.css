@@ -1,0 +1,108 @@
+/* Ghibli Studio Theme - Warm, nature-inspired palette from Studio Ghibli's aesthetic */
+/* To enable: Add className="theme-ghibli-studio" to html or body tag */
+
+.theme-ghibli-studio {
+	--background: 39 67% 84%;
+	--foreground: 40 81% 21%;
+	--card: 40 60% 86%;
+	--card-foreground: 37 77% 22%;
+	--popover: 40 60% 86%;
+	--popover-foreground: 37 77% 22%;
+	--primary: 64 30% 51%;
+	--primary-foreground: 347 100% 98%;
+	--secondary: 39 52% 80%;
+	--secondary-foreground: 38 49% 34%;
+	--muted: 39 54% 77%;
+	--muted-foreground: 36 48% 34%;
+	--accent: 40 46% 78%;
+	--accent-foreground: 340 16% 15%;
+	--destructive: 3 95% 55%;
+	--destructive-foreground: 0 0% 98%;
+	--border: 37 33% 63%;
+	--input: 37 33% 63%;
+	--ring: 36 48% 34%;
+	--chart-1: 20 85% 52%;
+	--chart-2: 174 73% 41%;
+	--chart-3: 188 79% 26%;
+	--chart-4: 45 98% 53%;
+	--chart-5: 32 93% 51%;
+	--sidebar: 40 57% 78%;
+	--sidebar-background: 40 57% 78%;
+	--sidebar-foreground: 40 81% 21%;
+	--sidebar-primary: 340 16% 15%;
+	--sidebar-primary-foreground: 347 100% 98%;
+	--sidebar-accent: 40 46% 73%;
+	--sidebar-accent-foreground: 340 16% 15%;
+	--sidebar-border: 0 0% 88%;
+	--sidebar-ring: 0 0% 63%;
+	--font-sans: "Nunito", var(--font-sans-stack);
+	--font-serif: "PT Serif", var(--font-serif-stack);
+	--font-mono: "JetBrains Mono", var(--font-mono-stack);
+	--radius: 0.625rem;
+	--shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+}
+
+/* Dark mode for Ghibli Studio theme */
+.theme-ghibli-studio.dark,
+.dark .theme-ghibli-studio {
+	--background: 23 18% 9%;
+	--foreground: 37 55% 81%;
+	--card: 20 13% 13%;
+	--card-foreground: 37 55% 81%;
+	--popover: 20 13% 13%;
+	--popover-foreground: 37 55% 81%;
+	--primary: 69 13% 50%;
+	--primary-foreground: 347 100% 98%;
+	--secondary: 27 17% 20%;
+	--secondary-foreground: 39 52% 80%;
+	--muted: 15 10% 15%;
+	--muted-foreground: 37 33% 63%;
+	--accent: 27 17% 20%;
+	--accent-foreground: 40 46% 78%;
+	--destructive: 3 95% 55%;
+	--destructive-foreground: 0 0% 98%;
+	--border: 27 17% 20%;
+	--input: 27 17% 20%;
+	--ring: 69 13% 50%;
+	--chart-1: 20 85% 52%;
+	--chart-2: 174 73% 41%;
+	--chart-3: 188 79% 26%;
+	--chart-4: 45 98% 53%;
+	--chart-5: 32 93% 51%;
+	--sidebar: 27 16% 11%;
+	--sidebar-background: 27 16% 11%;
+	--sidebar-foreground: 37 55% 81%;
+	--sidebar-primary: 69 13% 50%;
+	--sidebar-primary-foreground: 347 100% 98%;
+	--sidebar-accent: 27 17% 20%;
+	--sidebar-accent-foreground: 40 46% 78%;
+	--sidebar-border: 27 17% 20%;
+	--sidebar-ring: 69 13% 50%;
+	--font-sans: "Nunito", var(--font-sans-stack);
+	--font-serif: "PT Serif", var(--font-serif-stack);
+	--font-mono: "JetBrains Mono", var(--font-mono-stack);
+	--radius: 0.625rem;
+	--shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+}

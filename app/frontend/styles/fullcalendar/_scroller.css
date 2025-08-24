@@ -1,0 +1,36 @@
+/* FullCalendar Scroller Styles */
+
+/* Scroller harness */
+.fc-scroller-harness {
+	position: relative;
+	overflow: hidden;
+	direction: ltr;
+	/* hack for chrome computing the scroller's right/left wrong for rtl */
+}
+
+.fc-scroller-harness-liquid {
+	height: 100%;
+}
+
+.fc-direction-rtl .fc-scroller-harness > .fc-scroller {
+	/* undo above hack */
+	direction: rtl;
+}
+
+/* Scroller */
+.fc-scroller {
+	-webkit-overflow-scrolling: touch;
+	position: relative;
+}
+
+.fc-scroller-liquid {
+	height: 100%;
+}
+
+.fc-scroller-liquid-absolute {
+	position: absolute;
+	top: 0;
+	right: 0;
+	left: 0;
+	bottom: 0;
+}

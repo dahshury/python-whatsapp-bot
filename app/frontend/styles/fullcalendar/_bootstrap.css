@@ -1,0 +1,32 @@
+/* Bootstrap Theme Support */
+
+/* Bootstrap 4 Theme */
+.fc-theme-bootstrap a:not([href]) {
+	color: inherit; /* natural color for navlinks */
+}
+
+/* More link bootstrap styles moved to _popover-unified.css */
+
+/* Bootstrap 5 Theme */
+.fc-theme-bootstrap5 a:not([href]) {
+	color: inherit;
+	text-decoration: inherit;
+}
+
+.fc-theme-bootstrap5 .fc-list,
+.fc-theme-bootstrap5 .fc-scrollgrid,
+.fc-theme-bootstrap5 td,
+.fc-theme-bootstrap5 th {
+	border: 1px solid var(--bs-gray-400, var(--fc-border-color));
+}
+
+/* HACK: reapply core styles after higher-precedence border statement above */
+.fc-theme-bootstrap5 .fc-scrollgrid {
+	border-right-width: 0;
+	border-bottom-width: 0;
+}
+
+/* Bootstrap 5 shaded areas */
+.fc-theme-bootstrap5-shaded {
+	background-color: var(--bs-gray-200, var(--fc-neutral-bg-color));
+}

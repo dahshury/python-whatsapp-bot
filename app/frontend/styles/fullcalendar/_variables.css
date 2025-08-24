@@ -1,0 +1,77 @@
+/* FullCalendar CSS Variables - Theme Integration
+ * Responsibility: Centralized CSS variables for FullCalendar theming and color management
+ * Dependencies: Theme CSS variables (--background, --foreground, --primary, etc.)
+ * Usage: Referenced throughout all FullCalendar CSS files for consistent theming
+ * Features: Event colors, button states, backgrounds, indicators, view-specific variables
+ * Note: Changes here propagate to all calendar components - test across all themes
+ */
+
+:root {
+	/* Font sizes */
+	--fc-small-font-size: 0.85em;
+
+	/* Page and background colors */
+	--fc-page-bg-color: hsl(var(--background));
+	--fc-neutral-bg-color: hsl(var(--muted) / 0.3);
+	--fc-neutral-text-color: hsl(var(--muted-foreground));
+	--fc-border-color: hsl(var(--border));
+
+	/* Button colors */
+	--fc-button-text-color: hsl(var(--primary-foreground));
+	--fc-button-bg-color: hsl(var(--primary));
+	--fc-button-border-color: hsl(var(--primary));
+	--fc-button-hover-bg-color: hsl(var(--primary) / 0.9);
+	--fc-button-hover-border-color: hsl(var(--primary) / 0.9);
+	--fc-button-active-bg-color: hsl(var(--primary) / 0.8);
+	--fc-button-active-border-color: hsl(var(--primary) / 0.8);
+
+	/* Event colors */
+	--fc-event-bg-color: hsl(var(--primary));
+	--fc-event-border-color: hsl(var(--primary));
+	--fc-event-text-color: hsl(var(--primary-foreground));
+	--fc-event-selected-overlay-color: rgba(0, 0, 0, 0.25);
+
+	/* Event state colors */
+	--fc-event-past-opacity: 0.6;
+	--fc-event-past-bg-color: hsl(var(--muted));
+	--fc-event-past-text-color: hsl(var(--muted-foreground));
+	--fc-event-disabled-bg-color: hsl(var(--muted) / 0.5);
+	--fc-event-disabled-text-color: hsl(var(--muted-foreground));
+	--fc-event-current-bg-color: hsl(var(--primary));
+	--fc-event-current-border-color: hsl(var(--primary));
+
+	/* Today and now indicator */
+	--fc-today-bg-color: hsl(var(--accent) / 0.15);
+	--fc-now-indicator-color: hsl(var(--destructive));
+
+	/* Reservation type colors */
+	--fc-reservation-type-0-bg: #4caf50; /* Check-up - Green */
+	--fc-reservation-type-0-border: #4caf50;
+	/* Fixed gradient depth for Check-up (darker of base) */
+	--fc-reservation-type-0-bg-grad-end: #3f8f42;
+
+	--fc-reservation-type-1-bg: #3688d8; /* Follow-up - Blue */
+	--fc-reservation-type-1-border: #3688d8;
+	/* Fixed gradient depth for Follow-up (darker of base) */
+	--fc-reservation-type-1-bg-grad-end: #2b6fb2;
+	--fc-conversation-bg: #edae49; /* Conversation - Orange/Yellow */
+	--fc-conversation-border: #edae49;
+
+	/* Event resizer */
+	--fc-event-resizer-thickness: 8px;
+	--fc-event-resizer-dot-total-width: 8px;
+	--fc-event-resizer-dot-border-width: 1px;
+
+	/* Special background colors */
+	--fc-non-business-color: hsl(var(--muted) / 0.3);
+	--fc-bg-event-color: hsl(var(--chart-3));
+	--fc-bg-event-opacity: 0.3;
+	--fc-highlight-color: hsl(var(--accent) / 0.3);
+
+	/* Day grid specific */
+	--fc-daygrid-event-dot-width: 8px;
+
+	/* List view specific */
+	--fc-list-event-dot-width: 10px;
+	--fc-list-event-hover-bg-color: hsl(var(--accent));
+}

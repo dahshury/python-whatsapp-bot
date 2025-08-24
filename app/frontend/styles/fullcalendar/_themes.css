@@ -1,0 +1,74 @@
+/* Theme and Dark Mode Overrides */
+
+/* Dark mode CSS variable overrides */
+.dark {
+	--fc-page-bg-color: hsl(var(--background));
+	--fc-event-selected-overlay-color: rgba(255, 255, 255, 0.15);
+	/* --fc-event-hover-bg-color: hsl(var(--accent) / 0.2); */
+	--fc-event-past-opacity: 0.5;
+	--fc-event-disabled-opacity: 0.6;
+}
+
+/* Dark mode specific styles */
+.dark .selected-date-cell {
+	background-color: hsl(var(--accent)) !important;
+	color: hsl(var(--accent-foreground)) !important;
+}
+
+.dark .fc {
+	color: hsl(var(--foreground));
+}
+
+.dark .fc-col-header-cell-cushion {
+	color: hsl(var(--foreground));
+}
+
+.dark .fc-daygrid-day-number {
+	color: hsl(var(--foreground));
+}
+
+/* Theme integration - text colors */
+.fc-list-day-text,
+.fc-list-day-side-text {
+	color: hsl(var(--foreground)) !important;
+}
+
+.fc-list-table th,
+.fc-list-table td {
+	border-color: hsl(var(--border)) !important;
+}
+
+/* Header background for all views */
+.fc-scrollgrid-section-header > * {
+	background-color: hsl(var(--muted) / 0.5) !important;
+}
+
+/* Ensure week view headers have consistent background */
+.fc-timeGridWeek-view .fc-col-header,
+.fc-timeGridDay-view .fc-col-header {
+	background-color: hsl(var(--muted) / 0.5) !important;
+}
+
+/* Multimonth view headers */
+.fc-multimonth-header,
+.fc-multimonth-header-table {
+	background-color: hsl(var(--muted) / 0.5) !important;
+}
+
+/* Dark mode override for headers */
+.dark .fc-scrollgrid-section-header > *,
+.dark .fc-timeGridWeek-view .fc-col-header,
+.dark .fc-timeGridDay-view .fc-col-header,
+.dark .fc-multimonth-header,
+.dark .fc-multimonth-header-table {
+	background-color: hsl(var(--muted) / 0.3) !important;
+}
+
+/* List view theme integration */
+.fc-list-view .fc-list-day-cushion {
+	background-color: hsl(var(--muted) / 0.5) !important;
+}
+
+.dark .fc-list-view .fc-list-day-cushion {
+	background-color: hsl(var(--muted) / 0.3) !important;
+}

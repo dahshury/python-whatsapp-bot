@@ -1,0 +1,157 @@
+/* Multimonth View Base Container Styles
+ * Responsibility: Core layout and structure for multimonth calendar view
+ * Dependencies: CSS variables from _variables.css, grid layout from features/_grid-layout.css
+ * Usage: Applied to .fc-multimonth containers and month grid structures
+ * Features: GPU acceleration, scroll optimization, responsive layout, border management
+ * Note: Optimized for performance with GPU layers and smooth scrolling
+ */
+
+/* Remove any outer wrapper styling that might interfere */
+.fc-multiMonthYear-view {
+	background: transparent !important;
+	border: none !important;
+	border-radius: 0 !important;
+	box-shadow: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+}
+
+/* Define a larger radius specifically for multimonth view */
+.fc-multimonth {
+	--fc-multimonth-radius: calc(var(--radius) * 2);
+	border: 1px solid hsl(var(--border));
+	border-radius: var(--radius);
+	overflow-y: auto;
+	overflow-x: hidden;
+	contain: layout style paint;
+	gap: 0.7rem; /* Override grid-layout default */
+	padding: 0.5rem; /* Override grid-layout default */
+	background-color: hsl(var(--background));
+	position: relative;
+
+	/* GPU acceleration for smooth scrolling */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	perspective: 1000px;
+	will-change: scroll-position;
+	/* Stabilize scrollbar space and isolate scroll behavior */
+	scrollbar-gutter: stable;
+	overscroll-behavior: contain;
+}
+
+/* Note: Basic grid layout styles (flex, align-items) are in features/_grid-layout.css */
+
+/* Enable GPU acceleration for month containers */
+.fc-multimonth-month {
+	transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	will-change: transform, box-shadow;
+}
+
+/* GPU acceleration for tables */
+.fc-multimonth-header-table,
+.fc-multimonth-daygrid-table {
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* Make daygrid table fill available height */
+.fc-multimonth-daygrid-table {
+	/* Removed height: 100% to prevent stretching */
+	will-change: contents;
+}
+
+/* Ensure tbody fills table and distributes rows evenly */
+.fc-multimonth-daygrid-table tbody {
+	display: table-row-group;
+}
+
+/* Ensure consistent row heights - override grid-layout defaults */
+.fc-multimonth-daygrid-table tr {
+	height: auto !important;
+}
+
+/* Minimum cell height with flexibility to grow - GPU accelerated for hover effects */
+.fc-multimonth-daygrid-table td {
+	height: 4em !important;
+	min-height: 4em !important;
+	vertical-align: middle;
+	border: none !important; /* Remove default borders */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* GPU acceleration for day cells that will hover */
+.fc-multimonth-daygrid-table td .fc-daygrid-day-frame {
+	transform: translate3d(0, 0, 0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	will-change: transform, box-shadow, background-color;
+}
+
+/* Note: Table spacing styles (border-collapse, border-spacing) are in features/_grid-layout.css */
+
+/* Remove outer borders from tables inside month containers */
+.fc-multimonth-month .fc-multimonth-header-table,
+.fc-multimonth-month .fc-multimonth-daygrid-table {
+	border: none;
+}
+
+/* First and last cells border radius for clean edges */
+.fc-multimonth-month .fc-multimonth-header-table th:first-child {
+	border-left: none;
+}
+
+.fc-multimonth-month .fc-multimonth-header-table th:last-child {
+	border-right: none;
+}
+
+.fc-multimonth-month .fc-multimonth-daygrid-table td:first-child {
+	border-left: none;
+}
+
+.fc-multimonth-month .fc-multimonth-daygrid-table td:last-child {
+	border-right: none;
+}
+
+.fc-multimonth-month .fc-multimonth-daygrid-table tr:last-child td {
+	border-bottom: none;
+}
+
+.fc-multimonth-daygrid-table {
+	border-top-style: hidden !important;
+}
+
+/* Media screen specific - sticky header */
+@media screen {
+	.fc-multimonth-singlecol .fc-multimonth-header {
+		position: sticky;
+	}
+}
+
+/* Print specific - show overflow */
+@media print {
+	.fc-multimonth {
+		overflow: visible;
+	}
+}
+
+/* Performance optimization - create GPU layers for scrollable content */
+.fc-scroller {
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	will-change: scroll-position;
+}
+
+/* GPU acceleration for event rendering */
+.fc-event {
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	will-change: transform, opacity;
+}

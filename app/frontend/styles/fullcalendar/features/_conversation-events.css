@@ -1,0 +1,35 @@
+/* Conversation Events Feature Styles
+ * Responsibility: Styling for conversation events across all calendar views
+ * Dependencies: CSS variables from _variables.css, theme colors
+ * Usage: Applied to .conversation-event elements in free roam and standard modes
+ * Features: Enhanced visibility in free roam mode, dark mode support
+ * Note: Conversation events use distinct styling to differentiate from reservations
+ */
+
+/* =================================================================
+   FREE ROAM MODE CONVERSATION EVENTS
+   ================================================================= */
+
+/* Enhanced styles for conversation events in free roam mode */
+[data-free-roam="true"] .conversation-event .fc-event-title {
+	color: hsl(var(--background)) !important;
+	font-weight: 600 !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 6px !important;
+}
+
+/* =================================================================
+   DARK MODE SUPPORT
+   ================================================================= */
+
+/* Dark mode conversation events in free roam */
+.dark [data-free-roam="true"] .conversation-event .fc-event-title {
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Dark mode conversation events - general styling for all views */
+.dark .fc-multimonth .fc-event.conversation-event,
+.dark .fc-daygrid .fc-event.conversation-event {
+	color: hsl(var(--foreground)) !important;
+}

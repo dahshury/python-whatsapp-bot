@@ -1,0 +1,114 @@
+/* Valorant Theme - Bold, edgy aesthetic inspired by the tactical shooter game */
+/* To enable: Add className="theme-valorant" to html or body tag */
+
+.theme-valorant {
+	--background: 356 100% 97%;
+	--foreground: 353 63% 14%;
+	--card: 0 100% 98%;
+	--card-foreground: 356 54% 16%;
+	--popover: 0 100% 98%;
+	--popover-foreground: 356 54% 16%;
+	--primary: 355 100% 64%;
+	--primary-foreground: 0 0% 99%;
+	--secondary: 354 76% 95%;
+	--secondary-foreground: 353 63% 14%;
+	--muted: 0 100% 98%;
+	--muted-foreground: 356 54% 16%;
+	--accent: 0 0% 99%;
+	--accent-foreground: 356 54% 35%;
+	--destructive: 40 99% 50%;
+	--destructive-foreground: 0 0% 98%;
+	--border: 353 100% 92%;
+	--input: 355 92% 91%;
+	--ring: 355 95% 93%;
+	--chart-1: 47 100% 50%;
+	--chart-2: 209 100% 50%;
+	--chart-3: 272 98% 50%;
+	--chart-4: 50 100% 82%;
+	--chart-5: 52 69% 68%;
+	--sidebar: 356 100% 97%;
+	--sidebar-background: 356 100% 97%;
+	--sidebar-foreground: 356 54% 16%;
+	--sidebar-primary: 355 100% 64%;
+	--sidebar-primary-foreground: 0 100% 98%;
+	--sidebar-accent: 0 100% 98%;
+	--sidebar-accent-foreground: 356 54% 35%;
+	--sidebar-border: 353 100% 92%;
+	--sidebar-ring: 355 95% 93%;
+	--font-sans: "Barlow", var(--font-sans-stack);
+	--font-serif: "Merriweather", var(--font-serif-stack);
+	--font-mono: "JetBrains Mono", var(--font-mono-stack);
+	--radius: 0rem;
+	--shadow-2xs: 0px 0px 3px 0px hsl(355 58% 20% / 0.04);
+	--shadow-xs: 0px 0px 3px 0px hsl(355 58% 20% / 0.04);
+	--shadow-sm:
+		0px 0px 3px 0px hsl(355 58% 20% / 0.08), 0px 1px 2px -1px
+		hsl(355 58% 20% / 0.08);
+	--shadow:
+		0px 0px 3px 0px hsl(355 58% 20% / 0.08), 0px 1px 2px -1px
+		hsl(355 58% 20% / 0.08);
+	--shadow-md:
+		0px 0px 3px 0px hsl(355 58% 20% / 0.08), 0px 2px 4px -1px
+		hsl(355 58% 20% / 0.08);
+	--shadow-lg:
+		0px 0px 3px 0px hsl(355 58% 20% / 0.08), 0px 4px 6px -1px
+		hsl(355 58% 20% / 0.08);
+	--shadow-xl:
+		0px 0px 3px 0px hsl(355 58% 20% / 0.08), 0px 8px 10px -1px
+		hsl(355 58% 20% / 0.08);
+	--shadow-2xl: 0px 0px 3px 0px hsl(355 58% 20% / 0.2);
+}
+
+/* Dark mode for Valorant theme */
+.theme-valorant.dark,
+.dark .theme-valorant {
+	--background: 356 50% 6%;
+	--foreground: 0 0% 99%;
+	--card: 356 54% 11%;
+	--card-foreground: 0 0% 97%;
+	--popover: 356 54% 16%;
+	--popover-foreground: 0 0% 99%;
+	--primary: 355 100% 64%;
+	--primary-foreground: 0 0% 99%;
+	--secondary: 355 58% 20%;
+	--secondary-foreground: 354 76% 95%;
+	--muted: 356 54% 16%;
+	--muted-foreground: 0 0% 99%;
+	--accent: 356 54% 35%;
+	--accent-foreground: 0 0% 99%;
+	--destructive: 40 99% 50%;
+	--destructive-foreground: 0 0% 98%;
+	--border: 355 56% 21%;
+	--input: 355 57% 30%;
+	--ring: 355 57% 43%;
+	--chart-1: 47 100% 50%;
+	--chart-2: 209 100% 50%;
+	--chart-3: 272 98% 50%;
+	--chart-4: 50 100% 82%;
+	--chart-5: 52 69% 68%;
+	--sidebar: 356 54% 16%;
+	--sidebar-background: 356 54% 16%;
+	--sidebar-foreground: 0 0% 99%;
+	--sidebar-primary: 355 100% 64%;
+	--sidebar-primary-foreground: 0 0% 99%;
+	--sidebar-accent: 356 54% 35%;
+	--sidebar-accent-foreground: 0 0% 99%;
+	--sidebar-border: 355 57% 30%;
+	--sidebar-ring: 355 57% 43%;
+	--font-sans: "Barlow", var(--font-sans-stack);
+	--font-serif: "Merriweather", var(--font-serif-stack);
+	--font-mono: "JetBrains Mono", var(--font-mono-stack);
+	--radius: 0rem;
+	--shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl:
+		0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+}

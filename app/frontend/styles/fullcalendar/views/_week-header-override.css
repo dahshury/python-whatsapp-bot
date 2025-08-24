@@ -1,0 +1,96 @@
+/* Week View Header Overrides - Must load after features */
+
+/* Force week view headers to match multimonth exactly */
+.fc-theme-standard .week-view-container .fc-col-header-cell,
+.fc .week-view-container .fc-col-header-cell,
+.week-view-container th.fc-col-header-cell {
+	position: relative !important;
+	padding: 0.12em 0 !important;
+	font-weight: 600 !important;
+	font-size: 0.9em !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.05em !important;
+	color: hsl(var(--muted-foreground)) !important;
+	/* Fancy multi-stop gradient with depth */
+	background: linear-gradient(
+		135deg,
+		hsl(var(--muted) / 0.05) 0%,
+		hsl(var(--muted) / 0.15) 20%,
+		hsl(var(--muted) / 0.25) 40%,
+		hsl(var(--muted) / 0.3) 50%,
+		hsl(var(--muted) / 0.25) 60%,
+		hsl(var(--muted) / 0.15) 80%,
+		hsl(var(--muted) / 0.05) 100%
+	) !important;
+	/* Multiple borders for depth effect */
+	border: none !important;
+	border-bottom: 1px solid hsl(var(--border) / 0.2) !important;
+	box-shadow:
+		inset 0 1px 0 hsl(var(--background) / 0.5),
+		inset 0 -1px 0 hsl(var(--muted) / 0.4),
+		0 1px 2px hsl(var(--muted) / 0.1) !important;
+	/* Smooth transitions */
+	transition: all 0.2s ease !important;
+	/* Subtle backdrop for glass effect */
+	backdrop-filter: blur(2px) !important;
+	border-radius: 0 !important;
+	text-align: center !important;
+}
+
+/* Force cushion to be transparent */
+.fc-theme-standard .week-view-container .fc-col-header-cell-cushion,
+.fc .week-view-container .fc-col-header-cell-cushion,
+.week-view-container th .fc-col-header-cell-cushion {
+	display: block !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	font-size: inherit !important;
+	background: transparent !important;
+	border: none !important;
+	box-shadow: none !important;
+	color: inherit !important;
+	font-weight: inherit !important;
+	text-transform: inherit !important;
+	letter-spacing: inherit !important;
+	border-radius: 0 !important;
+	width: 100% !important;
+	height: 100% !important;
+}
+
+/* Force hover state */
+.fc-theme-standard .week-view-container .fc-col-header-cell:hover,
+.fc .week-view-container .fc-col-header-cell:hover,
+.week-view-container th.fc-col-header-cell:hover {
+	/* All hover effects disabled */
+	transform: none !important;
+	cursor: default !important;
+}
+
+/* Dark mode overrides */
+.dark .fc-theme-standard .week-view-container .fc-col-header-cell,
+.dark .fc .week-view-container .fc-col-header-cell,
+.dark .week-view-container th.fc-col-header-cell {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--muted) / 0.15) 0%,
+		hsl(var(--muted) / 0.25) 20%,
+		hsl(var(--muted) / 0.35) 40%,
+		hsl(var(--muted) / 0.4) 50%,
+		hsl(var(--muted) / 0.35) 60%,
+		hsl(var(--muted) / 0.25) 80%,
+		hsl(var(--muted) / 0.15) 100%
+	) !important;
+	border-bottom-color: hsl(var(--border) / 0.3) !important;
+	box-shadow:
+		inset 0 1px 0 rgba(255, 255, 255, 0.05),
+		inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+		0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .fc-theme-standard .week-view-container .fc-col-header-cell:hover,
+.dark .fc .week-view-container .fc-col-header-cell:hover,
+.dark .week-view-container th.fc-col-header-cell:hover {
+	/* All hover effects disabled in dark mode */
+	transform: none !important;
+	cursor: default !important;
+}

@@ -1,0 +1,163 @@
+/* Theme Definitions */
+
+/* 
+FONT SYSTEM:
+Each theme can define its own fonts using the following CSS variables:
+- --font-sans: Sans-serif font family
+- --font-serif: Serif font family  
+- --font-mono: Monospace font family
+
+These variables are used throughout the app via Tailwind classes:
+- font-sans (default)
+- font-serif
+- font-mono
+
+Font imports should be added to fonts.css to keep them centralized.
+
+FONT COMBINATION EXAMPLES:
+
+1. Modern Tech Stack:
+   --font-sans: 'Inter', 'Roboto', var(--font-sans-stack);
+   --font-serif: 'Merriweather', var(--font-serif-stack);
+   --font-mono: 'JetBrains Mono', var(--font-mono-stack);
+
+2. Classic Editorial:
+   --font-sans: 'Source Sans Pro', var(--font-sans-stack);
+   --font-serif: 'Playfair Display', 'Georgia', var(--font-serif-stack);
+   --font-mono: 'IBM Plex Mono', var(--font-mono-stack);
+
+3. Minimal & Clean:
+   --font-sans: system-ui, var(--font-sans-stack);
+   --font-serif: 'Crimson Text', var(--font-serif-stack);
+   --font-mono: 'Fira Code', var(--font-mono-stack);
+
+4. Playful & Creative:
+   --font-sans: 'Poppins', 'Nunito', var(--font-sans-stack);
+   --font-serif: 'Libre Baskerville', var(--font-serif-stack);
+   --font-mono: 'Source Code Pro', var(--font-mono-stack);
+
+5. Cyberpunk/Tech:
+   --font-sans: 'Orbitron', 'Exo 2', var(--font-sans-stack);
+   --font-serif: 'Roboto Slab', var(--font-serif-stack);
+   --font-mono: 'Anonymous Pro', var(--font-mono-stack);
+*/
+
+/* Amethyst Haze Theme - Apply by adding 'theme-amethyst-haze' class to html or body element */
+/* To enable: Add className="theme-amethyst-haze" to html or body tag */
+.theme-amethyst-haze {
+	--background: 270 20% 98%; /* #f8f7fa */
+	--foreground: 242 11% 27%; /* #3d3c4f */
+	--card: 0 0% 100%; /* #ffffff */
+	--card-foreground: 242 11% 27%; /* #3d3c4f */
+	--popover: 0 0% 100%; /* #ffffff */
+	--popover-foreground: 242 11% 27%; /* #3d3c4f */
+	--primary: 267 26% 59%; /* #8a79ab */
+	--primary-foreground: 270 20% 98%; /* #f8f7fa */
+	--secondary: 265 36% 90%; /* #dfd9ec */
+	--secondary-foreground: 242 11% 27%; /* #3d3c4f */
+	--muted: 260 17% 87%; /* #dcd9e3 */
+	--muted-foreground: 252 10% 47%; /* #6b6880 */
+	--accent: 341 52% 77%; /* #e6a5b8 */
+	--accent-foreground: 345 24% 24%; /* #4b2e36 */
+	--destructive: 0 48% 59%; /* #d95c5c */
+	--destructive-foreground: 270 20% 98%; /* #f8f7fa */
+	--border: 264 21% 84%; /* #cec9d9 */
+	--input: 264 40% 92%; /* #eae7f0 */
+	--ring: 267 26% 59%; /* #8a79ab */
+	--chart-1: 267 26% 59%; /* #8a79ab */
+	--chart-2: 341 52% 77%; /* #e6a5b8 */
+	--chart-3: 161 26% 60%; /* #77b8a1 */
+	--chart-4: 33 68% 75%; /* #f0c88d */
+	--chart-5: 213 35% 76%; /* #a0bbe3 */
+	--sidebar: 258 29% 95%; /* #f1eff5 */
+	--sidebar-background: 258 29% 95%; /* #f1eff5 */
+	--sidebar-foreground: 242 11% 27%; /* #3d3c4f */
+	--sidebar-primary: 267 26% 59%; /* #8a79ab */
+	--sidebar-primary-foreground: 270 20% 98%; /* #f8f7fa */
+	--sidebar-accent: 341 52% 77%; /* #e6a5b8 */
+	--sidebar-accent-foreground: 345 24% 24%; /* #4b2e36 */
+	--sidebar-border: 263 24% 87%; /* #d7d2e0 */
+	--sidebar-ring: 267 26% 59%; /* #8a79ab */
+	--font-sans: "Geist", var(--font-sans-stack);
+	--font-serif: var(--font-serif-stack);
+	--font-mono: var(--font-mono-stack);
+	--radius: 0.5rem;
+	--shadow-2xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+	--shadow-xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+	--shadow-sm:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+	--shadow:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+	--shadow-md:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 2px 4px 0px hsl(0 0% 0% / 0.06);
+	--shadow-lg:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 4px 6px 0px hsl(0 0% 0% / 0.06);
+	--shadow-xl:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 8px 10px 0px hsl(0 0% 0% / 0.06);
+	--shadow-2xl: 1px 2px 5px 1px hsl(0 0% 0% / 0.15);
+}
+
+/* 
+TO CREATE A NEW THEME:
+1. Copy the theme-template.css file
+2. Replace all values with your theme's colors and fonts
+3. Import the new theme file in globals.css
+4. Apply by adding className="theme-your-name" to the html element
+
+Remember to add any custom font imports to fonts.css first!
+*/
+
+/* Dark mode for Amethyst Haze theme */
+.theme-amethyst-haze.dark,
+.dark .theme-amethyst-haze {
+	--background: 263 21% 12%; /* #1a1823 */
+	--foreground: 252 39% 91%; /* #e0ddef */
+	--card: 251 21% 17%; /* #232030 */
+	--card-foreground: 252 39% 91%; /* #e0ddef */
+	--popover: 251 21% 17%; /* #232030 */
+	--popover-foreground: 252 39% 91%; /* #e0ddef */
+	--primary: 267 35% 73%; /* #a995c9 */
+	--primary-foreground: 263 21% 12%; /* #1a1823 */
+	--secondary: 257 15% 39%; /* #5a5370 */
+	--secondary-foreground: 252 39% 91%; /* #e0ddef */
+	--muted: 257 15% 17%; /* #242031 */
+	--muted-foreground: 251 11% 63%; /* #a09aad */
+	--accent: 280 13% 21%; /* #372e3f */
+	--accent-foreground: 345 75% 82%; /* #f2b8c6 */
+	--destructive: 0 44% 67%; /* #e57373 */
+	--destructive-foreground: 263 21% 12%; /* #1a1823 */
+	--border: 253 15% 22%; /* #302c40 */
+	--input: 252 16% 19%; /* #2a273a */
+	--ring: 267 35% 73%; /* #a995c9 */
+	--chart-1: 267 35% 73%; /* #a995c9 */
+	--chart-2: 345 75% 82%; /* #f2b8c6 */
+	--chart-3: 161 26% 60%; /* #77b8a1 */
+	--chart-4: 33 68% 75%; /* #f0c88d */
+	--chart-5: 213 35% 76%; /* #a0bbe3 */
+	--sidebar: 258 17% 10%; /* #16141e */
+	--sidebar-background: 258 17% 10%; /* #16141e */
+	--sidebar-foreground: 252 39% 91%; /* #e0ddef */
+	--sidebar-primary: 267 35% 73%; /* #a995c9 */
+	--sidebar-primary-foreground: 263 21% 12%; /* #1a1823 */
+	--sidebar-accent: 280 13% 21%; /* #372e3f */
+	--sidebar-accent-foreground: 345 75% 82%; /* #f2b8c6 */
+	--sidebar-border: 252 16% 19%; /* #2a273a */
+	--sidebar-ring: 267 35% 73%; /* #a995c9 */
+	--font-sans: "Geist", var(--font-sans-stack);
+	--font-serif: var(--font-serif-stack);
+	--font-mono: var(--font-mono-stack);
+	--radius: 0.5rem;
+	--shadow-2xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+	--shadow-xs: 1px 2px 5px 1px hsl(0 0% 0% / 0.03);
+	--shadow-sm:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+	--shadow:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 1px 2px 0px hsl(0 0% 0% / 0.06);
+	--shadow-md:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 2px 4px 0px hsl(0 0% 0% / 0.06);
+	--shadow-lg:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 4px 6px 0px hsl(0 0% 0% / 0.06);
+	--shadow-xl:
+		1px 2px 5px 1px hsl(0 0% 0% / 0.06), 1px 8px 10px 0px hsl(0 0% 0% / 0.06);
+	--shadow-2xl: 1px 2px 5px 1px hsl(0 0% 0% / 0.15);
+}

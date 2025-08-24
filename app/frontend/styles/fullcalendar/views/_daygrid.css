@@ -1,0 +1,359 @@
+/**
+ * DAYGRID VIEW STYLES - MONTH/WEEK GRID LAYOUT
+ * ============================================
+ *
+ * Responsibility: Daygrid view specific styling (month/week grid layouts)
+ * - Daygrid table layout and spacing
+ * - Day cell styling and event positioning
+ * - Event styling specific to daygrid layout
+ * - Column header gradients and styling
+ * - Dark mode adaptations for daygrid
+ *
+ * Dependencies: CSS variables from theme files, GPU acceleration features
+ * Used by: Month view, week view (when using daygrid)
+ *
+ * Note: Vacation styling is handled in features/_vacation-events.css
+ * Note: Universal day styling is in _universal.css
+ */
+
+/* =================================================================
+   DAYGRID CORE LAYOUT
+   ================================================================= */
+
+/* GPU ACCELERATION FOR DAYGRID */
+.fc-daygrid {
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+	perspective: 1000px;
+	will-change: contents;
+}
+
+/* Daygrid body */
+.fc-daygrid-body {
+	position: relative;
+	z-index: var(--z-base); /* container inner z-index's because <tr>s can't do it */
+	/* GPU acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* GPU acceleration for tables */
+.fc-daygrid table {
+	width: 100%;
+	table-layout: fixed;
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* Note: Table border-spacing styles are in features/_grid-layout.css */
+
+/* Daygrid specific overrides for day frame */
+.fc-daygrid .fc-daygrid-day-frame {
+	min-height: 100%;
+}
+
+/* Z-index management for day background layers */
+.fc-daygrid-day-bg {
+	position: relative; /* container for layers */
+}
+
+/* Background layers - using centralized z-index variables */
+.fc-daygrid-day-bg .fc-non-business {
+	z-index: var(--z-calendar-day-bg-non-business);
+}
+.fc-daygrid-day-bg .fc-bg-event {
+	z-index: var(--z-calendar-day-bg-event);
+}
+
+/* Day header */
+.fc-daygrid-day-top {
+	position: relative; /* for absolute positioning of day-number and week-number */
+	border-radius: 0 !important;
+}
+
+.fc-daygrid-day-number {
+	position: relative;
+	display: inline-block;
+	color: hsl(var(--muted-foreground));
+	font-weight: 600;
+	line-height: 1;
+	padding: 4px;
+	margin: 1px 2px 0 0;
+}
+
+.fc-daygrid-week-number {
+	position: absolute;
+	z-index: var(--z-calendar-week-number);
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	text-align: center;
+}
+
+.fc-direction-ltr .fc-daygrid-week-number {
+	left: 0;
+	border-radius: 0 0 3px 0;
+}
+
+.fc-direction-rtl .fc-daygrid-week-number {
+	right: 0;
+	border-radius: 0 0 0 3px;
+}
+
+/* More link - styles moved to _popover-unified.css */
+
+/* Event */
+.fc-daygrid-dot-event {
+	display: flex;
+	align-items: center;
+	padding: 2px 0;
+	flex-direction: row;
+}
+
+.fc-daygrid-dot-event .fc-event-title {
+	flex-grow: 1;
+	flex-shrink: 1;
+	min-width: 0; /* important for allowing shrinkage past content size */
+	overflow: hidden;
+	font-weight: bold;
+}
+
+.fc-daygrid-dot-event:hover,
+.fc-daygrid-dot-event.fc-event-mirror {
+	background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure proper layering for mirror events */
+.fc-daygrid-event.fc-event-mirror {
+	z-index: var(--z-calendar-event-mirror);
+	opacity: 0.75;
+}
+
+/* Positioning for balanced vs natural */
+.fc-daygrid-body-balanced .fc-daygrid-day-events {
+	position: absolute;
+	left: 0;
+	right: 0;
+}
+
+.fc-daygrid-body-unbalanced .fc-daygrid-day-events {
+	position: relative;
+	min-height: 2em;
+}
+
+.fc-daygrid-body-natural .fc-daygrid-day-events {
+	margin-bottom: 0 !important;
+}
+
+/* Event harness absolute positioning */
+.fc-daygrid-event-harness-abs {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+}
+
+.fc-daygrid-bg-harness {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+}
+
+/* Event mirror */
+.fc-daygrid-event.fc-event-mirror {
+	z-index: var(--z-calendar-event-mirror); /* above normal events */
+}
+
+/* The rectangle ("block") style of event */
+.fc-daygrid-block-event .fc-event-time {
+	font-weight: bold;
+	background: transparent !important;
+}
+
+.fc-daygrid-block-event .fc-event-time,
+.fc-daygrid-block-event .fc-event-title {
+	background: transparent !important;
+	padding: 1px;
+}
+
+/* The dot style of event */
+.fc-daygrid-dot-event {
+	display: flex;
+	align-items: center;
+	padding: 2px 0;
+}
+
+.fc-daygrid-dot-event .fc-event-title {
+	flex-grow: 1;
+	flex-shrink: 1;
+	min-width: 0;
+	overflow: hidden;
+	font-weight: bold;
+}
+
+.fc-daygrid-dot-event:hover,
+.fc-daygrid-dot-event.fc-event-mirror {
+	background: rgba(0, 0, 0, 0.1);
+}
+
+.fc-daygrid-dot-event.fc-event-selected:before {
+	top: -10px;
+	bottom: -10px;
+}
+
+/* Dot event marker */
+.fc-daygrid-event-dot {
+	margin: 0 4px;
+	box-sizing: content-box;
+	width: 0;
+	height: 0;
+	border: calc(var(--fc-daygrid-event-dot-width) / 2) solid
+		var(--fc-event-border-color);
+	border-radius: calc(var(--fc-daygrid-event-dot-width) / 2);
+	/* GPU acceleration */
+	transform: translateZ(0);
+	backface-visibility: hidden;
+	-webkit-backface-visibility: hidden;
+}
+
+/* Cell bottom */
+.fc-daygrid-day-bottom {
+	font-size: 0.85em;
+	margin: 0 2px;
+}
+
+.fc-daygrid-day-bottom:before,
+.fc-daygrid-day-bottom:after {
+	display: none !important;
+	content: none !important;
+}
+
+/* Popover */
+.fc-more-popover .fc-popover-body {
+	min-width: 220px;
+	padding: 10px;
+}
+
+/* Direction-specific more link - moved to _rtl.css */
+
+/* Liquid hack */
+.fc-liquid-hack .fc-daygrid-day-frame {
+	position: static;
+}
+
+/* Event type-specific coloring for daygrid */
+.fc-daygrid-event.conversation-event {
+	background-color: hsl(var(--chart-4)) !important;
+	border-color: hsl(var(--chart-4)) !important;
+	color: hsl(var(--background)) !important;
+}
+
+.dark .fc-daygrid-event.conversation-event {
+	color: hsl(var(--foreground)) !important;
+}
+
+.fc-daygrid-event.conversation-event .fc-event-time {
+	display: none !important;
+}
+
+.fc-daygrid-event.conversation-event .fc-event-title {
+	font-weight: 600 !important;
+	line-height: 1.3 !important;
+	display: flex !important;
+	align-items: center !important;
+	gap: 4px !important;
+}
+
+/* Direction-specific event spacing */
+.fc-direction-ltr .fc-daygrid-event .fc-event-time {
+	margin-right: 3px;
+}
+
+.fc-direction-rtl .fc-daygrid-event .fc-event-time {
+	margin-left: 3px;
+}
+
+/* ========================================
+ * DAYGRID COLUMN HEADER GRADIENTS
+ * Beautiful gradients for weekday headers exclusively in daygrid view
+ * ======================================== */
+
+/* Light mode gradient for daygrid column headers */
+.fc-daygrid .fc-col-header-cell,
+.fc-daygrid th.fc-col-header-cell {
+	border-bottom: 2px solid hsl(var(--accent) / 0.3) !important;
+	box-shadow:
+		0 2px 6px rgba(0, 0, 0, 0.08),
+		0 1px 3px rgba(0, 0, 0, 0.05),
+		inset 0 1px 0 hsl(var(--background) / 0.6),
+		inset 0 -1px 0 hsl(var(--accent) / 0.2) !important;
+	text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1) !important;
+	/* Set height to 1.6 for daygrid */
+	padding: 0.3em 0.75em !important;
+	height: 1.6em !important;
+	min-height: 1.6em !important;
+	line-height: 1.1 !important;
+	/* Increase size to 1.6 */
+	font-size: 1em !important;
+}
+
+/* Ensure cushion doesn't override height */
+.fc-daygrid .fc-col-header-cell-cushion,
+.fc-daygrid .fc-col-header-cell a.fc-col-header-cell-cushion {
+	line-height: 1.1 !important;
+	padding: 0 !important;
+	height: auto !important;
+	font-size: inherit !important;
+}
+
+/* Dark mode gradient for daygrid column headers */
+.dark .fc-daygrid .fc-col-header-cell {
+	background: linear-gradient(
+		to bottom,
+		hsl(var(--card)) 0%,
+		hsl(var(--accent) / 0.3) 25%,
+		hsl(var(--accent) / 0.25) 50%,
+		hsl(var(--accent) / 0.2) 75%,
+		hsl(var(--accent) / 0.15) 100%
+	) !important;
+	border-bottom-color: hsl(var(--accent) / 0.4) !important;
+	box-shadow:
+		0 2px 6px rgba(0, 0, 0, 0.2),
+		0 1px 3px rgba(0, 0, 0, 0.15),
+		inset 0 1px 0 rgba(255, 255, 255, 0.1),
+		inset 0 -1px 0 rgba(0, 0, 0, 0.3) !important;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Dark mode base daygrid styles */
+.dark .fc-daygrid .fc-daygrid-day {
+	background: transparent !important;
+}
+
+.dark .fc-daygrid .fc-daygrid-day-frame {
+	box-shadow:
+		0 2px 6px rgba(0, 0, 0, 0.3),
+		0 1px 3px rgba(0, 0, 0, 0.2),
+		inset 0 1px 0 hsl(var(--background) / 0.1);
+	border-color: hsl(var(--border) / 0.2);
+}
+
+.dark
+	.fc-daygrid
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(.fc-day-disabled)
+	.fc-daygrid-day-frame {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--card)) 0%,
+		hsl(var(--card) / 0.98) 100%
+	) !important;
+}
+
+/* Dark mode text */
+.dark .fc-daygrid .fc-daygrid-day-top {
+	color: hsl(var(--muted-foreground)) !important;
+}

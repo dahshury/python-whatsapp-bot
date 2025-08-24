@@ -1,0 +1,209 @@
+/* FullCalendar List View Styles
+ * Responsibility: Styling for list view layout, events, and interactions
+ * Dependencies: CSS variables from _variables.css, theme colors, Tailwind classes
+ * Usage: Applied to .fc-list, .fc-list-event, and related list view elements
+ * Features: Flexible height management, event type colors, sticky headers, empty state
+ * Note: List view neutralizes event colors except for dots to maintain readability
+ */
+
+/* =================================================================
+   CONTAINER AND LAYOUT MANAGEMENT
+   ================================================================= */
+
+/* Ensure calendar container fills height in list view */
+.fc-listMonth-view,
+.fc-listMonth-view .fc-view-harness,
+.fc-listMonth-view .fc-view-harness-active {
+	height: auto !important;
+	display: block;
+}
+
+/* List view base styles */
+.fc-list {
+	background-color: hsl(var(--card)) !important;
+	color: hsl(var(--foreground)) !important;
+	height: auto;
+}
+
+/* Fix list view scrolling issue - make it fill available space */
+.fc-list-view { height: auto; }
+
+.fc-list-view .fc-view-harness { overflow: visible; height: auto; }
+
+.fc-list-view .fc-scroller { overflow: visible !important; height: auto !important; }
+
+/* Ensure the list table fills the scroller */
+.fc-list-view .fc-list-table {
+	min-height: 100%;
+}
+
+.fc-theme-standard .fc-list {
+	border: 1px solid var(--fc-border-color);
+	border-radius: var(--radius);
+	overflow: hidden; /* clip inner content to rounded corners */
+}
+
+/* =================================================================
+   TABLE STRUCTURE AND HEADERS
+   ================================================================= */
+
+/* List table styles */
+.fc-list-table {
+	width: 100%;
+	border-style: hidden;
+	@apply w-full;
+}
+
+.fc-list-table tr > * {
+	border-left: 0;
+	border-right: 0;
+}
+
+.fc-list-sticky .fc-list-day > * {
+	position: sticky;
+	top: 0;
+	background: var(--fc-page-bg-color);
+	@apply sticky top-0 z-10 bg-muted/95 backdrop-blur-sm;
+}
+
+/* Ensure the very first sticky day header shows rounded top corners */
+.fc-list .fc-list-day:first-child > * {
+	border-top-left-radius: var(--radius);
+	border-top-right-radius: var(--radius);
+}
+
+/* Only exists for aria reasons */
+.fc-list-table thead {
+	position: absolute;
+	left: -10000px;
+}
+
+/* Force-hide top border of first cell */
+.fc-list-table tbody > tr:first-child th {
+	border-top: 0;
+}
+
+.fc-list-table th {
+	padding: 0;
+}
+
+.fc-list-table td,
+.fc-list-day-cushion {
+	padding: 8px 14px;
+}
+
+/* =================================================================
+   DATE HEADERS AND GROUPING
+   ================================================================= */
+
+/* Date heading rows */
+.fc-list-day-cushion {
+	background-color: var(--fc-neutral-bg-color);
+}
+
+/* Clear floating for date heading rows */
+.fc-list-day-cushion:after {
+	content: "";
+	display: table;
+	clear: both;
+}
+
+/* =================================================================
+   EVENT STYLING AND INTERACTIONS
+   ================================================================= */
+
+/* Event styles */
+.fc-list-event.fc-event-forced-url {
+	cursor: pointer;
+}
+
+.fc-list-event:hover td {
+	background-color: var(--fc-list-event-hover-bg-color);
+}
+
+/* Shrink certain cols */
+.fc-list-event-graphic,
+.fc-list-event-time {
+	white-space: nowrap;
+	width: 1px;
+}
+
+/* Event dot */
+.fc-list-event-dot {
+	@apply bg-primary;
+}
+
+/* Reset <a> styling */
+.fc-list-event-title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+/* =================================================================
+   EMPTY STATE
+   ================================================================= */
+
+/* Empty list message */
+.fc-list-empty {
+	background-color: var(--fc-neutral-bg-color);
+	flex: 1;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 200px;
+}
+
+.fc-list-empty-cushion {
+	padding: 2em;
+	text-align: center;
+}
+
+/* =================================================================
+   EVENT TYPE COLORS AND STATES
+   ================================================================= */
+
+/* List view events - neutral styling (override event type colors) */
+.fc-list-event,
+.fc-list-event.reservation-type-0,
+.fc-list-event.reservation-type-1,
+.fc-list-event.conversation-event,
+.fc-list-event.reservation-cancelled {
+	background-color: transparent !important;
+	border-color: transparent !important;
+	color: hsl(var(--foreground)) !important;
+}
+
+/* List view cancelled events */
+.fc-list-event[data-cancelled="true"] .fc-event-title {
+	text-decoration: line-through !important;
+	color: hsl(var(--muted-foreground)) !important;
+}
+
+/* List view dot colors */
+.fc-list-event.conversation-event .fc-list-event-dot {
+	border-color: var(--fc-conversation-border) !important;
+	background-color: var(--fc-conversation-bg) !important;
+}
+
+.fc-list-event[data-cancelled="true"] .fc-list-event-dot {
+	border-color: var(--fc-reservation-cancelled-border) !important;
+	background-color: var(--fc-reservation-cancelled-bg) !important;
+}
+
+/* Regular reservations - Check-up (type 0) - Green */
+.fc-list-event.reservation-type-0:not(.conversation-event):not(
+	[data-cancelled="true"]
+)
+.fc-list-event-dot {
+	border-color: var(--fc-reservation-type-0-border) !important;
+	background-color: var(--fc-reservation-type-0-bg) !important;
+}
+
+/* Follow-up reservations (type 1) - Blue */
+.fc-list-event.reservation-type-1:not(.conversation-event):not(
+	[data-cancelled="true"]
+)
+.fc-list-event-dot {
+	border-color: var(--fc-reservation-type-1-border) !important;
+	background-color: var(--fc-reservation-type-1-bg) !important;
+}

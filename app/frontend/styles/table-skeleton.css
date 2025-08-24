@@ -1,0 +1,10 @@
+/* Table Skeleton Styles */
+.table-skeleton-grid {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.table-skeleton-body {
+	display: grid;
+	gap: 0.5rem;
+}

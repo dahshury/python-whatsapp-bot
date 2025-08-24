@@ -1,0 +1,20 @@
+/* FullCalendar View Harness Styles */
+
+.fc-view-harness {
+	flex-grow: 1;
+	position: relative;
+}
+
+/* When the harness controls the height, make the view liquid */
+.fc-view-harness-active > .fc-view {
+	position: absolute;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	left: 0;
+}
+
+/* Passive harness */
+.fc-view-harness-passive {
+	/* will have height set by JS */
+}

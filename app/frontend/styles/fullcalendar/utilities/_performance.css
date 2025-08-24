@@ -1,0 +1,14 @@
+/* Performance Optimizations */
+
+/* Performance optimizations */
+.fc {
+	will-change: auto !important;
+}
+
+.fc-scrollgrid {
+	will-change: auto !important;
+}
+
+.fc-view-harness {
+	will-change: auto !important;
+}

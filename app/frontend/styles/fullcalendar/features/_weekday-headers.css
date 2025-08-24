@@ -1,0 +1,96 @@
+/* Weekday Headers Feature - Enhanced gradients for all calendar views */
+
+/* Base styling for weekday headers in daygrid views - background defined in _daygrid.css */
+.fc-daygrid .fc-col-header-cell {
+	position: relative;
+	/* padding removed - defined in _daygrid.css for height control */
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	font-size: 0.85em;
+	/* background removed - defined in _daygrid.css with beautiful gradients */
+	/* border removed - defined in _daygrid.css */
+	/* box-shadow removed - defined in _daygrid.css */
+	/* Smooth transitions */
+	transition: all 0.2s ease;
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Remove special styling from cushion - just inherit */
+.fc-daygrid .fc-col-header-cell-cushion {
+	display: block;
+	padding: 0;
+	border-radius: 0;
+	background: none;
+	border: none;
+	box-shadow: none;
+	font-size: inherit !important;
+}
+
+/* Hover effects for daygrid headers - DISABLED */
+.fc-daygrid .fc-col-header-cell:hover {
+	/* All hover effects disabled for daygrid */
+	transform: none !important;
+	cursor: default !important;
+}
+
+/* Timegrid specific gradient adjustments */
+.fc-timegrid .fc-col-header-cell {
+	padding: 0.75em 1em;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	/* Professional solid background for timegrid */
+	background: hsl(var(--primary) / 0.08) !important;
+	border-bottom: 2px solid hsl(var(--primary) / 0.2) !important;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+	transition: all 0.2s ease;
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Remove special styling from timegrid cushion */
+.fc-timegrid .fc-col-header-cell-cushion {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border-radius: 0;
+	background: none;
+	border: none;
+	box-shadow: none;
+	font-size: inherit !important;
+}
+
+/* Timegrid hover with enhanced gradient */
+.fc-timegrid .fc-col-header-cell:hover {
+	background: hsl(var(--primary) / 0.12) !important;
+	border-bottom-color: hsl(var(--primary) / 0.3) !important;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+	transform: translateY(-1px) !important;
+}
+
+/* Dark mode adjustments - background defined in _daygrid.css */
+.dark .fc-daygrid .fc-col-header-cell {
+	/* background removed - defined in _daygrid.css with beautiful gradients */
+	/* border removed - defined in _daygrid.css */
+	/* box-shadow removed - defined in _daygrid.css */
+}
+
+.dark .fc-daygrid .fc-col-header-cell:hover {
+	/* All hover effects disabled for daygrid in dark mode */
+	transform: none !important;
+	cursor: default !important;
+}
+
+/* Timegrid dark mode gradient */
+.dark .fc-timegrid .fc-col-header-cell {
+	background: hsl(var(--primary) / 0.12) !important;
+	border-bottom-color: hsl(var(--primary) / 0.25) !important;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+.dark .fc-timegrid .fc-col-header-cell:hover {
+	background: hsl(var(--primary) / 0.15) !important;
+	border-bottom-color: hsl(var(--primary) / 0.35) !important;
+	box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+	transform: translateY(-1px) !important;
+}

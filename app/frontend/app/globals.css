@@ -1,0 +1,74 @@
+/* External library imports - MUST come first in CSS */
+@import "../styles/imports.css";
+
+/* Theme definitions */
+@import "../styles/themes/themes.css";
+@import "../styles/themes/theme-default.css";
+@import "../styles/themes/theme-claude.css";
+@import "../styles/themes/theme-neo-brutalism.css";
+@import "../styles/themes/theme-perpetuity.css";
+@import "../styles/themes/theme-retro-arcade.css";
+@import "../styles/themes/theme-soft-pop.css";
+@import "../styles/themes/theme-ghibli-studio.css";
+@import "../styles/themes/theme-valorant.css";
+@import "../styles/themes/theme-t3chat.css";
+@import "../styles/themes/theme-perplexity.css";
+@import "../styles/themes/theme-art-deco.css";
+
+/* Theme inline configuration - must be loaded after all theme definitions */
+@import "../styles/themes/theme-inline.css";
+
+/* Global Error Suppression for React Timekeeper Issues */
+@layer base {
+	/* This CSS is loaded early to suppress console errors from React Timekeeper */
+}
+
+/* Note: Console error suppression is handled via JavaScript in layout.tsx */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Main Global Styles Entry Point */
+
+/* Calendar event processing states */
+.fc-event.processing {
+	opacity: 0.6 !important;
+	pointer-events: none !important;
+	position: relative;
+}
+
+/* Global letter-spacing tied to theme variable */
+body {
+	letter-spacing: var(--tracking-normal);
+}
+
+.fc-event.processing::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	width: 12px;
+	height: 12px;
+	margin: -6px 0 0 -6px;
+	border: 2px solid rgba(255, 255, 255, 0.3);
+	border-top: 2px solid rgba(255, 255, 255, 0.8);
+	border-radius: 50%;
+	animation: fc-event-spinner 1s linear infinite;
+	z-index: 10;
+}
+
+@keyframes fc-event-spinner {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+/* Prevent rapid clicking during processing */
+.fc-event.processing .fc-event-title,
+.fc-event.processing .fc-event-time {
+	user-select: none;
+}

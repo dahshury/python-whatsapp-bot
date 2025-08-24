@@ -1,0 +1,90 @@
+/* Glide Grid Overlay Editor Styles */
+
+/* Overlay editor styles */
+.gdg-d19meir1 {
+	position: absolute;
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	box-sizing: border-box;
+	--overlay-top: var(--d19meir1-0);
+	left: var(--d19meir1-1);
+	top: var(--d19meir1-0);
+	min-width: var(--d19meir1-2);
+	min-height: var(--d19meir1-3);
+	width: max-content;
+	max-width: 400px;
+	max-height: calc(100vh - var(--d19meir1-4));
+	font-family: var(--gdg-font-family);
+	font-size: var(--gdg-editor-font-size);
+	text-align: start;
+}
+
+.gdg-d19meir1.gdg-style {
+	border-radius: 2px;
+	background-color: var(--gdg-bg-cell, hsl(var(--card)));
+	box-shadow:
+		0 0 0 1px var(--gdg-accent-color, hsl(var(--primary))),
+		0px 0px 1px rgba(62, 65, 86, 0.4),
+		0px 6px 12px rgba(62, 65, 86, 0.15);
+	animation: glide_fade_in-gdg-d19meir1 60ms 1;
+}
+
+.gdg-d19meir1.gdg-pad {
+	padding: var(--d19meir1-5) 8.5px 3px;
+}
+
+.gdg-d19meir1 .gdg-clip-region {
+	display: flex;
+	flex-direction: column;
+	overflow-y: auto;
+	overflow-x: hidden;
+	border-radius: 2px;
+	flex-grow: 1;
+}
+
+.gdg-d19meir1 .gdg-clip-region .gdg-growing-entry {
+	height: 100%;
+}
+
+.gdg-d19meir1 .gdg-clip-region input.gdg-input,
+.gdg-d19meir1 .gdg-clip-region textarea.gdg-input {
+	width: 100%;
+	border: none;
+	border-width: 0;
+	outline: none;
+}
+
+/* Additional essential styles */
+.glide-data-grid-overlay-editor,
+.click-outside-ignore {
+	outline-width: 2px !important;
+	outline-offset: -1px !important;
+	z-index: var(--z-grid-overlay-editor) !important;
+}
+
+/* Ensure dropdown editor follows theme */
+.gdg-d19meir1 .gdg-clip-region,
+.glide-data-grid-overlay-editor .gdg-clip-region {
+	background-color: hsl(var(--card)) !important;
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Grid overlay editor base styles */
+.glide-data-grid-overlay-editor {
+	/* Style for the overlay editor container */
+	background: transparent !important;
+	border: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	outline: none !important;
+	box-shadow: none !important;
+	font-family: inherit !important;
+	font-size: inherit !important;
+	color: hsl(var(--foreground)) !important;
+}
+
+/* Overlay editor styles */
+.glide-data-grid-overlay-editor {
+	z-index: var(--z-grid-overlay-editor) !important;
+}
