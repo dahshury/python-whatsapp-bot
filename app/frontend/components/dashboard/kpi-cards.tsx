@@ -19,7 +19,6 @@ import { Progress } from "@/components/ui/progress";
 import {
 	Tooltip,
 	TooltipContent,
-	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { i18n } from "@/lib/i18n";
@@ -85,18 +84,16 @@ function KPICard({
 					<CardTitle className="text-sm font-medium line-clamp-2 flex items-center gap-1">
 						{title}
 						{hasTooltip && tooltipContent && (
-							<TooltipProvider>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<span className="inline-flex items-center cursor-help">
-											<HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-										</span>
-									</TooltipTrigger>
-									<TooltipContent side="top" align="start" sideOffset={10} className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg">
-										<p className="text-sm opacity-90">{tooltipContent}</p>
-									</TooltipContent>
-								</Tooltip>
-							</TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<span className="inline-flex items-center cursor-help">
+										<HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+									</span>
+								</TooltipTrigger>
+								<TooltipContent side="top" align="start" sideOffset={10} className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg">
+									<p className="text-sm opacity-90">{tooltipContent}</p>
+								</TooltipContent>
+							</Tooltip>
 						)}
 					</CardTitle>
 					<div className="flex-shrink-0">{icon}</div>

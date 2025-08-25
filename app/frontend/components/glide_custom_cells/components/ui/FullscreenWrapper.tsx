@@ -41,7 +41,9 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 			container.style.bottom = "0";
 			container.style.width = "100vw";
 			container.style.height = "100vh";
-			container.style.zIndex = Z_INDEX.FULLSCREEN_BACKDROP.toString();
+			container.style.zIndex = (
+				(Z_INDEX as any).GRID_FULLSCREEN_BACKDROP || Z_INDEX.FULLSCREEN_BACKDROP
+			).toString();
 			container.style.pointerEvents = "auto";
 
 			// Copy theme classes
@@ -79,7 +81,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 		backdropFilter: "blur(10px)",
 		display: "flex",
 		flexDirection: "column",
-		zIndex: Z_INDEX.FULLSCREEN_BACKDROP,
+		zIndex: (Z_INDEX as any).GRID_FULLSCREEN_BACKDROP || Z_INDEX.FULLSCREEN_BACKDROP,
 	};
 
 	const contentStyle: React.CSSProperties = {
@@ -111,7 +113,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 			style={wrapperStyle}
 			className={`grid-fullscreen-wrapper ${isDark ? "dark" : ""}`}
 		>
-			<div style={contentStyle}>
+			<div style={{ ...contentStyle, position: "relative", zIndex: (Z_INDEX as any).GRID_FULLSCREEN_CONTENT || Z_INDEX.FULLSCREEN_CONTENT }}>
 				<div
 					style={gridContainerStyle}
 					className="glide-grid-fullscreen-container"
@@ -125,7 +127,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 						right: "20px",
 						fontSize: "12px",
 						fontFamily: "system-ui, -apple-system, sans-serif",
-						zIndex: Z_INDEX.FULLSCREEN_CONTENT,
+						zIndex: (Z_INDEX as any).GRID_FULLSCREEN_CONTENT || Z_INDEX.FULLSCREEN_CONTENT,
 					}}
 					className="text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1 rounded-md"
 				>

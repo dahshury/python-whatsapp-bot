@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { fetchVacations } from "@/lib/api";
+import { useVacationsData } from "@/lib/websocket-data-provider";
 
 export interface VacationPeriod {
   start: Date;
@@ -42,25 +42,17 @@ export const VacationProvider: React.FC<React.PropsWithChildren<{}>> = ({ childr
   const setOnVacationUpdated = (fn: (periods: VacationPeriod[]) => void) => {
     vacationUpdatedRef.current = fn;
   };
-
-  const loadVacations = React.useCallback(async () => {
+  // Sync with websocket-provided vacations
+  const { vacations } = useVacationsData();
+  React.useEffect(() => {
     try {
-      const resp = await fetchVacations();
-      if (resp?.success && Array.isArray(resp.data)) {
-        // API returns ISO strings; convert to Dates
-        const periods = resp.data.map((p: any) => ({ start: new Date(p.start), end: new Date(p.end) }));
+      if (Array.isArray(vacations)) {
+        const periods = vacations.map((p: any) => ({ start: new Date(p.start), end: new Date(p.end) }));
         setVacationPeriods(periods);
         vacationUpdatedRef.current?.(periods);
       }
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  React.useEffect(() => {
-    // Do not fetch here if WebSocketDataProvider (global) is responsible for fetching vacations
-    // This avoids duplicate /api/vacations calls and potential loops
-  }, [loadVacations]);
+    } catch {}
+  }, [vacations]);
 
   const addVacationPeriod = React.useCallback(() => {
     // Add a 1-day period starting today by default

@@ -3,10 +3,30 @@ import { ColumnDataType } from "@/components/glide_custom_cells/components/core/
 
 export function getDataTableColumns(
   isRTL: boolean,
-  _selectedDateRange?: { start: string; end?: string } | null,
-  _freeRoam?: boolean,
+  selectedDateRange?: { start: string; end?: string } | null,
+  freeRoam?: boolean,
 ): IColumnDefinition[] {
   const t = (en: string, ar: string) => (isRTL ? ar : en);
+
+  // Derive defaults from the opened calendar slot/range
+  const startStr = selectedDateRange?.start;
+  const hasTime = !!startStr && startStr.includes("T");
+  const defaultDateValue = startStr
+    ? (hasTime ? startStr.split("T")[0] : startStr)
+    : undefined;
+  const defaultTimeValue = hasTime
+    ? (() => {
+        try {
+          const d = new Date(startStr!);
+          if (Number.isNaN(d.getTime())) return undefined;
+          const hh = String(d.getHours()).padStart(2, "0");
+          const mm = String(d.getMinutes()).padStart(2, "0");
+          return `${hh}:${mm}`;
+        } catch {
+          return undefined;
+        }
+      })()
+    : undefined;
 
   const columns: IColumnDefinition[] = [
     {
@@ -16,8 +36,11 @@ export function getDataTableColumns(
       dataType: ColumnDataType.DATE,
       isEditable: true,
       isRequired: true,
+      // Default to the opened slot's day when available
+      defaultValue: defaultDateValue,
       formatting: { pattern: "YYYY-MM-DD" },
       width: 130,
+      metadata: { freeRoam: !!freeRoam },
     },
     {
       id: "time",
@@ -26,6 +49,8 @@ export function getDataTableColumns(
       dataType: ColumnDataType.TIME,
       isEditable: true,
       isRequired: true,
+      // In time grid views, default to the clicked slot time; otherwise empty
+      defaultValue: defaultTimeValue,
       width: 110,
     },
     {
@@ -43,6 +68,7 @@ export function getDataTableColumns(
       title: t("Type", "النوع"),
       dataType: ColumnDataType.DROPDOWN,
       isEditable: true,
+      isRequired: true,
       metadata: {
         options: isRTL ? ["كشف", "مراجعة"] : ["Check-up", "Follow-up"],
       },
@@ -72,6 +98,7 @@ export function getValidationColumns(_isRTL?: boolean) {
     { name: "name", required: true },
     { name: "date", required: true },
     { name: "time", required: true },
+    { name: "type", required: true },
   ];
 }
 

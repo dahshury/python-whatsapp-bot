@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { toast } from "sonner";
 import { useUndoStore } from "@/hooks/useUndoStore";
 import { useLanguage } from "@/lib/language-context";
 
@@ -16,24 +15,27 @@ export function UndoManager() {
 					event.preventDefault();
 					const operationToUndo = popUndo();
 					if (operationToUndo) {
-						toast.promise(operationToUndo.execute(), {
-							loading: isRTL
-								? `جاري التراجع: ${operationToUndo.description}...`
-								: `Undoing: ${operationToUndo.description}...`,
-							success: (_data) => {
-								// Assuming execute() returns some success message or data
-								return isRTL
-									? `تم التراجع بنجاح: ${operationToUndo.description}`
-									: `Successfully undid: ${operationToUndo.description}`;
-							},
-							error: (err) => {
-								// If undo fails, we might want to push it back or handle error
-								// For now, just log and notify
-								console.error("Undo failed:", err);
-								return isRTL
-									? `فشل التراجع: ${operationToUndo.description}. خطأ: ${err.message || "خطأ غير معروف"}`
-									: `Failed to undo: ${operationToUndo.description}. Error: ${err.message || "Unknown error"}`;
-							},
+						import("sonner").then(({ toast: sonner }) => {
+							sonner.promise(operationToUndo.execute(), {
+								loading: isRTL
+									? `جاري التراجع: ${operationToUndo.description}...`
+									: `Undoing: ${operationToUndo.description}...`,
+								success: () => {
+									try {
+										const { toastService } = require("@/lib/toast-service");
+										toastService.success(isRTL ? "تم التراجع بنجاح" : "Undo successful", operationToUndo.description);
+									} catch {}
+									return "";
+								},
+								error: (err: any) => {
+									console.error("Undo failed:", err);
+									try {
+										const { toastService } = require("@/lib/toast-service");
+										toastService.error(isRTL ? "فشل التراجع" : "Undo failed", `${operationToUndo.description}: ${err?.message || (isRTL ? "خطأ غير معروف" : "Unknown error")}`);
+									} catch {}
+									return "";
+								},
+							});
 						});
 					}
 				} else {

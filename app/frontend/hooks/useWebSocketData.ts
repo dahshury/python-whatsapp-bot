@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { toast } from '@/hooks/use-toast'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { toastService } from '@/lib/toast-service'
 
 // WebSocket message types from backend
 type UpdateType = 
@@ -42,19 +42,43 @@ interface UseWebSocketDataOptions {
 export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
   const {
     autoReconnect = true,
-    maxReconnectAttempts = 5,
-    reconnectInterval = 3000,
+    maxReconnectAttempts = Number.POSITIVE_INFINITY,
+    reconnectInterval = 1500,
     enableNotifications = true,
     filters
   } = options
 
-  const [state, setState] = useState<WebSocketDataState>({
-    reservations: {},
-    conversations: {},
-    vacations: [],
-    isConnected: false,
-    lastUpdate: null
-  })
+  // Cache keys and TTL (keep last good snapshot to avoid UI flicker on refresh)
+  const STORAGE_KEY = 'ws_snapshot_v1'
+  const CACHE_TTL_MS = 1000 * 60 * 60 // 1 hour
+
+  const loadCachedState = (): WebSocketDataState => {
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(STORAGE_KEY) : null
+      if (raw) {
+        const parsed = JSON.parse(raw)
+        const ts: number = parsed?.__ts || 0
+        if (Date.now() - ts < CACHE_TTL_MS) {
+          return {
+            reservations: parsed?.reservations || {},
+            conversations: parsed?.conversations || {},
+            vacations: parsed?.vacations || [],
+            isConnected: false,
+            lastUpdate: parsed?.lastUpdate || null,
+          }
+        }
+      }
+    } catch {}
+    return {
+      reservations: {},
+      conversations: {},
+      vacations: [],
+      isConnected: false,
+      lastUpdate: null,
+    }
+  }
+
+  const [state, setState] = useState<WebSocketDataState>(loadCachedState)
 
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -194,35 +218,40 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
     }
   }, [enableNotifications])
 
-  // Show user-friendly notifications for updates
+  // Show user-friendly notifications for updates (via unified toast service)
   const showUpdateNotification = useCallback((type: UpdateType, data: any) => {
     switch (type) {
       case 'reservation_created':
-        toast({
-          title: 'New Reservation',
-          description: `Reservation created for ${data.customer_name || data.wa_id} on ${data.date} at ${data.time_slot}`,
-          duration: 3000
+        toastService.reservationCreated({
+          customer: data.customer_name,
+          wa_id: data.wa_id,
+          date: data.date,
+          time: (data.time_slot || '').slice(0,5),
         })
         break
       case 'reservation_cancelled':
-        toast({
-          title: 'Reservation Cancelled',
-          description: `Reservation for ${data.customer_name || data.wa_id} on ${data.date} has been cancelled`,
-          duration: 3000
+        toastService.reservationCancelled({
+          customer: data.customer_name,
+          wa_id: data.wa_id,
+          date: data.date,
+          time: (data.time_slot || '').slice(0,5),
         })
         break
+      case 'reservation_updated':
+      case 'reservation_reinstated':
+        // Skip generic updates, handled elsewhere if needed
+        break
       case 'conversation_new_message':
-        toast({
-          title: 'New Message',
-          description: `New message from ${data.wa_id}`,
-          duration: 2000
+        toastService.newMessage({
+          title: `Message • ${data.wa_id}`,
+          description: String(data.message || '').slice(0, 100),
         })
         break
       // Add more notification types as needed
     }
   }, [])
 
-  // Connect to WebSocket - now stable function
+  // Connect to WebSocket - now stable function with auto-reconnect
   const connect = useCallback(() => {
     // Prevent multiple connections
     if (wsRef.current?.readyState === WebSocket.CONNECTING || wsRef.current?.readyState === WebSocket.OPEN || connectingRef.current) {
@@ -249,13 +278,26 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
           }))
         }
         // Request initial snapshot to avoid REST
-        try { ws.send(JSON.stringify({ type: 'get_snapshot' })) } catch {}
+        // Only request snapshot if we don't already have any data
+        const hasAnyData = (() => {
+          try {
+            const hasRes = Object.keys(state.reservations || {}).length > 0
+            const hasConv = Object.keys(state.conversations || {}).length > 0
+            const hasVac = Array.isArray(state.vacations) && state.vacations.length > 0
+            return hasRes || hasConv || hasVac
+          } catch { return false }
+        })()
+        try { if (!hasAnyData) ws.send(JSON.stringify({ type: 'get_snapshot' })) } catch {}
       }
 
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data)
-            processMessage(message)
+          processMessage(message)
+          if (message.type === 'snapshot') {
+            // Clear any queued messages on full snapshot
+            messageQueueRef.current = []
+          }
         } catch (error) {
           console.warn('Error parsing WebSocket message:', error)
         }
@@ -264,8 +306,20 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
       ws.onclose = (event) => {
         console.log('WebSocket manually disconnected:', event.code, event.reason)
         setState(prev => ({ ...prev, isConnected: false }))
-        wsRef.current = null
+        // Only nullify if this is the same instance
+        if (wsRef.current === ws) wsRef.current = null
         connectingRef.current = false
+
+        // Attempt reconnection if enabled and not a normal close
+        if (autoReconnect && event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current++
+          const base = reconnectInterval * Math.max(1, reconnectAttemptsRef.current)
+          const delay = Math.min(base, 15000) + Math.floor(Math.random() * 300) // cap 15s + jitter
+          if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connect()
+          }, delay)
+        }
       }
 
       ws.onerror = (error) => {
@@ -278,7 +332,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
       console.warn('Failed to create manual WebSocket connection:', error)
       connectingRef.current = false
     }
-  }, [getWebSocketUrl, filters, processMessage])
+  }, [getWebSocketUrl, filters, processMessage, autoReconnect, reconnectInterval, maxReconnectAttempts])
 
   // Disconnect WebSocket
   const disconnect = useCallback(() => {
@@ -288,6 +342,11 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
     }
 
     if (wsRef.current) {
+      try { wsRef.current.onclose = null as any } catch {}
+      try { wsRef.current.onerror = null as any } catch {}
+      try { wsRef.current.onopen = null as any } catch {}
+      try { wsRef.current.onmessage = null as any } catch {}
+      // Normal close; prevent auto-reconnect handler from scheduling
       wsRef.current.close(1000, 'Manual disconnect')
       wsRef.current = null
     }
@@ -295,153 +354,49 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
     setState(prev => ({ ...prev, isConnected: false }))
   }, [])
 
-  // Manual refresh function for fallback
+  // Manual refresh now re-requests a snapshot via WebSocket only (no REST fallback)
   const refreshData = useCallback(async () => {
-    console.log('Starting data refresh...')
     try {
-      // Fallback to API calls if WebSocket is not available
-      const [reservationsRes, conversationsRes, vacationsRes] = await Promise.all([
-        fetch('/api/reservations').then(async r => {
-          console.log('Reservations response status:', r.status)
-          if (!r.ok) {
-            console.warn(`Reservations API not ok: ${r.status}`)
-            return { success: false, data: {} }
-          }
-          try { return await r.json() } catch { return { success: false, data: {} } }
-        }),
-        fetch('/api/conversations').then(async r => {
-          console.log('Conversations response status:', r.status)
-          if (!r.ok) {
-            console.warn(`Conversations API not ok: ${r.status}`)
-            return { success: false, data: {} }
-          }
-          try { return await r.json() } catch { return { success: false, data: {} } }
-        }),
-        fetch('/api/vacations').then(async r => {
-          console.log('Vacations response status:', r.status)
-          if (!r.ok) {
-            console.warn(`Vacations API not ok: ${r.status}`)
-            return { success: false, data: [] }
-          }
-          try { return await r.json() } catch { return { success: false, data: [] } }
-        })
-      ])
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'get_snapshot' }))
+      } else {
+        // Try to reconnect and then request snapshot
+        connect()
+        setTimeout(() => {
+          try { wsRef.current?.send(JSON.stringify({ type: 'get_snapshot' })) } catch {}
+        }, 500)
+      }
+    } catch {}
+  }, [connect])
 
-      console.log('All API responses received successfully')
-      setState(prev => ({
-        ...prev,
-        reservations: reservationsRes.data || {},
-        conversations: conversationsRes.data || {},
-        vacations: vacationsRes.data || [],
-        lastUpdate: new Date().toISOString()
-      }))
-    } catch (error) {
-      console.warn('Failed to refresh data:', error)
-      toast({
-        title: 'Refresh Failed',
-        description: `Failed to update data from server: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        variant: 'destructive',
-        duration: 8000
-      })
-    }
-  }, [])
-
-  // Initialize WebSocket connection
+  // Initialize WebSocket connection immediately (no artificial delay)
   useEffect(() => {
-    console.log('Initializing WebSocket connection with database integration')
-    
-    const connectToWebSocket = () => {
-      // Prevent multiple connections
-      if (wsRef.current?.readyState === WebSocket.CONNECTING || wsRef.current?.readyState === WebSocket.OPEN || connectingRef.current) {
-        return
-      }
+    console.log('Initializing WebSocket connection with cached snapshot hydration')
+    connect()
 
-      connectingRef.current = true
-      try {
-        const wsUrl = getWebSocketUrl()
-        console.log('Connecting to WebSocket:', wsUrl)
-        const ws = new WebSocket(wsUrl)
-
-        ws.onopen = () => {
-          console.log('WebSocket connected successfully')
-          setState(prev => ({ ...prev, isConnected: true }))
-          reconnectAttemptsRef.current = 0
-          connectingRef.current = false
-
-          // Send filters if configured, then request data snapshot
-          if (filters) {
-            ws.send(JSON.stringify({
-              type: 'set_filter',
-              filters
-            }))
-          }
-          try { ws.send(JSON.stringify({ type: 'get_snapshot' })) } catch {}
-
-          // Process any queued messages
-          while (messageQueueRef.current.length > 0) {
-            const queuedMessage = messageQueueRef.current.shift()
-            if (queuedMessage) {
-              processMessage(queuedMessage)
-            }
-          }
-        }
-
-        ws.onmessage = (event) => {
-          try {
-            const message: WebSocketMessage = JSON.parse(event.data)
-            console.log('WebSocket message received:', message)
-            processMessage(message)
-          } catch (error) {
-            console.warn('Error parsing WebSocket message:', error)
-          }
-        }
-
-        ws.onclose = (event) => {
-          console.log('WebSocket disconnected:', event.code, event.reason)
-          setState(prev => ({ ...prev, isConnected: false }))
-          wsRef.current = null
-          connectingRef.current = false
-
-          // Attempt reconnection if enabled and not manually closed
-          if (autoReconnect && event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-            reconnectAttemptsRef.current++
-            console.log(`Attempting reconnection ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`)
-            
-            reconnectTimeoutRef.current = setTimeout(() => {
-              connectToWebSocket()
-            }, reconnectInterval * reconnectAttemptsRef.current) // Exponential backoff
-          } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-            console.log('Max reconnection attempts reached')
-          }
-        }
-
-        ws.onerror = (error) => {
-          console.warn('WebSocket error:', error)
-          connectingRef.current = false
-          toast({
-            title: 'Connection Error',
-            description: 'Real-time updates temporarily unavailable',
-            variant: 'destructive',
-            duration: 5000
-          })
-        }
-
-        wsRef.current = ws
-      } catch (error) {
-        console.warn('Failed to create WebSocket connection:', error)
-        connectingRef.current = false
-      }
+    const handleOnline = () => {
+      if (!state.isConnected) connect()
     }
-
-    const timer = setTimeout(() => {
-      connectToWebSocket()
-    }, 500) // Small delay to prevent immediate multiple calls
+    const handleVisibility = () => {
+      try {
+        if (document.visibilityState === 'visible' && !state.isConnected) {
+          connect()
+        }
+      } catch {}
+    }
+    window.addEventListener('online', handleOnline)
+    document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
-      clearTimeout(timer)
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      window.removeEventListener('online', handleOnline)
+      document.removeEventListener('visibilitychange', handleVisibility)
       disconnect()
     }
-  }, []) // Empty dependency array to prevent reconnection loops
+  }, [connect, disconnect])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -452,7 +407,22 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
     }
   }, [])
 
-  return {
+  // Persist snapshot to sessionStorage to avoid blank UI on refresh
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          reservations: state.reservations,
+          conversations: state.conversations,
+          vacations: state.vacations,
+          lastUpdate: state.lastUpdate,
+          __ts: Date.now(),
+        }))
+      }
+    } catch {}
+  }, [state.reservations, state.conversations, state.vacations, state.lastUpdate])
+
+  return useMemo(() => ({
     // Data
     reservations: state.reservations,
     conversations: state.conversations,
@@ -469,5 +439,15 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
     
     // Utility
     isReconnecting: reconnectAttemptsRef.current > 0 && !state.isConnected
-  }
+  }), [
+    state.reservations,
+    state.conversations,
+    state.vacations,
+    state.isConnected,
+    state.lastUpdate,
+    connect,
+    disconnect,
+    refreshData,
+    reconnectAttemptsRef.current
+  ])
 } 

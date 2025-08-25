@@ -2,6 +2,7 @@
 
 import { BarChart3, Calendar } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { DockIcon } from "@/components/ui/dock";
 import { Separator } from "@/components/ui/separator";
@@ -15,9 +16,10 @@ import type { NavigationLinksProps } from "@/types/navigation";
 
 export function NavigationLinks({
 	isRTL = false,
-	isActive,
 	className = "",
 }: NavigationLinksProps) {
+	const pathname = usePathname();
+	const isDashboardActive = pathname?.startsWith("/dashboard") ?? false;
 	return (
 		<>
 			<DockIcon>
@@ -28,11 +30,11 @@ export function NavigationLinks({
 							aria-label={isRTL ? "لوحة التحكم" : "Dashboard"}
 							className={cn(
 								buttonVariants({
-									variant: isActive?.("/dashboard") ? "default" : "ghost",
+									variant: isDashboardActive ? "default" : "ghost",
 									size: "icon",
 								}),
 								"size-9 rounded-full transition-all duration-200",
-								isActive?.("/dashboard") && "shadow-lg",
+								isDashboardActive && "shadow-lg",
 								className,
 							)}
 						>
@@ -56,27 +58,21 @@ export function CalendarLink({
 }: Pick<NavigationLinksProps, "isRTL" | "className">) {
 	return (
 		<DockIcon>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<Link
-						href="/"
-						aria-label={isRTL ? "التقويم" : "Calendar"}
-						className={cn(
-							buttonVariants({
-								variant: "ghost",
-								size: "icon",
-							}),
-							"size-9 rounded-full transition-all duration-200",
-							className,
-						)}
-					>
-						<Calendar className="size-4" />
-					</Link>
-				</TooltipTrigger>
-				<TooltipContent>
-					<p>{isRTL ? "التقويم" : "Calendar"}</p>
-				</TooltipContent>
-			</Tooltip>
+			<Link
+				href="/"
+				prefetch={false}
+				aria-label={isRTL ? "التقويم" : "Calendar"}
+				className={cn(
+					buttonVariants({
+						variant: "ghost",
+						size: "icon",
+					}),
+					"size-9 rounded-full transition-all duration-200",
+					className,
+				)}
+			>
+				<Calendar className="size-4" />
+			</Link>
 		</DockIcon>
 	);
 }

@@ -2,7 +2,7 @@
 
 import { Plane, Settings2, View } from "lucide-react";
 import * as React from "react";
-import { toast } from "sonner";
+import { toastService } from "@/lib/toast-service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VacationPeriods } from "@/components/vacation-periods";
 import { useSettings } from "@/lib/settings-context";
@@ -54,10 +54,8 @@ export function SettingsTabs({
 		setFreeRoam(isFreeRoam);
 		setShowDualCalendar(isDual);
 
-		toast(
-			isRTL
-				? `تم تغيير وضع العرض إلى ${value}`
-				: `View mode changed to ${value}`,
+		toastService.success(
+			isRTL ? `تم تغيير وضع العرض إلى ${value}` : `View mode changed to ${value}`,
 		);
 	};
 

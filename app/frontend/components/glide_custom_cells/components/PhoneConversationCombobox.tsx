@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDown, Plus, User } from "lucide-react";
+import { ChevronsUpDown, Plus, User, Check as CheckIcon } from "lucide-react";
 import React, { useRef, useState } from "react";
 import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/popover";
 import { useCustomerData } from "@/lib/customer-data-context";
 import { cn } from "@/lib/utils";
+import { parsePhoneNumber } from "react-phone-number-input";
 
 interface PhoneConversationComboboxProps {
 	value?: string;
@@ -28,6 +29,7 @@ interface PhoneConversationComboboxProps {
 	placeholder?: string;
 	className?: string;
 	disabled?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 interface CustomerOption {
@@ -51,6 +53,7 @@ const PhoneConversationComboboxBase = React.forwardRef<
 			placeholder = "Enter phone number",
 			className,
 			disabled = false,
+			onOpenChange,
 		},
 		ref,
 	) => {
@@ -78,48 +81,39 @@ const PhoneConversationComboboxBase = React.forwardRef<
 		// Use centralized customer data - EXACT SAME as ConversationCombobox
 		const { customers } = useCustomerData();
 
-		// Normalize phone number for comparison
+		// Normalize phone number for comparison (country-agnostic with light KSA fallbacks)
 		const normalizePhone = (phone: string) => {
-			const digits = phone.replace(/\D/g, "");
+			const raw = (phone || "").toString().trim();
+			if (!raw) return "";
+			// Prefer robust parse to E.164 when possible
+			try {
+				const parsed = parsePhoneNumber(raw as any);
+				if (parsed?.number) {
+					return parsed.number.replace(/^\+/, "");
+				}
+			} catch {}
 
-			// Handle Saudi numbers that start with 0 (remove leading 0)
+			const digits = raw.replace(/\D/g, "");
+			// Handle international 00 prefix
+			if (digits.startsWith("00")) {
+				return digits.substring(2);
+			}
+			// Light KSA-specific fallbacks for common local-entry variants
+			if (digits.startsWith("966")) return digits;
 			if (digits.startsWith("0") && digits.length === 10) {
-				const withoutZero = digits.substring(1); // Remove leading 0 to get 9 digits
-				if (withoutZero.startsWith("5")) {
-					return `966${withoutZero}`; // 966 + 9 digits = 12 total
-				}
+				const withoutZero = digits.substring(1);
+				if (withoutZero.startsWith("5")) return `966${withoutZero}`;
 			}
-
-			// Handle invalid 11-digit numbers starting with 0 (common typo)
 			if (digits.startsWith("0") && digits.length === 11) {
-				const withoutZero = digits.substring(1); // Remove leading 0 to get 10 digits
+				const withoutZero = digits.substring(1);
 				if (withoutZero.startsWith("5") && withoutZero.length === 10) {
-					// Take only first 9 digits after removing 0
-					const validNineDigits = withoutZero.substring(0, 9);
-					return `966${validNineDigits}`; // 966 + 9 digits = 12 total
+					return `966${withoutZero.substring(0, 9)}`;
 				}
 			}
-
-			// Handle old format 010 numbers
 			if (digits.startsWith("010")) {
 				return `96655${digits.substring(3)}`;
 			}
-
-			// Already has country code
-			else if (digits.startsWith("966")) {
-				return digits;
-			}
-
-			// 9-digit number starting with 5 (modern Saudi mobile)
-			else if (digits.startsWith("5") && digits.length === 9) {
-				return `966${digits}`;
-			}
-
-			// 9-digit number not starting with 5 (assume mobile, add 55 prefix)
-			else if (digits.length === 9) {
-				return `96655${digits}`;
-			}
-
+			// Default: digits only (works cross-country)
 			return digits;
 		};
 
@@ -213,10 +207,16 @@ const PhoneConversationComboboxBase = React.forwardRef<
 			return filtered;
 		}, [conversationOptions, searchValue, normalizePhone]);
 
-		// Get selected option - EXACT SAME logic as ConversationCombobox
-		const selectedOption = conversationOptions.find(
-			(option) => option.value === value || option.formattedPhone === value,
-		);
+		// Get selected option - include normalized equality for robustness
+		const selectedOption = conversationOptions.find((option) => {
+			if (option.value === value || option.formattedPhone === value) return true;
+			const nv = normalizePhone(value || "");
+			if (!nv) return false;
+			return (
+				normalizePhone(option.value) === nv ||
+				normalizePhone(option.formattedPhone) === nv
+			);
+		});
 
 		// Check if we can add new customer (typed phone number that doesn't match any existing customer)
 		const searchedOption = conversationOptions.find(
@@ -284,9 +284,47 @@ const PhoneConversationComboboxBase = React.forwardRef<
 				<Popover
 					open={isOpen}
 					onOpenChange={(open) => {
-						// Only allow opening, not closing through this handler
+						setIsOpen(open);
+						try { (typeof onOpenChange === 'function') && onOpenChange(open); } catch {}
 						if (open) {
-							setIsOpen(true);
+							setTimeout(() => {
+								try {
+									const scroller = document.querySelector(
+										".chat-scrollbar .ScrollbarsCustom-Scroller",
+									) as HTMLElement | null;
+									const targetRaw = (selectedOption?.value || value || "") as string;
+									const targetDigits = normalizePhone(targetRaw);
+									if (scroller && targetDigits) {
+										const byPhone = scroller.querySelector(
+											`[data-phone="${targetDigits}"]`
+										) as HTMLElement | null;
+										const byFormatted = scroller.querySelector(
+											`[data-formatted-phone="${targetDigits}"]`
+										) as HTMLElement | null;
+										let match: HTMLElement | null = byPhone || byFormatted;
+										if (!match && selectedOption?.value) {
+											match = scroller.querySelector(
+												`[data-value="${selectedOption.value}"]`
+											) as HTMLElement | null;
+										}
+										if (!match && targetDigits) {
+											const last7 = targetDigits.slice(-7);
+											const items = Array.from(
+												scroller.querySelectorAll('[data-value]'),
+											) as HTMLElement[];
+											for (const el of items) {
+												const txt = (el.textContent || '').replace(/\D/g, "");
+												if (last7 && txt.includes(last7)) { match = el; break; }
+											}
+										}
+										if (match) {
+											const offsetTop = match.offsetTop;
+											const target = Math.max(0, offsetTop - scroller.clientHeight / 2 + match.clientHeight / 2);
+											scroller.scrollTop = target;
+										}
+									}
+								} catch {}
+							}, 0);
 						}
 					}}
 				>
@@ -296,7 +334,6 @@ const PhoneConversationComboboxBase = React.forwardRef<
 							variant="outline"
 							role="combobox"
 							disabled={disabled}
-							onClick={() => setIsOpen(!isOpen)}
 							className="w-full justify-between text-sm h-full px-2 border-none bg-transparent focus:ring-0 focus:outline-none"
 							style={{
 								minHeight: "28px",
@@ -316,179 +353,96 @@ const PhoneConversationComboboxBase = React.forwardRef<
 					<PopoverContent
 						className="w-[300px] p-0"
 						align="start"
-						onOpenAutoFocus={(_e) => {
-							// Allow auto-focus but prevent it from closing the popover
-							console.log("🔍 PopoverContent onOpenAutoFocus");
-						}}
 						onCloseAutoFocus={(e) => e.preventDefault()}
 						onEscapeKeyDown={(_e) => {
-							console.log("🔍 Escape key pressed");
 							setSearchValue("");
 							closePopover();
 						}}
-						onPointerDownOutside={(e: any) => {
-							// Completely prevent closing from outside pointer events
-							e.preventDefault();
+						onPointerDownOutside={(e) => {
+							const target = e.target as HTMLElement;
+							if (
+								target.closest(".ScrollbarsCustom-Track") ||
+								target.closest(".ScrollbarsCustom-Thumb") ||
+								target.closest(".ScrollbarsCustom-themed")
+							) {
+								e.preventDefault();
+							}
 						}}
 						onInteractOutside={(e: any) => {
-							// Completely prevent closing from outside interactions
-							e.preventDefault();
+							const oe = e?.detail?.originalEvent || e?.originalEvent;
+							const type = oe?.type;
+							// Prevent closing on focus/hover interactions; allow real outside clicks
+							if (!type || type === "focusin" || type === "pointermove" || type === "mousemove") {
+								e.preventDefault();
+								return;
+							}
+							const target = e.target as HTMLElement;
+							if (
+								target.closest(".ScrollbarsCustom-Track") ||
+								target.closest(".ScrollbarsCustom-Thumb") ||
+								target.closest(".ScrollbarsCustom-themed")
+							) {
+								e.preventDefault();
+							}
 						}}
 					>
 						<Command
 							shouldFilter={false}
-							onMouseEnter={(e) => {
-								// Prevent hover events from closing popover
-								e.preventDefault();
-								e.stopPropagation();
-							}}
-							onMouseMove={(e) => {
-								// Prevent mouse move events from closing popover
-								e.preventDefault();
-								e.stopPropagation();
-							}}
 						>
 							<CommandInput
 								placeholder="Search by name or phone..."
 								className="text-sm"
 								value={searchValue}
-								onValueChange={(value) => {
-									console.log("🔍 CommandInput onValueChange:", value);
-									setSearchValue(value);
-								}}
-								onFocus={(_e) => {
-									console.log("🔍 CommandInput focused");
-								}}
-								onKeyDown={(e) => {
-									console.log("🔍 CommandInput keyDown:", e.key);
-									// Don't prevent default - allow normal typing
-								}}
-								onMouseEnter={(e) => {
-									// Prevent hover from closing popover but allow focus
-									e.stopPropagation();
-								}}
-								onMouseMove={(e) => {
-									// Prevent mouse move from closing popover
-									e.stopPropagation();
-								}}
+								onValueChange={setSearchValue}
 							/>
-							<CommandList
-								onMouseDown={(e) => {
-									// Only prevent if not clicking on a CommandItem
-									if (!(e.target as HTMLElement).closest("[data-value]")) {
-										e.preventDefault();
-										e.stopPropagation();
-									}
-								}}
-								onPointerDown={(e) => {
-									// Only prevent if not clicking on a CommandItem
-									if (!(e.target as HTMLElement).closest("[data-value]")) {
-										e.preventDefault();
-										e.stopPropagation();
-									}
-								}}
-							>
+							<CommandList>
 								<ThemedScrollbar
 									className="h-72 scrollbar-thin chat-scrollbar"
 								>
 									<div
-										onPointerDown={(e: React.PointerEvent) => {
-											// Prevent popover from closing when interacting with scrollbar
-											e.stopPropagation();
-											e.preventDefault();
-										}}
-										onMouseDown={(e: React.MouseEvent) => {
-											// Also handle mouse events for better compatibility
-											e.stopPropagation();
-											e.preventDefault();
-										}}
 										className="h-full"
 									>
-										<CommandEmpty
-										className="text-xs py-2 text-center"
-										onMouseDown={(e) => {
-											e.preventDefault();
-											e.stopPropagation();
-										}}
-									>
-										No customers found
-									</CommandEmpty>
-									<CommandGroup>
-										{filteredOptions.map((option) => (
-											<CommandItem
-												key={option.value}
-												value={option.value}
-												data-value={option.value}
-												onSelect={handleCustomerSelectByValue}
-												onPointerDown={(e) => {
-													e.preventDefault();
-													handleCustomerSelectDirect(option);
-												}}
-												onMouseEnter={(e) => {
-													// Prevent hover from closing popover
-													e.preventDefault();
-													e.stopPropagation();
-												}}
-												onMouseMove={(e) => {
-													// Prevent mouse move from closing popover
-													e.preventDefault();
-													e.stopPropagation();
-												}}
-												className={cn(
-													"text-sm py-1.5 cursor-pointer",
-													selectedOption?.value === option.value &&
-														"ring-1 ring-primary ring-offset-1",
-												)}
-											>
-												<div className="flex items-center justify-between w-full">
-													<div className="flex items-center gap-2 flex-1 min-w-0">
-														<span className="truncate">{option.label}</span>
-													</div>
-												</div>
-											</CommandItem>
-										))}
+										<CommandEmpty className="text-xs py-2 text-center">
+											No customers found
+										</CommandEmpty>
+										<CommandGroup>
+											{filteredOptions.map((option) => {
+												const isSelected = normalizePhone(option.value) === normalizePhone(value) || normalizePhone(option.formattedPhone) === normalizePhone(value);
+												return (
+													<CommandItem
+														key={option.value}
+														value={option.value}
+														data-value={option.value}
+														data-selected={isSelected ? 'true' : 'false'}
+														data-phone={normalizePhone(option.value)}
+														data-formatted-phone={normalizePhone(option.formattedPhone)}
+														onSelect={handleCustomerSelectByValue}
+														className={cn(
+															"text-sm py-1.5 cursor-pointer flex items-center gap-2 rounded-sm w-full px-2",
+															isSelected ? "bg-accent/60 text-foreground" : "",
+														)}
+													>
+														<span className="truncate flex-1 min-w-0">{option.label}</span>
+														<CheckIcon className={cn("ml-auto size-4", isSelected ? "opacity-100" : "opacity-0")} />
+													</CommandItem>
+												);
+											})}
 
-										{canAddNewCustomer && (
-											<CommandItem
-												key="add-new-customer"
-												value={`add-new-${searchValue}`}
-												data-value={`add-new-${searchValue}`}
-												onSelect={() => {
-													console.log("🔍 New customer onSelect triggered");
-													handleAddNewCustomer();
-												}}
-												onPointerDown={(e) => {
-													console.log(
-														"🔍 New customer onPointerDown triggered",
-													);
-													e.preventDefault();
-													handleAddNewCustomer();
-												}}
-												onClick={(e) => {
-													console.log("🔍 New customer onClick triggered");
-													e.preventDefault();
-													e.stopPropagation();
-													handleAddNewCustomer();
-												}}
-												onMouseEnter={(e) => {
-													// Prevent hover from closing popover
-													e.preventDefault();
-													e.stopPropagation();
-												}}
-												onMouseMove={(e) => {
-													// Prevent mouse move from closing popover
-													e.preventDefault();
-													e.stopPropagation();
-												}}
-												className="text-sm py-1.5 cursor-pointer border-t border-border"
-											>
-												<div className="flex items-center gap-2 w-full">
-													<Plus className="h-3 w-3 text-muted-foreground" />
-													<span>Use "{searchValue}"</span>
-												</div>
-											</CommandItem>
-										)}
-									</CommandGroup>
+											{canAddNewCustomer && (
+												<CommandItem
+													key="add-new-customer"
+													value={`add-new-${searchValue}`}
+													data-value={`add-new-${searchValue}`}
+													onSelect={handleAddNewCustomer}
+													className="text-sm py-1.5 cursor-pointer border-t border-border"
+												>
+													<div className="flex items-center gap-2 w-full">
+														<Plus className="h-3 w-3 text-muted-foreground" />
+														<span>Use "{searchValue}"</span>
+													</div>
+												</CommandItem>
+											)}
+										</CommandGroup>
 									</div>
 								</ThemedScrollbar>
 							</CommandList>

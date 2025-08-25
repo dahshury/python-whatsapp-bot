@@ -38,6 +38,8 @@ export function EnhancedDashboardView() {
 		dateRange: defaultDateRange,
 	});
 
+	const [activeTab, setActiveTab] = useState("overview");
+
 	// Use smart data loading that fetches filtered data directly from backend
 	const {
 		dashboardData,
@@ -113,17 +115,7 @@ export function EnhancedDashboardView() {
 					to: dateRange.to as Date,
 				},
 			}));
-			// Trigger refresh immediately with new range
-			const formatYmd = (d: Date) => {
-				const y = d.getFullYear();
-				const m = String(d.getMonth() + 1).padStart(2, "0");
-				const day = String(d.getDate()).padStart(2, "0");
-				return `${y}-${m}-${day}`;
-			};
-			void refreshDashboard({
-				fromDate: formatYmd(dateRange.from as Date),
-				toDate: formatYmd(dateRange.to as Date),
-			});
+			// Immediate refresh removed; debounced effect will handle
 		}
 	};
 
@@ -211,6 +203,96 @@ export function EnhancedDashboardView() {
 						</Button>
 					</CardContent>
 				</Card>
+			</div>
+		);
+	}
+
+	// Create stable, safe fallbacks to avoid undefined access and re-mount animations
+	const safeDashboard = React.useMemo(() => ({
+		stats: dashboardData?.stats ?? {
+			totalReservations: 0,
+			totalCancellations: 0,
+			uniqueCustomers: 0,
+			conversionRate: 0,
+			returningCustomers: 0,
+			returningRate: 0,
+			avgFollowups: 0,
+			avgResponseTime: 0,
+			activeCustomers: 0,
+		},
+		prometheusMetrics: dashboardData?.prometheusMetrics ?? {},
+		dailyTrends: dashboardData?.dailyTrends ?? [],
+		typeDistribution: dashboardData?.typeDistribution ?? [],
+		timeSlots: dashboardData?.timeSlots ?? [],
+		messageHeatmap: dashboardData?.messageHeatmap ?? [],
+		topCustomers: dashboardData?.topCustomers ?? [],
+		conversationAnalysis:
+			dashboardData?.conversationAnalysis ?? {
+				avgMessageLength: 0,
+				avgWordsPerMessage: 0,
+				avgMessagesPerCustomer: 0,
+				totalMessages: 0,
+				uniqueCustomers: 0,
+				responseTimeStats: { avg: 0, median: 0, max: 0 },
+				messageCountDistribution: { avg: 0, median: 0, max: 0 },
+			},
+		wordFrequency: dashboardData?.wordFrequency ?? [],
+		dayOfWeekData: dashboardData?.dayOfWeekData ?? [],
+		monthlyTrends: dashboardData?.monthlyTrends ?? [],
+		funnelData: dashboardData?.funnelData ?? [],
+		customerSegments: dashboardData?.customerSegments ?? [],
+	}), [dashboardData]);
+
+	// Show loading state while data is being fetched or if data is incomplete
+	if (isLoading || !dashboardData) {
+		return (
+			<div className="space-y-6">
+				{/* Header Skeleton */}
+				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+					<div>
+						<Skeleton className="h-8 w-48 mb-2" />
+						<Skeleton className="h-4 w-96" />
+					</div>
+					<div className="flex flex-col sm:flex-row gap-2">
+						<Skeleton className="h-10 w-32" />
+						<Skeleton className="h-10 w-24" />
+					</div>
+				</div>
+
+				{/* KPI Cards Skeleton */}
+				<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
+					{Array.from({ length: 6 }).map((_, i) => (
+						<Card key={i} className="h-32">
+							<CardHeader className="pb-2">
+								<Skeleton className="h-4 w-24" />
+							</CardHeader>
+							<CardContent>
+								<Skeleton className="h-8 w-16 mb-2" />
+								<Skeleton className="h-3 w-20" />
+							</CardContent>
+						</Card>
+					))}
+				</div>
+
+				{/* Charts Skeleton */}
+				<div className="grid gap-4 md:grid-cols-2">
+					<Card className="h-96">
+						<CardHeader>
+							<Skeleton className="h-6 w-32" />
+						</CardHeader>
+						<CardContent>
+							<Skeleton className="h-64 w-full" />
+						</CardContent>
+					</Card>
+					<Card className="h-96">
+						<CardHeader>
+							<Skeleton className="h-6 w-32" />
+						</CardHeader>
+						<CardContent>
+							<Skeleton className="h-64 w-full" />
+						</CardContent>
+					</Card>
+				</div>
 			</div>
 		);
 	}
@@ -334,7 +416,7 @@ export function EnhancedDashboardView() {
 
 			{/* Dashboard Content */}
 			{dashboardData && (
-				<Tabs defaultValue="overview" className="space-y-6">
+				<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
 					<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 lg:max-w-[600px]">
 						<TabsTrigger value="overview" className="whitespace-nowrap w-full">
 							{i18n.getMessage("dashboard_overview", isRTL)}
@@ -352,40 +434,45 @@ export function EnhancedDashboardView() {
 
 					<TabsContent value="overview" className="space-y-6">
 						<KPICards
-							stats={dashboardData.stats}
-							prometheusMetrics={dashboardData.prometheusMetrics}
+							stats={safeDashboard.stats}
+							prometheusMetrics={safeDashboard.prometheusMetrics}
 							isRTL={isRTL}
 						/>
 
 						<OperationMetrics
-							prometheusMetrics={dashboardData.prometheusMetrics}
+							prometheusMetrics={safeDashboard.prometheusMetrics}
 							isRTL={isRTL}
 						/>
 
-						{/* Quick Overview Charts */}
-						<TrendCharts
-							dailyTrends={dashboardData.dailyTrends}
-							typeDistribution={dashboardData.typeDistribution}
-							timeSlots={dashboardData.timeSlots}
-							dayOfWeekData={dashboardData.dayOfWeekData}
-							monthlyTrends={dashboardData.monthlyTrends}
-							funnelData={dashboardData.funnelData}
-							customerSegments={dashboardData.customerSegments}
-							isRTL={isRTL}
-						/>
+						{/* Quick Overview Charts (compact) */}
+						{activeTab === "overview" && (
+							<TrendCharts
+								dailyTrends={safeDashboard.dailyTrends}
+								typeDistribution={safeDashboard.typeDistribution}
+								timeSlots={safeDashboard.timeSlots}
+								dayOfWeekData={safeDashboard.dayOfWeekData}
+								monthlyTrends={safeDashboard.monthlyTrends}
+								funnelData={safeDashboard.funnelData}
+								customerSegments={safeDashboard.customerSegments}
+								isRTL={isRTL}
+								variant="compact"
+							/>
+						)}
 					</TabsContent>
 
 					<TabsContent value="trends" className="space-y-6">
-						<TrendCharts
-							dailyTrends={dashboardData.dailyTrends}
-							typeDistribution={dashboardData.typeDistribution}
-							timeSlots={dashboardData.timeSlots}
-							dayOfWeekData={dashboardData.dayOfWeekData}
-							monthlyTrends={dashboardData.monthlyTrends}
-							funnelData={dashboardData.funnelData}
-							customerSegments={dashboardData.customerSegments}
-							isRTL={isRTL}
-						/>
+						{activeTab === "trends" && (
+							<TrendCharts
+								dailyTrends={safeDashboard.dailyTrends}
+								typeDistribution={safeDashboard.typeDistribution}
+								timeSlots={safeDashboard.timeSlots}
+								dayOfWeekData={safeDashboard.dayOfWeekData}
+								monthlyTrends={safeDashboard.monthlyTrends}
+								funnelData={safeDashboard.funnelData}
+								customerSegments={safeDashboard.customerSegments}
+								isRTL={isRTL}
+							/>
+						)}
 					</TabsContent>
 
 					<TabsContent value="messages" className="space-y-6">
@@ -395,15 +482,15 @@ export function EnhancedDashboardView() {
 						/>
 
 						<ConversationLengthAnalysis
-							conversationAnalysis={dashboardData.conversationAnalysis}
+							conversationAnalysis={safeDashboard.conversationAnalysis}
 							isRTL={isRTL}
 						/>
 
 						<MessageAnalysis
-							messageHeatmap={dashboardData.messageHeatmap}
-							topCustomers={dashboardData.topCustomers}
-							conversationAnalysis={dashboardData.conversationAnalysis}
-							wordFrequency={dashboardData.wordFrequency}
+							messageHeatmap={safeDashboard.messageHeatmap}
+							topCustomers={safeDashboard.topCustomers}
+							conversationAnalysis={safeDashboard.conversationAnalysis}
+							wordFrequency={safeDashboard.wordFrequency}
 							isRTL={isRTL}
 						/>
 					</TabsContent>

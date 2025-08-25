@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Z_INDEX } from "@/lib/z-index";
 
 interface DialogPortalProps {
 	children: React.ReactNode;
@@ -21,7 +22,7 @@ export function DialogPortal({ children }: DialogPortalProps) {
       top: 0;
       left: 0;
       pointer-events: none;
-      z-index: var(--z-dialog-overlays);
+      z-index: ${Z_INDEX.DIALOG_OVERLAY_PORTAL};
       width: 0;
       height: 0;
     `;

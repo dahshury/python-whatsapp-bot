@@ -198,14 +198,23 @@ export function useCalendarEventHandlers({
 	// Context menu handlers
 	const handleCancelReservation = useCallback(
 		async (eventId: string) => {
+			// Provide FullCalendar API accessor so the handler can update/remove events
+			const getCalendarApi = calendarRef?.current
+				? () => calendarRef.current!.getApi?.()
+				: undefined;
 			await handleCancelReservationService({
 				eventId,
 				events,
 				isRTL,
 				onRefresh: handleRefreshWithBlur,
+				getCalendarApi,
+				onEventCancelled: (id: string) => {
+					// Mirror DataTableOperationsService behavior: also update React state immediately
+					try { removeEvent(id); } catch {}
+				},
 			});
 		},
-		[events, isRTL, handleRefreshWithBlur],
+		[events, isRTL, handleRefreshWithBlur, calendarRef, removeEvent],
 	);
 
 	const handleViewDetails = useCallback(

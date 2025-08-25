@@ -29,22 +29,23 @@ export function NotificationsButton({
 
 	React.useEffect(() => {
 		const handler = (ev: Event) => {
-			const { type, data, ts } = (ev as CustomEvent).detail || {};
+			const { type, data, ts, __local } = (ev as CustomEvent).detail || {};
 			if (!type) return;
 			const id = ts || Date.now();
-			// Suppress increments for locally-initiated operations
+			// Suppress increments for locally-initiated operations; also do not increment while popover is open
 			try {
-				const key = `${type}:${data?.id ?? ""}:${data?.date ?? ""}:${data?.time_slot ?? ""}`;
+				const key = `${type}:${data?.id ?? data?.wa_id ?? ""}:${data?.date ?? ""}:${data?.time_slot ?? ""}`;
 				const localOps: Set<string> | undefined = (globalThis as any).__localOps;
-				if (localOps?.has(key)) {
-					localOps.delete(key);
-				} else {
+				const isLocal = __local === true || !!localOps?.has(key);
+				if (isLocal) {
+					localOps?.delete(key);
+				} else if (!open) {
 					setUnreadCount((c) => c + 1);
 				}
 			} catch {}
 			const text = (() => {
 				if (type === "reservation_created") return `${isRTL ? "تم إنشاء حجز" : "Reservation created"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
-				if (type === "reservation_updated" || type === "reservation_reinstated") return `${isRTL ? "تم تعديل الحجز" : "Reservation updated"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
+				if (type === "reservation_updated" || type === "reservation_reinstated") return `${isRTL ? "تم تعديل الحجز" : "Reservation modified"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
 				if (type === "reservation_cancelled") return `${isRTL ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${data.wa_id}`;
 				if (type === "conversation_new_message") return `${isRTL ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
 				if (type === "vacation_period_updated") return isRTL ? "تم تحديث فترات الإجازة" : "Vacation periods updated";
@@ -54,7 +55,7 @@ export function NotificationsButton({
 		};
 		window.addEventListener("notification:add", handler as EventListener);
 		return () => window.removeEventListener("notification:add", handler as EventListener);
-	}, [isRTL]);
+	}, [isRTL, open]);
 
 	return (
 		<Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) setUnreadCount(0); }}>
@@ -67,26 +68,15 @@ export function NotificationsButton({
 						className,
 					)}
 					aria-label={isRTL ? "الإشعارات" : "Notifications"}
-					onPointerDown={(e) => {
-						if (open) {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
-					onClick={(e) => {
-						if (open) {
-							e.preventDefault();
-							e.stopPropagation();
-						}
-					}}
+					// Allow natural toggle; do not block events when open
 				>
 					<Bell className="h-4 w-4" />
-					{(notificationCount || unreadCount || items.length) > 0 && (
+					{unreadCount > 0 && (
 						<Badge
 							variant="destructive"
 							className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full"
 						>
-							{(notificationCount || unreadCount || items.length) > 99 ? "99+" : (notificationCount || unreadCount || items.length)}
+							{unreadCount > 99 ? "99+" : unreadCount}
 						</Badge>
 					)}
 				</Button>
@@ -102,9 +92,9 @@ export function NotificationsButton({
 						<h3 className="text-sm font-semibold">
 							{isRTL ? "الإشعارات" : "Notifications"}
 						</h3>
-						{(notificationCount || unreadCount || items.length) > 0 && (
+						{unreadCount > 0 && (
 							<Badge variant="secondary" className="text-xs">
-								{notificationCount || unreadCount || items.length}
+								{unreadCount}
 							</Badge>
 						)}
 					</div>

@@ -53,9 +53,9 @@ export function CalendarSkeleton({
 
 					{/* Calendar grid skeleton */}
 					<div className="grid grid-cols-7 gap-2 mb-4">
-						{Array.from({ length: 7 }).map(() => (
+						{Array.from({ length: 7 }).map((_, i) => (
 							<div
-								key={crypto.randomUUID()}
+								key={`skh-${i}`}
 								className="h-8 bg-muted animate-pulse rounded text-center"
 							/>
 						))}
@@ -63,16 +63,16 @@ export function CalendarSkeleton({
 
 					{/* Calendar days skeleton */}
 					<div className="grid grid-cols-7 gap-2">
-						{Array.from({ length: 35 }).map(() => (
+						{Array.from({ length: 35 }).map((_, i) => (
 							<div
-								key={crypto.randomUUID()}
+								key={`sk-${i}`}
 								className="h-20 bg-muted animate-pulse rounded relative"
 							>
 								{/* Random event-like blocks */}
-								{Math.random() > 0.7 && (
+								{i % 5 === 0 && (
 									<div className="absolute top-1 left-1 right-1 h-4 bg-primary/20 animate-pulse rounded-sm" />
 								)}
-								{Math.random() > 0.8 && (
+								{i % 7 === 0 && (
 									<div className="absolute top-6 left-1 right-1 h-4 bg-secondary/20 animate-pulse rounded-sm" />
 								)}
 							</div>

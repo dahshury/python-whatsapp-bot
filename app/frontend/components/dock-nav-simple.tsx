@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import * as React from "react";
-import { toast } from "sonner";
+import { toastService } from "@/lib/toast-service";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import { SettingsTabs } from "@/components/settings";
@@ -174,13 +174,13 @@ export function DockNavSimple({
 
 	const _handleLanguageToggle = (checked: boolean) => {
 		setUseArabicText(checked);
-		toast(checked ? "تم التبديل إلى العربية" : "Switched to English");
+		toastService.success(checked ? "تم التبديل إلى العربية" : "Switched to English");
 	};
 
 	const _handleThemeToggle = (checked: boolean) => {
 		const newTheme = checked ? "dark" : "light";
 		setTheme(newTheme);
-		toast(
+		toastService.success(
 			isRTL
 				? `تم التبديل إلى الوضع ${newTheme === "dark" ? "الليلي" : "النهاري"}`
 				: `Switched to ${newTheme} mode`,
@@ -194,7 +194,7 @@ export function DockNavSimple({
 		setFreeRoam(isFreeRoam);
 		setShowDualCalendar(isDual);
 
-		toast(
+		toastService.success(
 			isRTL
 				? `تم تغيير وضع العرض إلى ${value}`
 				: `View mode changed to ${value}`,

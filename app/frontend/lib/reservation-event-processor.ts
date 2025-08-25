@@ -100,10 +100,23 @@ export function getReservationEventProcessor() {
           const startTime = `${baseTime}:00`;
           const endTime = addMinutesToClock(baseTime, Math.floor(120 / 6));
           const convArr: any[] = Array.isArray(conversationsByUser?.[waId]) ? (conversationsByUser as any)[waId] : [];
-          const convName = convArr.find((m: any) => m?.customer_name)?.customer_name;
+          const convNameFromConv = (() => {
+            try {
+              const found = convArr.find((m: any) => typeof m?.customer_name === "string" && m.customer_name.trim());
+              return (found?.customer_name || "").trim();
+            } catch { return ""; }
+          })();
+          const resArr: any[] = Array.isArray(reservationsByUser?.[waId]) ? (reservationsByUser as any)[waId] : [];
+          const convNameFromRes = (() => {
+            try {
+              const found = resArr.find((r: any) => typeof r?.customer_name === "string" && r.customer_name.trim());
+              return (found?.customer_name || "").trim();
+            } catch { return ""; }
+          })();
+          const displayTitle = convNameFromConv || convNameFromRes || String(waId);
           events.push({
             id: String(waId),
-            title: convName ? `Conversation - ${convName}` : `Conversation - ${waId}`,
+            title: displayTitle,
             start: `${baseDate}T${startTime}`,
             end: `${baseDate}T${endTime}`,
             backgroundColor: "#EDAE49",

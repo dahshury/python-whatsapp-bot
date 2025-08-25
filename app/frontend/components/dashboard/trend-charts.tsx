@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useId, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import {
 	Bar,
 	BarChart,
@@ -10,8 +10,6 @@ import {
 	Funnel,
 	FunnelChart,
 	LabelList,
-	Line,
-	LineChart,
 	Pie,
 	PieChart,
 	ResponsiveContainer,
@@ -19,6 +17,10 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+// Add wrappers to avoid @types/recharts v1 typings conflict with Recharts v3
+const XAxisComp = XAxis as unknown as React.ComponentType<any>;
+const YAxisComp = YAxis as unknown as React.ComponentType<any>;
+const FunnelComp = Funnel as unknown as React.ComponentType<any>;
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { i18n } from "@/lib/i18n";
 import type {
@@ -41,6 +43,7 @@ interface TrendChartsProps {
 	funnelData: FunnelData[];
 	customerSegments: CustomerSegment[];
 	isRTL: boolean;
+	variant?: "full" | "compact";
 }
 
 // Hook to get theme colors for charts
@@ -92,7 +95,7 @@ function useThemeColors() {
 	return colors;
 }
 
-export function TrendCharts({
+export const TrendCharts = memo(function TrendChartsComponent({
 	dailyTrends,
 	typeDistribution,
 	timeSlots,
@@ -101,12 +104,9 @@ export function TrendCharts({
 	funnelData,
 	customerSegments,
 	isRTL,
+	variant = "full",
 }: TrendChartsProps) {
 	const themeColors = useThemeColors();
-	const id = useId();
-	const _gradReservations = `colorReservations_${id}`;
-	const _gradCancellations = `colorCancellations_${id}`;
-	const _gradModifications = `colorModifications_${id}`;
 
 	const chartColors = [
 		themeColors.primary,
@@ -183,6 +183,33 @@ export function TrendCharts({
 				? i18n.getMessage("appt_checkup", isRTL)
 				: i18n.getMessage("appt_followup", isRTL),
 	}));
+
+	// Previous period comparison derived from monthlyTrends: take last two months as proxy
+	const prevTypeDistribution = useMemo(() => {
+		try {
+			if (!Array.isArray(monthlyTrends) || monthlyTrends.length < 2) return [] as any[];
+			// Fallback heuristic: assume checkup ~ 0 type, followup ~ 1 type weights from current distribution
+			const last = monthlyTrends[monthlyTrends.length - 1];
+			const prev = monthlyTrends[monthlyTrends.length - 2];
+			if (!last || !prev) return [] as any[];
+			const totalNow = Math.max(1, transformedTypeDistribution.reduce((s, t) => s + (t.count || 0), 0));
+			const nowWeights = transformedTypeDistribution.map((t) => (t.count || 0) / totalNow);
+			const estimate = (total: number) => transformedTypeDistribution.map((t, idx) => ({ type: t.type, label: t.label, count: Math.round((total || 0) * (nowWeights[idx] || 0)) }));
+			return estimate(prev.reservations);
+		} catch { return [] as any[]; }
+	}, [monthlyTrends, transformedTypeDistribution]);
+
+	// Combined dataset for dual bar chart: current vs previous for each label
+	const typeDistributionWithPrev = useMemo(() => {
+		const map = new Map<number, any>();
+		transformedTypeDistribution.forEach((t) => map.set(t.type, { label: t.label, current: t.count || 0, previous: 0 }));
+		prevTypeDistribution.forEach((p: any) => {
+			const entry = map.get(p.type) || { label: p.label, current: 0, previous: 0 };
+			entry.previous = p.count || 0;
+			map.set(p.type, entry);
+		});
+		return Array.from(map.values());
+	}, [transformedTypeDistribution, prevTypeDistribution]);
 
 	// Transform day of week data with translated day names
 	const transformedDayOfWeekData = dayOfWeekData.map((data) => ({
@@ -277,17 +304,48 @@ export function TrendCharts({
 		};
 	});
 
+	// Compact variant to reduce rendering cost in overview
+	if (variant === "compact") {
+		return (
+			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+				{/* Daily Trends */}
+				<DailyTrendsOverview dailyTrends={dailyTrends} isRTL={isRTL} />
+
+				{/* Appointment Type Distribution with previous period */}
+				<motion.div initial={false}>
+					<Card className="h-full">
+						<CardHeader>
+							<CardTitle>
+								{i18n.getMessage("chart_appointment_type_distribution", isRTL)}
+							</CardTitle>
+						</CardHeader>
+						<CardContent>
+							<div className="h-[350px]">
+								<ResponsiveContainer width="100%" height="100%">
+									<BarChart data={typeDistributionWithPrev}>
+										<CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
+										<XAxisComp dataKey="label" tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+										<YAxisComp tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+										<Tooltip contentStyle={tooltipStyle} />
+										<Bar dataKey="current" name={i18n.getMessage("period_current", isRTL)} fill={themeColors.primary} isAnimationActive={false} />
+										<Bar dataKey="previous" name={i18n.getMessage("period_previous", isRTL)} fill={themeColors.secondary} isAnimationActive={false} />
+									</BarChart>
+								</ResponsiveContainer>
+							</div>
+						</CardContent>
+					</Card>
+				</motion.div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
 			{/* Daily Trends */}
 			<DailyTrendsOverview dailyTrends={dailyTrends} isRTL={isRTL} />
 
-			{/* Type Distribution */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.2 }}
-			>
+			{/* Appointment Type Distribution with previous period */}
+			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
 						<CardTitle>
@@ -297,28 +355,14 @@ export function TrendCharts({
 					<CardContent>
 						<div className="h-[350px]">
 							<ResponsiveContainer width="100%" height="100%">
-								<PieChart>
-									<Pie
-										data={transformedTypeDistribution}
-										cx="50%"
-										cy="50%"
-										outerRadius={100}
-										fill={themeColors.primary}
-										dataKey="count"
-										nameKey="label"
-										label={({ name, percent }) =>
-											`${name} ${((percent || 0) * 100).toFixed(0)}%`
-										}
-									>
-										{transformedTypeDistribution.map((_entry, index) => (
-											<Cell
-												key={`cell-${index}`}
-												fill={chartColors[index % chartColors.length]}
-											/>
-										))}
-									</Pie>
+								<BarChart data={typeDistributionWithPrev}>
+									<CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
+									<XAxisComp dataKey="label" tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+									<YAxisComp tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
 									<Tooltip contentStyle={tooltipStyle} />
-								</PieChart>
+									<Bar dataKey="current" name={i18n.getMessage("period_current", isRTL)} fill={themeColors.primary} isAnimationActive={false} />
+									<Bar dataKey="previous" name={i18n.getMessage("period_previous", isRTL)} fill={themeColors.secondary} isAnimationActive={false} />
+								</BarChart>
 							</ResponsiveContainer>
 						</div>
 					</CardContent>
@@ -326,11 +370,7 @@ export function TrendCharts({
 			</motion.div>
 
 			{/* Popular Time Slots */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.3 }}
-			>
+			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
 						<CardTitle>
@@ -345,7 +385,7 @@ export function TrendCharts({
 										strokeDasharray="3 3"
 										stroke={themeColors.border}
 									/>
-									<XAxis
+									<XAxisComp
 										dataKey="time"
 										tick={{ fontSize: 11, fill: themeColors.foreground }}
 										stroke={themeColors.foreground}
@@ -353,7 +393,7 @@ export function TrendCharts({
 										textAnchor="end"
 										height={60}
 									/>
-									<YAxis
+									<YAxisComp
 										tick={{ fontSize: 12, fill: themeColors.foreground }}
 										stroke={themeColors.foreground}
 									/>
@@ -363,8 +403,7 @@ export function TrendCharts({
 										fill={themeColors.primary}
 										radius={[4, 4, 0, 0]}
 										name={i18n.getMessage("dashboard_reservations", isRTL)}
-										isAnimationActive
-										animationDuration={500}
+										isAnimationActive={false}
 									/>
 								</BarChart>
 							</ResponsiveContainer>
@@ -374,12 +413,7 @@ export function TrendCharts({
 			</motion.div>
 
 			{/* Weekly Activity Pattern */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.4 }}
-				className="lg:col-span-2"
-			>
+			<motion.div initial={false} className="lg:col-span-2">
 				<Card className="h-full">
 					<CardHeader>
 						<CardTitle>
@@ -394,12 +428,12 @@ export function TrendCharts({
 										strokeDasharray="3 3"
 										stroke={themeColors.border}
 									/>
-									<XAxis
+									<XAxisComp
 										dataKey="day"
 										tick={{ fontSize: 12, fill: themeColors.foreground }}
 										stroke={themeColors.foreground}
 									/>
-									<YAxis
+									<YAxisComp
 										tick={{ fontSize: 12, fill: themeColors.foreground }}
 										stroke={themeColors.foreground}
 									/>
@@ -409,16 +443,14 @@ export function TrendCharts({
 										fill={themeColors.primary}
 										radius={[4, 4, 0, 0]}
 										name={i18n.getMessage("dashboard_reservations", isRTL)}
-										isAnimationActive
-										animationDuration={500}
+										isAnimationActive={false}
 									/>
 									<Bar
 										dataKey="cancellations"
 										fill={themeColors.secondary}
 										radius={[4, 4, 0, 0]}
 										name={i18n.getMessage("kpi_cancellations", isRTL)}
-										isAnimationActive
-										animationDuration={500}
+										isAnimationActive={false}
 									/>
 								</BarChart>
 							</ResponsiveContainer>
@@ -427,70 +459,8 @@ export function TrendCharts({
 				</Card>
 			</motion.div>
 
-			{/* Monthly Performance Trends */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.5 }}
-				className="lg:col-span-2"
-			>
-				<Card className="h-full">
-					<CardHeader>
-						<CardTitle>
-							{i18n.getMessage("chart_monthly_performance_trends", isRTL)}
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="h-[350px]">
-							<ResponsiveContainer width="100%" height="100%">
-								<LineChart data={monthlyTrends}>
-									<CartesianGrid
-										strokeDasharray="3 3"
-										stroke={themeColors.border}
-									/>
-									<XAxis
-										dataKey="month"
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<YAxis
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<Tooltip contentStyle={tooltipStyle} />
-									<Line
-										type="monotone"
-										dataKey="reservations"
-										stroke={themeColors.primary}
-										strokeWidth={3}
-										dot={{ r: 5, fill: themeColors.primary }}
-										name={i18n.getMessage("dashboard_reservations", isRTL)}
-										isAnimationActive
-										animationDuration={500}
-									/>
-									<Line
-										type="monotone"
-										dataKey="conversations"
-										stroke={themeColors.secondary}
-										strokeWidth={3}
-										dot={{ r: 5, fill: themeColors.secondary }}
-										name={i18n.getMessage("msg_messages", isRTL)}
-										isAnimationActive
-										animationDuration={500}
-									/>
-								</LineChart>
-							</ResponsiveContainer>
-						</div>
-					</CardContent>
-				</Card>
-			</motion.div>
-
 			{/* Conversion Funnel */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.6 }}
-			>
+			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
 						<CardTitle>
@@ -504,10 +474,10 @@ export function TrendCharts({
 						<div className="h-[350px]">
 							<ResponsiveContainer width="100%" height="100%">
 								<FunnelChart>
-									<Funnel
+									<FunnelComp
 										dataKey="count"
 										data={transformedFunnelData}
-										isAnimationActive
+										isAnimationActive={false}
 										fill={themeColors.primary}
 										nameKey="stage"
 									>
@@ -522,7 +492,7 @@ export function TrendCharts({
 												fill={chartColors[index % chartColors.length]}
 											/>
 										))}
-									</Funnel>
+									</FunnelComp>
 									<Tooltip contentStyle={tooltipStyle} />
 								</FunnelChart>
 							</ResponsiveContainer>
@@ -532,11 +502,7 @@ export function TrendCharts({
 			</motion.div>
 
 			{/* Customer Segments */}
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.7 }}
-			>
+			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
 						<CardTitle>
@@ -554,7 +520,7 @@ export function TrendCharts({
 										outerRadius={100}
 										fill={themeColors.primary}
 										dataKey="count"
-										label={({ segment, percentage }) =>
+										label={({ segment, percentage }: any) =>
 											`${segment} ${percentage.toFixed(1)}%`
 										}
 									>
@@ -574,4 +540,4 @@ export function TrendCharts({
 			</motion.div>
 		</div>
 	);
-}
+});

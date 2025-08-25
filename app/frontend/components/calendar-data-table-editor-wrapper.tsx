@@ -17,11 +17,7 @@ const LazyDataTableEditor = dynamic(
 	{
 		ssr: false,
 		loading: () => (
-			<GridLoadingState
-				showSkeleton={true}
-				skeletonRows={5}
-				skeletonColumns={5}
-			/>
+			<GridLoadingState loadingText="Loading editor..." showSkeleton={false} height={180} />
 		),
 	},
 );
@@ -80,7 +76,7 @@ export function CalendarDataTableEditorWrapper({
 			events={
 				shouldLoadEditor
 					? transformEventsForDataTable(
-							filterEventsForDataTable(events, "data-table"),
+							filterEventsForDataTable(events, "data-table", freeRoam),
 						)
 					: []
 			}

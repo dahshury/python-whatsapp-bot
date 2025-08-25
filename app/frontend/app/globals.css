@@ -14,6 +14,7 @@
 @import "../styles/themes/theme-t3chat.css";
 @import "../styles/themes/theme-perplexity.css";
 @import "../styles/themes/theme-art-deco.css";
+@import "../styles/themes/theme-neomorphism.css";
 
 /* Theme inline configuration - must be loaded after all theme definitions */
 @import "../styles/themes/theme-inline.css";

@@ -10,6 +10,7 @@ import { CalendarDataTableEditorWrapper } from "@/components/calendar-data-table
 import { CalendarSkeleton } from "@/components/calendar-skeleton";
 import { DockNav } from "@/components/dock-nav";
 import { DockNavSimple } from "@/components/dock-nav-simple";
+import { CalendarDock } from "@/components/calendar-dock";
 import { NotificationsButton } from "@/components/notifications-button";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useLanguage } from "@/lib/language-context";
@@ -22,9 +23,11 @@ import { useCalendarHoverCard } from "@/hooks/useCalendarHoverCard";
 import { useCalendarDragHandlers } from "@/hooks/useCalendarDragHandlers";
 import { useCalendarContextMenu } from "@/hooks/useCalendarContextMenu";
 import { useCalendarEventHandlers } from "@/hooks/useCalendarEventHandlers";
+import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { useCalendarDataTableEditor } from "@/hooks/useCalendarDataTableEditor";
 import { mark } from "@/lib/dev-profiler";
+import { useConversationsData, useReservationsData } from "@/lib/websocket-data-provider";
 
 // Lazy load the calendar components to improve initial load time
 const FullCalendarComponent = dynamic(
@@ -67,7 +70,10 @@ export default function HomePage() {
 		React.useState<React.RefObject<CalendarCoreRef> | null>(null);
 	// Stage C: Load events via existing hook (no extra UI around it)
 	const { isRTL } = useLanguage();
-	const eventsState = useCalendarEvents({ freeRoam: false, isRTL, autoRefresh: false });
+	const eventsState = useCalendarEvents({ freeRoam, isRTL, autoRefresh: false });
+	// Pull live conversations/reservations so hover card has real data
+	const { conversations } = useConversationsData();
+	const { reservations } = useReservationsData();
 
 	// Stage G: Add simple height management and updateSize wiring
 	const [calendarHeight, setCalendarHeight] = React.useState<number | "auto">("auto");
@@ -271,8 +277,38 @@ export default function HomePage() {
 			<AnimatedSidebarTrigger freeRoam={freeRoam} />
 
 			<header className="relative flex h-16 shrink-0 items-center border-b px-4">
-				{false ? (
-					<div />
+				{showDualCalendar ? (
+					// Dual Calendar Mode Header Layout
+					<div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+						<div className="justify-self-center">
+							<CalendarDock
+								currentView={calendarState.currentView}
+								calendarRef={leftCalendarRef}
+								freeRoam={freeRoam}
+								isRTL={isRTL}
+							/>
+						</div>
+						<DockNavSimple
+							className="mt-0"
+							currentCalendarView={calendarState.currentView}
+							onCalendarViewChange={calendarState.setCurrentView}
+							leftCalendarView={calendarState.currentView}
+							rightCalendarView={rightCalendarView}
+							onLeftCalendarViewChange={calendarState.setCurrentView}
+							onRightCalendarViewChange={setRightCalendarView}
+							leftCalendarRef={leftCalendarRef}
+							rightCalendarRef={rightCalendarRef}
+							isDualMode={true}
+						/>
+						<div className="justify-self-center">
+							<CalendarDock
+								currentView={rightCalendarView}
+								calendarRef={rightCalendarRef}
+								freeRoam={freeRoam}
+								isRTL={isRTL}
+							/>
+						</div>
+					</div>
 				) : (
 					// Single Calendar Mode Header Layout
 					<div className="flex-1 flex justify-center">
@@ -328,37 +364,51 @@ export default function HomePage() {
 							isRefreshing={isRefreshing}
 						>
 							<div className="flex-1 rounded-lg border border-border/50 bg-card/50 p-2">
-								<CalendarMainContent
-									calendarRef={calendarRef}
-									processedEvents={eventsState.events}
-									currentView={calendarState.currentView}
-									currentDate={calendarState.currentDate}
-									isRTL={isRTL}
-									freeRoam={freeRoam}
-									slotTimes={calendarState.slotTimes}
-									slotTimesKey={calendarState.slotTimesKey}
-									calendarHeight={calendarHeight}
-									isVacationDate={() => false}
-									callbacks={callbacks}
-									contextMenu={contextMenu}
-									hoverCard={hoverCard as any}
-									dragHandlers={dragHandlers as any}
-									conversations={{}}
-									reservations={{}}
-									events={eventsState.events}
-									dataTableEditor={{ handleEditReservation: () => {} }}
-									handleOpenConversation={(id) => openConversationFromStore(id)}
-									handleEventChange={eventHandlers.handleEventChange}
-									handleCancelReservation={() => {}}
-									handleViewDetails={() => {}}
-									setCurrentView={calendarState.setCurrentView}
-									setCalendarHeight={setCalendarHeight}
-									handleUpdateSize={() => calendarRef.current?.updateSize?.()}
-									onViewChange={calendarState.setCurrentView}
-									isHydrated={true}
-									setCurrentDate={calendarState.setCurrentDate}
-								/>
-
+								{showDualCalendar ? (
+									<DualCalendarComponent
+										ref={dualCalendarCallbackRef}
+										freeRoam={freeRoam}
+										initialLeftView={calendarState.currentView}
+										initialRightView={rightCalendarView}
+										events={eventsState.events}
+										loading={eventsState.loading}
+										onRefreshData={handleRefreshWithBlur}
+										onLeftViewChange={calendarState.setCurrentView}
+										onRightViewChange={setRightCalendarView}
+									/>
+								) : (
+									<CalendarMainContent
+										calendarRef={calendarRef}
+										processedEvents={filterEventsForCalendar(eventsState.events, freeRoam)}
+										currentView={calendarState.currentView}
+										currentDate={calendarState.currentDate}
+										isRTL={isRTL}
+										freeRoam={freeRoam}
+										slotTimes={calendarState.slotTimes}
+										slotTimesKey={calendarState.slotTimesKey}
+										calendarHeight={calendarHeight}
+										isVacationDate={() => false}
+										callbacks={callbacks}
+										contextMenu={contextMenu}
+										hoverCard={hoverCard as any}
+										dragHandlers={dragHandlers as any}
+										conversations={conversations}
+										reservations={reservations}
+										events={filterEventsForCalendar(eventsState.events, freeRoam)}
+										dataTableEditor={{ handleEditReservation: () => {} }}
+										handleOpenConversation={(id) => openConversationFromStore(id)}
+										handleEventChange={eventHandlers.handleEventChange}
+										handleCancelReservation={eventHandlers.handleCancelReservation}
+										handleViewDetails={() => {}}
+										setCurrentView={calendarState.setCurrentView}
+										setCalendarHeight={setCalendarHeight}
+										handleUpdateSize={() => calendarRef.current?.updateSize?.()}
+										onViewChange={calendarState.setCurrentView}
+										isHydrated={true}
+										setCurrentDate={calendarState.setCurrentDate}
+									/>
+								)}
+								
 								{/* Stage M: enable DataTable editor with real state */}
 								<CalendarDataTableEditorWrapper
 									editorOpen={dataTableEditor.editorOpen}

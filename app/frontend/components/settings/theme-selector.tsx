@@ -2,7 +2,7 @@
 
 import { Palette } from "lucide-react";
 // import { useTheme } from "next-themes";
-import { toast } from "sonner";
+import { toastService } from "@/lib/toast-service";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import ThemeToggleButton from "@/components/ui/theme-toggle-button";
@@ -21,7 +21,7 @@ export function ThemeSelector({ isRTL = false }: ThemeSelectorProps) {
 	const handleAppThemeChange = (value: string) => {
 		setAppTheme(value as Theme);
 		const themeName = getThemeName(value);
-		toast(
+		toastService.success(
 			isRTL
 				? `تم تغيير المظهر إلى ${themeName}`
 				: `Theme changed to ${themeName}`,

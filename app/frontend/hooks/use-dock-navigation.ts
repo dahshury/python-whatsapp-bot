@@ -7,8 +7,11 @@ import { useCalendarToolbar } from "@/hooks/useCalendarToolbar";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
 import { useVacation } from "@/lib/vacation-context";
+import { toastService } from "@/lib/toast-service";
+import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import type { NavigationContextValue } from "@/types/navigation";
 import { count } from "@/lib/dev-profiler";
+import { getValidRange } from "@/lib/calendar-config";
 
 interface UseDockNavigationProps {
 	calendarRef?: React.RefObject<CalendarCoreRef> | null;
@@ -24,7 +27,7 @@ export function useDockNavigation({
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isRTL } = useLanguage();
-	const { freeRoam } = useSettings();
+	const { freeRoam, showDualCalendar } = useSettings();
 	const { recordingState } = useVacation();
 
 	const [mounted, setMounted] = React.useState(false);
@@ -92,12 +95,28 @@ export function useDockNavigation({
 			if (isCalendarPage && targetRef?.current) {
 				const api = targetRef.current.getApi?.();
 				if (api) {
+					// Temporarily adjust validRange around multimonth transitions to avoid plugin issues
+					try {
+						if (view === "multiMonthYear") {
+							api.setOption("validRange", undefined);
+						} else {
+							api.setOption(
+								"validRange",
+								freeRoam ? undefined : getValidRange(freeRoam),
+							);
+						}
+					} catch {}
 					api.changeView(view);
+					try {
+						const opts = getCalendarViewOptions(isRTL);
+						const label = (opts.find(o => o.value === view)?.label ?? view).toString();
+						toastService.info(isRTL ? "تم تغيير العرض" : "View changed", label, 1500);
+					} catch {}
 				}
 			}
 			onCalendarViewChange?.(view);
 		},
-		[isCalendarPage, _effectiveCalendarRef, onCalendarViewChange],
+		[isCalendarPage, _effectiveCalendarRef, onCalendarViewChange, isRTL, freeRoam],
 	);
 
 	const isActive = React.useCallback(
@@ -113,8 +132,7 @@ export function useDockNavigation({
 		setMounted(true);
 	}, []);
 
-	const { freeRoam: isFreeRoam, showDualCalendar } = useSettings();
-	const viewMode = isFreeRoam
+	const viewMode = freeRoam
 		? "freeRoam"
 		: showDualCalendar
 			? "dual"

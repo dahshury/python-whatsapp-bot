@@ -148,17 +148,7 @@ export class PhoneColumnType implements IColumnType {
 			}
 		}
 
-		// Try to parse with default country (SA for Saudi Arabia)
-		try {
-			const parsed = parsePhoneNumber(inputStr, "SA");
-			if (parsed) {
-				return parsed.format("E.164");
-			}
-		} catch {
-			// Parsing failed, try without default country
-		}
-
-		// Try parsing without default country
+		// Try parsing without specifying a default country
 		try {
 			const parsed = parsePhoneNumber(inputStr);
 			if (parsed) {

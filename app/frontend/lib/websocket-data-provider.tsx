@@ -1,15 +1,11 @@
 "use client";
 import * as React from "react";
 import type { DashboardData } from "@/types/dashboard";
-import {
-  fetchConversations,
-  fetchReservations,
-  fetchVacations,
-} from "@/lib/api";
 import { useWebSocketData } from "@/hooks/useWebSocketData";
 import { BackendConnectionOverlay } from "@/components/backend-connection-overlay";
-import { toast as sonner } from "sonner";
+import { toastService } from "@/lib/toast-service";
 import { to24h } from "@/lib/utils";
+import { buildLocalOpCandidates, isLocalOperation, useDedupeKeyRef } from "@/lib/realtime-utils";
 import { useLanguage } from "@/lib/language-context";
 
 export interface ConversationMessage { id?: string; text?: string; ts?: string }
@@ -39,9 +35,26 @@ const DataContext = React.createContext<DataShape>({
 });
 
 export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({ children }) => {
-  const [conversations, setConversations] = React.useState<Record<string, ConversationMessage[]>>({});
-  const [reservations, setReservations] = React.useState<Record<string, Reservation[]>>({});
-  const [vacations, setVacations] = React.useState<Vacation[]>([]);
+  // Hydrate from cached snapshot to prevent blank UI on refresh
+  const loadCached = () => {
+    try {
+      const raw = typeof window !== "undefined" ? sessionStorage.getItem("ws_snapshot_v1") : null;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        return {
+          conversations: (parsed?.conversations || {}) as Record<string, ConversationMessage[]>,
+          reservations: (parsed?.reservations || {}) as Record<string, Reservation[]>,
+          vacations: (parsed?.vacations || []) as Vacation[],
+        };
+      }
+    } catch {}
+    return { conversations: {}, reservations: {}, vacations: [] };
+  };
+
+  const cached = loadCached();
+  const [conversations, setConversations] = React.useState<Record<string, ConversationMessage[]>>(cached.conversations);
+  const [reservations, setReservations] = React.useState<Record<string, Reservation[]>>(cached.reservations);
+  const [vacations, setVacations] = React.useState<Vacation[]>(cached.vacations);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | null>(null);
   const hasLoadedRef = React.useRef<boolean>(false);
@@ -51,31 +64,53 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({ c
   // Subscribe to backend websocket for realtime updates (disable internal toasts)
   const ws = useWebSocketData({ enableNotifications: false });
   const { isRTL } = useLanguage();
-  const lastToastKeyRef = React.useRef<string>("");
+  const { isDuplicate } = useDedupeKeyRef();
+  // Track pending update toasts so a subsequent cancellation can suppress them
+  const pendingUpdateToastRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   // Offline overlay state
   const [showOffline, setShowOffline] = React.useState<boolean>(false);
   const [isRetrying, setIsRetrying] = React.useState<boolean>(false);
+  const disconnectedSinceRef = React.useRef<number | null>(null);
 
-  // Show overlay when not connected, with a small debounce to avoid flashing
+  // Show overlay only if disconnected for a sustained period and no cached data
   React.useEffect(() => {
+    const hasAnyData = (() => {
+      try {
+        const resv = ws?.reservations || {};
+        const conv = ws?.conversations || {};
+        const vac = ws?.vacations || [];
+        return (
+          Object.keys(resv).length > 0 ||
+          Object.keys(conv).length > 0 ||
+          (Array.isArray(vac) ? vac.length : 0) > 0
+        );
+      } catch { return false; }
+    })();
+
     if (ws?.isConnected) {
+      disconnectedSinceRef.current = null;
       setShowOffline(false);
       return;
     }
-    const t = setTimeout(() => setShowOffline(true), 700);
+
+    if (disconnectedSinceRef.current == null) {
+      disconnectedSinceRef.current = Date.now();
+    }
+    const elapsed = Date.now() - (disconnectedSinceRef.current || Date.now());
+    const thresholdMs = hasAnyData ? 6000 : 1500; // be more lenient if user has data
+    const t = setTimeout(() => {
+      const stillDisconnected = !ws?.isConnected;
+      if (stillDisconnected) setShowOffline(true);
+    }, Math.max(0, thresholdMs - elapsed));
     return () => clearTimeout(t);
-  }, [ws?.isConnected]);
+  }, [ws?.isConnected, ws?.reservations, ws?.conversations, ws?.vacations]);
 
   const handleRetry = React.useCallback(async () => {
     try {
       setIsRetrying(true);
-      // Ping a lightweight endpoint to check backend availability
-      await fetch("/api/metrics", { cache: "no-store" }).catch(() => {});
-      // Attempt to reconnect websocket without full refresh
+      // Attempt to reconnect websocket without any REST fallback
       try { ws?.connect?.(); } catch {}
-      // Optionally refresh fallback data so UI has content even before ws connects
-      try { await ws?.refreshData?.(); } catch {}
     } finally {
       setIsRetrying(false);
     }
@@ -84,129 +119,48 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({ c
   // Mirror websocket state into provider state
   React.useEffect(() => {
     if (ws && ws.conversations) setConversations(ws.conversations as any);
+    // Mark as loaded once we receive any data via websocket
+    try {
+      if (!hasLoadedRef.current && ws && (ws.conversations || ws.reservations || ws.vacations)) {
+        hasLoadedRef.current = true;
+      }
+    } catch {}
   }, [ws?.conversations]);
 
   React.useEffect(() => {
     if (ws && ws.reservations) setReservations(ws.reservations as any);
+    try {
+      if (!hasLoadedRef.current && ws && (ws.conversations || ws.reservations || ws.vacations)) {
+        hasLoadedRef.current = true;
+      }
+    } catch {}
   }, [ws?.reservations]);
 
   React.useEffect(() => {
     if (ws && ws.vacations) setVacations(ws.vacations as any);
+    try {
+      if (!hasLoadedRef.current && ws && (ws.conversations || ws.reservations || ws.vacations)) {
+        hasLoadedRef.current = true;
+      }
+    } catch {}
   }, [ws?.vacations]);
 
   // Notification capture from ws hook (which dispatches window events)
   React.useEffect(() => {
-    const handler = (ev: Event) => {
-      const detail: any = (ev as CustomEvent).detail || {};
-      const { type, data } = detail;
-      if (!type || !data) return;
-      const key = `${type}:${data.id ?? ""}:${data.date ?? ""}:${data.time_slot ?? ""}`;
-      if (key && lastToastKeyRef.current === key) {
-        return; // de-dupe bursts
-      }
-      lastToastKeyRef.current = key;
-      try {
-        if (type === "reservation_created") {
-          const title = isRTL ? `تم إنشاء الحجز #${data.id ?? ""}`.trim() : `Reservation #${data.id ?? ""}`.trim();
-          const desc = isRTL ? `${data.customer_name || data.wa_id} • ${data.date} ${data.time_slot} • النوع ${data.type}` : `${data.customer_name || data.wa_id} • ${data.date} ${data.time_slot} • type ${data.type}`;
-          sonner.success(title, { description: desc, duration: 3000 });
-        } else if (type === "reservation_updated" || type === "reservation_reinstated") {
-          // Fancy, theme-aware success toast describing what changed
-          const customer = data.customer_name || data.wa_id || "";
-          const changeBits: string[] = [];
-          try {
-            const ctxMap: Map<string, any> | undefined = (globalThis as any).__calendarLastModifyContext;
-            const ctx = ctxMap?.get(String(data.id));
-            if (ctx) {
-              if (ctx.prevDate && data.date && ctx.prevDate !== data.date) {
-                changeBits.push(isRTL ? `التاريخ: ${ctx.prevDate} → ${data.date}` : `date: ${ctx.prevDate} → ${data.date}`);
-              }
-              if (ctx.prevTime && data.time_slot) {
-                const to12 = (t: string) => {
-                  try { const [h, m] = t.split(":"); const H = Number(h); const ap = H >= 12 ? "PM" : "AM"; const h12 = (H % 12) || 12; return `${h12}:${m} ${ap}`; } catch { return t; }
-                };
-                const prevT = to12(ctx.prevTime);
-                const newT = to12(data.time_slot?.slice(0,5) || data.time_slot);
-                if (prevT !== newT) changeBits.push(isRTL ? `الوقت: ${prevT} → ${newT}` : `time: ${prevT} → ${newT}`);
-              }
-              const prevType = ctx.prevType;
-              if (typeof prevType === "number" && typeof data.type === "number" && prevType !== data.type) {
-                const label = (v: number) => (v === 1 ? (isRTL ? "متابعة" : "Follow‑up") : (isRTL ? "فحص" : "Check‑up"));
-                changeBits.push(isRTL ? `النوع: ${label(prevType)} → ${label(data.type)}` : `type: ${label(prevType)} → ${label(data.type)}`);
-              }
-            }
-          } catch {}
-
-          const title = isRTL ? `تم تعديل الحجز` : `Reservation updated`;
-          const desc = [customer, changeBits.join(isRTL ? " • " : " • ")].filter(Boolean).join(isRTL ? " • " : " • ");
-          sonner.custom((id) => (
-            <div className="sonner-description fancy-toast">
-              <div className="fancy-toast-bg" />
-              <div className="fancy-toast-content">
-                <div className="fancy-toast-title">{title}</div>
-                <div className="fancy-toast-sub">{desc || (isRTL ? "تم التحديث" : "Updated")}</div>
-              </div>
-            </div>
-          ), { duration: 3000 });
-        } else if (type === "reservation_cancelled") {
-          const title = isRTL ? `تم إلغاء الحجز #${data.id ?? ""}`.trim() : `Reservation #${data.id ?? ""}`.trim();
-          const desc = isRTL ? `أُلغي • ${data.wa_id}${data.date ? ` • ${data.date}` : ""}` : `Cancelled • ${data.wa_id}${data.date ? ` • ${data.date}` : ""}`;
-          sonner.warning(title, { description: desc, duration: 2500 });
-        } else if (type === "conversation_new_message") {
-          const title = isRTL ? `رسالة • ${data.wa_id}` : `Message • ${data.wa_id}`;
-          sonner.message(title, { description: (data.message || "").slice(0, 100), duration: 2500 });
-        } else if (type === "vacation_period_updated") {
-          sonner.info(isRTL ? "الإجازات" : "Vacations", { description: isRTL ? "تم تحديث فترات الإجازة" : "Vacation periods updated", duration: 2000 });
-        }
-        const notif = new CustomEvent("notification:add", { detail: { type, data, ts: Date.now() } });
-        window.dispatchEvent(notif);
-      } catch {}
-    };
+    const handler = (_ev: Event) => {};
     window.addEventListener("realtime", handler as EventListener);
     return () => window.removeEventListener("realtime", handler as EventListener);
-  }, [isRTL]);
+  }, []);
 
   const refresh = React.useCallback(async (range?: { fromDate?: string; toDate?: string }) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      if (range) {
-        lastRangeRef.current = range;
-        setActiveRange(range);
-      }
-      const { fromDate, toDate } = lastRangeRef.current;
-
-      const qs = new URLSearchParams();
-      if (fromDate) qs.set("from_date", fromDate);
-      if (toDate) qs.set("to_date", toDate);
-
-      const [conv, res, vac, metrics] = await Promise.all([
-        // conversations with optional date filters
-        fetch(qs.toString() ? `/api/conversations?${qs}` : "/api/conversations")
-          .then(r => r.json())
-          .catch(() => ({ success: false, data: {} })),
-        fetchReservations({ future: false, includeCancelled: true, fromDate, toDate }),
-        fetchVacations(),
-        fetch("/api/metrics").then(r => r.json()).catch(() => ({ success: false, data: {} })),
-      ]);
-
-      if (conv?.success) setConversations(conv.data ?? {});
-      else setConversations({});
-
-      if (res?.success) setReservations(res.data ?? {});
-      else setReservations({});
-
-      if (vac?.success) setVacations(vac.data ?? []);
-      else setVacations([]);
-
-      // Attach metrics onto a ref for later use in dashboard aggregation via context
-      (globalThis as any).__prom_metrics__ = metrics?.success ? (metrics.data ?? {}) : {};
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Unknown error");
-    } finally {
-      setIsLoading(false);
+    // Update active range only; no REST calls. Consumers aggregate client-side.
+    if (range) {
+      lastRangeRef.current = range;
+      setActiveRange(range);
     }
-  }, []);
+    // If needed, request a fresh snapshot from the websocket
+    try { (ws as any)?.refreshData?.(); } catch {}
+  }, [ws]);
 
   // Remove unconditional initial REST load; fallback is handled elsewhere
 
@@ -234,7 +188,7 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({ c
     <DataContext.Provider value={value}>
       {children}
       {showOffline && (
-        <BackendConnectionOverlay onRetry={handleRetry} isRetrying={isRetrying} />
+        <BackendConnectionOverlay onRetry={handleRetry} isRetrying={isRetrying || (ws as any)?.isReconnecting} />
       )}
     </DataContext.Provider>
   );
@@ -480,7 +434,37 @@ export const useDashboardData = () => {
       const avgResponseTime = Math.min(60, avg(responseDurationsMinutes));
       const prevAvgResponseTime = Math.min(60, avg(prevResponseDurationsMinutes));
 
+      // Heuristics to detect modification metadata on a reservation record
+      const parseMaybeDateString = (value?: unknown): Date | null => {
+        if (typeof value !== "string" || !value) return null;
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d;
+      };
+      const getReservationModificationDate = (r: any): Date | null => {
+        // Prefer explicit timestamps if present
+        const createdAt = parseReservationDate(r);
+        const ts =
+          parseMaybeDateString(r?.updated_at) ||
+          parseMaybeDateString(r?.modified_at) ||
+          parseMaybeDateString(r?.last_modified) ||
+          parseMaybeDateString(r?.modified_on) ||
+          parseMaybeDateString(r?.update_ts) ||
+          (Array.isArray(r?.history) && r.history.length
+            ? parseMaybeDateString(r.history[r.history.length - 1]?.ts || r.history[r.history.length - 1]?.timestamp)
+            : null);
+        if (!ts) return null;
+        // Ignore timestamps that are effectively the same as the creation time (common when backends set updated_at on insert)
+        try {
+          if (createdAt) {
+            const deltaMs = Math.abs(ts.getTime() - createdAt.getTime());
+            if (deltaMs < 60_000) return null; // less than 1 minute difference: treat as creation, not modification
+          }
+        } catch {}
+        return ts;
+      };
+
       const dailyMap = new Map<string, { reservations: number; cancellations: number; modifications: number }>();
+      // 1) Reservations and cancellations are counted from items within the active range
       filteredReservationEntries.forEach(([, items]) => {
         (Array.isArray(items) ? items : []).forEach(r => {
           const d = parseReservationDate(r);
@@ -490,6 +474,18 @@ export const useDashboardData = () => {
           entry.reservations += 1;
           if ((r as any).cancelled === true) entry.cancellations += 1;
           dailyMap.set(key, entry);
+        });
+      });
+      // 2) Modifications are counted by scanning all reservations but only when the modification timestamp falls within the active range
+      reservationEntries.forEach(([, items]) => {
+        (Array.isArray(items) ? items : []).forEach(r => {
+          const modDate = getReservationModificationDate(r);
+          if (!modDate) return;
+          if (!withinRange(modDate)) return;
+          const mKey = modDate.toISOString().slice(0, 10);
+          const mEntry = dailyMap.get(mKey) || { reservations: 0, cancellations: 0, modifications: 0 };
+          mEntry.modifications += 1;
+          dailyMap.set(mKey, mEntry);
         });
       });
 

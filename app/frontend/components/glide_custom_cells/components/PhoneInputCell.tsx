@@ -44,24 +44,30 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 			}
 		}
 
-		// Try to parse with default country (SA for Saudi Arabia)
+		// Try to infer country from the number itself first
 		try {
-			const parsed = parsePhoneNumber(phoneStr, "SA");
-			if (parsed) {
-				return parsed.format("E.164");
+			const inferred = parsePhoneNumber(phoneStr);
+			if (inferred?.country) {
+				const parsed = parsePhoneNumber(phoneStr, inferred.country);
+				if (parsed) return parsed.format("E.164");
 			}
-		} catch {
-			// Continue to next attempt
-		}
+		} catch {}
 
-		// Try parsing without default country
+		// Try parsing without specifying a default country
 		try {
 			const parsed = parsePhoneNumber(phoneStr);
 			if (parsed) {
 				return parsed.format("E.164");
 			}
-		} catch {
-			// Return original to avoid crashes
+		} catch {}
+
+		// As a last resort, if it's digits-only, try prefixing '+' for international parsing
+		const digitsOnly = phoneStr.replace(/\D/g, "");
+		if (digitsOnly && /^\d{6,15}$/.test(digitsOnly)) {
+			try {
+				const parsed = parsePhoneNumber(`+${digitsOnly}`);
+				if (parsed) return parsed.format("E.164");
+			} catch {}
 		}
 
 		// Return original input
@@ -93,17 +99,15 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 			lastKnownValue.current = parsedPhoneValue;
 		}
 
-		if (parsedPhoneValue) {
-			try {
+		try {
+			if (parsedPhoneValue && parsedPhoneValue.startsWith("+")) {
 				const parsed = parsePhoneNumber(parsedPhoneValue);
-				if (parsed) {
+				if (parsed?.country) {
 					lastKnownCountry.current = parsed.country;
 				}
-			} catch (_error) {
-				// Silently handle parse errors
 			}
-		}
-	}, [data.phone, phoneValue, parsePhoneToE164]);
+		} catch {}
+	}, [data.phone]);
 
 	const updateCell = React.useCallback(
 		(newPhone: string, shouldFinish = false) => {
@@ -315,7 +319,7 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 					onCustomerSelect={handleCustomerSelect}
 					placeholder="Enter phone number"
 					initialValueFormat="national"
-					defaultCountry="SA"
+					defaultCountry={(lastKnownCountry.current as any) || "SA"}
 					className="phone-input w-full border-none focus:ring-0 focus:outline-none bg-transparent"
 					style={{
 						transform: "translateY(3px)",

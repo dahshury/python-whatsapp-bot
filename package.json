@@ -5,7 +5,7 @@
   "workspaces": [
     "app/frontend"
   ],
-  "packageManager": "pnpm@10",
+  "packageManager": "pnpm@9.12.3",
   "engines": {
     "node": ">=20",
     "pnpm": ">=8"
@@ -14,7 +14,12 @@
     "dev": "pnpm --filter ./app/frontend dev",
     "build": "pnpm --filter ./app/frontend build",
     "start": "pnpm --filter ./app/frontend start",
-    "lint": "pnpm --filter ./app/frontend lint"
+    "lint": "pnpm --filter ./app/frontend lint",
+    "format": "biome format --write .",
+    "check": "biome check ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.6"
   }
 }
 

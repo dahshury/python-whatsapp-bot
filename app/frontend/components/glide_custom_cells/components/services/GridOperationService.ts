@@ -1,5 +1,5 @@
 import type { GridCell } from "@glideapps/glide-data-grid";
-import { toast } from "sonner";
+import { toastService } from "@/lib/toast-service";
 
 export interface OperationResult<T = any> {
 	success: boolean;
@@ -250,21 +250,19 @@ export class GridOperationService {
 			return messages[key]?.[this.isRTL ? "ar" : "en"] || key;
 		};
 
-		toast.success(getMessage("operation_success"), {
-			duration,
-			action: {
-				label: getMessage("undo"),
-				onClick: async () => {
-					const result = await this.undo(operation);
-					if (result.success) {
-						toast.success(getMessage("undo_success"));
-					} else {
-						toast.error(getMessage("undo_failed"), {
-							description: result.error,
-						});
-					}
-				},
+		toastService.undoable(
+			getMessage("operation_success"),
+			undefined,
+			getMessage("undo"),
+			async () => {
+				const result = await this.undo(operation);
+				if (result.success) {
+					toastService.success(getMessage("undo_success"));
+				} else {
+					toastService.error(getMessage("undo_failed"), result.error);
+				}
 			},
-		});
+			duration,
+		);
 	}
 }

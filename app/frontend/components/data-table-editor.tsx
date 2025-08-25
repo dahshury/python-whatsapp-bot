@@ -24,7 +24,9 @@ import { createGlideTheme } from "./glide_custom_cells/components/utils/streamli
 const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), {
 	ssr: false,
 	loading: () => (
-		<TableSkeleton rows={6} columns={5} className="min-h-[300px]" />
+		<div className="flex items-center justify-center" style={{ height: 200 }}>
+			<div className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
+		</div>
 	),
 });
 
@@ -233,7 +235,76 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			});
 		}
 
-		setCanSave(state.hasChanges && state.isValid);
+
+		let canEnable = state.hasChanges && state.isValid;
+
+		// Additional guard: if user is editing an unmapped/template row,
+		// require ALL required fields in that row to be filled and valid
+		try {
+			if (canEnable && dataProviderRef.current) {
+				const provider: any = dataProviderRef.current as any;
+				const rowCount: number = provider.getRowCount?.() ?? 0;
+				const colCount: number = provider.getColumnCount?.() ?? 0;
+				const editingState = provider.getEditingState?.();
+				const mappedRows = new Set<number>();
+				try {
+					const mapRef: Map<number, any> | undefined = gridRowToEventMapRef?.current;
+					if (mapRef && mapRef.size > 0) {
+						for (const key of mapRef.keys()) mappedRows.add(key);
+					}
+				} catch {}
+
+				const rowHasEdits = (rowIdx: number): boolean => {
+					if (!editingState) return false;
+					for (let c = 0; c < colCount; c++) {
+						const cell = editingState.getCell?.(c, rowIdx);
+						if (cell !== undefined) return true;
+					}
+					return false;
+				};
+
+				const isRequiredCellMissing = (cell: any, colDef: any): boolean => {
+					if (!colDef?.isRequired) return false;
+					if (!cell) return true;
+					if ((cell as any).isMissingValue === true) return true;
+					const k = (cell as any).kind;
+					const data = (cell as any).data || {};
+					if (k === "Custom") {
+						const kind = data?.kind;
+						if (kind === "dropdown-cell") return !data.value;
+						if (kind === "tempus-date-cell") return !data.date;
+						if (kind === "timekeeper-cell") return !data.time;
+						if (kind === "phone-input-cell") return !data.phone;
+					}
+					if (k === "Text") {
+						return !((cell as any).data && String((cell as any).data).trim());
+					}
+					return false;
+				};
+
+				for (let r = 0; r < rowCount; r++) {
+					const isMapped = mappedRows.has(r);
+					if (isMapped) continue; // existing event row
+					if (!rowHasEdits(r)) continue; // untouched template row
+
+					// Enforce completeness for required columns in this row
+					for (let c = 0; c < colCount; c++) {
+						const colDef = provider.getColumnDefinition?.(c);
+						if (!colDef?.isRequired) continue;
+						const cell = provider.getCell?.(c, r);
+						if (isRequiredCellMissing(cell, colDef)) {
+							canEnable = false;
+							break;
+						}
+					}
+					if (!canEnable) break;
+				}
+			}
+		} catch (e) {
+			console.warn("Additional validation check failed:", e);
+		}
+
+		setCanSave(canEnable);
 	}, [checkEditingState, hasUnsavedChanges]);
 
 	useEffect(() => {
@@ -320,6 +391,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			{open && (
 				<div
 					className="fixed inset-0 dialog-backdrop bg-black/80 backdrop-blur-sm"
+					style={{ zIndex: 1700 }}
 					onClick={(e) => {
 						if (e.target === e.currentTarget) {
 							handleCloseAttempt(() => onOpenChange(false));
@@ -331,7 +403,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			{open && (
 				<div
 					className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
-					style={{ zIndex: 2000 }}
+					style={{ zIndex: 1710 }}
 					aria-describedby="data-editor-description"
 					onKeyDown={(e) => {
 						if (e.key === "Escape") {
@@ -371,12 +443,8 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					<div className="overflow-visible w-full flex-1 min-h-0">
 						<div className="overflow-visible relative w-full h-full">
 							{!isGridReady && (
-								<div className="absolute inset-0 z-10 bg-background p-2">
-									<TableSkeleton
-										rows={6}
-										columns={5}
-										className="min-h-[300px]"
-									/>
+								<div className="absolute inset-0 z-10 bg-background flex items-center justify-center">
+									<div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
 								</div>
 							)}
 							<div
@@ -538,6 +606,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 				onDiscard={handleDiscardChanges}
 				onSaveAndClose={handleSaveAndClose}
 				isSaving={isSaving}
+				canSave={canSave}
 			/>
 		</>
 	);

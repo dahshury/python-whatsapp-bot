@@ -12,6 +12,7 @@ interface UnsavedChangesDialogProps {
 	onDiscard: () => void;
 	onSaveAndClose: () => void;
 	isSaving: boolean;
+	canSave: boolean;
 }
 
 export function UnsavedChangesDialog({
@@ -21,6 +22,7 @@ export function UnsavedChangesDialog({
 	onDiscard,
 	onSaveAndClose,
 	isSaving,
+	canSave,
 }: UnsavedChangesDialogProps) {
 	const [mounted, setMounted] = useState(false);
 
@@ -53,14 +55,14 @@ export function UnsavedChangesDialog({
 			{/* Backdrop */}
 			<div
 				className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-				style={{ zIndex: Z_INDEX.CONFIRMATION_BACKDROP }}
+				style={{ zIndex: Z_INDEX.CONFIRMATION_OVERLAY_BACKDROP, pointerEvents: "auto" }}
 				onClick={() => onOpenChange(false)}
 			/>
 
 			{/* Dialog Content */}
 			<div
 				className="fixed inset-0 flex items-center justify-center p-4"
-				style={{ zIndex: Z_INDEX.CONFIRMATION_CONTENT }}
+				style={{ zIndex: Z_INDEX.CONFIRMATION_OVERLAY_CONTENT, pointerEvents: "auto" }}
 			>
 				<div
 					className="bg-background border shadow-lg rounded-lg p-6 w-full max-w-md mx-auto animate-in fade-in-0 zoom-in-95 duration-200"
@@ -77,25 +79,29 @@ export function UnsavedChangesDialog({
 									: "You have unsaved changes. Would you like to save your changes before closing?"}
 							</p>
 						</div>
-						<div className={`flex gap-2 ${isRTL ? "flex-row-reverse" : ""}`}>
-							<Button variant="outline" onClick={onDiscard}>
-								{isRTL ? "تجاهل التغييرات" : "Discard Changes"}
-							</Button>
-							<Button variant="outline" onClick={() => onOpenChange(false)}>
-								{isRTL ? "إلغاء" : "Cancel"}
-							</Button>
-							<Button onClick={onSaveAndClose} disabled={isSaving}>
-								{isSaving ? (
-									<>
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-										{isRTL ? "جاري الحفظ..." : "Saving..."}
-									</>
-								) : isRTL ? (
-									"حفظ والإغلاق"
-								) : (
-									"Save & Close"
-								)}
-							</Button>
+						<div className="flex items-center justify-between gap-2">
+							<div className="flex">
+								<Button variant="outline" onClick={() => onOpenChange(false)}>
+									{isRTL ? "إلغاء" : "Cancel"}
+								</Button>
+							</div>
+							<div className="flex gap-2">
+								<Button variant="outline" onClick={onDiscard}>
+									{isRTL ? "تجاهل التغييرات" : "Discard Changes"}
+								</Button>
+								<Button onClick={onSaveAndClose} disabled={isSaving || !canSave}>
+									{isSaving ? (
+										<>
+											<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+											{isRTL ? "جاري الحفظ..." : "Saving..."}
+										</>
+									) : isRTL ? (
+										"حفظ والإغلاق"
+									) : (
+										"Save & Close"
+									)}
+								</Button>
+							</div>
 						</div>
 					</div>
 				</div>

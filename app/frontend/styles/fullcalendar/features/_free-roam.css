@@ -14,6 +14,35 @@
 	color: var(--fc-event-text-color) !important;
 }
 
+/* Improve readability in free roam: remove top padding that clips titles */
+[data-free-roam="true"] .fc-timegrid-event .fc-event-main {
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+}
+
+/* Slightly tighten line height and remove any vertical offset for sticky titles */
+[data-free-roam="true"] .fc-timegrid-event .fc-event-title {
+	line-height: 1.05 !important;
+	margin-top: 0 !important;
+}
+
+/* Ensure very short events remain legible in free roam */
+[data-free-roam="true"] .fc-timegrid-event[style*="height"] {
+	min-height: 20px !important;
+}
+
+/* Make time label a touch smaller to give more room for the title */
+[data-free-roam="true"] .fc-timegrid-event .fc-event-time {
+	font-size: 0.6rem !important;
+}
+
+/* DayGrid block events: remove extra top padding so titles don't push out */
+[data-free-roam="true"] .fc-daygrid-block-event .fc-event-time,
+[data-free-roam="true"] .fc-daygrid-block-event .fc-event-title {
+	padding-top: 0 !important;
+	padding-bottom: 0 !important;
+}
+
 /* CRITICAL FIX: Prevent text color inheritance on hover for past events in free roam mode */
 [data-free-roam="true"] .fc-event.fc-event-past:hover,
 [data-free-roam="true"] .fc-event.fc-event-past:hover *,

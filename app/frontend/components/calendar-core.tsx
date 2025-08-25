@@ -177,6 +177,20 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			return events;
 		}, [events, currentView]);
 
+		// Sanitize events to guard against any with missing/invalid start
+		const sanitizedEvents = useMemo(() => {
+			try {
+				return (optimizedEvents || []).filter((e: any) => {
+					const s = e?.start;
+					if (!s || typeof s !== "string") return false;
+					const d = new Date(s);
+					return !Number.isNaN(d.getTime());
+				});
+			} catch {
+				return [] as any[];
+			}
+		}, [optimizedEvents]);
+
 		const calendarRef = useRef<FullCalendar>(null);
 		const containerRef = useRef<HTMLDivElement>(null);
 
@@ -207,16 +221,18 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			return getValidRange(freeRoam);
 		}, [freeRoam]);
 
-		// Prepare validRange prop for FullCalendar (omit if undefined)
-		const validRangeProp = globalValidRangeFunction
-			? { validRange: globalValidRangeFunction }
-			: {};
+		// Prepare validRange prop for FullCalendar
+		// Disable validRange specifically for multiMonthYear to avoid plugin issues
+		const validRangeProp =
+			currentView === "multiMonthYear" || !globalValidRangeFunction
+				? {}
+				: { validRange: globalValidRangeFunction };
 
 		// View-specific overrides: disable validRange for multiMonthYear view
 		const viewsProp = useMemo(
 			() => ({
 				multiMonthYear: {
-					validRange: undefined,
+					// Inherit global validRange (today onward) so past drops are blocked
 					displayEventTime: false as const,
 					dayMaxEvents: true,
 					dayMaxEventRows: true,
@@ -422,8 +438,15 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				`🕐 Calendar mounted - View: ${props.currentView}, Date: ${props.currentDate?.toISOString()}`,
 			);
 
-			// Initial sizing - immediate
-			calendarRef.current.getApi().updateSize();
+			// Initial sizing - defer and guard to avoid race conditions
+			try {
+				const api = calendarRef.current.getApi();
+				if (api?.updateSize) {
+					requestAnimationFrame(() => {
+						try { api.updateSize(); } catch {}
+					});
+				}
+			} catch {}
 
 			// Only observe container resize for views other than multiMonthYear
 			const observers: ResizeObserver[] = [];
@@ -450,6 +473,20 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		// Callback to determine if an event is allowed to be dragged or resized
 		const handleEventAllow = useCallback(
 			(dropInfo: any, draggedEvent: any) => {
+				// Block drops into the past across all views (unless in free roam)
+				try {
+					if (!freeRoam) {
+						const targetStart: Date | undefined = (dropInfo && (dropInfo.start || (dropInfo.startStr && new Date(dropInfo.startStr)))) as any;
+						if (targetStart) {
+							const today = new Date();
+							today.setHours(0, 0, 0, 0);
+							const targetDay = new Date(targetStart);
+							targetDay.setHours(0, 0, 0, 0);
+							if (targetDay < today) return false;
+						}
+					}
+				} catch {}
+
 				// Delegate to external override if provided
 				if (eventAllow) return eventAllow(dropInfo, draggedEvent);
 				// Allow UI to perform the drop; backend will validate and we will revert on failure
@@ -558,7 +595,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					initialDate={currentDate}
 					height={calendarHeight}
 					contentHeight={calendarHeight}
-					events={optimizedEvents}
+					events={sanitizedEvents}
 					// Header configuration - disable native toolbar since we use dock navbar
 					headerToolbar={false}
 					// Enhanced calendar options
@@ -582,8 +619,17 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					slotDuration={{ hours: SLOT_DURATION_HOURS }}
 					// Business hours and constraints
 					businessHours={businessHours}
-					eventConstraint={freeRoam ? undefined : "businessHours"}
-					selectConstraint={freeRoam ? undefined : "businessHours"}
+					// Only enforce constraints in timeGrid views so month/week drags are not blocked
+					eventConstraint={
+						!freeRoam && (currentView || "").toLowerCase().includes("timegrid")
+							? "businessHours"
+							: undefined
+					}
+					selectConstraint={
+						!freeRoam && (currentView || "").toLowerCase().includes("timegrid")
+							? "businessHours"
+							: undefined
+					}
 					hiddenDays={freeRoam ? [] : [5]} // Hide Friday unless in free roam
 					// Valid range for navigation
 					{...validRangeProp}

@@ -5,6 +5,8 @@ import { MoonIcon, SunIcon } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
+import { toastService } from "@/lib/toast-service"
+import { useLanguage } from "@/lib/language-context"
 
 import {
   AnimationStart,
@@ -26,6 +28,7 @@ export default function ThemeToggleButton({
   url = "",
 }: ThemeToggleAnimationProps) {
   const { theme, setTheme } = useTheme()
+  const { isRTL } = useLanguage()
 
   const styleId = "theme-transition-styles"
 
@@ -51,7 +54,13 @@ export default function ThemeToggleButton({
     if (typeof window === "undefined") return
 
     const switchTheme = () => {
-      setTheme(theme === "light" ? "dark" : "light")
+      const next = theme === "light" ? "dark" : "light"
+      setTheme(next)
+      try {
+        const title = isRTL ? "تم تغيير السمة" : "Theme changed"
+        const desc = next === "dark" ? (isRTL ? "داكن" : "Dark") : (isRTL ? "فاتح" : "Light")
+        toastService.info(title, desc, 1500)
+      } catch {}
     }
 
     if (!document.startViewTransition) {

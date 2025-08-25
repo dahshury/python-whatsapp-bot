@@ -226,15 +226,39 @@ export class InMemoryDataSource implements IDataSource {
 
 	async addRow(): Promise<number> {
 		const newRowIndex = this.rowCount;
-		const newRowData = [];
 
-		// Generate data for the new row
+		// Create empty/default row data for the new row (no samples/randoms)
+		const newRowData: any[] = [];
 		for (let col = 0; col < this.columnCount; col++) {
 			const column = this.columns[col];
-			newRowData.push(
-				column.defaultValue ||
-					this.generateSampleData(newRowIndex, col, ["New User"]),
-			);
+			if (column && column.defaultValue !== undefined) {
+				newRowData.push(column.defaultValue);
+				continue;
+			}
+			// Fallbacks by data type
+			switch (column?.dataType) {
+				case ColumnDataType.TEXT:
+				case ColumnDataType.EMAIL:
+				case ColumnDataType.URL:
+				case ColumnDataType.JSON:
+				case ColumnDataType.DROPDOWN:
+				case ColumnDataType.PHONE:
+					newRowData.push("");
+					break;
+				case ColumnDataType.DATE:
+				case ColumnDataType.TIME:
+				case ColumnDataType.DATETIME:
+					newRowData.push(null);
+					break;
+				case ColumnDataType.NUMBER:
+					newRowData.push(null);
+					break;
+				case ColumnDataType.BOOLEAN:
+					newRowData.push(false);
+					break;
+				default:
+					newRowData.push(null);
+			}
 		}
 
 		this.data[newRowIndex] = newRowData;

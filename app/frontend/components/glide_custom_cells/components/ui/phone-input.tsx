@@ -34,12 +34,36 @@ type PhoneInputProps = Omit<
 type InputComponentProps = React.ComponentProps<"input"> & {
 	onCustomerSelect?: (phone: string, customerName?: string) => void;
 	mainOnChange?: (value: RPNInput.Value) => void;
+	selectedCountry?: RPNInput.Country;
 };
 
 const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
 	React.forwardRef<React.ElementRef<typeof RPNInput.default>, PhoneInputProps>(
 		({ className, onChange, onCustomerSelect, value, ...props }, ref) => {
 			const parsedValue = (value as string) || "";
+			const normalizedValue = React.useMemo(() => {
+				if (typeof parsedValue !== "string") return parsedValue as any;
+				const v = parsedValue.trim();
+				if (!v) return "" as any;
+				if (v.startsWith("+")) return v as any;
+				const digits = v.replace(/\D/g, "");
+				return digits ? (`+${digits}` as any) : (v as any);
+			}, [parsedValue]);
+			const [selectedCountry, setSelectedCountry] = React.useState<RPNInput.Country | undefined>(
+				(props as any)?.country || (props as any)?.defaultCountry,
+			);
+
+			// Sync selected country from the current value when it is in E.164 format
+			React.useEffect(() => {
+				try {
+					if (typeof value === "string" && value.startsWith("+")) {
+						const parsed = parsePhoneNumber(value);
+						if (parsed?.country && parsed.country !== selectedCountry) {
+							setSelectedCountry(parsed.country as RPNInput.Country);
+						}
+					}
+				} catch {}
+			}, [value, selectedCountry]);
 
 			return (
 				<RPNInput.default
@@ -47,16 +71,23 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
 					className={cn("flex h-full items-center", className)}
 					flagComponent={FlagComponent}
 					countrySelectComponent={CountrySelect}
+					country={selectedCountry as RPNInput.Country | undefined}
+					onCountryChange={(c) => {
+						setSelectedCountry(c as RPNInput.Country);
+						// @ts-ignore - pass through if provided
+						props?.onCountryChange?.(c);
+					}}
 					// Pass the main onChange handler down to the custom input component
 					inputComponent={(inputProps) => (
 						<InputComponent
 							{...inputProps}
 							onCustomerSelect={onCustomerSelect}
 							mainOnChange={onChange}
+							selectedCountry={selectedCountry}
 						/>
 					)}
 					smartCaret
-					value={parsedValue as RPNInput.Value}
+					value={normalizedValue as RPNInput.Value}
 					onChange={(value) => {
 						// This handles changes from the library itself (e.g., country select)
 						console.log("PhoneInput (library) onChange called with:", value);
@@ -81,6 +112,7 @@ const InputComponent = React.forwardRef<HTMLButtonElement, InputComponentProps>(
 			placeholder,
 			disabled,
 			mainOnChange,
+			selectedCountry,
 			...props
 		},
 		ref,
@@ -101,10 +133,16 @@ const InputComponent = React.forwardRef<HTMLButtonElement, InputComponentProps>(
 			else if (mainOnChange) {
 				console.log("Calling mainOnChange for new number:", phone);
 
-				// Parse phone to E.164 format before passing to react-phone-number-input
+				// Parse phone to E.164 using the currently selected country (if available)
 				try {
-					const parsedPhone = parsePhoneNumber(phone, "SA"); // Default to Saudi Arabia
-					const e164Phone = parsedPhone?.number || phone;
+					let e164Phone = phone;
+					if (selectedCountry) {
+						const parsedPhone = parsePhoneNumber(phone, selectedCountry);
+						e164Phone = parsedPhone?.number || phone;
+					} else {
+						const parsedPhone = parsePhoneNumber(phone);
+						e164Phone = parsedPhone?.number || phone;
+					}
 					console.log("Parsed phone to E.164:", e164Phone);
 					mainOnChange(e164Phone as RPNInput.Value);
 				} catch (_error) {
@@ -174,11 +212,41 @@ const CountrySelect = ({
 	onChange,
 }: CountrySelectProps) => {
 	const [open, setOpen] = React.useState(false);
+	const listContainerRef = React.useRef<HTMLDivElement | null>(null);
 
 	const handleCountryChange = (country: RPNInput.Country) => {
 		onChange(country);
 		setOpen(false);
 	};
+
+	React.useEffect(() => {
+		if (!open) return;
+		// Scroll the selected country into view when opening
+		const scrollToSelected = () => {
+			try {
+				const optionEl = document.querySelector(
+					`.phone-dropdown-scrollbar [data-country="${selectedCountry}"]`,
+				) as HTMLElement | null;
+				if (!optionEl) return;
+				const scroller = (optionEl.closest(".ScrollbarsCustom")?.querySelector(
+					".ScrollbarsCustom-Scroller",
+				) as HTMLElement | null) || optionEl.parentElement;
+				if (scroller) {
+					const offsetTop = optionEl.offsetTop;
+					const target = Math.max(
+						0,
+						offsetTop - scroller.clientHeight / 2 + optionEl.clientHeight / 2,
+					);
+					scroller.scrollTop = target;
+				} else if ((optionEl as any).scrollIntoView) {
+					(optionEl as any).scrollIntoView({ block: "center" });
+				}
+			} catch {}
+		};
+		// Defer until after popover content renders
+		const id = setTimeout(scrollToSelected, 0);
+		return () => clearTimeout(id);
+	}, [open, selectedCountry]);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -251,16 +319,7 @@ const CountrySelect = ({
 							className="h-72 scrollbar-thin phone-dropdown-scrollbar"
 						>
 							<div
-								onPointerDown={(e: React.PointerEvent) => {
-									// Prevent popover from closing when interacting with scrollbar
-									e.stopPropagation();
-									e.preventDefault();
-								}}
-								onMouseDown={(e: React.MouseEvent) => {
-									// Also handle mouse events for better compatibility
-									e.stopPropagation();
-									e.preventDefault();
-								}}
+								ref={listContainerRef}
 							>
 								<CommandEmpty>No country found.</CommandEmpty>
 								<CommandGroup>
@@ -302,6 +361,7 @@ const CountrySelectOption = ({
 		<CommandItem
 			// cmdk will use this value for filtering
 			value={countryName}
+			data-country={country}
 			onSelect={() => onChange(country)}
 			onPointerDown={(e) => {
 				// Ensure selection works on mouse down before cmdk closes popover

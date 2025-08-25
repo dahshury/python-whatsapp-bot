@@ -5,7 +5,7 @@ import { createCallbackHandlers } from "@/lib/calendar-callback-factory";
 // Services and utilities
 import { createCalendarCallbacks } from "@/lib/calendar-callbacks";
 import { getTimezone } from "@/lib/calendar-config";
-import { processEventsForFreeRoam } from "@/lib/calendar-event-processor";
+import { filterEventsForCalendar, processEventsForFreeRoam } from "@/lib/calendar-event-processor";
 import {
 	calculateCalendarHeight,
 	useCalendarResize,
@@ -64,9 +64,13 @@ export function useCalendarCore({
 		autoRefresh: false,
 	});
 
-	// Process events to mark past reservations as non-editable in free roam mode
+	// Filter cancelled events unless free roam is enabled, then mark past reservations non-editable in free roam
 	const processedEvents = useMemo(
-		() => processEventsForFreeRoam(eventsState.events, freeRoam),
+		() =>
+			processEventsForFreeRoam(
+				filterEventsForCalendar(eventsState.events, freeRoam),
+				freeRoam,
+			),
 		[eventsState.events, freeRoam],
 	);
 

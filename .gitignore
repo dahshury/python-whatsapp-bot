@@ -103,3 +103,4 @@ app/frontend/.next
 pyproject.toml
 .gitignore
 uv.lock
+node_modules

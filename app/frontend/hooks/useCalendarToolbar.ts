@@ -225,12 +225,12 @@ export function useCalendarToolbar({
 			updateButtonStates();
 		}, 100);
 		return () => clearTimeout(timer);
-	}, [updateButtonStates]);
+	}, [isRTL]); // Changed from updateButtonStates to isRTL to break the loop
 
 	// Force update when view changes
 	useEffect(() => {
 		updateButtonStates();
-	}, [updateButtonStates]);
+	}, [currentView]); // Changed from updateButtonStates to currentView to break the loop
 
 	// Navigation handlers
 	const handlePrev = useCallback(() => {

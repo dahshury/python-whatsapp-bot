@@ -17,7 +17,10 @@ import { LanguageProvider } from "@/lib/language-context";
 import { SettingsProvider } from "@/lib/settings-context";
 import { UnifiedDataProvider } from "@/lib/unified-data-provider";
 import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
+import { RealtimeEventBus } from "@/lib/realtime-event-bus";
+import { ToastRouter } from "@/lib/toast-router";
 import { VacationProvider } from "@/lib/vacation-context";
+import { Z_INDEX } from "@/lib/z-index";
 
 // import { GlobalSettings } from "@/components/global-settings"
 
@@ -75,6 +78,14 @@ export default function RootLayout({
 					href="https://fonts.gstatic.com"
 					crossOrigin="anonymous"
 				/>
+				{/* Preconnect to backend to speed up initial WebSocket handshake */}
+				{process.env.NEXT_PUBLIC_WEBSOCKET_URL ? (
+					<link
+						rel="preconnect"
+						href={(process.env.NEXT_PUBLIC_WEBSOCKET_URL || '').replace(/^wss?:/, 'https:').replace(/^ws:/, 'http:')}
+						crossOrigin="anonymous"
+					/>
+				) : null}
 				<script
 					dangerouslySetInnerHTML={{
 						__html: `
@@ -151,25 +162,33 @@ export default function RootLayout({
 												</SidebarProvider>
 											</div>
 										</div>
-									</CustomerDataProvider>
-								</VacationProvider>
-								<UndoManager />
-							</ThemeWrapper>
-							</UnifiedDataProvider>
-						</WebSocketDataProvider>
-					</BackendConnectionProvider>
-					</SettingsProvider>
-				</LanguageProvider>
+                                        <RealtimeEventBus />
+                                        <ToastRouter />
+                                    </CustomerDataProvider>
+                                </VacationProvider>
+                                <UndoManager />
+                            </ThemeWrapper>
+                            </UnifiedDataProvider>
+                        </WebSocketDataProvider>
+                    </BackendConnectionProvider>
+                    </SettingsProvider>
+                </LanguageProvider>
 					<Toaster
 						position="bottom-right"
 						gap={8}
+						style={{
+							zIndex: Z_INDEX.TOASTER,
+						}}
 						toastOptions={{
 							className: "sonner-toast",
 							descriptionClassName: "sonner-description",
 							style: {
-								background: "hsl(var(--card))",
-								color: "hsl(var(--card-foreground))",
-								border: "1px solid hsl(var(--border))",
+								background: "transparent",
+								border: "none",
+								// Don't set zIndex here - let Sonner handle individual toast stacking
+								// Only expose z-index as CSS variable for the container
+								// @ts-expect-error custom css var
+								"--toaster-z": Z_INDEX.TOASTER,
 							},
 							classNames: {
 								toast: "sonner-toast group",
@@ -187,6 +206,7 @@ export default function RootLayout({
 					/>
 				</ThemeProvider>
 				<div id="portal" />
+				<div id="dialog-overlay-portal" style={{ position: "fixed", top: 0, left: 0, pointerEvents: "none", zIndex: Z_INDEX.DIALOG_OVERLAY_PORTAL, width: 0, height: 0 }} />
 			</body>
 		</html>
 	);

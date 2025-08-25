@@ -569,7 +569,8 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 .theme-ghibli-studio .tempus-dominus-widget,
 .theme-valorant .tempus-dominus-widget,
 .theme-art-deco .tempus-dominus-widget,
-.theme-amethyst-haze .tempus-dominus-widget {
+.theme-amethyst-haze .tempus-dominus-widget,
+.theme-neomorphism .tempus-dominus-widget {
 	/* These themes will automatically inherit the proper colors through CSS variables */
 	font-family: var(--font-sans) !important;
 }

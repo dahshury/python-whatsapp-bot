@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye } from "lucide-react";
-import { toast } from "sonner";
+import { toastService } from "@/lib/toast-service";
 import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -45,7 +45,7 @@ export function ViewSettings({
 		setFreeRoam(isFreeRoam);
 		setShowDualCalendar(isDual);
 
-		toast(
+		toastService.success(
 			isRTL
 				? `تم تغيير وضع العرض إلى ${value}`
 				: `View mode changed to ${value}`,

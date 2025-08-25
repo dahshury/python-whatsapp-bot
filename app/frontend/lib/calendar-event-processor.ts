@@ -1,6 +1,19 @@
 import type { CalendarEvent as CalendarEventFull } from "@/types/calendar";
 import type { CalendarEvent as EditorEvent } from "@/types/data-table-editor";
 
+/**
+ * Filter out cancelled reservations from calendar events unless free roam is enabled.
+ * This is used by calendar views to hide cancellations while still allowing
+ * the data table to optionally include them.
+ */
+export function filterEventsForCalendar(
+  events: CalendarEventFull[],
+  freeRoam?: boolean,
+): CalendarEventFull[] {
+  if (freeRoam) return events;
+  return events.filter((e) => e.extendedProps?.cancelled !== true);
+}
+
 export function processEventsForFreeRoam(
   events: CalendarEventFull[],
   freeRoam: boolean,
@@ -20,9 +33,11 @@ export function processEventsForFreeRoam(
 export function filterEventsForDataTable(
   events: CalendarEventFull[],
   _currentView?: string,
+  freeRoam?: boolean,
 ): CalendarEventFull[] {
-  // Basic filter: exclude cancelled
-  return events.filter((e) => !e.extendedProps?.cancelled);
+  // Exclude cancelled unless freeRoam explicitly enabled
+  if (freeRoam) return events;
+  return events.filter((e) => e.extendedProps?.cancelled !== true);
 }
 
 export function transformEventsForDataTable(

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toastService } from "@/lib/toast-service";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import type { DataProvider } from "@/components/glide_custom_cells/components/core/services/DataProvider";
 import { getMessage } from "@/lib/api";
@@ -46,9 +46,7 @@ export function useDataTableSaveHandler({
 
 		if (!dataProviderRef.current) {
 			console.error("❌ No data provider available");
-			toast.error(getMessage("system_error_try_later", isRTL), {
-				duration: 5000,
-			});
+			toastService.error(getMessage("system_error_try_later", isRTL), undefined, 5000);
 			return;
 		}
 
@@ -65,13 +63,7 @@ export function useDataTableSaveHandler({
 				)
 				.join("\n");
 
-			toast.error(isRTL ? "أخطاء في التحقق" : "Validation Errors", {
-				description: errorMessages,
-				duration: 8000,
-				style: {
-					whiteSpace: "pre-line",
-				},
-			});
+			toastService.error(isRTL ? "أخطاء في التحقق" : "Validation Errors", errorMessages, 8000);
 
 			return;
 		}
@@ -80,8 +72,27 @@ export function useDataTableSaveHandler({
 
 		try {
 			const editingState = dataProviderRef.current.getEditingState();
-			const columnsForParsing = getColumnNamesForParsing();
-			const changesJson = editingState.toJson(columnsForParsing as any);
+			// Build BaseColumnProps from provider's column definitions so toJson can map values correctly
+			const provider: any = dataProviderRef.current as any;
+			const defs: any[] = Array.isArray(provider?.columnDefinitions)
+				? provider.columnDefinitions
+				: provider?.getDataSource?.()?.getColumnDefinitions?.() || [];
+			const baseColumns = defs.map((def: any, index: number) => ({
+				id: def?.id ?? def?.name ?? `col_${index}`,
+				name: def?.name ?? def?.id ?? `col_${index}`,
+				title: def?.title ?? def?.name ?? def?.id ?? `Column ${index}`,
+				width: def?.width ?? 100,
+				isEditable: def?.isEditable !== false,
+				isHidden: false,
+				isPinned: false,
+				isRequired: def?.isRequired === true,
+				isIndex: false,
+				indexNumber: index,
+				contentAlignment: "left",
+				defaultValue: def?.defaultValue,
+				columnTypeOptions: {},
+			}));
+			const changesJson = editingState.toJson(baseColumns as any);
 			const changes: EditingChanges = JSON.parse(changesJson);
 
 			console.log("📝 Changes detected:", {
@@ -166,10 +177,7 @@ export function useDataTableSaveHandler({
 			return !hasErrors;
 		} catch (error) {
 			console.error("Error saving changes:", error);
-			toast.error(isRTL ? "خطأ في الحفظ" : "Save Error", {
-				description: getMessage("system_error_try_later", isRTL),
-				duration: 5000,
-			});
+			toastService.error(isRTL ? "خطأ في الحفظ" : "Save Error", getMessage("system_error_try_later", isRTL), 5000);
 			return false;
 		} finally {
 			setIsSaving(false);
