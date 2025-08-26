@@ -19,7 +19,7 @@ export class TimeColumnType implements IColumnType {
 	dataType = ColumnDataType.TIME;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		isDarkTheme: boolean,
@@ -68,25 +68,29 @@ export class TimeColumnType implements IColumnType {
 		// Validate and store error details
 		const validation = this.validateValue(time, column);
 		if (!validation.isValid) {
-			(cell as any).isMissingValue = true;
-			(cell as any).validationError = validation.error;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).isMissingValue = true;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).validationError = validation.error;
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
+	getCellValue(cell: GridCell): unknown {
 		if (
 			cell.kind === GridCellKind.Custom &&
-			(cell as any).data?.kind === "timekeeper-cell"
+			(cell as { data?: { kind?: string } }).data?.kind === "timekeeper-cell"
 		) {
-			return (cell as any).data.time;
+			return (cell as { data?: { time?: unknown } }).data?.time;
 		}
 		return null;
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		if (column.isRequired && !value) {
@@ -98,17 +102,22 @@ export class TimeColumnType implements IColumnType {
 			};
 		}
 
-		if (value && !(value instanceof Date) && !this.isValidTimeString(value)) {
+		if (
+			value &&
+			!(value instanceof Date) &&
+			!this.isValidTimeString(String(value))
+		) {
 			return { isValid: false, error: messages.validation.invalidTime() };
 		}
 
 		return { isValid: true };
 	}
 
-	formatValue(value: any, formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, formatting?: IColumnFormatting): string {
 		if (!value) return "";
 
-		const date = value instanceof Date ? value : this.parseTimeString(value);
+		const date =
+			value instanceof Date ? value : this.parseTimeString(String(value));
 		if (!date || Number.isNaN(date.getTime())) return "";
 
 		if (formatting?.type) {
@@ -134,19 +143,19 @@ export class TimeColumnType implements IColumnType {
 		}
 	}
 
-	parseValue(input: any, _column: IColumnDefinition): any {
+	parseValue(input: unknown, _column: IColumnDefinition): unknown {
 		if (!input) return null;
 		if (input instanceof Date) return input;
 
-		return this.parseTimeString(input);
+		return this.parseTimeString(String(input));
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		if (column.defaultValue === "now") {
 			return new Date();
 		}
 		return column.defaultValue
-			? this.parseTimeString(column.defaultValue)
+			? this.parseTimeString(String(column.defaultValue))
 			: null;
 	}
 

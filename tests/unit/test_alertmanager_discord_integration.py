@@ -289,7 +289,7 @@ class TestAlertmanagerDiscordIntegration(unittest.TestCase):
             # Clean up
             try:
                 REGISTRY.unregister(retry_counter)
-            except:
+            except (ValueError, KeyError):
                 pass
     
     def _get_sample_value(self, metric_name, labels=None):

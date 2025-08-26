@@ -16,11 +16,11 @@ export class NumberColumnType implements IColumnType {
 	dataType = ColumnDataType.NUMBER;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		_isDarkTheme: boolean,
-		_rowContext?: any,
+		_rowContext?: unknown,
 	): GridCell {
 		const numValue = this.parseValue(String(value || 0), column);
 		const displayValue = this.formatValue(numValue, column.formatting);
@@ -36,18 +36,18 @@ export class NumberColumnType implements IColumnType {
 			column.isRequired &&
 			(numValue === null || numValue === undefined || Number.isNaN(numValue))
 		) {
-			(cell as any).isMissingValue = true;
+			(cell as { isMissingValue?: boolean }).isMissingValue = true;
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
-		return (cell as any).data || 0;
+	getCellValue(cell: GridCell): unknown {
+		return (cell as { data?: unknown }).data || 0;
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		const num = Number(value);
@@ -60,23 +60,23 @@ export class NumberColumnType implements IColumnType {
 			for (const rule of column.validationRules) {
 				switch (rule.type) {
 					case "min":
-						if (rule.value !== undefined && num < rule.value) {
+						if (rule.value !== undefined && num < Number(rule.value)) {
 							return {
 								isValid: false,
-								error: rule.message || `Minimum value is ${rule.value}`,
+								error: rule.message || `Minimum value is ${Number(rule.value)}`,
 							};
 						}
 						break;
 					case "max":
-						if (rule.value !== undefined && num > rule.value) {
+						if (rule.value !== undefined && num > Number(rule.value)) {
 							return {
 								isValid: false,
-								error: rule.message || `Maximum value is ${rule.value}`,
+								error: rule.message || `Maximum value is ${Number(rule.value)}`,
 							};
 						}
 						break;
 					case "custom":
-						if (rule.validate && !rule.validate(num)) {
+						if (rule.validate && !rule.validate(String(num))) {
 							return { isValid: false, error: rule.message || "Invalid value" };
 						}
 						break;
@@ -87,54 +87,67 @@ export class NumberColumnType implements IColumnType {
 		return { isValid: true };
 	}
 
-	formatValue(value: any, formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, formatting?: IColumnFormatting): string {
 		if (value === null || value === undefined || Number.isNaN(value)) return "";
 
 		const format = formatting?.type || "number";
-		const locale = formatting?.locale || undefined;
-		const options = formatting?.options || {};
+		const locale =
+			typeof formatting?.locale === "string" ? formatting.locale : undefined;
+		const options = (formatting?.options || {}) as Record<string, unknown>;
+		const minFD =
+			typeof options.minimumFractionDigits === "number"
+				? options.minimumFractionDigits
+				: undefined;
+		const maxFD =
+			typeof options.maximumFractionDigits === "number"
+				? options.maximumFractionDigits
+				: undefined;
+		const currency =
+			typeof options.currency === "string" ? options.currency : undefined;
+		const precision =
+			typeof options.precision === "number" ? options.precision : undefined;
 
 		switch (format) {
 			case "currency":
 				return new Intl.NumberFormat(locale, {
 					style: "currency",
-					currency: options.currency || "USD",
-					minimumFractionDigits: options.minimumFractionDigits ?? 2,
-					maximumFractionDigits: options.maximumFractionDigits ?? 2,
-				}).format(value);
+					currency: currency || "USD",
+					minimumFractionDigits: minFD ?? 2,
+					maximumFractionDigits: maxFD ?? 2,
+				}).format(Number(value));
 
 			case "percent":
 				return new Intl.NumberFormat(locale, {
 					style: "percent",
-					minimumFractionDigits: options.minimumFractionDigits ?? 1,
-					maximumFractionDigits: options.maximumFractionDigits ?? 1,
-				}).format(value / 100);
+					minimumFractionDigits: minFD ?? 1,
+					maximumFractionDigits: maxFD ?? 1,
+				}).format(Number(value) / 100);
 
 			case "scientific":
-				return value.toExponential(options.precision || 2);
+				return Number(value).toExponential(precision || 2);
 
 			case "compact":
 				return new Intl.NumberFormat(locale, {
 					notation: "compact",
-					...options,
-				}).format(value);
+					minimumFractionDigits: minFD,
+					maximumFractionDigits: maxFD,
+				}).format(Number(value));
 
 			default:
 				return new Intl.NumberFormat(locale, {
-					minimumFractionDigits: options.minimumFractionDigits ?? 0,
-					maximumFractionDigits: options.maximumFractionDigits ?? 2,
-					...options,
-				}).format(value);
+					minimumFractionDigits: minFD ?? 0,
+					maximumFractionDigits: maxFD ?? 2,
+				}).format(Number(value));
 		}
 	}
 
-	parseValue(input: string, _column: IColumnDefinition): any {
+	parseValue(input: string, _column: IColumnDefinition): number {
 		const cleaned = input.replace(/[^\d.-]/g, "");
 		const num = Number(cleaned);
 		return Number.isNaN(num) ? 0 : num;
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		return column.defaultValue ?? 0;
 	}
 

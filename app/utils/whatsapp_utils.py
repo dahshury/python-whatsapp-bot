@@ -179,7 +179,7 @@ async def _send_whatsapp_request(payload, message_type):
             try:
                 error_body = response.json()
                 logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {error_body}")
-            except:
+            except (ValueError, TypeError):
                 logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {response.text}")
             
             # Return error tuple instead of raising exception to prevent retries
@@ -330,7 +330,7 @@ async def test_whatsapp_api_config():
         try:
             response_body = response.json()
             details["response"] = response_body
-        except:
+        except (ValueError, TypeError):
             details["response"] = response.text
         
         if response.status_code == 400:

@@ -131,7 +131,7 @@ const DropdownMenuContent = React.forwardRef<
 		{ align = "center", side = "bottom", className, children, ...props },
 		ref,
 	) => {
-		const { open, setOpen } = React.useContext(DropdownMenuContext);
+		const { open } = React.useContext(DropdownMenuContext);
 
 		if (!open) return null;
 
@@ -162,6 +162,7 @@ const DropdownMenuContent = React.forwardRef<
 					alignmentClasses[align],
 					className,
 				)}
+				role="menu"
 				{...props}
 			>
 				{children}
@@ -195,6 +196,14 @@ const DropdownMenuItem = React.forwardRef<
 				className,
 			)}
 			onClick={handleClick}
+			role="menuitem"
+			tabIndex={disabled ? -1 : 0}
+			onKeyDown={(e) => {
+				if (!disabled && (e.key === "Enter" || e.key === " ")) {
+					e.preventDefault();
+					handleClick();
+				}
+			}}
 			{...props}
 		>
 			{children}
@@ -211,7 +220,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 		{ className, children, checked, onCheckedChange, disabled, ...props },
 		ref,
 	) => {
-		const { setOpen } = React.useContext(DropdownMenuContext);
+		// no need to read setOpen here since we don't close on toggle
 
 		const handleClick = () => {
 			if (!disabled && onCheckedChange) {
@@ -230,6 +239,15 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 					className,
 				)}
 				onClick={handleClick}
+				role="menuitemcheckbox"
+				aria-checked={!!checked}
+				tabIndex={disabled ? -1 : 0}
+				onKeyDown={(e) => {
+					if (!disabled && (e.key === "Enter" || e.key === " ")) {
+						e.preventDefault();
+						handleClick();
+					}
+				}}
 				{...props}
 			>
 				<span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">

@@ -24,13 +24,12 @@
 .fc-timeGridDay-view .fc-timegrid-col:hover,
 .fc-timeGridDay-view
 	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Comprehensive hover effect disabling for day view */
@@ -39,26 +38,24 @@
 .fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-disabled):hover,
 .fc-timeGridDay-view
 	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Disable fc-daygrid-day-bg hover effects in day view */
+.fc-timeGridDay-view .fc-daygrid-day-bg,
 .fc-timeGridDay-view .fc-daygrid-day-bg:hover,
-.fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-bg,
-.fc-timeGridDay-view .fc-daygrid-day-bg {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+.fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-bg {
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Disable day frame hover effects in day view */
@@ -67,22 +64,22 @@
 	):not(.fc-day-today):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-frame,
 .fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-frame,
+.fc-timeGridDay-view
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
 	.fc-daygrid-day-frame,
 .fc-timeGridDay-view
 	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
 		.fc-day-disabled
 	):hover
-	.fc-daygrid-day-frame,
-.fc-timeGridDay-view
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-frame {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Disable day number hover effects in day view */
@@ -91,47 +88,46 @@
 	):not(.fc-day-today):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-number,
 .fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day-number,
+.fc-timeGridDay-view
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(.fc-day-past):hover
 	.fc-daygrid-day-number,
 .fc-timeGridDay-view
 	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
 		.fc-day-past
 	):hover
-	.fc-daygrid-day-number,
-.fc-timeGridDay-view
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-number {
-	color: inherit !important;
-	font-weight: inherit !important;
-	transform: none !important;
-	cursor: default !important;
-	transition: none !important;
+	color: inherit;
+	font-weight: inherit;
+	transform: none;
+	cursor: default;
+	transition: none;
 }
 
 /* Disable column header hover effects in day view */
 .fc-timeGridDay-view .fc-col-header-cell:hover,
 .fc-timeGridDay-view .fc-col-header-cell-cushion:hover,
 .fc-timeGridDay-view th.fc-col-header-cell:hover {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Disable timegrid slot hover effects */
 .fc-timeGridDay-view .fc-timegrid-slot:hover,
 .fc-timeGridDay-view .fc-timegrid-slot-minor:hover,
 .fc-timeGridDay-view .fc-timegrid-slot-label:hover {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* ========================================
@@ -146,53 +142,48 @@
 .dark
 	.fc-timeGridDay-view
 	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Dark mode fc-daygrid-day-frame hover overrides */
-.dark .fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-frame,
-.dark
-	.fc-timeGridDay-view
+.dark .fc-timeGridDay-view
 	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
-	.fc-daygrid-day-frame {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	.fc-daygrid-day-frame,
+.dark .fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-frame {
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Dark mode fc-daygrid-day-bg hover overrides */
 .dark .fc-timeGridDay-view .fc-daygrid-day-bg:hover,
 .dark .fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-bg,
 .dark .fc-timeGridDay-view .fc-daygrid-day-bg {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* Dark mode column header hover overrides */
 .dark .fc-timeGridDay-view .fc-col-header-cell:hover {
-	transform: none !important;
-	box-shadow: none !important;
-	background-color: inherit !important;
-	background: inherit !important;
-	border-color: inherit !important;
-	color: inherit !important;
-	cursor: default !important;
-	transition: none !important;
+	transform: none;
+	box-shadow: none;
+	background-color: inherit;
+	border-color: inherit;
+	color: inherit;
+	cursor: default;
+	transition: none;
 }
 
 /* ========================================
@@ -203,23 +194,23 @@
 /* Remove interactive cursors from fc-daygrid-day and fc-daygrid-day-bg in day view */
 .fc-timeGridDay-view .fc-daygrid-day,
 .fc-timeGridDay-view .fc-daygrid-day-bg {
-	cursor: default !important;
+	cursor: default;
 }
 
 /* Ensure no transitions occur on fc-daygrid-day and fc-daygrid-day-bg hover */
 .fc-timeGridDay-view .fc-daygrid-day:hover,
 .fc-timeGridDay-view .fc-daygrid-day-bg:hover {
-	transition: none !important;
+	transition: none;
 }
 
 /* Remove any residual hover effects from fc-daygrid-day and fc-daygrid-day-bg */
 .fc-timeGridDay-view .fc-daygrid-day:hover,
 .fc-timeGridDay-view .fc-daygrid-day-bg:hover {
-	animation: none !important;
-	transform: none !important;
-	box-shadow: inherit !important;
-	background: inherit !important;
-	border: inherit !important;
-	color: inherit !important;
-	opacity: inherit !important;
+	animation: none;
+	transform: none;
+	box-shadow: inherit;
+	background-color: inherit;
+	border: inherit;
+	color: inherit;
+	opacity: inherit;
 }

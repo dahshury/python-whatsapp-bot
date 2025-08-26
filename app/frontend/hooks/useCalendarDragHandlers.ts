@@ -11,7 +11,7 @@ export function useCalendarDragHandlers({
 
 	// Handle event drag start
 	const handleEventDragStart = useCallback(
-		(_info: any) => {
+		(_info: unknown) => {
 			// Always allow drag to start and close any open hover card
 			setIsDragging(true);
 			// Close hover card immediately when dragging starts

@@ -160,9 +160,14 @@ export const applyTimeRestrictionMonkeyPatch = (
 
 	try {
 		// Store reference to original class if not already stored
-		if (!(globalThis as any).OriginalDisabledTimeRange) {
+		if (
+			!(globalThis as { OriginalDisabledTimeRange?: unknown })
+				.OriginalDisabledTimeRange
+		) {
 			// Try to access the DisabledTimeRange from react-timekeeper
-			let DisabledTimeRangeClass = (globalThis as any).DisabledTimeRange;
+			let DisabledTimeRangeClass = (
+				globalThis as { DisabledTimeRange?: unknown }
+			).DisabledTimeRange;
 
 			// If not found globally, try to import it
 			if (!DisabledTimeRangeClass) {
@@ -179,7 +184,8 @@ export const applyTimeRestrictionMonkeyPatch = (
 
 			// Store original reference
 			if (DisabledTimeRangeClass) {
-				(globalThis as any).OriginalDisabledTimeRange = DisabledTimeRangeClass;
+				(globalThis as Record<string, unknown>).OriginalDisabledTimeRange =
+					DisabledTimeRangeClass;
 			}
 		}
 
@@ -209,7 +215,8 @@ export const applyTimeRestrictionMonkeyPatch = (
 		};
 
 		// Apply the patch globally
-		(globalThis as any).DisabledTimeRange = MonkeyPatchedDisabledTimeRange;
+		(globalThis as Record<string, unknown>).DisabledTimeRange =
+			MonkeyPatchedDisabledTimeRange;
 
 		// Also try to patch the module export if possible
 		try {
@@ -233,12 +240,12 @@ export const applyTimeRestrictionMonkeyPatch = (
 // Cleanup monkey patch
 export const cleanupTimeRestrictionMonkeyPatch = (): void => {
 	try {
-		if ((globalThis as any).OriginalDisabledTimeRange) {
+		if ((globalThis as Record<string, unknown>).OriginalDisabledTimeRange) {
 			console.log("Cleaning up time restriction monkey patch");
 
 			// Restore the original class globally
-			(globalThis as any).DisabledTimeRange = (
-				globalThis as any
+			(globalThis as Record<string, unknown>).DisabledTimeRange = (
+				globalThis as Record<string, unknown>
 			).OriginalDisabledTimeRange;
 
 			// Also try to restore the module export if possible
@@ -246,11 +253,11 @@ export const cleanupTimeRestrictionMonkeyPatch = (): void => {
 				const disableTimeModule = require("react-timekeeper/lib/helpers/disable-time");
 				if (disableTimeModule) {
 					disableTimeModule.default = (
-						globalThis as any
+						globalThis as Record<string, unknown>
 					).OriginalDisabledTimeRange;
 					if (disableTimeModule.DisabledTimeRange) {
 						disableTimeModule.DisabledTimeRange = (
-							globalThis as any
+							globalThis as Record<string, unknown>
 						).OriginalDisabledTimeRange;
 					}
 				}
@@ -259,7 +266,7 @@ export const cleanupTimeRestrictionMonkeyPatch = (): void => {
 			}
 
 			// Clear the reference
-			(globalThis as any).OriginalDisabledTimeRange = null;
+			(globalThis as Record<string, unknown>).OriginalDisabledTimeRange = null;
 
 			console.log("Successfully cleaned up monkey patch");
 		}

@@ -1,11 +1,11 @@
 "use client";
 
 import { Plane, Settings2, View } from "lucide-react";
-import * as React from "react";
-import { toastService } from "@/lib/toast-service";
+import type * as React from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { VacationPeriods } from "@/components/vacation-periods";
 import { useSettings } from "@/lib/settings-context";
+import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
 import type { ViewMode } from "@/types/navigation";
 import { GeneralSettings } from "./general-settings";
@@ -55,25 +55,17 @@ export function SettingsTabs({
 		setShowDualCalendar(isDual);
 
 		toastService.success(
-			isRTL ? `تم تغيير وضع العرض إلى ${value}` : `View mode changed to ${value}`,
+			isRTL
+				? `تم تغيير وضع العرض إلى ${value}`
+				: `View mode changed to ${value}`,
 		);
 	};
 
-	React.useEffect(() => {
-		if (
-			activeTab === "vacation" &&
-			(viewMode !== "default" || !isCalendarPage)
-		) {
-			onTabChange?.("general");
-		}
-		if (activeTab === "view" && !isCalendarPage) {
-			onTabChange?.("general");
-		}
-	}, [viewMode, activeTab, onTabChange, isCalendarPage]);
+	// Removed auto-switching tabs when not on calendar page to avoid update loops.
 
 	// Determine which tabs to show based on page
 	const showViewTab = isCalendarPage;
-	const showVacationTab = isCalendarPage && viewMode === "default";
+	const showVacationTab = true;
 
 	return (
 		<Tabs value={activeTab} onValueChange={onTabChange}>
@@ -154,15 +146,13 @@ export function SettingsTabs({
 				</TabsContent>
 			)}
 
-			{showVacationTab && (
-				<TabsContent value="vacation" className="pt-4">
-					<div className="space-y-4">
-						<div className="rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
-							{activeTab === "vacation" && <VacationPeriods />}
-						</div>
+			<TabsContent value="vacation" className="pt-4">
+				<div className="space-y-4">
+					<div className="rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
+						{activeTab === "vacation" && <VacationPeriods />}
 					</div>
-				</TabsContent>
-			)}
+				</div>
+			</TabsContent>
 		</Tabs>
 	);
 }

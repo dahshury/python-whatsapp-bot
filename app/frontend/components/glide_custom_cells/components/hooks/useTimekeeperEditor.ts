@@ -21,9 +21,9 @@ import {
 
 interface UseTimekeeperEditorProps {
 	data: TimekeeperCellProps;
-	onChange: (value: any) => void;
-	onFinishedEditing?: (value: any) => void;
-	value: any;
+	onChange: (value: TimekeeperCellProps) => void;
+	onFinishedEditing?: (value: TimekeeperCellProps) => void;
+	value: TimekeeperCellProps;
 }
 
 export const useTimekeeperEditor = ({

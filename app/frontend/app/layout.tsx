@@ -7,19 +7,19 @@ import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
-import { ThemeProvider } from "@/components/ui/theme-provider";
 import { ThemeWrapper } from "@/components/theme-wrapper";
 import { UndoManager } from "@/components/UndoManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { ThemeProvider } from "@/components/ui/theme-provider";
 import { BackendConnectionProvider } from "@/lib/backend-connection-provider";
 import { CustomerDataProvider } from "@/lib/customer-data-context";
 import { LanguageProvider } from "@/lib/language-context";
-import { SettingsProvider } from "@/lib/settings-context";
-import { UnifiedDataProvider } from "@/lib/unified-data-provider";
-import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
 import { RealtimeEventBus } from "@/lib/realtime-event-bus";
+import { SettingsProvider } from "@/lib/settings-context";
 import { ToastRouter } from "@/lib/toast-router";
+import { UnifiedDataProvider } from "@/lib/unified-data-provider";
 import { VacationProvider } from "@/lib/vacation-context";
+import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
 import { Z_INDEX } from "@/lib/z-index";
 
 // import { GlobalSettings } from "@/components/global-settings"
@@ -41,13 +41,19 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
 	title: "Reservation Manager | WhatsApp Bot Dashboard",
-	description: "Comprehensive reservation management system with WhatsApp integration, calendar scheduling, and real-time customer communication",
-	keywords: ["reservations", "calendar", "WhatsApp", "booking", "scheduling", "appointments"],
+	description:
+		"Comprehensive reservation management system with WhatsApp integration, calendar scheduling, and real-time customer communication",
+	keywords: [
+		"reservations",
+		"calendar",
+		"WhatsApp",
+		"booking",
+		"scheduling",
+		"appointments",
+	],
 	authors: [{ name: "Reservation Manager Team" }],
 	icons: {
-		icon: [
-			{ url: "/favicon.svg", type: "image/svg+xml" },
-		],
+		icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
 	},
 	manifest: "/site.webmanifest",
 };
@@ -70,7 +76,7 @@ export default function RootLayout({
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 				<link rel="icon" href="/favicon.svg" sizes="any" />
 				<link rel="manifest" href="/site.webmanifest" />
-				
+
 				{/* Font optimization */}
 				<link rel="dns-prefetch" href="//fonts.googleapis.com" />
 				<link
@@ -82,57 +88,13 @@ export default function RootLayout({
 				{process.env.NEXT_PUBLIC_WEBSOCKET_URL ? (
 					<link
 						rel="preconnect"
-						href={(process.env.NEXT_PUBLIC_WEBSOCKET_URL || '').replace(/^wss?:/, 'https:').replace(/^ws:/, 'http:')}
+						href={(process.env.NEXT_PUBLIC_WEBSOCKET_URL || "")
+							.replace(/^wss?:/, "https:")
+							.replace(/^ws:/, "http:")}
 						crossOrigin="anonymous"
 					/>
 				) : null}
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `
-              // Global console error suppression for React Timekeeper issues
-              (function() {
-                if (typeof window !== 'undefined') {
-                  const originalError = console.error;
-                  const originalWarn = console.warn;
-                  
-                  console.error = function(...args) {
-                    const message = args[0]?.toString() || '';
-                    // Suppress React Timekeeper specific errors
-                    if (
-                      message.includes('Got NaN while animating') ||
-                      message.includes('SpringValue') ||
-                      message.includes('non-passive event listener') ||
-                      message.includes('useClockEvents') ||
-                      message.includes('touchstart') ||
-                      message.includes('Avoid using document.write') ||
-                      message.includes('Download the React DevTools') ||
-                      message.includes('listener indicated an asynchronous response')
-                    ) {
-                      return; // Suppress these specific errors
-                    }
-                    originalError.apply(console, args);
-                  };
-                  
-                  console.warn = function(...args) {
-                    const message = args[0]?.toString() || '';
-                    // Suppress React Timekeeper specific warnings
-                    if (
-                      message.includes('non-passive event listener') ||
-                      message.includes('touchstart') ||
-                      message.includes('useClockEvents') ||
-                      message.includes('Got NaN while animating') ||
-                      message.includes('SpringValue') ||
-                      message.includes('Avoid using document.write')
-                    ) {
-                      return; // Suppress these specific warnings
-                    }
-                    originalWarn.apply(console, args);
-                  };
-                }
-              })();
-            `,
-					}}
-				/>
+				{/* Removed missing console suppression script to avoid 404 */}
 			</head>
 			<body
 				className={`${geist.variable} ${geistMono.variable} font-sans`}
@@ -148,31 +110,33 @@ export default function RootLayout({
 					<ErrorRecoveryInit />
 					<LanguageProvider>
 						<SettingsProvider>
-												<BackendConnectionProvider>
-						<WebSocketDataProvider>
-							<UnifiedDataProvider>
-								<ThemeWrapper>
-								<VacationProvider>
-									<CustomerDataProvider>
-										<div className="flex flex-col h-screen">
-											<div className="flex flex-1 overflow-hidden">
-												<SidebarProvider>
-													<AppSidebar />
-													<MainContentWrapper>{children}</MainContentWrapper>
-												</SidebarProvider>
-											</div>
-										</div>
-                                        <RealtimeEventBus />
-                                        <ToastRouter />
-                                    </CustomerDataProvider>
-                                </VacationProvider>
-                                <UndoManager />
-                            </ThemeWrapper>
-                            </UnifiedDataProvider>
-                        </WebSocketDataProvider>
-                    </BackendConnectionProvider>
-                    </SettingsProvider>
-                </LanguageProvider>
+							<BackendConnectionProvider>
+								<WebSocketDataProvider>
+									<UnifiedDataProvider>
+										<ThemeWrapper>
+											<VacationProvider>
+												<CustomerDataProvider>
+													<div className="flex flex-col h-screen">
+														<div className="flex flex-1 overflow-hidden">
+															<SidebarProvider>
+																<AppSidebar />
+																<MainContentWrapper>
+																	{children}
+																</MainContentWrapper>
+															</SidebarProvider>
+														</div>
+													</div>
+													<RealtimeEventBus />
+													<ToastRouter />
+												</CustomerDataProvider>
+											</VacationProvider>
+											<UndoManager />
+										</ThemeWrapper>
+									</UnifiedDataProvider>
+								</WebSocketDataProvider>
+							</BackendConnectionProvider>
+						</SettingsProvider>
+					</LanguageProvider>
 					<Toaster
 						position="bottom-right"
 						gap={8}
@@ -205,8 +169,21 @@ export default function RootLayout({
 						}}
 					/>
 				</ThemeProvider>
-				<div id="portal" />
-				<div id="dialog-overlay-portal" style={{ position: "fixed", top: 0, left: 0, pointerEvents: "none", zIndex: Z_INDEX.DIALOG_OVERLAY_PORTAL, width: 0, height: 0 }} />
+				<div
+					id={`portal-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
+				/>
+				<div
+					id={`dialog-overlay-portal-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
+					style={{
+						position: "fixed",
+						top: 0,
+						left: 0,
+						pointerEvents: "none",
+						zIndex: Z_INDEX.DIALOG_OVERLAY_PORTAL,
+						width: 0,
+						height: 0,
+					}}
+				/>
 			</body>
 		</html>
 	);

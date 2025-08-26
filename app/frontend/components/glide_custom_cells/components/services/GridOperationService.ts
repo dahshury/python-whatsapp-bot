@@ -1,14 +1,14 @@
 import type { GridCell } from "@glideapps/glide-data-grid";
 import { toastService } from "@/lib/toast-service";
 
-export interface OperationResult<T = any> {
+export interface OperationResult<T = unknown> {
 	success: boolean;
 	hasErrors: boolean;
 	successfulOperations: SuccessfulOperation<T>[];
 	errors?: OperationError[];
 }
 
-export interface SuccessfulOperation<T = any> {
+export interface SuccessfulOperation<T = unknown> {
 	type: string;
 	id: string | number;
 	data: T;
@@ -19,7 +19,7 @@ export interface OperationError {
 	row?: number;
 	col?: number;
 	message: string;
-	details?: any;
+	details?: unknown;
 }
 
 export interface BatchOperationOptions {
@@ -30,7 +30,7 @@ export interface BatchOperationOptions {
 
 export type OperationHandler<T> = (
 	data: T,
-) => Promise<{ success: boolean; result?: any; error?: string }>;
+) => Promise<{ success: boolean; result?: unknown; error?: string }>;
 export type UndoHandler<T> = (
 	operation: SuccessfulOperation<T>,
 ) => Promise<{ success: boolean; error?: string }>;
@@ -39,8 +39,8 @@ export type UndoHandler<T> = (
  * Generic service for managing grid operations with undo support
  */
 export class GridOperationService {
-	private undoHandlers = new Map<string, UndoHandler<any>>();
-	private operationHandlers = new Map<string, OperationHandler<any>>();
+	private undoHandlers = new Map<string, UndoHandler<unknown>>();
+	private operationHandlers = new Map<string, OperationHandler<unknown>>();
 	private operationHistory: SuccessfulOperation[] = [];
 	private maxHistorySize = 50;
 
@@ -54,9 +54,15 @@ export class GridOperationService {
 		handler: OperationHandler<T>,
 		undoHandler?: UndoHandler<T>,
 	) {
-		this.operationHandlers.set(operationType, handler);
+		this.operationHandlers.set(
+			operationType,
+			handler as unknown as OperationHandler<unknown>,
+		);
 		if (undoHandler) {
-			this.undoHandlers.set(operationType, undoHandler);
+			this.undoHandlers.set(
+				operationType,
+				undoHandler as unknown as UndoHandler<unknown>,
+			);
 		}
 	}
 
@@ -73,7 +79,9 @@ export class GridOperationService {
 		let hasErrors = false;
 
 		for (const operation of operations) {
-			const handler = this.operationHandlers.get(operation.type);
+			const handler = this.operationHandlers.get(operation.type) as
+				| OperationHandler<T>
+				| undefined;
 			if (!handler) {
 				errors.push({
 					message: `No handler registered for operation type: ${operation.type}`,
@@ -86,9 +94,16 @@ export class GridOperationService {
 				const result = await handler(operation.data);
 
 				if (result.success) {
+					const idCandidate = (
+						result.result as { id?: string | number } | undefined
+					)?.id;
+					const generatedId: string | number =
+						typeof idCandidate === "string" || typeof idCandidate === "number"
+							? idCandidate
+							: Math.random().toString(36).slice(2, 11);
 					const successfulOp: SuccessfulOperation<T> = {
 						type: operation.type,
-						id: result.result?.id || Math.random().toString(36).substr(2, 9),
+						id: generatedId,
 						data: operation.data,
 						timestamp: Date.now(),
 					};
@@ -138,7 +153,9 @@ export class GridOperationService {
 	async undo<T>(
 		operation: SuccessfulOperation<T>,
 	): Promise<{ success: boolean; error?: string }> {
-		const undoHandler = this.undoHandlers.get(operation.type);
+		const undoHandler = this.undoHandlers.get(operation.type) as
+			| UndoHandler<T>
+			| undefined;
 		if (!undoHandler) {
 			return {
 				success: false,
@@ -189,7 +206,7 @@ export class GridOperationService {
 
 		for (const [key, cell] of cells) {
 			const [rowStr, colStr] = key.split("-");
-			const position = { row: parseInt(rowStr), col: parseInt(colStr) };
+			const position = { row: parseInt(rowStr, 10), col: parseInt(colStr, 10) };
 
 			const validation = validator(cell, position);
 			if (!validation.isValid) {

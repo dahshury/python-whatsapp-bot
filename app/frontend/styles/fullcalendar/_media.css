@@ -36,17 +36,17 @@
 
 	/* Ensure all content is visible */
 	.fc-scroller {
-		overflow: visible !important;
-		height: auto !important;
+		overflow: visible;
+		height: auto;
 	}
 
 	/* Remove background colors that might not print well */
 	.fc-day-today {
-		background-color: transparent !important;
+		background-color: transparent;
 	}
 
 	.fc-highlight {
-		background-color: transparent !important;
-		border: 2px dashed #000 !important;
+		background-color: transparent;
+		border: 2px dashed #000;
 	}
 }

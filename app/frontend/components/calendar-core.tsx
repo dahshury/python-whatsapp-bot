@@ -8,6 +8,15 @@
 
 "use client";
 
+import type {
+	CalendarApi,
+	DatesSetArg,
+	EventApi,
+	EventChangeArg,
+	EventClickArg,
+	EventContentArg,
+	EventHoveringArg,
+} from "@fullcalendar/core";
 import arLocale from "@fullcalendar/core/locales/ar-sa";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -18,19 +27,20 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import {
 	forwardRef,
 	useCallback,
+	useEffect,
 	useImperativeHandle,
 	useLayoutEffect,
 	useMemo,
 	useRef,
-	useEffect,
+	useState,
 } from "react";
-import { count } from "@/lib/dev-profiler";
 import {
 	getBusinessHours,
 	getValidRange,
 	SLOT_DURATION_HOURS,
 	TIMEZONE,
 } from "@/lib/calendar-config";
+import { count } from "@/lib/dev-profiler";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
 
@@ -54,17 +64,59 @@ export interface CalendarCoreProps {
 	isVacationDate?: (dateStr: string) => boolean;
 
 	// Event handlers
-	onDateClick?: (info: any) => void;
-	onSelect?: (info: any) => void;
-	onEventClick?: (info: any) => void;
-	onEventChange?: (info: any) => void;
-	onViewDidMount?: (info: any) => void;
-	onEventDidMount?: (info: any) => void;
-	onDatesSet?: (info: any) => void;
-	onEventMouseEnter?: (info: any) => void;
-	onEventMouseLeave?: (info: any) => void;
-	onEventDragStart?: (info: any) => void;
-	onEventDragStop?: (info: any) => void;
+	onDateClick?: (info: {
+		date: Date;
+		dateStr: string;
+		allDay: boolean;
+	}) => void;
+	onSelect?: (info: {
+		start: Date;
+		end: Date;
+		startStr: string;
+		endStr: string;
+		allDay: boolean;
+	}) => void;
+	onEventClick?: (info: EventClickArg) => void;
+	onEventChange?: (info: EventChangeArg) => void;
+	onViewDidMount?: (info: {
+		view: { type: string; title: string };
+		el: HTMLElement;
+	}) => void;
+	onEventDidMount?: (info: {
+		event: {
+			id: string;
+			title: string;
+			start: Date;
+			end?: Date;
+			extendedProps?: Record<string, unknown>;
+		};
+		el: HTMLElement;
+	}) => void;
+	onDatesSet?: (info: DatesSetArg) => void;
+	onEventMouseEnter?: (info: EventHoveringArg) => void;
+	onEventMouseLeave?: (info: EventHoveringArg) => void;
+	onEventDragStart?: (info: {
+		event: {
+			id: string;
+			title: string;
+			start: Date;
+			end?: Date;
+			extendedProps?: Record<string, unknown>;
+		};
+		el: HTMLElement;
+		jsEvent: MouseEvent;
+	}) => void;
+	onEventDragStop?: (info: {
+		event: {
+			id: string;
+			title: string;
+			start: Date;
+			end?: Date;
+			extendedProps?: Record<string, unknown>;
+		};
+		el: HTMLElement;
+		jsEvent: MouseEvent;
+	}) => void;
 	onViewChange?: (view: string) => void;
 
 	// Context menu handlers
@@ -81,9 +133,9 @@ export interface CalendarCoreProps {
 
 	// Drag and drop props for dual calendar mode
 	droppable?: boolean;
-	onEventReceive?: (info: any) => void;
-	onEventLeave?: (info: any) => void;
-	eventAllow?: (dropInfo: any, draggedEvent: any) => boolean;
+	onEventReceive?: (info: { event: EventApi; draggedEl: HTMLElement }) => void;
+	onEventLeave?: (info: { event?: EventApi; draggedEl: HTMLElement }) => void;
+	// eventAllow removed to align with core types and avoid overload mismatch
 
 	// Add to CalendarCoreProps after onViewChange
 	onNavDate?: (date: Date) => void;
@@ -91,7 +143,7 @@ export interface CalendarCoreProps {
 
 // Export the ref type for parent components
 export interface CalendarCoreRef {
-	getApi: () => any;
+	getApi: () => CalendarApi | undefined;
 	updateSize: () => void;
 }
 
@@ -117,7 +169,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			isRTL,
 			freeRoam,
 			slotTimes,
-			slotTimesKey,
+			slotTimesKey: _slotTimesKey,
 			calendarHeight,
 			isVacationDate,
 			onDateClick,
@@ -131,7 +183,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			onEventMouseLeave,
 			onEventDragStart,
 			onEventDragStop,
-			onViewChange,
+			onViewChange: _onViewChange,
 			onContextMenu,
 			onUpdateSize,
 			onEventMouseDown,
@@ -139,7 +191,6 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			droppable,
 			onEventReceive,
 			onEventLeave,
-			eventAllow,
 		} = props;
 
 		// Optimize events for multiMonth view - simplified event objects
@@ -180,16 +231,36 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		// Sanitize events to guard against any with missing/invalid start
 		const sanitizedEvents = useMemo(() => {
 			try {
-				return (optimizedEvents || []).filter((e: any) => {
+				return (optimizedEvents || []).filter((e: CalendarEvent) => {
 					const s = e?.start;
 					if (!s || typeof s !== "string") return false;
 					const d = new Date(s);
 					return !Number.isNaN(d.getTime());
 				});
 			} catch {
-				return [] as any[];
+				return [] as CalendarEvent[];
 			}
 		}, [optimizedEvents]);
+
+		// Freeze external event updates while dragging to prevent snap-back
+		const frozenEventsRef = useRef<CalendarEvent[]>([]);
+		const [renderEvents, setRenderEvents] =
+			useState<CalendarEvent[]>(sanitizedEvents);
+		useEffect(() => {
+			try {
+				const isDragging =
+					(globalThis as { __isCalendarDragging?: boolean })
+						.__isCalendarDragging === true;
+				if (isDragging) {
+					frozenEventsRef.current = sanitizedEvents;
+					setRenderEvents(frozenEventsRef.current);
+				} else {
+					setRenderEvents(sanitizedEvents);
+				}
+			} catch {
+				setRenderEvents(sanitizedEvents);
+			}
+		}, [sanitizedEvents]);
 
 		const calendarRef = useRef<FullCalendar>(null);
 		const containerRef = useRef<HTMLDivElement>(null);
@@ -200,9 +271,13 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			() => ({
 				getApi: () => calendarRef.current?.getApi(),
 				updateSize: () => {
-					if (calendarRef.current) {
-						calendarRef.current.getApi().updateSize();
-					}
+					try {
+						const api = calendarRef.current?.getApi?.();
+						// Guard: only update when view is available (avoids transient nulls in multimonth transitions)
+						if (api?.view) {
+							api.updateSize?.();
+						}
+					} catch {}
 				},
 			}),
 			[],
@@ -233,7 +308,6 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			() => ({
 				multiMonthYear: {
 					// Inherit global validRange (today onward) so past drops are blocked
-					displayEventTime: false as const,
 					dayMaxEvents: true,
 					dayMaxEventRows: true,
 					moreLinkClick: "popover" as const,
@@ -254,7 +328,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 		// Day cell class names (vacation styling now handled by background events)
 		const getDayCellClassNames = useCallback(
-			(arg: any) => {
+			(arg: { date: Date }) => {
 				const cellDate = arg.date;
 				// Use local date string comparison to avoid timezone issues
 				const currentDateStr = new Date(
@@ -291,15 +365,41 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		);
 
 		// Day header class names (vacation styling now handled by background events)
-		const getDayHeaderClassNames = useCallback((_arg: any) => {
+		const getDayHeaderClassNames = useCallback((_arg: unknown) => {
 			// Note: Vacation styling is now handled by FullCalendar background events
 			// No need to check isVacationDate here
 			return "";
 		}, []);
 
+		// Prevent selecting ranges that include vacation days
+		const handleSelectAllow = useCallback(
+			(info: { startStr?: string; endStr?: string }) => {
+				try {
+					// Some views (daygrid) provide startStr/endStr in date-only or date-time; normalize to date-only
+					const startStr: string | undefined = info?.startStr;
+					const endStr: string | undefined = info?.endStr;
+					if (!startStr || !endStr) return true;
+					const start = new Date(startStr);
+					const end = new Date(endStr);
+					// Iterate from start to (end - 1 day) because FullCalendar selection end is exclusive in daygrid
+					const cur = new Date(start);
+					while (cur < end) {
+						const yyyy = cur.getFullYear();
+						const mm = String(cur.getMonth() + 1).padStart(2, "0");
+						const dd = String(cur.getDate()).padStart(2, "0");
+						const dateOnly = `${yyyy}-${mm}-${dd}`;
+						if (isVacationDate?.(dateOnly)) return false;
+						cur.setDate(cur.getDate() + 1);
+					}
+				} catch {}
+				return true;
+			},
+			[isVacationDate],
+		);
+
 		// Handle event mounting with context menu support
 		const handleEventDidMount = useCallback(
-			(info: any) => {
+			(info: { event: EventApi; el: HTMLElement; view: { type: string } }) => {
 				const event = info.event;
 				const el = info.el;
 				const view = info.view;
@@ -316,7 +416,6 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				if (event.extendedProps.type === 2) {
 					el.classList.add("conversation-event");
 				}
-
 
 				// Add reservation type class for typed events
 				if (event.extendedProps.type === 1) {
@@ -366,7 +465,19 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 				// Call original handler if provided
 				if (onEventDidMount) {
-					onEventDidMount(info);
+					const safeStart =
+						event.start ??
+						(event.startStr ? new Date(event.startStr) : new Date());
+					onEventDidMount({
+						event: {
+							id: String(event.id),
+							title: String(event.title || ""),
+							start: safeStart,
+							end: event.end ?? undefined,
+							extendedProps: { ...(event.extendedProps || {}) },
+						},
+						el,
+					});
 				}
 			},
 			[onContextMenu, onEventDidMount, onEventMouseDown],
@@ -374,7 +485,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 		// Handle view mounting
 		const handleViewDidMount = useCallback(
-			(info: any) => {
+			(info: { view: { type: string; title?: string }; el?: HTMLElement }) => {
 				count("fc:viewDidMount");
 				// Optimize timing based on view type
 				const isMultiMonth = info.view.type === "multiMonthYear";
@@ -388,8 +499,11 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				}, delay);
 
 				// Call original handler if provided
-				if (onViewDidMount) {
-					onViewDidMount(info);
+				if (onViewDidMount && info.el) {
+					onViewDidMount({
+						view: { type: info.view.type, title: info.view.title || "" },
+						el: info.el,
+					});
 				}
 			},
 			[onUpdateSize, onViewDidMount],
@@ -397,7 +511,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 		// Handle dates set
 		const handleDatesSet = useCallback(
-			(info: any) => {
+			(info: DatesSetArg) => {
 				count("fc:datesSet");
 				// Single updateSize call after a short delay
 				setTimeout(() => {
@@ -424,8 +538,8 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		useEffect(() => {
 			const api = calendarRef.current?.getApi();
 			if (api) {
-				api.setOption('slotMinTime', slotTimes.slotMinTime);
-				api.setOption('slotMaxTime', slotTimes.slotMaxTime);
+				api.setOption("slotMinTime", slotTimes.slotMinTime);
+				api.setOption("slotMaxTime", slotTimes.slotMaxTime);
 			}
 		}, [slotTimes]);
 
@@ -443,7 +557,9 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				const api = calendarRef.current.getApi();
 				if (api?.updateSize) {
 					requestAnimationFrame(() => {
-						try { api.updateSize(); } catch {}
+						try {
+							api.updateSize();
+						} catch {}
 					});
 				}
 			} catch {}
@@ -465,18 +581,25 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			window.addEventListener("resize", handleWindowResize);
 
 			return () => {
-				observers.forEach((obs) => obs.disconnect());
+				for (const observer of observers) {
+					observer.disconnect();
+				}
 				window.removeEventListener("resize", handleWindowResize);
 			};
-		}, [props.currentView, onUpdateSize]);
+		}, [props.currentView, onUpdateSize, props.currentDate?.toISOString]);
 
 		// Callback to determine if an event is allowed to be dragged or resized
-		const handleEventAllow = useCallback(
-			(dropInfo: any, draggedEvent: any) => {
+		const _handleEventAllow = useCallback(
+			(
+				dropInfo: { start?: Date; startStr?: string },
+				_draggedEvent: EventApi,
+			) => {
 				// Block drops into the past across all views (unless in free roam)
 				try {
 					if (!freeRoam) {
-						const targetStart: Date | undefined = (dropInfo && (dropInfo.start || (dropInfo.startStr && new Date(dropInfo.startStr)))) as any;
+						const targetStart: Date | undefined =
+							dropInfo?.start ||
+							(dropInfo.startStr ? new Date(dropInfo.startStr) : undefined);
 						if (targetStart) {
 							const today = new Date();
 							today.setHours(0, 0, 0, 0);
@@ -488,79 +611,35 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				} catch {}
 
 				// Delegate to external override if provided
-				if (eventAllow) return eventAllow(dropInfo, draggedEvent);
+				// eventAllow removed to align with core types and avoid overload mismatch
 				// Allow UI to perform the drop; backend will validate and we will revert on failure
 				return true;
 			},
-			[eventAllow],
+			[freeRoam],
 		);
 
 		// Track in-flight and queued changes per event for fluid UX
-		const processingEvents = useRef(new Set<string>());
-		const queuedTargets = useRef(new Map<string, { startStr: string; endStr?: string }>());
+		const _processingEvents = useRef(new Set<string>());
+		const _queuedTargets = useRef(
+			new Map<string, { startStr: string; endStr?: string }>(),
+		);
 
 		// Enhanced event change handler with coalescing to keep UI fluid under rapid moves
 		const handleEventChangeWithProcessing = useCallback(
-			async (info: any) => {
-				const eventId: string = info?.event?.id;
+			async (info: EventChangeArg) => {
+				const eventId: string | undefined = info?.event?.id;
 				if (!eventId) return;
 
-				// If a change is already processing for this event, queue the latest target and exit (latest wins)
-				if (processingEvents.current.has(eventId)) {
-					queuedTargets.current.set(eventId, {
-						startStr: info.event.startStr,
-						endStr: info.event.endStr || undefined,
-					});
-					return;
-				}
+				// Suppress handler if programmatic updates are in progress
+				try {
+					const depth = Number(
+						(globalThis as { __suppressEventChangeDepth?: number })
+							.__suppressEventChangeDepth ?? 0,
+					);
+					if (depth > 0) return;
+				} catch {}
 
-				// Helper to apply a change (initial and any queued) sequentially
-				const applyChangeSequence = async (): Promise<void> => {
-					processingEvents.current.add(eventId);
-					// Visual indication (best-effort)
-					const eventEl = info?.el as HTMLElement | undefined;
-					if (eventEl) eventEl.classList.add("processing");
-					try {
-						if (onEventChange) {
-							// Apply the original drop first
-							await onEventChange(info);
-						}
-						// Drain any queued targets for this event (keep only newest at call time)
-						while (queuedTargets.current.has(eventId)) {
-							const next = queuedTargets.current.get(eventId)!;
-							queuedTargets.current.delete(eventId);
-							// Update the calendar event to the queued target, then persist via handler
-							try {
-								const api = calendarRef.current?.getApi?.();
-								const ev = api?.getEventById(eventId);
-								if (ev && next.startStr) {
-									const prevStart = ev.startStr;
-									try {
-										// Ensure UI reflects newest queued target immediately
-										ev.setDates(new Date(next.startStr), null);
-									} catch {}
-									if (onEventChange) {
-										await onEventChange({
-											event: ev,
-											oldEvent: undefined,
-											revert: () => {
-												try {
-													ev.setDates(new Date(prevStart), null);
-												} catch {}
-											},
-										});
-									}
-								}
-							} catch {}
-						}
-					} finally {
-						processingEvents.current.delete(eventId);
-						const eventEl = info?.el as HTMLElement | undefined;
-						if (eventEl) eventEl.classList.remove("processing");
-					}
-				};
-
-				await applyChangeSequence();
+				onEventChange?.(info);
 			},
 			[onEventChange],
 		);
@@ -595,7 +674,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					initialDate={currentDate}
 					height={calendarHeight}
 					contentHeight={calendarHeight}
-					events={sanitizedEvents}
+					events={renderEvents}
 					// Header configuration - disable native toolbar since we use dock navbar
 					headerToolbar={false}
 					// Enhanced calendar options
@@ -630,6 +709,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 							? "businessHours"
 							: undefined
 					}
+					selectAllow={handleSelectAllow}
 					hiddenDays={freeRoam ? [] : [5]} // Hide Friday unless in free roam
 					// Valid range for navigation
 					{...validRangeProp}
@@ -653,20 +733,27 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					dayMaxEventRows={true}
 					moreLinkClick="popover"
 					eventDisplay="block"
-					displayEventTime={currentView !== "multiMonthYear"}
+					displayEventTime={true}
+					eventTimeFormat={{
+						hour: "numeric",
+						minute: "2-digit",
+						meridiem: "short",
+						hour12: true,
+					}}
 					// Interaction control
-					eventAllow={handleEventAllow}
+					// eventAllow intentionally omitted; rely on validRange/selectAllow/businessHours
 					// Styling
-					eventClassNames={(arg) => {
-						const event = arg?.event as any;
-						const classes = ["rounded", "px-1", "text-xs"] as string[];
+					eventClassNames={(arg: EventContentArg) => {
+						const event = arg?.event;
+						const classes = ["text-xs"] as string[];
 						const type = event?.extendedProps?.type;
 						if (type === 2) {
 							classes.push("conversation-event");
-						} else if (type === 1) {
-							classes.push("reservation-type-1");
-						} else if (type === 0) {
-							classes.push("reservation-type-0");
+						} else {
+							// All reservation-like events share unified styling and type tokens
+							classes.push("reservation-event");
+							if (type === 1) classes.push("reservation-type-1");
+							else classes.push("reservation-type-0");
 						}
 						return classes;
 					}}
@@ -683,8 +770,52 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					datesSet={handleDatesSet}
 					eventMouseEnter={onEventMouseEnter}
 					eventMouseLeave={onEventMouseLeave}
-					eventDragStart={onEventDragStart}
-					eventDragStop={onEventDragStop}
+					eventDragStart={(info) => {
+						try {
+							(
+								globalThis as { __isCalendarDragging?: boolean }
+							).__isCalendarDragging = true;
+						} catch {}
+						if (onEventDragStart) {
+							const e = info.event;
+							const safeStart =
+								e.start ?? (e.startStr ? new Date(e.startStr) : new Date());
+							onEventDragStart({
+								event: {
+									id: String(e.id),
+									title: String(e.title || ""),
+									start: safeStart,
+									end: e.end ?? undefined,
+									extendedProps: { ...(e.extendedProps || {}) },
+								},
+								el: info.el as HTMLElement,
+								jsEvent: info.jsEvent as MouseEvent,
+							});
+						}
+					}}
+					eventDragStop={(info) => {
+						try {
+							(
+								globalThis as { __isCalendarDragging?: boolean }
+							).__isCalendarDragging = false;
+						} catch {}
+						if (onEventDragStop) {
+							const e = info.event;
+							const safeStart =
+								e.start ?? (e.startStr ? new Date(e.startStr) : new Date());
+							onEventDragStop({
+								event: {
+									id: String(e.id),
+									title: String(e.title || ""),
+									start: safeStart,
+									end: e.end ?? undefined,
+									extendedProps: { ...(e.extendedProps || {}) },
+								},
+								el: info.el as HTMLElement,
+								jsEvent: info.jsEvent as MouseEvent,
+							});
+						}
+					}}
 					// Time grid specific options
 					slotLabelFormat={{
 						hour: "numeric",

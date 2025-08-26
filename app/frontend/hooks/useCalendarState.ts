@@ -46,7 +46,7 @@ export function useCalendarState(
 	const [isHydrated, setIsHydrated] = useState(false);
 	const [isChangingHours, setIsChangingHours] = useState(false);
 	const [slotTimesKey, setSlotTimesKey] = useState(0);
-	
+
 	// Refs to track state and prevent infinite loops
 	const changingHoursTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const isChangingHoursRef = useRef<boolean>(false);
@@ -192,9 +192,13 @@ export function useCalendarState(
 				console.debug("Skipping updateSlotTimes - already updating");
 				return;
 			}
-			
+
 			// Skip if the date is the same as the last slot update to avoid re-entrancy
-			if (!force && lastSlotUpdateDateRef.current && lastSlotUpdateDateRef.current.getTime() === date.getTime()) {
+			if (
+				!force &&
+				lastSlotUpdateDateRef.current &&
+				lastSlotUpdateDateRef.current.getTime() === date.getTime()
+			) {
 				console.debug("Skipping updateSlotTimes - same date as last update");
 				return;
 			}
@@ -206,13 +210,17 @@ export function useCalendarState(
 
 			// Set the updating flag immediately with longer protection
 			isUpdatingSlotTimesRef.current = true;
-			
+
 			try {
 				// Use ref values to avoid state dependency issues
 				const currentDateToUse = currentDateRef.current || currentDate;
-				
+
 				// Calculate slot times directly without relying on state
-				const oldSlotTimes = getSlotTimes(currentDateToUse, freeRoam, currentView);
+				const oldSlotTimes = getSlotTimes(
+					currentDateToUse,
+					freeRoam,
+					currentView,
+				);
 				const newSlotTimes = getSlotTimes(date, freeRoam, currentView);
 
 				// Check if slot times are actually changing
@@ -240,7 +248,7 @@ export function useCalendarState(
 				// ONLY increment slotTimesKey if there's an actual slot time change
 				if (isTimeChange || force) {
 					console.debug("Slot times changed - incrementing key ONCE");
-					
+
 					// Clear any existing timeout
 					if (changingHoursTimeoutRef.current) {
 						clearTimeout(changingHoursTimeoutRef.current);
@@ -248,7 +256,7 @@ export function useCalendarState(
 
 					isChangingHoursRef.current = true;
 					setIsChangingHours(true);
-					
+
 					// Increment slotTimesKey exactly ONCE
 					setSlotTimesKey((prev) => prev + 1);
 
@@ -260,7 +268,9 @@ export function useCalendarState(
 						changingHoursTimeoutRef.current = null;
 					}, 1000);
 				} else {
-					console.debug("No slot time change detected - skipping key increment");
+					console.debug(
+						"No slot time change detected - skipping key increment",
+					);
 				}
 			} finally {
 				// Always reset the updating flag after a longer delay

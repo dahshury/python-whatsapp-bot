@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import * as React from "react";
-import { toastService } from "@/lib/toast-service";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import { SettingsTabs } from "@/components/settings";
@@ -28,6 +27,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
+import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
 import { useVacation } from "@/lib/vacation-context";
 
@@ -61,8 +61,8 @@ function DualCalendarViewSelector({
 	rightCalendarView,
 	onLeftCalendarViewChange,
 	onRightCalendarViewChange,
-	leftCalendarRef,
-	rightCalendarRef,
+	leftCalendarRef: _leftCalendarRef,
+	rightCalendarRef: _rightCalendarRef,
 }: DualCalendarViewSelectorProps) {
 	const viewOptions = getCalendarViewOptions(isRTL);
 
@@ -137,20 +137,14 @@ export function DockNavSimple({
 	onRightCalendarViewChange,
 	leftCalendarRef,
 	rightCalendarRef,
-	isDualMode = false,
+	isDualMode: _isDualMode = false,
 }: DockNavSimpleProps) {
 	const pathname = usePathname();
 	const { isRTL, setUseArabicText } = useLanguage();
-	const {
-		freeRoam,
-		setFreeRoam,
-		showDualCalendar,
-		setShowDualCalendar,
-		theme: appTheme,
-		setTheme: setAppTheme,
-	} = useSettings();
+	const { freeRoam, setFreeRoam, showDualCalendar, setShowDualCalendar } =
+		useSettings();
 	const { recordingState } = useVacation();
-	const { theme, setTheme } = useTheme();
+	const { theme: _theme, setTheme } = useTheme();
 	const [mounted, setMounted] = React.useState(false);
 	const [activeTab, setActiveTab] = React.useState("view");
 
@@ -174,7 +168,9 @@ export function DockNavSimple({
 
 	const _handleLanguageToggle = (checked: boolean) => {
 		setUseArabicText(checked);
-		toastService.success(checked ? "تم التبديل إلى العربية" : "Switched to English");
+		toastService.success(
+			checked ? "تم التبديل إلى العربية" : "Switched to English",
+		);
 	};
 
 	const _handleThemeToggle = (checked: boolean) => {
@@ -227,7 +223,7 @@ export function DockNavSimple({
 
 	const _viewOptions = getCalendarViewOptions(isRTL);
 
-	const isRecording = recordingState.periodIndex !== null;
+	const _isRecording = recordingState.periodIndex !== null;
 
 	const isActive = (href: string) => {
 		if (href === "/" && pathname === "/") return true;
@@ -271,7 +267,7 @@ export function DockNavSimple({
 
 				{/* Settings Popover */}
 				<DockIcon>
-					<Popover modal>
+					<Popover>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<PopoverTrigger asChild>
@@ -293,11 +289,6 @@ export function DockNavSimple({
 						<PopoverContent
 							align="center"
 							className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
-							onInteractOutside={(e) => {
-								if (isRecording) {
-									e.preventDefault();
-								}
-							}}
 						>
 							<SettingsTabs
 								isRTL={isRTL}
@@ -307,7 +298,7 @@ export function DockNavSimple({
 								onCalendarViewChange={handleCalendarViewChange}
 								isCalendarPage={isCalendarPage}
 								customViewSelector={
-									isDualMode && viewMode === "dual" ? (
+									_isDualMode && viewMode === "dual" ? (
 										<DualCalendarViewSelector
 											isRTL={isRTL}
 											leftCalendarView={leftCalendarView}
@@ -317,7 +308,9 @@ export function DockNavSimple({
 											leftCalendarRef={leftCalendarRef}
 											rightCalendarRef={rightCalendarRef}
 										/>
-									) : undefined
+									) : (
+										(undefined as React.ReactElement | undefined)
+									)
 								}
 							/>
 						</PopoverContent>

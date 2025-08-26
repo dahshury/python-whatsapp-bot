@@ -19,40 +19,50 @@ export const useClickOutsideIgnore = ({
 		const markWidgetSafe = (w: HTMLElement) => {
 			if (!w.classList.contains("click-outside-ignore")) {
 				w.classList.add("click-outside-ignore");
-				w.querySelectorAll("*").forEach((el) =>
-					(el as HTMLElement).classList.add("click-outside-ignore"),
-				);
+				for (const el of w.querySelectorAll("*")) {
+					(el as HTMLElement).classList.add("click-outside-ignore");
+				}
 			}
 
-			if (!(w as any)._glideOutsidePatch) {
+			if (!(w as { _glideOutsidePatch?: boolean })._glideOutsidePatch) {
 				const ensureIgnored = (node: HTMLElement) => {
 					if (!node.classList.contains("click-outside-ignore")) {
 						node.classList.add("click-outside-ignore");
 					}
-					node.querySelectorAll("*").forEach((el) => {
+					for (const el of node.querySelectorAll("*")) {
 						if (
 							!(el as HTMLElement).classList.contains("click-outside-ignore")
 						) {
 							(el as HTMLElement).classList.add("click-outside-ignore");
 						}
-					});
+					}
 				};
 
 				ensureIgnored(w);
 
 				const mo = new MutationObserver((muts) => {
-					muts.forEach((mut) => {
-						mut.addedNodes.forEach((node) => {
+					for (const mut of muts) {
+						for (const node of mut.addedNodes) {
 							if (node instanceof HTMLElement) {
 								ensureIgnored(node);
 							}
-						});
-					});
+						}
+					}
 				});
 				mo.observe(w, { childList: true, subtree: true });
 
-				(w as any)._glideOutsidePatch = true;
-				(w as any)._glideOutsideObserver = mo;
+				(
+					w as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsidePatch = true;
+				(
+					w as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsideObserver = mo;
 			}
 		};
 
@@ -85,10 +95,10 @@ export const useClickOutsideIgnore = ({
 				'[class*="am-pm"]',
 			];
 
-			selectors.forEach((selector) => {
+			for (const selector of selectors) {
 				try {
 					const elements = document.querySelectorAll(selector);
-					elements.forEach((el) => {
+					for (const el of elements) {
 						if (el instanceof HTMLElement) {
 							if (
 								portalRef.current &&
@@ -100,9 +110,9 @@ export const useClickOutsideIgnore = ({
 								markWidgetSafe(el);
 							}
 						}
-					});
+					}
 				} catch (_error) {}
-			});
+			}
 		};
 
 		markTimekeeperElementsSafe();
@@ -161,30 +171,66 @@ export const useClickOutsideIgnore = ({
 			globalObserver.disconnect();
 
 			if (portalRef.current) {
-				const observer = (portalRef.current as any)._glideOutsideObserver;
+				const observer = (
+					portalRef.current as { _glideOutsideObserver?: MutationObserver }
+				)._glideOutsideObserver;
 				if (observer) {
 					observer.disconnect();
 				}
-				(portalRef.current as any)._glideOutsidePatch = false;
-				(portalRef.current as any)._glideOutsideObserver = null;
+				(
+					portalRef.current as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsidePatch = false;
+				(
+					portalRef.current as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsideObserver = undefined;
 			}
 
 			if (wrapperRef.current) {
-				const observer = (wrapperRef.current as any)._glideOutsideObserver;
+				const observer = (
+					wrapperRef.current as { _glideOutsideObserver?: MutationObserver }
+				)._glideOutsideObserver;
 				if (observer) {
 					observer.disconnect();
 				}
-				(wrapperRef.current as any)._glideOutsidePatch = false;
-				(wrapperRef.current as any)._glideOutsideObserver = null;
+				(
+					wrapperRef.current as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsidePatch = false;
+				(
+					wrapperRef.current as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsideObserver = undefined;
 			}
 
 			if (iconButtonRef.current) {
-				const observer = (iconButtonRef.current as any)._glideOutsideObserver;
+				const observer = (
+					iconButtonRef.current as { _glideOutsideObserver?: MutationObserver }
+				)._glideOutsideObserver;
 				if (observer) {
 					observer.disconnect();
 				}
-				(iconButtonRef.current as any)._glideOutsidePatch = false;
-				(iconButtonRef.current as any)._glideOutsideObserver = null;
+				(
+					iconButtonRef.current as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsidePatch = false;
+				(
+					iconButtonRef.current as {
+						_glideOutsidePatch?: boolean;
+						_glideOutsideObserver?: MutationObserver;
+					}
+				)._glideOutsideObserver = undefined;
 			}
 		};
 	}, [showPicker, portalRef, wrapperRef, iconButtonRef]);

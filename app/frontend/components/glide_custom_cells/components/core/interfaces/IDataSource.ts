@@ -8,13 +8,13 @@ export interface IDataSource {
 
 	getColumnDefinitions(): IColumnDefinition[];
 
-	getCellData(col: number, row: number): Promise<any>;
+	getCellData(col: number, row: number): Promise<unknown>;
 
-	setCellData(col: number, row: number, value: any): Promise<boolean>;
+	setCellData(col: number, row: number, value: unknown): Promise<boolean>;
 
-	getRowData(row: number): Promise<any[]>;
+	getRowData(row: number): Promise<unknown[]>;
 
-	getColumnData(col: number): Promise<any[]>;
+	getColumnData(col: number): Promise<unknown[]>;
 
 	refresh(): Promise<void>;
 
@@ -35,10 +35,10 @@ export interface IColumnDefinition {
 	isRequired?: boolean;
 	isPinned?: boolean;
 	isHidden?: boolean;
-	defaultValue?: any;
+	defaultValue?: unknown;
 	validationRules?: IValidationRule[];
 	formatting?: IColumnFormatting;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 	validateInput?: (value: string) => boolean | string;
 }
 
@@ -59,16 +59,16 @@ export enum ColumnDataType {
 
 export interface IValidationRule {
 	type: "required" | "min" | "max" | "pattern" | "custom";
-	value?: any;
+	value?: unknown;
 	message?: string;
-	validate?: (value: any) => boolean;
+	validate?: (value: string) => boolean;
 }
 
 export interface IColumnFormatting {
 	type?: string;
 	pattern?: string;
 	locale?: string;
-	options?: Record<string, any>;
+	options?: Record<string, unknown>;
 }
 
 export interface IDataProvider {

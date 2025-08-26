@@ -1,4 +1,8 @@
-import { GridCellKind, type GridColumn } from "@glideapps/glide-data-grid";
+import {
+	type GridCell,
+	GridCellKind,
+	type GridColumn,
+} from "@glideapps/glide-data-grid";
 
 export interface FilteredRowsResult {
 	filteredRows: number[];
@@ -11,33 +15,46 @@ export interface SortState {
 }
 
 export class GridDataService {
-	private extractCellValue(cell: any): any {
-		if (cell.kind === GridCellKind.Number) return cell.data ?? 0;
+	private extractCellValue(cell: GridCell): unknown {
+		if (cell.kind === GridCellKind.Number)
+			return (cell as { data?: unknown }).data ?? 0;
 
 		if (cell.kind === GridCellKind.Custom) {
-			const k = cell.data?.kind;
-			switch (k) {
+			const data = (cell as { data?: unknown }).data as
+				| { kind?: string; value?: unknown; date?: Date; phone?: string }
+				| undefined;
+			switch (data?.kind) {
 				case "dropdown-cell":
-					return cell.data.value ?? "";
+					return data.value ?? "";
 				case "tempus-date-cell":
-					return cell.data.date ?? null;
+					return data.date ?? null;
 				case "phone-input-cell":
-					return cell.data.phone ?? "";
+					return data.phone ?? "";
 				default:
-					return cell.data ?? cell.displayData ?? "";
+					return (
+						(cell as { displayData?: unknown }).displayData ??
+						(cell as { data?: unknown }).data ??
+						""
+					);
 			}
 		}
 
-		return cell.data ?? cell.displayData ?? "";
+		return (
+			(cell as { data?: unknown }).data ??
+			(cell as { displayData?: unknown }).displayData ??
+			""
+		);
 	}
 
-	private extractSearchableText(cell: any): string {
-		return (cell.displayData ?? cell.data ?? "").toString().toLowerCase();
+	private extractSearchableText(cell: GridCell): string {
+		const disp = (cell as { displayData?: unknown }).displayData;
+		const data = (cell as { data?: unknown }).data;
+		return String(disp ?? data ?? "").toLowerCase();
 	}
 
 	private compareValues(
-		valA: any,
-		valB: any,
+		valA: unknown,
+		valB: unknown,
 		direction: "asc" | "desc",
 	): number {
 		const digitOnly = (s: string) => s.replace(/\D+/g, "");
@@ -47,7 +64,7 @@ export class GridDataService {
 			return direction === "asc" ? comp : -comp;
 		}
 
-		const numParse = (v: any) => {
+		const numParse = (v: unknown) => {
 			if (typeof v === "string" && /^[\d\s+()-]+$/.test(v)) {
 				const digits = digitOnly(v);
 				return digits.length ? Number(digits) : NaN;
@@ -63,8 +80,8 @@ export class GridDataService {
 			return direction === "asc" ? comp : -comp;
 		}
 
-		const strA = (valA ?? "").toString().toLowerCase();
-		const strB = (valB ?? "").toString().toLowerCase();
+		const strA = String(valA ?? "").toLowerCase();
+		const strB = String(valB ?? "").toLowerCase();
 		if (strA < strB) return direction === "asc" ? -1 : 1;
 		if (strA > strB) return direction === "asc" ? 1 : -1;
 		return 0;
@@ -76,7 +93,7 @@ export class GridDataService {
 		numRows: number,
 		displayColumns: GridColumn[],
 		visibleColumnIndices: (number | undefined)[],
-		getRawCellContent: (col: number, row: number) => any,
+		getRawCellContent: (col: number, row: number) => GridCell,
 		sortState: SortState | null,
 	): FilteredRowsResult {
 		const filteredRows: number[] = [];
@@ -109,15 +126,18 @@ export class GridDataService {
 				(c) => c.id === sortState.columnId,
 			);
 			if (colIdx >= 0) {
-				filteredRows.sort((a, b) => {
-					const cellA = getRawCellContent(visibleColumnIndices[colIdx]!, a);
-					const cellB = getRawCellContent(visibleColumnIndices[colIdx]!, b);
+				const actualColIndex = visibleColumnIndices[colIdx];
+				if (actualColIndex !== undefined) {
+					filteredRows.sort((a, b) => {
+						const cellA = getRawCellContent(actualColIndex, a);
+						const cellB = getRawCellContent(actualColIndex, b);
 
-					const valA = this.extractCellValue(cellA);
-					const valB = this.extractCellValue(cellB);
+						const valA = this.extractCellValue(cellA);
+						const valB = this.extractCellValue(cellB);
 
-					return this.compareValues(valA, valB, sortState.direction);
-				});
+						return this.compareValues(valA, valB, sortState.direction);
+					});
+				}
 			}
 		}
 
@@ -131,14 +151,16 @@ export class GridDataService {
 		filteredRows: number[],
 		displayColumns: GridColumn[],
 		visibleColumnIndices: (number | undefined)[],
-		getRawCellContent: (col: number, row: number) => any,
-	): any[][] {
+		getRawCellContent: (col: number, row: number) => GridCell,
+	): unknown[][] {
 		return filteredRows.map((rowIdx) =>
 			displayColumns.map((_, cIdx) => {
 				const colIdx = visibleColumnIndices[cIdx];
 				if (colIdx === undefined) return undefined;
 				const cell = getRawCellContent(colIdx, rowIdx);
-				return cell.data ?? cell.displayData;
+				const disp = (cell as { displayData?: unknown }).displayData;
+				const data = (cell as { data?: unknown }).data;
+				return disp ?? data;
 			}),
 		);
 	}

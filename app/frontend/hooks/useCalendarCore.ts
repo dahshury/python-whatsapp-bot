@@ -5,7 +5,11 @@ import { createCallbackHandlers } from "@/lib/calendar-callback-factory";
 // Services and utilities
 import { createCalendarCallbacks } from "@/lib/calendar-callbacks";
 import { getTimezone } from "@/lib/calendar-config";
-import { filterEventsForCalendar, processEventsForFreeRoam } from "@/lib/calendar-event-processor";
+import {
+	alignAndSortEventsForCalendar,
+	filterEventsForCalendar,
+	processEventsForFreeRoam,
+} from "@/lib/calendar-event-processor";
 import {
 	calculateCalendarHeight,
 	useCalendarResize,
@@ -43,9 +47,13 @@ export function useCalendarCore({
 		setOnVacationUpdated,
 		vacationPeriods,
 	} = useVacation();
-	const { state: sidebarState, open: sidebarOpen } = useSidebar();
+	const { state: _sidebarState, open: sidebarOpen } = useSidebar();
 	const { openConversation } = useSidebarChatStore();
-	const { conversations, reservations, fetchConversations } = useChatSidebar();
+	const {
+		conversations,
+		reservations,
+		fetchConversations: _fetchConversations,
+	} = useChatSidebar();
 
 	// Ref for calendar component
 	const calendarRef = useRef<CalendarCoreRef>(null);
@@ -64,15 +72,12 @@ export function useCalendarCore({
 		autoRefresh: false,
 	});
 
-	// Filter cancelled events unless free roam is enabled, then mark past reservations non-editable in free roam
-	const processedEvents = useMemo(
-		() =>
-			processEventsForFreeRoam(
-				filterEventsForCalendar(eventsState.events, freeRoam),
-				freeRoam,
-			),
-		[eventsState.events, freeRoam],
-	);
+	// Filter cancelled, align and sort within slots, then adjust free roam editability
+	const processedEvents = useMemo(() => {
+		const filtered = filterEventsForCalendar(eventsState.events, freeRoam);
+		const aligned = alignAndSortEventsForCalendar(filtered, freeRoam);
+		return processEventsForFreeRoam(aligned, freeRoam);
+	}, [eventsState.events, freeRoam]);
 
 	// View/height calculation
 	const { calculateHeight } = useCalendarResize(
@@ -99,11 +104,14 @@ export function useCalendarCore({
 
 	// Vacation date checker (expects YYYY-MM-DD string)
 	const vacationDateChecker = useVacationDateChecker(vacationPeriods);
-	const isVacationDateString = useCallback((date: string) => {
-		// Ensure date-only string
-		const dateOnly = date.includes("T") ? date.split("T")[0] : date;
-		return vacationDateChecker(dateOnly);
-	}, [vacationDateChecker]);
+	const isVacationDateString = useCallback(
+		(date: string) => {
+			// Ensure date-only string
+			const dateOnly = date.includes("T") ? date.split("T")[0] : date;
+			return vacationDateChecker(dateOnly);
+		},
+		[vacationDateChecker],
+	);
 
 	// Context menu management
 	const contextMenu = useCalendarContextMenu();

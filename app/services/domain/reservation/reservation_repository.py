@@ -1,8 +1,7 @@
 from typing import List, Optional
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, and_, update
-from sqlalchemy.orm import joinedload
+from sqlalchemy import select, and_
 from app.db import get_session, ReservationModel, CustomerModel
 from .reservation_models import Reservation, ReservationType
 

@@ -67,15 +67,15 @@
 }
 
 .combobox-trigger-stable {
-	transition: none !important;
-	animation: none !important;
-	transform: none !important;
-	opacity: 1 !important;
+	transition: none;
+	animation: none;
+	transform: none;
+	opacity: 1;
 }
 
 .combobox-trigger-stable * {
-	transition: none !important;
-	animation: none !important;
+	transition: none;
+	animation: none;
 }
 
 /* Prevent any animations on state changes */
@@ -85,34 +85,34 @@
 .combobox-trigger-stable:active,
 .combobox-trigger-stable[data-state="open"],
 .combobox-trigger-stable[data-state="closed"] {
-	transition: none !important;
-	animation: none !important;
-	transform: none !important;
+	transition: none;
+	animation: none;
+	transform: none;
 }
 
 .combobox-trigger-stable[data-state="closed"] {
-	transition: none !important;
-	animation: none !important;
-	transform: none !important;
+	transition: none;
+	animation: none;
+	transform: none;
 }
 
 /* Prevent automatic focus styling that causes auto-selection appearance */
 .glide-grid-container *:focus:not([data-allow-focus="true"]) {
-	outline: none !important;
-	box-shadow: none !important;
+	outline: none;
+	box-shadow: none;
 }
 
 /* Specifically target dialog close buttons and other UI elements */
 button:focus:not([data-allow-focus="true"]),
 [role="button"]:focus:not([data-allow-focus="true"]) {
-	outline: none !important;
-	box-shadow: none !important;
+	outline: none;
+	box-shadow: none;
 }
 
 /* Global prevention of auto-focus styling */
 *:focus:not([data-allow-focus="true"]):not(input):not(textarea):not(select) {
-	outline: none !important;
-	box-shadow: none !important;
+	outline: none;
+	box-shadow: none;
 }
 
 /* Disable focus styles on dialogs and modal elements */
@@ -120,6 +120,6 @@ button:focus:not([data-allow-focus="true"]),
 [role="alertdialog"] *:focus:not([data-allow-focus="true"]),
 .dialog *:focus:not([data-allow-focus="true"]),
 .modal *:focus:not([data-allow-focus="true"]) {
-	outline: none !important;
-	box-shadow: none !important;
+	outline: none;
+	box-shadow: none;
 }

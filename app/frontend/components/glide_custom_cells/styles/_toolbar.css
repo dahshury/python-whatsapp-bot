@@ -22,7 +22,7 @@
 	border: none;
 	padding: 4px;
 	cursor: pointer;
-	color: var(--gdg-toolbar-icon) !important;
+	color: var(--gdg-toolbar-icon);
 	border-radius: 4px;
 	transition: all 150ms ease;
 	display: flex;
@@ -31,8 +31,8 @@
 }
 
 .glide-grid-toolbar button:hover:not(:disabled) {
-	background-color: var(--gdg-toolbar-hover-bg) !important;
-	color: var(--gdg-toolbar-hover-icon) !important;
+	background-color: var(--gdg-toolbar-hover-bg);
+	color: var(--gdg-toolbar-hover-icon);
 	transform: scale(1.05);
 }
 

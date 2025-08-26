@@ -1,11 +1,24 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import React, { PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	type PropsWithChildren,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { i18n } from "@/lib/i18n";
 
 // react-wordcloud uses window; load client-side only
-const ReactWordcloud = dynamic(() => import("react-wordcloud"), { ssr: false } as any) as any;
+const ReactWordcloud = dynamic(() => import("react-wordcloud"), {
+	ssr: false,
+}) as React.ComponentType<{
+	words: WordItem[];
+	callbacks?: Record<string, unknown>;
+	size?: [number, number];
+	options?: Record<string, unknown>;
+}>;
 
 type WordItem = { text: string; value: number };
 
@@ -15,8 +28,11 @@ interface WordCloudProps {
 	className?: string;
 }
 
-class SafeBoundary extends React.Component<PropsWithChildren<{ fallback: React.ReactNode }>, { hasError: boolean }> {
-	constructor(props: any) {
+class SafeBoundary extends React.Component<
+	PropsWithChildren<{ fallback: React.ReactNode }>,
+	{ hasError: boolean }
+> {
+	constructor(props: PropsWithChildren<{ fallback: React.ReactNode }>) {
 		super(props);
 		this.state = { hasError: false };
 	}
@@ -26,7 +42,7 @@ class SafeBoundary extends React.Component<PropsWithChildren<{ fallback: React.R
 	componentDidCatch() {}
 	render() {
 		if (this.state.hasError) return this.props.fallback;
-		return this.props.children as any;
+		return this.props.children;
 	}
 }
 
@@ -41,25 +57,36 @@ export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
 		const c5 = `hsl(${computed.getPropertyValue("--chart-5")})`;
 		return {
 			colors: [c1, c2, c3, c4, c5, fg],
-			fontFamily: isRTL ? "IBM Plex Sans Arabic, system-ui, sans-serif" : "Inter, system-ui, sans-serif",
+			fontFamily: isRTL
+				? "IBM Plex Sans Arabic, system-ui, sans-serif"
+				: "Inter, system-ui, sans-serif",
 			fontSizes: [14, 56] as [number, number],
 			fontStyle: "normal" as const,
 			fontWeight: "bold" as const,
 			padding: 1,
 			rotations: 2,
-			rotationAngles: isRTL ? [0, 0] as [number, number] : [0, 0] as [number, number],
+			rotationAngles: isRTL
+				? ([0, 0] as [number, number])
+				: ([0, 0] as [number, number]),
 			scale: "sqrt" as const,
 			spiral: "rectangular" as const,
 			transitionDuration: 500,
 		};
 	}, [isRTL]);
 
-	const callbacks = useMemo(() => ({
-		getWordTooltip: (word: any) => `${word.text}: ${word.value}`,
-	}), []);
+	const callbacks = useMemo(
+		() => ({
+			getWordTooltip: (word: WordItem) => `${word.text}: ${word.value}`,
+		}),
+		[],
+	);
 
 	const sizedWords = useMemo(
-		() => (Array.isArray(words) ? words : []).map((w: any) => ({ text: String(w?.text ?? ""), value: Math.max(1, Number(w?.value) || 1) })),
+		() =>
+			(Array.isArray(words) ? words : []).map((w: WordItem | undefined) => ({
+				text: String(w?.text ?? ""),
+				value: Math.max(1, Number(w?.value) || 1),
+			})),
 		[words],
 	);
 
@@ -90,7 +117,11 @@ export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
 			{ReactWordcloud ? (
 				sizedWords.length > 0 && canRender ? (
 					<SafeBoundary fallback={noData}>
-						<ReactWordcloud words={sizedWords} options={options} callbacks={callbacks} />
+						<ReactWordcloud
+							words={sizedWords}
+							options={options}
+							callbacks={callbacks}
+						/>
 					</SafeBoundary>
 				) : (
 					noData

@@ -111,16 +111,16 @@ export const THEME_OPTIONS: ThemeOption[] = [
 			secondary: "#2ba3c7",
 		},
 	},
-  {
-    value: "theme-neomorphism",
-    name: "Neomorphism",
-    nameRTL: "نيو مورفزم",
-    colors: {
-      primary: "#ff1493",
-      secondary: "#cbd5e1",
-    },
-    borderStyle: "0px",
-  },
+	{
+		value: "theme-neomorphism",
+		name: "Neomorphism",
+		nameRTL: "نيو مورفزم",
+		colors: {
+			primary: "#ff1493",
+			secondary: "#cbd5e1",
+		},
+		borderStyle: "0px",
+	},
 ];
 
 export const getThemeName = (value: string): string => {

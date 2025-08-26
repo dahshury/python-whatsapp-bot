@@ -3,15 +3,15 @@
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
+import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import { useCalendarToolbar } from "@/hooks/useCalendarToolbar";
+import { getValidRange } from "@/lib/calendar-config";
+import { count } from "@/lib/dev-profiler";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
-import { useVacation } from "@/lib/vacation-context";
 import { toastService } from "@/lib/toast-service";
-import { getCalendarViewOptions } from "@/components/calendar-toolbar";
-import type { NavigationContextValue } from "@/types/navigation";
-import { count } from "@/lib/dev-profiler";
-import { getValidRange } from "@/lib/calendar-config";
+import { useVacation } from "@/lib/vacation-context";
+import type { ExtendedNavigationContextValue } from "@/types/navigation";
 
 interface UseDockNavigationProps {
 	calendarRef?: React.RefObject<CalendarCoreRef> | null;
@@ -23,7 +23,7 @@ export function useDockNavigation({
 	calendarRef,
 	currentCalendarView = "multiMonthYear",
 	onCalendarViewChange,
-}: UseDockNavigationProps): NavigationContextValue {
+}: UseDockNavigationProps): ExtendedNavigationContextValue {
 	const pathname = usePathname();
 	const router = useRouter();
 	const { isRTL } = useLanguage();
@@ -34,13 +34,13 @@ export function useDockNavigation({
 	const [activeTab, setActiveTab] = React.useState("view");
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 
-	const fallbackRef = React.useRef<any>(null);
+	const fallbackRef = React.useRef<CalendarCoreRef | null>(null);
 	const _effectiveCalendarRef = calendarRef || fallbackRef;
 	const isCalendarPage = pathname === "/";
 
 	// Auto-switch to general tab when not on calendar page
 	React.useEffect(() => {
-		if (!isCalendarPage && (activeTab === "view" || activeTab === "vacation")) {
+		if (!isCalendarPage && activeTab === "view") {
 			setActiveTab("general");
 		}
 	}, [isCalendarPage, activeTab]);
@@ -54,6 +54,7 @@ export function useDockNavigation({
 		handlePrev: originalHandlePrev,
 		handleNext: originalHandleNext,
 		handleToday: originalHandleToday,
+		visibleEventCount,
 	} = useCalendarToolbar({
 		calendarRef: isCalendarPage ? _effectiveCalendarRef : fallbackRef,
 		currentView: currentCalendarView,
@@ -95,28 +96,57 @@ export function useDockNavigation({
 			if (isCalendarPage && targetRef?.current) {
 				const api = targetRef.current.getApi?.();
 				if (api) {
-					// Temporarily adjust validRange around multimonth transitions to avoid plugin issues
+					// Temporarily adjust options around multimonth transitions to avoid plugin issues
 					try {
-						if (view === "multiMonthYear") {
-							api.setOption("validRange", undefined);
-						} else {
+						// Always clear constraints before changing view
+						api.setOption("validRange", undefined);
+						api.setOption("eventConstraint", undefined);
+						api.setOption("selectConstraint", undefined);
+						// Change view first
+						api.changeView(view);
+						// Reapply constraints only for non-multimonth views
+						const lower = (view || "").toLowerCase();
+						const isMultiMonth = lower === "multimonthyear";
+						if (!isMultiMonth) {
 							api.setOption(
 								"validRange",
 								freeRoam ? undefined : getValidRange(freeRoam),
 							);
+							// For timeGrid views only
+							if (lower.includes("timegrid")) {
+								api.setOption(
+									"eventConstraint",
+									freeRoam ? undefined : "businessHours",
+								);
+								api.setOption(
+									"selectConstraint",
+									freeRoam ? undefined : "businessHours",
+								);
+							}
 						}
 					} catch {}
-					api.changeView(view);
 					try {
 						const opts = getCalendarViewOptions(isRTL);
-						const label = (opts.find(o => o.value === view)?.label ?? view).toString();
-						toastService.info(isRTL ? "تم تغيير العرض" : "View changed", label, 1500);
+						const label = (
+							opts.find((o) => o.value === view)?.label ?? view
+						).toString();
+						toastService.info(
+							isRTL ? "تم تغيير العرض" : "View changed",
+							label,
+							1500,
+						);
 					} catch {}
 				}
 			}
 			onCalendarViewChange?.(view);
 		},
-		[isCalendarPage, _effectiveCalendarRef, onCalendarViewChange, isRTL, freeRoam],
+		[
+			isCalendarPage,
+			_effectiveCalendarRef,
+			onCalendarViewChange,
+			isRTL,
+			freeRoam,
+		],
 	);
 
 	const isActive = React.useCallback(
@@ -151,33 +181,52 @@ export function useDockNavigation({
 		}
 	}, [isCalendarPage, _effectiveCalendarRef]);
 
-	React.useEffect(() => {
-		if (activeTab === "vacation" && viewMode !== "default") {
-			setActiveTab("view");
-		}
-	}, [viewMode, activeTab]);
+	// Keep the user's chosen tab; do not auto-switch based on view mode
 
-	return {
-		state: {
+	return React.useMemo(
+		() =>
+			({
+				state: {
+					mounted,
+					isHoveringDate,
+					activeTab,
+				},
+				handlers: {
+					setIsHoveringDate,
+					setActiveTab,
+					handleLanguageToggle: () => {}, // These will be handled by individual components
+					handleThemeToggle: () => {}, // These will be handled by individual components
+					handleViewModeChange: () => {}, // These will be handled by individual components
+					handleCalendarViewChange,
+				},
+				computed: {
+					viewMode,
+					isRecording: recordingState.periodIndex !== null,
+					isActive,
+				},
+				// Additional properties for easier access
+				navigation: {
+					title,
+					activeView,
+					isPrevDisabled,
+					isNextDisabled,
+					isTodayDisabled,
+					handlePrev,
+					handleNext,
+					handleToday,
+					isCalendarPage,
+					isRTL,
+					visibleEventCount,
+				},
+			}) as ExtendedNavigationContextValue,
+		[
 			mounted,
 			isHoveringDate,
 			activeTab,
-		},
-		handlers: {
-			setIsHoveringDate,
-			setActiveTab,
-			handleLanguageToggle: () => {}, // These will be handled by individual components
-			handleThemeToggle: () => {}, // These will be handled by individual components
-			handleViewModeChange: () => {}, // These will be handled by individual components
 			handleCalendarViewChange,
-		},
-		computed: {
 			viewMode,
-			isRecording: recordingState.periodIndex !== null,
+			recordingState.periodIndex,
 			isActive,
-		},
-		// Additional properties for easier access
-		navigation: {
 			title,
 			activeView,
 			isPrevDisabled,
@@ -188,6 +237,7 @@ export function useDockNavigation({
 			handleToday,
 			isCalendarPage,
 			isRTL,
-		},
-	} as NavigationContextValue & { navigation: any };
+			visibleEventCount,
+		],
+	);
 }

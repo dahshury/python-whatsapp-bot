@@ -9,7 +9,7 @@ export interface MappingConfig<T> {
 	/**
 	 * Extract value for a specific column from source data
 	 */
-	getValue: (item: T, columnId: string) => any;
+	getValue: (item: T, columnId: string) => unknown; // Fixed any type
 
 	/**
 	 * Filter items before mapping
@@ -29,7 +29,7 @@ export interface MappingConfig<T> {
 	/**
 	 * Post-process mapped row data
 	 */
-	postProcessRow?: (rowData: any[], item: T, rowIndex: number) => any[];
+	postProcessRow?: (rowData: unknown[], item: T, rowIndex: number) => unknown[];
 }
 
 export interface DataSourceMapperOptions {
@@ -47,7 +47,7 @@ export interface DataSourceMapperOptions {
 /**
  * Generic service for mapping external data sources to grid data
  */
-export class DataSourceMapper<T = any> {
+export class DataSourceMapper<T = unknown> {
 	private columnTypeRegistry = ColumnTypeRegistry.getInstance();
 
 	/**
@@ -77,7 +77,7 @@ export class DataSourceMapper<T = any> {
 		}
 
 		// Map items to grid data
-		const gridData: any[][] = processedItems.map((item, index) => {
+		const gridData: unknown[][] = processedItems.map((item, index) => {
 			const rowData = columns.map((column) => {
 				const value = mappingConfig.getValue(item, column.id);
 				return this.normalizeValue(value, column);
@@ -106,8 +106,8 @@ export class DataSourceMapper<T = any> {
 	/**
 	 * Create a mapping function for simple object mapping
 	 */
-	createObjectMapper<T extends Record<string, any>>(
-		fieldMap: Record<string, keyof T | ((item: T) => any)>,
+	createObjectMapper<T extends Record<string, unknown>>(
+		fieldMap: Record<string, keyof T | ((item: T) => unknown)>,
 	): MappingConfig<T>["getValue"] {
 		return (item: T, columnId: string) => {
 			const mapping = fieldMap[columnId];
@@ -143,7 +143,7 @@ export class DataSourceMapper<T = any> {
 	 */
 	createMultiFieldSorter<T>(
 		...sortFields: Array<{
-			field: (item: T) => any;
+			field: (item: T) => unknown;
 			direction?: "asc" | "desc";
 		}>
 	): MappingConfig<T>["sort"] {
@@ -152,8 +152,10 @@ export class DataSourceMapper<T = any> {
 				const aValue = field(a);
 				const bValue = field(b);
 
-				if (aValue < bValue) return direction === "asc" ? -1 : 1;
-				if (aValue > bValue) return direction === "asc" ? 1 : -1;
+				const aStr = String(aValue);
+				const bStr = String(bValue);
+				if (aStr < bStr) return direction === "asc" ? -1 : 1;
+				if (aStr > bStr) return direction === "asc" ? 1 : -1;
 			}
 			return 0;
 		};
@@ -170,15 +172,32 @@ export class DataSourceMapper<T = any> {
 		return map;
 	}
 
-	private normalizeValue(value: any, column: IColumnDefinition): any {
+	private normalizeValue(value: unknown, column: IColumnDefinition): unknown {
 		const columnType = this.columnTypeRegistry.get(column.dataType);
 		if (!columnType) return value;
 
 		// Let the column type parse and normalize the value
-		return columnType.parseValue(value, column);
+		let input: string | number | Date | null = null;
+		// For text-like columns ensure string input; for number ensure number; for date/time leave as-is
+		switch (column.dataType) {
+			case "text":
+			case "dropdown":
+			case "phone":
+				input = value == null ? "" : String(value);
+				break;
+			case "number":
+				input = value == null ? 0 : Number(value);
+				break;
+			default:
+				if (value instanceof Date) input = value;
+				else if (typeof value === "string" || typeof value === "number")
+					input = value;
+				else input = null;
+		}
+		return columnType.parseValue(input as unknown, column);
 	}
 
-	private createDefaultRow(columns: IColumnDefinition[]): any[] {
+	private createDefaultRow(columns: IColumnDefinition[]): unknown[] {
 		return columns.map((column) => {
 			const columnType = this.columnTypeRegistry.get(column.dataType);
 			return columnType ? columnType.getDefaultValue(column) : "";

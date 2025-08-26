@@ -1,8 +1,8 @@
 // @ts-nocheck
 
 import type { Theme } from "@glideapps/glide-data-grid";
-import React from "react";
 import { useTheme as useNextTheme } from "next-themes";
+import React from "react";
 import { createGlideTheme } from "../utils/streamlitGlideTheme";
 
 // Create themes lazily to avoid SSR issues
@@ -17,14 +17,14 @@ function getThemes() {
 	return { darkTheme, lightTheme };
 }
 
-export function useGridTheme(disableDocumentClass = false) {
+export function useGridTheme(_disableDocumentClass = false) {
 	const [theme, setTheme] = React.useState<Partial<Theme> | null>(null);
 	const { resolvedTheme } = useNextTheme();
 
 	// Initialize and sync grid theme with app color scheme (managed by next-themes)
 	React.useEffect(() => {
 		const { darkTheme, lightTheme } = getThemes();
-		let isDark: boolean | undefined = undefined;
+		let isDark: boolean | undefined;
 		if (resolvedTheme) {
 			isDark = resolvedTheme === "dark";
 		} else if (typeof document !== "undefined") {
@@ -34,7 +34,6 @@ export function useGridTheme(disableDocumentClass = false) {
 		}
 		setTheme(isDark ? darkTheme : lightTheme);
 	}, [resolvedTheme]);
-
 
 	// Add CSS overrides for dropdown text color based on theme
 	React.useEffect(() => {

@@ -5,7 +5,8 @@ import {
 	filterEventsForDataTable,
 	transformEventsForDataTable,
 } from "@/lib/calendar-event-processor";
-import type { CalendarEvent } from "@/types/calendar";
+import type { CalendarEvent as CalendarEventForCalendar } from "@/types/calendar";
+import type { CalendarEvent as DataTableCalendarEvent } from "@/types/data-table-editor";
 import type { CalendarCoreRef } from "./calendar-core";
 
 // Lazy load DataTableEditor to improve initial performance
@@ -17,7 +18,11 @@ const LazyDataTableEditor = dynamic(
 	{
 		ssr: false,
 		loading: () => (
-			<GridLoadingState loadingText="Loading editor..." showSkeleton={false} height={180} />
+			<GridLoadingState
+				loadingText="Loading editor..."
+				showSkeleton={false}
+				height={180}
+			/>
 		),
 	},
 );
@@ -26,14 +31,14 @@ interface CalendarDataTableEditorWrapperProps {
 	editorOpen: boolean;
 	shouldLoadEditor: boolean;
 	selectedDateRange: { start: string; end: string } | null;
-	events: CalendarEvent[];
+	events: CalendarEventForCalendar[];
 	freeRoam: boolean;
 	calendarRef: React.RefObject<CalendarCoreRef>;
 	isRTL: boolean;
 	slotDurationHours: number;
 	onOpenChange: (open: boolean) => void;
-	onEventAdded: (event: any) => void;
-	onEventModified: (eventId: string, event: any) => void;
+	onEventAdded: (event: DataTableCalendarEvent) => void;
+	onEventModified: (eventId: string, event: DataTableCalendarEvent) => void;
 	onEventCancelled: (eventId: string) => void;
 	onSave: () => Promise<void>;
 	closeEditor: () => void;

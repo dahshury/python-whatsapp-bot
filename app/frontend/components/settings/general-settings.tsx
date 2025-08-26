@@ -1,10 +1,10 @@
 "use client";
 
 import { Languages } from "lucide-react";
-import { toastService } from "@/lib/toast-service";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useLanguage } from "@/lib/language-context";
+import { toastService } from "@/lib/toast-service";
 
 interface GeneralSettingsProps {
 	isRTL?: boolean;
@@ -15,7 +15,9 @@ export function GeneralSettings({ isRTL = false }: GeneralSettingsProps) {
 
 	const handleLanguageToggle = (checked: boolean) => {
 		setUseArabicText(checked);
-		toastService.success(checked ? "تم التبديل إلى العربية" : "Switched to English");
+		toastService.success(
+			checked ? "تم التبديل إلى العربية" : "Switched to English",
+		);
 	};
 
 	return (

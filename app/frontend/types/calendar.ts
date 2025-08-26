@@ -12,7 +12,7 @@ export interface CalendarEvent {
 	extendedProps?: {
 		type: number;
 		cancelled?: boolean;
-		[key: string]: any;
+		[key: string]: unknown;
 	};
 }
 
@@ -25,7 +25,7 @@ export interface Reservation {
 	customer_name: string;
 	type: number; // 0 or 1
 	cancelled?: boolean;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 // Conversation message shape from backend

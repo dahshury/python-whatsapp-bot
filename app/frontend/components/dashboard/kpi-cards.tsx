@@ -7,11 +7,11 @@ import {
 	Clock,
 	Cpu,
 	HardDrive,
+	HelpCircle,
 	MessageSquare,
 	TrendingUp,
 	UserCheck,
 	Users,
-	HelpCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +57,7 @@ function KPICard({
 	variant = "default",
 	hasTooltip,
 	tooltipContent,
-	isRTL,
+	isRTL: _isRTL,
 }: KPICardProps) {
 	const getVariantClasses = () => {
 		switch (variant) {
@@ -90,7 +90,12 @@ function KPICard({
 										<HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
 									</span>
 								</TooltipTrigger>
-								<TooltipContent side="top" align="start" sideOffset={10} className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg">
+								<TooltipContent
+									side="top"
+									align="start"
+									sideOffset={10}
+									className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg"
+								>
 									<p className="text-sm opacity-90">{tooltipContent}</p>
 								</TooltipContent>
 							</Tooltip>
@@ -100,7 +105,9 @@ function KPICard({
 				</CardHeader>
 				<CardContent className="flex-1 flex flex-col justify-between">
 					<div>
-						<div className="text-2xl font-bold transition-all duration-300 will-change-contents">{value}</div>
+						<div className="text-2xl font-bold transition-all duration-300 will-change-contents">
+							{value}
+						</div>
 						<div className="flex items-center justify-between mt-1 min-h-[2.5rem]">
 							<p className="text-xs text-muted-foreground line-clamp-2 flex-1 mr-2">
 								{description}
@@ -344,7 +351,7 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 			<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 auto-rows-fr">
 				{allMetrics.map((metric, index) => (
 					<motion.div
-						key={index}
+						key={metric.title}
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: index * 0.05, duration: 0.4 }}

@@ -1,11 +1,11 @@
 "use client";
 
 import { Eye } from "lucide-react";
-import { toastService } from "@/lib/toast-service";
 import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useSettings } from "@/lib/settings-context";
+import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
 import type { ViewMode } from "@/types/navigation";
 

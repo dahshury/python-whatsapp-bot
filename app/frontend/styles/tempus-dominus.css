@@ -2,34 +2,33 @@
 
 /* Utility class for screen readers */
 .visually-hidden {
-	position: absolute !important;
-	width: 1px !important;
-	height: 1px !important;
-	padding: 0 !important;
-	margin: -1px !important;
-	overflow: hidden !important;
-	clip: rect(0, 0, 0, 0) !important;
-	white-space: nowrap !important;
-	border: 0 !important;
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 /* Base theme overrides for Tempus Dominus */
 .tempus-dominus-widget {
 	/* Use theme colors */
-	--td-bg: hsl(var(--popover)) !important;
-	--td-color: hsl(var(--popover-foreground)) !important;
-	--td-border: hsl(var(--border)) !important;
-	--td-shadow:
-		0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+	--td-bg: hsl(var(--popover));
+	--td-color: hsl(var(--popover-foreground));
+	--td-border: hsl(var(--border));
+	--td-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
 
 	/* Override Tempus Dominus default colors */
-	background-color: var(--td-bg) !important;
-	color: var(--td-color) !important;
-	border: 1px solid var(--td-border) !important;
-	border-radius: var(--radius) !important;
-	box-shadow: var(--td-shadow) !important;
-	font-family: var(--font-sans) !important;
-	font-size: 0.875rem !important;
+	background-color: var(--td-bg);
+	color: var(--td-color);
+	border: 1px solid var(--td-border);
+	border-radius: var(--radius);
+	box-shadow: var(--td-shadow);
+	font-family: var(--font-sans);
+	font-size: 0.875rem;
 
 	/* Disable enhanced focus styles that cause auto-selection appearance
   *:focus {
@@ -58,8 +57,8 @@
 	--td-alternate-color: hsl(var(--muted-foreground));
 	--td-dow-color: hsl(var(--muted-foreground));
 
-	color: var(--td-color) !important;
-	background-color: var(--td-bg) !important;
+	color: var(--td-color);
+	background-color: var(--td-bg);
 }
 
 /* Dark theme specific */
@@ -81,146 +80,147 @@
 	--td-alternate-color: hsl(var(--muted-foreground));
 	--td-dow-color: hsl(var(--muted-foreground));
 
-	color: var(--td-color) !important;
-	background-color: var(--td-bg) !important;
+	color: var(--td-color);
+	background-color: var(--td-bg);
 }
 
 /* Action elements with cursor and accessibility */
 .tempus-dominus-widget [data-action] {
-	cursor: pointer !important;
+	cursor: pointer;
 }
 
 .tempus-dominus-widget [data-action]:after {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: SASS-like extend used by build */
 	@extend .visually-hidden;
 	content: attr(title);
 }
 
 .tempus-dominus-widget [data-action].disabled,
 .tempus-dominus-widget [data-action].disabled:hover {
-	background: none !important;
-	cursor: not-allowed !important;
-	color: var(--td-disabled-color) !important;
+	background: none;
+	cursor: not-allowed;
+	color: var(--td-disabled-color);
 }
 
 /* Header styles */
 .tempus-dominus-widget .calendar-header,
 .tempus-dominus-widget .td-picker-header {
-	background-color: transparent !important;
-	border-bottom: 1px solid var(--td-border) !important;
-	padding: 0.75rem !important;
-	display: grid !important;
-	grid-template-areas: "a a a" !important;
-	margin-bottom: 10px !important;
-	font-weight: 600 !important;
+	background-color: transparent;
+	border-bottom: 1px solid var(--td-border);
+	padding: 0.75rem;
+	display: grid;
+	grid-template-areas: "a a a";
+	margin-bottom: 10px;
+	font-weight: 600;
 }
 
 .tempus-dominus-widget .calendar-header .next,
 .tempus-dominus-widget .td-picker-header .next {
-	text-align: right !important;
-	padding-right: 10px !important;
+	text-align: right;
+	padding-right: 10px;
 }
 
 .tempus-dominus-widget .calendar-header .previous,
 .tempus-dominus-widget .td-picker-header .previous {
-	text-align: left !important;
-	padding-left: 10px !important;
+	text-align: left;
+	padding-left: 10px;
 }
 
 .tempus-dominus-widget .calendar-header .picker-switch,
 .tempus-dominus-widget .td-picker-header .picker-switch {
-	text-align: center !important;
+	text-align: center;
 }
 
 /* Toolbar styling */
 .tempus-dominus-widget .toolbar {
-	display: grid !important;
-	grid-auto-flow: column !important;
-	grid-auto-rows: 40px !important;
+	display: grid;
+	grid-auto-flow: column;
+	grid-auto-rows: 40px;
 }
 
 .tempus-dominus-widget .toolbar div {
-	border-radius: var(--radius) !important;
-	align-items: center !important;
-	justify-content: center !important;
-	box-sizing: border-box !important;
-	display: flex !important;
+	border-radius: var(--radius);
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	display: flex;
 }
 
 .tempus-dominus-widget .toolbar div:hover {
-	background-color: var(--td-hover-bg) !important;
-	color: var(--td-hover-color) !important;
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 /* Navigation buttons */
 .tempus-dominus-widget .td-picker-header .td-picker-header-row button {
-	background-color: transparent !important;
-	border: none !important;
-	color: var(--td-color) !important;
-	border-radius: var(--radius) !important;
-	padding: 0.25rem 0.5rem !important;
-	transition: all 0.15s ease !important;
+	background-color: transparent;
+	border: none;
+	color: var(--td-color);
+	border-radius: var(--radius);
+	padding: 0.25rem 0.5rem;
+	transition: all 0.15s ease;
 }
 
 .tempus-dominus-widget
 	.td-picker-header
 	.td-picker-header-row
 	button:hover:not(:disabled) {
-	background-color: var(--td-hover-bg) !important;
-	color: var(--td-hover-color) !important;
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 .tempus-dominus-widget .td-picker-header .td-picker-header-row button:disabled {
-	opacity: 0.5 !important;
-	cursor: not-allowed !important;
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 /* Calendar grid */
 .tempus-dominus-widget .td-picker-body,
 .tempus-dominus-widget .date-container-days {
-	padding: 0.5rem !important;
+	padding: 0.5rem;
 }
 
 .tempus-dominus-widget table {
-	margin: 0 !important;
-	width: 100% !important;
+	margin: 0;
+	width: 100%;
 }
 
 .tempus-dominus-widget th,
 .tempus-dominus-widget td {
-	text-align: center !important;
-	padding: 0.25rem !important;
-	border: none !important;
+	text-align: center;
+	padding: 0.25rem;
+	border: none;
 }
 
 /* Day headers */
 .tempus-dominus-widget th,
 .tempus-dominus-widget .dow {
-	color: var(--td-dow-color) !important;
-	font-weight: 500 !important;
-	font-size: 0.75rem !important;
-	text-transform: uppercase !important;
-	padding: 0.5rem 0.25rem !important;
-	align-items: center !important;
-	justify-content: center !important;
-	text-align: center !important;
+	color: var(--td-dow-color);
+	font-weight: 500;
+	font-size: 0.75rem;
+	text-transform: uppercase;
+	padding: 0.5rem 0.25rem;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
 }
 
 /* Calendar week numbers */
 .tempus-dominus-widget .cw {
-	width: 90% !important;
-	height: 90% !important;
-	align-items: center !important;
-	justify-content: center !important;
-	display: flex !important;
-	font-size: 0.8em !important;
-	line-height: 20px !important;
-	cursor: default !important;
-	color: var(--td-alternate-color) !important;
+	width: 90%;
+	height: 90%;
+	align-items: center;
+	justify-content: center;
+	display: flex;
+	font-size: 0.8em;
+	line-height: 20px;
+	cursor: default;
+	color: var(--td-alternate-color);
 }
 
 /* Date cells */
 .tempus-dominus-widget td {
-	position: relative !important;
+	position: relative;
 }
 
 .tempus-dominus-widget td > div,
@@ -232,24 +232,24 @@
 .tempus-dominus-widget .time-container-hour div:not(.no-highlight),
 .tempus-dominus-widget .time-container-minute div:not(.no-highlight),
 .tempus-dominus-widget .time-container-second div:not(.no-highlight) {
-	width: 90% !important;
-	height: 90% !important;
-	line-height: 2rem !important;
-	margin: 0 auto !important;
-	border-radius: var(--radius) !important;
-	cursor: pointer !important;
-	transition: all 0.15s ease !important;
-	font-size: 0.875rem !important;
-	align-items: center !important;
-	justify-content: center !important;
-	box-sizing: border-box !important;
-	display: flex !important;
+	width: 90%;
+	height: 90%;
+	line-height: 2rem;
+	margin: 0 auto;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	font-size: 0.875rem;
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	display: flex;
 }
 
 /* Normal days */
 .tempus-dominus-widget td[data-action="selectDay"] > div {
-	background-color: transparent !important;
-	color: var(--td-color) !important;
+	background-color: transparent;
+	color: var(--td-color);
 }
 
 .tempus-dominus-widget td[data-action="selectDay"]:hover > div,
@@ -261,30 +261,30 @@
 .tempus-dominus-widget .time-container-hour div:not(.no-highlight):hover,
 .tempus-dominus-widget .time-container-minute div:not(.no-highlight):hover,
 .tempus-dominus-widget .time-container-second div:not(.no-highlight):hover {
-	background-color: var(--td-hover-bg) !important;
-	color: var(--td-hover-color) !important;
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 /* Today indicator with triangle */
 .tempus-dominus-widget td.today > div,
 .tempus-dominus-widget .date-container-days div.today {
-	background-color: var(--td-today-bg) !important;
-	color: var(--td-today-color) !important;
-	border: 1px solid var(--td-today-border) !important;
-	font-weight: 600 !important;
-	position: relative !important;
+	background-color: var(--td-today-bg);
+	color: var(--td-today-color);
+	border: 1px solid var(--td-today-border);
+	font-weight: 600;
+	position: relative;
 }
 
 .tempus-dominus-widget td.today > div:before,
 .tempus-dominus-widget .date-container-days div.today:before {
-	content: "" !important;
-	display: inline-block !important;
-	border: solid transparent !important;
-	border-width: 0 0 7px 7px !important;
-	position: absolute !important;
-	bottom: 6px !important;
-	right: 6px !important;
-	border-bottom-color: var(--td-today-border) !important;
+	content: "";
+	display: inline-block;
+	border: solid transparent;
+	border-width: 0 0 7px 7px;
+	position: absolute;
+	bottom: 6px;
+	right: 6px;
+	border-bottom-color: var(--td-today-border);
 }
 
 /* Selected date */
@@ -298,35 +298,35 @@
 .tempus-dominus-widget .time-container-hour div.active,
 .tempus-dominus-widget .time-container-minute div.active,
 .tempus-dominus-widget .time-container-second div.active {
-	background-color: var(--td-selected-bg) !important;
-	color: var(--td-selected-color) !important;
-	font-weight: 600 !important;
+	background-color: var(--td-selected-bg);
+	color: var(--td-selected-color);
+	font-weight: 600;
 }
 
 .tempus-dominus-widget .date-container-days div.active.today:before {
-	border-bottom-color: var(--td-selected-color) !important;
+	border-bottom-color: var(--td-selected-color);
 }
 
 /* Range selection styling */
 .tempus-dominus-widget .date-container-days .range-in {
-	background-color: var(--td-range-bg) !important;
-	border: none !important;
-	border-radius: 0 !important;
+	background-color: var(--td-range-bg);
+	border: none;
+	border-radius: 0;
 	box-shadow:
 		-5px 0 0 var(--td-range-bg),
-		5px 0 0 var(--td-range-bg) !important;
+		5px 0 0 var(--td-range-bg);
 }
 
 .tempus-dominus-widget .date-container-days .range-end {
-	background-color: var(--td-selected-bg) !important;
-	color: var(--td-selected-color) !important;
-	border-radius: 0 50px 50px 0 !important;
+	background-color: var(--td-selected-bg);
+	color: var(--td-selected-color);
+	border-radius: 0 50px 50px 0;
 }
 
 .tempus-dominus-widget .date-container-days .range-start {
-	background-color: var(--td-selected-bg) !important;
-	color: var(--td-selected-color) !important;
-	border-radius: 50px 0 0 50px !important;
+	background-color: var(--td-selected-bg);
+	color: var(--td-selected-color);
+	border-radius: 50px 0 0 50px;
 }
 
 /* Disabled dates */
@@ -348,162 +348,162 @@
 .tempus-dominus-widget .time-container-minute div.disabled:hover,
 .tempus-dominus-widget .time-container-second div.disabled,
 .tempus-dominus-widget .time-container-second div.disabled:hover {
-	background: none !important;
-	color: var(--td-disabled-color) !important;
-	opacity: 0.5 !important;
-	cursor: not-allowed !important;
+	background: none;
+	color: var(--td-disabled-color);
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 /* Other month dates */
 .tempus-dominus-widget td:not(.this-month) > div,
 .tempus-dominus-widget .date-container-days div.old,
 .tempus-dominus-widget .date-container-days div.new {
-	color: var(--td-alternate-color) !important;
-	opacity: 0.5 !important;
+	color: var(--td-alternate-color);
+	opacity: 0.5;
 }
 
 .tempus-dominus-widget .date-container-days div.active.old,
 .tempus-dominus-widget .date-container-days div.active.new {
-	color: var(--td-selected-color) !important;
+	color: var(--td-selected-color);
 }
 
 /* Time picker */
 .tempus-dominus-widget .td-time-picker,
 .tempus-dominus-widget .time-container {
-	border-top: 1px solid var(--td-border) !important;
-	padding: 0.75rem !important;
-	margin-bottom: 0.5rem !important;
+	border-top: 1px solid var(--td-border);
+	padding: 0.75rem;
+	margin-bottom: 0.5rem;
 }
 
 .tempus-dominus-widget .td-time-picker .td-time-picker-hour,
 .tempus-dominus-widget .td-time-picker .td-time-picker-minute {
-	display: inline-flex !important;
-	flex-direction: column !important;
-	align-items: center !important;
-	margin: 0 0.5rem !important;
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	margin: 0 0.5rem;
 }
 
 .tempus-dominus-widget .td-time-picker input,
 .tempus-dominus-widget .timepicker-hour,
 .tempus-dominus-widget .timepicker-minute,
 .tempus-dominus-widget .timepicker-second {
-	background-color: hsl(var(--input)) !important;
-	border: 1px solid hsl(var(--border)) !important;
-	color: var(--td-color) !important;
-	border-radius: var(--radius) !important;
-	padding: 0.25rem 0.5rem !important;
-	width: 3rem !important;
-	text-align: center !important;
-	font-size: 1rem !important;
-	font-family: var(--font-mono) !important;
-	font-weight: bold !important;
-	margin: 0 !important;
+	background-color: hsl(var(--input));
+	border: 1px solid hsl(var(--border));
+	color: var(--td-color);
+	border-radius: var(--radius);
+	padding: 0.25rem 0.5rem;
+	width: 3rem;
+	text-align: center;
+	font-size: 1rem;
+	font-family: var(--font-mono);
+	font-weight: bold;
+	margin: 0;
 }
 
 .tempus-dominus-widget .td-time-picker input:focus,
 .tempus-dominus-widget .timepicker-hour:focus,
 .tempus-dominus-widget .timepicker-minute:focus,
 .tempus-dominus-widget .timepicker-second:focus {
-	outline: none !important;
-	border-color: var(--td-primary) !important;
-	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+	outline: none;
+	border-color: var(--td-primary);
+	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 /* Time picker arrows */
 .tempus-dominus-widget .td-time-picker button,
 .tempus-dominus-widget button[data-action] {
-	background-color: transparent !important;
-	border: none !important;
-	color: var(--td-color) !important;
-	padding: 6px !important;
-	border-radius: var(--radius) !important;
-	transition: all 0.15s ease !important;
+	background-color: transparent;
+	border: none;
+	color: var(--td-color);
+	padding: 6px;
+	border-radius: var(--radius);
+	transition: all 0.15s ease;
 }
 
 .tempus-dominus-widget .td-time-picker button:hover:not(:disabled),
 .tempus-dominus-widget button[data-action]:hover:not(:disabled) {
-	background-color: var(--td-hover-bg) !important;
-	color: var(--td-hover-color) !important;
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 .tempus-dominus-widget .toggleMeridiem {
-	text-align: center !important;
-	height: 38px !important;
+	text-align: center;
+	height: 38px;
 }
 
 /* Footer buttons */
 .tempus-dominus-widget .td-picker-footer {
-	border-top: 1px solid var(--td-border) !important;
-	padding: 0.5rem !important;
-	display: flex !important;
-	justify-content: center !important;
-	gap: 0.5rem !important;
+	border-top: 1px solid var(--td-border);
+	padding: 0.5rem;
+	display: flex;
+	justify-content: center;
+	gap: 0.5rem;
 }
 
 .tempus-dominus-widget .td-picker-footer button {
-	background-color: transparent !important;
-	border: 1px solid var(--td-border) !important;
-	color: var(--td-color) !important;
-	border-radius: var(--radius) !important;
-	padding: 0.25rem 0.75rem !important;
-	font-size: 0.75rem !important;
-	font-weight: 500 !important;
-	transition: all 0.15s ease !important;
+	background-color: transparent;
+	border: 1px solid var(--td-border);
+	color: var(--td-color);
+	border-radius: var(--radius);
+	padding: 0.25rem 0.75rem;
+	font-size: 0.75rem;
+	font-weight: 500;
+	transition: all 0.15s ease;
 }
 
 .tempus-dominus-widget .td-picker-footer button:hover {
-	background-color: var(--td-hover-bg) !important;
-	border-color: var(--td-hover-bg) !important;
-	color: var(--td-hover-color) !important;
+	background-color: var(--td-hover-bg);
+	border-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 .tempus-dominus-widget .td-picker-footer button.td-button-primary,
 .tempus-dominus-widget button {
-	background-color: var(--td-primary) !important;
-	border-color: var(--td-primary) !important;
-	color: var(--td-primary-text) !important;
+	background-color: var(--td-primary);
+	border-color: var(--td-primary);
+	color: var(--td-primary-text);
 }
 
 .tempus-dominus-widget .td-picker-footer button.td-button-primary:hover,
 .tempus-dominus-widget button:hover {
-	opacity: 0.9 !important;
+	opacity: 0.9;
 }
 
 /* Month/Year/Decade views */
 .tempus-dominus-widget .td-decades > div,
 .tempus-dominus-widget .td-years > div,
 .tempus-dominus-widget .td-months > div {
-	display: grid !important;
-	grid-template-columns: repeat(4, 1fr) !important;
-	gap: 0.5rem !important;
-	padding: 0.5rem !important;
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 0.5rem;
+	padding: 0.5rem;
 }
 
 .tempus-dominus-widget .td-decades > div > div,
 .tempus-dominus-widget .td-years > div > div,
 .tempus-dominus-widget .td-months > div > div {
-	padding: 0.75rem 0.5rem !important;
-	border-radius: var(--radius) !important;
-	cursor: pointer !important;
-	transition: all 0.15s ease !important;
-	text-align: center !important;
-	background-color: transparent !important;
-	color: var(--td-color) !important;
+	padding: 0.75rem 0.5rem;
+	border-radius: var(--radius);
+	cursor: pointer;
+	transition: all 0.15s ease;
+	text-align: center;
+	background-color: transparent;
+	color: var(--td-color);
 }
 
 .tempus-dominus-widget .td-decades > div > div:hover,
 .tempus-dominus-widget .td-years > div > div:hover,
 .tempus-dominus-widget .td-months > div > div:hover {
-	background-color: var(--td-hover-bg) !important;
-	color: var(--td-hover-color) !important;
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 .tempus-dominus-widget .td-decades > div > div.active,
 .tempus-dominus-widget .td-years > div > div.active,
 .tempus-dominus-widget .td-months > div > div.active {
-	background-color: var(--td-selected-bg) !important;
-	color: var(--td-selected-color) !important;
-	font-weight: 600 !important;
+	background-color: var(--td-selected-bg);
+	color: var(--td-selected-color);
+	font-weight: 600;
 }
 
 /* Readonly state */
@@ -512,21 +512,21 @@
 .tempus-dominus-widget.tempus-dominus-widget-readonly table td.minute,
 .tempus-dominus-widget.tempus-dominus-widget-readonly table td.second,
 .tempus-dominus-widget.tempus-dominus-widget-readonly table td [data-action] {
-	pointer-events: none !important;
-	cursor: default !important;
+	pointer-events: none;
+	cursor: default;
 }
 
 .tempus-dominus-widget.tempus-dominus-widget-readonly
 	table
 	td
 	[data-action]:hover {
-	background: none !important;
+	background: none;
 }
 
 /* Ensure proper z-index */
 .tempus-dominus-widget,
 .dropdown-menu[data-popper-placement] {
-	z-index: var(--z-date-picker) !important;
+	z-index: var(--z-date-picker);
 }
 
 /* Special case: when Tempus Dominus appears in dialog context, use dialog overlay z-index */
@@ -536,25 +536,25 @@ body > .tempus-dominus-widget[data-dialog-context="true"],
 /* When dialog is open (indicated by dialog-backdrop class), all Tempus Dominus widgets should use dialog overlay z-index */
 body:has(.dialog-backdrop) .tempus-dominus-widget,
 body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
-	z-index: var(--z-dialog-overlays) !important;
+	z-index: var(--z-dialog-overlays);
 }
 
 /* Animation classes */
 .tempus-dominus-widget-animated-in {
-	animation: tempusFadeSlideIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+	animation: tempusFadeSlideIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .tempus-dominus-widget-animated-out {
-	animation: tempusFadeSlideOut 200ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
+	animation: tempusFadeSlideOut 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 /* Fix for Bootstrap conflicts */
 .tempus-dominus-widget * {
-	box-sizing: border-box !important;
+	box-sizing: border-box;
 }
 
 .tempus-dominus-widget button:focus {
-	outline: none !important;
+	outline: none;
 	/* Disabled to prevent auto-selection appearance
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
   */
@@ -572,7 +572,7 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 .theme-amethyst-haze .tempus-dominus-widget,
 .theme-neomorphism .tempus-dominus-widget {
 	/* These themes will automatically inherit the proper colors through CSS variables */
-	font-family: var(--font-sans) !important;
+	font-family: var(--font-sans);
 }
 
 /* Ensure the widget respects the rounded corners of themes */
@@ -590,7 +590,7 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 .tempus-dominus-widget .timepicker-hour,
 .tempus-dominus-widget .timepicker-minute,
 .tempus-dominus-widget .timepicker-second {
-	border-radius: var(--radius) !important;
+	border-radius: var(--radius);
 }
 
 /* Small radius elements */
@@ -605,14 +605,14 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 .tempus-dominus-widget .time-container-hour div:not(.no-highlight),
 .tempus-dominus-widget .time-container-minute div:not(.no-highlight),
 .tempus-dominus-widget .time-container-second div:not(.no-highlight) {
-	border-radius: var(--radius) !important;
+	border-radius: var(--radius);
 }
 
 /* Remove any hardcoded colors from Font Awesome icons */
 .tempus-dominus-widget .fa,
 .tempus-dominus-widget .fas,
 .tempus-dominus-widget .far {
-	color: inherit !important;
+	color: inherit;
 }
 
 /* Animation keyframes for smooth transitions */
@@ -649,37 +649,37 @@ body > .dropdown-menu[id*="tempus"] {
 body > .tempus-dominus-widget.tempus-dominus-widget-animated-in,
 body > [class*="tempus-dominus"].tempus-dominus-widget-animated-in,
 body > .dropdown-menu.tempus-dominus-widget-animated-in {
-	animation: tempusFadeSlideIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+	animation: tempusFadeSlideIn 250ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 body > .tempus-dominus-widget.tempus-dominus-widget-visible,
 body > [class*="tempus-dominus"].tempus-dominus-widget-visible,
 body > .dropdown-menu.tempus-dominus-widget-visible {
-	opacity: 1 !important;
-	transform: translateY(0) scale(1) !important;
+	opacity: 1;
+	transform: translateY(0) scale(1);
 }
 
 .tempus-dominus-widget[style*="display: block"] {
-	visibility: visible !important;
+	visibility: visible;
 }
 
 .tempus-dominus-widget {
-	position: fixed !important;
+	position: fixed;
 }
 
 /* Transition classes */
 .tempus-dominus-widget-transition {
 	transition:
 		opacity 250ms cubic-bezier(0.16, 1, 0.3, 1),
-		transform 250ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+		transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tempus-dominus-widget-hidden {
-	opacity: 0 !important;
-	transform: translateY(-10px) scale(0.95) !important;
+	opacity: 0;
+	transform: translateY(-10px) scale(0.95);
 }
 
 .tempus-dominus-widget-visible {
-	opacity: 1 !important;
-	transform: translateY(0) scale(1) !important;
+	opacity: 1;
+	transform: translateY(0) scale(1);
 }

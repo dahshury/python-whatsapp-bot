@@ -2,7 +2,7 @@
 /* To enable: Add className="theme-soft-pop" to html or body tag */
 
 .theme-soft-pop {
-	--background: 80.0000 33.3333% 96.4706%;
+	--background: 80 33.3333% 96.4706%;
 	--foreground: 0 0% 0%;
 	--card: 0 0% 100%;
 	--card-foreground: 0 0% 0%;
@@ -26,8 +26,8 @@
 	--chart-3: 37.6923 92.1260% 50.1961%;
 	--chart-4: 330.3659 81.1881% 60.3922%;
 	--chart-5: 142.0859 70.5628% 45.2941%;
-	--sidebar: 80.0000 33.3333% 96.4706%;
-	--sidebar-background: 80.0000 33.3333% 96.4706%;
+	--sidebar: 80 33.3333% 96.4706%;
+	--sidebar-background: 80 33.3333% 96.4706%;
 	--sidebar-foreground: 0 0% 0%;
 	--sidebar-primary: 243.3962 75.3555% 58.6275%;
 	--sidebar-primary-foreground: 0 0% 100%;
@@ -43,16 +43,21 @@
 	--radius: 1rem;
 	--shadow-2xs: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.03);
 	--shadow-xs: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.03);
-	--shadow-sm: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 1px 2px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 1px 2px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow-md: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 2px 4px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow-lg: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 4px 6px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow-xl: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 8px 10px -1px hsl(0 0% 10.1961% / 0.05);
+	--shadow-sm:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 1px 2px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 1px 2px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow-md:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 2px 4px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow-lg:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 4px 6px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow-xl:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 8px 10px -1px
+		hsl(0 0% 10.1961% / 0.05);
 	--shadow-2xl: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.13);
 }
 
@@ -100,17 +105,20 @@
 	--radius: 1rem;
 	--shadow-2xs: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.03);
 	--shadow-xs: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.03);
-	--shadow-sm: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 1px 2px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 1px 2px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow-md: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 2px 4px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow-lg: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 4px 6px -1px hsl(0 0% 10.1961% / 0.05);
-	--shadow-xl: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05),
-		0px 8px 10px -1px hsl(0 0% 10.1961% / 0.05);
+	--shadow-sm:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 1px 2px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 1px 2px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow-md:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 2px 4px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow-lg:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 4px 6px -1px
+		hsl(0 0% 10.1961% / 0.05);
+	--shadow-xl:
+		0px 0px 0px 0px hsl(0 0% 10.1961% / 0.05), 0px 8px 10px -1px
+		hsl(0 0% 10.1961% / 0.05);
 	--shadow-2xl: 0px 0px 0px 0px hsl(0 0% 10.1961% / 0.13);
 }
-
-

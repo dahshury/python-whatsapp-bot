@@ -26,16 +26,19 @@
 
 /* Note: Console error suppression is handled via JavaScript in layout.tsx */
 
+/* biome-ignore lint: Tailwind directives are intentional */
 @tailwind base;
+/* biome-ignore lint: Tailwind directives are intentional */
 @tailwind components;
+/* biome-ignore lint: Tailwind directives are intentional */
 @tailwind utilities;
 
 /* Main Global Styles Entry Point */
 
 /* Calendar event processing states */
 .fc-event.processing {
-	opacity: 0.6 !important;
-	pointer-events: none !important;
+	opacity: 0.6;
+	pointer-events: none;
 	position: relative;
 }
 

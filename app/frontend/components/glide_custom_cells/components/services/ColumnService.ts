@@ -1,4 +1,8 @@
-import { GridCellKind, type GridColumn } from "@glideapps/glide-data-grid";
+import {
+	type GridCell,
+	GridCellKind,
+	type GridColumn,
+} from "@glideapps/glide-data-grid";
 
 export class ColumnService {
 	private readonly MIN_COLUMN_WIDTH = 50;
@@ -31,29 +35,42 @@ export class ColumnService {
 		return Math.ceil(metrics.width);
 	}
 
-	private extractDisplayText(cell: any): string {
+	private extractDisplayText(cell: GridCell): string {
+		type DropdownData = { kind: "dropdown-cell"; value?: unknown };
+		type TempusDateData = { kind: "tempus-date-cell"; date?: Date };
+		type PhoneInputData = { kind: "phone-input-cell"; phone?: string };
+		type CustomData =
+			| DropdownData
+			| TempusDateData
+			| PhoneInputData
+			| { kind: string };
 		if (cell.kind === GridCellKind.Text) {
-			return cell.displayData || cell.data || "";
+			const disp = (cell as { displayData?: unknown }).displayData;
+			const data = (cell as { data?: unknown }).data;
+			return String(disp ?? data ?? "");
 		}
 
 		if (cell.kind === GridCellKind.Number) {
-			return String(cell.data || "");
+			return String((cell as { data?: unknown }).data ?? "");
 		}
 
 		if (cell.kind === GridCellKind.Custom) {
-			const customData = cell.data;
+			const customData = (cell as { data?: unknown }).data as
+				| CustomData
+				| undefined;
 			if (customData?.kind === "dropdown-cell") {
-				return customData.value || "";
+				return String((customData as DropdownData).value ?? "");
 			}
 			if (customData?.kind === "tempus-date-cell") {
-				return customData.date
-					? customData.date.toLocaleDateString("en-GB")
-					: "";
+				const d = (customData as TempusDateData).date;
+				return d ? String(d.toLocaleDateString("en-GB")) : "";
 			}
 			if (customData?.kind === "phone-input-cell") {
-				return customData.phone || "";
+				return String((customData as PhoneInputData).phone ?? "");
 			}
-			return cell.displayData || cell.data || "";
+			const disp = (cell as { displayData?: unknown }).displayData;
+			const data = (cell as { data?: unknown }).data;
+			return String(disp ?? data ?? "");
 		}
 
 		return "";
@@ -64,7 +81,7 @@ export class ColumnService {
 		displayColumns: GridColumn[],
 		visibleColumnIndices: (number | undefined)[],
 		filteredRows: number[],
-		getRawCellContent: (col: number, row: number) => any,
+		getRawCellContent: (col: number, row: number) => GridCell,
 	): number {
 		const colIdx = displayColumns.findIndex((c) => c.id === columnId);
 		if (colIdx < 0) return this.MIN_COLUMN_WIDTH;

@@ -14,7 +14,7 @@ export function useGridDialogInteraction({
 	isFullscreen = false,
 }: UseGridDialogInteractionOptions) {
 	const handlePointerDownOutside = useCallback(
-		(e: any) => {
+		(e: Event) => {
 			const target = e.target as HTMLElement;
 
 			// Check for grid overlay editor

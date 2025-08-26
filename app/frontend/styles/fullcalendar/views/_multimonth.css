@@ -59,7 +59,7 @@
 }
 
 .fc-multimonth-daygrid-table {
-	border-top-style: hidden !important;
+	border-top-style: hidden;
 }
 
 /* Remove outer borders from tables inside month containers */
@@ -197,11 +197,13 @@
 
 /* Reduce visual complexity in multiMonth view */
 .fc-multimonth .fc-event {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply text-xs leading-tight;
-	box-shadow: none !important;
+	box-shadow: none;
 }
 
 .fc-multimonth .fc-event-title {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply truncate;
 	max-width: 100%;
 }
@@ -211,6 +213,7 @@
 }
 
 .fc-multimonth .fc-daygrid-day-events {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply min-h-0;
 }
 

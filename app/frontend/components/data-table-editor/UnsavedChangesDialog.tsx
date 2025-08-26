@@ -53,24 +53,43 @@ export function UnsavedChangesDialog({
 	const dialogContent = (
 		<>
 			{/* Backdrop */}
-			<div
+			<button
 				className="fixed inset-0 bg-black/80 backdrop-blur-sm"
-				style={{ zIndex: Z_INDEX.CONFIRMATION_OVERLAY_BACKDROP, pointerEvents: "auto" }}
+				style={{
+					zIndex: Z_INDEX.CONFIRMATION_OVERLAY_BACKDROP,
+					pointerEvents: "auto",
+				}}
 				onClick={() => onOpenChange(false)}
+				type="button"
+				aria-label={isRTL ? "إغلاق الحوار" : "Close dialog"}
 			/>
 
 			{/* Dialog Content */}
 			<div
 				className="fixed inset-0 flex items-center justify-center p-4"
-				style={{ zIndex: Z_INDEX.CONFIRMATION_OVERLAY_CONTENT, pointerEvents: "auto" }}
+				style={{
+					zIndex: Z_INDEX.CONFIRMATION_OVERLAY_CONTENT,
+					pointerEvents: "auto",
+				}}
 			>
 				<div
 					className="bg-background border shadow-lg rounded-lg p-6 w-full max-w-md mx-auto animate-in fade-in-0 zoom-in-95 duration-200"
+					role="dialog"
+					aria-modal="true"
+					aria-labelledby="unsaved-changes-title"
 					onClick={(e) => e.stopPropagation()}
+					onKeyDown={(e) => {
+						if (e.key === "Escape") {
+							e.stopPropagation();
+						}
+					}}
 				>
 					<div className="space-y-4">
 						<div className={isRTL ? "text-right" : "text-left"}>
-							<h2 className="text-lg font-semibold">
+							<h2
+								id={`unsaved-changes-title-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
+								className="text-lg font-semibold"
+							>
 								{isRTL ? "تغييرات غير محفوظة" : "Unsaved Changes"}
 							</h2>
 							<p className="text-sm text-muted-foreground mt-2">
@@ -89,7 +108,10 @@ export function UnsavedChangesDialog({
 								<Button variant="outline" onClick={onDiscard}>
 									{isRTL ? "تجاهل التغييرات" : "Discard Changes"}
 								</Button>
-								<Button onClick={onSaveAndClose} disabled={isSaving || !canSave}>
+								<Button
+									onClick={onSaveAndClose}
+									disabled={isSaving || !canSave}
+								>
 									{isSaving ? (
 										<>
 											<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />

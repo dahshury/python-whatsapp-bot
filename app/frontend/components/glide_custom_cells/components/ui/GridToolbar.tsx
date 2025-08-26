@@ -47,7 +47,7 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 	icon,
 	label,
 	disabled = false,
-	variant = "default",
+	variant: _variant = "default",
 	isHovered = false,
 	onMouseEnter,
 	onMouseLeave,
@@ -75,6 +75,7 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 
 	return (
 		<button
+			type="button"
 			onClick={onClick}
 			disabled={disabled}
 			style={buttonStyle}
@@ -155,11 +156,20 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 	return (
 		<div
 			style={containerStyle}
+			role="toolbar"
+			aria-label="Grid toolbar"
 			onMouseEnter={() => setIsToolbarHovered(true)}
 			onMouseLeave={() => {
 				setIsToolbarHovered(false);
 				setHoveredButton(null);
 			}}
+			onKeyDown={(e) => {
+				if (e.key === "Escape") {
+					setIsToolbarHovered(false);
+					setHoveredButton(null);
+				}
+			}}
+			tabIndex={-1}
 		>
 			<div style={toolbarStyle}>
 				{hasSelection && (

@@ -11,7 +11,7 @@ import type {
 
 export interface IRowContext {
 	row: number;
-	getRowCellData?: (col: number) => any;
+	getRowCellData?: (col: number) => unknown;
 }
 
 export interface IColumnType {
@@ -19,25 +19,25 @@ export interface IColumnType {
 	dataType: ColumnDataType;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		theme: Partial<Theme>,
 		isDarkTheme: boolean,
 		rowContext?: IRowContext,
 	): GridCell;
 
-	getCellValue(cell: GridCell): any;
+	getCellValue(cell: GridCell): unknown;
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string };
 
-	formatValue(value: any, formatting?: IColumnFormatting): string;
+	formatValue(value: unknown, formatting?: IColumnFormatting): string;
 
-	parseValue(input: string, column: IColumnDefinition): any;
+	parseValue(input: unknown, column: IColumnDefinition): unknown;
 
-	getDefaultValue(column: IColumnDefinition): any;
+	getDefaultValue(column: IColumnDefinition): unknown;
 
 	canEdit(column: IColumnDefinition): boolean;
 

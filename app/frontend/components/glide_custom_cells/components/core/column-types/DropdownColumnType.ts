@@ -17,14 +17,18 @@ export class DropdownColumnType implements IColumnType {
 	dataType = ColumnDataType.DROPDOWN;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		_isDarkTheme: boolean,
-		_rowContext?: any,
+		_rowContext?: unknown,
 	): GridCell {
-		const options = column.metadata?.options || [];
-		const selectedValue = value || column.defaultValue || "";
+		const options = (
+			Array.isArray(column.metadata?.options)
+				? (column.metadata?.options as unknown[])
+				: []
+		).map((v) => String(v));
+		const selectedValue = String(value ?? column.defaultValue ?? "");
 
 		const cell = {
 			kind: GridCellKind.Custom,
@@ -35,30 +39,32 @@ export class DropdownColumnType implements IColumnType {
 			},
 			copyData: selectedValue,
 			allowOverlay: true,
-		} as any;
+		} as GridCell;
 
 		// Validate and store error details
 		const validation = this.validateValue(selectedValue, column);
 		if (!validation.isValid) {
-			cell.isMissingValue = true;
-			cell.validationError = validation.error;
+			(cell as { isMissingValue?: boolean }).isMissingValue = true;
+			(cell as { validationError?: string }).validationError = validation.error;
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
+	getCellValue(cell: GridCell): unknown {
 		if (
 			cell.kind === GridCellKind.Custom &&
-			(cell as any).data?.kind === "dropdown-cell"
+			(cell as { data?: { kind?: string; value?: unknown } }).data?.kind ===
+				"dropdown-cell"
 		) {
-			return (cell as any).data.value;
+			return (cell as { data?: { kind?: string; value?: unknown } }).data
+				?.value;
 		}
 		return "";
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		if (column.isRequired && !value) {
@@ -70,23 +76,27 @@ export class DropdownColumnType implements IColumnType {
 			};
 		}
 
-		const options = column.metadata?.options || [];
-		if (value && !options.includes(value)) {
+		const options = (
+			Array.isArray(column.metadata?.options)
+				? (column.metadata?.options as unknown[])
+				: []
+		) as unknown[];
+		if (value && !options.map((v) => String(v)).includes(String(value))) {
 			return { isValid: false, error: messages.validation.invalidFormat() };
 		}
 
 		return { isValid: true };
 	}
 
-	formatValue(value: any, _formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, _formatting?: IColumnFormatting): string {
 		return String(value || "");
 	}
 
-	parseValue(input: string, _column: IColumnDefinition): any {
+	parseValue(input: string, _column: IColumnDefinition): unknown {
 		return input;
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		return column.defaultValue || "";
 	}
 

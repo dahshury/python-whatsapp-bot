@@ -27,32 +27,44 @@ export function extractCellDisplayText(cell: GridCell): string {
 			return cell.data || "";
 
 		case GridCellKind.Custom: {
-			const customData = (cell as any).data;
+			const customData = (cell as { data?: unknown }).data as
+				| {
+						kind?: string;
+						value?: unknown;
+						displayDate?: string;
+						displayPhone?: string;
+						phone?: string;
+						data?: unknown;
+						displayData?: unknown;
+				  }
+				| undefined;
 			if (!customData) return "";
 
 			switch (customData.kind) {
 				case "dropdown-cell":
-					return customData.value || "";
+					return String(customData.value ?? "");
 
 				case "tempus-date-cell":
-					return customData.displayDate || "";
+					return String(customData.displayDate ?? "");
 
 				case "phone-input-cell":
-					return customData.displayPhone || customData.phone || "";
+					return String(customData.displayPhone ?? customData.phone ?? "");
 
 				default:
 					// Fallback for unknown custom cell types
-					return (
-						customData.displayData ||
-						customData.value ||
-						String(customData.data || "")
+					return String(
+						customData.displayData ?? customData.value ?? customData.data ?? "",
 					);
 			}
 		}
 
 		default:
 			// Fallback for any other cell types
-			return (cell as any).displayData || (cell as any).data || "";
+			return String(
+				(cell as { displayData?: unknown; data?: unknown }).displayData ??
+					(cell as { displayData?: unknown; data?: unknown }).data ??
+					"",
+			);
 	}
 }
 

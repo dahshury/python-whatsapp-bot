@@ -1,5 +1,7 @@
+import type React from "react";
 import { useCallback, useMemo } from "react";
 import type { DataProvider } from "@/components/glide_custom_cells/components/core/services/DataProvider";
+import type { BaseColumnProps } from "@/components/glide_custom_cells/components/core/types";
 import { useGridValidation } from "@/components/glide_custom_cells/components/hooks/useGridValidation";
 import { getValidationColumns } from "@/lib/constants/data-table-editor.constants";
 import type { ValidationResult } from "@/types/data-table-editor";
@@ -39,14 +41,28 @@ export function useDataTableValidation(
 		[isRTL],
 	);
 
-	const columns = useMemo(() => getValidationColumns(isRTL), [isRTL]);
+	const columns = useMemo<BaseColumnProps[]>(() => {
+		const cols = getValidationColumns(isRTL);
+		return cols.map((c, index) => ({
+			id: c.name,
+			name: c.name,
+			title: c.name,
+			width: 150,
+			isEditable: true,
+			isHidden: false,
+			isRequired: Boolean(c.required),
+			isPinned: false,
+			isIndex: false,
+			indexNumber: index,
+		}));
+	}, [isRTL]);
 
 	// Use the generic validation hook
 	const {
 		validateAllCells: baseValidateAllCells,
 		getValidationState,
 		hasUnsavedChanges,
-	} = useGridValidation(dataProviderRef, columns as any, {
+	} = useGridValidation(dataProviderRef, columns, {
 		translateMessage,
 		validateOnlyChanged: false,
 	});

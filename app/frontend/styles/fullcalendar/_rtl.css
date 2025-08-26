@@ -1,23 +1,23 @@
 /* RTL (Right-to-Left) Support */
 
 .fc[dir="rtl"] .fc-toolbar-title {
-	padding: 20px 20px 0px 0 !important;
+	padding: 20px 20px 0px 0;
 }
 
 .fc[dir="rtl"] .fc-button-group {
-	direction: rtl !important;
+	direction: rtl;
 }
 
 .fc[dir="rtl"] .fc-col-header-cell-cushion {
-	direction: rtl !important;
+	direction: rtl;
 }
 
 .fc[dir="rtl"] .fc-event {
-	direction: rtl !important;
+	direction: rtl;
 }
 
 .fc[dir="rtl"] .fc-daygrid-day-top {
-	direction: rtl !important;
+	direction: rtl;
 }
 
 /* Direction-specific spacing */

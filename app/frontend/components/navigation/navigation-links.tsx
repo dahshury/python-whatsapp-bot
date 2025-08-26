@@ -3,6 +3,7 @@
 import { BarChart3, Calendar } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import React from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { DockIcon } from "@/components/ui/dock";
 import { Separator } from "@/components/ui/separator";
@@ -14,7 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { NavigationLinksProps } from "@/types/navigation";
 
-export function NavigationLinks({
+export const NavigationLinks = React.memo(function NavigationLinks({
 	isRTL = false,
 	className = "",
 }: NavigationLinksProps) {
@@ -50,9 +51,9 @@ export function NavigationLinks({
 			<Separator orientation="vertical" className="h-full py-2" />
 		</>
 	);
-}
+});
 
-export function CalendarLink({
+export const CalendarLink = React.memo(function CalendarLink({
 	isRTL = false,
 	className = "",
 }: Pick<NavigationLinksProps, "isRTL" | "className">) {
@@ -75,4 +76,4 @@ export function CalendarLink({
 			</Link>
 		</DockIcon>
 	);
-}
+});

@@ -57,7 +57,16 @@ const nextConfig = {
 	},
 
 	// Webpack configuration to fix Glide Data Grid module resolution issues
-	webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
+	webpack: (
+		config,
+		{
+			buildId: _buildId,
+			dev: _dev,
+			isServer: _isServer,
+			defaultLoaders: _defaultLoaders,
+			webpack: _webpack,
+		},
+	) => {
 		// Fix for Glide Data Grid module resolution
 		config.resolve.alias = {
 			...config.resolve.alias,
@@ -88,7 +97,7 @@ const nextConfig = {
 		});
 
 		// Development optimizations to prevent bundle corruption
-		if (dev) {
+		if (_dev) {
 			// Simplify chunk splitting for development to prevent MIME type issues
 			config.optimization = {
 				...config.optimization,

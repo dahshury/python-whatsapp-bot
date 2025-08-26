@@ -8,6 +8,7 @@ import {
 	UnfoldMore,
 	VisibilityOff,
 } from "@emotion-icons/material-outlined";
+import type { GridColumn } from "@glideapps/glide-data-grid";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { Z_INDEX } from "@/lib/z-index";
@@ -48,6 +49,7 @@ export function ColumnMenu({
 	const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 	const [mounted, setMounted] = useState(false);
 	const portalContainer = useGridPortal();
+	const menuId = React.useId();
 
 	useEffect(() => {
 		setMounted(true);
@@ -57,7 +59,7 @@ export function ColumnMenu({
 	useEffect(() => {
 		const handleOutsideClick = (event: MouseEvent) => {
 			const target = event.target as HTMLElement;
-			const menu = document.getElementById("column-menu");
+			const menu = document.getElementById(menuId);
 			const formatMenu = document.getElementById("formatting-menu");
 			if (
 				menu &&
@@ -92,7 +94,7 @@ export function ColumnMenu({
 			document.removeEventListener("wheel", preventScroll);
 			document.removeEventListener("touchmove", preventScroll);
 		};
-	}, [onClose]);
+	}, [onClose, menuId]);
 
 	const handleSort = useCallback(
 		(direction: "asc" | "desc") => {
@@ -194,7 +196,7 @@ export function ColumnMenu({
 
 	const menuContent = (
 		<div
-			id="column-menu"
+			id={menuId}
 			className="column-menu"
 			style={{
 				position: "absolute",
@@ -210,6 +212,7 @@ export function ColumnMenu({
 				animation: "menuSlideIn 150ms ease-out",
 				transformOrigin: "top left",
 			}}
+			role="menu"
 		>
 			{onSort && (
 				<>
@@ -234,10 +237,13 @@ export function ColumnMenu({
 			)}
 
 			{onChangeFormat &&
-				((column as any).dataType === "number" ||
-					(column as any).dataType === "date" ||
-					(column as any).dataType === "time") && (
+				((column as GridColumn & { dataType?: string }).dataType === "number" ||
+					(column as GridColumn & { dataType?: string }).dataType === "date" ||
+					(column as GridColumn & { dataType?: string }).dataType ===
+						"time") && (
 					<div
+						role="menuitem"
+						tabIndex={0}
 						onMouseEnter={handleFormatMenuEnter}
 						onMouseLeave={handleFormatMenuLeave}
 					>
@@ -253,6 +259,8 @@ export function ColumnMenu({
 							<>
 								{/* invisible bridge to allow mouse movement without gap */}
 								<div
+									role="presentation"
+									aria-hidden="true"
 									onMouseEnter={handleFormatMenuEnter}
 									onMouseLeave={handleFormatMenuLeave}
 									style={{
@@ -350,6 +358,14 @@ function MenuItem({
 		<div
 			className={`menu-item ${active ? "active" : ""}`}
 			onClick={onClick}
+			role="menuitem"
+			tabIndex={0}
+			onKeyDown={(e) => {
+				if (onClick && (e.key === "Enter" || e.key === " ")) {
+					e.preventDefault();
+					onClick();
+				}
+			}}
 			style={{
 				display: "flex",
 				alignItems: "center",

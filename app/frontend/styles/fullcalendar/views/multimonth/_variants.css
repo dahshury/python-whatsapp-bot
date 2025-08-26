@@ -12,12 +12,12 @@
 
 /* Remove the outer multimonth view container styling completely */
 .fc-multiMonthYear-view.fc-view.fc-multimonth {
-	background: transparent !important;
-	border: none !important;
-	border-radius: 0 !important;
-	box-shadow: none !important;
-	padding: 0 !important;
-	margin: 0 !important;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	padding: 0;
+	margin: 0;
 }
 
 /* =================================================================

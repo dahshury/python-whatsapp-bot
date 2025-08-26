@@ -1,96 +1,96 @@
 /* Theme variable mappings for Glide Data Grid */
 :root {
 	/* Cell backgrounds */
-	--gdg-bg-cell: hsl(var(--card)) !important;
-	--gdg-bg-cell-medium: hsl(var(--muted)) !important;
+	--gdg-bg-cell: hsl(var(--card));
+	--gdg-bg-cell-medium: hsl(var(--muted));
 
 	/* Header backgrounds - using muted for better distinction */
-	--gdg-bg-header: hsl(var(--muted)) !important;
-	--gdg-bg-header-hover: hsl(var(--hover)) !important;
-	--gdg-bg-header-has-focus: hsl(var(--accent)) !important;
+	--gdg-bg-header: hsl(var(--muted));
+	--gdg-bg-header-hover: hsl(var(--hover));
+	--gdg-bg-header-has-focus: hsl(var(--accent));
 
 	/* Text colors */
-	--gdg-text-dark: hsl(var(--foreground)) !important;
-	--gdg-text-medium: hsl(var(--muted-foreground)) !important;
-	--gdg-text-light: hsl(var(--muted-foreground)) !important;
-	--gdg-text-header: hsl(var(--foreground)) !important;
-	--gdg-text-group-header: hsl(var(--muted-foreground)) !important;
-	--gdg-text-header-selected: hsl(var(--primary)) !important;
-	--gdg-text-bubble: hsl(var(--popover-foreground)) !important;
+	--gdg-text-dark: hsl(var(--foreground));
+	--gdg-text-medium: hsl(var(--muted-foreground));
+	--gdg-text-light: hsl(var(--muted-foreground));
+	--gdg-text-header: hsl(var(--foreground));
+	--gdg-text-group-header: hsl(var(--muted-foreground));
+	--gdg-text-header-selected: hsl(var(--primary));
+	--gdg-text-bubble: hsl(var(--popover-foreground));
 
 	/* Icon colors */
-	--gdg-bg-icon-header: hsl(var(--muted)) !important;
-	--gdg-fg-icon-header: hsl(var(--muted-foreground)) !important;
+	--gdg-bg-icon-header: hsl(var(--muted));
+	--gdg-fg-icon-header: hsl(var(--muted-foreground));
 
 	/* Accent colors */
-	--gdg-accent-color: hsl(var(--primary)) !important;
-	--gdg-accent-fg: hsl(var(--primary-foreground)) !important;
-	--gdg-accent-light: hsl(var(--primary) / 0.2) !important;
+	--gdg-accent-color: hsl(var(--primary));
+	--gdg-accent-fg: hsl(var(--primary-foreground));
+	--gdg-accent-light: hsl(var(--primary) / 0.2);
 
 	/* Bubble backgrounds */
-	--gdg-bg-bubble: hsl(var(--popover)) !important;
-	--gdg-bg-bubble-selected: hsl(var(--primary)) !important;
+	--gdg-bg-bubble: hsl(var(--popover));
+	--gdg-bg-bubble-selected: hsl(var(--primary));
 
 	/* Search result */
-	--gdg-bg-search-result: hsl(var(--primary) / 0.2) !important;
+	--gdg-bg-search-result: hsl(var(--primary) / 0.2);
 
 	/* Borders */
-	--gdg-border-color: hsl(var(--border)) !important;
-	--gdg-horizontal-border-color: hsl(var(--border)) !important;
-	--gdg-drilldown-border: hsl(var(--primary)) !important;
+	--gdg-border-color: hsl(var(--border));
+	--gdg-horizontal-border-color: hsl(var(--border));
+	--gdg-drilldown-border: hsl(var(--primary));
 
 	/* Link color */
-	--gdg-link-color: hsl(var(--primary)) !important;
+	--gdg-link-color: hsl(var(--primary));
 
 	/* Selection */
-	--gdg-selection: hsl(var(--accent)) !important;
+	--gdg-selection: hsl(var(--accent));
 
 	/* Toolbar */
-	--gdg-toolbar-bg: hsl(var(--popover) / 0.95) !important;
-	--gdg-toolbar-icon: hsl(var(--muted-foreground)) !important;
-	--gdg-toolbar-hover-bg: hsl(var(--hover)) !important;
-	--gdg-toolbar-hover-icon: hsl(var(--hover-foreground)) !important;
+	--gdg-toolbar-bg: hsl(var(--popover) / 0.95);
+	--gdg-toolbar-icon: hsl(var(--muted-foreground));
+	--gdg-toolbar-hover-bg: hsl(var(--hover));
+	--gdg-toolbar-hover-icon: hsl(var(--hover-foreground));
 
 	/* Typography */
-	--gdg-font-family: var(--font-sans) !important;
-	--gdg-base-font-style: 13px !important;
-	--gdg-header-font-style: 600 13px !important;
-	--gdg-editor-font-size: 13px !important;
+	--gdg-font-family: var(--font-sans);
+	--gdg-base-font-style: 13px;
+	--gdg-header-font-style: 600 13px;
+	--gdg-editor-font-size: 13px;
 
 	/* Padding */
-	--gdg-cell-horizontal-padding: 8px !important;
-	--gdg-cell-vertical-padding: 3px !important;
+	--gdg-cell-horizontal-padding: 8px;
+	--gdg-cell-vertical-padding: 3px;
 
 	/* Menu and Dropdown specific variables */
-	--gdg-menu-bg: hsl(var(--popover)) !important;
-	--gdg-menu-border: hsl(var(--border)) !important;
-	--gdg-menu-text: hsl(var(--popover-foreground)) !important;
-	--gdg-menu-hover-bg: hsl(var(--accent)) !important;
-	--gdg-menu-hover-text: hsl(var(--accent-foreground)) !important;
-	--gdg-menu-shadow: 0 4px 12px hsl(var(--foreground) / 0.1) !important;
+	--gdg-menu-bg: hsl(var(--popover));
+	--gdg-menu-border: hsl(var(--border));
+	--gdg-menu-text: hsl(var(--popover-foreground));
+	--gdg-menu-hover-bg: hsl(var(--accent));
+	--gdg-menu-hover-text: hsl(var(--accent-foreground));
+	--gdg-menu-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
 }
 
 /* Override Glide Data Grid styles to use CSS variables */
 .gdg-wmyidgi,
 .gdg-wmyidgi * {
-	--gdg-bg-cell: hsl(var(--card)) !important;
-	--gdg-bg-header: hsl(var(--muted)) !important;
-	--gdg-text-dark: hsl(var(--foreground)) !important;
-	--gdg-border-color: hsl(var(--border)) !important;
+	--gdg-bg-cell: hsl(var(--card));
+	--gdg-bg-header: hsl(var(--muted));
+	--gdg-text-dark: hsl(var(--foreground));
+	--gdg-border-color: hsl(var(--border));
 }
 
 /* Ensure overlay editors use theme colors */
 .gdg-d19meir1.gdg-style {
-	background-color: hsl(var(--card)) !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: hsl(var(--card));
+	color: hsl(var(--foreground));
 	box-shadow:
 		0 0 0 1px hsl(var(--primary)),
 		0px 0px 1px rgba(62, 65, 86, 0.4),
-		0px 6px 12px rgba(62, 65, 86, 0.15) !important;
+		0px 6px 12px rgba(62, 65, 86, 0.15);
 }
 
 .gdg-d19meir1 input,
 .gdg-d19meir1 textarea {
-	background-color: hsl(var(--card)) !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: hsl(var(--card));
+	color: hsl(var(--foreground));
 }

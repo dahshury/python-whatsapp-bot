@@ -56,6 +56,44 @@ export function EnhancedDashboardView() {
 		return differenceInDays(filters.dateRange.to, filters.dateRange.from) + 1;
 	}, [filters.dateRange]);
 
+	// Create stable, safe fallbacks to avoid undefined access and re-mount animations
+	const safeDashboard = React.useMemo(
+		() => ({
+			stats: dashboardData?.stats ?? {
+				totalReservations: 0,
+				totalCancellations: 0,
+				uniqueCustomers: 0,
+				conversionRate: 0,
+				returningCustomers: 0,
+				returningRate: 0,
+				avgFollowups: 0,
+				avgResponseTime: 0,
+				activeCustomers: 0,
+			},
+			prometheusMetrics: dashboardData?.prometheusMetrics ?? {},
+			dailyTrends: dashboardData?.dailyTrends ?? [],
+			typeDistribution: dashboardData?.typeDistribution ?? [],
+			timeSlots: dashboardData?.timeSlots ?? [],
+			messageHeatmap: dashboardData?.messageHeatmap ?? [],
+			topCustomers: dashboardData?.topCustomers ?? [],
+			conversationAnalysis: dashboardData?.conversationAnalysis ?? {
+				avgMessageLength: 0,
+				avgWordsPerMessage: 0,
+				avgMessagesPerCustomer: 0,
+				totalMessages: 0,
+				uniqueCustomers: 0,
+				responseTimeStats: { avg: 0, median: 0, max: 0 },
+				messageCountDistribution: { avg: 0, median: 0, max: 0 },
+			},
+			wordFrequency: dashboardData?.wordFrequency ?? [],
+			dayOfWeekData: dashboardData?.dayOfWeekData ?? [],
+			monthlyTrends: dashboardData?.monthlyTrends ?? [],
+			funnelData: dashboardData?.funnelData ?? [],
+			customerSegments: dashboardData?.customerSegments ?? [],
+		}),
+		[dashboardData],
+	);
+
 	// Smart initialization: always set initial 30-day range on first mount
 	useEffect(() => {
 		if (!isInitialized) {
@@ -90,8 +128,8 @@ export function EnhancedDashboardView() {
 			// Debounce filter changes to avoid too many requests
 			const timeoutId = setTimeout(() => {
 				refreshDashboard({
-					fromDate: formatYmd(filters.dateRange!.from as Date),
-					toDate: formatYmd(filters.dateRange!.to as Date),
+					fromDate: formatYmd(filters.dateRange?.from as Date),
+					toDate: formatYmd(filters.dateRange?.to as Date),
 				}).catch((err) => {
 					console.error("Dashboard filter refresh error:", err);
 				});
@@ -180,17 +218,21 @@ export function EnhancedDashboardView() {
 				<Card className="w-full max-w-md">
 					<CardContent className="p-6 text-center">
 						<div className="text-destructive mb-4">
+							{/* Error icon SVG */}
 							<svg
 								className="w-12 h-12 mx-auto"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
+								role="img"
+								aria-label="Error icon"
 							>
+								<title>Error icon</title>
 								<path
 									strokeLinecap="round"
 									strokeLinejoin="round"
 									strokeWidth={2}
-									d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+									d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
 								/>
 							</svg>
 						</div>
@@ -206,42 +248,6 @@ export function EnhancedDashboardView() {
 			</div>
 		);
 	}
-
-	// Create stable, safe fallbacks to avoid undefined access and re-mount animations
-	const safeDashboard = React.useMemo(() => ({
-		stats: dashboardData?.stats ?? {
-			totalReservations: 0,
-			totalCancellations: 0,
-			uniqueCustomers: 0,
-			conversionRate: 0,
-			returningCustomers: 0,
-			returningRate: 0,
-			avgFollowups: 0,
-			avgResponseTime: 0,
-			activeCustomers: 0,
-		},
-		prometheusMetrics: dashboardData?.prometheusMetrics ?? {},
-		dailyTrends: dashboardData?.dailyTrends ?? [],
-		typeDistribution: dashboardData?.typeDistribution ?? [],
-		timeSlots: dashboardData?.timeSlots ?? [],
-		messageHeatmap: dashboardData?.messageHeatmap ?? [],
-		topCustomers: dashboardData?.topCustomers ?? [],
-		conversationAnalysis:
-			dashboardData?.conversationAnalysis ?? {
-				avgMessageLength: 0,
-				avgWordsPerMessage: 0,
-				avgMessagesPerCustomer: 0,
-				totalMessages: 0,
-				uniqueCustomers: 0,
-				responseTimeStats: { avg: 0, median: 0, max: 0 },
-				messageCountDistribution: { avg: 0, median: 0, max: 0 },
-			},
-		wordFrequency: dashboardData?.wordFrequency ?? [],
-		dayOfWeekData: dashboardData?.dayOfWeekData ?? [],
-		monthlyTrends: dashboardData?.monthlyTrends ?? [],
-		funnelData: dashboardData?.funnelData ?? [],
-		customerSegments: dashboardData?.customerSegments ?? [],
-	}), [dashboardData]);
 
 	// Show loading state while data is being fetched or if data is incomplete
 	if (isLoading || !dashboardData) {
@@ -261,8 +267,15 @@ export function EnhancedDashboardView() {
 
 				{/* KPI Cards Skeleton */}
 				<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-					{Array.from({ length: 6 }).map((_, i) => (
-						<Card key={i} className="h-32">
+					{[
+						"total",
+						"active",
+						"pending",
+						"completed",
+						"cancelled",
+						"revenue",
+					].map((metric) => (
+						<Card key={`kpi-skeleton-${metric}`} className="h-32">
 							<CardHeader className="pb-2">
 								<Skeleton className="h-4 w-24" />
 							</CardHeader>
@@ -323,7 +336,6 @@ export function EnhancedDashboardView() {
 							</p>
 						</div>
 					)}
-
 				</div>
 
 				{/* Controls */}
@@ -387,8 +399,15 @@ export function EnhancedDashboardView() {
 			{isLoading && !dashboardData && (
 				<div className="space-y-6">
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-						{Array.from({ length: 6 }).map((_, i) => (
-							<Card key={i}>
+						{[
+							"reservations",
+							"revenue",
+							"customers",
+							"avg-value",
+							"completion",
+							"rating",
+						].map((stat) => (
+							<Card key={`stat-skeleton-${stat}`}>
 								<CardHeader className="space-y-0 pb-2">
 									<Skeleton className="h-4 w-[120px]" />
 								</CardHeader>
@@ -400,23 +419,29 @@ export function EnhancedDashboardView() {
 						))}
 					</div>
 					<div className="grid gap-6 md:grid-cols-2">
-						{Array.from({ length: 4 }).map((_, i) => (
-							<Card key={i}>
-								<CardHeader>
-									<Skeleton className="h-6 w-[150px]" />
-								</CardHeader>
-								<CardContent>
-									<Skeleton className="h-[300px] w-full" />
-								</CardContent>
-							</Card>
-						))}
+						{["trends", "distribution", "performance", "analytics"].map(
+							(chart) => (
+								<Card key={`chart-skeleton-${chart}`}>
+									<CardHeader>
+										<Skeleton className="h-6 w-[150px]" />
+									</CardHeader>
+									<CardContent>
+										<Skeleton className="h-[300px] w-full" />
+									</CardContent>
+								</Card>
+							),
+						)}
 					</div>
 				</div>
 			)}
 
 			{/* Dashboard Content */}
 			{dashboardData && (
-				<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+				<Tabs
+					value={activeTab}
+					onValueChange={setActiveTab}
+					className="space-y-6"
+				>
 					<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 lg:max-w-[600px]">
 						<TabsTrigger value="overview" className="whitespace-nowrap w-full">
 							{i18n.getMessage("dashboard_overview", isRTL)}

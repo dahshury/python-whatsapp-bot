@@ -15,7 +15,6 @@ import {
 	useSidebar,
 } from "@/components/ui/sidebar";
 import { useLanguage } from "@/lib/language-context";
-import { useSettings } from "@/lib/settings-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import {
 	useConversationsData,
@@ -38,9 +37,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		shouldOpenChat,
 		conversationIdToOpen,
 		clearOpenRequest,
-		isLoadingConversation,
 		setLoadingConversation,
-		openConversation,
 		selectedConversationId,
 		activeTab,
 		isChatSidebarOpen,
@@ -103,7 +100,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				customerReservations.length > 0
 			) {
 				const customerName = customerReservations.find(
-					(r) => !!(r as any)?.customer_name,
+					(r) => !!r?.customer_name,
 				)?.customer_name;
 				if (customerName) {
 					const existing = customerMap.get(waId);
@@ -224,7 +221,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			setSelectedConversation(conversationIdToOpen);
 			setActiveTab("chat");
 			setChatSidebarOpen(true);
-			
+
 			// Reset loading state since conversation is now selected
 			setLoadingConversation(false);
 

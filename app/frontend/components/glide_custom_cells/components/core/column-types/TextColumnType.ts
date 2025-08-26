@@ -17,11 +17,11 @@ export class TextColumnType implements IColumnType {
 	dataType = ColumnDataType.TEXT;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		_isDarkTheme: boolean,
-		_rowContext?: any,
+		_rowContext?: unknown,
 	): GridCell {
 		let text = this.formatValue(value, column.formatting);
 
@@ -47,19 +47,23 @@ export class TextColumnType implements IColumnType {
 		// Validate and store error details
 		const validation = this.validateValue(text, column);
 		if (!validation.isValid) {
-			(cell as any).isMissingValue = true;
-			(cell as any).validationError = validation.error;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).isMissingValue = true;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).validationError = validation.error;
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
-		return (cell as any).data || "";
+	getCellValue(cell: GridCell): unknown {
+		return (cell as { data?: unknown }).data || "";
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		let text = String(value || "");
@@ -101,7 +105,7 @@ export class TextColumnType implements IColumnType {
 			for (const rule of column.validationRules) {
 				switch (rule.type) {
 					case "pattern":
-						if (rule.value && !new RegExp(rule.value).test(text)) {
+						if (rule.value && !new RegExp(String(rule.value)).test(text)) {
 							return {
 								isValid: false,
 								error: rule.message || messages.validation.invalidFormat(),
@@ -109,20 +113,22 @@ export class TextColumnType implements IColumnType {
 						}
 						break;
 					case "min":
-						if (rule.value && text.length < rule.value) {
+						if (rule.value && text.length < Number(rule.value)) {
 							return {
 								isValid: false,
 								error:
-									rule.message || `Minimum ${rule.value} characters required`,
+									rule.message ||
+									`Minimum ${Number(rule.value)} characters required`,
 							};
 						}
 						break;
 					case "max":
-						if (rule.value && text.length > rule.value) {
+						if (rule.value && text.length > Number(rule.value)) {
 							return {
 								isValid: false,
 								error:
-									rule.message || `Maximum ${rule.value} characters allowed`,
+									rule.message ||
+									`Maximum ${Number(rule.value)} characters allowed`,
 							};
 						}
 						break;
@@ -146,7 +152,7 @@ export class TextColumnType implements IColumnType {
 		return { isValid: true };
 	}
 
-	formatValue(value: any, formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, formatting?: IColumnFormatting): string {
 		if (value === null || value === undefined) return "";
 
 		let formatted = String(value);
@@ -162,7 +168,7 @@ export class TextColumnType implements IColumnType {
 		return formatted;
 	}
 
-	parseValue(input: string, column: IColumnDefinition): any {
+	parseValue(input: string, column: IColumnDefinition): unknown {
 		// Apply validateInput coercion if present
 		if (column.validateInput && typeof column.validateInput === "function") {
 			const validateResult = column.validateInput(input);
@@ -175,7 +181,7 @@ export class TextColumnType implements IColumnType {
 		return input;
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		return column.defaultValue || "";
 	}
 
@@ -246,15 +252,5 @@ export class TextColumnType implements IColumnType {
 		}
 
 		return { isValid: true };
-	}
-
-	/**
-	 * Validate name according to rules:
-	 * 1. Only letters (any language), spaces or hyphens between words
-	 * 2. At least two words, each >=2 chars
-	 */
-	private validateName(name: string): boolean {
-		const validation = this.validateNameWithDetails(name);
-		return validation.isValid;
 	}
 }

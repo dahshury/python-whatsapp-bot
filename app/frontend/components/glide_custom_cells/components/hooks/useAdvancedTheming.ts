@@ -120,9 +120,16 @@ export function useAdvancedTheming() {
 	}, []);
 
 	useEffect(() => {
-		const savedTheme = BrowserUtils.getCookie("theme-preference");
-		if (savedTheme && ["light", "dark", "auto"].includes(savedTheme)) {
-			setCurrentTheme(savedTheme as "light" | "dark" | "auto");
+		const savedThemeRaw = BrowserUtils.getCookie("theme-preference");
+		const savedTheme = (
+			typeof savedThemeRaw === "string" ? savedThemeRaw : null
+		) as "light" | "dark" | "auto" | null;
+		if (
+			savedTheme === "light" ||
+			savedTheme === "dark" ||
+			savedTheme === "auto"
+		) {
+			setCurrentTheme(savedTheme);
 		}
 	}, []);
 

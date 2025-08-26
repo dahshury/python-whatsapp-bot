@@ -102,6 +102,13 @@ export function CalendarEventContextMenu({
 				zIndex: Z_INDEX.GRID_MENU,
 			}}
 			onClick={(e) => e.stopPropagation()}
+			onKeyDown={(e) => {
+				// Handle keyboard navigation for accessibility
+				if (e.key === "Escape") {
+					e.stopPropagation();
+				}
+			}}
+			role="menu"
 		>
 			{/* Event Info Header */}
 			<div className="flex items-center gap-2 py-2 px-2 font-semibold text-foreground">
@@ -131,6 +138,15 @@ export function CalendarEventContextMenu({
 							onViewDetails?.(event.id);
 							onClose();
 						}}
+						role="menuitem"
+						tabIndex={0}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onViewDetails?.(event.id);
+								onClose();
+							}
+						}}
 					>
 						<Eye className="h-4 w-4" />
 						{isRTL ? "عرض التفاصيل" : "View Details"}
@@ -143,6 +159,15 @@ export function CalendarEventContextMenu({
 							onClick={() => {
 								onEditReservation?.(event.id);
 								onClose();
+							}}
+							role="menuitem"
+							tabIndex={0}
+							onKeyDown={(e) => {
+								if (e.key === "Enter" || e.key === " ") {
+									e.preventDefault();
+									onEditReservation?.(event.id);
+									onClose();
+								}
 							}}
 						>
 							<Edit className="h-4 w-4" />
@@ -159,6 +184,15 @@ export function CalendarEventContextMenu({
 								onClick={() => {
 									onCancelReservation?.(event.id);
 									onClose();
+								}}
+								role="menuitem"
+								tabIndex={0}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault();
+										onCancelReservation?.(event.id);
+										onClose();
+									}
 								}}
 							>
 								<CalendarX className="h-4 w-4" />
@@ -200,6 +234,15 @@ export function CalendarEventContextMenu({
 							onOpenConversation?.(event.id);
 							onClose();
 						}}
+						role="menuitem"
+						tabIndex={0}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onOpenConversation?.(event.id);
+								onClose();
+							}
+						}}
 					>
 						<MessageCircle className="h-4 w-4" />
 						{isRTL ? "فتح المحادثة" : "Open Conversation"}
@@ -210,6 +253,15 @@ export function CalendarEventContextMenu({
 						onClick={() => {
 							onViewDetails?.(event.id);
 							onClose();
+						}}
+						role="menuitem"
+						tabIndex={0}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								onViewDetails?.(event.id);
+								onClose();
+							}
 						}}
 					>
 						<User className="h-4 w-4" />

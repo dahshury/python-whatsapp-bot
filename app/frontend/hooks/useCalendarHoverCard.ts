@@ -108,8 +108,10 @@ export function useCalendarHoverCard({
 
 	// Handle event mouse enter
 	const handleEventMouseEnter = useCallback(
-		(info: any) => {
-			const event = info.event;
+		(info: { event?: unknown; el: HTMLElement; jsEvent?: MouseEvent }) => {
+			const event = info.event as
+				| { id?: string; extendedProps?: Record<string, unknown> }
+				| undefined;
 			const el = info.el;
 
 			// Don't show hover card while dragging
@@ -151,7 +153,12 @@ export function useCalendarHoverCard({
 			}
 
 			// If we're hovering a different event and a card is already shown
-			const incomingWaId = event?.extendedProps?.waId || event?.extendedProps?.wa_id || event.id;
+			const incomingWaId = String(
+				event?.extendedProps?.waId ||
+					event?.extendedProps?.wa_id ||
+					event?.id ||
+					"",
+			);
 			if (hoveredEventId && hoveredEventId !== incomingWaId) {
 				// Don't immediately switch - user might be trying to reach the card
 				return;
@@ -183,8 +190,13 @@ export function useCalendarHoverCard({
 					}
 
 					// Prefer WhatsApp identifier for customer lookup
-					const waId = event?.extendedProps?.waId || event?.extendedProps?.wa_id || event.id;
-					setHoveredEventId(waId);
+					const waId = String(
+						event?.extendedProps?.waId ||
+							event?.extendedProps?.wa_id ||
+							event?.id ||
+							"",
+					);
+					setHoveredEventId(waId || null);
 					setHoverCardPosition({
 						x: xPosition,
 						y: preferBottom ? rect.bottom : rect.top,
@@ -212,8 +224,10 @@ export function useCalendarHoverCard({
 
 	// Handle event mouse leave
 	const handleEventMouseLeave = useCallback(
-		(info: any) => {
-			const event = info.event;
+		(info: { event?: unknown }) => {
+			const event = info.event as
+				| { id?: string; extendedProps?: Record<string, unknown> }
+				| undefined;
 
 			// Clear timer if it exists
 			if (hoverTimer) {
@@ -222,7 +236,12 @@ export function useCalendarHoverCard({
 			}
 
 			// If leaving the currently hovered event, set moving to card state
-			const currentWaId = event?.extendedProps?.waId || event?.extendedProps?.wa_id || event.id;
+			const currentWaId = String(
+				event?.extendedProps?.waId ||
+					event?.extendedProps?.wa_id ||
+					event?.id ||
+					"",
+			);
 			if (hoveredEventId === currentWaId && hoverCardPosition) {
 				setIsMovingToCard(true);
 

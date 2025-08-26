@@ -64,7 +64,7 @@ export function EnhancedColumnMenu({
 	isOpen,
 	x,
 	y,
-	columnId,
+	columnId: _columnId,
 	columnTitle,
 	columnType = "text",
 	isPinned = false,
@@ -299,7 +299,18 @@ export function EnhancedColumnMenu({
 	return (
 		<div className="fixed inset-0 z-[999998]" data-enhanced-column-menu>
 			{/* Backdrop */}
-			<div className="absolute inset-0" onClick={onClose} />
+			<button
+				type="button"
+				className="absolute inset-0"
+				aria-label="Close menu overlay"
+				onClick={onClose}
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						onClose();
+					}
+				}}
+			/>
 
 			{/* Menu */}
 			<div
@@ -362,6 +373,7 @@ export function EnhancedColumnMenu({
 							{items.map((item) => (
 								<button
 									key={item.id}
+									type="button"
 									onClick={item.onClick}
 									className="enhanced-column-menu-item"
 									style={{
@@ -432,6 +444,7 @@ export function EnhancedColumnMenu({
 					>
 						<div style={{ padding: "4px 0" }}>
 							<button
+								type="button"
 								onClick={() => {
 									onFormat();
 									onClose();
@@ -462,6 +475,7 @@ export function EnhancedColumnMenu({
 								{defaultLabels.textFormat}
 							</button>
 							<button
+								type="button"
 								onClick={() => {
 									onFormat();
 									onClose();
@@ -492,6 +506,7 @@ export function EnhancedColumnMenu({
 								{defaultLabels.numberFormat}
 							</button>
 							<button
+								type="button"
 								onClick={() => {
 									onFormat();
 									onClose();

@@ -1,163 +1,249 @@
+import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import type { CalendarEvent } from "@/types/calendar";
 import { to24h } from "./utils";
 
 export interface ReservationProcessingOptions {
-  freeRoam: boolean;
-  isRTL: boolean;
-  vacationPeriods: Array<{ start: string | Date; end: string | Date }>;
+	freeRoam: boolean;
+	isRTL: boolean;
+	vacationPeriods: Array<{ start: string | Date; end: string | Date }>;
 }
 
 export function getReservationEventProcessor() {
-  return {
-    generateCalendarEvents(
-      reservationsByUser: Record<string, any[]>,
-      conversationsByUser: Record<string, any[]>,
-      options: ReservationProcessingOptions,
-    ): CalendarEvent[] {
-      if (!reservationsByUser || typeof reservationsByUser !== "object") return [];
+	return {
+		generateCalendarEvents(
+			reservationsByUser: Record<string, any[]>,
+			conversationsByUser: Record<string, any[]>,
+			options: ReservationProcessingOptions,
+		): CalendarEvent[] {
+			if (!reservationsByUser || typeof reservationsByUser !== "object")
+				return [];
 
-      const events: CalendarEvent[] = [];
-      const today = new Date();
+			const events: CalendarEvent[] = [];
+			const today = new Date();
 
-      // Build reservation events grouped by date+time, sequential within slot
-      const groupMap: Record<string, Array<{ waId: string; r: any }>> = {};
-      Object.entries(reservationsByUser).forEach(([waId, list]) => {
-        (list || []).forEach((r) => {
-          const dateStr = r.date;
-          const timeStr = r.time_slot;
-          if (!dateStr || !timeStr) return;
-          const key = `${dateStr}_${timeStr}`;
-          if (!groupMap[key]) groupMap[key] = [];
-          groupMap[key].push({ waId, r });
-        });
-      });
+			// Build reservation events grouped by date + normalized slot start time, sequential within slot
+			const groupMap: Record<string, Array<{ waId: string; r: any }>> = {};
+			Object.entries(reservationsByUser).forEach(([waId, list]) => {
+				(list || []).forEach((r) => {
+					const dateStr = r.date;
+					const timeStr = r.time_slot;
+					if (!dateStr || !timeStr) return;
+					const baseTime = toSlotBase(
+						dateStr,
+						String(timeStr),
+						options.freeRoam,
+					);
+					const key = `${dateStr}_${baseTime}`;
+					if (!groupMap[key]) groupMap[key] = [];
+					groupMap[key].push({ waId, r });
+				});
+			});
 
-      // Sort each group by type then name
-      Object.values(groupMap).forEach((arr) => {
-        arr.sort((a, b) => {
-          const t1 = Number(a.r.type ?? 0);
-          const t2 = Number(b.r.type ?? 0);
-          if (t1 !== t2) return t1 - t2;
-          const n1 = a.r.customer_name || "";
-          const n2 = b.r.customer_name || "";
-          return n1.localeCompare(n2);
-        });
-      });
+			// Sort each group by type then name
+			Object.values(groupMap).forEach((arr) => {
+				arr.sort((a, b) => {
+					const t1 = Number(a.r.type ?? 0);
+					const t2 = Number(b.r.type ?? 0);
+					if (t1 !== t2) return t1 - t2;
+					const n1 = a.r.customer_name || "";
+					const n2 = b.r.customer_name || "";
+					return n1.localeCompare(n2);
+				});
+			});
 
-      // Build events spaced within the 2-hour slot
-      const slotMinutes = 120;
-      const perSlot = 6;
+			// Build events within each 2-hour slot with dynamic per-reservation duration
+			const _slotMinutes = 120;
 
-      Object.entries(groupMap).forEach(([key, arr]) => {
-        let offsetMinutes = 0;
-        arr.forEach(({ waId, r }) => {
-          try {
-            const baseDate = String(r.date);
-            const baseTime = to24h(r.time_slot);
+			// Ensure slots are processed in chronological order (by date then slot start time)
+			const orderedGroups = Object.entries(groupMap).sort(([ka], [kb]) => {
+				const [dateA, timeAraw] = (ka || "_").split("_");
+				const [dateB, timeBraw] = (kb || "_").split("_");
+				if (dateA !== dateB) return String(dateA).localeCompare(String(dateB));
+				const timeA = to24h(String(timeAraw || "00:00"));
+				const timeB = to24h(String(timeBraw || "00:00"));
+				return timeA.localeCompare(timeB);
+			});
 
-            // Compute start/end times purely via string arithmetic to avoid timezone shifts
-            const startTime = addMinutesToClock(baseTime, Math.floor(offsetMinutes));
-            const endTime = addMinutesToClock(
-              baseTime,
-              Math.floor(offsetMinutes + slotMinutes / perSlot),
-            );
-            offsetMinutes += slotMinutes / perSlot;
+			orderedGroups.forEach(([key, arr]) => {
+				const [_dateStr, baseTimeRaw] = key.split("_");
+				const baseTimeBound = to24h(String(baseTimeRaw || "00:00"));
+				let offsetMinutes = 0;
+				const minutesPerReservation = arr.length >= 6 ? 15 : 20;
+				const gapMinutes = 1; // enforce 1-minute gap between events
+				arr.forEach(({ waId, r }) => {
+					try {
+						const baseDate = String(r.date);
+						const baseTime = baseTimeBound;
 
-            // Determine past-ness using local date-only comparison
-            const startComparable = new Date(`${baseDate}T${startTime}`);
-            const isPast = startComparable < today;
-            const cancelled = Boolean(r.cancelled);
-            const type = Number(r.type ?? 0);
+						// Compute start/end times purely via string arithmetic to avoid timezone shifts
+						const startTime = addMinutesToClock(
+							baseTime,
+							Math.floor(offsetMinutes),
+						);
+						const endTime = addMinutesToClock(
+							baseTime,
+							Math.floor(offsetMinutes + minutesPerReservation),
+						);
+						offsetMinutes += minutesPerReservation + gapMinutes;
 
-            const isConversation = type === 2;
-            events.push({
-              id: String(r.id ?? waId),
-              title: r.customer_name ?? String(waId),
-              // Emit timezone-naive strings; FullCalendar interprets them in configured timeZone
-              start: `${baseDate}T${startTime}`,
-              end: `${baseDate}T${endTime}`,
-              backgroundColor: cancelled ? "#e5e1e0" : type === 0 ? "#4caf50" : "#3688d8",
-              borderColor: cancelled ? "#e5e1e0" : type === 0 ? "#4caf50" : "#3688d8",
-              textColor: cancelled ? "#908584" : undefined,
-              // Allow dragging for reservations even if moved to past; backend will validate
-              editable: !isConversation && !cancelled,
-              extendedProps: { type, cancelled, waId },
-            });
-          } catch {
-            // skip bad rows
-          }
-        });
-      });
+						// Determine past-ness using local date-only comparison
+						const startComparable = new Date(`${baseDate}T${startTime}`);
+						const _isPast = startComparable < today;
+						const cancelled = Boolean(r.cancelled);
+						const type = Number(r.type ?? 0);
 
-      // In freeRoam, add conversation markers as non-editable events using last message timestamp
-      if (options.freeRoam && conversationsByUser) {
-        Object.entries(conversationsByUser).forEach(([waId, conv]) => {
-          if (!Array.isArray(conv) || conv.length === 0) return;
-          const last = conv[conv.length - 1];
-          if (!last?.date) return;
-          const baseDate = String(last.date);
-          const baseTime = to24h(last.time || "00:00");
-          const startTime = `${baseTime}:00`;
-          const endTime = addMinutesToClock(baseTime, Math.floor(120 / 6));
-          const convArr: any[] = Array.isArray(conversationsByUser?.[waId]) ? (conversationsByUser as any)[waId] : [];
-          const convNameFromConv = (() => {
-            try {
-              const found = convArr.find((m: any) => typeof m?.customer_name === "string" && m.customer_name.trim());
-              return (found?.customer_name || "").trim();
-            } catch { return ""; }
-          })();
-          const resArr: any[] = Array.isArray(reservationsByUser?.[waId]) ? (reservationsByUser as any)[waId] : [];
-          const convNameFromRes = (() => {
-            try {
-              const found = resArr.find((r: any) => typeof r?.customer_name === "string" && r.customer_name.trim());
-              return (found?.customer_name || "").trim();
-            } catch { return ""; }
-          })();
-          const displayTitle = convNameFromConv || convNameFromRes || String(waId);
-          events.push({
-            id: String(waId),
-            title: displayTitle,
-            start: `${baseDate}T${startTime}`,
-            end: `${baseDate}T${endTime}`,
-            backgroundColor: "#EDAE49",
-            borderColor: "#EDAE49",
-            editable: false,
-            extendedProps: { type: 2, cancelled: false },
-          });
-        });
-      }
+						const isConversation = type === 2;
+						events.push({
+							id: String(r.id ?? waId),
+							title: r.customer_name ?? String(waId),
+							// Emit timezone-naive strings; FullCalendar interprets them in configured timeZone
+							start: `${baseDate}T${startTime}`,
+							end: `${baseDate}T${endTime}`,
+							backgroundColor: cancelled
+								? "#e5e1e0"
+								: type === 0
+									? "#4caf50"
+									: "#3688d8",
+							borderColor: cancelled
+								? "#e5e1e0"
+								: type === 0
+									? "#4caf50"
+									: "#3688d8",
+							textColor: cancelled ? "#908584" : undefined,
+							// Allow dragging for reservations even if moved to past; backend will validate
+							editable: !isConversation && !cancelled,
+							extendedProps: {
+								type,
+								cancelled,
+								waId,
+								slotDate: baseDate,
+								slotTime: baseTime,
+							},
+						});
+					} catch {
+						// skip bad rows
+					}
+				});
+			});
 
-      return events;
-    },
-  };
+			// Final safety: ensure resulting list is ordered by start time
+			events.sort((a, b) => String(a.start).localeCompare(String(b.start)));
+
+			// In freeRoam, add conversation markers as non-editable events using last message timestamp
+			if (options.freeRoam && conversationsByUser) {
+				Object.entries(conversationsByUser).forEach(([waId, conv]) => {
+					if (!Array.isArray(conv) || conv.length === 0) return;
+					const last = conv[conv.length - 1];
+					if (!last?.date) return;
+					const baseDate = String(last.date);
+					const baseTime = to24h(last.time || "00:00");
+					const startTime = `${baseTime}:00`;
+					const endTime = addMinutesToClock(baseTime, Math.floor(120 / 6));
+					const convArr: any[] = Array.isArray(conversationsByUser?.[waId])
+						? (conversationsByUser as any)[waId]
+						: [];
+					const convNameFromConv = (() => {
+						try {
+							const found = convArr.find(
+								(m: any) =>
+									typeof m?.customer_name === "string" &&
+									m.customer_name.trim(),
+							);
+							return (found?.customer_name || "").trim();
+						} catch {
+							return "";
+						}
+					})();
+					const resArr: any[] = Array.isArray(reservationsByUser?.[waId])
+						? (reservationsByUser as any)[waId]
+						: [];
+					const convNameFromRes = (() => {
+						try {
+							const found = resArr.find(
+								(r: any) =>
+									typeof r?.customer_name === "string" &&
+									r.customer_name.trim(),
+							);
+							return (found?.customer_name || "").trim();
+						} catch {
+							return "";
+						}
+					})();
+					const displayTitle =
+						convNameFromConv || convNameFromRes || String(waId);
+					events.push({
+						id: String(waId),
+						title: displayTitle,
+						start: `${baseDate}T${startTime}`,
+						end: `${baseDate}T${endTime}`,
+						backgroundColor: "#EDAE49",
+						borderColor: "#EDAE49",
+						editable: false,
+						extendedProps: { type: 2, cancelled: false },
+					});
+				});
+			}
+
+			return events;
+		},
+	};
 }
 
-function cryptoRandom(): string {
-  try {
-    // Browsers
-    const arr = new Uint32Array(2);
-    crypto.getRandomValues(arr);
-    return `${arr[0].toString(16)}${arr[1].toString(16)}`;
-  } catch {
-    // Fallback
-    return Math.random().toString(16).slice(2);
-  }
+function _cryptoRandom(): string {
+	try {
+		// Browsers
+		const arr = new Uint32Array(2);
+		crypto.getRandomValues(arr);
+		return `${arr[0].toString(16)}${arr[1].toString(16)}`;
+	} catch {
+		// Fallback
+		return Math.random().toString(16).slice(2);
+	}
 }
 
 // Add minutes to an HH:MM clock string and return HH:MM:SS (no timezone)
 function addMinutesToClock(baseTime: string, minutesToAdd: number): string {
-  try {
-    const [h, m] = baseTime.split(":").map((v) => parseInt(v, 10));
-    let total = h * 60 + (Number.isFinite(m) ? m : 0) + minutesToAdd;
-    // Clamp within the day
-    if (total < 0) total = 0;
-    if (total > 24 * 60 - 1) total = 24 * 60 - 1;
-    const hh = String(Math.floor(total / 60)).padStart(2, "0");
-    const mm = String(total % 60).padStart(2, "0");
-    return `${hh}:${mm}:00`;
-  } catch {
-    return `${baseTime}:00`;
-  }
+	try {
+		const [h, m] = baseTime.split(":").map((v) => parseInt(v, 10));
+		let total = h * 60 + (Number.isFinite(m) ? m : 0) + minutesToAdd;
+		// Clamp within the day
+		if (total < 0) total = 0;
+		if (total > 24 * 60 - 1) total = 24 * 60 - 1;
+		const hh = String(Math.floor(total / 60)).padStart(2, "0");
+		const mm = String(total % 60).padStart(2, "0");
+		return `${hh}:${mm}:00`;
+	} catch {
+		return `${baseTime}:00`;
+	}
 }
 
-
+// Normalize a time to the start of its 2-hour slot window for the given date
+function toSlotBase(
+	dateStr: string,
+	timeStr: string,
+	freeRoam: boolean,
+): string {
+	try {
+		const baseTime = to24h(String(timeStr || "00:00"));
+		const [hh, mm] = baseTime.split(":").map((v) => parseInt(v, 10));
+		const minutes =
+			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
+		const day = new Date(`${dateStr}T00:00:00`);
+		const { slotMinTime, slotMaxTime } = getSlotTimes(day, freeRoam, "");
+		const [sH, sM] = String(slotMinTime || "00:00:00")
+			.slice(0, 5)
+			.split(":")
+			.map((v) => parseInt(v, 10));
+		const minMinutes =
+			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
+		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
+		const rel = Math.max(0, minutes - minMinutes);
+		const slotIndex = Math.floor(rel / duration);
+		const baseMinutes = minMinutes + slotIndex * duration;
+		const hhOut = String(Math.floor(baseMinutes / 60)).padStart(2, "0");
+		const mmOut = String(baseMinutes % 60).padStart(2, "0");
+		return `${hhOut}:${mmOut}`;
+	} catch {
+		return to24h(String(timeStr || "00:00"));
+	}
+}

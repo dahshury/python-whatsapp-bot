@@ -2,217 +2,228 @@
 /* To enable: Add className="theme-neomorphism" to html or body tag */
 
 .theme-neomorphism {
-  /* Base palette approximated from neumorphic-login (light slate/ice) */
-  --background: 220 40% 96%; /* #f0f3fa */
-  --foreground: 215 19% 35%; /* #5b6472 */
-  --card: 220 40% 96%;
-  --card-foreground: 215 19% 35%;
-  --popover: 220 40% 96%;
-  --popover-foreground: 215 19% 35%;
-  --primary: 328 100% 54%; /* #ff1493 (DeepPink) */
-  --primary-foreground: 0 0% 100%;
-  --secondary: 220 25% 85%; /* light gray-blue */
-  --secondary-foreground: 215 19% 35%;
-  --muted: 220 25% 90%;
-  --muted-foreground: 215 10% 46%;
-  --accent: 220 30% 92%;
-  --accent-foreground: 215 19% 35%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 220 25% 88%;
-  --input: 220 25% 88%;
-  --ring: 328 100% 70%;
+	/* Base palette approximated from neumorphic-login (light slate/ice) */
+	--background: 220 40% 96%; /* #f0f3fa */
+	--foreground: 215 19% 35%; /* #5b6472 */
+	--card: 220 40% 96%;
+	--card-foreground: 215 19% 35%;
+	--popover: 220 40% 96%;
+	--popover-foreground: 215 19% 35%;
+	--primary: 328 100% 54%; /* #ff1493 (DeepPink) */
+	--primary-foreground: 0 0% 100%;
+	--secondary: 220 25% 85%; /* light gray-blue */
+	--secondary-foreground: 215 19% 35%;
+	--muted: 220 25% 90%;
+	--muted-foreground: 215 10% 46%;
+	--accent: 220 30% 92%;
+	--accent-foreground: 215 19% 35%;
+	--destructive: 0 84% 60%;
+	--destructive-foreground: 0 0% 100%;
+	--border: 220 25% 88%;
+	--input: 220 25% 88%;
+	--ring: 328 100% 70%;
 
-  /* Charts keep the light/pastel spirit */
-  --chart-1: 328 100% 54%;
-  --chart-2: 200 60% 55%;
-  --chart-3: 220 25% 65%;
-  --chart-4: 260 55% 60%;
-  --chart-5: 140 45% 45%;
+	/* Charts keep the light/pastel spirit */
+	--chart-1: 328 100% 54%;
+	--chart-2: 200 60% 55%;
+	--chart-3: 220 25% 65%;
+	--chart-4: 260 55% 60%;
+	--chart-5: 140 45% 45%;
 
-  /* Sidebar tokens */
-  --sidebar: 220 40% 96%;
-  --sidebar-background: 220 40% 96%;
-  --sidebar-foreground: 215 19% 35%;
-  --sidebar-primary: 328 100% 54%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 220 30% 92%;
-  --sidebar-accent-foreground: 215 19% 35%;
-  --sidebar-border: 220 25% 88%;
-  --sidebar-ring: 328 100% 70%;
+	/* Sidebar tokens */
+	--sidebar: 220 40% 96%;
+	--sidebar-background: 220 40% 96%;
+	--sidebar-foreground: 215 19% 35%;
+	--sidebar-primary: 328 100% 54%;
+	--sidebar-primary-foreground: 0 0% 100%;
+	--sidebar-accent: 220 30% 92%;
+	--sidebar-accent-foreground: 215 19% 35%;
+	--sidebar-border: 220 25% 88%;
+	--sidebar-ring: 328 100% 70%;
 
-  /* Fonts and radii */
-  --font-sans: var(--font-sans);
-  --font-serif: var(--font-serif);
-  --font-mono: var(--font-mono);
-  --radius: 1.25rem;
+	/* Fonts and radii */
+	--font-sans: var(--font-sans);
+	--font-serif: var(--font-serif);
+	--font-mono: var(--font-mono);
+	--radius: 1.25rem;
 
-  /* Neomorphic shadows (paired positive/negative, plus inset variants) */
-  /* Soft surface elevation */
-  --shadow-2xs: 0 0 0 0 hsl(0 0% 0% / 0.02);
-  --shadow-xs: 0 0 0 0 hsl(0 0% 0% / 0.02);
-  --shadow-sm: 6px 6px 12px #d1d9e6,
-               -6px -6px 12px #ffffff;
-  --shadow: 8px 8px 16px #d1d9e6,
-            -8px -8px 16px #ffffff;
-  --shadow-md: 10px 10px 20px #d1d9e6,
-               -10px -10px 20px #ffffff;
-  --shadow-lg: 20px 20px 40px #d1d9e6,
-               -20px -20px 40px #ffffff;
-  --shadow-xl: 24px 24px 48px #d1d9e6,
-               -24px -24px 48px #ffffff;
-  --shadow-2xl: 32px 32px 64px #d1d9e6,
-                -32px -32px 64px #ffffff;
+	/* Neomorphic shadows (paired positive/negative, plus inset variants) */
+	/* Soft surface elevation */
+	--shadow-2xs: 0 0 0 0 hsl(0 0% 0% / 0.02);
+	--shadow-xs: 0 0 0 0 hsl(0 0% 0% / 0.02);
+	--shadow-sm: 6px 6px 12px #d1d9e6, -6px -6px 12px #ffffff;
+	--shadow: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
+	--shadow-md: 10px 10px 20px #d1d9e6, -10px -10px 20px #ffffff;
+	--shadow-lg: 20px 20px 40px #d1d9e6, -20px -20px 40px #ffffff;
+	--shadow-xl: 24px 24px 48px #d1d9e6, -24px -24px 48px #ffffff;
+	--shadow-2xl: 32px 32px 64px #d1d9e6, -32px -32px 64px #ffffff;
 
-  /* Utilities expect blur-friendly backgrounds */
-  --gradient-primary: none;
-  --gradient-accent: none;
-  --gradient-muted: none;
-  --gradient-sidebar: none;
+	/* Utilities expect blur-friendly backgrounds */
+	--gradient-primary: none;
+	--gradient-accent: none;
+	--gradient-muted: none;
+	--gradient-sidebar: none;
 }
 
 /* Dark mode variant for Neomorphism (rare, but keep parity) */
 .theme-neomorphism.dark,
 .dark .theme-neomorphism {
-  --background: 220 15% 12%;
-  --foreground: 0 0% 100%;
-  --card: 222 13% 16%;
-  --card-foreground: 0 0% 100%;
-  --popover: 222 13% 16%;
-  --popover-foreground: 0 0% 100%;
-  --primary: 328 100% 72%;
-  --primary-foreground: 0 0% 0%;
-  --secondary: 220 10% 22%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 220 10% 28%;
-  --muted-foreground: 0 0% 80%;
-  --accent: 220 12% 20%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 80% 66%;
-  --destructive-foreground: 0 0% 0%;
-  --border: 220 10% 26%;
-  --input: 220 10% 26%;
-  --ring: 328 100% 54%;
+	--background: 220 15% 12%;
+	--foreground: 0 0% 100%;
+	--card: 222 13% 16%;
+	--card-foreground: 0 0% 100%;
+	--popover: 222 13% 16%;
+	--popover-foreground: 0 0% 100%;
+	--primary: 328 100% 72%;
+	--primary-foreground: 0 0% 0%;
+	--secondary: 220 10% 22%;
+	--secondary-foreground: 0 0% 100%;
+	--muted: 220 10% 28%;
+	--muted-foreground: 0 0% 80%;
+	--accent: 220 12% 20%;
+	--accent-foreground: 0 0% 100%;
+	--destructive: 0 80% 66%;
+	--destructive-foreground: 0 0% 0%;
+	--border: 220 10% 26%;
+	--input: 220 10% 26%;
+	--ring: 328 100% 54%;
 
-  --chart-1: 328 100% 72%;
-  --chart-2: 200 60% 55%;
-  --chart-3: 220 25% 65%;
-  --chart-4: 260 55% 60%;
-  --chart-5: 140 45% 45%;
+	--chart-1: 328 100% 72%;
+	--chart-2: 200 60% 55%;
+	--chart-3: 220 25% 65%;
+	--chart-4: 260 55% 60%;
+	--chart-5: 140 45% 45%;
 
-  --sidebar: 220 15% 12%;
-  --sidebar-background: 220 15% 12%;
-  --sidebar-foreground: 0 0% 100%;
-  --sidebar-primary: 328 100% 72%;
-  --sidebar-primary-foreground: 0 0% 0%;
-  --sidebar-accent: 220 12% 20%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-border: 220 10% 26%;
-  --sidebar-ring: 328 100% 72%;
+	--sidebar: 220 15% 12%;
+	--sidebar-background: 220 15% 12%;
+	--sidebar-foreground: 0 0% 100%;
+	--sidebar-primary: 328 100% 72%;
+	--sidebar-primary-foreground: 0 0% 0%;
+	--sidebar-accent: 220 12% 20%;
+	--sidebar-accent-foreground: 0 0% 100%;
+	--sidebar-border: 220 10% 26%;
+	--sidebar-ring: 328 100% 72%;
 
-  --radius: 1.25rem;
-  /* Dark neomorphic shadows use lighter highlight and deeper inner shade */
-  --shadow-sm: 6px 6px 12px #0e1116,
-               -6px -6px 12px #2b2f35;
-  --shadow: 8px 8px 16px #0e1116,
-            -8px -8px 16px #2b2f35;
-  --shadow-md: 10px 10px 20px #0e1116,
-               -10px -10px 20px #2b2f35;
-  --shadow-lg: 20px 20px 40px #0e1116,
-               -20px -20px 40px #2b2f35;
-  --shadow-xl: 24px 24px 48px #0e1116,
-               -24px -24px 48px #2b2f35;
-  --shadow-2xl: 32px 32px 64px #0e1116,
-                -32px -32px 64px #2b2f35;
+	--radius: 1.25rem;
+	/* Dark neomorphic shadows use lighter highlight and deeper inner shade */
+	--shadow-sm: 6px 6px 12px #0e1116, -6px -6px 12px #2b2f35;
+	--shadow: 8px 8px 16px #0e1116, -8px -8px 16px #2b2f35;
+	--shadow-md: 10px 10px 20px #0e1116, -10px -10px 20px #2b2f35;
+	--shadow-lg: 20px 20px 40px #0e1116, -20px -20px 40px #2b2f35;
+	--shadow-xl: 24px 24px 48px #0e1116, -24px -24px 48px #2b2f35;
+	--shadow-2xl: 32px 32px 64px #0e1116, -32px -32px 64px #2b2f35;
 }
 
 /* Component-level helpers to mimic neumorphic-login exact look */
 .theme-neomorphism .neo-surface {
-  background-color: hsl(var(--card));
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+	background-color: hsl(var(--card));
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-lg);
 }
 
 .theme-neomorphism .neo-surface-inset {
-  background-color: hsl(var(--card));
-  border-radius: var(--radius);
-  box-shadow: inset 8px 8px 16px #d1d9e6,
-              inset -8px -8px 16px #ffffff;
+	background-color: hsl(var(--card));
+	border-radius: var(--radius);
+	box-shadow:
+		inset 8px 8px 16px #d1d9e6,
+		inset -8px -8px 16px #ffffff;
 }
 
 .theme-neomorphism .neo-button {
-  background-color: hsl(var(--card));
-  color: hsl(var(--primary));
-  border-radius: calc(var(--radius) - 4px);
-  box-shadow: 8px 8px 16px hsl(220 20% 80% / 0.85),
-              -8px -8px 16px hsl(0 0% 100% / 1);
+	background-color: hsl(var(--card));
+	color: hsl(var(--primary));
+	border-radius: calc(var(--radius) - 4px);
+	box-shadow:
+		8px 8px 16px hsl(220 20% 80% / 0.85),
+		-8px -8px 16px hsl(0 0% 100% / 1);
 }
 
 .theme-neomorphism .neo-button:active {
-  box-shadow: inset 4px 4px 8px #d1d9e6,
-              inset -4px -4px 8px #ffffff;
+	box-shadow:
+		inset 4px 4px 8px #d1d9e6,
+		inset -4px -4px 8px #ffffff;
 }
 
 /* Transform primary-filled buttons into neomorphic raised buttons */
 .theme-neomorphism .bg-primary.text-primary-foreground {
-  background-color: hsl(var(--card)) !important;
-  color: hsl(var(--primary)) !important;
-  box-shadow: var(--shadow-lg) !important;
-  border: 0 !important;
-  transition: box-shadow 0.2s ease, transform 0.05s ease;
+	background-color: hsl(var(--card));
+	color: hsl(var(--primary));
+	box-shadow: var(--shadow-lg);
+	border: 0;
+	transition:
+		box-shadow 0.2s ease,
+		transform 0.05s ease;
 }
 .theme-neomorphism .bg-primary.text-primary-foreground:hover {
-  box-shadow: var(--shadow-md) !important;
+	box-shadow: var(--shadow-md);
 }
 .theme-neomorphism .bg-primary.text-primary-foreground:active {
-  box-shadow: inset 4px 4px 8px #d1d9e6, inset -4px -4px 8px #ffffff !important;
+	box-shadow:
+		inset 4px 4px 8px #d1d9e6,
+		inset -4px -4px 8px #ffffff;
 }
 
 /* Inputs: inset neomorphic fields */
-.theme-neomorphism input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.theme-neomorphism
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .theme-neomorphism textarea,
 .theme-neomorphism select {
-  background-color: hsl(var(--card)) !important;
-  border: 0 !important;
-  border-radius: var(--radius) !important;
-  box-shadow: inset 8px 8px 16px #d1d9e6,
-              inset -8px -8px 16px #ffffff !important;
-  transition: box-shadow 0.2s ease, background-color 0.2s ease;
+	background-color: hsl(var(--card));
+	border: 0;
+	border-radius: var(--radius);
+	box-shadow:
+		inset 8px 8px 16px #d1d9e6,
+		inset -8px -8px 16px #ffffff;
+	transition:
+		box-shadow 0.2s ease,
+		background-color 0.2s ease;
 }
 
-.theme-neomorphism input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.theme-neomorphism
+	input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
 .theme-neomorphism textarea:focus,
 .theme-neomorphism select:focus {
-  box-shadow: inset 6px 6px 12px #d1d9e6,
-              inset -6px -6px 12px #ffffff,
-              0 0 0 2px hsl(var(--ring) / 0.5) !important;
-  outline: none !important;
+	box-shadow:
+		inset 6px 6px 12px #d1d9e6,
+		inset -6px -6px 12px #ffffff,
+		0 0 0 2px hsl(var(--ring) / 0.5);
+	outline: none;
 }
 
 /* Override Tailwind shadow utilities to use theme shadows */
 .theme-neomorphism .shadow {
-  --tw-shadow: var(--shadow) !important;
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+	--tw-shadow: var(--shadow);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+		var(--tw-shadow);
 }
 .theme-neomorphism .shadow-sm {
-  --tw-shadow: var(--shadow-sm) !important;
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+	--tw-shadow: var(--shadow-sm);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+		var(--tw-shadow);
 }
 .theme-neomorphism .shadow-md {
-  --tw-shadow: var(--shadow-md) !important;
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+	--tw-shadow: var(--shadow-md);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+		var(--tw-shadow);
 }
 .theme-neomorphism .shadow-lg {
-  --tw-shadow: var(--shadow-lg) !important;
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+	--tw-shadow: var(--shadow-lg);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+		var(--tw-shadow);
 }
 .theme-neomorphism .shadow-xl {
-  --tw-shadow: var(--shadow-xl) !important;
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+	--tw-shadow: var(--shadow-xl);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+		var(--tw-shadow);
 }
 .theme-neomorphism .shadow-2xl {
-  --tw-shadow: var(--shadow-2xl) !important;
-  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow) !important;
+	--tw-shadow: var(--shadow-2xl);
+	box-shadow:
+		var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000),
+		var(--tw-shadow);
 }
-
-

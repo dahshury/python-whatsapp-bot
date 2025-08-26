@@ -17,10 +17,18 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+
 // Add wrappers to avoid @types/recharts v1 typings conflict with Recharts v3
-const XAxisComp = XAxis as unknown as React.ComponentType<any>;
-const YAxisComp = YAxis as unknown as React.ComponentType<any>;
-const FunnelComp = Funnel as unknown as React.ComponentType<any>;
+const XAxisComp = XAxis as unknown as React.ComponentType<
+	Record<string, unknown>
+>;
+const YAxisComp = YAxis as unknown as React.ComponentType<
+	Record<string, unknown>
+>;
+const FunnelComp = Funnel as unknown as React.ComponentType<
+	Record<string, unknown>
+>;
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { i18n } from "@/lib/i18n";
 import type {
@@ -187,27 +195,52 @@ export const TrendCharts = memo(function TrendChartsComponent({
 	// Previous period comparison derived from monthlyTrends: take last two months as proxy
 	const prevTypeDistribution = useMemo(() => {
 		try {
-			if (!Array.isArray(monthlyTrends) || monthlyTrends.length < 2) return [] as any[];
+			if (!Array.isArray(monthlyTrends) || monthlyTrends.length < 2)
+				return [] as Array<{ type: number; label: string; count?: number }>;
 			// Fallback heuristic: assume checkup ~ 0 type, followup ~ 1 type weights from current distribution
 			const last = monthlyTrends[monthlyTrends.length - 1];
 			const prev = monthlyTrends[monthlyTrends.length - 2];
-			if (!last || !prev) return [] as any[];
-			const totalNow = Math.max(1, transformedTypeDistribution.reduce((s, t) => s + (t.count || 0), 0));
-			const nowWeights = transformedTypeDistribution.map((t) => (t.count || 0) / totalNow);
-			const estimate = (total: number) => transformedTypeDistribution.map((t, idx) => ({ type: t.type, label: t.label, count: Math.round((total || 0) * (nowWeights[idx] || 0)) }));
+			if (!last || !prev)
+				return [] as Array<{ type: number; label: string; count?: number }>;
+			const totalNow = Math.max(
+				1,
+				transformedTypeDistribution.reduce((s, t) => s + (t.count || 0), 0),
+			);
+			const nowWeights = transformedTypeDistribution.map(
+				(t) => (t.count || 0) / totalNow,
+			);
+			const estimate = (total: number) =>
+				transformedTypeDistribution.map((t, idx) => ({
+					type: t.type,
+					label: t.label,
+					count: Math.round((total || 0) * (nowWeights[idx] || 0)),
+				}));
 			return estimate(prev.reservations);
-		} catch { return [] as any[]; }
+		} catch {
+			return [] as Array<{ type: number; label: string; count?: number }>;
+		}
 	}, [monthlyTrends, transformedTypeDistribution]);
 
 	// Combined dataset for dual bar chart: current vs previous for each label
 	const typeDistributionWithPrev = useMemo(() => {
-		const map = new Map<number, any>();
-		transformedTypeDistribution.forEach((t) => map.set(t.type, { label: t.label, current: t.count || 0, previous: 0 }));
-		prevTypeDistribution.forEach((p: any) => {
-			const entry = map.get(p.type) || { label: p.label, current: 0, previous: 0 };
-			entry.previous = p.count || 0;
-			map.set(p.type, entry);
-		});
+		const map = new Map<
+			number,
+			{ label: string; current: number; previous: number }
+		>();
+		for (const t of transformedTypeDistribution) {
+			map.set(t.type, { label: t.label, current: t.count || 0, previous: 0 });
+		}
+		prevTypeDistribution.forEach(
+			(p: { type: number; label: string; count?: number }) => {
+				const entry = map.get(p.type) || {
+					label: p.label,
+					current: 0,
+					previous: 0,
+				};
+				entry.previous = p.count || 0;
+				map.set(p.type, entry);
+			},
+		);
 		return Array.from(map.values());
 	}, [transformedTypeDistribution, prevTypeDistribution]);
 
@@ -323,12 +356,32 @@ export const TrendCharts = memo(function TrendChartsComponent({
 							<div className="h-[350px]">
 								<ResponsiveContainer width="100%" height="100%">
 									<BarChart data={typeDistributionWithPrev}>
-										<CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
-										<XAxisComp dataKey="label" tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
-										<YAxisComp tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+										<CartesianGrid
+											strokeDasharray="3 3"
+											stroke={themeColors.border}
+										/>
+										<XAxisComp
+											dataKey="label"
+											tick={{ fontSize: 12, fill: themeColors.foreground }}
+											stroke={themeColors.foreground}
+										/>
+										<YAxisComp
+											tick={{ fontSize: 12, fill: themeColors.foreground }}
+											stroke={themeColors.foreground}
+										/>
 										<Tooltip contentStyle={tooltipStyle} />
-										<Bar dataKey="current" name={i18n.getMessage("period_current", isRTL)} fill={themeColors.primary} isAnimationActive={false} />
-										<Bar dataKey="previous" name={i18n.getMessage("period_previous", isRTL)} fill={themeColors.secondary} isAnimationActive={false} />
+										<Bar
+											dataKey="current"
+											name={i18n.getMessage("period_current", isRTL)}
+											fill={themeColors.primary}
+											isAnimationActive={false}
+										/>
+										<Bar
+											dataKey="previous"
+											name={i18n.getMessage("period_previous", isRTL)}
+											fill={themeColors.secondary}
+											isAnimationActive={false}
+										/>
 									</BarChart>
 								</ResponsiveContainer>
 							</div>
@@ -356,12 +409,32 @@ export const TrendCharts = memo(function TrendChartsComponent({
 						<div className="h-[350px]">
 							<ResponsiveContainer width="100%" height="100%">
 								<BarChart data={typeDistributionWithPrev}>
-									<CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
-									<XAxisComp dataKey="label" tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
-									<YAxisComp tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+									<CartesianGrid
+										strokeDasharray="3 3"
+										stroke={themeColors.border}
+									/>
+									<XAxisComp
+										dataKey="label"
+										tick={{ fontSize: 12, fill: themeColors.foreground }}
+										stroke={themeColors.foreground}
+									/>
+									<YAxisComp
+										tick={{ fontSize: 12, fill: themeColors.foreground }}
+										stroke={themeColors.foreground}
+									/>
 									<Tooltip contentStyle={tooltipStyle} />
-									<Bar dataKey="current" name={i18n.getMessage("period_current", isRTL)} fill={themeColors.primary} isAnimationActive={false} />
-									<Bar dataKey="previous" name={i18n.getMessage("period_previous", isRTL)} fill={themeColors.secondary} isAnimationActive={false} />
+									<Bar
+										dataKey="current"
+										name={i18n.getMessage("period_current", isRTL)}
+										fill={themeColors.primary}
+										isAnimationActive={false}
+									/>
+									<Bar
+										dataKey="previous"
+										name={i18n.getMessage("period_previous", isRTL)}
+										fill={themeColors.secondary}
+										isAnimationActive={false}
+									/>
 								</BarChart>
 							</ResponsiveContainer>
 						</div>
@@ -486,9 +559,10 @@ export const TrendCharts = memo(function TrendChartsComponent({
 											fill={themeColors.background}
 											fontSize={10}
 										/>
-										{transformedFunnelData.map((_entry, index) => (
+										{/* Chart cells use index as key since data order is stable */}
+										{transformedFunnelData.map((entry, index) => (
 											<Cell
-												key={`cell-${index}`}
+												key={`funnel-cell-${entry.stage}`}
 												fill={chartColors[index % chartColors.length]}
 											/>
 										))}
@@ -520,13 +594,12 @@ export const TrendCharts = memo(function TrendChartsComponent({
 										outerRadius={100}
 										fill={themeColors.primary}
 										dataKey="count"
-										label={({ segment, percentage }: any) =>
-											`${segment} ${percentage.toFixed(1)}%`
-										}
+										label={false}
 									>
-										{transformedCustomerSegments.map((_entry, index) => (
+										{/* Chart cells use index as key since data order is stable */}
+										{transformedCustomerSegments.map((entry, index) => (
 											<Cell
-												key={`cell-${index}`}
+												key={`segment-cell-${entry.segment}`}
 												fill={chartColors[index % chartColors.length]}
 											/>
 										))}

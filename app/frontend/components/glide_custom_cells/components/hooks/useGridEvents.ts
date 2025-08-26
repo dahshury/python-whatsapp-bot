@@ -3,16 +3,19 @@ import React from "react";
 // Hook for keyboard event listener
 const useEventListener = (
 	eventName: string,
-	handler: (event: any) => void,
-	element = window,
+	handler: (event: KeyboardEvent) => void,
+	element: Window | Document | HTMLElement = window,
 	_passive = false,
 	capture = false,
 ) => {
 	React.useEffect(() => {
 		if (!element?.addEventListener) return;
 
-		element.addEventListener(eventName, handler, { capture });
-		return () => element.removeEventListener(eventName, handler, { capture });
+		element.addEventListener(eventName, handler as EventListener, { capture });
+		return () =>
+			element.removeEventListener(eventName, handler as EventListener, {
+				capture,
+			});
 	}, [eventName, handler, element, capture]);
 };
 

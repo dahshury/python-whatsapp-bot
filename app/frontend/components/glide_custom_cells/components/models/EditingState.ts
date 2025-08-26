@@ -25,11 +25,18 @@ export function getColumnName(column: BaseColumnProps): string {
 }
 
 export function isMissingValueCell(cell: GridCell): boolean {
-	const cellData = (cell as any).data;
-	const displayData = (cell as any).displayData;
+	const cellData = (
+		cell as { data?: unknown; displayData?: string; isMissingValue?: boolean }
+	).data;
+	const displayData = (
+		cell as { data?: unknown; displayData?: string; isMissingValue?: boolean }
+	).displayData;
 
 	// Check if cell has the isMissingValue flag
-	if ((cell as any).isMissingValue === true) {
+	if (
+		(cell as { data?: unknown; displayData?: string; isMissingValue?: boolean })
+			.isMissingValue === true
+	) {
 		console.log(
 			"🚨 isMissingValueCell: cell has isMissingValue flag set to true",
 		);
@@ -38,35 +45,50 @@ export function isMissingValueCell(cell: GridCell): boolean {
 
 	// For custom cells, check the data property more thoroughly
 	if (cell.kind === GridCellKind.Custom) {
-		const customData = (cell as any).data;
+		const customData = (
+			cell as { data?: unknown; displayData?: string; isMissingValue?: boolean }
+		).data as
+			| {
+					kind?: string;
+					phone?: string;
+					date?: Date;
+					value?: string;
+					time?: Date;
+			  }
+			| undefined;
+
 		if (customData?.kind === "phone-input-cell") {
-			const isMissing = !customData.phone || customData.phone === "";
+			const phoneData = customData as { phone?: string };
+			const isMissing = !phoneData.phone || phoneData.phone === "";
 			console.log("🔍 isMissingValueCell phone-input-cell:", {
-				phone: customData.phone,
+				phone: phoneData.phone,
 				isMissing,
 			});
 			return isMissing;
 		}
 		if (customData?.kind === "tempus-date-cell") {
-			const isMissing = !customData.date;
+			const dateData = customData as { date?: Date };
+			const isMissing = !dateData.date;
 			console.log("🔍 isMissingValueCell tempus-date-cell:", {
-				date: customData.date,
+				date: dateData.date,
 				isMissing,
 			});
 			return isMissing;
 		}
 		if (customData?.kind === "dropdown-cell") {
-			const isMissing = !customData.value || customData.value === "";
+			const dropdownData = customData as { value?: string };
+			const isMissing = !dropdownData.value || dropdownData.value === "";
 			console.log("🔍 isMissingValueCell dropdown-cell:", {
-				value: customData.value,
+				value: dropdownData.value,
 				isMissing,
 			});
 			return isMissing;
 		}
 		if (customData?.kind === "timekeeper-cell") {
-			const isMissing = !customData.time;
+			const timekeeperData = customData as { time?: Date };
+			const isMissing = !timekeeperData.time;
 			console.log("🔍 isMissingValueCell timekeeper-cell:", {
-				time: customData.time,
+				time: timekeeperData.time,
 				isMissing,
 			});
 			return isMissing;
@@ -100,7 +122,7 @@ export class EditingState {
 	private columnDefinitions: Map<number, IColumnDefinition> = new Map();
 	private onChangeCallbacks: Set<() => void> = new Set();
 	// Track original cell values to detect real changes
-	private originalCells: Map<number, Map<number, any>> = new Map();
+	private originalCells: Map<number, Map<number, unknown>> = new Map();
 
 	constructor(numRows: number, theme?: Partial<Theme>, isDarkTheme?: boolean) {
 		this.numRows = numRows;
@@ -133,8 +155,8 @@ export class EditingState {
 			// We use snake case here since this is the widget state
 			// that is sent and used in the backend. Therefore, it should
 			// conform with the Python naming conventions.
-			edited_rows: {} as Record<number, Record<string, any>>,
-			added_rows: [] as Record<string, any>[],
+			edited_rows: {} as Record<number, Record<string, unknown>>,
+			added_rows: [] as Record<string, unknown>[],
 			deleted_rows: [] as number[],
 		};
 
@@ -142,7 +164,7 @@ export class EditingState {
 		// we use for the JSON-compatible widget state:
 		// row position -> column name -> edited value
 		this.editedCells.forEach((row: Map<number, GridCell>, rowIndex: number) => {
-			const editedRow: Record<string, any> = {};
+			const editedRow: Record<string, unknown> = {};
 			row.forEach((cell: GridCell, colIndex: number) => {
 				const column = columnsByIndex.get(colIndex);
 				if (column) {
@@ -177,12 +199,12 @@ export class EditingState {
 					`🏗️ Processing added row ${addedRowIndex}, has ${row.size} cells`,
 				);
 
-				const addedRow: Record<string, any> = {};
+				const addedRow: Record<string, unknown> = {};
 				// This flag is used to check if the row is incomplete
 				// (i.e. missing required values) and should therefore not be included in
 				// the current state version.
 				let isIncomplete = false;
-				const debugInfo: any = {};
+				const debugInfo: Record<string, unknown> = {};
 
 				row.forEach((cell: GridCell, colIndex: number) => {
 					const column = columnsByIndex.get(colIndex);
@@ -276,7 +298,7 @@ export class EditingState {
 			});
 		});
 
-		(editingState.added_rows || []).forEach((row: Record<string, any>) => {
+		(editingState.added_rows || []).forEach((row: Record<string, unknown>) => {
 			const addedRow: Map<number, GridCell> = new Map();
 
 			columns.forEach((column) => {
@@ -486,7 +508,10 @@ export class EditingState {
 
 				if (column && colDef) {
 					// First check if the cell itself has the isMissingValue flag
-					if ((cell as any).isMissingValue === true) {
+					if (
+						(cell as GridCell & { isMissingValue?: boolean }).isMissingValue ===
+						true
+					) {
 						errors.push({
 							row: rowIndex,
 							col: colIndex,
@@ -547,7 +572,10 @@ export class EditingState {
 
 					if (column && colDef) {
 						// First check if the cell itself has the isMissingValue flag
-						if ((cell as any).isMissingValue === true) {
+						if (
+							(cell as GridCell & { isMissingValue?: boolean })
+								.isMissingValue === true
+						) {
 							errors.push({
 								row: rowIndex,
 								col: colIndex,
@@ -604,10 +632,10 @@ export class EditingState {
 		};
 	}
 
-	private getCellValue(cell: GridCell, column: BaseColumnProps): any {
+	private getCellValue(cell: GridCell, column: BaseColumnProps): unknown {
 		const colDef = this.columnDefinitions.get(column.indexNumber);
 		if (!colDef) {
-			return (cell as any).data;
+			return (cell as { data?: unknown }).data;
 		}
 
 		const columnType = this.columnTypeRegistry.get(colDef.dataType);
@@ -617,16 +645,23 @@ export class EditingState {
 
 		// Fallback for unknown types
 		if (cell.kind === GridCellKind.Text) {
-			return (cell as any).data;
+			return (cell as { data?: unknown }).data;
 		}
 		if (cell.kind === GridCellKind.Number) {
-			return (cell as any).data;
+			return (cell as { data?: unknown }).data;
 		}
 		if (cell.kind === GridCellKind.Boolean) {
-			return (cell as any).data;
+			return (cell as { data?: unknown }).data;
 		}
 		if (cell.kind === GridCellKind.Custom) {
-			const customCell = cell as any;
+			const customCell = cell as {
+				data?: {
+					kind?: string;
+					value?: unknown;
+					date?: unknown;
+					phone?: unknown;
+				};
+			};
 			if (customCell.data?.kind === "dropdown-cell") {
 				return customCell.data.value;
 			}
@@ -638,11 +673,11 @@ export class EditingState {
 			}
 			return customCell.data;
 		}
-		return (cell as any).data;
+		return (cell as { data?: unknown }).data;
 	}
 
 	private createCellFromDefinition(
-		value: any,
+		value: unknown,
 		colDef: IColumnDefinition,
 	): GridCell | null {
 		const columnType = this.columnTypeRegistry.get(colDef.dataType);
@@ -651,10 +686,11 @@ export class EditingState {
 		}
 
 		// Fallback to text cell if column type not found
+		const stringValue = typeof value === "string" ? value : String(value || "");
 		return {
 			kind: GridCellKind.Text,
-			data: value || "",
-			displayData: value?.toString() || "",
+			data: stringValue,
+			displayData: stringValue,
 			allowOverlay: true,
 		};
 	}
@@ -695,11 +731,11 @@ export class EditingState {
 	/**
 	 * Store original value for a cell when first accessed
 	 */
-	storeOriginalValue(row: number, col: number, value: any): void {
+	storeOriginalValue(row: number, col: number, value: unknown): void {
 		if (!this.originalCells.has(row)) {
 			this.originalCells.set(row, new Map());
 		}
-		const rowMap = this.originalCells.get(row)!;
+		const rowMap = this.originalCells.get(row) ?? new Map();
 		const existing = rowMap.get(col);
 		if (existing === undefined || existing === null || existing === "") {
 			rowMap.set(col, value);
@@ -709,14 +745,14 @@ export class EditingState {
 	/**
 	 * Get the original value for a cell
 	 */
-	private getOriginalCellValue(row: number, col: number): any {
+	private getOriginalCellValue(row: number, col: number): unknown {
 		return this.originalCells.get(row)?.get(col);
 	}
 
 	/**
 	 * Get cell value for comparison (extracts the actual value from the cell)
 	 */
-	private getCellValueForComparison(cell: GridCell, col: number): any {
+	private getCellValueForComparison(cell: GridCell, col: number): unknown {
 		// Prefer the actual column definition if available
 		const colDef = this.columnDefinitions.get(col);
 		if (colDef) {
@@ -733,7 +769,7 @@ export class EditingState {
 	/**
 	 * Compare two values for equality
 	 */
-	private areValuesEqual(value1: any, value2: any): boolean {
+	private areValuesEqual(value1: unknown, value2: unknown): boolean {
 		// Handle nullish values
 		if (value1 == null && value2 == null) return true;
 		if (value1 == null || value2 == null) return false;
@@ -744,8 +780,14 @@ export class EditingState {
 		}
 		if (value1 instanceof Date || value2 instanceof Date) {
 			// Try to convert both to dates for comparison
-			const date1 = value1 instanceof Date ? value1 : new Date(value1);
-			const date2 = value2 instanceof Date ? value2 : new Date(value2);
+			const date1 =
+				value1 instanceof Date
+					? value1
+					: new Date(value1 as string | number | Date);
+			const date2 =
+				value2 instanceof Date
+					? value2
+					: new Date(value2 as string | number | Date);
 			return (
 				!Number.isNaN(date1.getTime()) &&
 				!Number.isNaN(date2.getTime()) &&
@@ -768,7 +810,7 @@ export class EditingState {
 	}
 
 	// Backward compatibility method for when column definitions are not set
-	private createCell(value: any, column: BaseColumnProps): GridCell | null {
+	private createCell(value: unknown, column: BaseColumnProps): GridCell | null {
 		// First try to use column definition if available
 		const colDef = this.columnDefinitions.get(column.indexNumber);
 		if (colDef) {
@@ -781,7 +823,7 @@ export class EditingState {
 
 		// DATE
 		if (lowerId.includes("date") || lowerName.includes("date")) {
-			const dateObj = value ? new Date(value) : null;
+			const dateObj = value ? new Date(value as string | number | Date) : null;
 			const displayDate =
 				dateObj && !Number.isNaN(dateObj.getTime())
 					? dateObj.toLocaleDateString("en-GB")
@@ -797,12 +839,12 @@ export class EditingState {
 				},
 				copyData: displayDate,
 				allowOverlay: true,
-			} as any;
+			};
 		}
 
 		// TIME
 		if (lowerId.includes("time") || lowerName.includes("time")) {
-			const dateObj = value ? new Date(value) : null;
+			const dateObj = value ? new Date(value as string | number | Date) : null;
 			const displayTime =
 				dateObj && !Number.isNaN(dateObj.getTime())
 					? dateObj.toLocaleTimeString("en-US", {
@@ -822,7 +864,7 @@ export class EditingState {
 				},
 				copyData: displayTime,
 				allowOverlay: true,
-			} as any;
+			};
 		}
 
 		// NUMBER
@@ -864,7 +906,7 @@ export class EditingState {
 				},
 				copyData: phoneValue,
 				allowOverlay: true,
-			} as any;
+			};
 		}
 
 		// DROPDOWN
@@ -886,7 +928,7 @@ export class EditingState {
 				},
 				copyData: dropdownValue,
 				allowOverlay: true,
-			} as any;
+			};
 		}
 
 		// EMAIL
@@ -907,10 +949,11 @@ export class EditingState {
 		}
 
 		// TEXT fallback
+		const stringValue = typeof value === "string" ? value : String(value || "");
 		return {
 			kind: GridCellKind.Text,
-			data: value || "",
-			displayData: value?.toString() || "",
+			data: stringValue,
+			displayData: stringValue,
 			allowOverlay: true,
 		};
 	}

@@ -15,7 +15,7 @@ interface UseCalendarInitializationProps {
 
 export function useCalendarInitialization({
 	calculateHeight,
-	sidebarOpen,
+	sidebarOpen: _sidebarOpen,
 	refreshData,
 	setOnVacationUpdated,
 	calendarRef,

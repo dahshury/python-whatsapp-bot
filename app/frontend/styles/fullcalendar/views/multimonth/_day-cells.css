@@ -20,18 +20,19 @@
 
 /* Multimonth specific day cell height */
 .fc-multimonth .fc-daygrid-day {
-	height: 4em !important;
-	max-height: 4em !important;
+	height: 4em;
+	max-height: 4em;
 }
 
 /* Override base fullcalendar day number styles for multimonth */
 .fc-multimonth-view .fc-daygrid-day-number,
 .fc-multimonth .fc-daygrid-day .fc-daygrid-day-number {
-	font-size: 1.045em !important;
+	font-size: 1.045em;
 }
 
 /* Day cell events container */
 .fc-multimonth .fc-daygrid-day-events {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply min-h-0;
 	gap: 0.1em;
 }

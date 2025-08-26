@@ -16,7 +16,7 @@
 	user-select: none;
 
 	/* use !important to prevent issues with browser extensions that change fonts */
-	font-family: "fcicons" !important;
+	font-family: "fcicons", sans-serif;
 	speak: none;
 	font-style: normal;
 	font-weight: normal;
@@ -30,29 +30,29 @@
 }
 
 .fc-icon-chevron-left:before {
-	content: "\e900";
+	content: "e900";
 }
 
 .fc-icon-chevron-right:before {
-	content: "\e901";
+	content: "e901";
 }
 
 .fc-icon-chevrons-left:before {
-	content: "\e902";
+	content: "e902";
 }
 
 .fc-icon-chevrons-right:before {
-	content: "\e903";
+	content: "e903";
 }
 
 .fc-icon-minus-square:before {
-	content: "\e904";
+	content: "e904";
 }
 
 .fc-icon-plus-square:before {
-	content: "\e905";
+	content: "e905";
 }
 
 .fc-icon-x:before {
-	content: "\e906";
+	content: "e906";
 }

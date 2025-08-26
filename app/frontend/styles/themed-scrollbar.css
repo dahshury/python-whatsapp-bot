@@ -27,28 +27,28 @@
 /* Main content scrollbar - takes up real space */
 .main-content-scrollbar .ScrollbarsCustom-Scroller {
 	/* Keep default padding-right to make space for scrollbar */
-	padding-right: 18px !important; /* Track width + 3px extra space */
+	padding-right: 18px; /* Track width + 3px extra space */
 }
 
 .main-content-scrollbar .ScrollbarsCustom-TrackY {
 	/* Track should be at the right edge within its allocated space */
-	width: 15px !important;
-	right: -1px !important; /* Push track 3px further right */
+	width: 15px;
+	right: -1px; /* Push track 3px further right */
 }
 
 .main-content-scrollbar .ScrollbarsCustom-ThumbY {
-	width: 12px !important;
-	margin: 0 1.5px !important; /* Center thumb in track */
+	width: 12px;
+	margin: 0 1.5px; /* Center thumb in track */
 }
 
 /* Chat scrollbar - 20% thicker than default */
 .chat-scrollbar .ScrollbarsCustom-TrackY {
-	width: 18px !important; /* 15px * 1.2 */
+	width: 18px; /* 15px * 1.2 */
 }
 
 .chat-scrollbar .ScrollbarsCustom-ThumbY {
-	width: 14px !important; /* 12px * 1.2 */
-	margin: 0 2px !important; /* Center thumb in wider track */
+	width: 14px; /* 12px * 1.2 */
+	margin: 0 2px; /* Center thumb in wider track */
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-Scroller::-webkit-scrollbar {
@@ -57,7 +57,7 @@
 
 /* Content wrapper */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Content {
-	box-sizing: border-box !important;
+	box-sizing: border-box;
 }
 
 /* Track styles */
@@ -174,7 +174,7 @@
 
 /* Permanent scrollbars */
 .ScrollbarsCustom-themed.scrollbar-permanent .ScrollbarsCustom-Track {
-	opacity: 1 !important;
+	opacity: 1;
 }
 
 /* Minimal styling variant */
@@ -224,12 +224,12 @@
 
 /* Phone dropdown scrollbar - 1.2x thicker than default (reduced by 70% from 4x) */
 .phone-dropdown-scrollbar .ScrollbarsCustom-TrackY {
-	width: 18px !important; /* 15px * 1.2 */
+	width: 18px; /* 15px * 1.2 */
 }
 
 .phone-dropdown-scrollbar .ScrollbarsCustom-ThumbY {
-	width: 14.4px !important; /* 12px * 1.2 */
-	margin: 0 1.8px !important; /* Center thumb in track */
+	width: 14.4px; /* 12px * 1.2 */
+	margin: 0 1.8px; /* Center thumb in track */
 }
 
 /* Fallback styles for SSR hydration - ensures consistent layout */

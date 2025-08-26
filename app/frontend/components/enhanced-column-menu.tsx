@@ -44,7 +44,7 @@ export function EnhancedColumnMenu({
 	isOpen,
 	x,
 	y,
-	columnId,
+	columnId: _columnId,
 	columnTitle,
 	columnType,
 	isPinned,
@@ -59,7 +59,7 @@ export function EnhancedColumnMenu({
 	onFilter,
 	onFormat,
 }: ColumnMenuProps) {
-	const { theme } = useTheme();
+	const { theme: _theme } = useTheme();
 	const isRTL = language === "ar";
 	const [showFormatMenu, setShowFormatMenu] = useState(false);
 
@@ -236,7 +236,18 @@ export function EnhancedColumnMenu({
 	return (
 		<div className="fixed inset-0 z-50" data-column-menu>
 			{/* Backdrop */}
-			<div className="absolute inset-0" onClick={onClose} />
+			<button
+				className="absolute inset-0"
+				aria-label="Close menu overlay"
+				onClick={onClose}
+				type="button"
+				onKeyDown={(e) => {
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						onClose();
+					}
+				}}
+			/>
 
 			{/* Menu */}
 			<div
@@ -272,6 +283,7 @@ export function EnhancedColumnMenu({
 
 								{items.map((item) => (
 									<button
+										type="button"
 										key={item.id}
 										onClick={item.onClick}
 										className={cn(
@@ -303,6 +315,7 @@ export function EnhancedColumnMenu({
 					>
 						<div className="py-1">
 							<button
+								type="button"
 								onClick={() => {
 									onFormat();
 									onClose();
@@ -312,6 +325,7 @@ export function EnhancedColumnMenu({
 								{isRTL ? "تنسيق النص" : "Text Format"}
 							</button>
 							<button
+								type="button"
 								onClick={() => {
 									onFormat();
 									onClose();
@@ -321,6 +335,7 @@ export function EnhancedColumnMenu({
 								{isRTL ? "تنسيق الأرقام" : "Number Format"}
 							</button>
 							<button
+								type="button"
 								onClick={() => {
 									onFormat();
 									onClose();

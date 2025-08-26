@@ -36,11 +36,11 @@ export function SettingsPopover({
 	isCalendarPage = true,
 }: SettingsPopoverProps) {
 	const { recordingState } = useVacation();
-	const isRecording = recordingState.periodIndex !== null;
+	const _isRecording = recordingState.periodIndex !== null;
 
 	return (
 		<DockIcon>
-			<Popover modal>
+			<Popover>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<PopoverTrigger asChild>
@@ -62,11 +62,6 @@ export function SettingsPopover({
 				<PopoverContent
 					align="center"
 					className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
-					onInteractOutside={(e) => {
-						if (isRecording) {
-							e.preventDefault();
-						}
-					}}
 				>
 					<SettingsTabs
 						isRTL={isRTL}

@@ -81,12 +81,14 @@ export const drawMissingPlaceholder = (args: BaseDrawArgs): void => {
 				markerFontFull: `${theme.markerFontStyle} ${theme.fontFamily}`,
 			},
 			// The following props are just added for technical reasons:
-			// @ts-expect-error
-			spriteManager: {},
+			spriteManager: {} as unknown as Parameters<
+				typeof drawTextCell
+			>[0]["spriteManager"],
 			hyperWrapping: false,
-		},
+		} as unknown as Parameters<typeof drawTextCell>[0],
 		messages.grid.none(),
-		(cell as any).contentAlign,
+		(cell as { contentAlign?: "left" | "right" | "center" | undefined })
+			.contentAlign,
 	);
 	ctx.fillStyle = theme.textDark;
 };

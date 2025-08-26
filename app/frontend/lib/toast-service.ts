@@ -30,7 +30,11 @@ function themed(title: string, subtitle?: string, duration = 3000) {
 					{ className: "fancy-toast-content" },
 					React.createElement("div", { className: "fancy-toast-title" }, title),
 					subtitle
-						? React.createElement("div", { className: "fancy-toast-sub" }, subtitle)
+						? React.createElement(
+								"div",
+								{ className: "fancy-toast-sub" },
+								subtitle,
+							)
 						: null,
 				),
 			),
@@ -38,7 +42,13 @@ function themed(title: string, subtitle?: string, duration = 3000) {
 	);
 }
 
-function themedUndoable(title: string, subtitle: string | undefined, actionLabel: string, onClick: () => void, duration = 8000) {
+function themedUndoable(
+	title: string,
+	subtitle: string | undefined,
+	actionLabel: string,
+	onClick: () => void,
+	duration = 8000,
+) {
 	sonner.custom(
 		(id) =>
 			React.createElement(
@@ -49,13 +59,26 @@ function themedUndoable(title: string, subtitle: string | undefined, actionLabel
 					"div",
 					{ className: "fancy-toast-content" },
 					React.createElement("div", { className: "fancy-toast-title" }, title),
-					subtitle ? React.createElement("div", { className: "fancy-toast-sub" }, subtitle) : null,
+					subtitle
+						? React.createElement(
+								"div",
+								{ className: "fancy-toast-sub" },
+								subtitle,
+							)
+						: null,
 					React.createElement(
 						"button",
 						{
-							className: "mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs",
+							className:
+								"mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs",
 							onClick: () => {
-								try { onClick(); } finally { try { sonner.dismiss(id); } catch {} }
+								try {
+									onClick();
+								} finally {
+									try {
+										sonner.dismiss(id);
+									} catch {}
+								}
 							},
 						},
 						actionLabel,
@@ -71,21 +94,27 @@ export const toastService = {
 		const { customer, wa_id, date, time, isRTL } = payload;
 		const title = isRTL ? "تم إنشاء الحجز" : "Reservation created";
 		const name = customer || wa_id || "";
-		const details = [name, date, time].filter(Boolean).join(isRTL ? " • " : " • ");
+		const details = [name, date, time]
+			.filter(Boolean)
+			.join(isRTL ? " • " : " • ");
 		themed(title, details);
 	},
 	reservationModified(payload: ReservationToastPayload) {
 		const { customer, wa_id, date, time, isRTL } = payload;
 		const title = isRTL ? "تم تعديل الحجز" : "Reservation modified";
 		const name = customer || wa_id || "";
-		const details = [name, date, time].filter(Boolean).join(isRTL ? " • " : " • ");
+		const details = [name, date, time]
+			.filter(Boolean)
+			.join(isRTL ? " • " : " • ");
 		themed(title, details);
 	},
 	reservationCancelled(payload: ReservationToastPayload) {
 		const { customer, wa_id, date, time, isRTL } = payload;
 		const title = isRTL ? "تم إلغاء الحجز" : "Reservation cancelled";
 		const name = customer || wa_id || "";
-		const details = [name, date, time].filter(Boolean).join(isRTL ? " • " : " • ");
+		const details = [name, date, time]
+			.filter(Boolean)
+			.join(isRTL ? " • " : " • ");
 		themed(title, details);
 	},
 	success(title: string, description?: string, duration = 3000) {
@@ -95,7 +124,13 @@ export const toastService = {
 	error(title: string, description?: string, duration = 4000) {
 		sonner.error(title, description ? { description, duration } : { duration });
 	},
-	undoable(title: string, description: string | undefined, actionLabel: string, onClick: () => void, duration = 8000) {
+	undoable(
+		title: string,
+		description: string | undefined,
+		actionLabel: string,
+		onClick: () => void,
+		duration = 8000,
+	) {
 		themedUndoable(title, description, actionLabel, onClick, duration);
 	},
 	newMessage(payload: MessageToastPayload) {

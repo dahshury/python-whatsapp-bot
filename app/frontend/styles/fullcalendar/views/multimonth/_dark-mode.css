@@ -36,10 +36,10 @@
 
 /* Dark mode day cells - ensure transparent background to show gaps */
 .dark .fc-multimonth .fc-daygrid-day {
-	background: transparent !important;
+	background: transparent;
 	padding: 2px;
-	height: 4em !important;
-	max-height: 4em !important;
+	height: 4em;
+	max-height: 4em;
 }
 
 /* Dark mode day cells frame */
@@ -61,7 +61,7 @@
 		135deg,
 		hsl(var(--card)) 0%,
 		hsl(var(--card) / 0.98) 100%
-	) !important;
+	);
 }
 
 /* Dark mode past cells - ensure gradient is applied */
@@ -70,12 +70,12 @@
 		135deg,
 		hsl(var(--muted) / 0.1) 0%,
 		hsl(var(--muted) / 0.2) 100%
-	) !important;
+	);
 }
 
 /* Dark mode disabled days */
 .dark .fc-multimonth .fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame {
-	background: hsl(var(--muted) / 0.05) !important;
+	background: hsl(var(--muted) / 0.05);
 }
 
 /* Dark mode today */
@@ -86,7 +86,7 @@
 		135deg,
 		hsl(var(--accent) / 0.2) 0%,
 		hsl(var(--accent) / 0.25) 100%
-	) !important;
+	);
 	transform: translateY(-1px);
 }
 
@@ -94,7 +94,7 @@
 .dark .fc-multimonth
 	.fc-daygrid-day.vacation-day:not(.fc-day-past)
 	.fc-daygrid-day-frame {
-	background: hsl(var(--destructive) / 0.15) !important;
+	background: hsl(var(--destructive) / 0.15);
 }
 
 .dark
@@ -121,7 +121,7 @@
 		0 2px 8px rgba(0, 0, 0, 0.2),
 		0 4px 16px rgba(0, 0, 0, 0.1),
 		inset 0 1px 0 hsl(var(--background) / 0.2);
-	border-color: hsl(var(--border) / 0.4) !important;
+	border-color: hsl(var(--border) / 0.4);
 }
 
 .dark .fc-multimonth-month:hover {
@@ -134,7 +134,7 @@
 		0 8px 24px rgba(0, 0, 0, 0.3),
 		0 12px 32px rgba(0, 0, 0, 0.15),
 		inset 0 1px 0 hsl(var(--background) / 0.3);
-	border-color: hsl(var(--border) / 0.6) !important;
+	border-color: hsl(var(--border) / 0.6);
 }
 
 /* Dark mode glow effect */
@@ -187,24 +187,24 @@
 
 /* Ensure dark mode tables use same spacing as light mode */
 .dark .fc-multimonth-daygrid-table {
-	border-collapse: separate !important;
-	border-spacing: 4px !important;
-	margin: -4px !important;
-	width: calc(100% + 8px) !important;
+	border-collapse: separate;
+	border-spacing: 4px;
+	margin: -4px;
+	width: calc(100% + 8px);
 }
 
 .dark .fc-multimonth-daygrid-table tr {
-	height: 4em !important;
+	height: 4em;
 }
 
 .dark .fc-multimonth-daygrid-table td {
-	height: 4em !important;
-	padding: 0 !important;
+	height: 4em;
+	padding: 0;
 }
 
 .dark .fc-multimonth-header-table {
-	border-collapse: separate !important;
-	border-spacing: 0 !important;
+	border-collapse: separate;
+	border-spacing: 0;
 }
 
 /* DARK MODE ADJUSTMENTS */
@@ -221,12 +221,12 @@
 .dark .fc-multimonth
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
 	.fc-daygrid-day-frame {
-	background: hsl(var(--primary) / 0.15) !important;
+	background: hsl(var(--primary) / 0.15);
 }
 
 /* Dark mode highlight/dateclick selection */
 .dark .fc-multimonth .fc-daygrid-day .fc-highlight {
-	background: hsl(var(--primary) / 0.25) !important;
+	background: hsl(var(--primary) / 0.25);
 }
 
 /* Dark mode distinct hover states */
@@ -240,8 +240,8 @@
 		135deg,
 		hsl(var(--muted) / 0.15) 0%,
 		hsl(var(--muted) / 0.25) 100%
-	) !important;
-	border-color: hsl(var(--muted) / 0.5) !important;
+	);
+	border-color: hsl(var(--muted) / 0.5);
 }
 
 /* Selected/highlighted hover */
@@ -254,14 +254,14 @@
 		.fc-day-disabled
 	):hover
 	.fc-daygrid-day-frame {
-	background: hsl(var(--primary) / 0.35) !important;
-	border-color: hsl(var(--primary) / 0.8) !important;
+	background: hsl(var(--primary) / 0.35);
+	border-color: hsl(var(--primary) / 0.8);
 }
 
 /* Today hover */
 .dark .fc-multimonth
 	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-frame {
-	background: hsl(var(--accent) / 0.4) !important;
-	border-color: hsl(var(--accent) / 0.8) !important;
+	background: hsl(var(--accent) / 0.4);
+	border-color: hsl(var(--accent) / 0.8);
 }

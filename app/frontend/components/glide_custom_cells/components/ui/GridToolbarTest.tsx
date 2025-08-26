@@ -31,6 +31,7 @@ export const GridToolbarTest: React.FC<GridToolbarTestProps> = ({
 	};
 
 	const containerRef = React.useRef<HTMLDivElement>(null);
+	const portalId = React.useId();
 
 	const toolbarComponent = (
 		<GridToolbar
@@ -78,6 +79,7 @@ export const GridToolbarTest: React.FC<GridToolbarTestProps> = ({
 
 											<div className="mt-4 space-x-2">
 												<button
+													type="button"
 													onClick={() => setHasSelection(!hasSelection)}
 													className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm"
 												>
@@ -85,6 +87,7 @@ export const GridToolbarTest: React.FC<GridToolbarTestProps> = ({
 													)
 												</button>
 												<button
+													type="button"
 													onClick={() => setCanUndo(!canUndo)}
 													className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-sm"
 												>
@@ -96,15 +99,12 @@ export const GridToolbarTest: React.FC<GridToolbarTestProps> = ({
 
 									{/* Portal container for dialog */}
 									<div
-										id="grid-dialog-portal"
+										id={portalId}
+										className="grid-dialog-portal"
 										style={{
 											position: "absolute",
-											top: 0,
-											left: 0,
-											right: 0,
-											bottom: 0,
+											inset: 0,
 											pointerEvents: "auto",
-											zIndex: 4200,
 										}}
 									/>
 
@@ -146,12 +146,14 @@ export const GridToolbarTest: React.FC<GridToolbarTestProps> = ({
 
 								<div className="mt-4 space-x-2">
 									<button
+										type="button"
 										onClick={() => setHasSelection(!hasSelection)}
 										className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm"
 									>
 										Toggle Selection ({hasSelection ? "Selected" : "None"})
 									</button>
 									<button
+										type="button"
 										onClick={() => setCanUndo(!canUndo)}
 										className="px-3 py-1 bg-secondary text-secondary-foreground rounded text-sm"
 									>

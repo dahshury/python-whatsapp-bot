@@ -2,7 +2,7 @@
 
 /* Toolbar gradient */
 .fc-toolbar {
-	background-image: var(--gradient-muted) !important;
+	background-image: var(--gradient-muted);
 }
 
 /* DayGrid column headers - ensure gradient in light mode too */
@@ -15,25 +15,28 @@
 		hsl(var(--accent) / 0.08) 50%,
 		hsl(var(--accent) / 0.06) 75%,
 		hsl(var(--accent) / 0.04) 100%
-	) !important;
+	);
 }
 
 /* Day backgrounds - gentle card tint for future days */
-.fc-daygrid .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(.fc-day-disabled)
+.fc-daygrid .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(
+		.fc-day-disabled
+	)
 	.fc-daygrid-day-frame {
-	background-image: var(--gradient-muted) !important;
+	background-image: var(--gradient-muted);
 }
 
 /* Today highlight - accent based gradient */
-.fc .fc-day-today .fc-daygrid-day-frame,
+.fc-daygrid .fc-daygrid-day.fc-day-today:not(.fc-day-past):not(.fc-day-disabled)
+	.fc-daygrid-day-frame,
 .fc .fc-day-today .fc-timegrid-col-frame {
 	background: linear-gradient(
 		135deg,
 		hsl(var(--accent) / 0.18) 0%,
-		hsl(var(--accent) / 0.10) 60%,
+		hsl(var(--accent) / 0.1) 60%,
 		transparent 100%
-	) !important;
-	border-color: hsl(var(--accent) / 0.25) !important;
+	);
+	border-color: hsl(var(--accent) / 0.25);
 }
 
 /* Non-business background - soften with gradient */
@@ -42,20 +45,24 @@
 		135deg,
 		hsl(var(--muted) / 0.35) 0%,
 		hsl(var(--muted) / 0.25) 100%
-	) !important;
+	);
 }
 
 /* Background events - use chart-3 gradient for differentiation */
 .fc .fc-bg-event {
-	background-image: var(--gradient-chart-3) !important;
+	background-image: var(--gradient-chart-3);
 	opacity: var(--fc-bg-event-opacity);
 }
 
 /* H/V events - apply primary gradient backgrounds (but preserve typed overrides) */
-.fc-h-event:not(.reservation-type-0):not(.reservation-type-1):not(.conversation-event),
-.fc-v-event:not(.reservation-type-0):not(.reservation-type-1):not(.conversation-event) {
-	background-image: var(--gradient-primary) !important;
-	border-color: hsl(var(--primary)) !important;
+.fc-h-event:not(.reservation-type-0):not(.reservation-type-1):not(
+		.conversation-event
+	),
+.fc-v-event:not(.reservation-type-0):not(.reservation-type-1):not(
+		.conversation-event
+	) {
+	background-image: var(--gradient-primary);
+	border-color: hsl(var(--primary));
 }
 
 /* Past events - muted gradient */
@@ -64,8 +71,8 @@
 		135deg,
 		hsl(var(--muted) / 0.6) 0%,
 		hsl(var(--muted) / 0.4) 100%
-	) !important;
-	color: hsl(var(--muted-foreground)) !important;
+	);
+	color: hsl(var(--muted-foreground));
 }
 
 /* Cancelled events - keep existing overrides and add subtle gradient */
@@ -74,18 +81,16 @@
 		135deg,
 		hsl(var(--destructive) / 0.35) 0%,
 		hsl(var(--destructive) / 0.25) 100%
-	) !important;
-	border-color: hsl(var(--destructive)) !important;
+	);
+	border-color: hsl(var(--destructive));
 }
 
 /* Popover headers - use accent gradient */
 .fc-popover-header {
-	background-image: var(--gradient-accent) !important;
+	background-image: var(--gradient-accent);
 }
 
 /* List view date headers */
 .fc-list-sticky .fc-list-day > * {
 	background-image: var(--gradient-muted);
 }
-
-

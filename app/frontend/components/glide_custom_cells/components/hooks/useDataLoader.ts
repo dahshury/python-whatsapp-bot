@@ -15,7 +15,7 @@ export interface LoaderState {
 	error: Error | null;
 	totalRows: number;
 	loadedPages: Set<number>;
-	cache: Map<number, any[]>;
+	cache: Map<number, unknown[]>;
 }
 
 export interface DataRange {
@@ -33,7 +33,7 @@ const DEFAULT_CONFIG: DataLoaderConfig = {
 };
 
 export function useDataLoader(
-	loadDataPage: (page: number, pageSize: number) => Promise<any[]>,
+	loadDataPage: (page: number, pageSize: number) => Promise<unknown[]>,
 	config: Partial<DataLoaderConfig> = {},
 	performanceMode: PerformanceMode = PerformanceMode.NORMAL,
 ) {
@@ -166,7 +166,7 @@ export function useDataLoader(
 	);
 
 	const getRowData = useCallback(
-		(rowIndex: number): any | null => {
+		(rowIndex: number): unknown | null => {
 			const page = Math.floor(rowIndex / fullConfig.pageSize);
 			const pageData = loaderState.cache.get(page);
 
@@ -179,8 +179,8 @@ export function useDataLoader(
 	);
 
 	const getRowsInRange = useCallback(
-		(startRow: number, endRow: number): (any | null)[] => {
-			const rows: (any | null)[] = [];
+		(startRow: number, endRow: number): (unknown | null)[] => {
+			const rows: (unknown | null)[] = [];
 			for (let i = startRow; i <= endRow; i++) {
 				rows.push(getRowData(i));
 			}

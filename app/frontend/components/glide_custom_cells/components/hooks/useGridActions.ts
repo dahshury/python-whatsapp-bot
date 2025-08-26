@@ -8,9 +8,9 @@ import React from "react";
 // Extended cell type that includes copyData for custom cells
 type ExtendedGridCell = {
 	kind: GridCellKind;
-	displayData?: any;
-	data?: any;
-	copyData?: any; // Available on custom cells
+	displayData?: unknown;
+	data?: unknown;
+	copyData?: unknown; // Available on custom cells
 };
 
 export function useGridActions(
@@ -25,8 +25,8 @@ export function useGridActions(
 		row: number,
 	) => {
 		kind: GridCellKind;
-		displayData?: any;
-		data?: any;
+		displayData?: unknown;
+		data?: unknown;
 	},
 	deletedRows: Set<number>,
 	columnsState: GridColumn[],
@@ -95,22 +95,28 @@ export function useGridActions(
 					// We treat displayData > data > empty string for text-like cells, else raw data
 					switch (cell.kind) {
 						case GridCellKind.Text:
-						case GridCellKind.Uri as any:
+						case (GridCellKind as { Uri?: string }).Uri:
 							rowVals.push(escapeValue(cell.displayData ?? cell.data ?? ""));
 							break;
 						case GridCellKind.Number:
-							rowVals.push(escapeValue((cell as any).data ?? ""));
+							rowVals.push(
+								escapeValue((cell as { data?: unknown }).data ?? ""),
+							);
 							break;
-						case GridCellKind.Custom:
+						case GridCellKind.Custom: {
 							// Most of our custom cells include a copyData field for plain export.
 							// Fallback to their displayData/data if copyData absent.
 							const extendedCell = cell as ExtendedGridCell;
 							rowVals.push(
 								escapeValue(
-									extendedCell.copyData ?? extendedCell.displayData ?? extendedCell.data ?? "",
+									extendedCell.copyData ??
+										extendedCell.displayData ??
+										extendedCell.data ??
+										"",
 								),
 							);
 							break;
+						}
 						default:
 							rowVals.push(escapeValue(""));
 					}
@@ -124,9 +130,9 @@ export function useGridActions(
 
 			// Try native file save picker first (where supported) - following Streamlit pattern
 			try {
-				// @ts-ignore – showSaveFilePicker is still experimental in TS lib
+				// @ts-expect-error – showSaveFilePicker is still experimental in TS lib
 				if (window.showSaveFilePicker) {
-					// @ts-ignore
+					// @ts-expect-error
 					const handle = await window.showSaveFilePicker({
 						suggestedName,
 						types: [
@@ -185,10 +191,11 @@ export function useGridActions(
 				const val = getCellContent(idx, r);
 				const text =
 					val.kind === GridCellKind.Text ||
-					(val.kind as any) === GridCellKind.Uri
+					(val.kind as unknown) === (GridCellKind as { Uri?: string }).Uri
 						? (val.displayData ?? val.data ?? "")
-						: String((val as any).data ?? "");
-				maxLen = Math.max(maxLen, text.length);
+						: String((val as { data?: unknown }).data ?? "");
+				const s = String(text);
+				maxLen = Math.max(maxLen, s.length);
 			}
 			return { ...col, width: Math.min(300, Math.max(80, maxLen * 8)) };
 		});

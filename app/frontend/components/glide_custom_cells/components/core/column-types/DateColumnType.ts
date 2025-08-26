@@ -20,11 +20,11 @@ export class DateColumnType implements IColumnType {
 	dataType = ColumnDataType.DATE;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		isDarkTheme: boolean,
-		_rowContext?: any,
+		_rowContext?: unknown,
 	): GridCell {
 		const date = this.parseValue(value, column);
 		const displayDate = this.formatValue(date, column.formatting);
@@ -46,25 +46,30 @@ export class DateColumnType implements IColumnType {
 		// Validate and store error details
 		const validation = this.validateValue(date, column);
 		if (!validation.isValid) {
-			(cell as any).isMissingValue = true;
-			(cell as any).validationError = validation.error;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).isMissingValue = true;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).validationError = validation.error;
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
+	getCellValue(cell: GridCell): unknown {
 		if (
 			cell.kind === GridCellKind.Custom &&
-			(cell as any).data?.kind === "tempus-date-cell"
+			(cell as { data?: { kind?: string; date?: unknown } }).data?.kind ===
+				"tempus-date-cell"
 		) {
-			return (cell as any).data.date;
+			return (cell as { data?: { kind?: string; date?: unknown } }).data?.date;
 		}
 		return null;
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		if (column.isRequired && !value) {
@@ -76,19 +81,29 @@ export class DateColumnType implements IColumnType {
 			};
 		}
 
-		if (value && !(value instanceof Date) && !Date.parse(value)) {
+		if (
+			value &&
+			!(value instanceof Date) &&
+			(typeof value !== "string" || Number.isNaN(Date.parse(String(value))))
+		) {
 			return { isValid: false, error: messages.validation.invalidDate() };
 		}
 
-		const date = value instanceof Date ? value : new Date(value);
+		const date = value instanceof Date ? value : new Date(String(value));
 
 		if (column.validationRules) {
 			for (const rule of column.validationRules) {
 				switch (rule.type) {
 					case "min":
-						if (rule.value) {
-							const minDate = new Date(rule.value);
-							if (date < minDate) {
+						if (rule.value !== undefined && rule.value !== null) {
+							const rv = rule.value as unknown;
+							const minDate =
+								rv instanceof Date
+									? rv
+									: typeof rv === "string" || typeof rv === "number"
+										? new Date(rv)
+										: undefined;
+							if (minDate && date < minDate) {
 								return {
 									isValid: false,
 									error:
@@ -99,9 +114,15 @@ export class DateColumnType implements IColumnType {
 						}
 						break;
 					case "max":
-						if (rule.value) {
-							const maxDate = new Date(rule.value);
-							if (date > maxDate) {
+						if (rule.value !== undefined && rule.value !== null) {
+							const rv = rule.value as unknown;
+							const maxDate =
+								rv instanceof Date
+									? rv
+									: typeof rv === "string" || typeof rv === "number"
+										? new Date(rv)
+										: undefined;
+							if (maxDate && date > maxDate) {
 								return {
 									isValid: false,
 									error:
@@ -112,7 +133,7 @@ export class DateColumnType implements IColumnType {
 						}
 						break;
 					case "custom":
-						if (rule.validate && !rule.validate(date)) {
+						if (rule.validate && !rule.validate(date as unknown as string)) {
 							return { isValid: false, error: rule.message || "Invalid date" };
 						}
 						break;
@@ -123,10 +144,10 @@ export class DateColumnType implements IColumnType {
 		return { isValid: true };
 	}
 
-	formatValue(value: any, formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, formatting?: IColumnFormatting): string {
 		if (!value) return "";
 
-		const date = value instanceof Date ? value : new Date(value);
+		const date = value instanceof Date ? value : new Date(String(value));
 		if (Number.isNaN(date.getTime())) return "";
 
 		// Check if we should show Hijri date based on locale/language
@@ -149,19 +170,24 @@ export class DateColumnType implements IColumnType {
 		return date.toLocaleDateString(formatting?.locale || "en-GB");
 	}
 
-	parseValue(input: any, _column: IColumnDefinition): any {
+	parseValue(input: unknown, _column: IColumnDefinition): unknown {
 		if (!input) return null;
 		if (input instanceof Date) return input;
 
-		const parsed = new Date(input);
+		const parsed = new Date(String(input));
 		return Number.isNaN(parsed.getTime()) ? null : parsed;
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		if (column.defaultValue === "today") {
 			return new Date();
 		}
-		return column.defaultValue ? new Date(column.defaultValue) : null;
+		return column.defaultValue &&
+			(typeof column.defaultValue === "string" ||
+				typeof column.defaultValue === "number" ||
+				column.defaultValue instanceof Date)
+			? new Date(column.defaultValue as string | number | Date)
+			: null;
 	}
 
 	canEdit(column: IColumnDefinition): boolean {

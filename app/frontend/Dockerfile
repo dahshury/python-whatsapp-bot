@@ -12,19 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Enable corepack and prepare pnpm
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN corepack enable && corepack prepare pnpm@8 --activate
+RUN corepack enable && corepack prepare pnpm@10.1.0 --activate
 
 # Copy manifest and lockfile when available
 COPY package.json ./
 COPY pnpm-lock.yaml* ./
 RUN pnpm --version \
-    && if [ -f pnpm-lock.yaml ]; then pnpm install --frozen-lockfile; else pnpm install; fi
+    && pnpm install --no-frozen-lockfile
 
 # 2) Builder layer
 FROM node:20-slim AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN corepack enable && corepack prepare pnpm@8 --activate
+RUN corepack enable && corepack prepare pnpm@10.1.0 --activate
 
 # Bring installed node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules

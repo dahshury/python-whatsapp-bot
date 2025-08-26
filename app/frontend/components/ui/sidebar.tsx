@@ -88,8 +88,33 @@ const SidebarProvider = React.forwardRef<
 					_setOpen(openState);
 				}
 
-				// This sets the cookie to keep the sidebar state.
-				document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+				// Persist sidebar state without directly writing document.cookie
+				try {
+					// Prefer Cookie Store API when available
+					const w = window as unknown as {
+						cookieStore?: {
+							set: (opts: {
+								name: string;
+								value: string;
+								expires?: number;
+								path?: string;
+							}) => Promise<void>;
+						};
+					};
+					if (w.cookieStore && typeof w.cookieStore.set === "function") {
+						void w.cookieStore.set({
+							name: SIDEBAR_COOKIE_NAME,
+							value: String(openState),
+							expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
+							path: "/",
+						});
+					} else {
+						// Fallback to localStorage to avoid direct cookie assignment
+						localStorage.setItem(SIDEBAR_COOKIE_NAME, String(openState));
+					}
+				} catch {
+					// Swallow persistence errors silently
+				}
 			},
 			[setOpenProp, open],
 		);

@@ -15,12 +15,10 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { toastService } from "@/lib/toast-service";
 import { useSidebar } from "@/components/ui/sidebar";
 // Custom hooks
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useCalendarState } from "@/hooks/useCalendarState";
-import { modifyReservation, undoModifyReservation } from "@/lib/api";
 // Services and utilities
 import {
 	type CalendarCallbackHandlers,
@@ -28,12 +26,12 @@ import {
 	type VacationDateChecker,
 } from "@/lib/calendar-callbacks";
 import { getTimezone } from "@/lib/calendar-config";
+import { handleEventChange as handleEventChangeService } from "@/lib/calendar-event-handlers";
+import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { useLanguage } from "@/lib/language-context";
 import { useVacation } from "@/lib/vacation-context";
 import { VacationEventsService } from "@/lib/vacation-events-service";
 import type { CalendarEvent, VacationPeriod } from "@/types/calendar";
-import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
-import { handleEventChange as handleEventChangeService } from "@/lib/calendar-event-handlers";
 // Components
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
 import { CalendarSkeleton } from "./calendar-skeleton";
@@ -66,11 +64,11 @@ export const DualCalendarComponent = React.forwardRef<
 	(
 		{
 			freeRoam = false,
-			initialView = "multiMonthYear",
+			initialView: _initialView = "multiMonthYear",
 			initialDate,
 			initialLeftView,
 			initialRightView,
-			onViewChange,
+			onViewChange: _onViewChange,
 			onLeftViewChange,
 			onRightViewChange,
 			events: externalEvents,
@@ -86,7 +84,7 @@ export const DualCalendarComponent = React.forwardRef<
 			setOnVacationUpdated,
 			vacationPeriods,
 		} = useVacation();
-		const { state: sidebarState, open: sidebarOpen } = useSidebar();
+		const { state: _sidebarState, open: _sidebarOpen } = useSidebar();
 
 		// Refs for both calendars
 		const leftCalendarRef = useRef<CalendarCoreRef>(null);
@@ -293,37 +291,56 @@ export const DualCalendarComponent = React.forwardRef<
 		);
 
 		// No-op updater to avoid re-triggering FullCalendar eventChange loop
-		const updateEventNoop = useCallback((_id: string, _updated: any) => {}, []);
+		const updateEventNoop = useCallback(
+			(_id: string, _updated: Record<string, unknown>) => {},
+			[],
+		);
 
 		const resolveEventViaApi = useCallback(
 			(which: "left" | "right", id: string) => {
 				try {
-					const api = which === "left" ? leftGetCalendarApi() : rightGetCalendarApi();
+					const api =
+						which === "left" ? leftGetCalendarApi() : rightGetCalendarApi();
 					const ev = api?.getEventById(String(id));
 					return ev ? { extendedProps: ev.extendedProps || {} } : undefined;
-				} catch { return undefined; }
+				} catch {
+					return undefined;
+				}
 			},
 			[leftGetCalendarApi, rightGetCalendarApi],
 		);
 
 		const handleLeftEventChange = useCallback(
-			async (info: any) => {
+			async (info: { event?: unknown; revert?: () => void }) => {
 				// Dedup guard: suppress duplicate handling (eventReceive + eventChange)
 				try {
-					(globalThis as any).__dualHandlersGuard = (globalThis as any).__dualHandlersGuard || new Map<string, number>();
-					const ev = info?.event;
-					const key = ev ? `${String(ev.id)}:${String(ev.startStr || ev.start?.toISOString?.() || "")}` : "";
+					const globalWithGuard = globalThis as {
+						__dualHandlersGuard?: Map<string, number>;
+					};
+					globalWithGuard.__dualHandlersGuard =
+						globalWithGuard.__dualHandlersGuard || new Map<string, number>();
+					const ev = info?.event as
+						| { id?: unknown; startStr?: string; start?: Date }
+						| undefined;
+					const key =
+						ev && (ev.id != null || ev.startStr != null || ev.start != null)
+							? `${String(ev.id ?? "")}:${String(ev.startStr || ev.start?.toISOString?.() || "")}`
+							: "";
 					if (key) {
-						const last = (globalThis as any).__dualHandlersGuard.get(key);
+						const globalWithGuard = globalThis as {
+							__dualHandlersGuard?: Map<string, number>;
+						};
+						const last = globalWithGuard.__dualHandlersGuard?.get(key);
 						if (last && Date.now() - last < 1500) return;
-						(globalThis as any).__dualHandlersGuard.set(key, Date.now());
+						globalWithGuard.__dualHandlersGuard?.set(key, Date.now());
 					}
 				} catch {}
 
 				// Prevent calling backend for past times within today
 				try {
-					const start: Date | undefined = info?.event?.start as any;
-					if (start && !isNaN(start.getTime?.() || NaN)) {
+					const start: Date | undefined = (info as { event?: { start?: Date } })
+						?.event?.start;
+					if (start && !Number.isNaN(start.getTime?.() || NaN)) {
 						const now = new Date();
 						if (
 							start.getFullYear() === now.getFullYear() &&
@@ -360,23 +377,36 @@ export const DualCalendarComponent = React.forwardRef<
 		);
 
 		const handleRightEventChange = useCallback(
-			async (info: any) => {
+			async (info: { event?: unknown; revert?: () => void }) => {
 				// Dedup guard: suppress duplicate handling (eventReceive + eventChange)
 				try {
-					(globalThis as any).__dualHandlersGuard = (globalThis as any).__dualHandlersGuard || new Map<string, number>();
-					const ev = info?.event;
-					const key = ev ? `${String(ev.id)}:${String(ev.startStr || ev.start?.toISOString?.() || "")}` : "";
+					const globalWithGuard = globalThis as {
+						__dualHandlersGuard?: Map<string, number>;
+					};
+					globalWithGuard.__dualHandlersGuard =
+						globalWithGuard.__dualHandlersGuard || new Map<string, number>();
+					const ev = info?.event as
+						| { id?: unknown; startStr?: string; start?: Date }
+						| undefined;
+					const key =
+						ev && (ev.id != null || ev.startStr != null || ev.start != null)
+							? `${String(ev.id ?? "")}:${String(ev.startStr || ev.start?.toISOString?.() || "")}`
+							: "";
 					if (key) {
-						const last = (globalThis as any).__dualHandlersGuard.get(key);
+						const globalWithGuard = globalThis as {
+							__dualHandlersGuard?: Map<string, number>;
+						};
+						const last = globalWithGuard.__dualHandlersGuard?.get(key);
 						if (last && Date.now() - last < 1500) return;
-						(globalThis as any).__dualHandlersGuard.set(key, Date.now());
+						globalWithGuard.__dualHandlersGuard?.set(key, Date.now());
 					}
 				} catch {}
 
 				// Prevent calling backend for past times within today
 				try {
-					const start: Date | undefined = info?.event?.start as any;
-					if (start && !isNaN(start.getTime?.() || NaN)) {
+					const start: Date | undefined = (info as { event?: { start?: Date } })
+						?.event?.start;
+					if (start && !Number.isNaN(start.getTime?.() || NaN)) {
 						const now = new Date();
 						if (
 							start.getFullYear() === now.getFullYear() &&
@@ -431,7 +461,10 @@ export const DualCalendarComponent = React.forwardRef<
 				isVacationDate,
 				openEditor: (_opts: { start: string; end?: string }) => {},
 				handleOpenConversation: (_id: string) => {},
-				handleEventChange: (_eventId: string, _updates: any) => {},
+				handleEventChange: (
+					_eventId: string,
+					_updates: Record<string, unknown>,
+				) => {},
 			}),
 			[isRTL, leftCalendarState.currentView, isVacationDate],
 		);
@@ -445,7 +478,10 @@ export const DualCalendarComponent = React.forwardRef<
 				isVacationDate,
 				openEditor: (_opts: { start: string; end?: string }) => {},
 				handleOpenConversation: (_id: string) => {},
-				handleEventChange: (_eventId: string, _updates: any) => {},
+				handleEventChange: (
+					_eventId: string,
+					_updates: Record<string, unknown>,
+				) => {},
 			}),
 			[isRTL, rightCalendarState.currentView, isVacationDate],
 		);

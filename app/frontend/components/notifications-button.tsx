@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
-import React from "react";
 
 interface NotificationsButtonProps {
 	className?: string;
@@ -20,10 +20,12 @@ interface NotificationsButtonProps {
 
 export function NotificationsButton({
 	className,
-	notificationCount = 0,
+	notificationCount: _notificationCount = 0,
 }: NotificationsButtonProps) {
 	const { isRTL } = useLanguage();
-	const [items, setItems] = React.useState<Array<{ id: number; text: string }>>([]);
+	const [items, setItems] = React.useState<Array<{ id: number; text: string }>>(
+		[],
+	);
 	const [unreadCount, setUnreadCount] = React.useState<number>(0);
 	const [open, setOpen] = React.useState(false);
 
@@ -35,7 +37,9 @@ export function NotificationsButton({
 			// Suppress increments for locally-initiated operations; also do not increment while popover is open
 			try {
 				const key = `${type}:${data?.id ?? data?.wa_id ?? ""}:${data?.date ?? ""}:${data?.time_slot ?? ""}`;
-				const localOps: Set<string> | undefined = (globalThis as any).__localOps;
+				const localOps: Set<string> | undefined = (
+					globalThis as { __localOps?: Set<string> }
+				).__localOps;
 				const isLocal = __local === true || !!localOps?.has(key);
 				if (isLocal) {
 					localOps?.delete(key);
@@ -44,21 +48,33 @@ export function NotificationsButton({
 				}
 			} catch {}
 			const text = (() => {
-				if (type === "reservation_created") return `${isRTL ? "تم إنشاء حجز" : "Reservation created"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
-				if (type === "reservation_updated" || type === "reservation_reinstated") return `${isRTL ? "تم تعديل الحجز" : "Reservation modified"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
-				if (type === "reservation_cancelled") return `${isRTL ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${data.wa_id}`;
-				if (type === "conversation_new_message") return `${isRTL ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
-				if (type === "vacation_period_updated") return isRTL ? "تم تحديث فترات الإجازة" : "Vacation periods updated";
+				if (type === "reservation_created")
+					return `${isRTL ? "تم إنشاء حجز" : "Reservation created"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
+				if (type === "reservation_updated" || type === "reservation_reinstated")
+					return `${isRTL ? "تم تعديل الحجز" : "Reservation modified"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
+				if (type === "reservation_cancelled")
+					return `${isRTL ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${data.wa_id}`;
+				if (type === "conversation_new_message")
+					return `${isRTL ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
+				if (type === "vacation_period_updated")
+					return isRTL ? "تم تحديث فترات الإجازة" : "Vacation periods updated";
 				return String(type);
 			})();
 			setItems((prev) => [{ id, text }, ...prev].slice(0, 100));
 		};
 		window.addEventListener("notification:add", handler as EventListener);
-		return () => window.removeEventListener("notification:add", handler as EventListener);
+		return () =>
+			window.removeEventListener("notification:add", handler as EventListener);
 	}, [isRTL, open]);
 
 	return (
-		<Popover open={open} onOpenChange={(v) => { setOpen(v); if (v) setUnreadCount(0); }}>
+		<Popover
+			open={open}
+			onOpenChange={(v) => {
+				setOpen(v);
+				if (v) setUnreadCount(0);
+			}}
+		>
 			<PopoverTrigger asChild>
 				<Button
 					variant="ghost"
@@ -111,7 +127,10 @@ export function NotificationsButton({
 							</div>
 						) : (
 							items.map((it) => (
-								<div key={it.id} className="text-sm border-b last:border-b-0 pb-2">
+								<div
+									key={it.id}
+									className="text-sm border-b last:border-b-0 pb-2"
+								>
 									{it.text}
 								</div>
 							))

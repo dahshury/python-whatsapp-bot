@@ -131,97 +131,97 @@
 
 /* Timekeeper overrides for proper theming */
 .react-timekeeper__clock-wrapper {
-	background: var(--timekeeper-bg) !important;
-	color: var(--timekeeper-text) !important;
-	border-radius: var(--radius) !important;
+	background: var(--timekeeper-bg);
+	color: var(--timekeeper-text);
+	border-radius: var(--radius);
 }
 
 .react-timekeeper__time-dropdown {
-	background: var(--timekeeper-bg) !important;
-	color: var(--timekeeper-text) !important;
-	border-color: var(--timekeeper-border) !important;
-	border-radius: var(--radius) !important;
-	box-shadow: var(--shadow-md) !important;
+	background: var(--timekeeper-bg);
+	color: var(--timekeeper-text);
+	border-color: var(--timekeeper-border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow-md);
 }
 
 .react-timekeeper__time-dropdown-option {
-	color: var(--timekeeper-text) !important;
-	transition: all 0.2s ease !important;
+	color: var(--timekeeper-text);
+	transition: all 0.2s ease;
 }
 
 .react-timekeeper__time-dropdown-option:hover {
-	background: var(--timekeeper-hover) !important;
-	color: var(--timekeeper-hover-text) !important;
+	background: var(--timekeeper-hover);
+	color: var(--timekeeper-hover-text);
 }
 
 .react-timekeeper__time-dropdown-option--active {
-	background: var(--timekeeper-selected) !important;
-	color: var(--timekeeper-selected-text) !important;
+	background: var(--timekeeper-selected);
+	color: var(--timekeeper-selected-text);
 }
 
 .react-timekeeper__clock-hand {
-	background: var(--timekeeper-bg) !important;
+	background: var(--timekeeper-bg);
 }
 
 .react-timekeeper__clock-hand::after {
-	background: var(--timekeeper-bg) !important;
+	background: var(--timekeeper-bg);
 }
 
 .react-timekeeper__done-button {
-	background: var(--timekeeper-selected) !important;
-	color: var(--timekeeper-selected-text) !important;
-	border: none !important;
-	padding: 8px 16px !important;
-	border-radius: var(--radius) !important;
-	cursor: pointer !important;
-	font-weight: 500 !important;
-	transition: opacity 0.2s !important;
-	font-family: inherit !important;
+	background: var(--timekeeper-selected);
+	color: var(--timekeeper-selected-text);
+	border: none;
+	padding: 8px 16px;
+	border-radius: var(--radius);
+	cursor: pointer;
+	font-weight: 500;
+	transition: opacity 0.2s;
+	font-family: inherit;
 }
 
 .react-timekeeper__done-button:hover {
-	opacity: 0.9 !important;
+	opacity: 0.9;
 }
 
 .react-timekeeper__top-bar {
-	background: var(--timekeeper-bg) !important;
-	border-bottom: 1px solid var(--timekeeper-border) !important;
-	color: var(--timekeeper-text) !important;
+	background: var(--timekeeper-bg);
+	border-bottom: 1px solid var(--timekeeper-border);
+	color: var(--timekeeper-text);
 }
 
 .react-timekeeper__time-dropdown-button {
-	background: var(--timekeeper-muted) !important;
-	color: var(--timekeeper-muted-text) !important;
-	border: 1px solid var(--timekeeper-border) !important;
-	border-radius: var(--radius) !important;
-	transition: all 0.2s ease !important;
+	background: var(--timekeeper-muted);
+	color: var(--timekeeper-muted-text);
+	border: 1px solid var(--timekeeper-border);
+	border-radius: var(--radius);
+	transition: all 0.2s ease;
 }
 
 .react-timekeeper__time-dropdown-button:hover {
-	background: var(--timekeeper-hover) !important;
-	color: var(--timekeeper-hover-text) !important;
+	background: var(--timekeeper-hover);
+	color: var(--timekeeper-hover-text);
 }
 
 .react-timekeeper__meridiem-wrapper {
-	background: var(--timekeeper-bg) !important;
+	background: var(--timekeeper-bg);
 }
 
 .react-timekeeper__meridiem {
-	background: var(--timekeeper-muted) !important;
-	color: var(--timekeeper-muted-text) !important;
-	border: 1px solid var(--timekeeper-border) !important;
-	border-radius: var(--radius) !important;
-	transition: all 0.2s ease !important;
+	background: var(--timekeeper-muted);
+	color: var(--timekeeper-muted-text);
+	border: 1px solid var(--timekeeper-border);
+	border-radius: var(--radius);
+	transition: all 0.2s ease;
 }
 
 .react-timekeeper__meridiem--active {
-	background: var(--timekeeper-selected) !important;
-	color: var(--timekeeper-selected-text) !important;
+	background: var(--timekeeper-selected);
+	color: var(--timekeeper-selected-text);
 }
 
 .react-timekeeper__meridiem:hover {
-	background: var(--timekeeper-hover) !important;
-	color: var(--timekeeper-hover-text) !important;
+	background: var(--timekeeper-hover);
+	color: var(--timekeeper-hover-text);
 }
 
 /* Dark theme specific adjustments */

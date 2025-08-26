@@ -41,13 +41,13 @@
 	-webkit-backface-visibility: hidden;
 	will-change: transform, box-shadow, background-color, border-color;
 	perspective: 1000px;
-	z-index: var(--z-fc-day-cell-base) !important;
+	z-index: var(--z-fc-day-cell-base);
 }
 
 /* Enhanced frame styling for multimonth view specifically */
 .fc-multimonth .fc-daygrid-day-frame {
-	z-index: var(--z-fc-day-cell-base) !important;
-	position: relative !important;
+	z-index: var(--z-fc-day-cell-base);
+	position: relative;
 }
 
 /* Future days default gradient */
@@ -78,25 +78,25 @@
 .fc-multimonth .fc-daygrid-day-top,
 .fc-daygrid .fc-daygrid-day-bg,
 .fc-daygrid .fc-daygrid-day-top {
-	position: absolute !important;
-	top: 0 !important;
-	left: 0 !important;
-	right: 0 !important;
-	bottom: 0 !important;
-	border-radius: calc(var(--radius) * 0.75) !important;
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	border-radius: calc(var(--radius) * 0.75);
 	overflow: hidden;
-	background: transparent !important;
+	background: transparent;
 }
 
 /* Day top specific styles */
 .fc-multimonth .fc-daygrid-day-top,
 .fc-daygrid .fc-daygrid-day-top {
-	position: static !important;
+	position: static;
 	display: flex;
 	flex-direction: row-reverse;
-	padding: 0.2em 0.3em !important;
-	font-size: 0.75em !important;
-	color: hsl(var(--muted-foreground)) !important;
+	padding: 0.2em 0.3em;
+	font-size: 0.75em;
+	color: hsl(var(--muted-foreground));
 }
 
 /* Day number styling */
@@ -108,7 +108,7 @@
 	font-weight: 500;
 	transition: transform 0.2s ease;
 	border-radius: var(--radius-sm);
-	font-size: 1.045em !important;
+	font-size: 1.045em;
 	line-height: 1.2;
 	display: inline-block;
 }
@@ -126,14 +126,14 @@
 .fc-daygrid .fc-daygrid-day-events:after,
 .fc-daygrid .fc-daygrid-event-harness:before,
 .fc-daygrid .fc-daygrid-event-harness:after {
-	display: none !important;
-	content: none !important;
+	display: none;
+	content: none;
 }
 
 /* Event container - minimal overrides only */
 .fc-multimonth .fc-daygrid-day-events,
 .fc-daygrid .fc-daygrid-day-events {
-	margin-top: 0 !important;
+	margin-top: 0;
 	z-index: var(--z-fc-day-cell-content);
-	overflow: visible !important;
+	overflow: visible;
 }

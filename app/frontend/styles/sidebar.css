@@ -319,5 +319,5 @@
 	display: flex;
 	flex-direction: column;
 	gap: 1px; /* Minimal gap between items */
-	z-index: var(--z-sidebar) !important;
+	z-index: var(--z-sidebar);
 }

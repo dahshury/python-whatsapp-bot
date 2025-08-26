@@ -9,12 +9,12 @@ body > .column-menu,
 body > .formatting-menu,
 body > #column-menu,
 body > #formatting-menu {
-	background-color: var(--gdg-menu-bg) !important;
-	border: 1px solid var(--gdg-menu-border) !important;
-	color: var(--gdg-menu-text) !important;
-	border-radius: var(--radius) !important;
-	box-shadow: var(--gdg-menu-shadow) !important;
-	font-family: var(--font-sans) !important;
+	background-color: var(--gdg-menu-bg);
+	border: 1px solid var(--gdg-menu-border);
+	color: var(--gdg-menu-text);
+	border-radius: var(--radius);
+	box-shadow: var(--gdg-menu-shadow);
+	font-family: var(--font-sans);
 }
 
 /* Menu Item Styles */
@@ -24,8 +24,8 @@ body > #formatting-menu {
 #formatting-menu .format-menu-item,
 body .column-menu .menu-item,
 body .formatting-menu .format-menu-item {
-	color: var(--gdg-menu-text) !important;
-	transition: background-color 0.15s ease !important;
+	color: var(--gdg-menu-text);
+	transition: background-color 0.15s ease;
 }
 
 .menu-item:hover,
@@ -34,16 +34,16 @@ body .formatting-menu .format-menu-item {
 #formatting-menu .format-menu-item:hover,
 body .column-menu .menu-item:hover,
 body .formatting-menu .format-menu-item:hover {
-	background-color: var(--gdg-menu-hover-bg) !important;
-	color: var(--gdg-menu-hover-text) !important;
+	background-color: var(--gdg-menu-hover-bg);
+	color: var(--gdg-menu-hover-text);
 }
 
 .menu-item.active,
 #column-menu .menu-item.active,
 body .column-menu .menu-item.active {
-	background-color: var(--gdg-menu-hover-bg) !important;
-	color: var(--gdg-menu-hover-text) !important;
-	opacity: 0.9 !important;
+	background-color: var(--gdg-menu-hover-bg);
+	color: var(--gdg-menu-hover-text);
+	opacity: 0.9;
 }
 
 /* Menu Divider */
@@ -51,122 +51,122 @@ body .column-menu .menu-item.active {
 #column-menu > div[style*="height: 1px"],
 body .column-menu > div[style*="height: 1px"],
 body #column-menu > div[style*="height: 1px"] {
-	background-color: var(--gdg-menu-border) !important;
-	opacity: 0.5 !important;
+	background-color: var(--gdg-menu-border);
+	opacity: 0.5;
 }
 
 /* Dropdown Cell Editor Styles */
 .gdg-d19meir1 select,
 .glide-data-grid-overlay-editor select,
 .click-outside-ignore select {
-	background-color: hsl(var(--card)) !important;
-	border: 1px solid hsl(var(--border)) !important;
-	color: hsl(var(--foreground)) !important;
-	border-radius: var(--radius-sm) !important;
-	padding: 4px 8px !important;
-	font-size: 13px !important;
-	font-family: var(--font-sans) !important;
-	outline: none !important;
-	cursor: pointer !important;
+	background-color: hsl(var(--card));
+	border: 1px solid hsl(var(--border));
+	color: hsl(var(--foreground));
+	border-radius: var(--radius-sm);
+	padding: 4px 8px;
+	font-size: 13px;
+	font-family: var(--font-sans);
+	outline: none;
+	cursor: pointer;
 }
 
 .gdg-d19meir1 select:focus,
 .glide-data-grid-overlay-editor select:focus,
 .click-outside-ignore select:focus {
-	border-color: hsl(var(--primary)) !important;
-	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+	border-color: hsl(var(--primary));
+	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 /* Dropdown Options */
 .gdg-d19meir1 option,
 .glide-data-grid-overlay-editor option,
 .click-outside-ignore option {
-	background-color: hsl(var(--popover)) !important;
-	color: hsl(var(--popover-foreground)) !important;
-	padding: 4px 8px !important;
+	background-color: hsl(var(--popover));
+	color: hsl(var(--popover-foreground));
+	padding: 4px 8px;
 }
 
 .gdg-d19meir1 option:hover,
 .glide-data-grid-overlay-editor option:hover,
 .click-outside-ignore option:hover {
-	background-color: hsl(var(--accent)) !important;
-	color: hsl(var(--accent-foreground)) !important;
+	background-color: hsl(var(--accent));
+	color: hsl(var(--accent-foreground));
 }
 
 /* React Select Dropdown Styles (if used) */
 [class*="react-select"] [class*="control"] {
-	background-color: hsl(var(--card)) !important;
-	border-color: hsl(var(--border)) !important;
-	color: hsl(var(--foreground)) !important;
-	min-height: 32px !important;
+	background-color: hsl(var(--card));
+	border-color: hsl(var(--border));
+	color: hsl(var(--foreground));
+	min-height: 32px;
 }
 
 [class*="react-select"] [class*="control"]:hover {
-	border-color: hsl(var(--border)) !important;
+	border-color: hsl(var(--border));
 }
 
 [class*="react-select"] [class*="control"][class*="focused"] {
-	border-color: hsl(var(--primary)) !important;
-	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+	border-color: hsl(var(--primary));
+	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 [class*="react-select"] [class*="menu"] {
-	background-color: hsl(var(--popover)) !important;
-	border: 1px solid hsl(var(--border)) !important;
-	box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1) !important;
+	background-color: hsl(var(--popover));
+	border: 1px solid hsl(var(--border));
+	box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
 }
 
 [class*="react-select"] [class*="option"] {
-	background-color: transparent !important;
-	color: hsl(var(--popover-foreground)) !important;
+	background-color: transparent;
+	color: hsl(var(--popover-foreground));
 }
 
 [class*="react-select"] [class*="option"][class*="focused"] {
-	background-color: hsl(var(--accent)) !important;
-	color: hsl(var(--accent-foreground)) !important;
+	background-color: hsl(var(--accent));
+	color: hsl(var(--accent-foreground));
 }
 
 [class*="react-select"] [class*="option"][class*="selected"] {
-	background-color: hsl(var(--primary)) !important;
-	color: hsl(var(--primary-foreground)) !important;
+	background-color: hsl(var(--primary));
+	color: hsl(var(--primary-foreground));
 }
 
 [class*="react-select"] [class*="singleValue"] {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 [class*="react-select"] [class*="placeholder"] {
-	color: hsl(var(--muted-foreground)) !important;
+	color: hsl(var(--muted-foreground));
 }
 
 [class*="react-select"] [class*="indicatorSeparator"] {
-	background-color: hsl(var(--border)) !important;
+	background-color: hsl(var(--border));
 }
 
 [class*="react-select"] [class*="dropdownIndicator"] {
-	color: hsl(var(--muted-foreground)) !important;
+	color: hsl(var(--muted-foreground));
 }
 
 [class*="react-select"] [class*="dropdownIndicator"]:hover {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 /* Menu Icon Colors */
 .column-menu svg,
 .formatting-menu svg {
-	color: currentColor !important;
-	opacity: 0.7 !important;
+	color: currentColor;
+	opacity: 0.7;
 }
 
 .menu-item:hover svg,
 .format-menu-item:hover svg {
-	opacity: 1 !important;
+	opacity: 1;
 }
 
 /* Invisible Bridge for Submenu */
 .column-menu + div[style*="position: fixed"] {
-	background: transparent !important;
-	pointer-events: auto !important;
+	background: transparent;
+	pointer-events: auto;
 }
 
 /* Override inline styles for menus */
@@ -174,9 +174,9 @@ body #column-menu > div[style*="height: 1px"] {
 [style*="background-color"][class*="menu"],
 #column-menu[style],
 #formatting-menu[style] {
-	background-color: var(--gdg-menu-bg) !important;
-	border-color: var(--gdg-menu-border) !important;
-	color: var(--gdg-menu-text) !important;
+	background-color: var(--gdg-menu-bg);
+	border-color: var(--gdg-menu-border);
+	color: var(--gdg-menu-text);
 }
 
 /* Override inline styles for menu items */
@@ -184,20 +184,20 @@ body #column-menu > div[style*="height: 1px"] {
 [style*="background-color"][class*="menu-item"],
 .menu-item[style],
 .format-menu-item[style] {
-	color: var(--gdg-menu-text) !important;
+	color: var(--gdg-menu-text);
 }
 
 .menu-item[style]:hover,
 .format-menu-item[style]:hover {
-	background-color: var(--gdg-menu-hover-bg) !important;
-	color: var(--gdg-menu-hover-text) !important;
+	background-color: var(--gdg-menu-hover-bg);
+	color: var(--gdg-menu-hover-text);
 }
 
 /* Native select dropdown styling */
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-	-webkit-text-fill-color: hsl(var(--foreground)) !important;
-	-webkit-box-shadow: 0 0 0px 1000px hsl(var(--card)) inset !important;
-	background-color: hsl(var(--card)) !important;
+	-webkit-text-fill-color: hsl(var(--foreground));
+	-webkit-box-shadow: 0 0 0px 1000px hsl(var(--card)) inset;
+	background-color: hsl(var(--card));
 }

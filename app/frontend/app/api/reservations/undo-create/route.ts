@@ -40,12 +40,16 @@ export async function POST(request: Request) {
 				{ status: 500 },
 			);
 		}
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error("Error in /api/reservations/undo-create API:", error);
+		const errorMessage =
+			error instanceof Error
+				? error.message
+				: "Internal server error during undo create.";
 		return NextResponse.json(
 			{
 				success: false,
-				message: error.message || "Internal server error during undo create.",
+				message: errorMessage,
 			},
 			{ status: 500 },
 		);

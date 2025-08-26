@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { TooltipData } from "../core/types";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 
@@ -19,7 +19,10 @@ const DEFAULT_CONFIG: TooltipConfig = {
 };
 
 export function useAdvancedTooltips(config: Partial<TooltipConfig> = {}) {
-	const fullConfig = { ...DEFAULT_CONFIG, ...config };
+	const fullConfig = React.useMemo(
+		() => ({ ...DEFAULT_CONFIG, ...config }),
+		[config],
+	);
 	const [tooltipData, setTooltipData] = useState<TooltipData | null>(null);
 	const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const containerRef = useRef<HTMLElement | null>(null);
@@ -184,7 +187,7 @@ function formatTooltipContent(
 	row: number,
 	col: number,
 ): string {
-	const lines = [];
+	const lines = [] as string[];
 
 	lines.push(`Column: ${columnName}`);
 	lines.push(`Row: ${row + 1}, Col: ${col + 1}`);

@@ -1,4 +1,4 @@
-import type { GridColumn } from "@glideapps/glide-data-grid";
+import type { GridCell, GridColumn } from "@glideapps/glide-data-grid";
 import React from "react";
 import { GridDataService, type SortState } from "../services/GridDataService";
 
@@ -8,7 +8,7 @@ interface UseGridDataOperationsProps {
 	numRows: number;
 	displayColumns: GridColumn[];
 	visibleColumnIndices: (number | undefined)[];
-	getRawCellContent: (col: number, row: number) => any;
+	getRawCellContent: (col: number, row: number) => GridCell;
 }
 
 export const useGridDataOperations = ({

@@ -7,8 +7,8 @@ import * as ReactDOM from "react-dom";
 import TimeKeeper from "react-timekeeper";
 import { useClickOutsideIgnore } from "./hooks/useClickOutsideIgnore";
 import { useTimekeeperEditor } from "./hooks/useTimekeeperEditor";
-// Import our refactored modules
 import type {
+	TimeKeeperData,
 	TimekeeperCell,
 	TimekeeperCellProps,
 } from "./models/TimekeeperCellTypes";
@@ -27,11 +27,27 @@ const ClockIcon = () => (
 		fill="none"
 		stroke="currentColor"
 		strokeWidth="2"
+		role="img"
+		aria-label="Clock icon"
 	>
+		<title>Clock</title>
 		<circle cx="12" cy="12" r="10" />
 		<polyline points="12 6 12 12 16 14" />
 	</svg>
 );
+
+// Narrow unknown to TimeKeeperData without using any
+function isTimeKeeperData(val: unknown): val is TimeKeeperData {
+	if (val === null || typeof val !== "object") return false;
+	const v = val as Record<string, unknown>;
+	const isOptionalString = (x: unknown) =>
+		x === undefined || typeof x === "string";
+	return (
+		isOptionalString(v.formatted12) &&
+		isOptionalString(v.formatted24) &&
+		isOptionalString(v.time)
+	);
+}
 
 // TimeKeeper Renderer Component
 const TimeKeeperRenderer = ({
@@ -43,13 +59,23 @@ const TimeKeeperRenderer = ({
 	data,
 	timekeeperError,
 	setTimekeeperError,
-}: any) => {
+}: {
+	timeRestrictionService?: unknown;
+	memoizedTimeValue?: string;
+	staticTimeKeeperKey?: string;
+	handleTimeChange?: (data: unknown) => void;
+	handleDoneClick: () => void;
+	data?: unknown;
+	timekeeperError?: string;
+	setTimekeeperError: (error?: string) => void;
+}) => {
 	if (timekeeperError) {
 		return (
 			<div className={timekeeperClassNames.errorContainer}>
 				<p>Time picker unavailable</p>
 				<button
-					onClick={() => setTimekeeperError(null)}
+					type="button"
+					onClick={() => setTimekeeperError(undefined)}
 					className={timekeeperClassNames.retryButton}
 				>
 					Retry
@@ -61,7 +87,8 @@ const TimeKeeperRenderer = ({
 	try {
 		// Validate all props before passing to TimeKeeper
 		const validatedTime = memoizedTimeValue;
-		const validatedHour24Mode = Boolean(data.use24Hour);
+		const timekeeperData = data as { use24Hour?: boolean; selectedDate?: Date };
+		const validatedHour24Mode = Boolean(timekeeperData.use24Hour);
 
 		if (!validatedTime || typeof validatedTime !== "string") {
 			throw new Error("Invalid time value for TimeKeeper");
@@ -69,11 +96,13 @@ const TimeKeeperRenderer = ({
 
 		// Debug logging
 		console.log("TimeKeeper restrictions:", {
-			selectedDate: data.selectedDate,
-			dateString: data.selectedDate
-				? data.selectedDate.toDateString()
+			selectedDate: timekeeperData.selectedDate,
+			dateString: timekeeperData.selectedDate
+				? timekeeperData.selectedDate.toDateString()
 				: "No date",
-			dayOfWeek: data.selectedDate ? data.selectedDate.getDay() : "No date",
+			dayOfWeek: timekeeperData.selectedDate
+				? timekeeperData.selectedDate.getDay()
+				: "No date",
 			hasCustomValidator: !!timeRestrictionService,
 			cellData: data,
 		});
@@ -84,7 +113,7 @@ const TimeKeeperRenderer = ({
 			: undefined;
 
 		if (timeRestrictionService) {
-			const dayOfWeek = data.selectedDate?.getDay();
+			const dayOfWeek = timekeeperData.selectedDate?.getDay();
 			if (dayOfWeek === 6) {
 				console.log(
 					"Using time restrictions for Saturday - 4PM-8PM enabled, 9PM+ disabled",
@@ -106,7 +135,8 @@ const TimeKeeperRenderer = ({
 				switchToMinuteOnHourSelect={true}
 				closeOnMinuteSelect={false}
 				doneButton={(timeData) => (
-					<div
+					<button
+						type="button"
 						className={`${timekeeperClassNames.doneButton} ${timekeeperClassNames.clickOutsideIgnore}`}
 						onClick={() => {
 							console.log("Custom done button clicked!", timeData);
@@ -114,7 +144,7 @@ const TimeKeeperRenderer = ({
 						}}
 					>
 						Done
-					</div>
+					</button>
 				)}
 				coarseMinutes={120}
 				disabledTimeRange={disabledTimeRange}
@@ -129,7 +159,8 @@ const TimeKeeperRenderer = ({
 			<div className={timekeeperClassNames.errorContainer}>
 				<p>Error: {errorMessage}</p>
 				<button
-					onClick={() => setTimekeeperError(null)}
+					type="button"
+					onClick={() => setTimekeeperError(undefined)}
 					className={timekeeperClassNames.retryButton}
 				>
 					Retry
@@ -143,7 +174,7 @@ const TimeKeeperRenderer = ({
 const renderer: CustomRenderer<TimekeeperCell> = {
 	kind: GridCellKind.Custom,
 	isMatch: (c): c is TimekeeperCell =>
-		(c.data as any).kind === "timekeeper-cell",
+		(c.data as { kind?: string }).kind === "timekeeper-cell",
 
 	draw: (args, cell) => {
 		const { displayTime } = cell.data;
@@ -184,10 +215,23 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 				setTimekeeperError,
 			} = useTimekeeperEditor({
 				data,
-				onChange: props.onChange,
-				onFinishedEditing: props.onFinishedEditing,
-				value: props.value,
+				onChange: props.onChange as unknown as (
+					value: TimekeeperCellProps,
+				) => void,
+				onFinishedEditing: props.onFinishedEditing as unknown as (
+					value: TimekeeperCellProps,
+				) => void,
+				value: props.value as unknown as TimekeeperCellProps,
 			});
+
+			// Create wrapper functions to handle type mismatches
+			const handleTimeChangeWrapper = (timeData: unknown) => {
+				if (isTimeKeeperData(timeData)) {
+					handleTimeChange(timeData);
+				}
+			};
+
+			const timekeeperErrorValue = timekeeperError || undefined;
 
 			// Use click outside ignore hook
 			useClickOutsideIgnore({
@@ -253,11 +297,13 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 									timeRestrictionService={timeRestrictionService}
 									memoizedTimeValue={memoizedTimeValue}
 									staticTimeKeeperKey={staticTimeKeeperKey}
-									handleTimeChange={handleTimeChange}
+									handleTimeChange={handleTimeChangeWrapper}
 									handleDoneClick={handleDoneClick}
 									data={data}
-									timekeeperError={timekeeperError}
-									setTimekeeperError={setTimekeeperError}
+									timekeeperError={timekeeperErrorValue}
+									setTimekeeperError={(e?: string) =>
+										setTimekeeperError(e ?? null)
+									}
 								/>
 							</div>,
 							document.body,
@@ -268,10 +314,8 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 	}),
 
 	onPaste: (val, data) => {
-		// Try to parse pasted time
 		if (TIME_REGEX_24.test(val) || TIME_REGEX_12.test(val)) {
 			const date = new Date(1970, 0, 1);
-
 			if (TIME_REGEX_24.test(val)) {
 				const [hours, minutes] = val.split(":").map(Number);
 				date.setHours(hours, minutes, 0, 0);
@@ -281,24 +325,19 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 					let hours = parseInt(match[1], 10);
 					const minutes = parseInt(match[2], 10);
 					const isPM = match[3].toLowerCase() === "pm";
-
-					if (hours === 12 && !isPM) {
-						hours = 0;
-					} else if (hours !== 12 && isPM) {
-						hours += 12;
-					}
-
+					if (hours === 12 && !isPM) hours = 0;
+					else if (hours !== 12 && isPM) hours += 12;
 					date.setHours(hours, minutes, 0, 0);
 				}
 			}
-
+			const displayTime = val;
 			return {
-				...data,
+				...(data as TimekeeperCellProps),
+				kind: "timekeeper-cell",
 				time: date,
-				displayTime: val,
+				displayTime,
 			};
 		}
-
 		return undefined;
 	},
 };

@@ -8,9 +8,8 @@ import {
 	type Item,
 } from "@glideapps/glide-data-grid";
 import { useTheme } from "next-themes";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { createGlideTheme } from "@/components/glide_custom_cells/components/utils/streamlitGlideTheme";
-import { useSettings } from "@/lib/settings-context";
 import type { Reservation } from "@/types/calendar";
 
 interface CustomerReservationsGridProps {
@@ -23,7 +22,6 @@ export function CustomerReservationsGrid({
 	isRTL,
 }: CustomerReservationsGridProps) {
 	const { theme: currentTheme } = useTheme();
-	const { theme: styleTheme } = useSettings(); // Get the style theme (e.g., "theme-ghibli-studio")
 	const isDarkMode = currentTheme === "dark";
 
 	// Container ref for measuring width
@@ -106,7 +104,7 @@ export function CustomerReservationsGrid({
 		];
 	}, [isRTL, containerWidth]);
 
-	const formatTime = (timeStr: string) => {
+	const formatTime = useCallback((timeStr: string) => {
 		try {
 			// Handle various time formats
 			if (timeStr.includes("AM") || timeStr.includes("PM")) {
@@ -114,36 +112,42 @@ export function CustomerReservationsGrid({
 			}
 			// Convert 24-hour format to 12-hour format
 			const [hours, minutes] = timeStr.split(":");
-			const hour = parseInt(hours);
+			const hour = parseInt(hours, 10);
 			const ampm = hour >= 12 ? "PM" : "AM";
 			const hour12 = hour % 12 || 12;
 			return `${hour12}:${minutes} ${ampm}`;
 		} catch {
 			return timeStr;
 		}
-	};
+	}, []);
 
-	const formatDate = (dateStr: string) => {
-		try {
-			const date = new Date(dateStr);
-			return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
-				month: "short",
-				day: "numeric",
-			});
-		} catch {
-			return dateStr;
-		}
-	};
+	const formatDate = useCallback(
+		(dateStr: string) => {
+			try {
+				const date = new Date(dateStr);
+				return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+					month: "short",
+					day: "numeric",
+				});
+			} catch {
+				return dateStr;
+			}
+		},
+		[isRTL],
+	);
 
-	const getServiceType = (reservation: Reservation) => {
-		// Map reservation types to display names - same as drawer implementation
-		const typeValue = reservation.type || 0;
-		if (isRTL) {
-			return typeValue === 0 ? "كشف" : "مراجعة";
-		} else {
-			return typeValue === 0 ? "Check-up" : "Follow-up";
-		}
-	};
+	const getServiceType = useCallback(
+		(reservation: Reservation) => {
+			// Map reservation types to display names - same as drawer implementation
+			const typeValue = reservation.type || 0;
+			if (isRTL) {
+				return typeValue === 0 ? "كشف" : "مراجعة";
+			} else {
+				return typeValue === 0 ? "Check-up" : "Follow-up";
+			}
+		},
+		[isRTL],
+	);
 
 	const getCellContent = React.useCallback(
 		(cell: Item): GridCell => {

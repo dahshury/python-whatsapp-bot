@@ -71,13 +71,13 @@ export function DataTableEditor({
 	isRTL,
 	slotDurationHours,
 	onSave,
-	onEventClick,
+	onEventClick: _onEventClick,
 	freeRoam = false,
 }: DataTableEditorProps) {
 	const [editingEvents, setEditingEvents] = useState<CalendarEvent[]>([]);
 	const [isDirty, setIsDirty] = useState(false);
 	const { theme } = useTheme();
-	const { theme: styleTheme } = useSettings(); // Get the style theme (e.g., "theme-ghibli-studio")
+	const { theme: _styleTheme } = useSettings(); // Get the style theme (e.g., "theme-ghibli-studio")
 	const [gridKey, setGridKey] = useState(0);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const [containerWidth, setContainerWidth] = useState(0);
@@ -100,7 +100,7 @@ export function DataTableEditor({
 		const rowHeight = 35; // px per row
 		const headerHeight = 60; // px for DataEditor header row
 
-		let calculatedHeight;
+		let calculatedHeight: number;
 		if (editingEvents.length === 0) {
 			// Height for header + single trailing row if no data
 			calculatedHeight = headerHeight + rowHeight;
@@ -162,7 +162,7 @@ export function DataTableEditor({
 					const rangeStartDay = new Date(selectedDateRange.start);
 					rangeStartDay.setHours(0, 0, 0, 0);
 
-					let rangeEndDay;
+					let rangeEndDay: Date;
 					if (
 						selectedDateRange.end &&
 						selectedDateRange.end !== selectedDateRange.start
@@ -208,16 +208,16 @@ export function DataTableEditor({
 			start: selectedDateRange?.start
 				? `${selectedDateRange.start}T09:00:00`
 				: (() => {
-					// Build local timestamp without timezone to avoid UTC shift in calendar
-					const now = new Date();
-					const yyyy = now.getFullYear();
-					const mm = String(now.getMonth() + 1).padStart(2, "0");
-					const dd = String(now.getDate()).padStart(2, "0");
-					const HH = String(now.getHours()).padStart(2, "0");
-					const MM = String(now.getMinutes()).padStart(2, "0");
-					const SS = String(now.getSeconds()).padStart(2, "0");
-					return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
-				})(),
+						// Build local timestamp without timezone to avoid UTC shift in calendar
+						const now = new Date();
+						const yyyy = now.getFullYear();
+						const mm = String(now.getMonth() + 1).padStart(2, "0");
+						const dd = String(now.getDate()).padStart(2, "0");
+						const HH = String(now.getHours()).padStart(2, "0");
+						const MM = String(now.getMinutes()).padStart(2, "0");
+						const SS = String(now.getSeconds()).padStart(2, "0");
+						return `${yyyy}-${mm}-${dd}T${HH}:${MM}:${SS}`;
+					})(),
 			type: "reservation",
 			extendedProps: {
 				customerName: "",
@@ -552,14 +552,24 @@ export function DataTableEditor({
 	const modalHeight = `${Math.min(gridHeight + 200, typeof window !== "undefined" ? window.innerHeight * 0.95 : 800)}px`;
 
 	return (
-		<div
-			className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60"
+		<button
+			type="button"
+			className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 border-none bg-transparent cursor-pointer"
 			onClick={() => handleClose(false)}
+			aria-label={isRTL ? "إغلاق المحرر" : "Close editor"}
 		>
 			<div
+				role="dialog"
 				className="bg-background rounded-lg shadow-lg flex flex-col p-4 w-[90vw] max-w-5xl max-h-[95vh]"
 				style={{ height: modalHeight }}
 				onClick={(e) => e.stopPropagation()}
+				onKeyDown={(e) => {
+					e.stopPropagation();
+					if (e.key === "Escape") {
+						handleClose(false);
+					}
+				}}
+				tabIndex={-1}
 			>
 				{/* Header */}
 				<div className="px-0 pb-4">
@@ -618,26 +628,27 @@ export function DataTableEditor({
 					</Button>
 				</div>
 			</div>
-		</div>
+		</button>
 	);
 }
 
 export function DataTableEditorContent({
 	dataSource,
-	isRTL,
-	onSave,
-	canSave,
-	isSaving,
+	isRTL: _isRTL,
+	onSave: _onSave,
+	canSave: _canSave,
+	isSaving: _isSaving,
 	dataProviderRef,
 	onDataProviderReady,
 }: DataTableEditorContentProps) {
 	const [_isGridReady, setIsGridReady] = React.useState(false);
 
 	const handleDataProviderReady = React.useCallback(
-		(provider: DataProvider) => {
-			dataProviderRef.current = provider;
+		(provider: unknown) => {
+			const dp = provider as DataProvider;
+			dataProviderRef.current = dp;
 			setIsGridReady(true);
-			onDataProviderReady?.(provider);
+			onDataProviderReady?.(dp);
 		},
 		[dataProviderRef, onDataProviderReady],
 	);
@@ -647,7 +658,11 @@ export function DataTableEditorContent({
 			dataSource={dataSource}
 			showThemeToggle={false}
 			fullWidth={true}
-			theme={isRTL ? "lightRTL" : "light"}
+			theme={
+				createGlideTheme("light") as unknown as Partial<
+					import("@glideapps/glide-data-grid").Theme
+				>
+			}
 			isDarkMode={false}
 			onReady={() => setIsGridReady(true)}
 			onDataProviderReady={handleDataProviderReady}

@@ -1,6 +1,12 @@
+import type { EventChangeArg } from "@fullcalendar/core";
 import type React from "react";
+import type { CalendarCallbacks } from "@/lib/calendar-callbacks";
 import { calculateCalendarHeight } from "@/lib/calendar-view-utils";
-import type { CalendarEvent } from "@/types/calendar";
+import type {
+	CalendarEvent,
+	ConversationMessage,
+	Reservation,
+} from "@/types/calendar";
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
 import { CalendarEventContextMenu } from "./calendar-event-context-menu";
 import { CalendarHoverCardPortal } from "./calendar-hover-card-portal";
@@ -19,7 +25,7 @@ interface CalendarMainContentProps {
 	slotTimesKey: number;
 	calendarHeight: number | "auto";
 	isVacationDate: (date: string) => boolean;
-	callbacks: any;
+	callbacks: CalendarCallbacks;
 	contextMenu: {
 		contextMenuEvent: CalendarEvent | null;
 		contextMenuPosition: { x: number; y: number } | null;
@@ -31,26 +37,39 @@ interface CalendarMainContentProps {
 	};
 	hoverCard: {
 		hoveredEventId: string | null;
-		hoverCardPosition: any;
+		hoverCardPosition: {
+			x: number;
+			y: number;
+			preferBottom?: boolean;
+			eventHeight?: number;
+		} | null;
 		isHoverCardMounted: boolean;
 		isHoverCardClosing: boolean;
 		onHoverCardMouseEnter: () => void;
 		onHoverCardMouseLeave: () => void;
-		handleEventMouseEnter: (info: any) => void;
-		handleEventMouseLeave: (info: any) => void;
+		handleEventMouseEnter: (info: {
+			event?: unknown;
+			el: HTMLElement;
+			jsEvent?: MouseEvent;
+		}) => void;
+		handleEventMouseLeave: (info: {
+			event?: unknown;
+			el?: HTMLElement;
+			jsEvent?: MouseEvent;
+		}) => void;
 		closeHoverCardImmediately: () => void;
 	};
 	dragHandlers: {
 		isDragging: boolean;
-		handleEventDragStart: (info: any) => void;
+		handleEventDragStart: (info: unknown) => void;
 		handleEventDragStop: () => void;
 	};
-	conversations: any;
-	reservations: any;
+	conversations: Record<string, ConversationMessage[]>;
+	reservations: Record<string, Reservation[]>;
 	events: CalendarEvent[];
-	dataTableEditor: any;
+	dataTableEditor: { handleEditReservation: (event: CalendarEvent) => void };
 	handleOpenConversation: (eventId: string) => void;
-	handleEventChange: (info: any) => void;
+	handleEventChange: (eventId: string, updates: unknown) => void;
 	handleCancelReservation: (eventId: string) => void;
 	handleViewDetails: (eventId: string) => void;
 	setCurrentView: (view: string) => void;
@@ -108,15 +127,30 @@ export function CalendarMainContent({
 				onSelect={callbacks.select}
 				onEventClick={(info) => {
 					const waId =
-						(info as any)?.event?.extendedProps?.wa_id ||
-						(info as any)?.event?.extendedProps?.waId ||
+						(
+							info as {
+								event?: { extendedProps?: { wa_id?: string; waId?: string } };
+							}
+						)?.event?.extendedProps?.wa_id ||
+						(
+							info as {
+								event?: { extendedProps?: { wa_id?: string; waId?: string } };
+							}
+						)?.event?.extendedProps?.waId ||
 						info.event.id;
 					handleOpenConversation(waId);
 					if (callbacks.eventClick) {
 						callbacks.eventClick(info);
 					}
 				}}
-				onEventChange={handleEventChange}
+				onEventChange={(info: EventChangeArg) => {
+					try {
+						const id = String(info?.event?.id || "");
+						if (id) handleEventChange(id, info);
+					} catch {
+						// ignore
+					}
+				}}
 				onViewChange={onViewChange}
 				onContextMenu={contextMenu.handleContextMenu}
 				onViewDidMount={(info) => {

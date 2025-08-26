@@ -16,7 +16,7 @@ export interface SortState {
 
 export function useColumnSorting(
 	columns: BaseColumnProps[],
-	data: any[][],
+	data: unknown[][],
 	maxSortRules: number = 3,
 ) {
 	const [sortState, setSortState] = useState<SortState>({
@@ -91,7 +91,7 @@ export function useColumnSorting(
 	);
 
 	const compareValues = useCallback(
-		(a: any, b: any, direction: SortDirection): number => {
+		(a: unknown, b: unknown, direction: SortDirection): number => {
 			const aStr = toSafeString(a).toLowerCase();
 			const bStr = toSafeString(b).toLowerCase();
 
@@ -105,8 +105,8 @@ export function useColumnSorting(
 			}
 
 			// Date comparison
-			const aDate = new Date(a);
-			const bDate = new Date(b);
+			const aDate = new Date(String(a));
+			const bDate = new Date(String(b));
 
 			if (!Number.isNaN(aDate.getTime()) && !Number.isNaN(bDate.getTime())) {
 				const result = aDate.getTime() - bDate.getTime();

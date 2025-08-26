@@ -2,13 +2,13 @@
 
 /* Performance optimizations */
 .fc {
-	will-change: auto !important;
+	will-change: auto;
 }
 
 .fc-scrollgrid {
-	will-change: auto !important;
+	will-change: auto;
 }
 
 .fc-view-harness {
-	will-change: auto !important;
+	will-change: auto;
 }

@@ -95,7 +95,7 @@ const hideNativeDatePickerCSS = `
 const renderer: CustomRenderer<TempusDateCell> = {
 	kind: GridCellKind.Custom,
 	isMatch: (c): c is TempusDateCell =>
-		(c.data as any).kind === "tempus-date-cell",
+		(c.data as { kind?: string }).kind === "tempus-date-cell",
 
 	draw: (args, cell) => {
 		const { displayDate } = cell.data;
@@ -117,7 +117,11 @@ const renderer: CustomRenderer<TempusDateCell> = {
 			const inputRef = React.useRef<HTMLInputElement>(null);
 			const wrapperRef = React.useRef<HTMLDivElement>(null);
 			const iconButtonRef = React.useRef<HTMLButtonElement>(null);
-			const [tempusInstance, setTempusInstance] = React.useState<any>(null);
+			const [tempusInstance, setTempusInstance] = React.useState<{
+				dates: { setValue: (target?: unknown, index?: number) => void };
+				toggle?: () => void;
+				dispose?: () => void;
+			} | null>(null);
 
 			// Get vacation periods from context
 			const { vacationPeriods } = useVacation();
@@ -143,29 +147,32 @@ const renderer: CustomRenderer<TempusDateCell> = {
 			}, []);
 
 			// Helper function to format display dates - moved here to avoid temporal dead zone
-			const formatDisplayDate = React.useCallback((date: Date, format?: string): string => {
-				if (!date) return "";
+			const formatDisplayDate = React.useCallback(
+				(date: Date, format?: string): string => {
+					if (!date) return "";
 
-				switch (format) {
-					case "time":
-						return date.toLocaleTimeString("en-US", {
-							hour: "2-digit",
-							minute: "2-digit",
-							hour12: true,
-						});
-					case "datetime":
-						return date.toLocaleString("en-GB", {
-							day: "2-digit",
-							month: "2-digit",
-							year: "numeric",
-							hour: "2-digit",
-							minute: "2-digit",
-							hour12: true,
-						});
-					default:
-						return date.toLocaleDateString("en-GB");
-				}
-			}, []);
+					switch (format) {
+						case "time":
+							return date.toLocaleTimeString("en-US", {
+								hour: "2-digit",
+								minute: "2-digit",
+								hour12: true,
+							});
+						case "datetime":
+							return date.toLocaleString("en-GB", {
+								day: "2-digit",
+								month: "2-digit",
+								year: "numeric",
+								hour: "2-digit",
+								minute: "2-digit",
+								hour12: true,
+							});
+						default:
+							return date.toLocaleDateString("en-GB");
+					}
+				},
+				[],
+			);
 
 			const handleIconClick = React.useCallback(
 				async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -182,7 +189,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 					// Don't reinitialize if already initialized
 					if (tempusInstance) {
 						try {
-							tempusInstance.toggle();
+							tempusInstance.toggle?.();
 						} catch (error) {
 							console.warn("Failed to toggle Tempus Dominus widget:", error);
 						}
@@ -259,7 +266,16 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							stepping: 120,
 						};
 
-						const instance = new TempusDominus(inputRef.current!, options);
+						const inputElement = inputRef.current;
+						if (!inputElement) return;
+						const instance = new TempusDominus(
+							inputElement,
+							options,
+						) as unknown as {
+							dates: { setValue: (target?: unknown, index?: number) => void };
+							toggle?: () => void;
+							dispose?: () => void;
+						};
 						setTempusInstance(instance);
 
 						// Force the widget to be appended to body if it's not already
@@ -287,13 +303,13 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						const markWidgetSafe = (w: HTMLElement) => {
 							if (!w.classList.contains("click-outside-ignore")) {
 								w.classList.add("click-outside-ignore");
-								w.querySelectorAll("*").forEach((el) =>
-									(el as HTMLElement).classList.add("click-outside-ignore"),
-								);
+								w.querySelectorAll("*").forEach((el) => {
+									(el as HTMLElement).classList.add("click-outside-ignore");
+								});
 							}
 
 							// Continuously ensure any new children are marked so overlay's click-outside logic ignores them.
-							if (!(w as any)._glideOutsidePatch) {
+							if (!(w as { _glideOutsidePatch?: boolean })._glideOutsidePatch) {
 								const ensureIgnored = (node: HTMLElement) => {
 									if (!node.classList.contains("click-outside-ignore")) {
 										node.classList.add("click-outside-ignore");
@@ -324,8 +340,18 @@ const renderer: CustomRenderer<TempusDateCell> = {
 								});
 								mo.observe(w, { childList: true, subtree: true });
 
-								(w as any)._glideOutsidePatch = true;
-								(w as any)._glideOutsideObserver = mo;
+								(
+									w as {
+										_glideOutsidePatch?: boolean;
+										_glideOutsideObserver?: MutationObserver;
+									}
+								)._glideOutsidePatch = true;
+								(
+									w as {
+										_glideOutsidePatch?: boolean;
+										_glideOutsideObserver?: MutationObserver;
+									}
+								)._glideOutsideObserver = mo;
 							}
 						};
 
@@ -336,12 +362,20 @@ const renderer: CustomRenderer<TempusDateCell> = {
 
 								// Method 1: Look for the widget in the instance
 								try {
-									if ((instance as any).display?.widget) {
-										widget = (instance as any).display.widget;
-									} else if ((instance as any).popover?.tip) {
-										widget = (instance as any).popover.tip;
-									} else if ((instance as any)._widget) {
-										widget = (instance as any)._widget;
+									if (
+										(instance as { display?: { widget?: Element } }).display
+											?.widget
+									) {
+										widget = (instance as { display?: { widget?: Element } })
+											.display?.widget as HTMLElement;
+									} else if (
+										(instance as { popover?: { tip?: Element } }).popover?.tip
+									) {
+										widget = (instance as { popover?: { tip?: Element } })
+											.popover?.tip as HTMLElement;
+									} else if ((instance as { _widget?: Element })._widget) {
+										widget = (instance as { _widget?: Element })
+											._widget as HTMLElement;
 									}
 								} catch (_e) {
 									// Silently fail
@@ -491,7 +525,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						};
 
 						// Handle show event for animations
-						const handleShow = (_e: any) => {
+						const handleShow = (_e: Event) => {
 							setTimeout(() => {
 								const widgets = document.querySelectorAll(
 									'.tempus-dominus-widget, [class*="tempus-dominus"]',
@@ -522,7 +556,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						};
 
 						// Subscribe to date change events
-						const handleDateChange = (e: any) => {
+						const handleDateChange = (e: { date?: Date }) => {
 							try {
 								if (e.date) {
 									const jsDate = new Date(e.date.valueOf());
@@ -535,7 +569,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 										},
 									} as typeof props.value;
 									props.onChange(newCell);
-								} else if (e.isClear) {
+								} else if ((e as { isClear?: boolean })?.isClear) {
 									const cleared = {
 										...props.value,
 										data: { ...data, date: undefined, displayDate: "" },
@@ -548,7 +582,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						};
 
 						// Subscribe to hide event - this fires when picker closes
-						const handleHide = (e: any) => {
+						const handleHide = (e: Event) => {
 							try {
 								if (
 									data.format === "time" &&
@@ -561,7 +595,9 @@ const renderer: CustomRenderer<TempusDateCell> = {
 
 								animateWidget("hide");
 
-								const selectedDates = instance?.dates?.picked;
+								const selectedDates = (
+									instance as { dates?: { picked?: Date[] } }
+								)?.dates?.picked;
 								if (
 									selectedDates &&
 									Array.isArray(selectedDates) &&
@@ -589,20 +625,32 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						};
 
 						// Subscribe to events
-						let showSubscription, changeSubscription, hideSubscription;
+						let showSubscription: { unsubscribe: () => void } | undefined,
+							changeSubscription: { unsubscribe: () => void } | undefined,
+							hideSubscription: { unsubscribe: () => void } | undefined;
+
+						type TempusDominusInstance = {
+							subscribe?: (
+								evt: unknown,
+								handler: unknown,
+							) => { unsubscribe: () => void };
+							show?: () => void;
+							dates?: { picked?: Date[] };
+						};
+						const td = instance as unknown as TempusDominusInstance;
 						try {
-							showSubscription = instance.subscribe(
+							showSubscription = td.subscribe?.(
 								Namespace.events.show,
 								handleShow,
-							);
-							changeSubscription = instance.subscribe(
+							) as { unsubscribe: () => void } | undefined;
+							changeSubscription = td.subscribe?.(
 								Namespace.events.change,
 								handleDateChange,
-							);
-							hideSubscription = instance.subscribe(
+							) as { unsubscribe: () => void } | undefined;
+							hideSubscription = td.subscribe?.(
 								Namespace.events.hide,
 								handleHide,
-							);
+							) as { unsubscribe: () => void } | undefined;
 						} catch (error) {
 							console.warn(
 								"Failed to subscribe to Tempus Dominus events:",
@@ -711,16 +759,23 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						inputRef.current?.addEventListener("change", handleInputChange);
 
 						// Store subscriptions for cleanup
-						(instance as any)._showSubscription = showSubscription;
-						(instance as any)._changeSubscription = changeSubscription;
-						(instance as any)._hideSubscription = hideSubscription;
-						(instance as any)._inputHandler = handleInputChange;
-						(instance as any)._widgetObserver = widgetObserver;
+						const instanceWithProps = instance as {
+							_showSubscription?: { unsubscribe: () => void };
+							_changeSubscription?: { unsubscribe: () => void };
+							_hideSubscription?: { unsubscribe: () => void };
+							_inputHandler?: (event: Event) => void;
+							_widgetObserver?: MutationObserver;
+						};
+						instanceWithProps._showSubscription = showSubscription;
+						instanceWithProps._changeSubscription = changeSubscription;
+						instanceWithProps._hideSubscription = hideSubscription;
+						instanceWithProps._inputHandler = handleInputChange;
+						instanceWithProps._widgetObserver = widgetObserver;
 
 						// Show the widget after initialization
 						setTimeout(() => {
 							try {
-								instance.show();
+								(td.show ?? (() => {}))();
 							} catch (error) {
 								console.warn("Failed to show Tempus Dominus widget:", error);
 							}
@@ -749,40 +804,59 @@ const renderer: CustomRenderer<TempusDateCell> = {
 					if (tempusInstance) {
 						try {
 							// Disconnect observers
-							if ((tempusInstance as any)._widgetObserver) {
-								(tempusInstance as any)._widgetObserver.disconnect();
+							const widgetInstance = tempusInstance as {
+								_widgetObserver?: { disconnect: () => void };
+							};
+							if (widgetInstance._widgetObserver) {
+								widgetInstance._widgetObserver.disconnect();
 							}
 							// Unsubscribe from events
-							if ((tempusInstance as any)._showSubscription) {
-								(tempusInstance as any)._showSubscription.unsubscribe();
+							const tempInstance = tempusInstance as {
+								_showSubscription?: { unsubscribe: () => void };
+								_changeSubscription?: { unsubscribe: () => void };
+							};
+							if (tempInstance._showSubscription) {
+								tempInstance._showSubscription.unsubscribe();
 							}
-							if ((tempusInstance as any)._changeSubscription) {
-								(tempusInstance as any)._changeSubscription.unsubscribe();
+							if (tempInstance._changeSubscription) {
+								tempInstance._changeSubscription.unsubscribe();
 							}
-							if ((tempusInstance as any)._hideSubscription) {
-								(tempusInstance as any)._hideSubscription.unsubscribe();
+							const instance = tempusInstance as {
+								_hideSubscription?: { unsubscribe: () => void };
+							};
+							if (instance._hideSubscription) {
+								instance._hideSubscription.unsubscribe();
 							}
 							// Remove input event listeners
-							if (inputRef.current && (tempusInstance as any)._inputHandler) {
-								inputRef.current.removeEventListener(
-									"input",
-									(tempusInstance as any)._inputHandler,
-								);
-								inputRef.current.removeEventListener(
-									"change",
-									(tempusInstance as any)._inputHandler,
-								);
+							if (inputRef.current) {
+								const instance = tempusInstance as {
+									_inputHandler?: (event: Event) => void;
+								};
+								if (instance._inputHandler) {
+									inputRef.current.removeEventListener(
+										"input",
+										instance._inputHandler,
+									);
+									inputRef.current.removeEventListener(
+										"change",
+										instance._inputHandler,
+									);
+								}
 							}
 							// Dispose the instance
-							tempusInstance.dispose();
+							try {
+								(
+									tempusInstance as unknown as { dispose?: () => void }
+								).dispose?.();
+							} catch {
+								/* ignore */
+							}
 						} catch (error) {
 							console.error("Failed to dispose Tempus Dominus:", error);
 						}
 					}
 				};
 			}, [tempusInstance]);
-
-
 
 			const getInputType = () => {
 				switch (data.format) {
@@ -954,6 +1028,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						}
 					/>
 					<button
+						type="button"
 						ref={iconButtonRef}
 						style={{
 							...iconButtonStyle,
@@ -980,6 +1055,8 @@ const renderer: CustomRenderer<TempusDateCell> = {
 								viewBox="0 0 16 16"
 								fill="currentColor"
 								style={{ pointerEvents: "none" }}
+								role="img"
+								aria-label="Clock icon"
 							>
 								<path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM8 3a.5.5 0 0 1 .5.5V8a.5.5 0 0 1-.146.354l-2.5 2.5a.5.5 0 0 1-.708-.708L7.293 8H3.5a.5.5 0 0 1 0-1H8V3.5A.5.5 0 0 1 8 3Z" />
 							</svg>
@@ -988,6 +1065,8 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							<svg
 								width="16"
 								height="16"
+								role="img"
+								aria-label="Calendar icon"
 								viewBox="0 0 16 16"
 								fill="currentColor"
 								style={{ pointerEvents: "none" }}

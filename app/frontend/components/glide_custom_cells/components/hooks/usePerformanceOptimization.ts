@@ -12,6 +12,17 @@ interface PerformanceMetrics {
 	mode: PerformanceMode;
 }
 
+// Type definition for Chrome's performance.memory API
+interface ChromePerformanceMemory {
+	usedJSHeapSize: number;
+	totalJSHeapSize: number;
+	jsHeapSizeLimit: number;
+}
+
+interface ChromePerformance extends Performance {
+	memory: ChromePerformanceMemory;
+}
+
 export function usePerformanceOptimization(rowCount: number) {
 	const [performanceMode, setPerformanceMode] = useState<PerformanceMode>(
 		PerformanceMode.NORMAL,
@@ -58,7 +69,7 @@ export function usePerformanceOptimization(rowCount: number) {
 
 	const measureMemoryUsage = useCallback(() => {
 		if ("memory" in performance) {
-			const memory = (performance as any).memory;
+			const memory = (performance as ChromePerformance).memory;
 			setMetrics((prev) => ({
 				...prev,
 				memoryUsage: memory.usedJSHeapSize / (1024 * 1024),
@@ -143,7 +154,7 @@ export function useMemoryManager() {
 
 	const checkMemoryUsage = useCallback(() => {
 		if ("memory" in performance) {
-			const memory = (performance as any).memory;
+			const memory = (performance as ChromePerformance).memory;
 			setMemoryUsage({
 				used: memory.usedJSHeapSize,
 				total: memory.totalJSHeapSize,

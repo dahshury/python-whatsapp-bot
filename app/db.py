@@ -1,9 +1,9 @@
 import os
-from typing import Generator
 
 from sqlalchemy import (
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -85,6 +85,24 @@ class ReservationModel(Base):
         Index("idx_reservations_date_time_status", "date", "time_slot", "status"),
     )
 
+
+class VacationPeriodModel(Base):
+    __tablename__ = "vacation_periods"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    start_date = Column(Date, nullable=False, index=True)
+    end_date = Column(Date, nullable=True, index=True)
+    duration_days = Column(Integer, nullable=True)  # inclusive days count
+    title = Column(Text, nullable=True)
+    created_at = Column(DateTime, server_default=func.current_timestamp())
+    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    __table_args__ = (
+        CheckConstraint("duration_days IS NULL OR duration_days >= 1", name="ck_vacation_duration_positive"),
+        CheckConstraint("end_date IS NULL OR start_date <= end_date", name="ck_vacation_start_before_end"),
+        Index("idx_vacations_start", "start_date"),
+        Index("idx_vacations_end", "end_date"),
+    )
 
 def init_models() -> None:
     """Create database tables if they do not exist."""

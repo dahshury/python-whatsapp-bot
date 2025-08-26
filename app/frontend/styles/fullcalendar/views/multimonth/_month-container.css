@@ -34,8 +34,8 @@
 /* Ensure roundness is applied to the actual month containers */
 .fc .fc-multimonth-month,
 .fc-multimonth-view .fc-multimonth-month {
-	border-radius: var(--fc-multimonth-radius, var(--radius)) !important;
-	overflow: hidden !important;
+	border-radius: var(--fc-multimonth-radius, var(--radius));
+	overflow: hidden;
 }
 
 /* SUBTLE HOVER EFFECT */
@@ -53,8 +53,8 @@
 	overflow: hidden;
 	padding: 0;
 	padding-top: 0.125em; /* Minimal gap after month title */
-	padding-bottom: 0 !important;
-	margin-bottom: 0 !important;
+	padding-bottom: 0;
+	margin-bottom: 0;
 	display: flex;
 	flex-direction: column;
 	/* GPU acceleration for content */
@@ -65,9 +65,9 @@
 
 /* Ensure the daygrid body fills the container */
 .fc-multimonth-daygrid-body {
-	width: 100% !important;
-	margin: 0 !important;
-	padding: 0 !important;
+	width: 100%;
+	margin: 0;
+	padding: 0;
 	display: flex;
 	flex-direction: column;
 	/* GPU acceleration */
@@ -78,8 +78,8 @@
 
 /* Ensure consistent table sizing */
 .fc-multimonth-month table {
-	width: 100% !important;
-	margin: 0 !important;
+	width: 100%;
+	margin: 0;
 	/* GPU acceleration for tables */
 	transform: translateZ(0);
 	backface-visibility: hidden;
@@ -89,10 +89,10 @@
 /* Ensure the inner daygrid respects the rounded corners */
 .fc-multimonth-month .fc-multimonth-daygrid {
 	border-radius: 0 0 var(--fc-multimonth-radius, var(--radius))
-		var(--fc-multimonth-radius, var(--radius)) !important;
-	overflow: hidden !important;
-	padding-bottom: 0 !important;
-	margin-bottom: 0 !important;
+		var(--fc-multimonth-radius, var(--radius));
+	overflow: hidden;
+	padding-bottom: 0;
+	margin-bottom: 0;
 }
 
 /* Removed the ::before pseudo-element that was creating gradient stripes */
@@ -102,7 +102,7 @@
 	padding: 0.1em;
 	text-align: center;
 	font-weight: 700;
-	font-size: 1.235em !important;
+	font-size: 1.235em;
 	line-height: 0.3;
 	/* background removed - defined in _headers.css with gradient */
 	border-bottom: 1px solid hsl(var(--border) / 0.2);
@@ -133,8 +133,8 @@
 .fc-multimonth .fc-multimonth-daygrid {
 	padding: 0;
 	padding-top: 0.125em; /* Minimal gap after month title */
-	padding-bottom: 0 !important;
-	margin-bottom: 0 !important;
+	padding-bottom: 0;
+	margin-bottom: 0;
 	display: flex;
 	flex-direction: column;
 	min-height: 0; /* Allow shrinking */
@@ -166,11 +166,11 @@
 
 /* Dark mode month container */
 .dark .fc-multimonth-month {
-	border-color: hsl(var(--border) / 0.7) !important;
+	border-color: hsl(var(--border) / 0.7);
 	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .dark .fc-multimonth-month:hover {
-	border-color: hsl(var(--border)) !important;
+	border-color: hsl(var(--border));
 	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }

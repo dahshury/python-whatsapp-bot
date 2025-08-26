@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-// import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path
-import type { CalendarCoreRef } from "@/components/calendar-core";
 import { callPythonBackend } from "@/lib/backend";
 
 export async function POST(request: Request) {
@@ -25,6 +23,7 @@ export async function POST(request: Request) {
 			body: JSON.stringify({
 				reservation_id: reservationId,
 				ar: ar || false,
+				max_reservations: 6,
 			}),
 		});
 

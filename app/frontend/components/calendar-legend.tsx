@@ -9,6 +9,7 @@
 "use client";
 
 import { Info, PlayCircle } from "lucide-react";
+import HeroVideoDialog from "@/components/magicui/hero-video-dialog";
 import {
 	HoverCard,
 	HoverCardContent,
@@ -17,7 +18,6 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
 import { useVacation } from "@/lib/vacation-context";
-import HeroVideoDialog from "@/components/magicui/hero-video-dialog";
 
 interface CalendarLegendProps {
 	freeRoam?: boolean;
@@ -114,7 +114,7 @@ export function CalendarLegend({
 							</div>
 						))}
 					</div>
-					
+
 					{/* Video Tutorial Section */}
 					<div className="border-t border-border/50 pt-3">
 						<div className="text-xs font-medium text-foreground mb-2 flex items-center gap-1.5">
@@ -126,12 +126,16 @@ export function CalendarLegend({
 								animationStyle="from-center"
 								videoSrc="https://www.youtube.com/embed/Tdd1Shg7XPI"
 								thumbnailSrc="https://img.youtube.com/vi/Tdd1Shg7XPI/maxresdefault.jpg"
-								thumbnailAlt={isRTL ? "شرح موقع حجز العيادة" : "Clinic Booking Tutorial"}
+								thumbnailAlt={
+									isRTL ? "شرح موقع حجز العيادة" : "Clinic Booking Tutorial"
+								}
 								className="rounded-md overflow-hidden border border-border/50"
 							/>
 						</div>
 						<p className="text-xs text-muted-foreground mt-1">
-							{isRTL ? "شاهد كيفية استخدام الموقع" : "Watch how to use the system"}
+							{isRTL
+								? "شاهد كيفية استخدام الموقع"
+								: "Watch how to use the system"}
 						</p>
 					</div>
 				</div>

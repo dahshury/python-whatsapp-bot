@@ -21,17 +21,19 @@ export async function GET(_request: NextRequest) {
 				response.status,
 				response.statusText,
 			);
-			
+
 			// If backend doesn't have vacations endpoint (404), return empty array
 			if (response.status === 404) {
-				console.warn("Vacations endpoint not found on backend, returning empty array");
+				console.warn(
+					"Vacations endpoint not found on backend, returning empty array",
+				);
 				return NextResponse.json({
 					success: true,
 					data: [],
-					message: "Vacations endpoint not available on backend"
+					message: "Vacations endpoint not available on backend",
 				});
 			}
-			
+
 			return NextResponse.json(
 				{
 					success: false,
@@ -50,17 +52,19 @@ export async function GET(_request: NextRequest) {
 		});
 	} catch (error) {
 		console.error("Error fetching vacation periods:", error);
-		
+
 		// If backend is not reachable, return empty array instead of error
 		if (error instanceof TypeError && error.message.includes("fetch")) {
-			console.warn("Backend not reachable for vacations, returning empty array");
+			console.warn(
+				"Backend not reachable for vacations, returning empty array",
+			);
 			return NextResponse.json({
 				success: true,
 				data: [],
-				message: "Backend not reachable, using empty vacation periods"
+				message: "Backend not reachable, using empty vacation periods",
 			});
 		}
-		
+
 		return NextResponse.json(
 			{
 				success: false,

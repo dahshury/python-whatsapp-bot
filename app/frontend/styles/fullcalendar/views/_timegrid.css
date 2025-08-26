@@ -54,7 +54,7 @@
 
 /* Minor time slots (half-hour marks) - moved from _week.css */
 .fc-timegrid-slot-minor {
-	border-top: 1px dashed hsl(var(--border) / 0.2) !important;
+	border-top: 1px dashed hsl(var(--border) / 0.2);
 	background: linear-gradient(
 		135deg,
 		hsl(var(--card) / 0.5) 0%,
@@ -156,15 +156,6 @@
 	height: 100%;
 }
 
-.fc-media-screen .fc-timegrid-col-bg,
-.fc-media-screen .fc-timegrid-col-events,
-.fc-media-screen .fc-timegrid-now-indicator-container {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-}
-
 /* Column backgrounds */
 .fc-timegrid-col-bg {
 	z-index: var(--z-calendar-day-bg-event);
@@ -197,6 +188,15 @@
 	bottom: 0;
 	overflow: hidden; /* don't let overflow of lines/arrows cause unnecessary scrolling */
 	/* z-index is set on the individual elements */
+}
+
+.fc-media-screen .fc-timegrid-col-bg,
+.fc-media-screen .fc-timegrid-col-events,
+.fc-media-screen .fc-timegrid-now-indicator-container {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
 }
 
 /* Direction-specific margins */
@@ -237,29 +237,28 @@
 	margin-bottom: 1px; /* give some space from bottom */
 }
 
-
 .fc-timegrid-event .fc-event-main {
-	padding: 0 3px !important;
-	overflow: hidden !important;
-	text-overflow: ellipsis !important;
-	white-space: nowrap !important;
-	background: transparent !important;
+	padding: 0 3px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	background: transparent;
 }
 
 .fc-timegrid-event .fc-event-title {
-	color: var(--fc-event-text-color) !important;
+	color: var(--fc-event-text-color);
 }
 
 .fc-timegrid-event .fc-event-time {
-	font-size: 0.65rem !important;
-	line-height: 1.1 !important;
-	opacity: 0.9 !important;
-	color: var(--fc-event-text-color) !important;
-	text-shadow: none !important;
-	-webkit-text-stroke: none !important;
-	outline: none !important;
-	border: none !important;
-	background: transparent !important;
+	font-size: 0.65rem;
+	line-height: 1.1;
+	opacity: 0.9;
+	color: var(--fc-event-text-color);
+	text-shadow: none;
+	-webkit-text-stroke: none;
+	outline: none;
+	border: none;
+	background: transparent;
 	white-space: nowrap;
 	margin-bottom: 1px;
 }
@@ -268,7 +267,7 @@
 .fc-timegrid-event-short .fc-event-main-frame {
 	flex-direction: row;
 	overflow: hidden;
-	background: transparent !important;
+	background: transparent;
 }
 
 /* More link - styles moved to _popover-unified.css */
@@ -316,12 +315,12 @@
 
 /* Ensure events are visible even when very thin */
 .fc-timegrid-event[style*="height"] {
-	min-height: 18px !important;
+	min-height: 18px;
 }
 
 /* Hide time for conversation events */
 .fc-timegrid-event.conversation-event .fc-event-time {
-	display: none !important;
+	display: none;
 }
 
 /* COMPREHENSIVE: Ensure all timegrid event text elements have transparent backgrounds */
@@ -331,11 +330,11 @@
 .fc-timegrid-event .fc-event-title,
 .fc-timegrid-event .fc-event-title-container,
 .fc-timegrid-event * {
-	background: transparent !important;
-	box-shadow: none !important;
-	text-shadow: none !important;
-	outline: none !important;
-	border: none !important;
+	background: transparent;
+	box-shadow: none;
+	text-shadow: none;
+	outline: none;
+	border: none;
 }
 
 /* Time grid hack - use popover z-index
@@ -366,7 +365,7 @@
 /* Reduce complexity on lower-end devices */
 @media (prefers-reduced-motion: reduce) {
 	.week-view-container * {
-		transition: none !important;
-		animation: none !important;
+		transition: none;
+		animation: none;
 	}
 }

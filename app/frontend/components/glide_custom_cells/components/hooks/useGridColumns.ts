@@ -26,7 +26,7 @@ export function useGridColumns(
 					isEditable: true,
 					hasMenu: true,
 					dataType: "text",
-				} as any,
+				} as GridColumn,
 				{
 					id: "status",
 					title: "Status",
@@ -36,7 +36,7 @@ export function useGridColumns(
 					isEditable: true,
 					hasMenu: true,
 					dataType: "dropdown",
-				} as any,
+				} as GridColumn,
 				{
 					id: "amount",
 					title: "Amount",
@@ -47,7 +47,7 @@ export function useGridColumns(
 					isEditable: true,
 					hasMenu: true,
 					dataType: "number",
-				} as any,
+				} as GridColumn,
 				{
 					id: "date",
 					title: "Date",
@@ -57,7 +57,7 @@ export function useGridColumns(
 					isEditable: true,
 					hasMenu: true,
 					dataType: "date",
-				} as any,
+				} as GridColumn,
 				{
 					id: "time",
 					title: "Time",
@@ -67,7 +67,7 @@ export function useGridColumns(
 					isEditable: true,
 					hasMenu: true,
 					dataType: "time",
-				} as any,
+				} as GridColumn,
 			];
 			setColumnsState(defaultColumns);
 			return;
@@ -85,7 +85,8 @@ export function useGridColumns(
 				isEditable: colDef.isEditable !== false,
 				hasMenu: true,
 				dataType: colDef.dataType,
-				themeOverride: (colDef as any).themeOverride,
+				themeOverride: (colDef as { themeOverride?: Record<string, unknown> })
+					.themeOverride,
 			}),
 		);
 
@@ -192,15 +193,17 @@ export function useGridColumns(
 	};
 }
 
-function _getColumnThemeOverride(column: IColumnDefinition): any {
-	const overrides: any = {};
+function _getColumnThemeOverride(
+	column: IColumnDefinition,
+): Record<string, unknown> {
+	const overrides: Record<string, unknown> = {};
 
 	// Add specific theme overrides based on column type or metadata
 	if (column.dataType === "number" && column.formatting?.type === "currency") {
 		overrides.textDark = "#00c896";
 	}
 
-	return Object.keys(overrides).length > 0 ? overrides : undefined;
+	return overrides;
 }
 
 function getColumnIcon(column: IColumnDefinition): GridColumnIcon {

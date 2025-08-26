@@ -8,7 +8,7 @@ import React from "react";
 import type { Country } from "react-phone-number-input";
 import { isValidPhoneNumber, parsePhoneNumber } from "react-phone-number-input";
 import { PHONE_INPUT_EDITOR_CONFIG } from "./models/PhoneInputEditorProps";
-import { PhoneInputService } from "./services/PhoneInputService";
+import { getEditorStyles } from "./services/PhoneInputService";
 import { PhoneInput } from "./ui/phone-input";
 
 interface PhoneInputCellProps {
@@ -24,12 +24,21 @@ interface PhoneInputCellProps {
 export type PhoneInputCell = CustomCell<PhoneInputCellProps>;
 
 // Stable editor component to prevent unmounts between re-renders
-const PhoneInputEditor: React.FC<any> = (props) => {
+interface PhoneInputEditorProps {
+	value: { data?: PhoneInputCellProps };
+	onFinishedEditing?: (value: PhoneInputCell) => void;
+	onChange: (value: PhoneInputCell) => void;
+}
+
+const PhoneInputEditor: React.FC<PhoneInputEditorProps> = (props) => {
 	const { data } = props.value;
 	const { onFinishedEditing } = props;
 
+	// Type guard to ensure data has the expected properties
+	const phoneData = data as PhoneInputCellProps;
+
 	// Parse phone number to E.164 format before using it
-	const parsePhoneToE164 = (phone: string): string => {
+	const parsePhoneToE164 = React.useCallback((phone: string): string => {
 		if (!phone) return "";
 
 		const phoneStr = phone.trim();
@@ -72,9 +81,9 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 
 		// Return original input
 		return phoneStr;
-	};
+	}, []);
 
-	const initialPhoneValue = parsePhoneToE164(data.phone || "");
+	const initialPhoneValue = parsePhoneToE164(phoneData?.phone || "");
 	const [phoneValue, setPhoneValue] = React.useState<string>(initialPhoneValue);
 	const wrapperRef = React.useRef<HTMLDivElement>(null);
 	const updateTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -93,21 +102,21 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 
 	// Get initial country from phone number and update when data.phone changes
 	React.useEffect(() => {
-		const parsedPhoneValue = parsePhoneToE164(data.phone || "");
+		const parsedPhoneValue = parsePhoneToE164(phoneData?.phone || "");
 		if (parsedPhoneValue !== phoneValue) {
 			setPhoneValue(parsedPhoneValue);
 			lastKnownValue.current = parsedPhoneValue;
 		}
 
 		try {
-			if (parsedPhoneValue && parsedPhoneValue.startsWith("+")) {
+			if (parsedPhoneValue?.startsWith("+")) {
 				const parsed = parsePhoneNumber(parsedPhoneValue);
 				if (parsed?.country) {
 					lastKnownCountry.current = parsed.country;
 				}
 			}
 		} catch {}
-	}, [data.phone]);
+	}, [phoneData?.phone, parsePhoneToE164, phoneValue]);
 
 	const updateCell = React.useCallback(
 		(newPhone: string, shouldFinish = false) => {
@@ -131,15 +140,21 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 			}
 
 			const newCell = {
-				...props.value,
+				kind: GridCellKind.Custom,
 				data: {
-					...data,
+					...(data as PhoneInputCellProps),
+					kind: "phone-input-cell",
 					phone: newPhone,
 					displayPhone: displayPhone,
 				},
-			} as typeof props.value;
+				copyData: displayPhone,
+				allowOverlay: true,
+			} as unknown as PhoneInputCell;
 
-			console.log("🔥 New cell data created:", newCell.data);
+			console.log(
+				"🔥 New cell data created:",
+				(newCell as PhoneInputCell).data,
+			);
 
 			// Let the data grid handle validation - don't mark as invalid here
 			console.log("🔥 Calling props.onChange with new cell");
@@ -161,7 +176,10 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 				phone,
 				customerName,
 			);
-			console.log("data.onCustomerSelect available:", !!data.onCustomerSelect);
+			console.log(
+				"data.onCustomerSelect available:",
+				!!phoneData?.onCustomerSelect,
+			);
 
 			// Parse phone to E.164 format before storing
 			const parsedPhone = parsePhoneToE164ForSelection(phone);
@@ -175,18 +193,18 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 			updateCell(parsedPhone, true);
 
 			// Call the onCustomerSelect callback if provided to handle name auto-population
-			if (data.onCustomerSelect) {
+			if (phoneData?.onCustomerSelect) {
 				console.log(
 					"Calling data.onCustomerSelect with:",
 					parsedPhone,
 					customerName,
 				);
-				data.onCustomerSelect(parsedPhone, customerName);
+				phoneData.onCustomerSelect(parsedPhone, customerName);
 			} else {
 				console.log("data.onCustomerSelect is not available");
 			}
 		},
-		[data, updateCell, parsePhoneToE164ForSelection],
+		[phoneData, updateCell, parsePhoneToE164ForSelection],
 	);
 
 	// Simple backup check to ensure state consistency and cleanup
@@ -298,15 +316,15 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 					clearTimeout(updateTimeoutRef.current);
 				}
 				// Revert to original value
-				const originalPhone = data.phone || "";
+				const originalPhone = phoneData?.phone || "";
 				setPhoneValue(originalPhone);
 				updateCell(originalPhone, true);
 			}
 		},
-		[phoneValue, data.phone, updateCell],
+		[phoneValue, phoneData?.phone, updateCell],
 	);
 
-	const styles = PhoneInputService.getEditorStyles(data.isDarkTheme || false);
+	const styles = getEditorStyles(phoneData?.isDarkTheme || false);
 
 	return (
 		<div ref={wrapperRef} className={styles.wrapperClassName}>
@@ -319,7 +337,7 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 					onCustomerSelect={handleCustomerSelect}
 					placeholder="Enter phone number"
 					initialValueFormat="national"
-					defaultCountry={(lastKnownCountry.current as any) || "SA"}
+					defaultCountry={lastKnownCountry.current || "SA"}
 					className="phone-input w-full border-none focus:ring-0 focus:outline-none bg-transparent"
 					style={{
 						transform: "translateY(3px)",
@@ -334,7 +352,7 @@ const PhoneInputEditor: React.FC<any> = (props) => {
 const renderer: CustomRenderer<PhoneInputCell> = {
 	kind: GridCellKind.Custom,
 	isMatch: (c): c is PhoneInputCell =>
-		(c.data as any).kind === "phone-input-cell",
+		(c.data as { kind?: string }).kind === "phone-input-cell",
 
 	draw: (args, cell) => {
 		const { displayPhone, phone } = cell.data;
@@ -355,18 +373,21 @@ const renderer: CustomRenderer<PhoneInputCell> = {
 		return textWidth + padding;
 	},
 
-	provideEditor: () => ({
-		editor: PhoneInputEditor,
-		disablePadding: PHONE_INPUT_EDITOR_CONFIG.disablePadding,
-		disableStyling: PHONE_INPUT_EDITOR_CONFIG.disableStyling,
-		needsEscapeKey: PHONE_INPUT_EDITOR_CONFIG.needsEscapeKey,
-		needsTabKey: PHONE_INPUT_EDITOR_CONFIG.needsTabKey,
-		portalElement: PHONE_INPUT_EDITOR_CONFIG.portalElement,
-		width: PHONE_INPUT_EDITOR_CONFIG.customWidth,
-		maxWidth: PHONE_INPUT_EDITOR_CONFIG.maxWidth,
-	}),
+	provideEditor: () => {
+		const result = {
+			editor: PhoneInputEditor,
+			disablePadding: PHONE_INPUT_EDITOR_CONFIG.disablePadding,
+			disableStyling: PHONE_INPUT_EDITOR_CONFIG.disableStyling,
+			needsEscapeKey: PHONE_INPUT_EDITOR_CONFIG.needsEscapeKey,
+			needsTabKey: PHONE_INPUT_EDITOR_CONFIG.needsTabKey,
+			portalElement: PHONE_INPUT_EDITOR_CONFIG.portalElement,
+			width: PHONE_INPUT_EDITOR_CONFIG.customWidth,
+			maxWidth: PHONE_INPUT_EDITOR_CONFIG.maxWidth,
+		};
+		return result as unknown as import("@glideapps/glide-data-grid").ProvideEditorCallbackResult<PhoneInputCell>;
+	},
 
-	onPaste: (v, d) => {
+	onPaste: (v: string, d: PhoneInputCellProps) => {
 		// Handle paste operations
 		const pastedPhone = v.trim();
 		let displayPhone = pastedPhone;
@@ -376,10 +397,11 @@ const renderer: CustomRenderer<PhoneInputCell> = {
 		}
 
 		return {
-			...d,
-			phone: pastedPhone,
-			displayPhone: displayPhone,
-		};
+			kind: GridCellKind.Custom,
+			data: { ...d, phone: pastedPhone, displayPhone },
+			copyData: displayPhone,
+			allowOverlay: true,
+		} as unknown as PhoneInputCellProps;
 	},
 };
 

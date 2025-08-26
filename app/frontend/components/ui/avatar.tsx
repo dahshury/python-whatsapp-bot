@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
@@ -23,13 +24,21 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
 );
 Avatar.displayName = "Avatar";
 
-interface AvatarImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {}
+interface AvatarImageProps
+	extends Omit<React.ComponentProps<typeof Image>, "src"> {
+	alt: string;
+	src: string;
+}
 
 const AvatarImage = React.forwardRef<HTMLImageElement, AvatarImageProps>(
-	({ className, ...props }, ref) => (
-		<img
-			ref={ref}
-			className={cn("aspect-square h-full w-full", className)}
+	({ className, alt, src, ...props }, ref) => (
+		// eslint-disable-next-line @next/next/no-img-element
+		<Image
+			ref={ref as unknown as React.RefObject<HTMLImageElement>}
+			alt={alt}
+			src={src}
+			fill
+			className={cn("object-cover", className)}
 			{...props}
 		/>
 	),

@@ -12,6 +12,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 
+
 def _utc_iso_now() -> str:
     dt = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
     # Normalize to Z suffix for UTC
@@ -202,6 +203,56 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         "metrics": metrics,
                     },
                 })
+            elif msg_type == "vacation_update":
+                # Accept websocket writes to update vacation periods and persist to DB (+config)
+                try:
+                    payload_data = payload.get("data") or {}
+                    periods = payload_data.get("periods")
+
+                    # Normalize incoming into start/end pairs
+                    pairs: list[tuple[datetime.date, datetime.date, str | None]] = []
+                    if isinstance(periods, list) and periods:
+                        for p in periods:
+                            try:
+                                s_raw = p.get("start")
+                                e_raw = p.get("end")
+                                title = p.get("title")
+                                if not s_raw or not e_raw:
+                                    continue
+                                s_dt = datetime.datetime.fromisoformat(str(s_raw)) if "T" in str(s_raw) else datetime.datetime.strptime(str(s_raw), "%Y-%m-%d")
+                                e_dt = datetime.datetime.fromisoformat(str(e_raw)) if "T" in str(e_raw) else datetime.datetime.strptime(str(e_raw), "%Y-%m-%d")
+                                s_date = datetime.date(s_dt.year, s_dt.month, s_dt.day)
+                                e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
+                                if e_date < s_date:
+                                    s_date, e_date = e_date, s_date
+                                pairs.append((s_date, e_date, title if isinstance(title, str) else None))
+                            except Exception as e:
+                                logging.error(f"Error processing vacation period: {e}")
+                                continue
+
+                    # Persist (always update DB, even if pairs is empty to clear all periods)
+                    try:
+                        from app.db import get_session, VacationPeriodModel
+                        with get_session() as session:
+                            session.query(VacationPeriodModel).delete(synchronize_session=False)
+                            for s_date, e_date, title in pairs:
+                                session.add(VacationPeriodModel(start_date=s_date, end_date=e_date, title=title))
+                            session.commit()
+                    except Exception as e:
+                        logging.error(f"DB persist failed: {e}")
+                        await conn.send_json({"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": f"db_persist_failed: {str(e)}"})
+                        continue
+
+                    # Broadcast updated vacations
+                    try:
+                        updated = _compute_vacations()
+                    except Exception:
+                        updated = []
+                    await conn.send_json({"type": "vacation_update_ack", "timestamp": _utc_iso_now()})
+                    await manager.broadcast("vacation_period_updated", {"periods": updated})
+                except Exception as e:
+                    logging.error(f"Vacation update exception: {e}")
+                    await conn.send_json({"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": "exception"})
             else:
                 # Unknown message types ignored
                 await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
@@ -232,28 +283,28 @@ def start_metrics_push_task(app: FastAPI) -> None:
 
 
 def _compute_vacations() -> list:
-    """Build vacation periods from config similar to HTTP API implementation."""
+    """Build vacation periods from DB."""
     vacation_periods = []
     try:
-        vacation_start_dates = config.get("VACATION_START_DATES", "")
-        vacation_durations = config.get("VACATION_DURATIONS", "")
         vacation_message = config.get("VACATION_MESSAGE", "The business is closed during this period.")
-        if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
-            start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
-            durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
-            if len(start_dates) == len(durations):
-                for start_date_str, duration in zip(start_dates, durations):
+        try:
+            from app.db import get_session, VacationPeriodModel
+            with get_session() as session:
+                rows = session.query(VacationPeriodModel).all()
+                for r in rows:
                     try:
-                        start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
-                        end_date = start_date + datetime.timedelta(days=duration-1)
+                        # Use start_date and end_date directly from DB
+                        start_date = datetime.datetime.combine(r.start_date, datetime.time.min).replace(tzinfo=ZoneInfo(config['TIMEZONE']))
+                        end_date = datetime.datetime.combine(r.end_date, datetime.time.max).replace(tzinfo=ZoneInfo(config['TIMEZONE']))
                         vacation_periods.append({
                             "start": start_date.isoformat(),
                             "end": end_date.isoformat(),
-                            "title": vacation_message,
-                            "duration": duration,
+                            "title": str(r.title) if r.title else vacation_message,
                         })
                     except Exception:
                         continue
+        except Exception:
+            pass
     except Exception:
         return []
     return vacation_periods

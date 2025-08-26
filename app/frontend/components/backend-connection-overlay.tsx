@@ -3,9 +3,15 @@
 import { AlertTriangle, RefreshCw, Server } from "lucide-react";
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useLanguage } from "@/lib/language-context";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
 
 interface BackendConnectionOverlayProps {
 	onRetry: () => void;
@@ -96,4 +102,4 @@ export function BackendConnectionOverlay({
 			</Card>
 		</div>
 	);
-} 
+}

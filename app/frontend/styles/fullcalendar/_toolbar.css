@@ -4,8 +4,8 @@
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background-color: hsl(var(--card)) !important;
-	border-bottom: 1px solid hsl(var(--border)) !important;
+	background-color: hsl(var(--card));
+	border-bottom: 1px solid hsl(var(--border));
 	padding: 0.5rem 1rem;
 }
 

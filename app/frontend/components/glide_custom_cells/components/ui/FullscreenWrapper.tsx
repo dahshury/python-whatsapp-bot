@@ -5,8 +5,8 @@ import { Z_INDEX } from "@/lib/z-index";
 import { useFullscreen } from "../contexts/FullscreenContext";
 
 interface FullscreenWrapperProps {
-	theme: any;
-	darkTheme: any;
+	theme: Record<string, unknown>;
+	darkTheme: Record<string, unknown>;
 	children: React.ReactNode;
 }
 
@@ -42,7 +42,8 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 			container.style.width = "100vw";
 			container.style.height = "100vh";
 			container.style.zIndex = (
-				(Z_INDEX as any).GRID_FULLSCREEN_BACKDROP || Z_INDEX.FULLSCREEN_BACKDROP
+				Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_BACKDROP) ||
+				Number((Z_INDEX as Record<string, number>).FULLSCREEN_BACKDROP)
 			).toString();
 			container.style.pointerEvents = "auto";
 
@@ -81,7 +82,9 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 		backdropFilter: "blur(10px)",
 		display: "flex",
 		flexDirection: "column",
-		zIndex: (Z_INDEX as any).GRID_FULLSCREEN_BACKDROP || Z_INDEX.FULLSCREEN_BACKDROP,
+		zIndex:
+			Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_BACKDROP) ||
+			Number((Z_INDEX as Record<string, number>).FULLSCREEN_BACKDROP),
 	};
 
 	const contentStyle: React.CSSProperties = {
@@ -113,7 +116,16 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 			style={wrapperStyle}
 			className={`grid-fullscreen-wrapper ${isDark ? "dark" : ""}`}
 		>
-			<div style={{ ...contentStyle, position: "relative", zIndex: (Z_INDEX as any).GRID_FULLSCREEN_CONTENT || Z_INDEX.FULLSCREEN_CONTENT }}>
+			<div
+				style={{
+					...contentStyle,
+					position: "relative",
+					zIndex:
+						Number(
+							(Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT,
+						) || Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
+				}}
+			>
 				<div
 					style={gridContainerStyle}
 					className="glide-grid-fullscreen-container"
@@ -127,7 +139,11 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 						right: "20px",
 						fontSize: "12px",
 						fontFamily: "system-ui, -apple-system, sans-serif",
-						zIndex: (Z_INDEX as any).GRID_FULLSCREEN_CONTENT || Z_INDEX.FULLSCREEN_CONTENT,
+						zIndex:
+							Number(
+								(Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT,
+							) ||
+							Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
 					}}
 					className="text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1 rounded-md"
 				>

@@ -2,6 +2,7 @@ import {
 	type EditableGridCell,
 	type GridCell,
 	GridCellKind,
+	type GridColumn,
 	type Item,
 	type Theme,
 } from "@glideapps/glide-data-grid";
@@ -63,7 +64,7 @@ const capitalizeWord = (word: string): string => {
 	return word.replace(/^[a-z]/, (c) => c.toUpperCase());
 };
 
-const generateSampleData = (row: number, col: number): any => {
+const generateSampleData = (row: number, col: number): unknown => {
 	const seed = row * 1000 + col;
 	const random = () => {
 		const x = Math.sin(seed) * 10000;
@@ -193,8 +194,8 @@ function getInitialCell(
 		case 0: // Text
 			return {
 				kind: GridCellKind.Text,
-				data: data,
-				displayData: data,
+				data: String(data ?? ""),
+				displayData: String(data ?? ""),
 				allowOverlay: true,
 			};
 		case 1: // Dropdown
@@ -203,11 +204,11 @@ function getInitialCell(
 				data: {
 					kind: "dropdown-cell",
 					allowedValues: ["Option A", "Option B", "Option C"],
-					value: data,
+					value: String(data ?? ""),
 				},
-				copyData: data,
+				copyData: String(data ?? ""),
 				allowOverlay: true,
-			} as any;
+			} as GridCell;
 		case 2: {
 			// Number (Amount)
 			const format =
@@ -216,8 +217,8 @@ function getInitialCell(
 				"number";
 			return {
 				kind: GridCellKind.Number,
-				data: data,
-				displayData: formatNumber(data, format),
+				data: Number(data ?? 0),
+				displayData: formatNumber(Number(data ?? 0), String(format)),
 				allowOverlay: true,
 			};
 		}
@@ -236,7 +237,7 @@ function getInitialCell(
 				data: {
 					kind: "tempus-date-cell",
 					format: "date",
-					date: data,
+					date: data instanceof Date ? data : new Date(),
 					displayDate: formattedDate,
 					isDarkTheme: theme === darkTheme,
 				},
@@ -248,7 +249,8 @@ function getInitialCell(
 			// Time Picker (Time)
 			const timeFormat =
 				columnFormats?.[columnId || "time"] || columnFormats?.time;
-			const use24Hour = columnFormats?.use24Hour || false;
+			const use24Hour =
+				Boolean((columnFormats as { use24Hour?: boolean })?.use24Hour) || false;
 			const formattedTime =
 				timeFormat && data instanceof Date
 					? FormattingService.formatValue(data, "time", timeFormat)
@@ -262,7 +264,7 @@ function getInitialCell(
 				kind: GridCellKind.Custom,
 				data: {
 					kind: "timekeeper-cell",
-					time: data,
+					time: data instanceof Date ? data : new Date(),
 					displayTime: formattedTime,
 					isDarkTheme: theme === darkTheme,
 					use24Hour: use24Hour,
@@ -276,18 +278,18 @@ function getInitialCell(
 				kind: GridCellKind.Custom,
 				data: {
 					kind: "phone-input-cell",
-					phone: data,
-					displayPhone: data,
+					phone: String(data ?? ""),
+					displayPhone: String(data ?? ""),
 					isDarkTheme: theme === darkTheme,
 				},
-				copyData: data,
+				copyData: String(data ?? ""),
 				allowOverlay: true,
 			} as PhoneInputCell;
 		default:
 			return {
 				kind: GridCellKind.Text,
-				data: data,
-				displayData: data,
+				data: String(data ?? ""),
+				displayData: String(data ?? ""),
 				allowOverlay: true,
 			};
 	}
@@ -299,7 +301,7 @@ export function useGridData(
 	darkTheme: Partial<Theme>,
 	initialNumRows: number,
 	columnFormats?: Record<string, string>,
-	columns?: any[],
+	columns?: GridColumn[],
 ) {
 	const editingState = React.useRef(
 		new EditingState(initialNumRows, theme, theme === darkTheme),
@@ -311,36 +313,46 @@ export function useGridData(
 			if (storedCell) {
 				// Ensure numeric cells have formatted display
 				if (storedCell.kind === GridCellKind.Number) {
-					// @ts-ignore – data property exists for number cell types
-					const raw = (storedCell as any).data;
+					// Access data property directly - GridCell types have this property
+					const raw = (storedCell as GridCell & { data?: unknown }).data;
 					const columnId = columns?.[col]?.id;
-					const format =
-						columnFormats?.[columnId || "number"] ||
-						columnFormats?.number ||
-						"number";
+					const key = (columnId ?? "number") as string;
+					const format = String(
+						columnFormats?.[key] || columnFormats?.number || "number",
+					);
 					const formatted =
-						raw !== undefined && raw !== null ? formatNumber(raw, format) : "";
-					// @ts-ignore
+						raw !== undefined && raw !== null
+							? formatNumber(Number(raw), format)
+							: "";
+					// @ts-expect-error
 					storedCell.displayData = formatted;
 				}
 
 				// Update date/time cell formatting
+				const cellWithDateData = storedCell as GridCell & {
+					data?: {
+						kind?: string;
+						date?: Date;
+						format?: string;
+						displayDate?: string;
+					};
+				};
 				if (
 					storedCell.kind === GridCellKind.Custom &&
-					(storedCell as any).data?.kind === "tempus-date-cell"
+					cellWithDateData.data?.kind === "tempus-date-cell"
 				) {
-					const cellData = (storedCell as any).data;
+					const cellData = cellWithDateData.data;
 					const date = cellData.date;
 					if (date instanceof Date) {
 						const columnId = columns?.[col]?.id;
 						let format: string | undefined;
 						let columnType: string;
 
-						if (cellData.format === "date") {
+						if ((cellData as { format?: string }).format === "date") {
 							format =
 								columnFormats?.[columnId || "date"] || columnFormats?.date;
 							columnType = "date";
-						} else if (cellData.format === "time") {
+						} else if ((cellData as { format?: string }).format === "time") {
 							format =
 								columnFormats?.[columnId || "time"] || columnFormats?.time;
 							columnType = "time";
@@ -357,31 +369,45 @@ export function useGridData(
 								columnType,
 								format,
 							);
-							cellData.displayDate = formattedValue;
-							(storedCell as any).copyData = formattedValue;
+							(cellData as { displayDate?: string }).displayDate =
+								formattedValue;
+							(storedCell as GridCell & { copyData?: string }).copyData =
+								(cellData as { displayDate?: string }).displayDate ?? "";
 						} else {
 							// Use default formatting
-							if (cellData.format === "date") {
-								cellData.displayDate = date.toLocaleDateString("en-GB");
-							} else if (cellData.format === "time") {
-								cellData.displayDate = date.toLocaleTimeString([], {
-									hour: "2-digit",
-									minute: "2-digit",
-								});
+							if ((cellData as { format?: string }).format === "date") {
+								(cellData as { displayDate?: string }).displayDate =
+									date.toLocaleDateString("en-GB");
+							} else if ((cellData as { format?: string }).format === "time") {
+								(cellData as { displayDate?: string }).displayDate =
+									date.toLocaleTimeString([], {
+										hour: "2-digit",
+										minute: "2-digit",
+									});
 							} else {
-								cellData.displayDate = date.toLocaleString();
+								(cellData as { displayDate?: string }).displayDate =
+									date.toLocaleString();
 							}
-							(storedCell as any).copyData = cellData.displayDate;
+							(storedCell as GridCell & { copyData?: string }).copyData =
+								(cellData as { displayDate?: string }).displayDate ?? "";
 						}
 					}
 				}
 
 				// Update timekeeper cell formatting
+				const cellWithTimekeeperData = storedCell as GridCell & {
+					data?: {
+						kind?: string;
+						time?: Date;
+						displayTime?: string;
+						use24Hour?: boolean;
+					};
+				};
 				if (
 					storedCell.kind === GridCellKind.Custom &&
-					(storedCell as any).data?.kind === "timekeeper-cell"
+					cellWithTimekeeperData.data?.kind === "timekeeper-cell"
 				) {
-					const cellData = (storedCell as any).data;
+					const cellData = cellWithTimekeeperData.data;
 					const time = cellData.time;
 					if (time instanceof Date) {
 						const columnId = columns?.[col]?.id;
@@ -394,23 +420,29 @@ export function useGridData(
 								"time",
 								format,
 							);
-							cellData.displayTime = formattedValue;
-							(storedCell as any).copyData = formattedValue;
+							(cellData as { displayTime?: string }).displayTime =
+								formattedValue;
+							(storedCell as GridCell & { copyData?: string }).copyData =
+								(cellData as { displayTime?: string }).displayTime ?? "";
 						} else {
 							// Use default formatting based on use24Hour
 							const hours = time.getHours();
 							const minutes = time.getMinutes();
 							const minutesStr = minutes.toString().padStart(2, "0");
 
-							if (cellData.use24Hour) {
-								cellData.displayTime = `${hours.toString().padStart(2, "0")}:${minutesStr}`;
+							if ((cellData as { use24Hour?: boolean }).use24Hour) {
+								(cellData as { displayTime?: string }).displayTime =
+									`${hours.toString().padStart(2, "0")}:${minutesStr}`;
 							} else {
 								const isPM = hours >= 12;
 								const displayHours =
 									hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-								cellData.displayTime = `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
+
+								(cellData as { displayTime?: string }).displayTime =
+									`${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 							}
-							(storedCell as any).copyData = cellData.displayTime;
+							(storedCell as GridCell & { copyData?: string }).copyData =
+								(cellData as { displayTime?: string }).displayTime ?? "";
 						}
 					}
 				}
@@ -418,20 +450,26 @@ export function useGridData(
 				// Mark missing values and validate for required columns
 				if (col === 0 && storedCell.kind === GridCellKind.Text) {
 					// Name column validation
-					const data = (storedCell as any).data || "";
+					const cellWithValidation = storedCell as GridCell & {
+						data?: string;
+						displayData?: string;
+						isMissingValue?: boolean;
+						validationError?: string;
+					};
+					const data = cellWithValidation.data || "";
 					const validation = validateNameField(data);
 
 					if (!validation.isValid) {
-						(storedCell as any).isMissingValue = true;
-						(storedCell as any).validationError = validation.errorMessage;
+						cellWithValidation.isMissingValue = true;
+						cellWithValidation.validationError = validation.errorMessage;
 					} else {
-						(storedCell as any).isMissingValue = false;
+						cellWithValidation.isMissingValue = false;
 						if (
 							validation.correctedValue &&
 							validation.correctedValue !== data
 						) {
-							(storedCell as any).data = validation.correctedValue;
-							(storedCell as any).displayData = validation.correctedValue;
+							cellWithValidation.data = validation.correctedValue;
+							cellWithValidation.displayData = validation.correctedValue;
 						}
 					}
 				}
@@ -448,31 +486,38 @@ export function useGridData(
 				columnId,
 			);
 			if (cell.kind === GridCellKind.Number) {
-				// @ts-ignore
-				const raw = (cell as any).data;
-				const format =
-					columnFormats?.[columnId || "number"] ||
-					columnFormats?.number ||
-					"number";
-				// @ts-ignore
+				// Access data property directly - GridCell types have this property
+				const raw = (cell as GridCell & { data?: unknown }).data;
+				const key = (columnId ?? "number") as string;
+				const format = String(
+					columnFormats?.[key] || columnFormats?.number || "number",
+				);
+				// @ts-expect-error
 				cell.displayData =
-					raw !== undefined && raw !== null ? formatNumber(raw, format) : "";
+					raw !== undefined && raw !== null
+						? formatNumber(Number(raw), String(format))
+						: "";
 			}
 
 			// Mark missing values and validate for required columns
 			if (col === 0 && cell.kind === GridCellKind.Text) {
 				// Name column validation
-				const data = (cell as any).data || "";
+				const data: string = String((cell as { data?: unknown }).data ?? "");
 				const validation = validateNameField(data);
 
 				if (!validation.isValid) {
-					(cell as any).isMissingValue = true;
-					(cell as any).validationError = validation.errorMessage;
+					(
+						cell as { isMissingValue?: boolean; validationError?: string }
+					).isMissingValue = true;
+					(
+						cell as { isMissingValue?: boolean; validationError?: string }
+					).validationError = validation.errorMessage;
 				} else {
-					(cell as any).isMissingValue = false;
+					(cell as { isMissingValue?: boolean }).isMissingValue = false;
 					if (validation.correctedValue && validation.correctedValue !== data) {
-						(cell as any).data = validation.correctedValue;
-						(cell as any).displayData = validation.correctedValue;
+						(cell as { data?: unknown }).data = validation.correctedValue;
+						(cell as { displayData?: unknown }).displayData =
+							validation.correctedValue;
 					}
 				}
 			}
@@ -481,161 +526,175 @@ export function useGridData(
 		[theme, darkTheme, columnFormats, columns],
 	);
 
-	const normalizeEditedCell = (
-		cell: EditableGridCell,
-		col?: number,
-	): GridCell => {
-		// Ensure essential props like displayData are present so the grid renders the updated value immediately
-		switch (cell.kind) {
-			case GridCellKind.Text: {
-				let text = (cell as any).data ?? "";
-				let hasError = false;
-				let errorMessage = "";
+	const normalizeEditedCell = React.useCallback(
+		(cell: EditableGridCell, col?: number): GridCell => {
+			// Ensure essential props like displayData are present so the grid renders the updated value immediately
+			switch (cell.kind) {
+				case GridCellKind.Text: {
+					let text = (cell as GridCell & { data?: string }).data ?? "";
+					let hasError = false;
+					let errorMessage = "";
 
-				// Apply name validation for column 0 (name field)
-				if (col === 0) {
-					const validation = validateNameField(text);
-					if (!validation.isValid) {
-						hasError = true;
-						errorMessage =
-							validation.errorMessage || messages.validation.invalidName();
-					} else if (validation.correctedValue) {
-						text = validation.correctedValue;
+					// Apply name validation for column 0 (name field)
+					if (col === 0) {
+						const validation = validateNameField(text);
+						if (!validation.isValid) {
+							hasError = true;
+							errorMessage =
+								validation.errorMessage || messages.validation.invalidName();
+						} else if (validation.correctedValue) {
+							text = validation.correctedValue;
+						}
 					}
-				}
 
-				return {
-					kind: GridCellKind.Text,
-					data: text,
-					displayData: text,
-					allowOverlay: true,
-					...(hasError && {
-						hoverEffect: false,
-					}),
-					...(col === 0 &&
-						hasError && {
-							isMissingValue: true,
-							validationError: errorMessage,
+					return {
+						kind: GridCellKind.Text,
+						data: text,
+						displayData: text,
+						allowOverlay: true,
+						...(hasError && {
+							hoverEffect: false,
 						}),
-				} as GridCell;
-			}
-			case GridCellKind.Number: {
-				const num = (cell as any).data ?? 0;
-				const columnId = columns?.[col || 0]?.id;
-				const format =
-					columnFormats?.[columnId || "number"] ||
-					columnFormats?.number ||
-					"number";
-				return {
-					kind: GridCellKind.Number,
-					data: num,
-					displayData: formatNumber(num, format),
-					allowOverlay: true,
-				} as GridCell;
-			}
-			case GridCellKind.Custom: {
-				// Handle date/time cells
-				if ((cell as any).data?.kind === "tempus-date-cell") {
-					const cellData = (cell as any).data;
-					const date = cellData.date;
-					if (date instanceof Date) {
-						const columnId = columns?.[col || 0]?.id;
-						let format: string | undefined;
-						let columnType: string;
+						...(col === 0 &&
+							hasError && {
+								isMissingValue: true,
+								validationError: errorMessage,
+							}),
+					} as GridCell;
+				}
+				case GridCellKind.Number: {
+					const num = (cell as GridCell & { data?: unknown }).data ?? 0;
+					const columnId = columns?.[col || 0]?.id;
+					const key = (columnId ?? "number") as string;
+					const format = String(
+						columnFormats?.[key] || columnFormats?.number || "number",
+					);
+					return {
+						kind: GridCellKind.Number,
+						data: num,
+						displayData: formatNumber(Number(num), String(format)),
+						allowOverlay: true,
+					} as GridCell;
+				}
+				case GridCellKind.Custom: {
+					// Handle date/time cells
+					const cellWithDateData = cell as GridCell & {
+						data?: { kind?: string; date?: Date; format?: string };
+					};
+					if (cellWithDateData.data?.kind === "tempus-date-cell") {
+						const cellData = cellWithDateData.data;
+						const date = cellData.date;
+						if (date instanceof Date) {
+							const columnId = columns?.[col || 0]?.id;
+							let format: string | undefined;
+							let columnType: string;
 
-						if (cellData.format === "date") {
-							format =
-								columnFormats?.[columnId || "date"] || columnFormats?.date;
-							columnType = "date";
-						} else if (cellData.format === "time") {
-							format =
+							if ((cellData as { format?: string }).format === "date") {
+								format =
+									columnFormats?.[columnId || "date"] || columnFormats?.date;
+								columnType = "date";
+							} else if ((cellData as { format?: string }).format === "time") {
+								format =
+									columnFormats?.[columnId || "time"] || columnFormats?.time;
+								columnType = "time";
+							} else {
+								format =
+									columnFormats?.[columnId || "datetime"] ||
+									columnFormats?.datetime;
+								columnType = "datetime";
+							}
+
+							let formattedValue: string;
+							if (format) {
+								formattedValue = FormattingService.formatValue(
+									date,
+									columnType,
+									format,
+								);
+							} else {
+								// Use default formatting
+								if ((cellData as { format?: string }).format === "date") {
+									formattedValue = date.toLocaleDateString("en-GB");
+								} else if (
+									(cellData as { format?: string }).format === "time"
+								) {
+									formattedValue = date.toLocaleTimeString([], {
+										hour: "2-digit",
+										minute: "2-digit",
+									});
+								} else {
+									formattedValue = date.toLocaleString();
+								}
+							}
+
+							(cellData as { displayDate?: string }).displayDate =
+								formattedValue;
+							return {
+								...cell,
+								data: cellData,
+								copyData: formattedValue,
+							} as unknown as GridCell;
+						}
+					}
+
+					// Handle timekeeper cells
+					const cellWithTimekeeperData = cell as GridCell & {
+						data?: {
+							kind?: string;
+							time?: Date;
+							displayTime?: string;
+							use24Hour?: boolean;
+						};
+					};
+					if (cellWithTimekeeperData.data?.kind === "timekeeper-cell") {
+						const cellData = cellWithTimekeeperData.data;
+						const time = cellData.time;
+						if (time instanceof Date) {
+							const columnId = columns?.[col || 0]?.id;
+							const format =
 								columnFormats?.[columnId || "time"] || columnFormats?.time;
-							columnType = "time";
-						} else {
-							format =
-								columnFormats?.[columnId || "datetime"] ||
-								columnFormats?.datetime;
-							columnType = "datetime";
-						}
 
-						let formattedValue: string;
-						if (format) {
-							formattedValue = FormattingService.formatValue(
-								date,
-								columnType,
-								format,
-							);
-						} else {
-							// Use default formatting
-							if (cellData.format === "date") {
-								formattedValue = date.toLocaleDateString("en-GB");
-							} else if (cellData.format === "time") {
-								formattedValue = date.toLocaleTimeString([], {
-									hour: "2-digit",
-									minute: "2-digit",
-								});
+							let formattedValue: string;
+							if (format) {
+								formattedValue = FormattingService.formatValue(
+									time,
+									"time",
+									format,
+								);
 							} else {
-								formattedValue = date.toLocaleString();
+								// Use default formatting based on use24Hour
+								const hours = time.getHours();
+								const minutes = time.getMinutes();
+								const minutesStr = minutes.toString().padStart(2, "0");
+
+								if ((cellData as { use24Hour?: boolean }).use24Hour) {
+									formattedValue = `${hours.toString().padStart(2, "0")}:${minutesStr}`;
+								} else {
+									const isPM = hours >= 12;
+									const displayHours =
+										hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+									formattedValue = `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
+								}
 							}
+
+							cellData.displayTime = formattedValue;
+							return {
+								...cell,
+								data: cellData,
+								copyData: formattedValue,
+							} as unknown as GridCell;
 						}
-
-						cellData.displayDate = formattedValue;
-						return {
-							...cell,
-							data: cellData,
-							copyData: formattedValue,
-						} as unknown as GridCell;
 					}
+
+					return cell as unknown as GridCell;
 				}
-
-				// Handle timekeeper cells
-				if ((cell as any).data?.kind === "timekeeper-cell") {
-					const cellData = (cell as any).data;
-					const time = cellData.time;
-					if (time instanceof Date) {
-						const columnId = columns?.[col || 0]?.id;
-						const format =
-							columnFormats?.[columnId || "time"] || columnFormats?.time;
-
-						let formattedValue: string;
-						if (format) {
-							formattedValue = FormattingService.formatValue(
-								time,
-								"time",
-								format,
-							);
-						} else {
-							// Use default formatting based on use24Hour
-							const hours = time.getHours();
-							const minutes = time.getMinutes();
-							const minutesStr = minutes.toString().padStart(2, "0");
-
-							if (cellData.use24Hour) {
-								formattedValue = `${hours.toString().padStart(2, "0")}:${minutesStr}`;
-							} else {
-								const isPM = hours >= 12;
-								const displayHours =
-									hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-								formattedValue = `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
-							}
-						}
-
-						cellData.displayTime = formattedValue;
-						return {
-							...cell,
-							data: cellData,
-							copyData: formattedValue,
-						} as unknown as GridCell;
-					}
-				}
-
-				return cell as unknown as GridCell;
+				default:
+					// For other cells, assume full data provided
+					return cell as unknown as GridCell;
 			}
-			default:
-				// For other cells, assume full data provided
-				return cell as unknown as GridCell;
-		}
-	};
+		},
+		[columnFormats, columns],
+	);
 
 	const onCellEdited = React.useCallback(
 		(visibleRows: readonly number[]) =>

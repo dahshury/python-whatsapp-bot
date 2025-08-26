@@ -10,7 +10,7 @@ const CSV_SPECIAL_CHARS_REGEX = new RegExp(
 	`[${[CSV_DELIMITER, CSV_QUOTE_CHAR, CSV_ROW_DELIMITER].join("")}]`,
 );
 
-export function escapeCSVValue(value: any): string {
+export function escapeCSVValue(value: unknown): string {
 	if (isNullOrUndefined(value)) {
 		return "";
 	}
@@ -26,7 +26,7 @@ export function escapeCSVValue(value: any): string {
 	return strValue;
 }
 
-export function createCSVRow(rowValues: any[]): string {
+export function createCSVRow(rowValues: unknown[]): string {
 	return (
 		rowValues.map((cell) => escapeCSVValue(cell)).join(CSV_DELIMITER) +
 		CSV_ROW_DELIMITER
@@ -54,7 +54,7 @@ export function createDownloadLink(options: {
 
 export async function writeCSVToStream(
 	writer: WritableStreamDefaultWriter,
-	data: any[][],
+	data: unknown[][],
 	headers: string[],
 ): Promise<void> {
 	const textEncoder = new TextEncoder();
@@ -77,7 +77,7 @@ export class FileExporter {
 	}
 
 	async exportToCSV(
-		data: any[][],
+		data: unknown[][],
 		headers: string[],
 		filename?: string,
 	): Promise<void> {
@@ -108,7 +108,7 @@ export class FileExporter {
 	}
 
 	private async fallbackCSVExport(
-		data: any[][],
+		data: unknown[][],
 		headers: string[],
 		filename: string,
 	): Promise<void> {
@@ -138,7 +138,7 @@ export class FileExporter {
 		URL.revokeObjectURL(url);
 	}
 
-	async exportToJSON(data: any, filename?: string): Promise<void> {
+	async exportToJSON(data: unknown, filename?: string): Promise<void> {
 		const timestamp = new Date().toISOString().slice(0, 16).replace(":", "-");
 		const suggestedName = filename || `${timestamp}_export.json`;
 

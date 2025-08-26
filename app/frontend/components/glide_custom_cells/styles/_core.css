@@ -39,37 +39,6 @@
 	width: 100%;
 }
 
-/* Fullwidth Grid Support */
-.glide-grid-fullwidth {
-	width: 100% !important;
-}
-
-.glide-grid-fullwidth .gdg-wmyidgi {
-	width: 100% !important;
-}
-
-.glide-grid-inner-full .gdg-wmyidgi {
-	width: 100% !important;
-}
-
-.glide-grid-inner-full > div {
-	width: 100% !important;
-}
-
-/* Dialog/Modal context */
-[role="dialog"] .glide-grid-inner-full,
-[role="dialog"] .glide-grid-fullwidth {
-	width: 100% !important;
-}
-
-[role="dialog"] .glide-grid-inner-full {
-	max-width: none !important;
-}
-
-[data-fullwidth="true"] {
-	width: 100% !important;
-}
-
 /* Main container */
 .gdg-wmyidgi {
 	position: relative;
@@ -80,8 +49,38 @@
 	width: var(--wmyidgi-0);
 	height: var(--wmyidgi-1);
 	overflow: hidden;
-	overflow: clip;
 	direction: ltr;
+}
+
+/* Fullwidth Grid Support */
+.glide-grid-fullwidth {
+	width: 100%;
+}
+
+.glide-grid-fullwidth .gdg-wmyidgi {
+	width: 100%;
+}
+
+.glide-grid-inner-full .gdg-wmyidgi {
+	width: 100%;
+}
+
+.glide-grid-inner-full > div {
+	width: 100%;
+}
+
+/* Dialog/Modal context */
+[role="dialog"] .glide-grid-inner-full,
+[role="dialog"] .glide-grid-fullwidth {
+	width: 100%;
+}
+
+[role="dialog"] .glide-grid-inner-full {
+	max-width: none;
+}
+
+[data-fullwidth="true"] {
+	width: 100%;
 }
 
 .gdg-wmyidgi > :first-child {
@@ -113,16 +112,16 @@ canvas {
 .gdg-d19meir1,
 .glide-data-grid-overlay-editor,
 .click-outside-ignore {
-	z-index: var(--z-grid-overlay-editor) !important;
-	pointer-events: auto !important;
+	z-index: var(--z-grid-overlay-editor);
+	pointer-events: auto;
 }
 
 /* Ensure overlay editors attached to body get maximum priority */
 body > .gdg-d19meir1,
 body > .glide-data-grid-overlay-editor,
 body > .click-outside-ignore {
-	z-index: var(--z-grid-editor-max) !important;
-	position: fixed !important;
+	z-index: var(--z-grid-editor-max);
+	position: fixed;
 }
 
 /* Grid cell styling with themed variables */

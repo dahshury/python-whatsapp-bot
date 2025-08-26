@@ -2,16 +2,18 @@
 
 /* Enhanced event styling in multiMonth view */
 .fc-multimonth .fc-event {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply text-xs leading-tight;
-	box-shadow: none !important;
+	box-shadow: none;
 }
 
 .fc-multimonth .fc-event-title {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply truncate;
 }
 
 /* Dot events get a subtle glow */
 .fc-multimonth .fc-daygrid-event-dot {
-	width: 5px !important;
-	height: 5px !important;
+	width: 5px;
+	height: 5px;
 }

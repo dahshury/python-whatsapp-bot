@@ -1,36 +1,36 @@
 {
-  "name": "Reservation Manager",
-  "short_name": "Reservations",
-  "description": "Comprehensive reservation management system with WhatsApp integration",
-  "start_url": "/",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
-  "orientation": "portrait-primary",
-  "scope": "/",
-  "icons": [
-    {
-      "src": "/favicon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
-  ],
-  "categories": ["business", "productivity", "utilities"],
-  "screenshots": [],
-  "shortcuts": [
-    {
-      "name": "Calendar View",
-      "short_name": "Calendar",
-      "description": "Open calendar view",
-      "url": "/",
-      "icons": [
-        {
-          "src": "/favicon.svg",
-          "sizes": "any",
-          "type": "image/svg+xml"
-        }
-      ]
-    }
-  ]
-} 
+	"name": "Reservation Manager",
+	"short_name": "Reservations",
+	"description": "Comprehensive reservation management system with WhatsApp integration",
+	"start_url": "/",
+	"display": "standalone",
+	"background_color": "#ffffff",
+	"theme_color": "#2563eb",
+	"orientation": "portrait-primary",
+	"scope": "/",
+	"icons": [
+		{
+			"src": "/favicon.svg",
+			"sizes": "any",
+			"type": "image/svg+xml",
+			"purpose": "any maskable"
+		}
+	],
+	"categories": ["business", "productivity", "utilities"],
+	"screenshots": [],
+	"shortcuts": [
+		{
+			"name": "Calendar View",
+			"short_name": "Calendar",
+			"description": "Open calendar view",
+			"url": "/",
+			"icons": [
+				{
+					"src": "/favicon.svg",
+					"sizes": "any",
+					"type": "image/svg+xml"
+				}
+			]
+		}
+	]
+}

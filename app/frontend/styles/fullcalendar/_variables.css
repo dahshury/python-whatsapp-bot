@@ -44,16 +44,18 @@
 	--fc-today-bg-color: hsl(var(--accent) / 0.15);
 	--fc-now-indicator-color: hsl(var(--destructive));
 
-	/* Reservation type colors */
-	--fc-reservation-type-0-bg: #4caf50; /* Check-up - Green */
-	--fc-reservation-type-0-border: #4caf50;
-	/* Fixed gradient depth for Check-up (darker of base) */
-	--fc-reservation-type-0-bg-grad-end: #3f8f42;
+	/* Reservation type colors - single source of truth */
+	--fc-reservation-type-0-bg: #e2eee9; /* Check-up background */
+	--fc-reservation-type-0-border: #12b981; /* Check-up accent */
+	--fc-reservation-type-0-text: #12b981; /* Check-up text */
+	/* Hover gradient end (flat) */
+	--fc-reservation-type-0-bg-grad-end: #e2eee9;
 
-	--fc-reservation-type-1-bg: #3688d8; /* Follow-up - Blue */
-	--fc-reservation-type-1-border: #3688d8;
-	/* Fixed gradient depth for Follow-up (darker of base) */
-	--fc-reservation-type-1-bg-grad-end: #2b6fb2;
+	--fc-reservation-type-1-bg: #e2e8f4; /* Follow-up background */
+	--fc-reservation-type-1-border: #3c82f6; /* Follow-up accent */
+	--fc-reservation-type-1-text: #3c82f6; /* Follow-up text */
+	/* Hover gradient end (flat) */
+	--fc-reservation-type-1-bg-grad-end: #e2e8f4;
 	--fc-conversation-bg: #edae49; /* Conversation - Orange/Yellow */
 	--fc-conversation-border: #edae49;
 

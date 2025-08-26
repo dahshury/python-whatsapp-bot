@@ -1,10 +1,30 @@
 "use client";
 
+import { markInputRule } from "@tiptap/core";
+import Bold from "@tiptap/extension-bold";
+import Code from "@tiptap/extension-code";
+import Italic from "@tiptap/extension-italic";
+import Placeholder from "@tiptap/extension-placeholder";
+import Strike from "@tiptap/extension-strike";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { format } from "date-fns";
-import { Bot, Clock, MessageSquare, Smile, User } from "lucide-react";
-import { marked } from "marked";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+	Bold as BoldIcon,
+	Bot,
+	Clock,
+	Code as CodeIcon,
+	Italic as ItalicIcon,
+	MessageSquare,
+	Smile,
+	Strikethrough as StrikethroughIcon,
+	User,
+} from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { toastService } from "@/lib/toast-service";
+import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
+import remarkGfm from "remark-gfm";
 import { ConversationCombobox } from "@/components/conversation-combobox";
 import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import {
@@ -18,11 +38,12 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { Textarea } from "@/components/ui/textarea";
+// Replaced Textarea with TipTap's EditorContent for live formatting
 import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
+import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
 import type { ConversationMessage } from "@/types/calendar";
 
@@ -36,6 +57,92 @@ interface ChatSidebarContentProps {
 interface MessageBubbleProps {
 	message: ConversationMessage;
 	isUser: boolean;
+}
+
+// Normalize simplified formatting markers to proper Markdown before parsing
+// - *text* -> **text** (keep _text_ as italic)
+// - ~text~ -> ~~text~~
+// - `text` already valid
+function normalizeSimpleFormattingForMarkdown(input: string): string {
+	try {
+		if (!input) return "";
+
+		// Protect inline code spans so we do not alter content inside them
+		const codePlaceholders: string[] = [];
+		let protectedText = input.replace(/`[^`]*`/g, (match) => {
+			const token = `<<CODE_${codePlaceholders.length}>>`;
+			codePlaceholders.push(match);
+			return token;
+		});
+
+		// Convert single tilde strikethrough to Markdown double tilde
+		protectedText = protectedText.replace(
+			/(^|[^~])~([^~\n]+)~(?!~)/g,
+			"$1~~$2~~",
+		);
+
+		// Convert single asterisk bold to Markdown double asterisks. Avoid lists and existing ** **
+		protectedText = protectedText.replace(
+			/(^|[^*])\*([^*\n]+)\*(?!\*)/g,
+			"$1**$2**",
+		);
+
+		// Restore code spans
+		const restored = protectedText.replace(
+			/<<CODE_(\d+)>>/g,
+			(_, i) => codePlaceholders[Number(i)] || "",
+		);
+		return restored;
+	} catch {
+		return input;
+	}
+}
+
+// Custom TipTap input rules to support single-character markers
+const SingleAsteriskBold = Bold.extend({
+	addInputRules() {
+		return [markInputRule({ find: /(?:^|\s)\*([^*]+)\*$/, type: this.type })];
+	},
+});
+
+const UnderscoreItalic = Italic.extend({
+	addInputRules() {
+		return [markInputRule({ find: /(?:^|\s)_([^_]+)_$/, type: this.type })];
+	},
+});
+
+const SingleTildeStrike = Strike.extend({
+	addInputRules() {
+		return [markInputRule({ find: /(?:^|\s)~([^~]+)~$/, type: this.type })];
+	},
+});
+
+// Serialize editor HTML back to single-char markers for backend/messages
+function serializeHtmlToMarkers(html: string): string {
+	try {
+		const parser = new DOMParser();
+		const doc = parser.parseFromString(html || "", "text/html");
+		const walk = (node: Node): string => {
+			if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
+			const children = Array.from(node.childNodes).map(walk).join("");
+			if (!(node instanceof HTMLElement)) return children;
+			const tag = node.tagName.toLowerCase();
+			if (tag === "strong" || tag === "b") return `*${children}*`;
+			if (tag === "em" || tag === "i") return `_${children}_`;
+			if (tag === "s" || tag === "del" || tag === "strike")
+				return `~${children}~`;
+			if (tag === "code") return `\`${children}\``;
+			if (tag === "br") return "\n";
+			if (tag === "p") return `${children}\n`;
+			return children;
+		};
+		const out = walk(doc.body)
+			.replace(/\n{3,}/g, "\n\n")
+			.trim();
+		return out;
+	} catch {
+		return html;
+	}
 }
 
 // Enhanced chat input with shadcn Textarea and 24h inactivity check
@@ -53,9 +160,89 @@ const BasicChatInput: React.FC<{
 	messages = [],
 }) => {
 	const { isRTL } = useLanguage();
-	const [text, setText] = useState("");
 	const [emojiOpen, setEmojiOpen] = useState(false);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const editorWrapperRef = useRef<HTMLDivElement>(null);
+	const baseMinHeightPx = 70;
+	const [maxHeightPx, setMaxHeightPx] = useState(0);
+	const editor = useEditor({
+		extensions: [
+			StarterKit.configure({
+				bold: false,
+				italic: false,
+				strike: false,
+				code: false,
+			}),
+			SingleAsteriskBold,
+			UnderscoreItalic,
+			SingleTildeStrike,
+			Code,
+			Placeholder.configure({ placeholder }),
+		],
+		editorProps: {
+			attributes: {
+				class: "min-h-[32px] text-xs leading-6 outline-none",
+			},
+		},
+		content: "",
+		immediatelyRender: false,
+	});
+
+	// Compute max height (40vh) and keep it updated
+	useEffect(() => {
+		const compute = () => setMaxHeightPx(Math.floor(window.innerHeight * 0.4));
+		compute();
+		window.addEventListener("resize", compute);
+		return () => window.removeEventListener("resize", compute);
+	}, []);
+
+	// Auto-grow the editor wrapper height based on content up to maxHeightPx
+	useEffect(() => {
+		if (!editor) return;
+		const adjust = () => {
+			try {
+				const wrapper = editorWrapperRef.current;
+				const pm = editor?.view?.dom as HTMLElement | undefined;
+				if (!wrapper || !pm) return;
+				// Reset height to allow shrink then measure content
+				wrapper.style.height = "auto";
+				const desired = Math.max(baseMinHeightPx, pm.scrollHeight);
+				const capped = Math.min(
+					desired,
+					Math.max(maxHeightPx, baseMinHeightPx),
+				);
+				wrapper.style.height = `${capped}px`;
+				pm.style.overflowY =
+					capped >= Math.max(maxHeightPx, baseMinHeightPx) ? "auto" : "hidden";
+			} catch {}
+		};
+		// Initial and on updates
+		setTimeout(adjust, 0);
+		editor.on("update", adjust);
+		editor.on("selectionUpdate", adjust);
+		editor.on("transaction", adjust);
+		return () => {
+			try {
+				editor.off("update", adjust);
+				editor.off("selectionUpdate", adjust);
+				editor.off("transaction", adjust);
+			} catch {}
+		};
+	}, [editor, maxHeightPx]);
+
+	// Force re-render on editor selection/transaction updates so toolbar reflects active marks
+	const [, forceRerender] = useState(0);
+	useEffect(() => {
+		if (!editor) return;
+		const handler = () => forceRerender((v) => v + 1);
+		editor.on("selectionUpdate", handler);
+		editor.on("transaction", handler);
+		editor.on("update", handler);
+		return () => {
+			editor.off("selectionUpdate", handler);
+			editor.off("transaction", handler);
+			editor.off("update", handler);
+		};
+	}, [editor]);
 
 	// Check if conversation is inactive (last message > 24 hours ago)
 	const isInactive = React.useMemo(() => {
@@ -80,43 +267,29 @@ const BasicChatInput: React.FC<{
 
 	const isActuallyDisabled = disabled || isInactive;
 
-	// Auto-expand textarea
-	const adjustHeight = () => {
-		const textarea = textareaRef.current;
-		if (textarea) {
-			// Reset to minimum height first
-			textarea.style.height = "32px";
-
-			// Calculate new height based on content, with minimum of 32px (h-8)
-			const scrollHeight = textarea.scrollHeight;
-			const maxHeight = window.innerHeight * 0.4; // 40vh
-			const newHeight = Math.max(32, Math.min(scrollHeight, maxHeight));
-
-			textarea.style.height = `${newHeight}px`;
-		}
-	};
-
+	// Ensure editor editability matches state
 	useEffect(() => {
-		adjustHeight();
-	}, [adjustHeight]);
+		if (!editor) return;
+		editor.setEditable(!(disabled || isInactive));
+	}, [editor, disabled, isInactive]);
 
 	// Handle emoji selection
 	const handleEmojiSelect = ({ emoji }: { emoji: string }) => {
-		const textarea = textareaRef.current;
-		if (textarea) {
-			const start = textarea.selectionStart;
-			const end = textarea.selectionEnd;
-			const newText = text.slice(0, start) + emoji + text.slice(end);
-			setText(newText);
-
-			// Restore cursor position after emoji insertion
-			setTimeout(() => {
-				const newCursorPos = start + emoji.length;
-				textarea.setSelectionRange(newCursorPos, newCursorPos);
-				textarea.focus();
-			}, 0);
+		try {
+			editor?.chain().focus().insertContent(emoji).run();
+		} finally {
+			setEmojiOpen(false);
 		}
-		setEmojiOpen(false);
+	};
+
+	// Apply inline wrapper markers around selection (toggle)
+	const applyWrap = (marker: string) => {
+		if (!editor) return;
+		const chain = editor.chain().focus();
+		if (marker === "*") chain.toggleBold().run();
+		else if (marker === "_") chain.toggleItalic().run();
+		else if (marker === "~") chain.toggleStrike().run();
+		else if (marker === "`") chain.toggleCode().run();
 	};
 
 	return (
@@ -132,34 +305,152 @@ const BasicChatInput: React.FC<{
 				</div>
 			)}
 
+			{!isInactive && (
+				<div className="flex items-center gap-1 px-2 py-0.5 bg-muted/40 rounded-md border border-muted">
+					{(() => {
+						const isActive = !!editor?.isActive("bold");
+						const isDisabled =
+							isActuallyDisabled ||
+							!editor?.can().chain().focus().toggleBold().run();
+						return (
+							<button
+								type="button"
+								title="Bold (*text*)"
+								disabled={isDisabled}
+								onMouseDown={(e) => {
+									e.preventDefault();
+									applyWrap("*");
+								}}
+								aria-pressed={isActive}
+								className={cn(
+									"inline-flex items-center justify-center h-5 w-5 rounded transition-colors disabled:opacity-50",
+									isActive
+										? "bg-accent text-accent-foreground"
+										: "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
+									"icon-neon",
+								)}
+							>
+								<BoldIcon className="h-3 w-3" />
+							</button>
+						);
+					})()}
+					{(() => {
+						const isActive = !!editor?.isActive("italic");
+						const isDisabled =
+							isActuallyDisabled ||
+							!editor?.can().chain().focus().toggleItalic().run();
+						return (
+							<button
+								type="button"
+								title="Italic (_text_)"
+								disabled={isDisabled}
+								onMouseDown={(e) => {
+									e.preventDefault();
+									applyWrap("_");
+								}}
+								aria-pressed={isActive}
+								className={cn(
+									"inline-flex items-center justify-center h-5 w-5 rounded transition-colors disabled:opacity-50",
+									isActive
+										? "bg-accent text-accent-foreground"
+										: "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
+									"icon-neon",
+								)}
+							>
+								<ItalicIcon className="h-3 w-3" />
+							</button>
+						);
+					})()}
+					{(() => {
+						const isActive = !!editor?.isActive("strike");
+						const isDisabled =
+							isActuallyDisabled ||
+							!editor?.can().chain().focus().toggleStrike().run();
+						return (
+							<button
+								type="button"
+								title="Strikethrough (~text~)"
+								disabled={isDisabled}
+								onMouseDown={(e) => {
+									e.preventDefault();
+									applyWrap("~");
+								}}
+								aria-pressed={isActive}
+								className={cn(
+									"inline-flex items-center justify-center h-5 w-5 rounded transition-colors disabled:opacity-50",
+									isActive
+										? "bg-accent text-accent-foreground"
+										: "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
+									"icon-neon",
+								)}
+							>
+								<StrikethroughIcon className="h-3 w-3" />
+							</button>
+						);
+					})()}
+					{(() => {
+						const isActive = !!editor?.isActive("code");
+						const isDisabled =
+							isActuallyDisabled ||
+							!editor?.can().chain().focus().toggleCode().run();
+						return (
+							<button
+								type="button"
+								title="Monospace (`text`)"
+								disabled={isDisabled}
+								onMouseDown={(e) => {
+									e.preventDefault();
+									applyWrap("`");
+								}}
+								aria-pressed={isActive}
+								className={cn(
+									"inline-flex items-center justify-center h-5 w-5 rounded transition-colors disabled:opacity-50",
+									isActive
+										? "bg-accent text-accent-foreground"
+										: "hover:bg-accent hover:text-accent-foreground text-muted-foreground",
+									"icon-neon",
+								)}
+							>
+								<CodeIcon className="h-3 w-3" />
+							</button>
+						);
+					})()}
+				</div>
+			)}
+
 			<div className="flex gap-2 items-start">
-				<Textarea
-					ref={textareaRef}
-					value={text}
-					onChange={(e) => {
-						setText(e.target.value);
-					}}
-					onKeyDown={(e) => {
-						if (e.key === "Enter" && !e.shiftKey) {
-							e.preventDefault();
-							if (text.trim() && !isActuallyDisabled && !isSending) {
-								onSend(text.trim());
-								setText("");
-							}
-						}
-					}}
-					placeholder={placeholder}
-					disabled={isActuallyDisabled}
+				<div
+					ref={editorWrapperRef}
 					className={cn(
-						"flex-1 text-xs resize-none",
-						"overflow-hidden transition-all duration-200",
-						"border-border bg-background",
-						"focus-visible:ring-1 focus-visible:ring-ring",
-						"h-8 max-h-[40vh] py-0.5 px-3 leading-6",
-						isInactive && "opacity-60 cursor-not-allowed",
+						"flex-1 border border-border rounded-md",
+						isActuallyDisabled ? "bg-muted/50" : "bg-background",
+						"max-h-[40vh] overflow-hidden",
+						"focus-within:ring-1 focus-within:ring-ring focus-within:outline-none",
+						"px-3 py-0 leading-6 text-xs",
+						isActuallyDisabled && "opacity-60 cursor-not-allowed",
 					)}
-					rows={1}
-				/>
+					style={{ height: `${baseMinHeightPx}px` }}
+				>
+					<EditorContent
+						editor={editor}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && !e.shiftKey) {
+								e.preventDefault();
+								const html = (editor?.getHTML() || "").trim();
+								const textOut = serializeHtmlToMarkers(html);
+								if (textOut && !isActuallyDisabled && !isSending) {
+									onSend(textOut);
+									editor?.commands.clearContent(true);
+								}
+							}
+						}}
+						className={cn(
+							"tiptap h-full w-full",
+							"[&_.ProseMirror]:outline-none [&_.ProseMirror]:h-full [&_.ProseMirror]:max-h-full [&_.ProseMirror]:overflow-auto [&_.ProseMirror]:p-0 [&_.ProseMirror_p]:m-0",
+							isActuallyDisabled ? "[&_.ProseMirror]:opacity-70" : undefined,
+						)}
+					/>
+				</div>
 
 				<div className="flex flex-col items-stretch gap-2">
 					{/* Emoji Picker Button */}
@@ -170,6 +461,7 @@ const BasicChatInput: React.FC<{
 								disabled={isActuallyDisabled}
 								className={cn(
 									"inline-flex items-center justify-center rounded-md border border-border bg-background px-2 h-8 w-8 text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 disabled:pointer-events-none transition-colors flex-shrink-0",
+									"icon-neon",
 								)}
 							>
 								<Smile className="h-3.5 w-3.5" />
@@ -197,14 +489,21 @@ const BasicChatInput: React.FC<{
 						type="button"
 						onClick={(e) => {
 							e.preventDefault();
-							if (text.trim() && !isActuallyDisabled && !isSending) {
-								onSend(text.trim());
-								setText("");
+							const html = (editor?.getHTML() || "").trim();
+							const textOut = serializeHtmlToMarkers(html);
+							if (textOut && !isActuallyDisabled && !isSending) {
+								onSend(textOut);
+								editor?.commands.clearContent(true);
 							}
 						}}
-						disabled={!text.trim() || isActuallyDisabled || isSending}
+						disabled={
+							!((editor?.getText().trim().length || 0) > 0) ||
+							isActuallyDisabled ||
+							isSending
+						}
 						className={cn(
 							"inline-flex items-center justify-center rounded-md bg-primary px-2 h-8 w-8 text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:pointer-events-none transition-colors flex-shrink-0",
+							"icon-neon",
 						)}
 					>
 						{isSending ? (
@@ -215,7 +514,9 @@ const BasicChatInput: React.FC<{
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
+								aria-label="Send message"
 							>
+								<title>Send message</title>
 								<path
 									strokeLinecap="round"
 									strokeLinejoin="round"
@@ -237,11 +538,7 @@ const BasicChatInput: React.FC<{
 	);
 };
 
-// Configure marked for safe HTML
-marked.setOptions({
-	breaks: true,
-	gfm: true,
-});
+// Remove custom lightweight markdown functions
 
 const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 	const [isHovered, setIsHovered] = useState(false);
@@ -266,24 +563,48 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 		}
 	};
 
-	// Parse markdown to HTML
-	const messageHtml = React.useMemo(() => {
+	// Parse markdown to HTML (normalize simplified markers first)
+	const normalizedMessage = React.useMemo(() => {
 		try {
-			return marked.parse(message.message);
+			return normalizeSimpleFormattingForMarkdown(message.message || "");
 		} catch {
 			return message.message;
 		}
 	}, [message.message]);
 
 	return (
-		<div className="w-full py-1 px-2">
-			<div
+		<div className="w-full py-1 px-2 bg-transparent">
+			<article
+				aria-label={`Message from ${message.role}`}
 				className={cn(
-					"rounded-lg p-2.5 pb-8 w-full relative",
+					"rounded-lg p-2.5 pb-8 w-full relative border",
+					message.role === "user" &&
+						"bg-gradient-to-b from-primary/15 to-primary/5 border-primary/20",
+					message.role === "admin" &&
+						"bg-gradient-to-b from-accent/20 to-accent/10 border-accent/20",
+					message.role === "assistant" &&
+						"bg-gradient-to-b from-ring/20 to-ring/10 border-ring/20",
+					message.role === "secretary" &&
+						"bg-gradient-to-b from-muted-foreground/20 to-muted-foreground/10 border-muted/30",
 				)}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 			>
+				{/* Role gradient backdrop to ensure visibility above any parent overlays */}
+				<div
+					className={cn(
+						"absolute inset-0 rounded-lg z-0 pointer-events-none",
+						message.role === "user" &&
+							"bg-gradient-to-b from-primary/15 to-primary/5",
+						message.role === "admin" &&
+							"bg-gradient-to-b from-accent/20 to-accent/10",
+						message.role === "assistant" &&
+							"bg-gradient-to-b from-ring/20 to-ring/10",
+						message.role === "secretary" &&
+							"bg-gradient-to-b from-muted-foreground/20 to-muted-foreground/10",
+					)}
+					aria-hidden="true"
+				/>
 				<div className="flex gap-2 items-start">
 					{/* Avatar - rounded rectangle style */}
 					<div
@@ -292,6 +613,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 							isUser
 								? "bg-primary text-primary-foreground"
 								: "bg-muted-foreground text-background",
+							"avatar-neon",
 						)}
 					>
 						{isUser ? (
@@ -306,9 +628,13 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 						<div
 							className="text-sm prose prose-sm max-w-none
                 prose-p:my-0.5 prose-headings:mt-1.5 prose-headings:mb-0.5 prose-ul:my-0.5 prose-ol:my-0.5
-                prose-li:my-0 prose-pre:my-0.5 prose-code:text-xs"
-							dangerouslySetInnerHTML={{ __html: messageHtml }}
-						/>
+                prose-li:my-0 prose-pre:my-0.5 prose-code:text-xs break-words whitespace-pre-wrap overflow-x-hidden
+                prose-a:[overflow-wrap:anywhere] prose-pre:overflow-x-auto"
+						>
+							<ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+								{normalizedMessage}
+							</ReactMarkdown>
+						</div>
 					</div>
 				</div>
 
@@ -322,7 +648,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 					<Clock className="h-2.5 w-2.5" />
 					<span>{formatDateTime(message.date, message.time)}</span>
 				</div>
-			</div>
+			</article>
 		</div>
 	);
 };
@@ -330,7 +656,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	selectedConversationId,
 	onConversationSelect,
-	onRefresh,
+	onRefresh: _onRefresh,
 	className,
 }) => {
 	const { isRTL } = useLanguage();
@@ -339,9 +665,10 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	const [isSending, setIsSending] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
 	const previousConversationIdRef = useRef<string | null>(null);
+	const selectedConversationIdRef = useRef<string | null>(null);
 
 	// Use centralized customer data
-	const { conversations, reservations, loading } = useCustomerData();
+	const { conversations, reservations } = useCustomerData();
 
 	// Local state for additional messages (not optimistic - only added on success)
 	const [additionalMessages, setAdditionalMessages] = useState<
@@ -362,18 +689,20 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	const allMessages = [...currentConversation, ...conversationAdditional];
 
 	// Sort messages by date and time
-	const sortedMessages = React.useMemo(() => {
-		return [...allMessages].sort((a, b) => {
-			const aTime = new Date(`${a.date} ${a.time}`);
-			const bTime = new Date(`${b.date} ${b.time}`);
-			return aTime.getTime() - bTime.getTime();
-		});
-	}, [allMessages]);
+	const sortedMessages = [...allMessages].sort((a, b) => {
+		const aTime = new Date(`${a.date} ${a.time}`);
+		const bTime = new Date(`${b.date} ${b.time}`);
+		return aTime.getTime() - bTime.getTime();
+	});
 
 	// Clear additional messages when conversation changes
+	const lastConversationIdRef = useRef<string | null>(null);
 	useEffect(() => {
-		setAdditionalMessages({});
-	}, []);
+		if (selectedConversationId !== lastConversationIdRef.current) {
+			setAdditionalMessages({});
+			lastConversationIdRef.current = selectedConversationId;
+		}
+	}, [selectedConversationId]);
 
 	// Monitor when conversation data and rendering is complete
 	useEffect(() => {
@@ -406,9 +735,39 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 		setLoadingConversation,
 	]);
 
-	// Auto-scroll to bottom when messages change
+	// Auto-scroll to bottom when messages change or conversation switches
+	const lastCountRef = useRef<number>(0);
 	useEffect(() => {
-		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		const nextCount = sortedMessages.length;
+		if (nextCount !== lastCountRef.current) {
+			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+			lastCountRef.current = nextCount;
+		}
+	}, [sortedMessages]);
+
+	useEffect(() => {
+		selectedConversationIdRef.current = selectedConversationId;
+	}, [selectedConversationId]);
+
+	// React to realtime websocket events for the active conversation
+	useEffect(() => {
+		const handler = (ev: Event) => {
+			try {
+				const customEvent = ev as CustomEvent;
+				const detail = customEvent.detail || {};
+				if (
+					detail?.type === "conversation_new_message" &&
+					detail?.data?.wa_id === selectedConversationIdRef.current
+				) {
+					setTimeout(() => {
+						messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+					}, 50);
+				}
+			} catch {}
+		};
+		window.addEventListener("realtime", handler as EventListener);
+		return () =>
+			window.removeEventListener("realtime", handler as EventListener);
 	}, []);
 
 	// Send message function - called by BasicChatInput
@@ -424,50 +783,60 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 
 			// Mark this outgoing message as a local operation to prevent unread badge increments
 			try {
-				(globalThis as any).__localOps = (globalThis as any).__localOps || new Set<string>();
+				interface GlobalWithLocalOps {
+					__localOps?: Set<string>;
+				}
+				const globalWithOps = globalThis as GlobalWithLocalOps;
+				globalWithOps.__localOps =
+					globalWithOps.__localOps || new Set<string>();
 				const key = `conversation_new_message:${String(selectedConversationId)}:${currentDate}:${currentTime}`;
-				(globalThis as any).__localOps.add(key);
-				setTimeout(() => { try { (globalThis as any).__localOps.delete(key); } catch {} }, 5000);
+				globalWithOps.__localOps.add(key);
+				setTimeout(() => {
+					try {
+						globalWithOps.__localOps?.delete(key);
+					} catch {}
+				}, 5000);
 			} catch {}
 
-			// Send WhatsApp message
-			const sendResponse = await fetch("/api/message/send", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					wa_id: selectedConversationId,
-					text: messageText,
-				}),
-			});
+			// Prefer WebSocket send; fallback to HTTP if unavailable
+			const sendViaWS = async (): Promise<boolean> => {
+				try {
+					interface GlobalWithWS {
+						__wsConnection?: { current: WebSocket };
+					}
+					const globalWithWS = globalThis as GlobalWithWS;
+					const wsRef = globalWithWS.__wsConnection;
+					if (wsRef?.current?.readyState === WebSocket.OPEN) {
+						wsRef.current.send(
+							JSON.stringify({
+								type: "conversation_send_message",
+								data: { wa_id: selectedConversationId, message: messageText },
+							}),
+						);
+						return true;
+					}
+				} catch {}
+				return false;
+			};
 
-			if (!sendResponse.ok) {
-				const errorData = await sendResponse.json();
-				throw new Error(errorData.message || "Failed to send message");
-			}
-
-			// Append message to conversation database
-			const appendResponse = await fetch(
-				`/api/message/append?wa_id=${selectedConversationId}`,
-				{
+			const wsOk = await sendViaWS();
+			if (!wsOk) {
+				// HTTP fallback
+				const sendResponse = await fetch("/api/message/send", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
-						role: "admin",
-						message: messageText,
-						date: currentDate,
-						time: currentTime,
+						wa_id: selectedConversationId,
+						text: messageText,
 					}),
-				},
-			);
-
-			if (!appendResponse.ok) {
-				const errorData = await appendResponse.json();
-				throw new Error(
-					errorData.message || "Failed to append message to conversation",
-				);
+				});
+				if (!sendResponse.ok) {
+					const errorData = await sendResponse.json();
+					throw new Error(errorData.message || "Failed to send message");
+				}
 			}
 
-			// SUCCESS: Add message directly to local state (no refresh needed)
+			// Append message locally
 			const newMessage: ConversationMessage = {
 				role: "admin",
 				message: messageText,
@@ -584,66 +953,100 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 				noScrollX={true}
 				rtl={false}
 			>
-				<div className="uiverse-card">
-					<div className="uiverse-title">{isRTL ? "الرسائل" : "Messages"}</div>
-					<div className="uiverse-comments">
-						<div className="uiverse-message-list">
-							{sortedMessages.length === 0 ? (
-								<div className="uiverse-empty">
-									<div className="text-center">
-										<MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
-										<p className="text-sm">{i18n.getMessage("chat_no_messages", isRTL)}</p>
-									</div>
-								</div>
-							) : (
-								sortedMessages.map((message, idx) => (
-									<div key={idx} className={cn("message-row", message.role === "user" ? "message-row-user" : "message-row-admin") }>
-										<MessageBubble message={message} isUser={message.role === "user"} />
-									</div>
-								))
-							)}
-							<div ref={messagesEndRef} />
+				<div className="message-list px-4 pt-4 pb-2">
+					{sortedMessages.length === 0 ? (
+						<div className="flex items-center justify-center min-h-[200px] text-muted-foreground p-4">
+							<div className="text-center">
+								<MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
+								<p className="text-sm">
+									{i18n.getMessage("chat_no_messages", isRTL)}
+								</p>
+							</div>
 						</div>
-					</div>
+					) : (
+						<AnimatePresence initial={false}>
+							{sortedMessages.map((message, idx) => (
+								<motion.div
+									key={`${message.date}|${message.time}|${message.role}|${(message.message || "").slice(0, 24)}|${idx}`}
+									className={cn(
+										"message-row",
+										message.role === "user" && "message-row-user",
+										message.role === "admin" && "message-row-admin",
+										message.role === "assistant" && "message-row-assistant",
+										message.role === "secretary" && "message-row-secretary",
+									)}
+									initial={{ opacity: 0, y: 8 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -8 }}
+									transition={{ duration: 0.18, ease: "easeOut" }}
+								>
+									<MessageBubble
+										message={message}
+										isUser={message.role === "user"}
+									/>
+								</motion.div>
+							))}
+						</AnimatePresence>
+					)}
+					<div ref={messagesEndRef} />
 				</div>
 			</ThemedScrollbar>
 
 			{/* Message Input - Enhanced textarea with 24h inactivity detection */}
-			<div className="uiverse-text-box">
-				<div className="uiverse-box-container">
-					<BasicChatInput
-						onSend={handleSendMessage}
-						disabled={inputDisabled}
-						placeholder={inputPlaceholder}
-						isSending={isSending}
-						messages={sortedMessages}
-					/>
+			<div className="input-bubble">
+				<div className="uiverse-text-box">
+					<div className="uiverse-box-container">
+						<BasicChatInput
+							onSend={handleSendMessage}
+							disabled={inputDisabled}
+							placeholder={inputPlaceholder}
+							isSending={isSending}
+							messages={sortedMessages}
+						/>
+					</div>
 				</div>
 			</div>
 			<style jsx>{`
-				.uiverse-card { width: 100%; background-color: hsl(var(--card)); box-shadow: 0px 187px 75px rgba(0,0,0,0.01), 0px 105px 63px rgba(0,0,0,0.05), 0px 47px 47px rgba(0,0,0,0.09), 0px 12px 26px rgba(0,0,0,0.1); border-radius: 17px 17px 27px 27px; border: 1px solid hsl(var(--border)); }
-				.uiverse-title { height: 50px; display: flex; align-items: center; padding-left: 20px; border-bottom: 1px solid hsl(var(--border)); font-weight: 700; font-size: 13px; color: hsl(var(--card-foreground)); position: relative; }
-				.uiverse-title::after { content: ''; width: 8ch; height: 1px; position: absolute; bottom: -1px; background-color: hsl(var(--foreground)); }
-				.uiverse-comments { display: grid; grid-template-columns: 1fr; gap: 0px; padding: 20px; }
-				.uiverse-message-list { display: flex; flex-direction: column; gap: 10px; }
-				.uiverse-empty { display: flex; align-items: center; justify-content: center; min-height: 200px; color: hsl(var(--muted-foreground)); padding: 1rem; }
+				.input-bubble { margin: 6px 0 8px; width: 100%; border: 1px solid hsl(var(--border)); border-radius: 17px 17px 27px 27px; background-color: hsl(var(--card)); box-shadow: 0px 24px 48px rgba(0,0,0,0.03), 0px 12px 24px rgba(0,0,0,0.05), 0px 6px 12px rgba(0,0,0,0.06); }
+				.uiverse-text-box { width: 100%; background-color: hsl(var(--muted)); padding: 10px; border-radius: 12px; }
+				.uiverse-box-container { width: 100%; background-color: hsl(var(--background)); border-radius: 8px 8px 21px 21px; padding: 12px; border: 1px solid hsl(var(--border)); }
+				.message-list { display: flex; flex-direction: column; gap: 6px; }
+				.message-list > .message-row { position: relative; z-index: 1; }
 				.message-row { padding: 10px; border-radius: 12px; overflow: hidden; }
-				/* Role-specific subtle gradients */
-				.message-row-user { background: linear-gradient(180deg, hsl(var(--primary) / 0.12) 0%, hsl(var(--primary) / 0.04) 100%); }
-				.message-row-admin { background: linear-gradient(180deg, hsl(var(--accent) / 0.14) 0%, hsl(var(--accent) / 0.06) 100%); }
-				.comment-container { display: flex; flex-direction: column; gap: 10px; }
-				.comment-container .user { display: grid; grid-template-columns: 40px 1fr; gap: 10px; }
-				.comment-container .user .user-pic { width: 40px; height: 40px; position: relative; display: flex; align-items: center; justify-content: center; background-color: hsl(var(--muted)); border-radius: 50%; color: hsl(var(--muted-foreground)); }
-				.comment-container .user .user-pic:after { content: ''; width: 9px; height: 9px; position: absolute; right: 0px; bottom: 0px; border-radius: 50%; background-color: #0fc45a; border: 2px solid hsl(var(--card)); }
-				.comment-container .user .user-info { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 3px; }
-				.comment-container .user .user-info span { font-weight: 700; font-size: 12px; color: hsl(var(--foreground)); }
-				.comment-container .user .user-info p { font-weight: 600; font-size: 10px; color: hsl(var(--muted-foreground)); }
-				.comment-container .comment-content { font-size: 12px; line-height: 16px; font-weight: 600; color: hsl(var(--foreground)); }
-				.uiverse-text-box { width: 100%; background-color: hsl(var(--muted)); padding: 8px; border-radius: 12px; }
-				.uiverse-box-container { background-color: hsl(var(--background)); border-radius: 8px 8px 21px 21px; padding: 8px; border: 1px solid hsl(var(--border)); }
-				/* optional: subtle bottom rounding hint to emulate drop blending with card */
-				.uiverse-text-box + .uiverse-text-box { border-top-left-radius: 0; border-top-right-radius: 0; }
+				/* Role-specific sexy gradients - enhanced visibility */
+				.message-row-user { background: linear-gradient(135deg, hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.08) 50%, hsl(var(--primary) / 0.12) 100%); }
+				.message-row-admin { background: linear-gradient(135deg, hsl(var(--accent) / 0.20) 0%, hsl(var(--accent) / 0.10) 50%, hsl(var(--accent) / 0.14) 100%); }
+				.message-row-assistant { background: linear-gradient(135deg, hsl(var(--ring) / 0.18) 0%, hsl(var(--ring) / 0.09) 50%, hsl(var(--ring) / 0.13) 100%); }
+				.message-row-secretary { background: linear-gradient(135deg, hsl(var(--muted-foreground) / 0.22) 0%, hsl(var(--muted-foreground) / 0.12) 50%, hsl(var(--muted-foreground) / 0.16) 100%); }
+
+				/* Ensure gradient also applies to the inner bubble for full-width visibility with enhanced colors */
+				.message-row-user .rounded-lg { background: linear-gradient(135deg, hsl(var(--primary) / 0.15) 0%, hsl(var(--primary) / 0.06) 50%, hsl(var(--primary) / 0.10) 100%) !important; }
+				.message-row-admin .rounded-lg { background: linear-gradient(135deg, hsl(var(--accent) / 0.17) 0%, hsl(var(--accent) / 0.08) 50%, hsl(var(--accent) / 0.12) 100%) !important; }
+				.message-row-assistant .rounded-lg { background: linear-gradient(135deg, hsl(var(--ring) / 0.15) 0%, hsl(var(--ring) / 0.07) 50%, hsl(var(--ring) / 0.11) 100%) !important; }
+				.message-row-secretary .rounded-lg { background: linear-gradient(135deg, hsl(var(--muted-foreground) / 0.19) 0%, hsl(var(--muted-foreground) / 0.10) 50%, hsl(var(--muted-foreground) / 0.14) 100%) !important; }
+				.message-row .rounded-lg { border: 1px solid hsl(var(--border) / 0.4); }
+
+				/* Neon effects */
+				.icon-neon { position: relative; isolation: isolate; }
+				.icon-neon::after { content: ''; position: absolute; inset: -4px; border-radius: 8px; background: radial-gradient(40% 40% at 50% 50%, currentColor 0%, transparent 60%); filter: blur(8px); opacity: 0; transition: opacity 200ms ease; z-index: -1; }
+				.icon-neon:hover::after, .icon-neon:focus-visible::after { opacity: 0.6; }
+
+				.avatar-neon { position: relative; z-index: 0; }
+				.avatar-neon > * { position: relative; z-index: 2; }
+				.avatar-neon::before { content: ''; position: absolute; inset: -6px; border-radius: 12px; filter: blur(12px); opacity: 0.55; transition: opacity 200ms ease, transform 200ms ease; z-index: 1; }
+				.message-row:hover .avatar-neon::before { opacity: 0.9; transform: scale(1.02); }
+				/* Role-based neon colors */
+				.message-row-user .avatar-neon::before { background: radial-gradient(50% 50% at 50% 50%, hsl(var(--primary)) 0%, transparent 70%); }
+				.message-row-admin .avatar-neon::before { background: radial-gradient(50% 50% at 50% 50%, hsl(var(--accent)) 0%, transparent 70%); }
+				.message-row-assistant .avatar-neon::before { background: radial-gradient(50% 50% at 50% 50%, hsl(var(--ring)) 0%, transparent 70%); }
+				.message-row-secretary .avatar-neon::before { background: radial-gradient(50% 50% at 50% 50%, hsl(var(--muted-foreground)) 0%, transparent 70%); }
+
+				/* Prevent long links from expanding bubble while avoiding mid-word breaks in normal text */
+				.prose a { overflow-wrap: anywhere; word-break: normal; white-space: normal; }
+				.prose p, .prose li { overflow-wrap: break-word; word-break: normal; }
+				.prose code { word-break: break-word; white-space: pre-wrap; }
+				.prose pre { white-space: pre; overflow-x: auto; max-width: 100%; }
 			`}</style>
 		</div>
-		);
-	};
+	);
+};

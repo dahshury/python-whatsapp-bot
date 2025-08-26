@@ -1,7 +1,6 @@
 import type {
 	DataEditorRef,
 	EditableGridCell,
-	GridCell,
 	GridSelection,
 	Item,
 } from "@glideapps/glide-data-grid";
@@ -119,14 +118,14 @@ function reducer(state: ReducerState, action: Action) {
 
 export function useUndoRedo(
 	gridRef: React.RefObject<DataEditorRef>,
-	getCellContent: (cell: Item) => GridCell,
+	getCellContent: (cell: Item) => unknown,
 	onCellEdited: (cell: Item, newValue: EditableGridCell) => void,
 	onGridSelectionChange?: (newVal: GridSelection) => void,
 ) {
 	const [state, dispatch] = useReducer(reducer, initialState);
 
 	const currentBatch = useRef<Batch | null>(null);
-	const timeout = useRef<any>(null);
+	const timeout = useRef<NodeJS.Timeout | null>(null);
 
 	const isApplyingUndoRef = useRef(false);
 	const isApplyingRedoRef = useRef(false);
@@ -156,7 +155,10 @@ export function useUndoRedo(
 				isApplyingUndoRef.current || isApplyingRedoRef.current;
 
 			if (!isApplyingUpdate && gridSelectionRef.current) {
-				clearTimeout(timeout.current);
+				if (timeout.current) {
+					clearTimeout(timeout.current as unknown as number);
+					timeout.current = null;
+				}
 				const previousValue = getCellContent(cell) as EditableGridCell;
 
 				if (currentBatch.current === null) {

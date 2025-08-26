@@ -28,6 +28,12 @@
 	transition: all 150ms ease-in-out;
 }
 
+/* Grid toolbar button base styles */
+.grid-toolbar button {
+	width: 1.75rem;
+	height: 1.75rem;
+}
+
 /* Dark mode support for toolbar */
 .dark .grid-toolbar {
 	background-color: rgb(31 41 55);
@@ -104,11 +110,6 @@
 		min-height: 2.5rem;
 	}
 
-	.grid-toolbar button {
-		width: 1.75rem;
-		height: 1.75rem;
-	}
-
 	.grid-toolbar .gap-1 {
 		gap: 0.25rem;
 	}
@@ -143,11 +144,11 @@
 /* Fallback for browsers without backdrop-filter */
 @supports not (backdrop-filter: blur(8px)) {
 	.glide-grid-toolbar {
-		background: rgba(255, 255, 255, 0.98) !important;
+		background: rgba(255, 255, 255, 0.98);
 	}
 
 	[data-theme="dark"] .glide-grid-toolbar {
-		background: rgba(42, 42, 42, 0.98) !important;
+		background: rgba(42, 42, 42, 0.98);
 	}
 }
 
@@ -161,7 +162,7 @@
 /* Responsive toolbar scaling */
 @media (max-width: 768px) {
 	.glide-grid-toolbar {
-		transform: scale(0.85) !important;
+		transform: scale(0.85);
 	}
 }
 
@@ -186,8 +187,8 @@
 	.glide-grid-toolbar,
 	.formatting-menu,
 	.format-menu-item {
-		transition: none !important;
-		animation: none !important;
+		transition: none;
+		animation: none;
 	}
 }
 
@@ -198,7 +199,7 @@
 
 /* Fullscreen mode - no extra padding needed */
 .glide-grid-wrapper-fullscreen .glide-grid-inner {
-	padding-top: 0 !important;
+	padding-top: 0;
 }
 
 /* Responsive toolbar in dialogs */

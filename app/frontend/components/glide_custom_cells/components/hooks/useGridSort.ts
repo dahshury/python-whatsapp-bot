@@ -13,19 +13,27 @@ export interface SortConfig {
 function getSortableValue(cell: GridCell): string | number | Date {
 	switch (cell.kind) {
 		case GridCellKind.Number:
-			return (cell as any).data ?? 0;
+			return Number((cell as { data?: unknown }).data ?? 0);
 		case GridCellKind.Text:
-			return (cell as any).displayData ?? (cell as any).data ?? "";
+			return String(
+				(cell as { displayData?: unknown; data?: unknown }).displayData ??
+					(cell as { data?: unknown }).data ??
+					"",
+			);
 		case GridCellKind.Custom:
 			// Custom renderers expose copyData / displayData if available
-			return (
-				(cell as any).copyData ??
-				(cell as any).displayData ??
-				(cell as any).data ??
-				""
+			return String(
+				(cell as { copyData?: unknown }).copyData ??
+					(cell as { displayData?: unknown }).displayData ??
+					(cell as { data?: unknown }).data ??
+					"",
 			);
 		default:
-			return (cell as any).displayData ?? (cell as any).data ?? "";
+			return String(
+				(cell as { displayData?: unknown; data?: unknown }).displayData ??
+					(cell as { data?: unknown }).data ??
+					"",
+			);
 	}
 }
 

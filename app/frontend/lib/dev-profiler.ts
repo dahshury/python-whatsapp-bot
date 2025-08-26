@@ -41,7 +41,10 @@ export function reportTop(limit: number = 10): void {
 }
 
 let __dbgInterval: any = null as any;
-export function startReporter(intervalMs: number = 3000, topN: number = 10): void {
+export function startReporter(
+	intervalMs: number = 3000,
+	topN: number = 10,
+): void {
 	if (!devProfilerEnabled || typeof window === "undefined") return;
 	try {
 		stopReporter();
@@ -70,5 +73,3 @@ try {
 		g.__dbgStopReporter = () => stopReporter();
 	}
 } catch {}
-
-

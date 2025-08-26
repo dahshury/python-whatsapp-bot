@@ -35,9 +35,15 @@ const COLORS = {
 	card: "hsl(var(--card))",
 } as const;
 
-export function DailyTrendsOverview({ dailyTrends, isRTL }: DailyTrendsOverviewProps) {
+export function DailyTrendsOverview({
+	dailyTrends,
+	isRTL,
+}: DailyTrendsOverviewProps) {
 	// Stable instance id for gradient defs
-	const instanceId = React.useMemo(() => Math.random().toString(36).slice(2), []);
+	const instanceId = React.useMemo(
+		() => Math.random().toString(36).slice(2),
+		[],
+	);
 	const fillResId = `fillRes_${instanceId}`;
 	const fillCanId = `fillCan_${instanceId}`;
 	const fillModId = `fillMod_${instanceId}`;
@@ -61,11 +67,16 @@ export function DailyTrendsOverview({ dailyTrends, isRTL }: DailyTrendsOverviewP
 	}, [dailyTrends, isRTL]);
 
 	const dateRangeLabel = React.useMemo(() => {
-		if (!dailyTrends || dailyTrends.length === 0) return i18n.getMessage("chart_no_data", isRTL);
+		if (!dailyTrends || dailyTrends.length === 0)
+			return i18n.getMessage("chart_no_data", isRTL);
 		const first = new Date(dailyTrends[0].date);
 		const last = new Date(dailyTrends[dailyTrends.length - 1].date);
 		const fmt = (d: Date) =>
-			d.toLocaleDateString(isRTL ? "ar" : "en", { month: "short", day: "2-digit", year: "numeric" });
+			d.toLocaleDateString(isRTL ? "ar" : "en", {
+				month: "short",
+				day: "2-digit",
+				year: "numeric",
+			});
 		return `${fmt(first)} - ${fmt(last)}`;
 	}, [dailyTrends, isRTL]);
 
@@ -83,8 +94,12 @@ export function DailyTrendsOverview({ dailyTrends, isRTL }: DailyTrendsOverviewP
 	return (
 		<Card className="h-full">
 			<CardHeader>
-				<CardTitle>{i18n.getMessage("chart_daily_trends_overview", isRTL)}</CardTitle>
-				<CardDescription>{i18n.getMessage("chart_showing_all_data", isRTL)}</CardDescription>
+				<CardTitle>
+					{i18n.getMessage("chart_daily_trends_overview", isRTL)}
+				</CardTitle>
+				<CardDescription>
+					{i18n.getMessage("chart_showing_all_data", isRTL)}
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div className="h-[350px]">
@@ -101,16 +116,40 @@ export function DailyTrendsOverview({ dailyTrends, isRTL }: DailyTrendsOverviewP
 							<Tooltip contentStyle={tooltipStyle} cursor={false} />
 							<defs>
 								<linearGradient id={fillResId} x1="0" y1="0" x2="0" y2="1">
-									<stop offset="5%" stopColor={COLORS.reservations} stopOpacity={0.8} />
-									<stop offset="95%" stopColor={COLORS.reservations} stopOpacity={0.1} />
+									<stop
+										offset="5%"
+										stopColor={COLORS.reservations}
+										stopOpacity={0.8}
+									/>
+									<stop
+										offset="95%"
+										stopColor={COLORS.reservations}
+										stopOpacity={0.1}
+									/>
 								</linearGradient>
 								<linearGradient id={fillCanId} x1="0" y1="0" x2="0" y2="1">
-									<stop offset="5%" stopColor={COLORS.cancellations} stopOpacity={0.8} />
-									<stop offset="95%" stopColor={COLORS.cancellations} stopOpacity={0.1} />
+									<stop
+										offset="5%"
+										stopColor={COLORS.cancellations}
+										stopOpacity={0.8}
+									/>
+									<stop
+										offset="95%"
+										stopColor={COLORS.cancellations}
+										stopOpacity={0.1}
+									/>
 								</linearGradient>
 								<linearGradient id={fillModId} x1="0" y1="0" x2="0" y2="1">
-									<stop offset="5%" stopColor={COLORS.modifications} stopOpacity={0.8} />
-									<stop offset="95%" stopColor={COLORS.modifications} stopOpacity={0.1} />
+									<stop
+										offset="5%"
+										stopColor={COLORS.modifications}
+										stopOpacity={0.8}
+									/>
+									<stop
+										offset="95%"
+										stopColor={COLORS.modifications}
+										stopOpacity={0.1}
+									/>
 								</linearGradient>
 							</defs>
 							<Area
@@ -153,7 +192,9 @@ export function DailyTrendsOverview({ dailyTrends, isRTL }: DailyTrendsOverviewP
 						<div className="leading-none font-medium">
 							{i18n.getMessage("dashboard_trends", isRTL)}
 						</div>
-						<div className="text-muted-foreground leading-none">{dateRangeLabel}</div>
+						<div className="text-muted-foreground leading-none">
+							{dateRangeLabel}
+						</div>
 					</div>
 				</div>
 			</CardFooter>

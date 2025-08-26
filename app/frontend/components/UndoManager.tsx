@@ -23,15 +23,27 @@ export function UndoManager() {
 								success: () => {
 									try {
 										const { toastService } = require("@/lib/toast-service");
-										toastService.success(isRTL ? "تم التراجع بنجاح" : "Undo successful", operationToUndo.description);
+										toastService.success(
+											isRTL ? "تم التراجع بنجاح" : "Undo successful",
+											operationToUndo.description,
+										);
 									} catch {}
 									return "";
 								},
-								error: (err: any) => {
+								error: (err: unknown) => {
 									console.error("Undo failed:", err);
 									try {
 										const { toastService } = require("@/lib/toast-service");
-										toastService.error(isRTL ? "فشل التراجع" : "Undo failed", `${operationToUndo.description}: ${err?.message || (isRTL ? "خطأ غير معروف" : "Unknown error")}`);
+										const errorMessage =
+											err instanceof Error
+												? err.message
+												: isRTL
+													? "خطأ غير معروف"
+													: "Unknown error";
+										toastService.error(
+											isRTL ? "فشل التراجع" : "Undo failed",
+											`${operationToUndo.description}: ${errorMessage}`,
+										);
 									} catch {}
 									return "";
 								},

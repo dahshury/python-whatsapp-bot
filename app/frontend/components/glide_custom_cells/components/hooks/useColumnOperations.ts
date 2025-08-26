@@ -1,37 +1,37 @@
-import type { GridColumn } from "@glideapps/glide-data-grid";
+import type { GridCell, GridColumn } from "@glideapps/glide-data-grid";
 import React from "react";
 import { ColumnService } from "../services/ColumnService";
 import { extractCellDisplayText } from "../utils/cellTextExtraction";
 
 // Column configuration interface (same as in GridDataEditor and Grid)
-interface ColumnConfig {
-	pinned?: boolean;
-	width?: number;
-	hidden?: boolean;
-}
+// interface ColumnConfig {
+// 	pinned?: boolean;
+// 	width?: number;
+// 	hidden?: boolean;
+// }
 
 interface UseColumnOperationsProps {
 	columns: GridColumn[];
 	displayColumns: GridColumn[];
 	visibleColumnIndices: number[];
 	filteredRows: number[];
-	getRawCellContent: (col: number, row: number) => any;
-	getCellContent: (cell: [number, number]) => any;
+	getRawCellContent: (col: number, row: number) => unknown;
+	getCellContent: (cell: [number, number]) => unknown;
 	setColumns: (
 		columns: GridColumn[] | ((prev: GridColumn[]) => GridColumn[]),
 	) => void;
-	columnConfigMapping: Map<string, any>;
-	setColumnConfigMapping: (mapping: Map<string, any>) => void;
+	columnConfigMapping: Map<string, unknown>;
+	setColumnConfigMapping: (mapping: Map<string, unknown>) => void;
 	clearSelection: (keepRows?: boolean, keepColumns?: boolean) => void;
-	dataEditorRef: React.RefObject<any>;
+	dataEditorRef: React.RefObject<unknown>;
 }
 
 export const useColumnOperations = ({
-	columns,
+	columns: _columns,
 	displayColumns,
 	visibleColumnIndices,
 	filteredRows,
-	getRawCellContent,
+	getRawCellContent: _getRawCellContent,
 	getCellContent,
 	setColumns,
 	columnConfigMapping,
@@ -87,11 +87,8 @@ export const useColumnOperations = ({
 			const sampleSize = Math.min(filteredRows.length, MAX_SAMPLE_SIZE);
 
 			for (let i = 0; i < sampleSize; i++) {
-				// The display row index is just the index in the filtered list (i)
-				// because getCellContent internally maps displayRow -> original data row
 				const cell = getCellContent([displayColIndex, i]);
-				// Use the proper utility to extract display text from any cell type
-				const text = extractCellDisplayText(cell);
+				const text = extractCellDisplayText(cell as GridCell);
 
 				if (text) {
 					const cellWidth = measureTextWidth(
@@ -133,7 +130,6 @@ export const useColumnOperations = ({
 
 	const handlePin = React.useCallback(
 		(columnId: string, _side: "left" | "right") => {
-			// Find the column index in displayColumns to create the proper mapping ID
 			const displayColIndex = displayColumns.findIndex(
 				(c) => c.id === columnId,
 			);
@@ -141,8 +137,10 @@ export const useColumnOperations = ({
 
 			const configId = `col_${displayColIndex}`;
 			const newMapping = new Map(columnConfigMapping);
+			const existingConfig =
+				(newMapping.get(configId) as Record<string, unknown>) || {};
 			newMapping.set(configId, {
-				...newMapping.get(configId),
+				...existingConfig,
 				pinned: true,
 			});
 			setColumnConfigMapping(newMapping);
@@ -158,7 +156,6 @@ export const useColumnOperations = ({
 
 	const handleUnpin = React.useCallback(
 		(columnId: string) => {
-			// Find the column index in displayColumns to create the proper mapping ID
 			const displayColIndex = displayColumns.findIndex(
 				(c) => c.id === columnId,
 			);
@@ -166,8 +163,10 @@ export const useColumnOperations = ({
 
 			const configId = `col_${displayColIndex}`;
 			const newMapping = new Map(columnConfigMapping);
+			const existingConfig =
+				(newMapping.get(configId) as Record<string, unknown>) || {};
 			newMapping.set(configId, {
-				...newMapping.get(configId),
+				...existingConfig,
 				pinned: false,
 			});
 			setColumnConfigMapping(newMapping);

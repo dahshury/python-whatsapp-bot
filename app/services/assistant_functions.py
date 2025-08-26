@@ -120,9 +120,9 @@ class AssistantFunctionService:
         return format_response(True, data={"thought": thought})
 
     # --- New Undo-specific methods exposed through AssistantFunctionService ---
-    def undo_cancel_reservation(self, reservation_id: int, ar: bool = False) -> Dict[str, Any]:
+    def undo_cancel_reservation(self, reservation_id: int, ar: bool = False, max_reservations: int = 5) -> Dict[str, Any]:
         """Undo a reservation cancellation (reinstate it)."""
-        return self.reservation_service.undo_cancel_reservation_by_id(reservation_id, ar)
+        return self.reservation_service.undo_cancel_reservation_by_id(reservation_id, ar, max_reservations)
 
     def undo_reserve_time_slot(self, reservation_id: int, ar: bool = False) -> Dict[str, Any]:
         """Undo a time slot reservation (cancel it)."""
@@ -314,18 +314,19 @@ def search_available_appointments(start_date: Optional[str] = None,
     )
 
 
-def undo_cancel_reservation(reservation_id: int, ar: bool = False) -> Dict[str, Any]:
+def undo_cancel_reservation(reservation_id: int, ar: bool = False, max_reservations: int = 5) -> Dict[str, Any]:
     """
     Reinstates a previously cancelled reservation by its ID.
 
     Parameters:
         reservation_id (int): The ID of the reservation to reinstate.
         ar (bool, optional): If True, returns messages in Arabic.
+        max_reservations (int, optional): Capacity limit per slot to enforce on reinstate.
 
     Returns:
         dict: Result of the reinstatement operation.
     """
-    return _service.undo_cancel_reservation(reservation_id, ar)
+    return _service.undo_cancel_reservation(reservation_id, ar, max_reservations)
 
 
 def undo_reserve_time_slot(reservation_id: int, ar: bool = False) -> Dict[str, Any]:

@@ -1,6 +1,9 @@
 /* Base Tailwind directives */
+/* biome-ignore lint: Tailwind directives */
 @tailwind base;
+/* biome-ignore lint: Tailwind directives */
 @tailwind components;
+/* biome-ignore lint: Tailwind directives */
 @tailwind utilities;
 
 /* CSS Variables and Theme Configuration */
@@ -68,11 +71,31 @@
 		);
 
 		/* Chart gradients */
-		--gradient-chart-1: linear-gradient(135deg, hsl(var(--chart-1)) 0%, hsl(var(--chart-1) / 0.7) 100%);
-		--gradient-chart-2: linear-gradient(135deg, hsl(var(--chart-2)) 0%, hsl(var(--chart-2) / 0.7) 100%);
-		--gradient-chart-3: linear-gradient(135deg, hsl(var(--chart-3)) 0%, hsl(var(--chart-3) / 0.7) 100%);
-		--gradient-chart-4: linear-gradient(135deg, hsl(var(--chart-4)) 0%, hsl(var(--chart-4) / 0.7) 100%);
-		--gradient-chart-5: linear-gradient(135deg, hsl(var(--chart-5)) 0%, hsl(var(--chart-5) / 0.7) 100%);
+		--gradient-chart-1: linear-gradient(
+			135deg,
+			hsl(var(--chart-1)) 0%,
+			hsl(var(--chart-1) / 0.7) 100%
+		);
+		--gradient-chart-2: linear-gradient(
+			135deg,
+			hsl(var(--chart-2)) 0%,
+			hsl(var(--chart-2) / 0.7) 100%
+		);
+		--gradient-chart-3: linear-gradient(
+			135deg,
+			hsl(var(--chart-3)) 0%,
+			hsl(var(--chart-3) / 0.7) 100%
+		);
+		--gradient-chart-4: linear-gradient(
+			135deg,
+			hsl(var(--chart-4)) 0%,
+			hsl(var(--chart-4) / 0.7) 100%
+		);
+		--gradient-chart-5: linear-gradient(
+			135deg,
+			hsl(var(--chart-5)) 0%,
+			hsl(var(--chart-5) / 0.7) 100%
+		);
 	}
 
 	.dark {
@@ -114,9 +137,11 @@
 /* Base element styles */
 @layer base {
 	* {
+		/* biome-ignore lint: Tailwind apply */
 		@apply border-border;
 	}
 	body {
+		/* biome-ignore lint: Tailwind apply */
 		@apply bg-background text-foreground;
 	}
 }

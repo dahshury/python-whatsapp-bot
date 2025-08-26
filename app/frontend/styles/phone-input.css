@@ -32,13 +32,13 @@
 }
 
 .phone-input-wrapper input {
-	background-color: transparent !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: transparent;
+	color: hsl(var(--foreground));
 }
 
 .phone-input-wrapper button {
-	background-color: transparent !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: transparent;
+	color: hsl(var(--foreground));
 }
 
 /* Phone input theme integration */
@@ -55,8 +55,8 @@
 
 /* Ensure selected option text uses theme colors */
 [role="option"][aria-selected="true"] {
-	color: hsl(var(--primary-foreground)) !important;
-	background-color: hsl(var(--primary)) !important;
+	color: hsl(var(--primary-foreground));
+	background-color: hsl(var(--primary));
 }
 
 /* Phone Input Editor Styles - Target inner content only to preserve positioning */
@@ -65,134 +65,134 @@
 .click-outside-ignore > div[style*="display: flex"]:has(input[type="tel"]),
 .click-outside-ignore .phone-input,
 .click-outside-ignore input[type="tel"] {
-	width: 200px !important;
-	min-width: 200px !important;
-	max-width: 200px !important;
+	width: 200px;
+	min-width: 200px;
+	max-width: 200px;
 }
 
 /* Target the wrapper div inside the editor */
 .click-outside-ignore > div:first-child:has(.phone-input) {
-	width: 200px !important;
-	min-width: 200px !important;
-	max-width: 200px !important;
+	width: 200px;
+	min-width: 200px;
+	max-width: 200px;
 }
 
 /* Ensure the phone input component itself respects the width */
 .phone-input {
-	max-width: 200px !important;
+	max-width: 200px;
 }
 
 /* Small phone input for compact cards */
 .phone-input-small {
-	font-size: 10px !important;
+	font-size: 10px;
 }
 
 .phone-input-small input {
-	font-size: 10px !important;
-	font-family: monospace !important;
+	font-size: 10px;
+	font-family: monospace;
 }
 
 .phone-input-small button:disabled .PhoneInputCountrySelectArrow {
-	display: none !important;
+	display: none;
 }
 
 .phone-input-small .PhoneInputCountrySelect {
-	font-size: 10px !important;
+	font-size: 10px;
 }
 
 .phone-input-small .PhoneInputCountrySelectDropdown {
-	font-size: 10px !important;
+	font-size: 10px;
 }
 
 .phone-input-small .PhoneInputCountryFlag {
-	width: 0.75em !important;
-	height: 0.5em !important;
+	width: 0.75em;
+	height: 0.5em;
 }
 
 /* Extra small phone input for hover cards */
 .phone-input-extra-small {
-	font-size: 9px !important;
+	font-size: 9px;
 }
 
 .phone-input-extra-small input {
-	font-size: 9px !important;
-	padding: 0 !important;
-	height: 16px !important;
+	font-size: 9px;
+	padding: 0;
+	height: 16px;
 }
 
 .phone-input-extra-small .PhoneInputCountrySelect {
-	font-size: 9px !important;
-	padding: 0 !important;
+	font-size: 9px;
+	padding: 0;
 }
 
 .phone-input-extra-small .PhoneInputCountryFlag {
-	width: 0.65em !important;
-	height: 0.45em !important;
+	width: 0.65em;
+	height: 0.45em;
 }
 
 /* Centered phone input styles */
 .phone-input-centered {
-	justify-content: center !important;
+	justify-content: center;
 }
 
 .phone-input-centered .PhoneInputCountry {
-	margin-right: 2px !important;
+	margin-right: 2px;
 }
 
 /* Regular size phone input */
 .phone-input-regular {
-	font-size: 16px !important;
+	font-size: 16px;
 }
 
 .phone-input-regular input {
-	font-size: 16px !important;
-	font-family: monospace !important;
-	padding: 0 2px !important;
+	font-size: 16px;
+	font-family: monospace;
+	padding: 0 2px;
 }
 
 .phone-input-regular .PhoneInputCountrySelect {
-	font-size: 16px !important;
+	font-size: 16px;
 }
 
 .phone-input-regular .PhoneInputCountryFlag {
-	width: 1.2em !important;
-	height: 0.9em !important;
+	width: 1.2em;
+	height: 0.9em;
 }
 
 /* Hover card phone input */
 .phone-input-hover-card {
-	font-size: 14px !important;
-	max-width: 180px !important;
-	width: 100% !important;
+	font-size: 14px;
+	max-width: 180px;
+	width: 100%;
 }
 
 .phone-input-hover-card input {
-	font-size: 14px !important;
-	font-family: monospace !important;
-	padding: 0 2px !important;
-	text-align: center !important;
+	font-size: 14px;
+	font-family: monospace;
+	padding: 0 2px;
+	text-align: center;
 }
 
 .phone-input-hover-card .PhoneInputCountrySelect {
-	font-size: 14px !important;
+	font-size: 14px;
 }
 
 .phone-input-hover-card .PhoneInputCountryFlag {
-	width: 1.05em !important;
-	height: 0.8em !important;
+	width: 1.05em;
+	height: 0.8em;
 }
 
 /* Ensure hover card phone input container is properly centered */
 .phone-input-hover-card .PhoneInput {
-	display: flex !important;
-	justify-content: center !important;
-	align-items: center !important;
-	width: 100% !important;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
 }
 
 /* Hide dropdown arrow for all disabled phone inputs */
 .phone-input-centered button:disabled .PhoneInputCountrySelectArrow,
 .phone-input-regular button:disabled .PhoneInputCountrySelectArrow,
 .phone-input-hover-card button:disabled .PhoneInputCountrySelectArrow {
-	display: none !important;
+	display: none;
 }

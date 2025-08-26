@@ -1,234 +1,400 @@
 import { cancelReservation, modifyReservation } from "@/lib/api";
+import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
+import { to24h } from "./utils";
+
 // Toasts are centralized in WebSocketDataProvider to avoid duplicates
 
+// WebSocket-based operations to replace HTTP API calls
+function sendWebSocketMessage(message: any): Promise<boolean> {
+	return new Promise((resolve) => {
+		try {
+			const wsRef = (globalThis as any).__wsConnection;
+			if (wsRef?.current?.readyState === WebSocket.OPEN) {
+				wsRef.current.send(JSON.stringify(message));
+				resolve(true);
+			} else {
+				console.warn("WebSocket not connected, falling back to HTTP");
+				resolve(false);
+			}
+		} catch {
+			resolve(false);
+		}
+	});
+}
+
+async function modifyReservationWS(
+	waId: string,
+	updates: {
+		date: string;
+		time: string;
+		title?: string;
+		type?: number;
+		approximate?: boolean;
+		reservationId?: number;
+	},
+): Promise<{ success: boolean; message?: string }> {
+	const success = await sendWebSocketMessage({
+		type: "modify_reservation",
+		data: {
+			wa_id: waId,
+			date: updates.date,
+			time_slot: updates.time,
+			customer_name: updates.title,
+			type: updates.type,
+			approximate: updates.approximate,
+			reservation_id: updates.reservationId,
+		},
+	});
+	if (success) return { success: true };
+	// Fallback to HTTP if WebSocket unavailable
+	const resp = await modifyReservation(waId, updates);
+	return {
+		success: Boolean((resp as any)?.success),
+		message: (resp as any)?.message ?? (resp as any)?.error,
+	};
+}
+
+async function cancelReservationWS(
+	waId: string,
+	date: string,
+	isRTL?: boolean,
+): Promise<{ success: boolean; message?: string }> {
+	const success = await sendWebSocketMessage({
+		type: "cancel_reservation",
+		data: { wa_id: waId, date: date, ar: isRTL || false },
+	});
+	if (success) return { success: true };
+	// Fallback to HTTP if WebSocket unavailable
+	const resp = await cancelReservation({ id: waId, date, isRTL });
+	return {
+		success: Boolean((resp as any)?.success),
+		message: (resp as any)?.message ?? (resp as any)?.error,
+	};
+}
+
 export async function handleEventChange(args: {
-  info: any;
-  isVacationDate: (date: string) => boolean;
-  isRTL: boolean;
-  currentView: string;
-  onRefresh: () => Promise<void>;
-  getCalendarApi?: () => any;
-  updateEvent: (id: string, event: any) => void;
-  resolveEvent?: (id: string) => { extendedProps?: any } | undefined;
+	info: any;
+	isVacationDate: (date: string) => boolean;
+	isRTL: boolean;
+	currentView: string;
+	onRefresh: () => Promise<void>;
+	getCalendarApi?: () => any;
+	updateEvent: (id: string, event: any) => void;
+	resolveEvent?: (id: string) => { extendedProps?: any } | undefined;
 }): Promise<void> {
-  const { info, getCalendarApi, updateEvent, currentView, isVacationDate, resolveEvent } = args;
-  try {
-    const event = info?.event;
-    if (!event) return;
+	const {
+		info,
+		getCalendarApi,
+		updateEvent,
+		currentView,
+		isVacationDate,
+		resolveEvent,
+	} = args;
+	try {
+		const event = info?.event;
+		if (!event) return;
 
-    // Convert to backend payload (match Streamlit behavior)
-    const resolved = resolveEvent ? resolveEvent(String(event.id)) : undefined;
-    const waId = event.extendedProps?.waId
-      || event.extendedProps?.wa_id
-      || resolved?.extendedProps?.waId
-      || resolved?.extendedProps?.wa_id
-      || event.id;
-    const newDate = event.startStr?.split("T")[0];
-    // Derive HH:mm deterministically from startStr to avoid timezone skew
-    const rawTime = (event.startStr?.split("T")[1] || "00:00").slice(0, 5);
-    let newTime = rawTime;
-    const type = event.extendedProps?.type ?? 0;
-    const reservationId: number | undefined = (event.extendedProps?.reservationId
-      || event.extendedProps?.reservation_id) as number | undefined;
-    const title = event.title;
+		// Convert to backend payload (match Streamlit behavior)
+		const resolved = resolveEvent ? resolveEvent(String(event.id)) : undefined;
+		const waId =
+			event.extendedProps?.waId ||
+			event.extendedProps?.wa_id ||
+			resolved?.extendedProps?.waId ||
+			resolved?.extendedProps?.wa_id ||
+			event.id;
+		const newDate = event.startStr?.split("T")[0];
+		// Derive HH:mm deterministically from startStr to avoid timezone skew
+		const rawTime = (event.startStr?.split("T")[1] || "00:00").slice(0, 5);
+		// Normalize to slot base time for API call (DB stores slot base times, not presentation times)
+		const slotBaseTime = normalizeToSlotBase(newDate || "", rawTime);
+		const newTime = slotBaseTime;
+		const type = event.extendedProps?.type ?? 0;
+		const reservationId: number | undefined = (event.extendedProps
+			?.reservationId || event.extendedProps?.reservation_id) as
+			| number
+			| undefined;
+		const title = event.title;
 
-    // Skip if target date is a vacation day (let UI revert)
-    if (newDate && isVacationDate && isVacationDate(newDate)) {
-      if (info?.revert) info.revert();
-      return;
-    }
+		// Skip if target date is a vacation day (let UI revert)
+		if (newDate && isVacationDate && isVacationDate(newDate)) {
+			if (info?.revert) info.revert();
+			return;
+		}
 
-    // Decide approximation by view: exact for timeGrid, approximate otherwise
-    const isTimeGrid = (currentView || "").toLowerCase().includes("timegrid");
-    // Use approximate mode for month/year views so backend adjusts to nearest valid slot
-    const useApproximate = !isTimeGrid;
+		// Decide approximation by view: exact for timeGrid, approximate otherwise
+		const isTimeGrid = (currentView || "").toLowerCase().includes("timegrid");
+		// Use approximate mode for month/year views so backend adjusts to nearest valid slot
+		const useApproximate = !isTimeGrid;
 
-    // For month/year views we keep the dropped time as-is and rely on approximate=true
-    // to let the backend adjust to the nearest valid slot of that day.
+		// For month/year views we keep the dropped time as-is and rely on approximate=true
+		// to let the backend adjust to the nearest valid slot of that day.
 
-    // Mark this move locally to suppress immediate WS echo thrash
-    try {
-      (globalThis as any).__calendarLocalMoves = (globalThis as any).__calendarLocalMoves || new Map<string, number>();
-      (globalThis as any).__calendarLocalMoves.set(String(event.id), Date.now());
-    } catch {}
+		// Mark this move locally to suppress immediate WS echo thrash
+		try {
+			(globalThis as any).__calendarLocalMoves =
+				(globalThis as any).__calendarLocalMoves || new Map<string, number>();
+			(globalThis as any).__calendarLocalMoves.set(
+				String(event.id),
+				Date.now(),
+			);
+		} catch {}
 
-    // Capture previous state for rich success toast after WS confirmation
-    try {
-      const prevStartStr: string | undefined = info?.oldEvent?.startStr;
-      const prevDate = prevStartStr ? prevStartStr.split("T")[0] : undefined;
-      const prevTime = prevStartStr ? (prevStartStr.split("T")[1] || "00:00").slice(0, 5) : undefined;
-      const prevType: number | undefined = (info?.oldEvent?.extendedProps?.type ?? event.extendedProps?.type) as number | undefined;
-      const prevName: string | undefined = (info?.oldEvent?.title || event.title) as string | undefined;
-      (globalThis as any).__calendarLastModifyContext = (globalThis as any).__calendarLastModifyContext || new Map<string, any>();
-      (globalThis as any).__calendarLastModifyContext.set(String(event.id), {
-        waId,
-        prevDate,
-        prevTime,
-        prevType,
-        name: prevName,
-        // Also stash intended new values for fallback comparison
-        newDate,
-        newTime,
-        newType: type,
-      });
-    } catch {}
+		// Capture previous state for rich success toast after WS confirmation
+		try {
+			const prevStartStr: string | undefined = info?.oldEvent?.startStr;
+			const prevDate = prevStartStr ? prevStartStr.split("T")[0] : undefined;
+			const prevTime = prevStartStr
+				? (prevStartStr.split("T")[1] || "00:00").slice(0, 5)
+				: undefined;
+			const prevType: number | undefined = (info?.oldEvent?.extendedProps
+				?.type ?? event.extendedProps?.type) as number | undefined;
+			const prevName: string | undefined = (info?.oldEvent?.title ||
+				event.title) as string | undefined;
+			(globalThis as any).__calendarLastModifyContext =
+				(globalThis as any).__calendarLastModifyContext ||
+				new Map<string, any>();
+			(globalThis as any).__calendarLastModifyContext.set(String(event.id), {
+				waId,
+				prevDate,
+				prevTime,
+				prevType,
+				name: prevName,
+				// Also stash intended new values for fallback comparison
+				newDate,
+				newTime,
+				newType: type,
+			});
+		} catch {}
 
-    // Optimistic update: apply to calendar immediately; server confirmation will arrive via WS
-    const respPromise = modifyReservation(waId, {
-      date: newDate,
-      time: newTime,
-      title,
-      type,
-      approximate: useApproximate,
-      reservationId,
-    });
+		// Optimistic update: apply to calendar immediately; server confirmation will arrive via WS
+		const respPromise = modifyReservationWS(waId, {
+			date: newDate!,
+			time: newTime,
+			title,
+			type,
+			approximate: useApproximate,
+			reservationId,
+		});
 
-    // Update local view immediately; preserve extendedProps as-is in state to avoid losing waId
-    updateEvent(event.id, {
-      id: event.id,
-      title: event.title,
-      start: event.startStr,
-      end: event.endStr || event.startStr,
-    });
-    if (getCalendarApi) void getCalendarApi();
-    const resp = await respPromise;
-    if (!resp?.success) {
-      try {
-        const message = (resp && (resp.message || resp.error)) || "";
-        const toaster = (await import("sonner")).toast;
-        toaster.error(message || "Slot fully booked");
-      } catch {}
-      if (info?.revert) info.revert();
-    }
-    // Mark this operation as local to suppress unread increments on WS echo (cover id/wa_id and time variants)
-    try {
-      (globalThis as any).__localOps = (globalThis as any).__localOps || new Set<string>();
-      const idPart = String(reservationId ?? event.id ?? "");
-      const waPart = String(event.extendedProps?.waId || event.extendedProps?.wa_id || event.id || "");
-      const datePart = String(newDate || "");
-      const time12 = String(newTime || "");
-      const time24 = (() => {
-        try {
-          const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(time12);
-          if (!m) return time12;
-          let h = parseInt(m[1], 10);
-          const mm = m[2];
-          const ap = m[3].toUpperCase();
-          if (ap === "PM" && h < 12) h += 12;
-          if (ap === "AM" && h === 12) h = 0;
-          return `${String(h).padStart(2, "0")}:${mm}`;
-        } catch { return time12; }
-      })();
-      const keys = [
-        `reservation_updated:${idPart}:${datePart}:${time12}`,
-        `reservation_updated:${idPart}:${datePart}:${time24}`,
-        `reservation_updated:${waPart}:${datePart}:${time12}`,
-        `reservation_updated:${waPart}:${datePart}:${time24}`,
-      ];
-      for (const k of keys) { (globalThis as any).__localOps.add(k); }
-      setTimeout(() => {
-        try { for (const k of keys) { (globalThis as any).__localOps.delete(k); } } catch {}
-      }, 5000);
-    } catch {}
-  } catch (_e) {
-    // Revert on error
-    if (info?.revert) info.revert();
-  }
+		// Update local view immediately; preserve extendedProps as-is in state to avoid losing waId
+		updateEvent(event.id, {
+			id: event.id,
+			title: event.title,
+			start: event.startStr,
+			end: event.endStr || event.startStr,
+		});
+
+		const resp = await respPromise;
+		if (!resp?.success) {
+			try {
+				const message = (resp && resp.message) || "";
+				const toaster = (await import("sonner")).toast;
+				toaster.error(message || "Slot fully booked");
+			} catch {}
+			if (info?.revert) info.revert();
+		}
+		// Note: Removed post-drag reflow to prevent triggering eventChange for other events in slot
+		// Alignment will happen on next render via alignAndSortEventsForCalendar
+		// Mark this operation as local to suppress unread increments on WS echo (cover id/wa_id and time variants)
+		try {
+			(globalThis as any).__localOps =
+				(globalThis as any).__localOps || new Set<string>();
+			const idPart = String(reservationId ?? event.id ?? "");
+			const waPart = String(
+				event.extendedProps?.waId ||
+					event.extendedProps?.wa_id ||
+					event.id ||
+					"",
+			);
+			const datePart = String(newDate || "");
+			const time12 = String(newTime || "");
+			const time24 = (() => {
+				try {
+					const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(time12);
+					if (!m) return time12;
+					let h = parseInt(m[1], 10);
+					const mm = m[2];
+					const ap = m[3].toUpperCase();
+					if (ap === "PM" && h < 12) h += 12;
+					if (ap === "AM" && h === 12) h = 0;
+					return `${String(h).padStart(2, "0")}:${mm}`;
+				} catch {
+					return time12;
+				}
+			})();
+			const keys = [
+				`reservation_updated:${idPart}:${datePart}:${time12}`,
+				`reservation_updated:${idPart}:${datePart}:${time24}`,
+				`reservation_updated:${waPart}:${datePart}:${time12}`,
+				`reservation_updated:${waPart}:${datePart}:${time24}`,
+			];
+			for (const k of keys) {
+				(globalThis as any).__localOps.add(k);
+			}
+			setTimeout(() => {
+				try {
+					for (const k of keys) {
+						(globalThis as any).__localOps.delete(k);
+					}
+				} catch {}
+			}, 5000);
+		} catch {}
+	} catch (_e) {
+		// Revert on error
+		if (args?.info?.revert) args.info.revert();
+	}
 }
 
 export async function handleOpenConversation(args: {
-  eventId: string;
-  openConversation: (id: string) => void;
+	eventId: string;
+	openConversation: (id: string) => void;
 }): Promise<void> {
-  const { eventId, openConversation } = args;
-  // Do not fetch on click; use in-memory data and just open the sidebar
-  openConversation(eventId);
+	const { eventId, openConversation } = args;
+	// Do not fetch on click; use in-memory data and just open the sidebar
+	openConversation(eventId);
 }
 
 export async function handleCancelReservation(args: {
-  eventId: string;
-  events: any[];
-  isRTL: boolean;
-  onRefresh: () => Promise<void>;
-  getCalendarApi?: () => any;
-  onEventCancelled?: (eventId: string) => void;
+	eventId: string;
+	events: any[];
+	isRTL: boolean;
+	onRefresh: () => Promise<void>;
+	getCalendarApi?: () => any;
+	onEventCancelled?: (eventId: string) => void;
 }): Promise<void> {
-  const { eventId, events, isRTL, getCalendarApi, onEventCancelled } = args;
-  // Resolve from state first, then FullCalendar for freshest extendedProps (tolerate number/string ids)
-  const stateEv = events.find((e) => String(e.id) === String(eventId));
-  let api: any | null = null;
-  let fcEvent: any | null = null;
-  try {
-    api = typeof getCalendarApi === "function" ? getCalendarApi() : null;
-    fcEvent = api?.getEventById?.(String(eventId)) || null;
-  } catch {}
+	const { eventId, events, isRTL, getCalendarApi, onEventCancelled } = args;
+	// Resolve from state first, then FullCalendar for freshest extendedProps (tolerate number/string ids)
+	const stateEv = events.find((e) => String(e.id) === String(eventId));
+	let api: any | null = null;
+	let fcEvent: any | null = null;
+	try {
+		api = typeof getCalendarApi === "function" ? getCalendarApi() : null;
+		fcEvent = api?.getEventById?.(String(eventId)) || null;
+	} catch {}
 
-  const startStr: string | undefined = stateEv?.start || fcEvent?.startStr || fcEvent?.start?.toISOString?.();
-  const date = (startStr || "").split("T")[0] || "";
-  let waId: string = (
-    (stateEv?.extendedProps?.waId || stateEv?.extendedProps?.wa_id || fcEvent?.extendedProps?.waId || fcEvent?.extendedProps?.wa_id || "")
-  ).toString();
-  // Fallback: some events might carry waId as the event id itself
-  if (!waId) waId = String(eventId);
+	const startStr: string | undefined =
+		stateEv?.start || fcEvent?.startStr || fcEvent?.start?.toISOString?.();
+	const date = (startStr || "").split("T")[0] || "";
+	let waId: string = (
+		stateEv?.extendedProps?.waId ||
+		stateEv?.extendedProps?.wa_id ||
+		fcEvent?.extendedProps?.waId ||
+		fcEvent?.extendedProps?.wa_id ||
+		""
+	).toString();
+	// Fallback: some events might carry waId as the event id itself
+	if (!waId) waId = String(eventId);
 
-  if (!waId || !date) {
-    try {
-      const toaster = (await import("sonner")).toast;
-      toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
-        description: isRTL ? "بيانات غير كاملة (الهاتف/التاريخ)" : "Missing waId/date to cancel",
-        duration: 3000,
-      });
-    } catch {}
-    return;
-  }
+	if (!waId || !date) {
+		try {
+			const toaster = (await import("sonner")).toast;
+			toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
+				description: isRTL
+					? "بيانات غير كاملة (الهاتف/التاريخ)"
+					: "Missing waId/date to cancel",
+				duration: 3000,
+			});
+		} catch {}
+		return;
+	}
 
-  // Optimistic: mark as cancelled immediately; rely on WS and removal on success
-  try { fcEvent?.setExtendedProp?.("cancelled", true); } catch {}
+	// Optimistic: mark as cancelled immediately; rely on WS and removal on success
+	try {
+		fcEvent?.setExtendedProp?.("cancelled", true);
+	} catch {}
 
-  try {
-    const resp = await cancelReservation({ id: waId, date, isRTL });
-    if (!resp?.success) {
-      try {
-        const toaster = (await import("sonner")).toast;
-        const message = (resp && (resp.message || resp.error)) || "";
-        toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
-          description: message || (isRTL ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
-          duration: 3000,
-        });
-      } catch {}
-      try { fcEvent?.setExtendedProp?.("cancelled", false); } catch {}
-      return;
-    }
+	try {
+		const resp = await cancelReservationWS(waId, date, isRTL);
+		if (!resp?.success) {
+			try {
+				const toaster = (await import("sonner")).toast;
+				const message = (resp && resp.message) || "";
+				toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
+					description:
+						message ||
+						(isRTL ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+					duration: 3000,
+				});
+			} catch {}
+			try {
+				fcEvent?.setExtendedProp?.("cancelled", false);
+			} catch {}
+			return;
+		}
 
-    // Remove event from calendar on success (align with grid UX)
-    try { fcEvent?.remove?.(); } catch {}
-    try { onEventCancelled?.(String(eventId)); } catch {}
+		// Remove event from calendar on success (align with grid UX)
+		try {
+			fcEvent?.remove?.();
+		} catch {}
+		try {
+			onEventCancelled?.(String(eventId));
+		} catch {}
 
-    // Local echo suppression to avoid duplicate WS toasts
-    const markLocalEcho = (key: string) => {
-      try {
-        (globalThis as any).__localOps = (globalThis as any).__localOps || new Set<string>();
-        (globalThis as any).__localOps.add(key);
-        setTimeout(() => {
-          try { (globalThis as any).__localOps.delete(key); } catch {}
-        }, 4000);
-      } catch {}
-    };
-    const reservationId = String((stateEv?.extendedProps?.reservationId || fcEvent?.extendedProps?.reservationId || eventId) ?? "");
-    const key1 = `reservation_cancelled:${reservationId}:${date}:`;
-    const key2 = `reservation_cancelled:${String(waId)}:${date}:`;
-    markLocalEcho(key1);
-    markLocalEcho(key2);
-  } catch (_e) {
-    try {
-      const toaster = (await import("sonner")).toast;
-      toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
-        description: isRTL ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later",
-        duration: 3000,
-      });
-    } catch {}
-    try { fcEvent?.setExtendedProp?.("cancelled", false); } catch {}
-  }
+		// Local echo suppression to avoid duplicate WS toasts
+		const markLocalEcho = (key: string) => {
+			try {
+				(globalThis as any).__localOps =
+					(globalThis as any).__localOps || new Set<string>();
+				(globalThis as any).__localOps.add(key);
+				setTimeout(() => {
+					try {
+						(globalThis as any).__localOps.delete(key);
+					} catch {}
+				}, 4000);
+			} catch {}
+		};
+		const reservationId = String(
+			(stateEv?.extendedProps?.reservationId ||
+				fcEvent?.extendedProps?.reservationId ||
+				eventId) ??
+				"",
+		);
+		const key1 = `reservation_cancelled:${reservationId}:${date}:`;
+		const key2 = `reservation_cancelled:${String(waId)}:${date}:`;
+		markLocalEcho(key1);
+		markLocalEcho(key2);
+	} catch (_e) {
+		try {
+			const toaster = (await import("sonner")).toast;
+			toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
+				description: isRTL
+					? "خطأ بالنظام، حاول لاحقًا"
+					: "System error, try later",
+				duration: 3000,
+			});
+		} catch {}
+		try {
+			fcEvent?.setExtendedProp?.("cancelled", false);
+		} catch {}
+	}
 }
 
+// Normalize a time to the start of its 2-hour slot window for the given date
+function normalizeToSlotBase(dateStr: string, timeStr: string): string {
+	try {
+		const baseTime = to24h(String(timeStr || "00:00"));
+		const [hh, mm] = baseTime.split(":").map((v) => parseInt(v, 10));
+		const minutes =
+			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
+		const day = new Date(`${dateStr}T00:00:00`);
+		const { slotMinTime } = getSlotTimes(day, false, "");
+		const [sH, sM] = String(slotMinTime || "00:00:00")
+			.slice(0, 5)
+			.split(":")
+			.map((v) => parseInt(v, 10));
+		const minMinutes =
+			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
+		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
+		const rel = Math.max(0, minutes - minMinutes);
+		const slotIndex = Math.floor(rel / duration);
+		const baseMinutes = minMinutes + slotIndex * duration;
+		const hhOut = String(Math.floor(baseMinutes / 60)).padStart(2, "0");
+		const mmOut = String(baseMinutes % 60).padStart(2, "0");
+		return `${hhOut}:${mmOut}`;
+	} catch {
+		return to24h(String(timeStr || "00:00"));
+	}
+}
 
+// Note: Removed reflowSlotAfterDrag function to prevent POST storms
+// Slot alignment now handled only at render-time via alignAndSortEventsForCalendar

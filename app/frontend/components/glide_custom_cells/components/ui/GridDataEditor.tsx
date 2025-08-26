@@ -1,4 +1,6 @@
+import type { GridMouseEventArgs } from "@glideapps/glide-data-grid";
 import DataEditor, {
+	type DataEditorRef,
 	type DrawCellCallback,
 	drawTextCell,
 	type GetRowThemeCallback,
@@ -37,12 +39,12 @@ interface GridDataEditorProps {
 	displayColumns: GridColumn[];
 	filteredRows: number[];
 	filteredRowCount: number;
-	getCellContent: (cell: Item) => any;
-	onCellEdited: (cell: Item, newVal: any) => void;
+	getCellContent: (cell: Item) => unknown;
+	onCellEdited: (cell: Item, newVal: unknown) => void;
 	onGridSelectionChange: (selection: GridSelection) => void;
 	gridSelection: GridSelection;
 	onRowAppended: () => void;
-	onItemHovered: (args: any) => void;
+	onItemHovered: (args: { location: [number, number]; item: Item }) => void;
 	onHeaderMenuClick: (
 		colIdx: number,
 		bounds: { x: number; y: number; width: number; height: number },
@@ -54,7 +56,7 @@ interface GridDataEditorProps {
 	theme: Partial<Theme>;
 	darkTheme: Partial<Theme>;
 	hoverRow?: number;
-	dataEditorRef: React.RefObject<any>;
+	dataEditorRef: React.RefObject<DataEditorRef>;
 	onMouseEnter?: () => void;
 	onMouseLeave?: () => void;
 	gridWidth?: number;
@@ -88,7 +90,8 @@ const useColumnPinning = (
 				return columnConfigMapping.get(columnId)?.pinned === true;
 			})
 			.reduce(
-				(acc, col) => acc + ((col as any).width || minColumnWidth * 2),
+				(acc, col) =>
+					acc + ((col as { width?: number }).width || minColumnWidth * 2),
 				0,
 			);
 
@@ -192,7 +195,7 @@ const useGridSizer = (
 	const defaultTableHeight = 400;
 
 	const contentWidth = displayColumns.reduce(
-		(sum, col) => sum + ((col as any).width || 150),
+		(sum, col) => sum + ((col as { width?: number }).width || 150),
 		60,
 	);
 	const totalRows = filteredRowCount + 1;
@@ -249,7 +252,7 @@ const useGridSizer = (
 
 export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	displayColumns,
-	filteredRows,
+	filteredRows: _filteredRows,
 	filteredRowCount,
 	getCellContent,
 	onCellEdited,
@@ -263,7 +266,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	showSearch,
 	onSearchClose,
 	theme,
-	darkTheme,
+	darkTheme: _darkTheme,
 	hoverRow,
 	dataEditorRef,
 	onMouseEnter,
@@ -292,6 +295,21 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	const containerHeight = isFullscreen
 		? fullscreenHeight
 		: measuredContainerHeight || 0;
+
+	// Create wrapper function to adapt onItemHovered interface
+	const handleItemHovered = useCallback(
+		(args: GridMouseEventArgs) => {
+			if (onItemHovered && (args as { kind: string }).kind === "cell") {
+				const g =
+					args as unknown as import("@glideapps/glide-data-grid").GridMouseCellEventArgs;
+				onItemHovered({
+					location: g.location as [number, number],
+					item: g.location,
+				});
+			}
+		},
+		[onItemHovered],
+	);
 
 	const {
 		width,
@@ -365,11 +383,12 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	useEffect(() => {
 		if (onAutosize) {
 			// Replace the parent's autosize with our implementation
-			(window as any).gridAutosize = handleAutosize;
+			(window as Window & { gridAutosize?: () => void }).gridAutosize = () =>
+				handleAutosize(0);
 		}
 		return () => {
-			if ((window as any).gridAutosize) {
-				delete (window as any).gridAutosize;
+			if ((window as Window & { gridAutosize?: () => void }).gridAutosize) {
+				delete (window as Window & { gridAutosize?: () => void }).gridAutosize;
 			}
 		};
 	}, [onAutosize, handleAutosize]);
@@ -426,31 +445,46 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	const drawCell: DrawCellCallback = useCallback(
 		(args, draw) => {
 			const { cell, col, ctx, rect } = args;
-			const column = orderedColumns[col] as any; // Use ordered columns
+			const column = orderedColumns[col]; // Use ordered columns
 
-			if ((cell as any).isMissingValue) {
+			if ((cell as { isMissingValue?: boolean }).isMissingValue) {
 				ctx.save();
 
 				const hasContent = (() => {
 					if (cell.kind === GridCellKind.Custom) {
-						const data = (cell as any).data;
+						const data = (cell as { data?: unknown }).data as
+							| {
+									kind?: string;
+									phone?: string;
+									date?: Date;
+									time?: Date;
+									value?: unknown;
+							  }
+							| undefined;
 						if (data?.kind === "phone-input-cell") return !!data.phone;
 						if (data?.kind === "tempus-date-cell") return !!data.date;
-						if (data?.kind === "timekeeper-cell") return !!data.time;
+						if (data?.kind === "timekeeper-cell")
+							return !!(data as { time?: Date }).time;
 						if (data?.kind === "dropdown-cell") return !!data.value;
 						return false;
 					}
 
-					if (cell.kind === GridCellKind.Text) return !!(cell as any).data;
+					if (cell.kind === GridCellKind.Text)
+						return !!(cell as { data?: unknown }).data;
 					if (cell.kind === GridCellKind.Number)
 						return (
-							(cell as any).data !== null && (cell as any).data !== undefined
+							(cell as { data?: unknown }).data !== null &&
+							(cell as { data?: unknown }).data !== undefined
 						);
 
 					return false;
 				})();
 
-				if ((column as any)?.isRequired && (column as any)?.isEditable) {
+				if (
+					(column as { isRequired?: boolean; isEditable?: boolean })
+						?.isRequired &&
+					(column as { isRequired?: boolean; isEditable?: boolean })?.isEditable
+				) {
 					drawAttentionIndicator(ctx, rect, theme as Theme);
 				}
 
@@ -464,7 +498,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 								...(theme as Theme),
 								textDark: (theme as Theme).textLight,
 							},
-						} as any,
+						} as unknown as Parameters<typeof drawTextCell>[0],
 						messages.grid.none(),
 						cell.contentAlign,
 					);
@@ -482,24 +516,30 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 		(row) => {
 			if (row === hoverRow) {
 				return {
-					bgCell: (theme as any).bgHeaderHovered,
-					bgCellMedium: (theme as any).bgHeaderHovered,
+					bgCell: (theme as Theme & { bgHeaderHovered?: string })
+						.bgHeaderHovered,
+					bgCellMedium: (theme as Theme & { bgHeaderHovered?: string })
+						.bgHeaderHovered,
 				};
 			}
 
 			if (row === filteredRowCount) {
 				return {
-					bgCell: (theme as any).bgHeader ?? (theme as any).bgCell,
-					bgCellMedium: (theme as any).bgHeader ?? (theme as any).bgCellMedium,
-					textDark: (theme as any).textHeader,
-				} as any;
+					bgCell:
+						(theme as Theme & { bgHeader?: string }).bgHeader ??
+						(theme as Theme).bgCell,
+					bgCellMedium:
+						(theme as Theme & { bgHeader?: string }).bgHeader ??
+						(theme as Theme).bgCellMedium,
+					textDark: (theme as Theme & { textHeader?: string }).textHeader,
+				};
 			}
 
 			return {
-				bgCell: (theme as any).bgCell,
-				bgCellMedium: (theme as any).bgCellMedium,
-				textDark: (theme as any).textDark,
-				textLight: (theme as any).textLight,
+				bgCell: (theme as Theme).bgCell,
+				bgCellMedium: (theme as Theme).bgCellMedium,
+				textDark: (theme as Theme).textDark,
+				textLight: (theme as Theme).textLight,
 			};
 		},
 		[hoverRow, theme, filteredRowCount],
@@ -524,6 +564,8 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 
 	return (
 		<div
+			role="presentation"
+			aria-hidden="true"
 			style={containerStyle}
 			className={`${containerClass} ${fullscreenClass}`}
 			onMouseEnter={onMouseEnter}
@@ -536,12 +578,12 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 				minWidth={minWidth}
 				maxWidth={maxWidth}
 				style={{
-					border: `${borderWidth}px solid ${(theme as any).borderColor}`,
+					border: `${borderWidth}px solid ${String((theme as Theme & { borderColor?: string }).borderColor)}`,
 					borderRadius: isFullscreen
 						? "calc(var(--radius) + 4px)"
 						: "var(--radius)",
 					overflow: "hidden",
-					backgroundColor: (theme as any).bgCell,
+					backgroundColor: (theme as Theme).bgCell,
 				}}
 				enable={{
 					top: false,
@@ -563,7 +605,11 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 				}}
 			>
 				<DataEditor
-					getCellContent={getCellContent}
+					getCellContent={(cell) =>
+						getCellContent(
+							cell,
+						) as unknown as import("@glideapps/glide-data-grid").GridCell
+					}
 					columns={orderedColumns} // Use reordered columns with pinned columns first
 					rows={filteredRowCount}
 					maxColumnAutoWidth={400}
@@ -583,7 +629,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					onRowAppended={onRowAppended}
 					onColumnMoved={onColumnMoved} // Use Streamlit-style column reordering
 					onCellEdited={onCellEdited}
-					onItemHovered={onItemHovered}
+					onItemHovered={handleItemHovered}
 					rowMarkers="both"
 					rowSelect="multi"
 					rowSelectionMode="multi"

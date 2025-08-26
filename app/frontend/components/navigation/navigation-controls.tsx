@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { DockIcon } from "@/components/ui/dock";
 import {
@@ -10,7 +11,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { NavigationControlsProps } from "@/types/navigation";
 
-export function NavigationControls({
+export const NavigationControls = React.memo(function NavigationControls({
 	isRTL = false,
 	isCalendarPage = false,
 	isPrevDisabled = false,
@@ -75,9 +76,9 @@ export function NavigationControls({
 	);
 
 	return (
-		<>
+		<div className={`flex items-center gap-1 ${className}`}>
 			{isRTL ? nextButton : prevButton}
 			{isRTL ? prevButton : nextButton}
-		</>
+		</div>
 	);
-}
+});

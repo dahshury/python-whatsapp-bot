@@ -41,7 +41,7 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 	const calculateColumnWidth = useCallback(
 		(
 			column: BaseColumnProps,
-			data: any[],
+			data: unknown[],
 			headerFont: string = "14px Arial",
 			cellFont: string = "14px Arial",
 		): number => {
@@ -50,7 +50,9 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 
 			// Get sample data for the column
 			const sampleData = data.slice(0, sampleSize);
-			const columnData = sampleData.map((row) => row[column.id]);
+			const columnData = sampleData.map(
+				(row) => (row as Record<string, unknown>)[column.id],
+			);
 
 			// Calculate max content width
 			let maxContentWidth = 0;
@@ -73,7 +75,7 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 	const autosizeColumn = useCallback(
 		(
 			column: BaseColumnProps,
-			data: any[],
+			data: unknown[],
 			onWidthChange: (columnId: string, width: number) => void,
 		) => {
 			const newWidth = calculateColumnWidth(column, data);
@@ -85,7 +87,7 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 	const autosizeColumns = useCallback(
 		(
 			columns: BaseColumnProps[],
-			data: any[],
+			data: unknown[],
 			onWidthChange: (columnId: string, width: number) => void,
 		) => {
 			columns.forEach((column) => {
@@ -98,7 +100,7 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 	const autosizeVisibleColumns = useCallback(
 		(
 			columns: BaseColumnProps[],
-			data: any[],
+			data: unknown[],
 			hiddenColumns: Set<string>,
 			onWidthChange: (columnId: string, width: number) => void,
 		) => {
@@ -111,14 +113,14 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 	);
 
 	const getOptimalWidth = useCallback(
-		(column: BaseColumnProps, data: any[]): number => {
+		(column: BaseColumnProps, data: unknown[]): number => {
 			return calculateColumnWidth(column, data);
 		},
 		[calculateColumnWidth],
 	);
 
 	const getOptimalWidths = useCallback(
-		(columns: BaseColumnProps[], data: any[]): Record<string, number> => {
+		(columns: BaseColumnProps[], data: unknown[]): Record<string, number> => {
 			const widths: Record<string, number> = {};
 			columns.forEach((column) => {
 				widths[column.id] = calculateColumnWidth(column, data);

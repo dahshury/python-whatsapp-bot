@@ -11,9 +11,8 @@ from dateutil import parser  # Requires: pip install python-dateutil
 from hijri_converter import convert
 
 from app.config import config
-from sqlalchemy import select, text, and_, func
-from sqlalchemy.orm import Session
-from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
+from sqlalchemy import select, text, and_
+from app.db import get_session, CustomerModel, ConversationModel, ReservationModel, VacationPeriodModel
 from app.i18n import get_message
 from app.utils.realtime import enqueue_broadcast
 
@@ -810,6 +809,39 @@ To:
     
     return message
 
+def _load_vacations_from_db() -> dict:
+    """
+    Load vacation periods from DB and return dict {start_date: duration}.
+    """
+    vacations: dict = {}
+    try:
+        with get_session() as session:
+            rows = session.query(VacationPeriodModel).all()
+            for r in rows:
+                try:
+                    # Normalize start/end
+                    if isinstance(r.start_date, datetime.date):
+                        s_date = r.start_date
+                    else:
+                        s_date = datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                    if getattr(r, "end_date", None):
+                        if isinstance(r.end_date, datetime.date):
+                            e_date = r.end_date
+                        else:
+                            e_date = datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                        duration = max(1, (e_date - s_date).days + 1)
+                    elif getattr(r, "duration_days", None):
+                        duration = max(1, int(r.duration_days))
+                    else:
+                        continue
+                    vacations[s_date.strftime("%Y-%m-%d")] = duration
+                except Exception:
+                    continue
+    except Exception as e:
+        logging.debug(f"Failed loading vacations from DB: {e}")
+    return vacations
+
+
 def is_vacation_period(date_obj, vacation_dict=None):
     """
     Check if a given date falls within a vacation period.
@@ -826,30 +858,8 @@ def is_vacation_period(date_obj, vacation_dict=None):
     try:
         # Set up the vacation dictionary if not provided
         if vacation_dict is None:
-            vacation_dict = {}
-            vacation_start_dates = config.get("VACATION_START_DATES", "")
-            vacation_durations = config.get("VACATION_DURATIONS", "")
-            
-            # Only process if both values are non-empty strings
-            if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
-                try:
-                    start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
-                    durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
-                    
-                    # Parse each date in Gregorian format
-                    parsed_start_dates = []
-                    for date_str in start_dates:
-                        try:
-                            parsed_date = parse_gregorian_date(date_str)
-                            parsed_start_dates.append(parsed_date)
-                        except ValueError as e:
-                            logging.error(f"Error parsing vacation date {date_str}: {e}")
-                    
-                    if len(parsed_start_dates) == len(durations):
-                        vacation_dict = {start_date: duration for start_date, duration in zip(parsed_start_dates, durations)}
-                except (ValueError, TypeError) as e:
-                    logging.error(f"Error parsing vacation dates: {e}")
-                    # Continue with empty vacation_dict if parsing fails
+            # Only DB
+            vacation_dict = _load_vacations_from_db()
         
         # Check if the date falls within any vacation period
         for start_day, duration in vacation_dict.items():
@@ -889,30 +899,7 @@ def find_vacation_end_date(date_obj, vacation_dict=None):
     try:
         # Set up the vacation dictionary if not provided
         if vacation_dict is None:
-            vacation_dict = {}
-            vacation_start_dates = config.get("VACATION_START_DATES", "")
-            vacation_durations = config.get("VACATION_DURATIONS", "")
-            
-            # Only process if both values are non-empty strings
-            if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
-                try:
-                    start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
-                    durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
-                    
-                    # Parse each date in Gregorian format
-                    parsed_start_dates = []
-                    for date_str in start_dates:
-                        try:
-                            parsed_date = parse_gregorian_date(date_str)
-                            parsed_start_dates.append(parsed_date)
-                        except ValueError as e:
-                            logging.error(f"Error parsing vacation date {date_str}: {e}")
-                    
-                    if len(parsed_start_dates) == len(durations):
-                        vacation_dict = {start_date: duration for start_date, duration in zip(parsed_start_dates, durations)}
-                except (ValueError, TypeError) as e:
-                    logging.error(f"Error parsing vacation dates: {e}")
-                    # Continue with empty vacation_dict if parsing fails
+            vacation_dict = _load_vacations_from_db()
         
         # Check if the date falls within any vacation period and return the end date
         for start_day, duration in vacation_dict.items():

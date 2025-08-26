@@ -35,7 +35,7 @@
 		hsl(var(--muted) / 0.25) 100%
 	);
 	border-color: hsl(var(--muted) / 0.4);
-	border-radius: calc(var(--radius) * 0.75) !important;
+	border-radius: calc(var(--radius) * 0.75);
 	transform: translateY(-3px) scale(1.02);
 	box-shadow:
 		0 8px 16px rgba(0, 0, 0, 0.15),
@@ -46,26 +46,28 @@
 }
 
 /* Special hover for selected/highlighted dates */
-.fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(
-		.fc-day-disabled
-	):hover
+.fc-multimonth .fc-daygrid
+	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
 	.fc-daygrid-day-frame,
 .fc-multimonth
+	.fc-daygrid
 	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
 		.fc-day-disabled
 	):hover
 	.fc-daygrid-day-frame,
 .fc-daygrid
+	.fc-daygrid
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
 	.fc-daygrid-day-frame,
 .fc-daygrid
+	.fc-daygrid
 	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
 		.fc-day-disabled
 	):hover
 	.fc-daygrid-day-frame {
-	background: hsl(var(--primary) / 0.3) !important;
-	border-color: hsl(var(--primary) / 0.7) !important;
-	border-radius: calc(var(--radius) * 0.75) !important;
+	background: hsl(var(--primary) / 0.3);
+	border-color: hsl(var(--primary) / 0.7);
+	border-radius: calc(var(--radius) * 0.75);
 	box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
 }
 
@@ -77,9 +79,9 @@
 	.fc-daygrid-day-frame {
 	background: hsl(var(--accent) / 0.35);
 	transform: translateY(-2px);
-	border-color: hsl(var(--accent) / 0.7) !important;
+	border-color: hsl(var(--accent) / 0.7);
 	box-shadow: 0 4px 12px hsl(var(--accent) / 0.3);
-	border-radius: calc(var(--radius) * 0.75) !important;
+	border-radius: calc(var(--radius) * 0.75);
 }
 
 /* =================================================================
@@ -145,7 +147,7 @@
 	.fc-daygrid-day-frame {
 	transform: translateY(0);
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	border-radius: calc(var(--radius) * 0.75) !important;
+	border-radius: calc(var(--radius) * 0.75);
 }
 
 /* Only animate on hover, not on scroll - DISABLED FOR PERFORMANCE */

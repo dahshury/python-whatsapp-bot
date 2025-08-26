@@ -1,13 +1,18 @@
 import {
 	CompactSelection,
+	type DataEditorRef,
+	type EditableGridCell,
+	type GridCell,
 	GridCellKind,
 	type GridColumn,
 	type Item,
+	type Theme,
 } from "@glideapps/glide-data-grid";
 import React from "react";
 import { useFullscreen } from "./contexts/FullscreenContext";
 import { GridPortalProvider } from "./contexts/GridPortalContext";
 import { InMemoryDataSource } from "./core/data-sources/InMemoryDataSource";
+import type { IDataSource } from "./core/interfaces/IDataSource";
 import { useColumnMenu } from "./hooks/useColumnMenu";
 import { useColumnOperations } from "./hooks/useColumnOperations";
 import { useGridActions } from "./hooks/useGridActions";
@@ -47,12 +52,12 @@ export default function Grid({
 }: {
 	showThemeToggle?: boolean;
 	fullWidth?: boolean;
-	theme?: any;
+	theme?: Partial<Theme>;
 	isDarkMode?: boolean;
-	dataSource?: any;
+	dataSource?: IDataSource;
 	onReady?: () => void;
-	onDataProviderReady?: (provider: any) => void;
-	dataEditorRef?: any;
+	onDataProviderReady?: (provider: unknown) => void;
+	dataEditorRef?: React.RefObject<DataEditorRef>;
 } = {}) {
 	// Initialize the data source - use external if provided, otherwise create default
 	const dataSource = React.useMemo(() => {
@@ -178,7 +183,7 @@ export default function Grid({
 		visibleColumnIndices,
 		onColumnResize,
 		setColumns,
-		onColumnMoved,
+		onColumnMoved: _onColumnMoved,
 	} = useGridColumns(gs.hiddenColumns, dataSource, fullWidth, pinnedColumns);
 
 	const columnMenu = useColumnMenu();
@@ -273,7 +278,7 @@ export default function Grid({
 	const {
 		filteredRows,
 		filteredRowCount,
-		tooltipMatrix,
+		tooltipMatrix: _tooltipMatrix,
 		sortState,
 		handleSort,
 	} = useGridDataOperations({
@@ -285,7 +290,8 @@ export default function Grid({
 		getRawCellContent,
 	});
 
-	const dataEditorRef = externalDataEditorRef || React.useRef<any>(null);
+	const internalDataEditorRef = React.useRef<DataEditorRef>(null);
+	const dataEditorRef = externalDataEditorRef || internalDataEditorRef;
 
 	// Callback to refresh specific cells without re-rendering the entire grid
 	const refreshCells = React.useCallback(
@@ -305,8 +311,10 @@ export default function Grid({
 
 			// Find columns that had format changes
 			displayColumns.forEach((col, idx) => {
-				const columnId = (col as any).id;
-				const currentFormat = columnMenu.columnFormats[columnId];
+				const columnId = (col as { id?: string }).id ?? `col_${idx}`;
+				const currentFormat = (
+					columnMenu.columnFormats as Record<string, string | undefined>
+				)[columnId];
 				const previousFormat = prevFormatsRef.current[columnId];
 
 				if (currentFormat !== previousFormat) {
@@ -338,31 +346,37 @@ export default function Grid({
 		(cell: Item) => {
 			const baseCell = baseGetCellContent(filteredRows)(cell);
 			const [col] = cell;
-			const column = displayColumns[col] as any;
+			const column = displayColumns[col] as { sticky?: boolean };
 
 			if (column?.sticky) {
 				if (
 					baseCell.kind === GridCellKind.Text &&
-					(baseCell as any).style !== "faded"
+					(baseCell as { style?: string }).style !== "faded"
 				) {
-					return { ...(baseCell as any), style: "faded" } as any;
+					return {
+						...(baseCell as { style?: string }),
+						style: "faded",
+					} as GridCell;
 				}
 
 				return {
-					...(baseCell as any),
+					...(baseCell as GridCell),
 					themeOverride: {
-						...(baseCell as any).themeOverride,
+						...(baseCell as { themeOverride?: Record<string, unknown> })
+							.themeOverride,
 						textDark: theme === darkTheme ? "#a1a1aa" : "#6b7280",
 					},
-				} as any;
+				} as GridCell;
 			}
 
 			if (
 				baseCell.kind === GridCellKind.Text &&
-				((baseCell as any).style === "faded" || (baseCell as any).themeOverride)
+				((baseCell as { style?: string }).style === "faded" ||
+					(baseCell as { themeOverride?: Record<string, unknown> })
+						.themeOverride)
 			) {
-				const { style: _s, themeOverride: _t, ...rest } = baseCell as any;
-				return { ...rest } as any;
+				const { style: _s, themeOverride: _t, ...rest } = baseCell as GridCell;
+				return { ...rest } as GridCell;
 			}
 
 			return baseCell;
@@ -371,8 +385,9 @@ export default function Grid({
 	);
 
 	const onCellEdited = React.useCallback(
-		(cell: Item, newVal: any) => {
-			baseOnCellEdited(filteredRows)(cell, newVal);
+		(cell: Item, newVal: unknown) => {
+			const cast = newVal as EditableGridCell;
+			baseOnCellEdited(filteredRows)(cell, cast);
 			// Save state after each edit - but only if no external dataSource
 			if (!externalDataSource) {
 				saveState();
@@ -406,9 +421,16 @@ export default function Grid({
 
 	const {
 		tooltip,
-		clearTooltip,
+		clearTooltip: _clearTooltip,
 		onItemHovered: onTooltipHover,
-	} = useGridTooltips(getCellContent, displayColumns);
+	} = useGridTooltips(
+		(cell) => getCellContent(cell) as unknown,
+		displayColumns.map((dc) => ({
+			isRequired: (dc as { isRequired?: boolean }).isRequired,
+			isEditable: (dc as { isEditable?: boolean }).isEditable,
+			help: (dc as { help?: string }).help,
+		})),
+	);
 
 	useGridEvents(gs.setShowSearch);
 	useGridLifecycle(isFullscreen, gs.showColumnMenu, gs.setShowColumnMenu);
@@ -458,7 +480,7 @@ export default function Grid({
 	]);
 
 	const handleItemHovered = React.useCallback(
-		(args: any) => {
+		(args: { kind: "header" | "cell"; location?: [number, number] }) => {
 			if (args.kind !== "cell") {
 				// Clear row hovering state if the event indicates that
 				// the mouse is not hovering a cell
@@ -469,7 +491,11 @@ export default function Grid({
 				const [, r] = loc;
 				gs.setHoverRow(r >= 0 ? r : undefined);
 			}
-			onTooltipHover(args);
+			onTooltipHover({
+				kind: args.kind,
+				location: args.location,
+				bounds: undefined,
+			});
 		},
 		[gs, onTooltipHover],
 	);
@@ -485,7 +511,22 @@ export default function Grid({
 				// Position menu so its right edge aligns with the column header's right edge
 				const menuWidth = 220; // Same as MENU_WIDTH in ColumnMenu
 				columnMenu.openMenu(
-					column as any,
+					{
+						id: (column as { id?: string }).id,
+						name: (column as { id?: string }).id,
+						title: (column as { title?: string }).title,
+						width: (column as { width?: number }).width ?? 150,
+						isEditable: Boolean(
+							(column as { isEditable?: boolean }).isEditable,
+						),
+						isHidden: Boolean((column as { isHidden?: boolean }).isHidden),
+						isPinned: false,
+						isRequired: Boolean(
+							(column as { isRequired?: boolean }).isRequired,
+						),
+						isIndex: false,
+						indexNumber: 0,
+					} as import("./core/types").BaseColumnProps,
 					bounds.x + bounds.width - menuWidth,
 					bounds.y + bounds.height,
 				);
@@ -502,15 +543,16 @@ export default function Grid({
 		getRawCellContent,
 		getCellContent, // Pass formatted cell content for autosize
 		setColumns,
-		columnConfigMapping,
-		setColumnConfigMapping,
+		columnConfigMapping: columnConfigMapping as unknown as Map<string, unknown>,
+		setColumnConfigMapping: (m: Map<string, unknown>) =>
+			setColumnConfigMapping(m as unknown as Map<string, ColumnConfig>),
 		clearSelection,
 		dataEditorRef,
 	});
 
 	// Calculate grid width
 	const calculatedWidth = displayColumns.reduce(
-		(sum, col) => sum + ((col as any).width || 150),
+		(sum, col) => sum + ((col as { width?: number }).width || 150),
 		60,
 	);
 
@@ -624,7 +666,14 @@ export default function Grid({
 							filteredRows={filteredRows}
 							filteredRowCount={filteredRowCount}
 							getCellContent={getCellContent}
-							onCellEdited={undoOnCellEdited}
+							onCellEdited={(cell, newVal: unknown) =>
+								(
+									undoOnCellEdited as unknown as (
+										cell: Item,
+										newVal: unknown,
+									) => void
+								)(cell, newVal)
+							}
 							onGridSelectionChange={onGridSelectionChange}
 							gridSelection={gs.selection}
 							onRowAppended={() => {
@@ -635,7 +684,12 @@ export default function Grid({
 								})();
 								return false;
 							}}
-							onItemHovered={handleItemHovered}
+							onItemHovered={(args: {
+								location: [number, number];
+								item: Item;
+							}) =>
+								handleItemHovered({ kind: "cell", location: args.location })
+							}
 							onHeaderMenuClick={handleHeaderMenuClick}
 							searchValue={gs.searchValue}
 							onSearchValueChange={gs.setSearchValue}
@@ -656,7 +710,9 @@ export default function Grid({
 							containerHeight={undefined} // No height measurement in normal mode
 							// Column management props - using Streamlit-style configuration
 							columnConfigMapping={columnConfigMapping}
-							onColumnConfigChange={setColumnConfigMapping}
+							onColumnConfigChange={(mapping) =>
+								setColumnConfigMapping(mapping)
+							}
 							clearSelection={clearSelection}
 							// Column resizing - keep existing functionality
 							onColumnResize={onColumnResize}

@@ -88,7 +88,7 @@ export class DataProvider implements IDataProvider {
 			row,
 			getRowCellData: (targetCol: number) => {
 				if (this.dataSource.id === "in-memory") {
-					const inMemorySource = this.dataSource as any;
+					const inMemorySource = this.dataSource as { data?: unknown[][] };
 					if (
 						inMemorySource.data &&
 						inMemorySource.data[row] &&
@@ -104,7 +104,7 @@ export class DataProvider implements IDataProvider {
 		// Check if the data source is InMemoryDataSource which has synchronous data access
 		if (this.dataSource.id === "in-memory") {
 			// For InMemoryDataSource, we can get data synchronously
-			const inMemorySource = this.dataSource as any;
+			const inMemorySource = this.dataSource as { data?: unknown[][] };
 			if (
 				inMemorySource.data &&
 				inMemorySource.data[row] &&
@@ -193,7 +193,7 @@ export class DataProvider implements IDataProvider {
 			row,
 			getRowCellData: (targetCol: number) => {
 				if (this.dataSource.id === "in-memory") {
-					const inMemorySource = this.dataSource as any;
+					const inMemorySource = this.dataSource as { data?: unknown[][] };
 					if (
 						inMemorySource.data &&
 						inMemorySource.data[row] &&
@@ -216,7 +216,7 @@ export class DataProvider implements IDataProvider {
 		);
 
 		// If the cell has isMissingValue flag, preserve it (important for validation)
-		if ((updatedCell as any).isMissingValue === true) {
+		if ((updatedCell as { isMissingValue?: boolean }).isMissingValue === true) {
 			// Already set by createCell
 		} else if (
 			!validation.isValid ||
@@ -224,7 +224,7 @@ export class DataProvider implements IDataProvider {
 				(cellValue === null || cellValue === undefined || cellValue === ""))
 		) {
 			// Mark as missing value if validation failed or required field is empty
-			(updatedCell as any).isMissingValue = true;
+			(updatedCell as { isMissingValue?: boolean }).isMissingValue = true;
 		}
 
 		this.editingState.setCell(col, row, updatedCell);
@@ -287,7 +287,9 @@ export class DataProvider implements IDataProvider {
 					keysToDelete.push(key);
 				}
 			});
-			keysToDelete.forEach((key) => this.cellCache.delete(key));
+			for (const key of keysToDelete) {
+				this.cellCache.delete(key);
+			}
 		}
 
 		this.columnFormats = formats;

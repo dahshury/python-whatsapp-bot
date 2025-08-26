@@ -9,7 +9,7 @@ from .reservation_models import Reservation, ReservationType
 from .availability_service import AvailabilityService
 from app.utils import (
     format_response, fix_unicode_sequence, parse_date, 
-    normalize_time_format, is_valid_date_time, validate_reservation_type
+    normalize_time_format, is_valid_date_time, validate_reservation_type, get_time_slots,
 )
 from app.i18n import get_message
 from app.decorators.metrics_decorators import (
@@ -393,6 +393,20 @@ class ReservationService(BaseService):
 
             # If date or time slot has changed, check availability of the new slot
             if parsed_new_date_str != reservation_to_modify.date or parsed_new_time_str != reservation_to_modify.time_slot:
+                # Enforce business hours: ensure the new time is a valid slot for that day
+                allowed_slots_24h = get_time_slots(date_str=parsed_new_date_str, to_24h=True)
+                if isinstance(allowed_slots_24h, dict) and allowed_slots_24h.get("success") is False:
+                    # Forward vacation/non-working day or other errors
+                    return allowed_slots_24h
+                if not isinstance(allowed_slots_24h, dict) or parsed_new_time_str not in allowed_slots_24h:
+                    display_time_slot_candidate = normalize_time_format(parsed_new_time_str, to_24h=False)
+                    allowed_slots_display = get_time_slots(date_str=parsed_new_date_str, to_24h=False)
+                    if isinstance(allowed_slots_display, dict) and allowed_slots_display.get("success") is False:
+                        return allowed_slots_display
+                    slots_list = list(allowed_slots_display.keys()) if isinstance(allowed_slots_display, dict) else []
+                    slots_str = ', '.join(slots_list) if slots_list else "None available"
+                    return format_response(False, message=get_message("reservation_failed_slot", ar, slot=display_time_slot_candidate, slots=slots_str))
+
                 # Check availability of the new slot (excluding the current reservation being modified)
                 current_reservations_in_new_slot = self.reservation_repository.find_active_by_slot(parsed_new_date_str, parsed_new_time_str)
                 # Filter out the reservation being modified if it happens to be in the same slot (e.g., only type change)
@@ -594,7 +608,7 @@ class ReservationService(BaseService):
 
     # --- New Undo Specific Service Methods ---
 
-    def undo_cancel_reservation_by_id(self, reservation_id: int, ar: bool = False) -> Dict[str, Any]:
+    def undo_cancel_reservation_by_id(self, reservation_id: int, ar: bool = False, max_reservations: int = 5) -> Dict[str, Any]:
         """
         Reinstates a previously cancelled reservation by its ID. (Undo for cancellation)
         
@@ -612,6 +626,24 @@ class ReservationService(BaseService):
             
             if reservation.status == 'active':
                 return format_response(True, message=get_message("reservation_already_active", ar, id=reservation_id), data={"reservation_id": reservation_id})
+
+            # Enforce business hours for the stored reservation slot
+            allowed_slots_24h = get_time_slots(date_str=reservation.date, to_24h=True)
+            if isinstance(allowed_slots_24h, dict) and allowed_slots_24h.get("success") is False:
+                return allowed_slots_24h
+            if not isinstance(allowed_slots_24h, dict) or reservation.time_slot not in allowed_slots_24h:
+                display_slot = normalize_time_format(reservation.time_slot, to_24h=False)
+                allowed_slots_display = get_time_slots(date_str=reservation.date, to_24h=False)
+                if isinstance(allowed_slots_display, dict) and allowed_slots_display.get("success") is False:
+                    return allowed_slots_display
+                slots_list = list(allowed_slots_display.keys()) if isinstance(allowed_slots_display, dict) else []
+                slots_str = ', '.join(slots_list) if slots_list else "None available"
+                return format_response(False, message=get_message("reservation_failed_slot", ar, slot=display_slot, slots=slots_str))
+
+            # Enforce capacity for the stored reservation slot
+            active_reservations = self.reservation_repository.find_active_by_slot(reservation.date, reservation.time_slot)
+            if len(active_reservations) >= max_reservations:
+                return format_response(False, message=get_message("slot_fully_booked", ar))
 
             success = self.reservation_repository.reinstate_by_id(reservation_id)
             if success:

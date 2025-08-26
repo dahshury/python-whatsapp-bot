@@ -1,5 +1,5 @@
 // Enhanced validation with complete NaN prevention
-export const isValidDate = (date: any): date is Date => {
+export const isValidDate = (date: unknown): date is Date => {
 	if (!date || !(date instanceof Date)) return false;
 	const time = date.getTime();
 	if (Number.isNaN(time)) return false;

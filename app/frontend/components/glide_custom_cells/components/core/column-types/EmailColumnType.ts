@@ -16,11 +16,11 @@ export class EmailColumnType implements IColumnType {
 	dataType = ColumnDataType.EMAIL;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		_isDarkTheme: boolean,
-		_rowContext?: any,
+		_rowContext?: unknown,
 	): GridCell {
 		const email = this.formatValue(value, column.formatting);
 
@@ -33,23 +33,33 @@ export class EmailColumnType implements IColumnType {
 		};
 
 		if (column.isRequired && !email) {
-			(cell as any).isMissingValue = true;
-			(cell as any).themeOverride = { linkColor: "#ef4444" };
+			(
+				cell as {
+					isMissingValue?: boolean;
+					themeOverride?: { linkColor: string };
+				}
+			).isMissingValue = true;
+			(
+				cell as {
+					isMissingValue?: boolean;
+					themeOverride?: { linkColor: string };
+				}
+			).themeOverride = { linkColor: "#ef4444" };
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
+	getCellValue(cell: GridCell): unknown {
 		if (cell.kind === GridCellKind.Uri) {
-			const data = (cell as any).displayData || "";
+			const data = (cell as { displayData?: string }).displayData || "";
 			return data.replace(/^mailto:/, "");
 		}
 		return "";
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		const email = String(value || "").trim();
@@ -69,7 +79,7 @@ export class EmailColumnType implements IColumnType {
 			if (column.validationRules) {
 				for (const rule of column.validationRules) {
 					if (rule.type === "pattern" && rule.value) {
-						const regex = new RegExp(rule.value);
+						const regex = new RegExp(String(rule.value));
 						if (!regex.test(email)) {
 							return {
 								isValid: false,
@@ -84,7 +94,7 @@ export class EmailColumnType implements IColumnType {
 		return { isValid: true };
 	}
 
-	formatValue(value: any, _formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, _formatting?: IColumnFormatting): string {
 		if (!value) return "";
 
 		let email = String(value).trim().toLowerCase();
@@ -95,11 +105,11 @@ export class EmailColumnType implements IColumnType {
 		return email;
 	}
 
-	parseValue(input: string, _column: IColumnDefinition): any {
+	parseValue(input: string, _column: IColumnDefinition): unknown {
 		return input.trim().toLowerCase();
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		return column.defaultValue || "";
 	}
 

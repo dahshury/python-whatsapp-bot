@@ -53,38 +53,36 @@ class AvailabilityService(BaseService):
                     "end_date": vacation_end
                 }
             
-            # Check for vacations approaching within 1 month
-            vacation_start_dates = config.get("VACATION_START_DATES", "")
-            vacation_durations = config.get("VACATION_DURATIONS", "")
-            
-            if vacation_start_dates and vacation_durations:
-                start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
-                durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
-                
-                for start_date_str, duration in zip(start_dates, durations):
-                    try:
-                        vacation_start = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").date()
-                        vacation_end = vacation_start + datetime.timedelta(days=duration-1)
-                        
-                        # Check if vacation starts within the next 30 days
-                        days_until_vacation = (vacation_start - current_date).days
-                        if 0 < days_until_vacation <= 30:
-                            # Create vacation message for upcoming vacation
-                            start_dt = datetime.datetime.combine(vacation_start, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
-                            end_dt = datetime.datetime.combine(vacation_end, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
-                            base_message = config.get('VACATION_MESSAGE', 'The business will be closed during this period.')
-                            vacation_message = format_enhanced_vacation_message(start_dt, end_dt, base_message)
-                            
-                            return {
-                                "status": "upcoming",
-                                "message": vacation_message,
-                                "start_date": vacation_start,
-                                "end_date": vacation_end,
-                                "days_until": days_until_vacation
-                            }
-                    except (ValueError, TypeError) as e:
-                        self.logger.error(f"Error processing vacation date {start_date_str}: {e}")
-                        continue
+            # Check DB vacations approaching within 1 month
+            try:
+                from app.db import get_session, VacationPeriodModel
+                with get_session() as session:
+                    rows = session.query(VacationPeriodModel).all()
+                    for r in rows:
+                        try:
+                            s_date = r.start_date if isinstance(r.start_date, datetime.date) else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                            if getattr(r, "end_date", None):
+                                e_date = r.end_date if isinstance(r.end_date, datetime.date) else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                            else:
+                                dur = max(1, int(getattr(r, "duration_days", 1)))
+                                e_date = s_date + datetime.timedelta(days=dur-1)
+                            days_until_vacation = (s_date - current_date).days
+                            if 0 < days_until_vacation <= 30:
+                                start_dt = datetime.datetime.combine(s_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
+                                end_dt = datetime.datetime.combine(e_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
+                                base_message = config.get('VACATION_MESSAGE', 'The business will be closed during this period.')
+                                vacation_message = format_enhanced_vacation_message(start_dt, end_dt, base_message)
+                                return {
+                                    "status": "upcoming",
+                                    "message": vacation_message,
+                                    "start_date": s_date,
+                                    "end_date": e_date,
+                                    "days_until": days_until_vacation
+                                }
+                        except Exception:
+                            continue
+            except Exception:
+                pass
             
             return None
             

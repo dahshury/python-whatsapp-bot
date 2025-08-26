@@ -8,12 +8,12 @@
 
 /* Remove any outer wrapper styling that might interfere */
 .fc-multiMonthYear-view {
-	background: transparent !important;
-	border: none !important;
-	border-radius: 0 !important;
-	box-shadow: none !important;
-	padding: 0 !important;
-	margin: 0 !important;
+	background: transparent;
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	padding: 0;
+	margin: 0;
 }
 
 /* Define a larger radius specifically for multimonth view */
@@ -71,15 +71,15 @@
 
 /* Ensure consistent row heights - override grid-layout defaults */
 .fc-multimonth-daygrid-table tr {
-	height: auto !important;
+	height: auto;
 }
 
 /* Minimum cell height with flexibility to grow - GPU accelerated for hover effects */
 .fc-multimonth-daygrid-table td {
-	height: 4em !important;
-	min-height: 4em !important;
+	height: 4em;
+	min-height: 4em;
 	vertical-align: middle;
-	border: none !important; /* Remove default borders */
+	border: none; /* Remove default borders */
 	transform: translateZ(0);
 	backface-visibility: hidden;
 	-webkit-backface-visibility: hidden;
@@ -123,7 +123,7 @@
 }
 
 .fc-multimonth-daygrid-table {
-	border-top-style: hidden !important;
+	border-top-style: hidden;
 }
 
 /* Media screen specific - sticky header */

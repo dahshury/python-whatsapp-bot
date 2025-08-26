@@ -1,7 +1,8 @@
 "use client";
 
-import { ChevronsUpDown, Plus, User, Check as CheckIcon } from "lucide-react";
+import { Check as CheckIcon, ChevronsUpDown, Plus, User } from "lucide-react";
 import React, { useRef, useState } from "react";
+import { parsePhoneNumber } from "react-phone-number-input";
 import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,7 +20,6 @@ import {
 } from "@/components/ui/popover";
 import { useCustomerData } from "@/lib/customer-data-context";
 import { cn } from "@/lib/utils";
-import { parsePhoneNumber } from "react-phone-number-input";
 
 interface PhoneConversationComboboxProps {
 	value?: string;
@@ -48,8 +48,8 @@ const PhoneConversationComboboxBase = React.forwardRef<
 		{
 			value = "",
 			onChange,
-			onBlur,
-			onKeyDown,
+			onBlur: _onBlur,
+			onKeyDown: _onKeyDown,
 			placeholder = "Enter phone number",
 			className,
 			disabled = false,
@@ -57,37 +57,40 @@ const PhoneConversationComboboxBase = React.forwardRef<
 		},
 		ref,
 	) => {
-			const [searchValue, setSearchValue] = useState("");
-	const [isOpen, setIsOpen] = useState(false);
-	const triggerRef = useRef<HTMLButtonElement>(null);
-	const _popoverRef = useRef<HTMLDivElement>(null);
-	const searchValueRef = useRef("");
+		const [searchValue, setSearchValue] = useState("");
+		const [isOpen, setIsOpen] = useState(false);
+		const triggerRef = useRef<HTMLButtonElement>(null);
+		const _popoverRef = useRef<HTMLDivElement>(null);
+		const searchValueRef = useRef("");
 
-	// Combine external ref with internal ref
-	const combinedRef = React.useCallback(
-		(node: HTMLButtonElement | null) => {
-			// Set internal ref
-			(triggerRef as React.MutableRefObject<HTMLButtonElement | null>).current = node;
-			// Set external ref if provided
-			if (typeof ref === "function") {
-				ref(node);
-			} else if (ref) {
-				(ref as React.MutableRefObject<HTMLButtonElement | null>).current = node;
-			}
-		},
-		[ref],
-	);
+		// Combine external ref with internal ref
+		const combinedRef = React.useCallback(
+			(node: HTMLButtonElement | null) => {
+				// Set internal ref
+				(
+					triggerRef as React.MutableRefObject<HTMLButtonElement | null>
+				).current = node;
+				// Set external ref if provided
+				if (typeof ref === "function") {
+					ref(node);
+				} else if (ref) {
+					(ref as React.MutableRefObject<HTMLButtonElement | null>).current =
+						node;
+				}
+			},
+			[ref],
+		);
 
 		// Use centralized customer data - EXACT SAME as ConversationCombobox
 		const { customers } = useCustomerData();
 
 		// Normalize phone number for comparison (country-agnostic with light KSA fallbacks)
-		const normalizePhone = (phone: string) => {
+		const normalizePhone = React.useCallback((phone: string) => {
 			const raw = (phone || "").toString().trim();
 			if (!raw) return "";
 			// Prefer robust parse to E.164 when possible
 			try {
-				const parsed = parsePhoneNumber(raw as any);
+				const parsed = parsePhoneNumber(raw as string);
 				if (parsed?.number) {
 					return parsed.number.replace(/^\+/, "");
 				}
@@ -115,22 +118,28 @@ const PhoneConversationComboboxBase = React.forwardRef<
 			}
 			// Default: digits only (works cross-country)
 			return digits;
-		};
+		}, []);
 
 		// Create conversation options from centralized customer data - EXACT SAME structure as ConversationCombobox
 		const conversationOptions = React.useMemo(() => {
 			return customers
-				.map((customer: any): CustomerOption => {
-					return {
-						value: customer.phone,
-						label: customer.name
-							? `${customer.name} (${customer.formattedPhone || customer.phone})`
-							: customer.formattedPhone || customer.phone,
-						customerName: customer.name,
-						formattedPhone: customer.formattedPhone || customer.phone,
-						hasConversation: true,
-					};
-				})
+				.map(
+					(customer: {
+						phone?: string;
+						name?: string;
+						formattedPhone?: string;
+					}): CustomerOption => {
+						return {
+							value: customer.phone || "",
+							label: customer.name
+								? `${customer.name} (${customer.formattedPhone || customer.phone || ""})`
+								: customer.formattedPhone || customer.phone || "",
+							customerName: customer.name,
+							formattedPhone: customer.formattedPhone || customer.phone || "",
+							hasConversation: true,
+						};
+					},
+				)
 				.sort((a: CustomerOption, b: CustomerOption) => {
 					// Sort by whether they have names first, then alphabetically
 					if (a.customerName && !b.customerName) return -1;
@@ -209,7 +218,8 @@ const PhoneConversationComboboxBase = React.forwardRef<
 
 		// Get selected option - include normalized equality for robustness
 		const selectedOption = conversationOptions.find((option) => {
-			if (option.value === value || option.formattedPhone === value) return true;
+			if (option.value === value || option.formattedPhone === value)
+				return true;
 			const nv = normalizePhone(value || "");
 			if (!nv) return false;
 			return (
@@ -269,7 +279,7 @@ const PhoneConversationComboboxBase = React.forwardRef<
 		};
 
 		// Direct customer selection (for mouse clicks)
-		const handleCustomerSelectDirect = (option: CustomerOption) => {
+		const _handleCustomerSelectDirect = (option: CustomerOption) => {
 			if (onChange) {
 				onChange(option.formattedPhone, option.customerName);
 				setSearchValue("");
@@ -285,41 +295,53 @@ const PhoneConversationComboboxBase = React.forwardRef<
 					open={isOpen}
 					onOpenChange={(open) => {
 						setIsOpen(open);
-						try { (typeof onOpenChange === 'function') && onOpenChange(open); } catch {}
+						try {
+							typeof onOpenChange === "function" && onOpenChange(open);
+						} catch {}
 						if (open) {
 							setTimeout(() => {
 								try {
 									const scroller = document.querySelector(
 										".chat-scrollbar .ScrollbarsCustom-Scroller",
 									) as HTMLElement | null;
-									const targetRaw = (selectedOption?.value || value || "") as string;
+									const targetRaw = (selectedOption?.value ||
+										value ||
+										"") as string;
 									const targetDigits = normalizePhone(targetRaw);
 									if (scroller && targetDigits) {
 										const byPhone = scroller.querySelector(
-											`[data-phone="${targetDigits}"]`
+											`[data-phone="${targetDigits}"]`,
 										) as HTMLElement | null;
 										const byFormatted = scroller.querySelector(
-											`[data-formatted-phone="${targetDigits}"]`
+											`[data-formatted-phone="${targetDigits}"]`,
 										) as HTMLElement | null;
 										let match: HTMLElement | null = byPhone || byFormatted;
 										if (!match && selectedOption?.value) {
 											match = scroller.querySelector(
-												`[data-value="${selectedOption.value}"]`
+												`[data-value="${selectedOption.value}"]`,
 											) as HTMLElement | null;
 										}
 										if (!match && targetDigits) {
 											const last7 = targetDigits.slice(-7);
 											const items = Array.from(
-												scroller.querySelectorAll('[data-value]'),
+												scroller.querySelectorAll("[data-value]"),
 											) as HTMLElement[];
 											for (const el of items) {
-												const txt = (el.textContent || '').replace(/\D/g, "");
-												if (last7 && txt.includes(last7)) { match = el; break; }
+												const txt = (el.textContent || "").replace(/\D/g, "");
+												if (last7 && txt.includes(last7)) {
+													match = el;
+													break;
+												}
 											}
 										}
 										if (match) {
 											const offsetTop = match.offsetTop;
-											const target = Math.max(0, offsetTop - scroller.clientHeight / 2 + match.clientHeight / 2);
+											const target = Math.max(
+												0,
+												offsetTop -
+													scroller.clientHeight / 2 +
+													match.clientHeight / 2,
+											);
 											scroller.scrollTop = target;
 										}
 									}
@@ -332,7 +354,6 @@ const PhoneConversationComboboxBase = React.forwardRef<
 						<Button
 							ref={combinedRef}
 							variant="outline"
-							role="combobox"
 							disabled={disabled}
 							className="w-full justify-between text-sm h-full px-2 border-none bg-transparent focus:ring-0 focus:outline-none"
 							style={{
@@ -368,27 +389,34 @@ const PhoneConversationComboboxBase = React.forwardRef<
 								e.preventDefault();
 							}
 						}}
-						onInteractOutside={(e: any) => {
-							const oe = e?.detail?.originalEvent || e?.originalEvent;
+						onInteractOutside={(e: Event) => {
+							const event = e as Event & {
+								detail?: { originalEvent?: { type?: string } };
+								originalEvent?: { type?: string };
+							};
+							const oe = event?.detail?.originalEvent || event?.originalEvent;
 							const type = oe?.type;
 							// Prevent closing on focus/hover interactions; allow real outside clicks
-							if (!type || type === "focusin" || type === "pointermove" || type === "mousemove") {
-								e.preventDefault();
+							if (
+								!type ||
+								type === "focusin" ||
+								type === "pointermove" ||
+								type === "mousemove"
+							) {
+								event.preventDefault();
 								return;
 							}
-							const target = e.target as HTMLElement;
+							const target = event.target as HTMLElement;
 							if (
 								target.closest(".ScrollbarsCustom-Track") ||
 								target.closest(".ScrollbarsCustom-Thumb") ||
 								target.closest(".ScrollbarsCustom-themed")
 							) {
-								e.preventDefault();
+								event.preventDefault();
 							}
 						}}
 					>
-						<Command
-							shouldFilter={false}
-						>
+						<Command shouldFilter={false}>
 							<CommandInput
 								placeholder="Search by name or phone..."
 								className="text-sm"
@@ -396,34 +424,43 @@ const PhoneConversationComboboxBase = React.forwardRef<
 								onValueChange={setSearchValue}
 							/>
 							<CommandList>
-								<ThemedScrollbar
-									className="h-72 scrollbar-thin chat-scrollbar"
-								>
-									<div
-										className="h-full"
-									>
+								<ThemedScrollbar className="h-72 scrollbar-thin chat-scrollbar">
+									<div className="h-full">
 										<CommandEmpty className="text-xs py-2 text-center">
 											No customers found
 										</CommandEmpty>
 										<CommandGroup>
 											{filteredOptions.map((option) => {
-												const isSelected = normalizePhone(option.value) === normalizePhone(value) || normalizePhone(option.formattedPhone) === normalizePhone(value);
+												const isSelected =
+													normalizePhone(option.value) ===
+														normalizePhone(value) ||
+													normalizePhone(option.formattedPhone) ===
+														normalizePhone(value);
 												return (
 													<CommandItem
 														key={option.value}
 														value={option.value}
 														data-value={option.value}
-														data-selected={isSelected ? 'true' : 'false'}
+														data-selected={isSelected ? "true" : "false"}
 														data-phone={normalizePhone(option.value)}
-														data-formatted-phone={normalizePhone(option.formattedPhone)}
+														data-formatted-phone={normalizePhone(
+															option.formattedPhone,
+														)}
 														onSelect={handleCustomerSelectByValue}
 														className={cn(
 															"text-sm py-1.5 cursor-pointer flex items-center gap-2 rounded-sm w-full px-2",
 															isSelected ? "bg-accent/60 text-foreground" : "",
 														)}
 													>
-														<span className="truncate flex-1 min-w-0">{option.label}</span>
-														<CheckIcon className={cn("ml-auto size-4", isSelected ? "opacity-100" : "opacity-0")} />
+														<span className="truncate flex-1 min-w-0">
+															{option.label}
+														</span>
+														<CheckIcon
+															className={cn(
+																"ml-auto size-4",
+																isSelected ? "opacity-100" : "opacity-0",
+															)}
+														/>
 													</CommandItem>
 												);
 											})}

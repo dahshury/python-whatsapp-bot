@@ -24,11 +24,11 @@ export class PhoneColumnType implements IColumnType {
 	dataType = ColumnDataType.PHONE;
 
 	createCell(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 		_theme: Partial<Theme>,
 		isDarkTheme: boolean,
-		rowContext?: any,
+		rowContext?: unknown,
 	): GridCell {
 		// Ensure phone is in E.164 format for storage
 		const phone = this.parseValue(value, column);
@@ -37,7 +37,12 @@ export class PhoneColumnType implements IColumnType {
 
 		// Get row index for customer auto-fill
 		console.log("🔍 PhoneColumnType createCell - rowContext:", rowContext);
-		const rowIndex = rowContext?.row ?? 0;
+		const rowIndex =
+			typeof rowContext === "object" &&
+			rowContext !== null &&
+			"row" in (rowContext as object)
+				? Number((rowContext as { row?: unknown }).row) || 0
+				: 0;
 		console.log(
 			"🔍 PhoneColumnType createCell - extracted rowIndex:",
 			rowIndex,
@@ -63,25 +68,31 @@ export class PhoneColumnType implements IColumnType {
 		// Validate and store error details
 		const validation = this.validateValue(phone, column);
 		if (!validation.isValid) {
-			(cell as any).isMissingValue = true;
-			(cell as any).validationError = validation.error;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).isMissingValue = true;
+			(
+				cell as { isMissingValue?: boolean; validationError?: string }
+			).validationError = validation.error;
 		}
 
 		return cell;
 	}
 
-	getCellValue(cell: GridCell): any {
+	getCellValue(cell: GridCell): unknown {
 		if (
 			cell.kind === GridCellKind.Custom &&
-			(cell as any).data?.kind === "phone-input-cell"
+			(cell as { data?: { kind?: string; phone?: unknown } }).data?.kind ===
+				"phone-input-cell"
 		) {
-			return (cell as any).data.phone;
+			return (cell as { data?: { kind?: string; phone?: unknown } }).data
+				?.phone;
 		}
 		return "";
 	}
 
 	validateValue(
-		value: any,
+		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
 		const phoneNumber = String(value || "").trim();
@@ -110,7 +121,7 @@ export class PhoneColumnType implements IColumnType {
 		return { isValid: true };
 	}
 
-	formatValue(value: any, formatting?: IColumnFormatting): string {
+	formatValue(value: unknown, formatting?: IColumnFormatting): string {
 		if (!value) return "";
 
 		const phoneStr = String(value);
@@ -132,7 +143,7 @@ export class PhoneColumnType implements IColumnType {
 		return phoneStr;
 	}
 
-	parseValue(input: any, _column: IColumnDefinition): any {
+	parseValue(input: unknown, _column: IColumnDefinition): unknown {
 		if (!input) return "";
 
 		const inputStr = String(input).trim();
@@ -163,7 +174,7 @@ export class PhoneColumnType implements IColumnType {
 		return inputStr;
 	}
 
-	getDefaultValue(column: IColumnDefinition): any {
+	getDefaultValue(column: IColumnDefinition): unknown {
 		return column.defaultValue || "";
 	}
 

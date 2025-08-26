@@ -2,17 +2,21 @@
 
 /* Custom scrollbar for list view */
 .fc-list-view .fc-scroller::-webkit-scrollbar {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply w-2;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-track {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply bg-muted;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-thumb {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply bg-muted-foreground/30 rounded-full;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-thumb:hover {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply bg-muted-foreground/50;
 }

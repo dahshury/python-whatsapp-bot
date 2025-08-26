@@ -291,50 +291,40 @@ async def api_get_message(request: Request, key: str = Query(...), ar: bool = Qu
 @router.get("/vacations")
 async def api_get_vacation_periods():
     """
-    Get vacation periods from configuration.
+    Get vacation periods from DB.
     Returns a list of vacation periods with start and end dates.
     """
     try:
-        vacation_periods = []
-        
-        # Get vacation configuration
-        vacation_start_dates = config.get("VACATION_START_DATES", "")
-        vacation_durations = config.get("VACATION_DURATIONS", "")
+        from app.db import get_session, VacationPeriodModel
         vacation_message = config.get("VACATION_MESSAGE", "The business is closed during this period.")
-        
-        # Process vacation periods if configured
-        if vacation_start_dates and vacation_durations and isinstance(vacation_start_dates, str) and isinstance(vacation_durations, str):
-            try:
-                start_dates = [d.strip() for d in vacation_start_dates.split(',') if d.strip()]
-                durations = [int(d.strip()) for d in vacation_durations.split(',') if d.strip()]
-                
-                if len(start_dates) == len(durations):
-                    for start_date_str, duration in zip(start_dates, durations):
-                        try:
-                            # Parse start date
-                            start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
-                            # Fix: Treat duration as inclusive days count
-                            # For 20 days starting May 31: May 31 + 19 days = June 19 (20th day inclusive)
-                            end_date = start_date + datetime.timedelta(days=duration-1)
-                            
-                            # Create comprehensive vacation message using the utility function
-                            enhanced_vacation_message = format_enhanced_vacation_message(start_date, end_date, vacation_message)
-                            
-                            vacation_periods.append({
-                                "start": start_date.isoformat(),
-                                "end": end_date.isoformat(),
-                                "title": enhanced_vacation_message,
-                                "duration": duration
-                            })
-                        except ValueError as e:
-                            logging.error(f"Error parsing vacation date {start_date_str}: {e}")
-                            continue
-                            
-            except (ValueError, TypeError) as e:
-                logging.error(f"Error parsing vacation configuration: {e}")
-        
-        return JSONResponse(content=vacation_periods)
-        
+
+        periods = []
+        with get_session() as session:
+            rows = session.query(VacationPeriodModel).all()
+            for r in rows:
+                try:
+                    # start_date/end_date are DATE columns; coerce to aware datetimes for formatting
+                    s_date = r.start_date if isinstance(r.start_date, datetime.date) else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                    if getattr(r, "end_date", None):
+                        e_date = r.end_date if isinstance(r.end_date, datetime.date) else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                    else:
+                        # for legacy rows with only duration_days
+                        dur = max(1, int(getattr(r, "duration_days", 1)))
+                        e_date = s_date + datetime.timedelta(days=dur - 1)
+                    start_dt = datetime.datetime(s_date.year, s_date.month, s_date.day, tzinfo=ZoneInfo(config['TIMEZONE']))
+                    end_dt = datetime.datetime(e_date.year, e_date.month, e_date.day, tzinfo=ZoneInfo(config['TIMEZONE']))
+                    title = str(r.title) if r.title else format_enhanced_vacation_message(start_dt, end_dt, vacation_message)
+                    periods.append({
+                        "start": start_dt.isoformat(),
+                        "end": end_dt.isoformat(),
+                        "title": title,
+                        "duration": (e_date - s_date).days + 1,
+                    })
+                except Exception:
+                    continue
+
+        return JSONResponse(content=periods)
+
     except Exception as e:
         logging.error(f"Error getting vacation periods: {e}")
         return JSONResponse(content=[], status_code=500)
@@ -342,100 +332,105 @@ async def api_get_vacation_periods():
 @router.post("/update-vacation-periods")
 async def api_update_vacation_periods(payload: dict = Body(...)):
     """
-    Update vacation periods configuration.
+    Update vacation periods in DB.
+    Accepts structured periods only: [{ start: YYYY-MM-DD|ISO, end: YYYY-MM-DD|ISO, title?: str }].
     """
     try:
-        start_dates = payload.get("start_dates", "")
-        durations = payload.get("durations", "")
+        from app.db import get_session, VacationPeriodModel
         ar = payload.get("ar", False)
-        
-        # Update the configuration
-        config["VACATION_START_DATES"] = start_dates
-        config["VACATION_DURATIONS"] = durations
-        
-        # Save to environment file if using .env
-        import os
-        from dotenv import set_key
-        
-        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-        
-        if os.path.exists(env_path):
-            set_key(env_path, 'VACATION_START_DATES', start_dates)
-            set_key(env_path, 'VACATION_DURATIONS', durations)
-        
-        logging.info(f"Updated vacation periods: start_dates={start_dates}, durations={durations}")
-        
-        # Broadcast vacation update to clients
+        periods = payload.get("periods")
+
+        normalized: list[tuple[datetime.date, datetime.date, str | None]] = []
+        if isinstance(periods, list) and periods:
+            for p in periods:
+                try:
+                    s_raw = p.get("start")
+                    e_raw = p.get("end")
+                    title = p.get("title")
+                    if not s_raw or not e_raw:
+                        continue
+                    s_dt = datetime.datetime.fromisoformat(str(s_raw)) if "T" in str(s_raw) else datetime.datetime.strptime(str(s_raw), "%Y-%m-%d")
+                    e_dt = datetime.datetime.fromisoformat(str(e_raw)) if "T" in str(e_raw) else datetime.datetime.strptime(str(e_raw), "%Y-%m-%d")
+                    s_date = datetime.date(s_dt.year, s_dt.month, s_dt.day)
+                    e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
+                    if e_date < s_date:
+                        s_date, e_date = e_date, s_date
+                    normalized.append((s_date, e_date, title if isinstance(title, str) else None))
+                except Exception:
+                    continue
+        else:
+            return JSONResponse(content={"success": False, "message": get_message("vacation_periods_update_failed", ar)}, status_code=400)
+
+        # Upsert DB: replace all periods with new set (simple approach)
+        with get_session() as session:
+            session.query(VacationPeriodModel).delete(synchronize_session=False)
+            for s_date, e_date, title in normalized:
+                session.add(VacationPeriodModel(start_date=s_date, end_date=e_date, title=title))
+            session.commit()
+
+        # Broadcast updated vacations
         try:
-            from app.utils.service_utils import get_all_conversations as _dummy  # import to keep consistent import order
-            from app.config import config as _config
-            # Return new vacation periods via existing GET /vacations endpoint, but notify clients
             enqueue_broadcast("vacation_period_updated", {"periods": []})
         except Exception:
             pass
-        return JSONResponse(content={
-            "success": True,
-            "message": get_message("vacation_periods_updated", ar)
-        })
-        
+        return JSONResponse(content={"success": True, "message": get_message("vacation_periods_updated", ar)})
+
     except Exception as e:
         logging.error(f"Error updating vacation periods: {e}")
         return JSONResponse(content={
             "success": False,
-            "message": get_message("vacation_periods_update_failed", ar)
+            "message": get_message("vacation_periods_update_failed", payload.get("ar", False))
         }, status_code=500)
 
 @router.post("/undo-vacation-update")
 async def api_undo_vacation_update(payload: dict = Body(...)):
     """
-    Undo a vacation period update by reverting to original vacation data.
+    Undo vacation update by restoring provided structured periods into DB.
     """
     try:
-        original_vacation_data = payload.get("original_vacation_data")
+        from app.db import get_session, VacationPeriodModel
         ar = payload.get("ar", False)
-        
-        if not original_vacation_data:
-            return JSONResponse(content={
-                "success": False,
-                "message": get_message("vacation_undo_failed", ar)
-            }, status_code=400)
-        
-        # Restore the original vacation periods
-        original_start_dates = original_vacation_data.get("start_dates", "")
-        original_durations = original_vacation_data.get("durations", "")
-        
-        # Update the configuration
-        config["VACATION_START_DATES"] = original_start_dates
-        config["VACATION_DURATIONS"] = original_durations
-        
-        # Save to environment file if using .env
-        import os
-        from dotenv import set_key
-        
-        env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
-        
-        if os.path.exists(env_path):
-            set_key(env_path, 'VACATION_START_DATES', original_start_dates)
-            set_key(env_path, 'VACATION_DURATIONS', original_durations)
-        
-        logging.info(f"Undone vacation update: restored to start_dates={original_start_dates}, durations={original_durations}")
-        
-        # Broadcast vacation update undo to clients
+        original = payload.get("original_vacation_data")
+        if not original:
+            return JSONResponse(content={"success": False, "message": get_message("vacation_undo_failed", ar)}, status_code=400)
+
+        periods = original.get("periods")
+        if not isinstance(periods, list):
+            return JSONResponse(content={"success": False, "message": get_message("vacation_undo_failed", ar)}, status_code=400)
+
+        normalized: list[tuple[datetime.date, datetime.date, str | None]] = []
+        for p in periods:
+            try:
+                s_raw = p.get("start")
+                e_raw = p.get("end")
+                title = p.get("title")
+                if not s_raw or not e_raw:
+                    continue
+                s_dt = datetime.datetime.fromisoformat(str(s_raw)) if "T" in str(s_raw) else datetime.datetime.strptime(str(s_raw), "%Y-%m-%d")
+                e_dt = datetime.datetime.fromisoformat(str(e_raw)) if "T" in str(e_raw) else datetime.datetime.strptime(str(e_raw), "%Y-%m-%d")
+                s_date = datetime.date(s_dt.year, s_dt.month, s_dt.day)
+                e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
+                if e_date < s_date:
+                    s_date, e_date = e_date, s_date
+                normalized.append((s_date, e_date, title if isinstance(title, str) else None))
+            except Exception:
+                continue
+
+        with get_session() as session:
+            session.query(VacationPeriodModel).delete(synchronize_session=False)
+            for s_date, e_date, title in normalized:
+                session.add(VacationPeriodModel(start_date=s_date, end_date=e_date, title=title))
+            session.commit()
+
         try:
             enqueue_broadcast("vacation_period_updated", {"periods": []})
         except Exception:
             pass
-        return JSONResponse(content={
-            "success": True,
-            "message": get_message("vacation_update_undone", ar)
-        })
-        
+        return JSONResponse(content={"success": True, "message": get_message("vacation_update_undone", ar)})
+
     except Exception as e:
         logging.error(f"Error undoing vacation update: {e}")
-        return JSONResponse(content={
-            "success": False,
-            "message": get_message("vacation_undo_failed", ar)
-        }, status_code=500)
+        return JSONResponse(content={"success": False, "message": get_message("vacation_undo_failed", payload.get("ar", False))}, status_code=500)
 
 # === UNDO ENDPOINTS ===
 
@@ -457,7 +452,8 @@ async def api_undo_cancel_reservation(payload: dict = Body(...)):
     """
     resp = undo_cancel_reservation(
         payload.get("reservation_id"),
-        ar=payload.get("ar", False)
+        ar=payload.get("ar", False),
+        max_reservations=payload.get("max_reservations", 5)
     )
     return JSONResponse(content=resp)
 

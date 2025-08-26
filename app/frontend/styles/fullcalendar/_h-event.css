@@ -10,25 +10,25 @@
 
 .fc-h-event .fc-event-main {
 	color: var(--fc-event-text-color);
-	background: transparent !important;
+	background: transparent;
 }
 
 .fc-h-event .fc-event-main-frame {
 	display: flex;
-	background: transparent !important;
+	background: transparent;
 }
 
 .fc-h-event .fc-event-time {
 	max-width: 100%;
 	overflow: hidden;
-	background: transparent !important;
+	background: transparent;
 }
 
 .fc-h-event .fc-event-title-container {
 	flex-grow: 1;
 	flex-shrink: 1;
 	min-width: 0;
-	background: transparent !important;
+	background: transparent;
 }
 
 .fc-h-event .fc-event-title {
@@ -38,7 +38,7 @@
 	right: 0;
 	max-width: 100%;
 	overflow: hidden;
-	background: transparent !important;
+	background: transparent;
 }
 
 /* Expand hit area when selected */

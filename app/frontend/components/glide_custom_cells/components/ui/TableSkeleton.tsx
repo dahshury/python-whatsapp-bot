@@ -18,9 +18,9 @@ export function TableSkeleton({
 				className="grid gap-3"
 				style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
 			>
-				{Array.from({ length: columns }).map((_, i) => (
+				{Array.from({ length: columns }, (_, i) => `header-${i}`).map((key) => (
 					<div
-						key={i}
+						key={`skeleton-${key}`}
 						className="h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
 					/>
 				))}
@@ -28,20 +28,25 @@ export function TableSkeleton({
 
 			{/* Body */}
 			<div className="space-y-2">
-				{Array.from({ length: rows }).map((_, rowIndex) => (
-					<div
-						key={`row-${rowIndex}`}
-						className="grid gap-3"
-						style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
-					>
-						{Array.from({ length: columns }).map((_, colIndex) => (
-							<div
-								key={`cell-${rowIndex}-${colIndex}`}
-								className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
-							/>
-						))}
-					</div>
-				))}
+				{Array.from({ length: rows }, (_, rowIndex) => `row-${rowIndex}`).map(
+					(key) => (
+						<div
+							key={`skeleton-${key}`}
+							className="grid gap-3"
+							style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+						>
+							{Array.from(
+								{ length: columns },
+								(_, colIndex) => `cell-${key.split("-")[1]}-col${colIndex}`,
+							).map((cellKey) => (
+								<div
+									key={`skeleton-${cellKey}`}
+									className="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"
+								/>
+							))}
+						</div>
+					),
+				)}
 			</div>
 		</div>
 	);

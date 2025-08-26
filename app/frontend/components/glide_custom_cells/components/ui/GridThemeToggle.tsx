@@ -32,6 +32,7 @@ export const GridThemeToggle: React.FC<GridThemeToggleProps> = ({
 		>
 			<span style={{ color: iconColor }}>Theme:</span>
 			<button
+				type="button"
 				onClick={() => onThemeChange(lightTheme)}
 				style={{
 					padding: "8px 16px",
@@ -46,6 +47,7 @@ export const GridThemeToggle: React.FC<GridThemeToggleProps> = ({
 				Light
 			</button>
 			<button
+				type="button"
 				onClick={() => onThemeChange(darkTheme)}
 				style={{
 					padding: "8px 16px",

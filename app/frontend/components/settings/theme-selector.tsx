@@ -1,12 +1,12 @@
 "use client";
 
 import { Palette } from "lucide-react";
-// import { useTheme } from "next-themes";
-import { toastService } from "@/lib/toast-service";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import ThemeToggleButton from "@/components/ui/theme-toggle-button";
-import { useSettings, type Theme } from "@/lib/settings-context";
+import { type Theme, useSettings } from "@/lib/settings-context";
+// import { useTheme } from "next-themes";
+import { toastService } from "@/lib/toast-service";
 import { getThemeName, THEME_OPTIONS } from "./theme-data";
 
 interface ThemeSelectorProps {

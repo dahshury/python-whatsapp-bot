@@ -17,7 +17,7 @@ import {
 	ResponsiveContainer,
 	Tooltip,
 	XAxis as XAxisComp,
-	YAxis as YAxisComp
+	YAxis as YAxisComp,
 } from "recharts";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -68,6 +68,59 @@ const _wordFrequencyChartConfig = {
 	},
 } as const;
 
+type WordTooltipProps = {
+	active?: boolean;
+	payload?: Array<{ dataKey?: string; value?: number }>;
+	label?: string | number;
+};
+
+function WordTooltip({ active, payload, label }: WordTooltipProps) {
+	if (active && Array.isArray(payload) && payload.length > 0) {
+		const customerCount = Number(
+			payload.find((p) => p && p.dataKey === "customerCount")?.value ?? 0,
+		);
+		const assistantCount = Number(
+			payload.find((p) => p && p.dataKey === "assistantCount")?.value ?? 0,
+		);
+		const total = Number(customerCount) + Number(assistantCount);
+
+		return (
+			<div className="bg-background/95 border border-border rounded-lg shadow-md p-3 backdrop-blur-sm">
+				<p className="font-semibold text-foreground mb-2">
+					&quot;{String(label ?? "")}&quot;
+				</p>
+				<div className="space-y-1 text-sm">
+					<div className="flex items-center justify-between gap-4">
+						<div className="flex items-center gap-2">
+							<div className="w-3 h-3 rounded-sm bg-chart-1"></div>
+							<span className="text-muted-foreground">
+								{i18n.getMessage("msg_customers", false)}:
+							</span>
+						</div>
+						<span className="font-medium text-chart-1">{customerCount}</span>
+					</div>
+					<div className="flex items-center justify-between gap-4">
+						<div className="flex items-center gap-2">
+							<div className="w-3 h-3 rounded-sm bg-chart-2"></div>
+							<span className="text-muted-foreground">
+								{i18n.getMessage("msg_assistant", false)}:
+							</span>
+						</div>
+						<span className="font-medium text-chart-2">{assistantCount}</span>
+					</div>
+					<div className="border-t border-border/50 pt-1 mt-2">
+						<div className="flex items-center justify-between gap-4">
+							<span className="text-muted-foreground">Total:</span>
+							<span className="font-semibold text-foreground">{total}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		);
+	}
+	return null;
+}
+
 export function MessageAnalysis({
 	messageHeatmap,
 	topCustomers,
@@ -100,20 +153,23 @@ export function MessageAnalysis({
 	};
 
 	// Helper function to translate day names
-	const translateDayName = (dayName: string) => {
-		const dayMap = {
-			Monday: "day_monday",
-			Tuesday: "day_tuesday",
-			Wednesday: "day_wednesday",
-			Thursday: "day_thursday",
-			Friday: "day_friday",
-			Saturday: "day_saturday",
-			Sunday: "day_sunday",
-		};
+	const translateDayName = React.useCallback(
+		(dayName: string) => {
+			const dayMap = {
+				Monday: "day_monday",
+				Tuesday: "day_tuesday",
+				Wednesday: "day_wednesday",
+				Thursday: "day_thursday",
+				Friday: "day_friday",
+				Saturday: "day_saturday",
+				Sunday: "day_sunday",
+			};
 
-		const key = dayMap[dayName as keyof typeof dayMap];
-		return key ? i18n.getMessage(key, isRTL) : dayName;
-	};
+			const key = dayMap[dayName as keyof typeof dayMap];
+			return key ? i18n.getMessage(key, isRTL) : dayName;
+		},
+		[isRTL],
+	);
 
 	// Create heatmap grid
 	const daysOrder = [
@@ -143,13 +199,13 @@ export function MessageAnalysis({
 
 	const getIntensity = (count: number) => {
 		const intensity = count / maxCount;
-		if (intensity === 0) return "bg-muted/5 border-border/20 text-muted-foreground";
+		if (intensity === 0)
+			return "bg-muted/5 border-border/20 text-muted-foreground";
 		if (intensity < 0.2) return "bg-chart-1/10 border-chart-1/20 text-chart-1";
 		if (intensity < 0.4) return "bg-chart-1/25 border-chart-1/30 text-chart-1";
 		if (intensity < 0.6)
 			return "bg-chart-1/50 border-chart-1/40 text-foreground";
-		if (intensity < 0.8)
-			return "bg-chart-1/75 border-chart-1/50 text-white";
+		if (intensity < 0.8) return "bg-chart-1/75 border-chart-1/50 text-white";
 		return "bg-chart-1 border-chart-1 text-white";
 	};
 
@@ -183,7 +239,7 @@ export function MessageAnalysis({
 			current.total > peak.total ? current : peak,
 		);
 		return translateDayName(busiestDay.day).slice(0, 3);
-	}, [messageHeatmap, isRTL]);
+	}, [messageHeatmap, translateDayName]);
 
 	const averageMessagesPerHourLabel = React.useMemo(() => {
 		const total = messageHeatmap.reduce((sum, d) => sum + d.count, 0);
@@ -217,19 +273,139 @@ export function MessageAnalysis({
 				totalCount: word.count,
 			}));
 		}
-		return [] as Array<{ word: string; customerCount: number; assistantCount: number; totalCount: number }>;
+		return [] as Array<{
+			word: string;
+			customerCount: number;
+			assistantCount: number;
+			totalCount: number;
+		}>;
 	}, [wordFrequency]);
 
 	// Build word cloud data with stopword filtering (Arabic + English)
-	const wordCloudData = React.useMemo(() => {
+	const _wordCloudData = React.useMemo(() => {
 		const arStop = new Set([
-			"من","في","على","إلى","الى","عن","مع","هذا","هذه","ذلك","تلك","لكن","أو","او","و","ثم","إن","ان","لن","لم","ما","ماذا","كيف","أين","اين","هل","نعم","لا","كل","أي","اي","هناك","هنا","أنا","انا","هو","هي","هم","هن","كان","كانت","يكون","يمكن","لقد","قد","حتى","بعد","قبل","عند","إذا","اذا","كما","أيضا","ايضا","التي","الذي","اللذي","الذين","اللاتي","اليوم","غدا","أمس","امس"
+			"من",
+			"في",
+			"على",
+			"إلى",
+			"الى",
+			"عن",
+			"مع",
+			"هذا",
+			"هذه",
+			"ذلك",
+			"تلك",
+			"لكن",
+			"أو",
+			"او",
+			"و",
+			"ثم",
+			"إن",
+			"ان",
+			"لن",
+			"لم",
+			"ما",
+			"ماذا",
+			"كيف",
+			"أين",
+			"اين",
+			"هل",
+			"نعم",
+			"لا",
+			"كل",
+			"أي",
+			"اي",
+			"هناك",
+			"هنا",
+			"أنا",
+			"انا",
+			"هو",
+			"هي",
+			"هم",
+			"هن",
+			"كان",
+			"كانت",
+			"يكون",
+			"يمكن",
+			"لقد",
+			"قد",
+			"حتى",
+			"بعد",
+			"قبل",
+			"عند",
+			"إذا",
+			"اذا",
+			"كما",
+			"أيضا",
+			"ايضا",
+			"التي",
+			"الذي",
+			"اللذي",
+			"الذين",
+			"اللاتي",
+			"اليوم",
+			"غدا",
+			"أمس",
+			"امس",
 		]);
 		const enStop = new Set([
-			"the","is","are","am","i","you","he","she","it","we","they","to","for","and","or","but","of","in","on","at","with","this","that","these","those","a","an","as","by","be","been","was","were","do","did","done","from","up","down","out","over","under","so","if","not","yes","no","can","could","would","should","have","has","had"
+			"the",
+			"is",
+			"are",
+			"am",
+			"i",
+			"you",
+			"he",
+			"she",
+			"it",
+			"we",
+			"they",
+			"to",
+			"for",
+			"and",
+			"or",
+			"but",
+			"of",
+			"in",
+			"on",
+			"at",
+			"with",
+			"this",
+			"that",
+			"these",
+			"those",
+			"a",
+			"an",
+			"as",
+			"by",
+			"be",
+			"been",
+			"was",
+			"were",
+			"do",
+			"did",
+			"done",
+			"from",
+			"up",
+			"down",
+			"out",
+			"over",
+			"under",
+			"so",
+			"if",
+			"not",
+			"yes",
+			"no",
+			"can",
+			"could",
+			"would",
+			"should",
+			"have",
+			"has",
+			"had",
 		]);
 		const map = new Map<string, number>();
-		enhancedWordFrequency.forEach(w => {
+		enhancedWordFrequency.forEach((w) => {
 			const t = (w.word || "").toString().trim();
 			if (!t) return;
 			const lower = t.toLowerCase();
@@ -238,58 +414,6 @@ export function MessageAnalysis({
 		});
 		return Array.from(map.entries()).map(([text, value]) => ({ text, value }));
 	}, [enhancedWordFrequency]);
-
-	// Custom tooltip renderer for word frequency chart
-	const renderWordTooltip = React.useCallback(({ active, payload, label }: any) => {
-		if (active && payload && payload.length) {
-			const customerCount = payload.find((p: any) => p.dataKey === "customerCount")?.value || 0;
-			const assistantCount = payload.find((p: any) => p.dataKey === "assistantCount")?.value || 0;
-			const total = Number(customerCount) + Number(assistantCount);
-
-			return (
-				<div className="bg-background/95 border border-border rounded-lg shadow-md p-3 backdrop-blur-sm">
-					<p className="font-semibold text-foreground mb-2">
-						&quot;{label}&quot;
-					</p>
-					<div className="space-y-1 text-sm">
-						<div className="flex items-center justify-between gap-4">
-							<div className="flex items-center gap-2">
-								<div className="w-3 h-3 rounded-sm bg-chart-1"></div>
-								<span className="text-muted-foreground">
-									{i18n.getMessage("msg_customers", isRTL)}:
-								</span>
-							</div>
-							<span className="font-medium text-chart-1">
-								{customerCount}
-							</span>
-						</div>
-						<div className="flex items-center justify-between gap-4">
-							<div className="flex items-center gap-2">
-								<div className="w-3 h-3 rounded-sm bg-chart-2"></div>
-								<span className="text-muted-foreground">
-									{i18n.getMessage("msg_assistant", isRTL)}:
-								</span>
-							</div>
-							<span className="font-medium text-chart-2">
-								{assistantCount}
-							</span>
-						</div>
-						<div className="border-t border-border/50 pt-1 mt-2">
-							<div className="flex items-center justify-between gap-4">
-								<span className="text-muted-foreground">
-									Total:
-								</span>
-								<span className="font-semibold text-foreground">
-									{total}
-								</span>
-							</div>
-						</div>
-					</div>
-				</div>
-			);
-		}
-		return null;
-	}, [isRTL]);
 
 	return (
 		<div className="space-y-6">
@@ -419,7 +543,9 @@ export function MessageAnalysis({
 								<div className="text-2xl font-bold text-chart-1">
 									{maxCount}
 								</div>
-								<p className="text-xs text-muted-foreground">{i18n.getMessage("msg_peak_messages", isRTL)}</p>
+								<p className="text-xs text-muted-foreground">
+									{i18n.getMessage("msg_peak_messages", isRTL)}
+								</p>
 							</div>
 						</div>
 					</CardHeader>
@@ -640,23 +766,30 @@ export function MessageAnalysis({
 												<div>
 													<HoverCard>
 														<HoverCardTrigger asChild>
-															<p
-																className="text-sm font-medium cursor-pointer truncate max-w-[180px] hover:text-blue-600"
+															<button
+																type="button"
+																className="text-sm font-medium cursor-pointer truncate max-w-[180px] hover:text-blue-600 bg-transparent border-none p-0 text-left"
 																onClick={() =>
 																	handleCustomerClick(customer.wa_id)
 																}
+																onKeyDown={(e) => {
+																	if (e.key === "Enter" || e.key === " ") {
+																		e.preventDefault();
+																		handleCustomerClick(customer.wa_id);
+																	}
+																}}
 															>
 																{getCustomerName(customer.wa_id)}
-															</p>
+															</button>
 														</HoverCardTrigger>
 														<HoverCardContent className="w-[300px] p-0">
 															<CustomerStatsCard
-																	selectedConversationId={customer.wa_id}
-																	conversations={conversations}
-																	reservations={reservations}
-																	isRTL={isRTL}
-																	isHoverCard={true}
-																/>
+																selectedConversationId={customer.wa_id}
+																conversations={conversations}
+																reservations={reservations}
+																isRTL={isRTL}
+																isHoverCard={true}
+															/>
 														</HoverCardContent>
 													</HoverCard>
 													<p className="text-xs text-muted-foreground">
@@ -719,13 +852,43 @@ export function MessageAnalysis({
 							<div className="h-[400px] relative border border-border/20 bg-background/50 rounded-md">
 								{enhancedWordFrequency.length > 0 ? (
 									<ResponsiveContainer width="100%" height="100%">
-										<BarChart data={enhancedWordFrequency} layout="horizontal" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
-											<CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-											<XAxisComp type="number" domain={[0, "dataMax"]} tickFormatter={(value: number) => value.toString()} />
-											<YAxisComp type="category" dataKey="word" tick={{ fontSize: 12 }} width={70} />
-											<Bar dataKey="customerCount" stackId="a" fill="#3b82f6" name={i18n.getMessage("msg_customers", isRTL)} stroke="#3b82f6" strokeWidth={1} />
-											<Bar dataKey="assistantCount" stackId="a" fill="#ef4444" name={i18n.getMessage("msg_assistant", isRTL)} stroke="#ef4444" strokeWidth={1} />
-											<Tooltip content={renderWordTooltip} />
+										<BarChart
+											data={enhancedWordFrequency}
+											layout="horizontal"
+											margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
+										>
+											<CartesianGrid
+												strokeDasharray="3 3"
+												stroke="hsl(var(--border))"
+											/>
+											<XAxisComp
+												type="number"
+												domain={[0, "dataMax"]}
+												tickFormatter={(value: number) => value.toString()}
+											/>
+											<YAxisComp
+												type="category"
+												dataKey="word"
+												tick={{ fontSize: 12 }}
+												width={70}
+											/>
+											<Bar
+												dataKey="customerCount"
+												stackId="a"
+												fill="#3b82f6"
+												name={i18n.getMessage("msg_customers", isRTL)}
+												stroke="#3b82f6"
+												strokeWidth={1}
+											/>
+											<Bar
+												dataKey="assistantCount"
+												stackId="a"
+												fill="#ef4444"
+												name={i18n.getMessage("msg_assistant", isRTL)}
+												stroke="#ef4444"
+												strokeWidth={1}
+											/>
+											<Tooltip content={<WordTooltip />} />
 										</BarChart>
 									</ResponsiveContainer>
 								) : (

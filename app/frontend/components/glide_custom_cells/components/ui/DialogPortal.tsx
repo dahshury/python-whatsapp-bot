@@ -194,7 +194,7 @@ export function useDialogOverlayPortal() {
 				) {
 					const rect = element.getBoundingClientRect();
 					const computedStyle = window.getComputedStyle(element);
-					const zIndex = parseInt(computedStyle.zIndex || "0");
+					const zIndex = parseInt(computedStyle.zIndex || "0", 10);
 
 					// If it has high z-index and is positioned like an overlay
 					if (zIndex > 100 && rect.top < window.innerHeight / 2) {

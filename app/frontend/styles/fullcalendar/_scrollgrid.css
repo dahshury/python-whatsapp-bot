@@ -4,12 +4,14 @@
 	border: 1px solid var(--fc-border-color);
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: We need base selector following themed selector for proper cascade */
 .fc-scrollgrid {
 	border-collapse: separate;
 	border-right-width: 0;
 	border-bottom-width: 0;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: Keep base selector grouped after themed one */
 .fc-scrollgrid,
 .fc-scrollgrid table {
 	width: 100%;

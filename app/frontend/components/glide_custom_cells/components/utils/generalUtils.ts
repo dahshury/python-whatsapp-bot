@@ -13,7 +13,7 @@ export function requireNonNull<T>(obj: T | null | undefined): T {
 	return obj;
 }
 
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
 	func: T,
 	delay: number,
 ): (...args: Parameters<T>) => void {
@@ -25,7 +25,7 @@ export function debounce<T extends (...args: any[]) => any>(
 	};
 }
 
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
 	func: T,
 	limit: number,
 ): (...args: Parameters<T>) => void {
@@ -35,7 +35,9 @@ export function throttle<T extends (...args: any[]) => any>(
 		if (!inThrottle) {
 			func(...args);
 			inThrottle = true;
-			setTimeout(() => (inThrottle = false), limit);
+			setTimeout(() => {
+				inThrottle = false;
+			}, limit);
 		}
 	};
 }
@@ -70,13 +72,17 @@ export function deepClone<T>(obj: T): T {
 	}
 
 	if (typeof obj === "object") {
-		const clonedObj: any = {};
-		for (const key in obj) {
-			if (Object.hasOwn(obj, key)) {
-				clonedObj[key] = deepClone(obj[key]);
+		const original = obj as Record<string, unknown>;
+		const clonedObj = Object.create(Object.getPrototypeOf(original)) as Record<
+			string,
+			unknown
+		>;
+		for (const key in original) {
+			if (Object.hasOwn(original, key)) {
+				clonedObj[key] = deepClone(original[key]);
 			}
 		}
-		return clonedObj;
+		return clonedObj as T;
 	}
 
 	return obj;
@@ -106,7 +112,7 @@ export function moveArrayItem<T>(
 	return result;
 }
 
-export function groupBy<T, K extends keyof any>(
+export function groupBy<T, K extends string | number | symbol>(
 	array: T[],
 	key: (item: T) => K,
 ): Record<K, T[]> {
@@ -176,57 +182,80 @@ export function parseWidth(
 	return widthMapping[width];
 }
 
-export class ErrorHandler {
-	private static errorCallbacks: ((error: Error) => void)[] = [];
+// Error handling utility functions
+const errorCallbacks: ((error: Error) => void)[] = [];
 
-	static addErrorCallback(callback: (error: Error) => void): void {
-		ErrorHandler.errorCallbacks.push(callback);
-	}
+/**
+ * Add an error callback to be called when errors occur
+ */
+export function addErrorCallback(callback: (error: Error) => void): void {
+	errorCallbacks.push(callback);
+}
 
-	static removeErrorCallback(callback: (error: Error) => void): void {
-		const index = ErrorHandler.errorCallbacks.indexOf(callback);
-		if (index > -1) {
-			ErrorHandler.errorCallbacks.splice(index, 1);
-		}
-	}
-
-	static handleError(error: Error, context?: string): void {
-		console.error(`Error${context ? ` in ${context}` : ""}:`, error);
-
-		ErrorHandler.errorCallbacks.forEach((callback) => {
-			try {
-				callback(error);
-			} catch (callbackError) {
-				console.error("Error in error callback:", callbackError);
-			}
-		});
-	}
-
-	static wrapAsync<T extends (...args: any[]) => Promise<any>>(
-		fn: T,
-		context?: string,
-	): T {
-		return (async (...args: Parameters<T>) => {
-			try {
-				return await fn(...args);
-			} catch (error) {
-				ErrorHandler.handleError(error as Error, context);
-				throw error;
-			}
-		}) as T;
-	}
-
-	static wrapSync<T extends (...args: any[]) => any>(
-		fn: T,
-		context?: string,
-	): T {
-		return ((...args: Parameters<T>) => {
-			try {
-				return fn(...args);
-			} catch (error) {
-				ErrorHandler.handleError(error as Error, context);
-				throw error;
-			}
-		}) as T;
+/**
+ * Remove an error callback
+ */
+export function removeErrorCallback(callback: (error: Error) => void): void {
+	const index = errorCallbacks.indexOf(callback);
+	if (index > -1) {
+		errorCallbacks.splice(index, 1);
 	}
 }
+
+/**
+ * Handle an error by logging it and calling all registered callbacks
+ */
+export function handleError(error: Error, context?: string): void {
+	console.error(`Error${context ? ` in ${context}` : ""}:`, error);
+
+	errorCallbacks.forEach((callback) => {
+		try {
+			callback(error);
+		} catch (callbackError) {
+			console.error("Error in error callback:", callbackError);
+		}
+	});
+}
+
+/**
+ * Wrap an async function with error handling
+ */
+export function wrapAsync<T extends (...args: unknown[]) => Promise<unknown>>(
+	fn: T,
+	context?: string,
+): T {
+	return (async (...args: Parameters<T>) => {
+		try {
+			return await fn(...args);
+		} catch (error) {
+			handleError(error as Error, context);
+			throw error;
+		}
+	}) as T;
+}
+
+/**
+ * Wrap a synchronous function with error handling
+ */
+export function wrapSync<T extends (...args: unknown[]) => unknown>(
+	fn: T,
+	context?: string,
+): T {
+	return ((...args: Parameters<T>) => {
+		try {
+			return fn(...args);
+		} catch (error) {
+			handleError(error as Error, context);
+			throw error;
+		}
+	}) as T;
+}
+
+// Backwards-compatible ErrorHandler export expected by some modules
+export const ErrorHandler = {
+	addErrorCallback,
+	removeErrorCallback,
+	handleError,
+	wrapAsync,
+	wrapSync,
+};

@@ -43,23 +43,28 @@ export function GridLoadingState({
 						marginBottom: "12px",
 					}}
 				>
-					{Array.from({ length: skeletonColumns }).map((_, i) => (
-						<div
-							key={`header-${i}`}
-							style={{
-								height: "32px",
-								backgroundColor: "var(--gdg-bg-header, hsl(var(--muted)))",
-								borderRadius: "4px",
-								animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-							}}
-						/>
-					))}
+					{Array.from({ length: skeletonColumns }, (_, i) => `header-${i}`).map(
+						(key) => (
+							<div
+								key={`skeleton-${key}`}
+								style={{
+									height: "32px",
+									backgroundColor: "var(--gdg-bg-header, hsl(var(--muted)))",
+									borderRadius: "4px",
+									animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+								}}
+							/>
+						),
+					)}
 				</div>
 
 				{/* Body skeleton */}
-				{Array.from({ length: skeletonRows }).map((_, rowIndex) => (
+				{Array.from(
+					{ length: skeletonRows },
+					(_, rowIndex) => `row-${rowIndex}`,
+				).map((key) => (
 					<div
-						key={`row-${rowIndex}`}
+						key={`skeleton-${key}`}
 						style={{
 							display: "grid",
 							gridTemplateColumns: `repeat(${skeletonColumns}, 1fr)`,
@@ -67,15 +72,20 @@ export function GridLoadingState({
 							marginBottom: "8px",
 						}}
 					>
-						{Array.from({ length: skeletonColumns }).map((_, colIndex) => (
+						{Array.from({ length: skeletonColumns }, (_, colIndex) => ({
+							cellKey: `cell-${key.split("-")[1]}-col${colIndex}`,
+							colIndex,
+						})).map(({ cellKey, colIndex }) => (
 							<div
-								key={`cell-${rowIndex}-${colIndex}`}
+								key={`skeleton-${cellKey}`}
 								style={{
 									height: "24px",
 									backgroundColor: "var(--gdg-bg-cell, hsl(var(--card)))",
 									borderRadius: "4px",
 									animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-									animationDelay: `${(rowIndex + colIndex) * 0.05}s`,
+									animationDelay: `${
+										(parseInt(key.split("-")[1], 10) + colIndex) * 0.05
+									}s`,
 								}}
 							/>
 						))}

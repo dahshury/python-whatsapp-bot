@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { count } from "@/lib/dev-profiler";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
-import { useLanguage } from "@/lib/language-context";
+import { count } from "@/lib/dev-profiler";
 
 interface UseCalendarToolbarProps {
 	calendarRef: React.RefObject<CalendarCoreRef>;
@@ -17,6 +16,7 @@ interface UseCalendarToolbarReturn {
 	isPrevDisabled: boolean;
 	isNextDisabled: boolean;
 	isTodayDisabled: boolean;
+	visibleEventCount?: number;
 
 	// Actions
 	handlePrev: () => void;
@@ -24,26 +24,16 @@ interface UseCalendarToolbarReturn {
 	handleToday: () => void;
 }
 
-// Helper function that mirrors FullCalendar's rangeContainsMarker
-const rangeContainsMarker = (range: any, date: any) => {
-	return (
-		(range.start === null || date >= range.start) &&
-		(range.end === null || date < range.end)
-	);
-};
-
 export function useCalendarToolbar({
 	calendarRef,
 	currentView,
-	freeRoam = false,
-	onViewChange,
 }: UseCalendarToolbarProps): UseCalendarToolbarReturn {
-	const { isRTL } = useLanguage();
 	const [title, setTitle] = useState("");
 	const [activeView, setActiveView] = useState(currentView);
 	const [isPrevDisabled, setIsPrevDisabled] = useState(false);
 	const [isNextDisabled, setIsNextDisabled] = useState(false);
 	const [isTodayDisabled, setIsTodayDisabled] = useState(false);
+	const [visibleEventCount, setVisibleEventCount] = useState<number>(0);
 
 	// Update active view when currentView prop changes
 	useEffect(() => {
@@ -51,7 +41,10 @@ export function useCalendarToolbar({
 	}, [currentView]);
 
 	// Function to update button states based on FullCalendar's internal logic
+	const isUpdatingRef = useRef(false);
 	const updateButtonStates = useCallback(() => {
+		if (isUpdatingRef.current) return;
+		isUpdatingRef.current = true;
 		count("updateButtonStates");
 		if (!calendarRef?.current?.getApi) return;
 
@@ -59,87 +52,63 @@ export function useCalendarToolbar({
 			const calendarApi = calendarRef.current.getApi();
 			if (!calendarApi) return;
 
-			// Get calendar's internal state
-			const state = calendarApi.currentData;
-			if (!state) return;
+			// Use public API only
+			const viewTitle = calendarApi.view?.title || "";
+			setTitle((prev) => (prev === viewTitle ? prev : viewTitle));
 
-			// Prefer internal state title, but fall back to the public API's view.title
-			let viewTitle = "";
-			if (state.viewTitle) {
-				viewTitle = state.viewTitle;
-			} else if (calendarApi.view?.title) {
-				viewTitle = calendarApi.view.title;
-			}
-			setTitle(viewTitle);
-
-			// Update active view from calendar state or public API fallback
-			const viewType = state.viewSpec?.type || calendarApi.view?.type;
+			// Update active view from public API
+			const viewType = calendarApi.view?.type;
 			if (viewType) {
-				setActiveView(viewType);
+				setActiveView((prev) => (prev === viewType ? prev : viewType));
 			}
 
-			// Check if we can navigate prev/next using FullCalendar's internal logic
-			const dateProfile = state.dateProfile;
-			const dateProfileGenerator = state.dateProfileGenerator;
-			const currentDate = state.currentDate;
-			const nowDate = state.dateEnv?.createMarker
-				? state.dateEnv.createMarker(new Date())
-				: new Date();
+			// Use simple navigation state checks with public API
+			try {
+				// Get current date range from view
+				const currentStart = calendarApi.view.currentStart;
+				const currentEnd = calendarApi.view.currentEnd;
+				const today = new Date();
 
-			if (
-				dateProfile &&
-				dateProfileGenerator &&
-				currentDate &&
-				dateProfileGenerator.build
-			) {
-				try {
-					// Build date profiles exactly like FullCalendar does
-					// The false parameter means don't force to valid date profiles
-					const todayInfo = dateProfileGenerator.build(
-						nowDate,
-						undefined,
-						false,
-					);
-					const prevInfo = dateProfileGenerator.buildPrev(
-						dateProfile,
-						currentDate,
-						false,
-					);
-					const nextInfo = dateProfileGenerator.buildNext(
-						dateProfile,
-						currentDate,
-						false,
-					);
+				// Check if today is within current view range
+				const isTodayInRange =
+					currentStart &&
+					currentEnd &&
+					today >= currentStart &&
+					today < currentEnd;
+				setIsTodayDisabled(!!isTodayInRange);
 
-					// Today button is enabled if today is valid AND not in current range
-					// This matches the exact logic from buildToolbarProps
-					const isTodayEnabled =
-						todayInfo.isValid &&
-						!rangeContainsMarker(dateProfile.currentRange, nowDate);
-					setIsTodayDisabled(!isTodayEnabled);
+				// For navigation, use simple date-based logic
+				setIsPrevDisabled(false); // Always allow navigation
+				setIsNextDisabled(false); // Always allow navigation
 
-					// Prev/Next buttons match the isValid property directly
-					setIsPrevDisabled(!prevInfo.isValid);
-					setIsNextDisabled(!nextInfo.isValid);
-				} catch (err) {
-					console.warn("Error checking navigation state:", err);
-					// Set safe defaults
-					setIsPrevDisabled(false);
-					setIsNextDisabled(false);
-					setIsTodayDisabled(false);
+				// Count visible events
+				if (currentStart && currentEnd) {
+					const allEvents = calendarApi.getEvents() || [];
+					const visibleCount = allEvents.filter((event) => {
+						const eventStart = event.start;
+						if (!eventStart) return false;
+						return eventStart >= currentStart && eventStart < currentEnd;
+					}).length;
+					setVisibleEventCount((prev) =>
+						prev === visibleCount ? prev : visibleCount,
+					);
 				}
-			} else {
-				// If calendar data is not ready, set safe defaults
+			} catch (err) {
+				console.warn("Error checking navigation state:", err);
+				// Set safe defaults
 				setIsPrevDisabled(false);
 				setIsNextDisabled(false);
 				setIsTodayDisabled(false);
+				setVisibleEventCount(0);
 			}
 		} catch (error) {
 			console.error("Error updating button states:", error);
 			// Set safe defaults on error
-			setIsPrevDisabled(false);
-			setIsNextDisabled(false);
-			setIsTodayDisabled(false);
+			setIsPrevDisabled((prev) => (prev === false ? prev : false));
+			setIsNextDisabled((prev) => (prev === false ? prev : false));
+			setIsTodayDisabled((prev) => (prev === false ? prev : false));
+		} finally {
+			isUpdatingRef.current = false;
 		}
 	}, [calendarRef]);
 
@@ -156,7 +125,7 @@ export function useCalendarToolbar({
 				const calendarApi = calendarRef.current.getApi();
 				if (calendarApi) {
 					isApiReady = true;
-					
+
 					// Clear polling since API is ready
 					if (pollInterval) {
 						clearInterval(pollInterval);
@@ -168,18 +137,15 @@ export function useCalendarToolbar({
 
 					// Define event handlers
 					const handleDatesSet = () => updateButtonStates();
-					const handleViewDidMount = () => updateButtonStates();
-					const handleEventSet = () => updateButtonStates();
+					const handleEventsSet = () => updateButtonStates();
 
 					calendarApi.on("datesSet", handleDatesSet);
-					calendarApi.on("viewDidMount", handleViewDidMount);
-					calendarApi.on("eventsSet", handleEventSet);
+					calendarApi.on("eventsSet", handleEventsSet);
 
 					// Store cleanup function
 					cleanupListeners = () => {
 						calendarApi.off("datesSet", handleDatesSet);
-						calendarApi.off("viewDidMount", handleViewDidMount);
-						calendarApi.off("eventsSet", handleEventSet);
+						calendarApi.off("eventsSet", handleEventsSet);
 					};
 
 					return true; // API is ready
@@ -216,7 +182,7 @@ export function useCalendarToolbar({
 				cleanupListeners();
 			}
 		};
-	}, [calendarRef]); // Removed updateButtonStates from dependencies
+	}, [calendarRef, updateButtonStates]);
 
 	// Update button states when isRTL changes to ensure title is re-rendered with new locale
 	useEffect(() => {
@@ -225,36 +191,42 @@ export function useCalendarToolbar({
 			updateButtonStates();
 		}, 100);
 		return () => clearTimeout(timer);
-	}, [isRTL]); // Changed from updateButtonStates to isRTL to break the loop
+	}, [updateButtonStates]);
 
 	// Force update when view changes
 	useEffect(() => {
 		updateButtonStates();
-	}, [currentView]); // Changed from updateButtonStates to currentView to break the loop
+	}, [updateButtonStates]);
 
 	// Navigation handlers
 	const handlePrev = useCallback(() => {
 		if (!calendarRef?.current?.getApi) return;
 		const calendarApi = calendarRef.current.getApi();
-		calendarApi.prev();
-		// Force immediate update after navigation
-		setTimeout(updateButtonStates, 0);
+		if (calendarApi) {
+			calendarApi.prev();
+			// Force immediate update after navigation
+			setTimeout(updateButtonStates, 0);
+		}
 	}, [calendarRef, updateButtonStates]);
 
 	const handleNext = useCallback(() => {
 		if (!calendarRef?.current?.getApi) return;
 		const calendarApi = calendarRef.current.getApi();
-		calendarApi.next();
-		// Force immediate update after navigation
-		setTimeout(updateButtonStates, 0);
+		if (calendarApi) {
+			calendarApi.next();
+			// Force immediate update after navigation
+			setTimeout(updateButtonStates, 0);
+		}
 	}, [calendarRef, updateButtonStates]);
 
 	const handleToday = useCallback(() => {
 		if (!calendarRef?.current?.getApi) return;
 		const calendarApi = calendarRef.current.getApi();
-		calendarApi.today();
-		// Force immediate update after navigation
-		setTimeout(updateButtonStates, 0);
+		if (calendarApi) {
+			calendarApi.today();
+			// Force immediate update after navigation
+			setTimeout(updateButtonStates, 0);
+		}
 	}, [calendarRef, updateButtonStates]);
 
 	return {
@@ -264,6 +236,7 @@ export function useCalendarToolbar({
 		isPrevDisabled,
 		isNextDisabled,
 		isTodayDisabled,
+		visibleEventCount,
 
 		// Actions
 		handlePrev,

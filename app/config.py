@@ -34,9 +34,7 @@ config = {
     "TIMEZONE": os.getenv("TIMEZONE", "Asia/Riyadh"),
     "UNSUPPORTED_MEDIA_MESSAGE": os.getenv("UNSUPPORTED_MEDIA_MESSAGE"),
     
-    "VACATION_DURATIONS": os.getenv("VACATION_DURATIONS"),
     "VACATION_MESSAGE": os.getenv("VACATION_MESSAGE"),
-    "VACATION_START_DATES": os.getenv("VACATION_START_DATES"),
     
 }
 
@@ -99,31 +97,10 @@ def update_env_variable(key, value):
     return True
 
 def update_vacation_settings(start_date, end_date, message):
-    """
-    Updates vacation settings in the .env file
-    
-    Args:
-        start_date (str): Vacation start date in YYYY-MM-DD format
-        end_date (str): Vacation end date in YYYY-MM-DD format
-        message (str): Vacation message
-    """
-    if start_date and end_date:
-        # Calculate duration in days (inclusive)
-        from datetime import datetime
-        start = datetime.strptime(start_date, "%Y-%m-%d")
-        end = datetime.strptime(end_date, "%Y-%m-%d")
-        # Add 1 to make it inclusive: if start=May 31 and end=June 19, duration should be 20 days
-        duration = (end - start).days + 1
-        
-        # Update the environment variables
-        update_env_variable("VACATION_START_DATES", start_date)
-        update_env_variable("VACATION_DURATIONS", str(duration))
-        if message:
-            update_env_variable("VACATION_MESSAGE", message)
-        
-        return True, f"Vacation settings updated: {start_date} to {end_date} ({duration} days)"
-    
-    return False, "Invalid dates provided"
+    # Deprecated: vacations now stored in DB only. Keep VACATION_MESSAGE support.
+    if message:
+        update_env_variable("VACATION_MESSAGE", message)
+    return True, "Vacation message updated"
 
 def get(key, default=None):
     """

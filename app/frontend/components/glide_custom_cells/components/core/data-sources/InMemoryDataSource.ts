@@ -8,7 +8,7 @@ export class InMemoryDataSource implements IDataSource {
 	id = "in-memory";
 	name = "In-Memory Data Source";
 
-	private data: any[][] = [];
+	private data: unknown[][] = [];
 	private columns: IColumnDefinition[] = [];
 	private deletedRows: Set<number> = new Set();
 	public rowCount: number;
@@ -17,7 +17,7 @@ export class InMemoryDataSource implements IDataSource {
 		initialRowCount: number,
 		public columnCount: number,
 		columns?: IColumnDefinition[],
-		initialData?: any[][],
+		initialData?: unknown[][],
 	) {
 		this.rowCount = initialRowCount;
 		if (columns) {
@@ -130,7 +130,7 @@ export class InMemoryDataSource implements IDataSource {
 		row: number,
 		col: number,
 		sampleNames: string[],
-	): any {
+	): unknown {
 		const seed = row * 1000 + col;
 		const random = () => {
 			const x = Math.sin(seed) * 10000;
@@ -182,7 +182,7 @@ export class InMemoryDataSource implements IDataSource {
 		return [...this.columns];
 	}
 
-	async getCellData(col: number, row: number): Promise<any> {
+	async getCellData(col: number, row: number): Promise<unknown> {
 		if (
 			row >= 0 &&
 			row < this.rowCount &&
@@ -195,7 +195,11 @@ export class InMemoryDataSource implements IDataSource {
 		return null;
 	}
 
-	async setCellData(col: number, row: number, value: any): Promise<boolean> {
+	async setCellData(
+		col: number,
+		row: number,
+		value: unknown,
+	): Promise<boolean> {
 		if (row >= 0 && row < this.rowCount && col >= 0 && col < this.columnCount) {
 			if (!this.data[row]) {
 				this.data[row] = new Array(this.columnCount).fill(null);
@@ -206,14 +210,14 @@ export class InMemoryDataSource implements IDataSource {
 		return false;
 	}
 
-	async getRowData(row: number): Promise<any[]> {
+	async getRowData(row: number): Promise<unknown[]> {
 		if (row >= 0 && row < this.rowCount) {
 			return this.data[row] || new Array(this.columnCount).fill(null);
 		}
 		return [];
 	}
 
-	async getColumnData(col: number): Promise<any[]> {
+	async getColumnData(col: number): Promise<unknown[]> {
 		if (col >= 0 && col < this.columnCount) {
 			return this.data.map((row) => row?.[col] ?? null);
 		}
@@ -228,7 +232,7 @@ export class InMemoryDataSource implements IDataSource {
 		const newRowIndex = this.rowCount;
 
 		// Create empty/default row data for the new row (no samples/randoms)
-		const newRowData: any[] = [];
+		const newRowData: unknown[] = [];
 		for (let col = 0; col < this.columnCount; col++) {
 			const column = this.columns[col];
 			if (column && column.defaultValue !== undefined) {

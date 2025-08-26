@@ -64,7 +64,7 @@ export function configureCustomerAutoFill(
 	onNameUpdate: (rowIndex: number, customerName: string) => void,
 	phoneColumnId?: string,
 	nameColumnId?: string,
-) {
+): void {
 	customerAutoFillService.configure({
 		phoneColumnId,
 		nameColumnId,

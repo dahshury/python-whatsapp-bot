@@ -8,7 +8,7 @@ from app.utils.realtime import websocket_router, start_metrics_push_task
 
 import time
 from fastapi import Request, Response
-from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST, REGISTRY
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import os
 import logging
 from contextlib import asynccontextmanager
@@ -24,6 +24,9 @@ def create_app():
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         pid = os.getpid()
+        logging.info(f"startup: initializing database tables in pid {pid}")
+        from app.db import init_models
+        init_models()
         logging.info(f"startup: initializing scheduler in pid {pid}")
         init_scheduler(app)
         yield

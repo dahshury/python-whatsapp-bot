@@ -248,20 +248,20 @@
 
 /* Active state - visible (applied after mount) */
 .hover-card-active {
-	opacity: 1 !important;
-	transform: scale(1) !important;
+	opacity: 1;
+	transform: scale(1);
 	transform-origin: center;
 	transition:
 		opacity 200ms ease-out,
-		transform 200ms ease-out !important;
+		transform 200ms ease-out;
 }
 
 /* Exit animation */
 .hover-card-fade-exit {
-	opacity: 0 !important;
-	transform: scale(0.95) !important;
+	opacity: 0;
+	transform: scale(0.95);
 	transform-origin: center;
 	transition:
 		opacity 0.5s ease-out,
-		transform 0.5s ease-out !important;
+		transform 0.5s ease-out;
 }

@@ -11,8 +11,7 @@ import {
 	Percent,
 	TrendingUp,
 } from "lucide-react";
-import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { useGridPortal } from "../contexts/GridPortalContext";
 
@@ -126,6 +125,7 @@ export function FormattingMenu({
 	const formats = getFormatsForColumn(column);
 	const [mounted, setMounted] = useState(false);
 	const portalContainer = useGridPortal();
+	const menuId = React.useId();
 
 	useEffect(() => {
 		setMounted(true);
@@ -135,7 +135,7 @@ export function FormattingMenu({
 	useEffect(() => {
 		const handleOutsideClick = (event: MouseEvent) => {
 			const target = event.target as HTMLElement;
-			const menu = document.getElementById("formatting-menu");
+			const menu = document.getElementById(menuId);
 			if (menu && !menu.contains(target)) {
 				onClose();
 			}
@@ -154,7 +154,7 @@ export function FormattingMenu({
 			document.removeEventListener("mousedown", handleOutsideClick);
 			document.removeEventListener("keydown", handleEscape);
 		};
-	}, [onClose]);
+	}, [onClose, menuId]);
 
 	const handleFormatSelect = useCallback(
 		(format: string) => {
@@ -185,7 +185,8 @@ export function FormattingMenu({
 
 	const menuContent = (
 		<div
-			id="formatting-menu"
+			role="menu"
+			id={menuId}
 			className="formatting-menu"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
@@ -241,8 +242,16 @@ function FormatMenuItem({
 }: FormatMenuItemProps) {
 	return (
 		<div
+			role="menuitem"
 			className="format-menu-item"
 			onClick={onClick}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					onClick();
+				}
+			}}
+			tabIndex={0}
 			style={{
 				display: "flex",
 				alignItems: "center",
@@ -275,7 +284,7 @@ function getFormatsForColumn(column: GridColumn): FormatOption[] {
 }
 
 function determineColumnKind(column: GridColumn): string {
-	const dataType = (column as any).dataType;
+	const dataType = (column as GridColumn & { dataType?: string }).dataType;
 	if (dataType) {
 		switch (dataType) {
 			case "number":
@@ -291,10 +300,15 @@ function determineColumnKind(column: GridColumn): string {
 		}
 	}
 
-	const name = (column as any).name
-		? (column as any).name.toLowerCase()
-		: ((column as any).title?.toLowerCase() ?? "");
-	const id = (column as any).id ? (column as any).id.toLowerCase() : "";
+	const columnWithMetadata = column as GridColumn & {
+		name?: string;
+		title?: string;
+		id?: string;
+	};
+	const name = columnWithMetadata.name
+		? columnWithMetadata.name.toLowerCase()
+		: (columnWithMetadata.title?.toLowerCase() ?? "");
+	const id = columnWithMetadata.id ? columnWithMetadata.id.toLowerCase() : "";
 
 	if (
 		id.includes("number") ||

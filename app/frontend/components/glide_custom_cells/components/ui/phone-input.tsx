@@ -42,15 +42,28 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
 		({ className, onChange, onCustomerSelect, value, ...props }, ref) => {
 			const parsedValue = (value as string) || "";
 			const normalizedValue = React.useMemo(() => {
-				if (typeof parsedValue !== "string") return parsedValue as any;
+				if (typeof parsedValue !== "string") return parsedValue as string;
 				const v = parsedValue.trim();
-				if (!v) return "" as any;
-				if (v.startsWith("+")) return v as any;
+				if (!v) return "" as string;
+				if (v.startsWith("+")) return v as string;
 				const digits = v.replace(/\D/g, "");
-				return digits ? (`+${digits}` as any) : (v as any);
+				return digits ? (`+${digits}` as string) : (v as string);
 			}, [parsedValue]);
-			const [selectedCountry, setSelectedCountry] = React.useState<RPNInput.Country | undefined>(
-				(props as any)?.country || (props as any)?.defaultCountry,
+			const [selectedCountry, setSelectedCountry] = React.useState<
+				RPNInput.Country | undefined
+			>(
+				(
+					props as {
+						country?: RPNInput.Country;
+						defaultCountry?: RPNInput.Country;
+					}
+				)?.country ||
+					(
+						props as {
+							country?: RPNInput.Country;
+							defaultCountry?: RPNInput.Country;
+						}
+					)?.defaultCountry,
 			);
 
 			// Sync selected country from the current value when it is in E.164 format
@@ -74,8 +87,14 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
 					country={selectedCountry as RPNInput.Country | undefined}
 					onCountryChange={(c) => {
 						setSelectedCountry(c as RPNInput.Country);
-						// @ts-ignore - pass through if provided
-						props?.onCountryChange?.(c);
+						if (
+							typeof (props as { onCountryChange?: (c: unknown) => void })
+								.onCountryChange === "function"
+						) {
+							(
+								props as { onCountryChange?: (c: unknown) => void }
+							).onCountryChange?.(c);
+						}
 					}}
 					// Pass the main onChange handler down to the custom input component
 					inputComponent={(inputProps) => (
@@ -105,7 +124,6 @@ const InputComponent = React.forwardRef<HTMLButtonElement, InputComponentProps>(
 		{
 			className,
 			onCustomerSelect,
-			onChange,
 			onBlur,
 			onKeyDown,
 			value,
@@ -113,7 +131,6 @@ const InputComponent = React.forwardRef<HTMLButtonElement, InputComponentProps>(
 			disabled,
 			mainOnChange,
 			selectedCountry,
-			...props
 		},
 		ref,
 	) => {
@@ -156,9 +173,9 @@ const InputComponent = React.forwardRef<HTMLButtonElement, InputComponentProps>(
 		const handleBlur = () => {
 			if (onBlur) {
 				const mockEvent = {
-					target: { value: value || "" },
-					currentTarget: { value: value || "" },
-				} as any;
+					currentTarget: { value: (value as string) || "" },
+					target: { value: (value as string) || "" },
+				} as unknown as React.FocusEvent<HTMLInputElement>;
 				onBlur(mockEvent);
 			}
 		};
@@ -167,9 +184,9 @@ const InputComponent = React.forwardRef<HTMLButtonElement, InputComponentProps>(
 			if (onKeyDown) {
 				const mockEvent = {
 					...e,
-					target: { value: value || "" },
-					currentTarget: { value: value || "" },
-				} as any;
+					currentTarget: { value: (value as string) || "" },
+					target: { value: (value as string) || "" },
+				} as unknown as React.KeyboardEvent<HTMLInputElement>;
 				onKeyDown(mockEvent);
 			}
 		};
@@ -228,9 +245,12 @@ const CountrySelect = ({
 					`.phone-dropdown-scrollbar [data-country="${selectedCountry}"]`,
 				) as HTMLElement | null;
 				if (!optionEl) return;
-				const scroller = (optionEl.closest(".ScrollbarsCustom")?.querySelector(
-					".ScrollbarsCustom-Scroller",
-				) as HTMLElement | null) || optionEl.parentElement;
+				const scroller =
+					(optionEl
+						.closest(".ScrollbarsCustom")
+						?.querySelector(
+							".ScrollbarsCustom-Scroller",
+						) as HTMLElement | null) || optionEl.parentElement;
 				if (scroller) {
 					const offsetTop = optionEl.offsetTop;
 					const target = Math.max(
@@ -238,8 +258,8 @@ const CountrySelect = ({
 						offsetTop - scroller.clientHeight / 2 + optionEl.clientHeight / 2,
 					);
 					scroller.scrollTop = target;
-				} else if ((optionEl as any).scrollIntoView) {
-					(optionEl as any).scrollIntoView({ block: "center" });
+				} else if (typeof optionEl.scrollIntoView === "function") {
+					optionEl.scrollIntoView({ block: "center" });
 				}
 			} catch {}
 		};
@@ -315,12 +335,8 @@ const CountrySelect = ({
 				<Command>
 					<CommandInput placeholder="Search country..." />
 					<CommandList>
-						<ThemedScrollbar
-							className="h-72 scrollbar-thin phone-dropdown-scrollbar"
-						>
-							<div
-								ref={listContainerRef}
-							>
+						<ThemedScrollbar className="h-72 scrollbar-thin phone-dropdown-scrollbar">
+							<div ref={listContainerRef}>
 								<CommandEmpty>No country found.</CommandEmpty>
 								<CommandGroup>
 									{countryList.map(({ value, label }) =>

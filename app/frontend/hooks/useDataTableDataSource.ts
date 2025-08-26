@@ -57,7 +57,7 @@ export function useDataTableDataSource(
 					const rangeStartDay = new Date(selectedDateRange.start);
 					rangeStartDay.setHours(0, 0, 0, 0);
 
-					let rangeEndDay;
+					let rangeEndDay: Date;
 					if (
 						selectedDateRange.end &&
 						selectedDateRange.end !== selectedDateRange.start
@@ -82,11 +82,15 @@ export function useDataTableDataSource(
 			getValue: (event: CalendarEvent, columnId: string) => {
 				const eventDate = new Date(event.start);
 				// Prefer explicit extended phone; fall back to waId; never use generic id
-				let phoneNumber =
-					(event.extendedProps as any)?.phone ||
-					(event.extendedProps as any)?.waId ||
-					(event.extendedProps as any)?.wa_id ||
-					"";
+				const getPhoneFromExtendedProps = (extendedProps: unknown): string => {
+					if (!extendedProps || typeof extendedProps !== "object") return "";
+					const obj = extendedProps as Record<string, unknown>;
+					const val = obj.phone ?? obj.waId ?? obj.wa_id;
+					return typeof val === "string" ? val : "";
+				};
+				let phoneNumber: string = getPhoneFromExtendedProps(
+					event.extendedProps,
+				);
 				if (
 					phoneNumber &&
 					typeof phoneNumber === "string" &&

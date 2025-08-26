@@ -105,6 +105,7 @@
 @import "fullcalendar/features/_cancelled-events.css";
 @import "fullcalendar/features/_vacation-events.css";
 @import "fullcalendar/features/_free-roam.css";
+@import "fullcalendar/features/_reservation-events.css";
 @import "fullcalendar/features/_hover-card.css";
 @import "fullcalendar/features/_context-menu.css";
 

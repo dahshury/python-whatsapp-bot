@@ -48,8 +48,8 @@ export interface DataTableEditorProps {
 
 export interface SuccessfulOperation {
 	type: "create" | "modify" | "cancel";
-	id: any;
-	data?: any;
+	id: string | number;
+	data?: unknown;
 }
 
 export interface ValidationResult {
@@ -63,7 +63,7 @@ export interface ValidationResult {
 
 export interface EditingChanges {
 	deleted_rows?: number[];
-	edited_rows?: Record<string, Record<string, any>>;
+	edited_rows?: Record<string, Record<string, unknown>>;
 	added_rows?: Array<{
 		date: string;
 		time: string;

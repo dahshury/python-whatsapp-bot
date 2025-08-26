@@ -20,7 +20,6 @@ interface ResponseTimeMetricProps {
 	icon: React.ReactNode;
 	variant?: "default" | "success" | "warning" | "danger";
 	description?: string;
-	isRTL: boolean;
 }
 
 function ResponseTimeMetric({
@@ -30,7 +29,6 @@ function ResponseTimeMetric({
 	icon,
 	variant = "default",
 	description,
-	isRTL,
 }: ResponseTimeMetricProps) {
 	const getVariantClasses = () => {
 		switch (variant) {
@@ -149,7 +147,7 @@ export function ResponseTimeAnalysis({
 			<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
 				{responseTimeMetrics.map((metric, index) => (
 					<motion.div
-						key={index}
+						key={metric.title}
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: index * 0.1, duration: 0.4 }}
@@ -161,7 +159,6 @@ export function ResponseTimeAnalysis({
 							icon={metric.icon}
 							variant={metric.variant}
 							description={metric.description}
-							isRTL={isRTL}
 						/>
 					</motion.div>
 				))}

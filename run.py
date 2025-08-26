@@ -3,8 +3,9 @@ import uvicorn
 import uvloop
 import asyncio
 import tracemalloc
-tracemalloc.start()
 from app import create_app
+
+tracemalloc.start()
 
 # Use uvloop for better performance
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())

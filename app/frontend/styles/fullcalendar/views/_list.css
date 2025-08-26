@@ -14,23 +14,62 @@
 .fc-listMonth-view,
 .fc-listMonth-view .fc-view-harness,
 .fc-listMonth-view .fc-view-harness-active {
-	height: auto !important;
+	height: auto;
 	display: block;
 }
 
 /* List view base styles */
 .fc-list {
-	background-color: hsl(var(--card)) !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: hsl(var(--card));
+	color: hsl(var(--foreground));
 	height: auto;
 }
 
 /* Fix list view scrolling issue - make it fill available space */
-.fc-list-view { height: auto; }
+.fc-list-view {
+	height: auto;
+}
 
-.fc-list-view .fc-view-harness { overflow: visible; height: auto; }
+.fc-list-view .fc-view-harness {
+	overflow: visible;
+	height: auto;
+}
 
-.fc-list-view .fc-scroller { overflow: visible !important; height: auto !important; }
+.fc-list-view .fc-scroller {
+	overflow: visible;
+	height: auto;
+}
+
+/* =================================================================
+   TABLE STRUCTURE AND HEADERS
+   ================================================================= */
+
+/* List table styles */
+.fc-list-table {
+	width: 100%;
+	border-style: hidden;
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
+	@apply w-full;
+}
+
+.fc-list-table tr > * {
+	border-left: 0;
+	border-right: 0;
+}
+
+.fc-list-table thead {
+	position: absolute;
+	left: -10000px;
+}
+
+.fc-list-table th {
+	padding: 0;
+}
+
+/* Force-hide top border of first cell */
+.fc-list-table tbody > tr:first-child th {
+	border-top: 0;
+}
 
 /* Ensure the list table fills the scroller */
 .fc-list-view .fc-list-table {
@@ -43,26 +82,11 @@
 	overflow: hidden; /* clip inner content to rounded corners */
 }
 
-/* =================================================================
-   TABLE STRUCTURE AND HEADERS
-   ================================================================= */
-
-/* List table styles */
-.fc-list-table {
-	width: 100%;
-	border-style: hidden;
-	@apply w-full;
-}
-
-.fc-list-table tr > * {
-	border-left: 0;
-	border-right: 0;
-}
-
 .fc-list-sticky .fc-list-day > * {
 	position: sticky;
 	top: 0;
 	background: var(--fc-page-bg-color);
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply sticky top-0 z-10 bg-muted/95 backdrop-blur-sm;
 }
 
@@ -70,21 +94,6 @@
 .fc-list .fc-list-day:first-child > * {
 	border-top-left-radius: var(--radius);
 	border-top-right-radius: var(--radius);
-}
-
-/* Only exists for aria reasons */
-.fc-list-table thead {
-	position: absolute;
-	left: -10000px;
-}
-
-/* Force-hide top border of first cell */
-.fc-list-table tbody > tr:first-child th {
-	border-top: 0;
-}
-
-.fc-list-table th {
-	padding: 0;
 }
 
 .fc-list-table td,
@@ -130,6 +139,7 @@
 
 /* Event dot */
 .fc-list-event-dot {
+	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply bg-primary;
 }
 
@@ -168,26 +178,26 @@
 .fc-list-event.reservation-type-1,
 .fc-list-event.conversation-event,
 .fc-list-event.reservation-cancelled {
-	background-color: transparent !important;
-	border-color: transparent !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: transparent;
+	border-color: transparent;
+	color: hsl(var(--foreground));
 }
 
 /* List view cancelled events */
 .fc-list-event[data-cancelled="true"] .fc-event-title {
-	text-decoration: line-through !important;
-	color: hsl(var(--muted-foreground)) !important;
+	text-decoration: line-through;
+	color: hsl(var(--muted-foreground));
 }
 
 /* List view dot colors */
 .fc-list-event.conversation-event .fc-list-event-dot {
-	border-color: var(--fc-conversation-border) !important;
-	background-color: var(--fc-conversation-bg) !important;
+	border-color: var(--fc-conversation-border);
+	background-color: var(--fc-conversation-bg);
 }
 
 .fc-list-event[data-cancelled="true"] .fc-list-event-dot {
-	border-color: var(--fc-reservation-cancelled-border) !important;
-	background-color: var(--fc-reservation-cancelled-bg) !important;
+	border-color: var(--fc-reservation-cancelled-border);
+	background-color: var(--fc-reservation-cancelled-bg);
 }
 
 /* Regular reservations - Check-up (type 0) - Green */
@@ -195,8 +205,8 @@
 	[data-cancelled="true"]
 )
 .fc-list-event-dot {
-	border-color: var(--fc-reservation-type-0-border) !important;
-	background-color: var(--fc-reservation-type-0-bg) !important;
+	border-color: var(--fc-reservation-type-0-border);
+	background-color: var(--fc-reservation-type-0-bg);
 }
 
 /* Follow-up reservations (type 1) - Blue */
@@ -204,6 +214,6 @@
 	[data-cancelled="true"]
 )
 .fc-list-event-dot {
-	border-color: var(--fc-reservation-type-1-border) !important;
-	background-color: var(--fc-reservation-type-1-bg) !important;
+	border-color: var(--fc-reservation-type-1-border);
+	background-color: var(--fc-reservation-type-1-bg);
 }

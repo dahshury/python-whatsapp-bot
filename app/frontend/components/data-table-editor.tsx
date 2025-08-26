@@ -1,9 +1,15 @@
 "use client";
 
+import {
+	type DataEditorRef,
+	GridCellKind,
+	type TextCell,
+} from "@glideapps/glide-data-grid";
 import { Save, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
 import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
@@ -13,11 +19,12 @@ import { formatDateRangeWithHijri } from "@/lib/hijri-utils";
 import { useSettings } from "@/lib/settings-context";
 // formatDateTimeOptions removed - using inline options instead
 import type { DataTableEditorProps } from "@/types/data-table-editor";
+
 import { UnsavedChangesDialog } from "./data-table-editor/UnsavedChangesDialog";
 import { FullscreenProvider } from "./glide_custom_cells/components/contexts/FullscreenContext";
+import type { IColumnDefinition } from "./glide_custom_cells/components/core/interfaces/IDataSource";
 import type { DataProvider } from "./glide_custom_cells/components/core/services/DataProvider";
 import { useDialogOverlayPortal } from "./glide_custom_cells/components/ui/DialogPortal";
-import { TableSkeleton } from "./glide_custom_cells/components/ui/TableSkeleton";
 import { configureCustomerAutoFill } from "./glide_custom_cells/components/utils/phoneInputCellFactory";
 import { createGlideTheme } from "./glide_custom_cells/components/utils/streamlitGlideTheme";
 
@@ -38,12 +45,12 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		selectedDateRange,
 		isRTL,
 		slotDurationHours,
-		onSave,
-		onEventClick,
+		onSave: _onSave,
+		onEventClick: _onEventClick,
 		freeRoam = false,
-		data = [],
-		onDataChange,
-		language = "en",
+		data: _data = [],
+		onDataChange: _onDataChange,
+		language: _language = "en",
 		calendarRef,
 		onEventAdded,
 		onEventModified,
@@ -58,11 +65,11 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		(() => void) | null
 	>(null);
 	const { theme: appTheme } = useTheme();
-	const { theme: styleTheme } = useSettings();
+	const { theme: _styleTheme } = useSettings();
 	const isDarkMode = appTheme === "dark";
 
 	const dataProviderRef = useRef<DataProvider | null>(null);
-	const dataEditorRef = useRef<any>(null);
+	const dataEditorRef = useRef<DataEditorRef>(null);
 	const [themeKey, setThemeKey] = useState(0);
 
 	// Use the dialog overlay portal to move overlay editors outside dialog
@@ -235,20 +242,19 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			});
 		}
 
-
 		let canEnable = state.hasChanges && state.isValid;
 
 		// Additional guard: if user is editing an unmapped/template row,
 		// require ALL required fields in that row to be filled and valid
 		try {
 			if (canEnable && dataProviderRef.current) {
-				const provider: any = dataProviderRef.current as any;
+				const provider = dataProviderRef.current;
 				const rowCount: number = provider.getRowCount?.() ?? 0;
 				const colCount: number = provider.getColumnCount?.() ?? 0;
 				const editingState = provider.getEditingState?.();
 				const mappedRows = new Set<number>();
 				try {
-					const mapRef: Map<number, any> | undefined = gridRowToEventMapRef?.current;
+					const mapRef = gridRowToEventMapRef?.current;
 					if (mapRef && mapRef.size > 0) {
 						for (const key of mapRef.keys()) mappedRows.add(key);
 					}
@@ -263,12 +269,20 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					return false;
 				};
 
-				const isRequiredCellMissing = (cell: any, colDef: any): boolean => {
+				const isRequiredCellMissing = (
+					cell: unknown,
+					colDef: { isRequired?: boolean },
+				): boolean => {
 					if (!colDef?.isRequired) return false;
 					if (!cell) return true;
-					if ((cell as any).isMissingValue === true) return true;
-					const k = (cell as any).kind;
-					const data = (cell as any).data || {};
+					const gridCell = cell as {
+						isMissingValue?: boolean;
+						kind?: string;
+						data?: unknown;
+					};
+					if (gridCell.isMissingValue === true) return true;
+					const k = gridCell.kind;
+					const data = (gridCell.data as Record<string, unknown>) || {};
 					if (k === "Custom") {
 						const kind = data?.kind;
 						if (kind === "dropdown-cell") return !data.value;
@@ -277,7 +291,8 @@ export function DataTableEditor(props: DataTableEditorProps) {
 						if (kind === "phone-input-cell") return !data.phone;
 					}
 					if (k === "Text") {
-						return !((cell as any).data && String((cell as any).data).trim());
+						const gridCell = cell as { data?: unknown };
+						return !(gridCell.data && String(gridCell.data).trim());
 					}
 					return false;
 				};
@@ -305,7 +320,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		}
 
 		setCanSave(canEnable);
-	}, [checkEditingState, hasUnsavedChanges]);
+	}, [checkEditingState, hasUnsavedChanges, gridRowToEventMapRef?.current]);
 
 	useEffect(() => {
 		if (open) {
@@ -321,10 +336,11 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			setIsGridReady(false);
 			setCanSave(false);
 
-			if ((dataProviderRef as any).unsubscribe) {
-				(dataProviderRef as any).unsubscribe();
-				delete (dataProviderRef as any).unsubscribe;
-			}
+			const provider = dataProviderRef.current as
+				| (DataProvider & { unsubscribe?: () => void })
+				| null;
+			if (!provider) return;
+			if (provider.unsubscribe) provider.unsubscribe();
 		}
 	}, [open]);
 
@@ -389,7 +405,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	return (
 		<>
 			{open && (
-				<div
+				<button
 					className="fixed inset-0 dialog-backdrop bg-black/80 backdrop-blur-sm"
 					style={{ zIndex: 1700 }}
 					onClick={(e) => {
@@ -397,11 +413,18 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							handleCloseAttempt(() => onOpenChange(false));
 						}
 					}}
+					onKeyDown={(e) => {
+						if (e.key === "Escape") {
+							handleCloseAttempt(() => onOpenChange(false));
+						}
+					}}
+					type="button"
 				/>
 			)}
 
 			{open && (
 				<div
+					role="dialog"
 					className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
 					style={{ zIndex: 1710 }}
 					aria-describedby="data-editor-description"
@@ -425,13 +448,17 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							>
 								{isRTL ? "محرر البيانات" : "Data Editor"} - {formatDateRange()}
 							</h2>
-							<p id="data-editor-description" className="sr-only">
+							<p
+								id={`data-editor-description-${typeof window !== "undefined" ? "client" : "ssr"}`}
+								className="sr-only"
+							>
 								{isRTL
 									? "محرر لإدارة الحجوزات وبيانات العملاء"
 									: "Editor for managing reservations and customer data"}
 							</p>
 						</div>
 						<button
+							type="button"
 							className="flex-shrink-0 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
 							onClick={() => handleCloseAttempt(() => onOpenChange(false))}
 						>
@@ -454,95 +481,77 @@ export function DataTableEditor(props: DataTableEditorProps) {
 								}}
 							>
 								<FullscreenProvider>
-									<Grid
-										key={`grid-${themeKey}`}
-										showThemeToggle={false}
-										fullWidth={true}
-										theme={gridTheme}
-										isDarkMode={isDarkMode}
-										dataSource={dataSource}
-										dataEditorRef={dataEditorRef}
-										onReady={() => setIsGridReady(true)}
-										onDataProviderReady={(provider: any) => {
-											dataProviderRef.current = provider;
+									{Grid && (
+										<Grid
+											key={`grid-${themeKey}`}
+											showThemeToggle={false}
+											fullWidth={true}
+											theme={gridTheme}
+											isDarkMode={isDarkMode}
+											dataSource={dataSource}
+											dataEditorRef={dataEditorRef}
+											onReady={() => setIsGridReady(true)}
+											onDataProviderReady={(provider: unknown) => {
+												const dataProvider = provider as DataProvider;
+												dataProviderRef.current = dataProvider;
 
-											const editingState = provider.getEditingState();
-											const unsubscribe = editingState.onChange(() => {
+												const editingState = dataProvider.getEditingState();
+												const unsubscribe = editingState.onChange(() => {
+													handleCheckEditingState();
+												});
+
+												(
+													dataProviderRef.current as DataProvider & {
+														unsubscribe?: () => void;
+													}
+												).unsubscribe = unsubscribe;
+
+												// Configure customer auto-fill service
+												console.log("Configuring CustomerAutoFillService...");
+
 												handleCheckEditingState();
-											});
 
-											(dataProviderRef as any).unsubscribe = unsubscribe;
+												configureCustomerAutoFill(
+													(rowIndex: number, customerName: string) => {
+														// Get columns from the data provider
+														const columnCount = dataProvider.getColumnCount();
+														const columns: IColumnDefinition[] = [];
 
-											// Configure customer auto-fill service
-											console.log("Configuring CustomerAutoFillService...");
-											configureCustomerAutoFill(
-												(rowIndex: number, customerName: string) => {
-													// Handle customer auto-fill update
-
-													const dataSource =
-														provider.getDataSource?.() ||
-														provider.dataSource ||
-														provider.getData?.();
-
-													if (dataSource) {
-														// Try different methods to get columns
-														const columns =
-															dataSource.getColumns?.() || dataSource.columns;
+														// Build column definitions array
+														for (let i = 0; i < columnCount; i++) {
+															columns.push(dataProvider.getColumnDefinition(i));
+														}
 														if (columns) {
 															const nameColumnIndex = columns.findIndex(
-																(col: any) => col.id === "name",
+																(col: { id?: string }) => col.id === "name",
 															);
-															// Use provider.columnDefinitions for display order since displayColumns is out of scope here
-															const nameDisplayIndex =
-																provider.columnDefinitions.findIndex(
-																	(col: any) => col.id === "name",
-																);
+															// Use column definitions for display order since displayColumns is out of scope here
+															const nameDisplayIndex = columns.findIndex(
+																(col: { id?: string }) => col.id === "name",
+															);
 
 															if (nameColumnIndex >= 0) {
 																// Update the underlying data via provider.setCell
-																const columnDef = columns[nameColumnIndex];
-																const columnType =
-																	provider.columnTypeRegistry.get(
-																		columnDef.dataType,
-																	);
-																const newCell = columnType.createCell(
-																	customerName,
-																	columnDef,
-																	provider.theme,
-																	provider.isDarkTheme,
-																	{
-																		row: rowIndex,
-																		getRowCellData: () => undefined,
-																	},
-																);
-																provider.setCell(
+																const _columnDef = columns[nameColumnIndex];
+
+																// Get the existing cell to use as a template for creating the new cell
+																const existingCell = dataProvider.getCell(
 																	nameColumnIndex,
 																	rowIndex,
-																	newCell,
 																);
+																if (existingCell) {
+																	const newCell: TextCell = {
+																		kind: GridCellKind.Text,
+																		data: customerName,
+																		displayData: customerName,
+																		allowOverlay: true,
+																	};
 
-																// Trigger re-render helpers
-																if (provider.editingState?.triggerOnChange)
-																	provider.editingState.triggerOnChange();
-																if (provider.refresh) provider.refresh();
-																if (provider.cellCache?.invalidateCell)
-																	provider.cellCache.invalidateCell(
-																		rowIndex,
+																	dataProvider.setCell(
 																		nameColumnIndex,
+																		rowIndex,
+																		newCell,
 																	);
-
-																// Update addedRows cache if applicable
-																const isNewRow =
-																	provider.editingState?.addedRows &&
-																	provider.editingState.addedRows.length >
-																		rowIndex;
-																if (
-																	isNewRow &&
-																	provider.editingState?.addedRows[rowIndex]
-																) {
-																	provider.editingState.addedRows[rowIndex][
-																		nameColumnIndex
-																	] = customerName;
 																}
 
 																// Repaint cell
@@ -560,18 +569,11 @@ export function DataTableEditor(props: DataTableEditorProps) {
 																}
 															}
 														}
-													}
-												},
-												"phone", // phoneColumnId
-												"name", // nameColumnId
-											);
-											console.log(
-												"CustomerAutoFillService configuration complete",
-											);
-
-											handleCheckEditingState();
-										}}
-									/>
+													},
+												);
+											}}
+										/>
+									)}
 								</FullscreenProvider>
 							</div>
 						</div>

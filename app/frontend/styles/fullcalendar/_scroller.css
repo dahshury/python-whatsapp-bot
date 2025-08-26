@@ -18,6 +18,7 @@
 }
 
 /* Scroller */
+/* biome-ignore lint/style/noDescendingSpecificity: Intentional override of more specific RTL harness selector */
 .fc-scroller {
 	-webkit-overflow-scrolling: touch;
 	position: relative;

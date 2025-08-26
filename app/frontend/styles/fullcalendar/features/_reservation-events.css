@@ -1,0 +1,148 @@
+/* Reservation Events - unified styling across views (daygrid, timegrid, multimonth, list) */
+/* SINGLE SOURCE OF TRUTH FOR EVENT ALIGNMENT - All views use consistent layout */
+
+/* Base pill styling for reservation events */
+.fc-event.reservation-event {
+	border-width: 1px; /* 1px outline */
+	border-radius: 6px;
+	padding: 2px 6px; /* horizontal breathing room */
+	box-shadow: none;
+	font-weight: 600; /* stronger label */
+	/* Opaque backgrounds per type (set below) */
+}
+
+/* ==============================================================================
+   UNIFIED LAYOUT SYSTEM - SINGLE SOURCE OF TRUTH
+   Works across ALL views: daygrid, timegrid, multimonth, list
+   ============================================================================== */
+
+/* Primary containers for ALL views - unified approach */
+.fc-event.reservation-event .fc-event-main,
+.fc-event.reservation-event .fc-event-main-frame,
+.fc-daygrid-event.reservation-event .fc-event-main,
+.fc-timegrid-event.reservation-event .fc-event-main,
+.fc-timegrid-event.reservation-event .fc-event-main-frame,
+.fc-multimonth .fc-daygrid-event.reservation-event .fc-event-main,
+.fc-multimonth .fc-event.reservation-event .fc-event-main {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	column-gap: 8px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	width: 100%;
+	background: transparent;
+}
+
+/* UNIFIED TIME STYLING - All views use same approach */
+.fc-event.reservation-event .fc-event-time,
+.fc-daygrid-event.reservation-event .fc-event-time,
+.fc-timegrid-event.reservation-event .fc-event-time,
+.fc-multimonth .fc-daygrid-event.reservation-event .fc-event-time,
+.fc-multimonth .fc-event.reservation-event .fc-event-time {
+	font-size: 0.65rem;
+	line-height: 1.1;
+	opacity: 0.95;
+	text-transform: uppercase; /* AM/PM uppercase */
+	order: 2;
+	margin-left: auto; /* push time to the right */
+	text-align: right;
+	font-style: italic;
+	font-weight: 400; /* override bold defaults */
+	flex-shrink: 0; /* prevent time from shrinking */
+	white-space: nowrap;
+	background: transparent;
+}
+
+/* UNIFIED TITLE STYLING - All views use same approach */
+.fc-event.reservation-event .fc-event-title,
+.fc-daygrid-event.reservation-event .fc-event-title,
+.fc-timegrid-event.reservation-event .fc-event-title,
+.fc-multimonth .fc-daygrid-event.reservation-event .fc-event-title,
+.fc-multimonth .fc-event.reservation-event .fc-event-title {
+	font-size: 0.78rem; /* slightly larger than time */
+	line-height: 1.1;
+	font-weight: 700;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	order: 1;
+	flex: 1 1 auto;
+	min-width: 0;
+	text-align: left;
+	background: transparent;
+}
+
+/* ==============================================================================
+   LIST VIEW UNIFIED STYLING - Consistent with other views
+   ============================================================================== */
+
+.fc-list-event.reservation-event .fc-list-event-title {
+	font-weight: 600;
+	font-size: 0.78rem; /* match other views */
+	line-height: 1.1;
+}
+
+/* List view time - unified with other views */
+.fc-list .fc-list-event.reservation-event .fc-list-event-time {
+	font-size: 0.65rem;
+	font-style: italic;
+	font-weight: 400;
+	text-transform: uppercase;
+	opacity: 0.95;
+}
+
+/* Ensure typed text colors override FullCalendar defaults in all views */
+.fc-event.reservation-type-0 .fc-event-main,
+.fc-event.reservation-type-0 .fc-event-title,
+.fc-event.reservation-type-0 .fc-event-time,
+.fc-event.reservation-type-1 .fc-event-main,
+.fc-event.reservation-type-1 .fc-event-title,
+.fc-event.reservation-type-1 .fc-event-time,
+.fc-list-event.reservation-type-0 .fc-list-event-title,
+.fc-list-event.reservation-type-1 .fc-list-event-title {
+	color: var(--fc-typed-text);
+}
+
+/* Subtle hover to mimic shadcn feel */
+.fc-event.reservation-event:hover {
+	filter: brightness(1.02) saturate(1.02);
+}
+
+/* Cancelled reservations can stay subdued via existing classes, ensure readability */
+.fc-event.reservation-event.fc-event-past {
+	opacity: 0.85;
+}
+
+/* ==============================================================================
+   OVERRIDE PROTECTION - Ensure our unified styles take precedence
+   ============================================================================== */
+
+/* Force layout consistency - highest specificity protection */
+.fc-event.reservation-event:not(.conversation-event) .fc-event-main,
+.fc-event.reservation-event:not(.conversation-event) .fc-event-main-frame,
+.fc-daygrid-event.reservation-event:not(.conversation-event) .fc-event-main,
+.fc-timegrid-event.reservation-event:not(.conversation-event)
+	.fc-event-main-frame {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+}
+
+/* Ensure time always stays on the right across all views */
+.fc-event.reservation-event:not(.conversation-event) .fc-event-time {
+	order: 2;
+	margin-left: auto;
+	flex-shrink: 0;
+}
+
+/* Ensure title always stays on the left across all views */
+.fc-event.reservation-event:not(.conversation-event) .fc-event-title {
+	order: 1;
+	flex: 1 1 auto;
+	text-align: left;
+}
+
+/* Colors are sourced from variables in _variables.css and applied in _universal.css */

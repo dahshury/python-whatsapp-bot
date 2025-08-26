@@ -53,9 +53,9 @@ export function CalendarSkeleton({
 
 					{/* Calendar grid skeleton */}
 					<div className="grid grid-cols-7 gap-2 mb-4">
-						{Array.from({ length: 7 }).map((_, i) => (
+						{["mon", "tue", "wed", "thu", "fri", "sat", "sun"].map((day) => (
 							<div
-								key={`skh-${i}`}
+								key={`skeleton-header-${day}`}
 								className="h-8 bg-muted animate-pulse rounded text-center"
 							/>
 						))}
@@ -63,20 +63,22 @@ export function CalendarSkeleton({
 
 					{/* Calendar days skeleton */}
 					<div className="grid grid-cols-7 gap-2">
-						{Array.from({ length: 35 }).map((_, i) => (
-							<div
-								key={`sk-${i}`}
-								className="h-20 bg-muted animate-pulse rounded relative"
-							>
-								{/* Random event-like blocks */}
-								{i % 5 === 0 && (
-									<div className="absolute top-1 left-1 right-1 h-4 bg-primary/20 animate-pulse rounded-sm" />
-								)}
-								{i % 7 === 0 && (
-									<div className="absolute top-6 left-1 right-1 h-4 bg-secondary/20 animate-pulse rounded-sm" />
-								)}
-							</div>
-						))}
+						{Array.from({ length: 35 }, (_, i) => `day-${i + 1}`).map(
+							(dayId, index) => (
+								<div
+									key={`skeleton-${dayId}`}
+									className="h-20 bg-muted animate-pulse rounded relative"
+								>
+									{/* Random event-like blocks */}
+									{index % 5 === 0 && (
+										<div className="absolute top-1 left-1 right-1 h-4 bg-primary/20 animate-pulse rounded-sm" />
+									)}
+									{index % 7 === 0 && (
+										<div className="absolute top-6 left-1 right-1 h-4 bg-secondary/20 animate-pulse rounded-sm" />
+									)}
+								</div>
+							),
+						)}
 					</div>
 				</div>
 			</div>

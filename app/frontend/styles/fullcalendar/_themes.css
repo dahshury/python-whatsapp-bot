@@ -11,8 +11,8 @@
 
 /* Dark mode specific styles */
 .dark .selected-date-cell {
-	background-color: hsl(var(--accent)) !important;
-	color: hsl(var(--accent-foreground)) !important;
+	background-color: hsl(var(--accent));
+	color: hsl(var(--accent-foreground));
 }
 
 .dark .fc {
@@ -30,29 +30,29 @@
 /* Theme integration - text colors */
 .fc-list-day-text,
 .fc-list-day-side-text {
-	color: hsl(var(--foreground)) !important;
+	color: hsl(var(--foreground));
 }
 
 .fc-list-table th,
 .fc-list-table td {
-	border-color: hsl(var(--border)) !important;
+	border-color: hsl(var(--border));
 }
 
 /* Header background for all views */
 .fc-scrollgrid-section-header > * {
-	background-color: hsl(var(--muted) / 0.5) !important;
+	background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Ensure week view headers have consistent background */
 .fc-timeGridWeek-view .fc-col-header,
 .fc-timeGridDay-view .fc-col-header {
-	background-color: hsl(var(--muted) / 0.5) !important;
+	background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Multimonth view headers */
 .fc-multimonth-header,
 .fc-multimonth-header-table {
-	background-color: hsl(var(--muted) / 0.5) !important;
+	background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Dark mode override for headers */
@@ -61,14 +61,14 @@
 .dark .fc-timeGridDay-view .fc-col-header,
 .dark .fc-multimonth-header,
 .dark .fc-multimonth-header-table {
-	background-color: hsl(var(--muted) / 0.3) !important;
+	background-color: hsl(var(--muted) / 0.3);
 }
 
 /* List view theme integration */
 .fc-list-view .fc-list-day-cushion {
-	background-color: hsl(var(--muted) / 0.5) !important;
+	background-color: hsl(var(--muted) / 0.5);
 }
 
 .dark .fc-list-view .fc-list-day-cushion {
-	background-color: hsl(var(--muted) / 0.3) !important;
+	background-color: hsl(var(--muted) / 0.3);
 }

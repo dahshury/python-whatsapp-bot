@@ -99,7 +99,7 @@ export function OperationMetrics({
 				</h2>
 				<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
 					{Array.from({ length: 3 }).map((_, i) => (
-						<Card key={i}>
+						<Card key={`operation-skeleton-card-${i + 1}`}>
 							<CardHeader className="space-y-0 pb-2">
 								<Skeleton className="h-4 w-[120px]" />
 							</CardHeader>
@@ -151,7 +151,7 @@ export function OperationMetrics({
 			<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
 				{operations.map((operation, index) => (
 					<motion.div
-						key={index}
+						key={operation.title}
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: index * 0.1, duration: 0.4 }}

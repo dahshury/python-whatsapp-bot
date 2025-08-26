@@ -32,7 +32,7 @@ export interface ValidationOptions {
 	customValidators?: Array<{
 		columnId: string;
 		validator: (
-			value: any,
+			value: unknown,
 			cell: GridCell,
 			row: number,
 		) => { isValid: boolean; error?: string };
@@ -49,7 +49,7 @@ export function useGridValidation(
 ) {
 	const {
 		translateMessage = (msg) => msg,
-		validateOnlyChanged = false,
+		validateOnlyChanged: _validateOnlyChanged = false,
 		customValidators = [],
 	} = options;
 
@@ -76,7 +76,7 @@ export function useGridValidation(
 		const errors: ValidationError[] = [];
 
 		// Process base validation errors
-		baseValidation.errors.forEach((err: any) => {
+		baseValidation.errors.forEach((err: ValidationError) => {
 			const column = columns.find((col) => col.indexNumber === err.col);
 			errors.push({
 				row: err.row,
@@ -103,7 +103,11 @@ export function useGridValidation(
 					);
 					if (customValidator) {
 						const cellValue =
-							(cell as any).data || (cell as any).displayData || null;
+							(cell as GridCell & { data?: unknown; displayData?: unknown })
+								.data ||
+							(cell as GridCell & { data?: unknown; displayData?: unknown })
+								.displayData ||
+							null;
 						const validation = customValidator(cellValue, cell, row);
 
 						if (!validation.isValid) {
@@ -153,12 +157,19 @@ export function useGridValidation(
 				if (!cell) return;
 
 				// Check if cell has validation error flag
-				if ((cell as any).isMissingValue || (cell as any).validationError) {
+				const cellWithValidation = cell as GridCell & {
+					isMissingValue?: boolean;
+					validationError?: string;
+				};
+				if (
+					cellWithValidation.isMissingValue ||
+					cellWithValidation.validationError
+				) {
 					errors.push({
 						row,
 						col,
 						message: translateMessage(
-							(cell as any).validationError ||
+							cellWithValidation.validationError ||
 								`${column.name || column.id || "Field"} is required`,
 						),
 						fieldName: column.name || column.id,
@@ -171,7 +182,11 @@ export function useGridValidation(
 				);
 				if (customValidator) {
 					const cellValue =
-						(cell as any).data || (cell as any).displayData || null;
+						(cell as GridCell & { data?: unknown; displayData?: unknown })
+							.data ||
+						(cell as GridCell & { data?: unknown; displayData?: unknown })
+							.displayData ||
+						null;
 					const validation = customValidator(cellValue, cell, row);
 
 					if (!validation.isValid) {

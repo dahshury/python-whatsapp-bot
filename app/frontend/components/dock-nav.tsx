@@ -7,11 +7,17 @@ import {
 	NavigationLinks,
 } from "@/components/navigation";
 import { SettingsPopover } from "@/components/settings";
+import { Badge } from "@/components/ui/badge";
 import { Dock } from "@/components/ui/dock";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDockNavigation } from "@/hooks/use-dock-navigation";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
-import type { DockNavProps } from "@/types/navigation";
+import type {
+	DockNavProps,
+	ExtendedNavigationContextValue,
+} from "@/types/navigation";
 
 export function DockNav({
 	className = "",
@@ -19,19 +25,20 @@ export function DockNav({
 	calendarRef,
 	onCalendarViewChange,
 	navigationOnly = false,
-	variant = "default",
+	variant: _variant = "default",
 }: DockNavProps) {
 	const nav = useDockNavigation({
 		calendarRef,
 		currentCalendarView,
 		onCalendarViewChange,
-	});
+	}) as ExtendedNavigationContextValue;
+	const { isRTL } = useLanguage();
 
 	if (!nav.state.mounted) {
 		return null;
 	}
 
-	const { navigation } = nav as any;
+	const { navigation } = nav;
 
 	return (
 		<TooltipProvider>
@@ -58,6 +65,12 @@ export function DockNav({
 							onToday={navigation.handleToday}
 							navigationOnly={navigationOnly}
 						/>
+						{typeof navigation.visibleEventCount === "number" && (
+							<Badge variant="secondary" className="ml-2">
+								{navigation.visibleEventCount}{" "}
+								{i18n.getMessage("calendar_events", isRTL)}
+							</Badge>
+						)}
 					</>
 				) : !navigation.isCalendarPage ? (
 					<CalendarLink isRTL={navigation.isRTL} />
@@ -80,6 +93,12 @@ export function DockNav({
 							onToday={navigation.handleToday}
 							navigationOnly={navigationOnly}
 						/>
+						{typeof navigation.visibleEventCount === "number" && (
+							<Badge variant="outline" className="ml-2">
+								{navigation.visibleEventCount}{" "}
+								{i18n.getMessage("calendar_events", isRTL)}
+							</Badge>
+						)}
 					</>
 				)}
 

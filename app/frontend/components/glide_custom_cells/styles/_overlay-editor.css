@@ -58,33 +58,33 @@
 /* Additional essential styles */
 .glide-data-grid-overlay-editor,
 .click-outside-ignore {
-	outline-width: 2px !important;
-	outline-offset: -1px !important;
-	z-index: var(--z-grid-overlay-editor) !important;
+	outline-width: 2px;
+	outline-offset: -1px;
+	z-index: var(--z-grid-overlay-editor);
 }
 
 /* Ensure dropdown editor follows theme */
 .gdg-d19meir1 .gdg-clip-region,
 .glide-data-grid-overlay-editor .gdg-clip-region {
-	background-color: hsl(var(--card)) !important;
-	color: hsl(var(--foreground)) !important;
+	background-color: hsl(var(--card));
+	color: hsl(var(--foreground));
 }
 
 /* Grid overlay editor base styles */
 .glide-data-grid-overlay-editor {
 	/* Style for the overlay editor container */
-	background: transparent !important;
-	border: none !important;
-	padding: 0 !important;
-	margin: 0 !important;
-	outline: none !important;
-	box-shadow: none !important;
-	font-family: inherit !important;
-	font-size: inherit !important;
-	color: hsl(var(--foreground)) !important;
+	background: transparent;
+	border: none;
+	padding: 0;
+	margin: 0;
+	outline: none;
+	box-shadow: none;
+	font-family: inherit;
+	font-size: inherit;
+	color: hsl(var(--foreground));
 }
 
 /* Overlay editor styles */
 .glide-data-grid-overlay-editor {
-	z-index: var(--z-grid-overlay-editor) !important;
+	z-index: var(--z-grid-overlay-editor);
 }

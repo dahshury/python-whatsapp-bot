@@ -32,6 +32,8 @@ export interface DashboardStats {
 export interface PrometheusMetrics {
 	cpu_percent?: number;
 	memory_bytes?: number;
+	process_cpu_percent?: number;
+	process_memory_bytes?: number;
 	reservations_requested_total?: number;
 	reservations_successful_total?: number;
 	reservations_failed_total?: number;

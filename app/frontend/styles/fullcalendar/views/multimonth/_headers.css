@@ -41,7 +41,7 @@
 /* Override for multimonth view to ensure font size takes effect */
 .fc-multimonth-view .fc-multimonth-title,
 .fc-multimonth .fc-multimonth-title {
-	font-size: 1.3em !important;
+	font-size: 1.3em;
 }
 
 /* HOVER STATE - NO COLOR CHANGE */
@@ -100,14 +100,14 @@
 /* Override for multimonth view weekday headers */
 .fc-multimonth-view .fc-col-header-cell-cushion,
 .fc-multimonth .fc-col-header-cell-cushion {
-	font-size: 0.9em !important;
+	font-size: 0.9em;
 }
 
 /* Add inner content wrapper for rounded corners on weekday cells with texture */
 .fc-multimonth-header-table th .fc-col-header-cell-cushion {
 	display: block;
 	padding: 0;
-	font-size: inherit !important;
+	font-size: inherit;
 	/* No special styling - just inherit from parent */
 }
 

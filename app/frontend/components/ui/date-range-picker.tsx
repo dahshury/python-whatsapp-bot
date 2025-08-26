@@ -28,6 +28,7 @@ export function DatePickerWithRange({
 }: DatePickerWithRangeProps) {
 	const [date, setDate] = React.useState<DateRange | undefined>(value);
 	const today = new Date();
+	const buttonId = React.useId();
 
 	React.useEffect(() => {
 		setDate(value);
@@ -43,7 +44,7 @@ export function DatePickerWithRange({
 			<Popover>
 				<PopoverTrigger asChild>
 					<Button
-						id="date"
+						id={buttonId}
 						variant={"outline"}
 						className={cn(
 							"w-[280px] justify-start text-left font-normal",

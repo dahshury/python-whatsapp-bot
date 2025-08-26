@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { NavigationDateButtonProps } from "@/types/navigation";
 
-export function NavigationDateButton({
+export const NavigationDateButton = React.memo(function NavigationDateButton({
 	title,
 	isRTL = false,
 	isCalendarPage = false,
@@ -97,4 +97,4 @@ export function NavigationDateButton({
 			</TooltipContent>
 		</Tooltip>
 	);
-}
+});

@@ -65,6 +65,22 @@ export interface NavigationContextValue {
 	};
 }
 
+export interface ExtendedNavigationContextValue extends NavigationContextValue {
+	navigation: {
+		title: string;
+		activeView: string;
+		isPrevDisabled: boolean;
+		isNextDisabled: boolean;
+		isTodayDisabled: boolean;
+		handlePrev: () => void;
+		handleNext: () => void;
+		handleToday: () => void;
+		isCalendarPage: boolean;
+		isRTL: boolean;
+		visibleEventCount: number;
+	};
+}
+
 export interface ThemeOption {
 	value: string;
 	name: string;

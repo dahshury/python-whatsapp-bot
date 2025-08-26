@@ -20,7 +20,6 @@ interface CalendarDockProps {
 	calendarRef?: React.RefObject<CalendarCoreRef> | null;
 	freeRoam?: boolean;
 	isRTL?: boolean;
-	label?: string;
 }
 
 export function CalendarDock({
@@ -29,7 +28,6 @@ export function CalendarDock({
 	calendarRef,
 	freeRoam = false,
 	isRTL = false,
-	label,
 }: CalendarDockProps) {
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 

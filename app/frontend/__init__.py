@@ -119,7 +119,7 @@ def format_date_for_display(date_str, is_gregorian=True):
     gregorian_date = date_str
     try:
         hijri_date = Gregorian(*map(int, date_str.split('-'))).to_hijri().isoformat()
-    except:
+    except (ValueError, TypeError, AttributeError):
         hijri_date = ""
     
     if is_gregorian:
@@ -146,7 +146,7 @@ def get_event_time_range(start_time, duration_delta):
         end_time_obj = (datetime.datetime.combine(datetime.date.today(), start_time_obj) + duration_delta).time()
         end_time = end_time_obj.strftime("%H:%M")
         return start_time, end_time, start_time_obj, end_time_obj
-    except:
+    except (ValueError, TypeError, AttributeError):
         return start_time, None, None, None
 
 def filter_events_by_date_time(events, date_filter, start_time_obj=None, end_time_obj=None, exclude_conversations=True, is_gregorian=True):
@@ -209,7 +209,7 @@ def filter_events_by_date_time(events, date_filter, start_time_obj=None, end_tim
                     # For events without time (like vacation periods), skip time filtering
                     # These are typically full-day events and should be included regardless of time filter
                     pass
-            except:
+            except (ValueError, TypeError, AttributeError, KeyError, IndexError):
                 continue
                 
         filtered.append(e)
