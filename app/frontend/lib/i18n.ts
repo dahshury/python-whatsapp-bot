@@ -284,6 +284,17 @@ Object.assign(en, {
 		"Click retry after confirming the server is up.",
 	backend_connection_checking: "Checking connection...",
 	backend_connection_error_retry: "Retry",
+	// Toast notifications
+	toast_reservation_created: "Reservation created",
+	toast_reservation_modified: "Reservation modified",
+	toast_reservation_cancelled: "Reservation cancelled",
+	toast_reservation_modification_failed: "Reservation modification failed",
+	toast_error_prefix: "Error",
+	toast_new_message: "Message",
+	toast_request_timeout: "Request timed out",
+	// Error messages
+	slot_fully_booked:
+		"This time slot is fully booked. Please choose another slot.",
 });
 
 // Extend Arabic with additional dashboard and analysis keys
@@ -440,6 +451,16 @@ Object.assign(ar, {
 		"انقر إعادة المحاولة بعد التأكد من تشغيل الخادم.",
 	backend_connection_checking: "جارٍ التحقق من الاتصال...",
 	backend_connection_error_retry: "إعادة المحاولة",
+	// Toast notifications
+	toast_reservation_created: "تم إنشاء الحجز",
+	toast_reservation_modified: "تم تعديل الحجز",
+	toast_reservation_cancelled: "تم إلغاء الحجز",
+	toast_reservation_modification_failed: "فشل تعديل الحجز",
+	toast_error_prefix: "خطأ",
+	toast_new_message: "رسالة",
+	toast_request_timeout: "انتهت مهلة الطلب",
+	// Error messages
+	slot_fully_booked: "هذا الوقت محجوز بالكامل. يرجى اختيار وقت آخر.",
 });
 
 const isRTL = () => {

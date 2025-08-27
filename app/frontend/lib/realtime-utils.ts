@@ -9,7 +9,9 @@ export type UpdateType =
 	| "vacation_period_updated"
 	| "customer_updated"
 	| "metrics_updated"
-	| "snapshot";
+	| "snapshot"
+	| "modify_reservation_ack"
+	| "modify_reservation_nack";
 
 export function normalizeTime12To24(
 	time12?: string | null,

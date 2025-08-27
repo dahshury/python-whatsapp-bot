@@ -293,100 +293,94 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 				{/* Combobox + HoverCard */}
 				<div className="flex-1">
 					<HoverCard open={showHoverCard && !open}>
-						<HoverCardTrigger asChild>
-							<button
-								type="button"
-								aria-label="Conversation actions"
-								onMouseEnter={handleMouseEnter}
-								onMouseLeave={handleMouseLeave}
-								className="w-full"
-							>
-								<Popover
-									open={open}
-									onOpenChange={(newOpen) => {
-										setOpen(newOpen);
-										// Close hover card when opening combobox
-										if (newOpen) {
-											setShowHoverCard(false);
-											if (hoverTimer) {
-												clearTimeout(hoverTimer);
-												setHoverTimer(null);
-											}
-										}
-									}}
-								>
-									<PopoverTrigger asChild>
-										<Button
-											ref={triggerRef}
-											variant="outline"
-											aria-expanded={open}
-											className="w-full justify-between text-[11px] h-8 px-2"
-										>
-											<div className="flex items-center gap-1.5 truncate">
-												<MessageSquare className="h-2.5 w-2.5 flex-shrink-0" />
-												<span className="truncate">
-													{selectedOption
-														? selectedOption.label
-														: isRTL
-															? "اختر محادثة..."
-															: "Select conversation..."}
-												</span>
-											</div>
-											<ChevronsUpDown className="h-2.5 w-2.5 opacity-50 flex-shrink-0" />
-										</Button>
-									</PopoverTrigger>
-									<PopoverContent
-										className="w-[var(--radix-popover-trigger-width)] p-0"
-										align="start"
+						<Popover
+							open={open}
+							modal={false}
+							onOpenChange={(newOpen) => {
+								setOpen(newOpen);
+								// Close hover card when opening combobox
+								if (newOpen) {
+									setShowHoverCard(false);
+									if (hoverTimer) {
+										clearTimeout(hoverTimer);
+										setHoverTimer(null);
+									}
+								}
+							}}
+						>
+							<HoverCardTrigger asChild>
+								<PopoverTrigger asChild>
+									<Button
+										ref={triggerRef}
+										variant="outline"
+										aria-expanded={open}
+										onMouseEnter={handleMouseEnter}
+										onMouseLeave={handleMouseLeave}
+										className="w-full justify-between text-[11px] h-8 px-2"
 									>
-										<Command shouldFilter={false}>
-											{/* Disable built-in filtering since we have custom logic */}
-											<CommandInput
-												placeholder={
-													isRTL
-														? "ابحث في المحادثات..."
-														: "Search conversations..."
-												}
-												className="text-sm"
-												value={searchValue}
-												onValueChange={setSearchValue}
-											/>
-											<CommandList>
-												<CommandEmpty className="text-xs py-2 text-center">
-													{isRTL ? "لا توجد محادثات" : "No conversations found"}
-												</CommandEmpty>
-												<CommandGroup>
-													{filteredOptions.map((option) => (
-														<CommandItem
-															key={option.value}
-															value={option.value}
-															data-value={option.value}
-															onSelect={() => {
-																handleConversationSelect(option.value);
-																setOpen(false);
-															}}
-															className={cn(
-																"text-sm py-1.5",
-																effectiveSelectedId === option.value &&
-																	"ring-1 ring-primary ring-offset-1",
-															)}
-														>
-															<div className="flex items-center justify-between w-full">
-																<div className="flex items-center gap-2 flex-1 min-w-0">
-																	<span className="truncate">
-																		{option.label}
-																	</span>
-																</div>
-															</div>
-														</CommandItem>
-													))}
-												</CommandGroup>
-											</CommandList>
-										</Command>
-									</PopoverContent>
-								</Popover>
-							</button>
-						</HoverCardTrigger>
+										<div className="flex items-center gap-1.5 truncate">
+											<MessageSquare className="h-2.5 w-2.5 flex-shrink-0" />
+											<span className="truncate">
+												{selectedOption
+													? selectedOption.label
+													: isRTL
+														? "اختر محادثة..."
+														: "Select conversation..."}
+											</span>
+										</div>
+										<ChevronsUpDown className="h-2.5 w-2.5 opacity-50 flex-shrink-0" />
+									</Button>
+								</PopoverTrigger>
+							</HoverCardTrigger>
+							<PopoverContent
+								forceMount
+								side="bottom"
+								className="w-[var(--radix-popover-trigger-width)] p-0 data-[state=open]:animate-none data-[state=closed]:animate-none"
+								align="start"
+								onOpenAutoFocus={(e) => e.preventDefault()}
+							>
+								<Command shouldFilter={false}>
+									{/* Disable built-in filtering since we have custom logic */}
+									<CommandInput
+										placeholder={
+											isRTL ? "ابحث في المحادثات..." : "Search conversations..."
+										}
+										className="text-sm"
+										value={searchValue}
+										onValueChange={setSearchValue}
+									/>
+									<CommandList>
+										<CommandEmpty className="text-xs py-2 text-center">
+											{isRTL ? "لا توجد محادثات" : "No conversations found"}
+										</CommandEmpty>
+										<CommandGroup>
+											{filteredOptions.map((option) => (
+												<CommandItem
+													key={option.value}
+													value={option.value}
+													data-value={option.value}
+													onSelect={() => {
+														handleConversationSelect(option.value);
+														setOpen(false);
+													}}
+													className={cn(
+														"text-sm py-1.5",
+														effectiveSelectedId === option.value &&
+															"ring-1 ring-primary ring-offset-1",
+													)}
+												>
+													<div className="flex items-center justify-between w-full">
+														<div className="flex items-center gap-2 flex-1 min-w-0">
+															<span className="truncate">{option.label}</span>
+														</div>
+													</div>
+												</CommandItem>
+											))}
+										</CommandGroup>
+									</CommandList>
+								</Command>
+							</PopoverContent>
+						</Popover>
 
 						{effectiveSelectedId && !open && (
 							<HoverCardContent
@@ -432,21 +426,21 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 							</HoverCardContent>
 						)}
 					</HoverCard>
-
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handlePrevious}
-						disabled={
-							conversationOptions.length === 0 ||
-							currentIndex === conversationOptions.length - 1
-						}
-						className="h-8 w-8 p-0 flex-shrink-0"
-						title={isRTL ? "الأقدم" : "Older"}
-					>
-						<ChevronRight className="h-4 w-4" />
-					</Button>
 				</div>
+
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={handlePrevious}
+					disabled={
+						conversationOptions.length === 0 ||
+						currentIndex === conversationOptions.length - 1
+					}
+					className="h-8 w-8 p-0 flex-shrink-0"
+					title={isRTL ? "الأقدم" : "Older"}
+				>
+					<ChevronRight className="h-4 w-4" />
+				</Button>
 			</div>
 		</div>
 	);

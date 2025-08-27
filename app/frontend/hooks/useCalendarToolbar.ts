@@ -1,9 +1,10 @@
+import type { CalendarApi } from "@fullcalendar/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import { count } from "@/lib/dev-profiler";
 
 interface UseCalendarToolbarProps {
-	calendarRef: React.RefObject<CalendarCoreRef>;
+	calendarRef: React.RefObject<CalendarCoreRef> | null;
 	currentView: string;
 	freeRoam?: boolean;
 	onViewChange?: (view: string) => void;
@@ -24,11 +25,25 @@ interface UseCalendarToolbarReturn {
 	handleToday: () => void;
 }
 
+// Use FullCalendar's native title - they already compute it perfectly in their updateData() method
+// This mirrors their ViewApi.get title() which returns getCurrentData().viewTitle
+const getTitleFromAPI = (api: CalendarApi): string => {
+	try {
+		// FullCalendar's ViewApi.title getter returns the properly computed title
+		// This comes from their internal buildTitle(dateProfile, viewOptions, dateEnv) function
+		const title = api.view?.title;
+		return title || ""; // empty string triggers spinner in consumers
+	} catch (error) {
+		console.warn("Error getting title from FullCalendar API:", error);
+		return ""; // keep spinner on error
+	}
+};
+
 export function useCalendarToolbar({
 	calendarRef,
 	currentView,
 }: UseCalendarToolbarProps): UseCalendarToolbarReturn {
-	const [title, setTitle] = useState("");
+	const [title, setTitle] = useState(""); // empty until API supplies real title (spinner shows)
 	const [activeView, setActiveView] = useState(currentView);
 	const [isPrevDisabled, setIsPrevDisabled] = useState(false);
 	const [isNextDisabled, setIsNextDisabled] = useState(false);
@@ -38,6 +53,7 @@ export function useCalendarToolbar({
 	// Update active view when currentView prop changes
 	useEffect(() => {
 		setActiveView(currentView);
+		// Title will be updated by updateButtonStates when API is ready
 	}, [currentView]);
 
 	// Function to update button states based on FullCalendar's internal logic
@@ -46,14 +62,26 @@ export function useCalendarToolbar({
 		if (isUpdatingRef.current) return;
 		isUpdatingRef.current = true;
 		count("updateButtonStates");
-		if (!calendarRef?.current?.getApi) return;
+
+		// Guard: if API not ready yet, release the lock so future attempts can proceed
+		if (!calendarRef || !calendarRef.current?.getApi) {
+			isUpdatingRef.current = false;
+			return;
+		}
 
 		try {
 			const calendarApi = calendarRef.current.getApi();
 			if (!calendarApi) return;
 
-			// Use public API only
-			const viewTitle = calendarApi.view?.title || "";
+			// Use FullCalendar's native title computation
+			const viewTitle = getTitleFromAPI(calendarApi);
+			console.log("🔄 [TOOLBAR] Title update:", {
+				newTitle: viewTitle,
+				viewType: calendarApi.view?.type,
+				hasView: !!calendarApi.view,
+				currentStart: calendarApi.view?.currentStart,
+				currentEnd: calendarApi.view?.currentEnd,
+			});
 			setTitle((prev) => (prev === viewTitle ? prev : viewTitle));
 
 			// Update active view from public API
@@ -123,6 +151,7 @@ export function useCalendarToolbar({
 		const setupListeners = () => {
 			if (calendarRef?.current?.getApi && !isApiReady) {
 				const calendarApi = calendarRef.current.getApi();
+
 				if (calendarApi) {
 					isApiReady = true;
 
@@ -135,10 +164,14 @@ export function useCalendarToolbar({
 					// Initial update
 					updateButtonStates();
 
-					// Define event handlers
-					const handleDatesSet = () => updateButtonStates();
+					// Define event handlers - these mirror FullCalendar's internal events that trigger updateData()
+					const handleDatesSet = () => {
+						console.log("🔄 [TOOLBAR] datesSet event fired - updating title");
+						updateButtonStates();
+					};
 					const handleEventsSet = () => updateButtonStates();
 
+					// Listen for FullCalendar's canonical events that trigger their internal updateData()
 					calendarApi.on("datesSet", handleDatesSet);
 					calendarApi.on("eventsSet", handleEventsSet);
 
@@ -195,12 +228,14 @@ export function useCalendarToolbar({
 
 	// Force update when view changes
 	useEffect(() => {
-		updateButtonStates();
+		// slight defer to let FullCalendar finish switching views
+		const tid = setTimeout(() => updateButtonStates(), 0);
+		return () => clearTimeout(tid);
 	}, [updateButtonStates]);
 
 	// Navigation handlers
 	const handlePrev = useCallback(() => {
-		if (!calendarRef?.current?.getApi) return;
+		if (!calendarRef || !calendarRef.current?.getApi) return;
 		const calendarApi = calendarRef.current.getApi();
 		if (calendarApi) {
 			calendarApi.prev();
@@ -210,7 +245,7 @@ export function useCalendarToolbar({
 	}, [calendarRef, updateButtonStates]);
 
 	const handleNext = useCallback(() => {
-		if (!calendarRef?.current?.getApi) return;
+		if (!calendarRef || !calendarRef.current?.getApi) return;
 		const calendarApi = calendarRef.current.getApi();
 		if (calendarApi) {
 			calendarApi.next();
@@ -220,7 +255,7 @@ export function useCalendarToolbar({
 	}, [calendarRef, updateButtonStates]);
 
 	const handleToday = useCallback(() => {
-		if (!calendarRef?.current?.getApi) return;
+		if (!calendarRef || !calendarRef.current?.getApi) return;
 		const calendarApi = calendarRef.current.getApi();
 		if (calendarApi) {
 			calendarApi.today();

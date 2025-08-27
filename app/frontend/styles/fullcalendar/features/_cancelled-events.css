@@ -36,19 +36,17 @@ body[data-free-roam="true"]
 /* Free roam mode: Cancelled check-up events (type 0) - darker green */
 body[data-free-roam="true"]
 .fc-event.reservation-cancelled.reservation-type-0:not(.fc-list-event) {
-	background: #4caf50;
-	border-color: #4caf50;
-	color: var(--fc-event-text-color);
+	/* Preserve typed colors; only darken */
 	filter: brightness(0.7) saturate(0.8);
+	opacity: 0.9;
 }
 
 /* Free roam mode: Cancelled follow-up events (type 1) - darker blue */
 body[data-free-roam="true"]
 .fc-event.reservation-cancelled.reservation-type-1:not(.fc-list-event) {
-	background: #3688d8;
-	border-color: #3688d8;
-	color: var(--fc-event-text-color);
+	/* Preserve typed colors; only darken */
 	filter: brightness(0.7) saturate(0.8);
+	opacity: 0.9;
 }
 
 /* Free roam mode: Cancelled conversation events - darker orange */

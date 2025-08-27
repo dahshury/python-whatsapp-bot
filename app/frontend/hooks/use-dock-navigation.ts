@@ -34,8 +34,7 @@ export function useDockNavigation({
 	const [activeTab, setActiveTab] = React.useState("view");
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 
-	const fallbackRef = React.useRef<CalendarCoreRef | null>(null);
-	const _effectiveCalendarRef = calendarRef || fallbackRef;
+	// Use the provided calendarRef directly
 	const isCalendarPage = pathname === "/";
 
 	// Auto-switch to general tab when not on calendar page
@@ -56,7 +55,7 @@ export function useDockNavigation({
 		handleToday: originalHandleToday,
 		visibleEventCount,
 	} = useCalendarToolbar({
-		calendarRef: isCalendarPage ? _effectiveCalendarRef : fallbackRef,
+		calendarRef: isCalendarPage && calendarRef ? calendarRef : null,
 		currentView: currentCalendarView,
 		freeRoam,
 		onViewChange: onCalendarViewChange,
@@ -92,9 +91,8 @@ export function useDockNavigation({
 	const handleCalendarViewChange = React.useCallback(
 		(view: string) => {
 			count("dockNav:viewChange");
-			const targetRef = _effectiveCalendarRef;
-			if (isCalendarPage && targetRef?.current) {
-				const api = targetRef.current.getApi?.();
+			if (isCalendarPage && calendarRef?.current) {
+				const api = calendarRef.current.getApi?.();
 				if (api) {
 					// Temporarily adjust options around multimonth transitions to avoid plugin issues
 					try {
@@ -140,13 +138,7 @@ export function useDockNavigation({
 			}
 			onCalendarViewChange?.(view);
 		},
-		[
-			isCalendarPage,
-			_effectiveCalendarRef,
-			onCalendarViewChange,
-			isRTL,
-			freeRoam,
-		],
+		[isCalendarPage, calendarRef, onCalendarViewChange, isRTL, freeRoam],
 	);
 
 	const isActive = React.useCallback(
@@ -170,16 +162,15 @@ export function useDockNavigation({
 
 	// Log once when calendar API becomes available
 	React.useEffect(() => {
-		const ref = isCalendarPage ? _effectiveCalendarRef : fallbackRef;
-		if (ref?.current?.getApi) {
+		if (isCalendarPage && calendarRef?.current?.getApi) {
 			try {
-				const api = ref.current.getApi();
+				const api = calendarRef.current.getApi();
 				if (api) {
 					count("dockNav:apiReady");
 				}
 			} catch {}
 		}
-	}, [isCalendarPage, _effectiveCalendarRef]);
+	}, [isCalendarPage, calendarRef]);
 
 	// Keep the user's chosen tab; do not auto-switch based on view mode
 

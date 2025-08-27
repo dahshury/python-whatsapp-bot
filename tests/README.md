@@ -27,18 +27,18 @@ python -m unittest tests/unit/test_assistant_functions.py
 The tests use Python's unittest framework with mock objects to isolate the units being tested from their dependencies. Each test file follows this pattern:
 
 1. Mock external dependencies (database, datetime, etc.)
-2. Set up test conditions with the mocks
-3. Execute the function being tested
-4. Assert the function behavior against expected outcomes
+1. Set up test conditions with the mocks
+1. Execute the function being tested
+1. Assert the function behavior against expected outcomes
 
 ## Adding New Tests
 
 When adding new functionality to the codebase, please add corresponding tests:
 
 1. For simple functions, add tests to the appropriate existing test file
-2. For complex new features, consider creating a new test file
-3. Follow the established pattern of setup-execute-assert
-4. Make sure to mock external dependencies appropriately
+1. For complex new features, consider creating a new test file
+1. Follow the established pattern of setup-execute-assert
+1. Make sure to mock external dependencies appropriately
 
 ## Test Philosophy
 
@@ -90,13 +90,15 @@ python -m tests.test_reminder_system 201017419800
 ### What's Being Tested
 
 1. The test verifies that the `send_reminders_job` function properly:
+
    - Retrieves reservations for tomorrow
    - Sends WhatsApp template messages to each user
    - Logs the messages in the conversation history
 
-2. When testing a specific phone number, it:
+1. When testing a specific phone number, it:
+
    - Validates WhatsApp API credentials
    - Sends a direct reminder template to the specified number
    - Reports success or failure with detailed error messages
 
-This approach tests the actual scheduler code without modifying the database. 
+This approach tests the actual scheduler code without modifying the database.

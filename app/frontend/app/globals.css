@@ -25,7 +25,6 @@
 }
 
 /* Note: Console error suppression is handled via JavaScript in layout.tsx */
-
 /* biome-ignore lint: Tailwind directives are intentional */
 @tailwind base;
 /* biome-ignore lint: Tailwind directives are intentional */

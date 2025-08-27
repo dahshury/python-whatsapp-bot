@@ -2,6 +2,7 @@
 
 import React from "react";
 import { toast as sonner } from "sonner";
+import { i18n } from "@/lib/i18n";
 
 export type ReservationToastPayload = {
 	id?: string | number;
@@ -24,6 +25,30 @@ function themed(title: string, subtitle?: string, duration = 3000) {
 			React.createElement(
 				"div",
 				{ className: "sonner-description fancy-toast" },
+				React.createElement("div", { className: "fancy-toast-bg" }),
+				React.createElement(
+					"div",
+					{ className: "fancy-toast-content" },
+					React.createElement("div", { className: "fancy-toast-title" }, title),
+					subtitle
+						? React.createElement(
+								"div",
+								{ className: "fancy-toast-sub" },
+								subtitle,
+							)
+						: null,
+				),
+			),
+		{ duration },
+	);
+}
+
+function themedError(title: string, subtitle?: string, duration = 5000) {
+	sonner.custom(
+		() =>
+			React.createElement(
+				"div",
+				{ className: "sonner-description fancy-toast fancy-toast-error" },
 				React.createElement("div", { className: "fancy-toast-bg" }),
 				React.createElement(
 					"div",
@@ -69,6 +94,7 @@ function themedUndoable(
 					React.createElement(
 						"button",
 						{
+							type: "button",
 							className:
 								"mt-2 inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs",
 							onClick: () => {
@@ -92,7 +118,7 @@ function themedUndoable(
 export const toastService = {
 	reservationCreated(payload: ReservationToastPayload) {
 		const { customer, wa_id, date, time, isRTL } = payload;
-		const title = isRTL ? "تم إنشاء الحجز" : "Reservation created";
+		const title = i18n.getMessage("toast_reservation_created", isRTL);
 		const name = customer || wa_id || "";
 		const details = [name, date, time]
 			.filter(Boolean)
@@ -101,7 +127,7 @@ export const toastService = {
 	},
 	reservationModified(payload: ReservationToastPayload) {
 		const { customer, wa_id, date, time, isRTL } = payload;
-		const title = isRTL ? "تم تعديل الحجز" : "Reservation modified";
+		const title = i18n.getMessage("toast_reservation_modified", isRTL);
 		const name = customer || wa_id || "";
 		const details = [name, date, time]
 			.filter(Boolean)
@@ -110,12 +136,30 @@ export const toastService = {
 	},
 	reservationCancelled(payload: ReservationToastPayload) {
 		const { customer, wa_id, date, time, isRTL } = payload;
-		const title = isRTL ? "تم إلغاء الحجز" : "Reservation cancelled";
+		const title = i18n.getMessage("toast_reservation_cancelled", isRTL);
 		const name = customer || wa_id || "";
 		const details = [name, date, time]
 			.filter(Boolean)
 			.join(isRTL ? " • " : " • ");
 		themed(title, details);
+	},
+	reservationModificationFailed(
+		payload: ReservationToastPayload & { error?: string },
+	) {
+		const { customer, wa_id, date, time, isRTL, error } = payload;
+		const title = i18n.getMessage(
+			"toast_reservation_modification_failed",
+			isRTL,
+		);
+		const name = customer || wa_id || "";
+		const details = [name, date, time]
+			.filter(Boolean)
+			.join(isRTL ? " • " : " • ");
+		const errorPrefix = i18n.getMessage("toast_error_prefix", isRTL);
+		const subtitle = error ? `${errorPrefix}: ${error}` : details;
+
+		// Use themedError for consistent styling with success toasts but error colors
+		themedError(title, subtitle);
 	},
 	success(title: string, description?: string, duration = 3000) {
 		// Use themed fancy toast for consistency across the app

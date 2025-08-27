@@ -425,3 +425,15 @@ select,
 .dropdown-menu {
 	z-index: var(--z-dialog-overlays);
 }
+
+/* ========================================
+ * PHONE INPUT DROPDOWNS - Elevated above grid editor and dialogs
+ * ======================================== */
+/* Elevate Radix wrapper when it contains our phone dropdown */
+[data-radix-popper-content-wrapper]:has(.phone-input-dropdown) {
+	z-index: var(--z-date-picker);
+}
+/* Elevate the dropdown content itself */
+.phone-input-dropdown {
+	z-index: var(--z-date-picker);
+}

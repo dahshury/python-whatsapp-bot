@@ -1,34 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toastService } from "@/lib/toast-service";
+import { loadCachedState, persistState } from "@/lib/ws/cache";
+import { reduceOnMessage } from "@/lib/ws/reducer";
+import type {
+	UpdateType,
+	WebSocketDataState,
+	WebSocketMessage,
+} from "@/lib/ws/types";
+import { resolveWebSocketUrl } from "@/lib/ws/url";
 
-// WebSocket message types from backend
-type UpdateType =
-	| "reservation_created"
-	| "reservation_updated"
-	| "reservation_cancelled"
-	| "reservation_reinstated"
-	| "conversation_new_message"
-	| "vacation_period_updated"
-	| "vacation_update_ack"
-	| "vacation_update_nack"
-	| "customer_updated"
-	| "metrics_updated"
-	| "snapshot";
-
-interface WebSocketMessage {
-	type: UpdateType;
-	timestamp: string;
-	data: Record<string, any>;
-	affected_entities?: string[];
+// Extend globalThis to include custom properties
+declare global {
+	interface Window {
+		__prom_metrics__?: Record<string, unknown>;
+		__wsConnection?: unknown;
+	}
 }
 
-interface WebSocketDataState {
-	reservations: Record<string, any[]>;
-	conversations: Record<string, any[]>;
-	vacations: any[];
-	isConnected: boolean;
-	lastUpdate: string | null;
+// Helper function to safely access window properties
+function getWindowProperty<T>(property: keyof Window, defaultValue: T): T {
+	if (typeof window === 'undefined') return defaultValue;
+	return (window as any)[property] ?? defaultValue;
 }
+
+// Helper function to set window properties safely
+function setWindowProperty<T>(property: keyof Window, value: T): void {
+	if (typeof window !== 'undefined') {
+		(window as any)[property] = value;
+	}
+}
+
+// (Types moved to '@/lib/ws/types')
 
 interface UseWebSocketDataOptions {
 	autoReconnect?: boolean;
@@ -46,44 +47,16 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		autoReconnect = true,
 		maxReconnectAttempts = Number.POSITIVE_INFINITY,
 		reconnectInterval = 500, // Faster reconnection for quicker data load
-		enableNotifications = true,
+		enableNotifications: _enableNotifications = true,
 		filters,
 	} = options;
 
-	// Cache keys and TTL (keep last good snapshot to avoid UI flicker on refresh)
-	const STORAGE_KEY = "ws_snapshot_v1";
+	// Cache TTL (keep last good snapshot to avoid UI flicker on refresh)
 	const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
 
-	const loadCachedState = (): WebSocketDataState => {
-		try {
-			const raw =
-				typeof window !== "undefined"
-					? sessionStorage.getItem(STORAGE_KEY)
-					: null;
-			if (raw) {
-				const parsed = JSON.parse(raw);
-				const ts: number = parsed?.__ts || 0;
-				if (Date.now() - ts < CACHE_TTL_MS) {
-					return {
-						reservations: parsed?.reservations || {},
-						conversations: parsed?.conversations || {},
-						vacations: parsed?.vacations || [], // Re-enable vacation caching for faster load
-						isConnected: false,
-						lastUpdate: parsed?.lastUpdate || null,
-					};
-				}
-			}
-		} catch {}
-		return {
-			reservations: {},
-			conversations: {},
-			vacations: [],
-			isConnected: false,
-			lastUpdate: null,
-		};
-	};
-
-	const [state, setState] = useState<WebSocketDataState>(loadCachedState);
+	const [state, setState] = useState<WebSocketDataState>(() =>
+		loadCachedState(CACHE_TTL_MS),
+	);
 
 	const wsRef = useRef<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -98,247 +71,33 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	}, [state.isConnected]);
 
 	// Get WebSocket URL from environment or default to local
-	const getWebSocketUrl = useCallback(() => {
-		// 1) Explicit public override
-		const explicit = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
-		if (explicit) {
-			console.log("WebSocket URL (explicit):", explicit);
-			return explicit;
-		}
-
-		// 2) Map backend HTTP URL to WS
-		const httpUrl =
-			process.env.PYTHON_BACKEND_URL ||
-			process.env.BACKEND_URL ||
-			"http://localhost:8000";
-		try {
-			const url = new URL(httpUrl);
-			url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-			url.pathname = "/ws";
-			const mapped = url.toString();
-			console.log("WebSocket URL (mapped):", mapped);
-			return mapped;
-		} catch {}
-
-		// 3) Final fallback
-		const fallback = "ws://localhost:8000/ws";
-		console.log("WebSocket URL (fallback):", fallback);
-		return fallback;
-	}, []);
+	const getWebSocketUrl = useCallback(() => resolveWebSocketUrl(), []);
 
 	// Process incoming WebSocket messages
-	// Show user-friendly notifications for updates (via unified toast service)
-	const showUpdateNotification = useCallback(
-		(type: UpdateType, data: Record<string, unknown>): void => {
-			switch (type) {
-				case "reservation_created":
-					toastService.reservationCreated({
-						customer: (data as any).customer_name,
-						wa_id: (data as any).wa_id,
-						date: (data as any).date,
-						time: ((data as any).time_slot || "").slice(0, 5),
-					});
-					break;
-				case "reservation_cancelled":
-					toastService.reservationCancelled({
-						customer: (data as any).customer_name,
-						wa_id: (data as any).wa_id,
-						date: (data as any).date,
-						time: ((data as any).time_slot || "").slice(0, 5),
-					});
-					break;
-				case "reservation_updated":
-				case "reservation_reinstated":
-					// Skip generic updates, handled elsewhere if needed
-					break;
-				case "conversation_new_message":
-					toastService.newMessage({
-						title: `Message • ${(data as any).wa_id}`,
-						description: String((data as any).message || "").slice(0, 100),
-					});
-					break;
-				// Add more notification types as needed
+	const processMessage = useCallback((message: WebSocketMessage) => {
+		const { type, data } = message;
+
+		setState((prev) => reduceOnMessage(prev, message));
+
+		// Metrics and realtime event fan-out
+		try {
+			const payload = data as { metrics?: Record<string, unknown> };
+			if (type === "metrics_updated" || type === "snapshot") {
+				setWindowProperty('__prom_metrics__', payload.metrics || {});
 			}
-		},
-		[], // toastService methods are stable
-	);
+		} catch {}
+		try {
+			setTimeout(() => {
+				try {
+					// Pass the entire message to preserve all fields (error, timestamp, etc.)
+					const evt = new CustomEvent("realtime", { detail: message });
+					window.dispatchEvent(evt);
+				} catch {}
+			}, 0);
+		} catch {}
 
-	const processMessage = useCallback(
-		(message: WebSocketMessage) => {
-			const { type, data, timestamp } = message;
-
-			setState((prevState) => {
-				const newState = { ...prevState, lastUpdate: timestamp };
-
-				switch (type) {
-					case "reservation_created":
-					case "reservation_updated":
-					case "reservation_reinstated": {
-						// Store reservations grouped by waId (customer), not by date
-						const waIdKey: string | undefined = data.wa_id || data.waId;
-						if (waIdKey) {
-							const byCustomer = newState.reservations[waIdKey] || [];
-							const idx = byCustomer.findIndex(
-								(r: any) => String(r.id) === String(data.id),
-							);
-							if (idx >= 0) byCustomer[idx] = data;
-							else byCustomer.push(data);
-							newState.reservations = {
-								...newState.reservations,
-								[waIdKey]: byCustomer,
-							};
-							try {
-								setTimeout(() => {
-									try {
-										const evt = new CustomEvent("realtime", {
-											detail: { type, data },
-										});
-										window.dispatchEvent(evt);
-									} catch {}
-								}, 0);
-							} catch {}
-						}
-						break;
-					}
-
-					case "reservation_cancelled": {
-						// Mark reservation as cancelled within the customer's list; robust fallback if waId not provided
-						const waIdKey: string | undefined = data.wa_id || data.waId;
-						if (waIdKey && newState.reservations[waIdKey]) {
-							newState.reservations = {
-								...newState.reservations,
-								[waIdKey]: newState.reservations[waIdKey].map((r: any) =>
-									String(r.id) === String(data.id)
-										? { ...r, cancelled: true, ...data }
-										: r,
-								),
-							};
-						} else {
-							// Fallback: scan all lists to find the reservation id
-							const updated: Record<string, any[]> = {
-								...newState.reservations,
-							};
-							Object.keys(updated).forEach((k) => {
-								const list = updated[k] || [];
-								let changed = false;
-								const next = list.map((r: any) => {
-									if (String(r.id) === String(data.id)) {
-										changed = true;
-										return { ...r, cancelled: true, ...data };
-									}
-									return r;
-								});
-								if (changed) updated[k] = next;
-							});
-							newState.reservations = updated;
-						}
-						try {
-							setTimeout(() => {
-								try {
-									const evt = new CustomEvent("realtime", {
-										detail: { type, data },
-									});
-									window.dispatchEvent(evt);
-								} catch {}
-							}, 0);
-						} catch {}
-						break;
-					}
-
-					case "conversation_new_message": {
-						// Add new conversation message
-						const waId = data.wa_id;
-						if (waId) {
-							const customerConversations = newState.conversations[waId] || [];
-							customerConversations.push(data);
-							newState.conversations = {
-								...newState.conversations,
-								[waId]: customerConversations,
-							};
-							try {
-								setTimeout(() => {
-									try {
-										const evt = new CustomEvent("realtime", {
-											detail: { type, data },
-										});
-										window.dispatchEvent(evt);
-									} catch {}
-								}, 0);
-							} catch {}
-						}
-						break;
-					}
-
-					case "vacation_period_updated":
-						// Update vacation periods
-						newState.vacations = data.periods || data;
-						try {
-							setTimeout(() => {
-								try {
-									const evt = new CustomEvent("realtime", {
-										detail: { type, data },
-									});
-									window.dispatchEvent(evt);
-								} catch {}
-							}, 0);
-						} catch {}
-						break;
-
-					case "metrics_updated":
-						// Update global metrics for dashboard provider
-						try {
-							(globalThis as any).__prom_metrics__ = data.metrics || {};
-						} catch {}
-						try {
-							setTimeout(() => {
-								try {
-									const evt = new CustomEvent("realtime", {
-										detail: { type, data },
-									});
-									window.dispatchEvent(evt);
-								} catch {}
-							}, 0);
-						} catch {}
-						break;
-					case "snapshot":
-						// Initial snapshot of all data
-						newState.reservations = data.reservations || {};
-						newState.conversations = data.conversations || {};
-						newState.vacations = data.vacations || [];
-						try {
-							(globalThis as any).__prom_metrics__ = data.metrics || {};
-						} catch {}
-						try {
-							setTimeout(() => {
-								try {
-									const evt = new CustomEvent("realtime", {
-										detail: { type, data },
-									});
-									window.dispatchEvent(evt);
-								} catch {}
-							}, 0);
-						} catch {}
-						break;
-
-					case "customer_updated":
-						// Handle customer updates - might need to refresh related data
-						// This could trigger a broader refresh if needed
-						break;
-
-					default:
-						console.warn("Unknown WebSocket message type:", type);
-				}
-
-				return newState;
-			});
-
-			// Show notification if enabled
-			if (enableNotifications) {
-				showUpdateNotification(type, data);
-			}
-		},
-		[enableNotifications, showUpdateNotification],
-	);
+		// Do not call notifyUpdate here to avoid duplicate toasts; handled via RealtimeEventBus -> ToastRouter
+	}, []);
 
 	// Connect to WebSocket - now stable function with auto-reconnect
 	const connect = useCallback(() => {
@@ -363,7 +122,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				reconnectAttemptsRef.current = 0;
 				connectingRef.current = false;
 				try {
-					(globalThis as any).__wsConnection = wsRef;
+					setWindowProperty('__wsConnection', wsRef);
 				} catch {}
 
 				// Start heartbeat ping to keep proxies from closing idle connections
@@ -423,7 +182,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				// Only nullify if this is the same instance
 				if (wsRef.current === ws) wsRef.current = null;
 				try {
-					(globalThis as any).__wsConnection = null;
+					setWindowProperty('__wsConnection', null);
 				} catch {}
 				connectingRef.current = false;
 
@@ -445,8 +204,8 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				}
 			};
 
-			ws.onerror = (error) => {
-				console.warn("WebSocket manual connection error:", error);
+			ws.onerror = (_error) => {
+				console.warn("WebSocket manual connection error");
 				connectingRef.current = false;
 			};
 
@@ -473,16 +232,16 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 		if (wsRef.current) {
 			try {
-				wsRef.current.onclose = null as any;
+				(wsRef.current as WebSocket).onclose = null;
 			} catch {}
 			try {
-				wsRef.current.onerror = null as any;
+				(wsRef.current as WebSocket).onerror = null;
 			} catch {}
 			try {
-				wsRef.current.onopen = null as any;
+				(wsRef.current as WebSocket).onopen = null;
 			} catch {}
 			try {
-				wsRef.current.onmessage = null as any;
+				(wsRef.current as WebSocket).onmessage = null;
 			} catch {}
 			if (pingIntervalRef.current) {
 				clearInterval(pingIntervalRef.current);
@@ -531,17 +290,18 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 					return `${y}-${m}-${day}`;
 				};
 
-				const msg: any = {
-					type: "vacation_update",
-					data: {} as Record<string, any>,
+				const msg = {
+					type: "vacation_update" as const,
+					data: {
+						periods: (payload.periods || [])
+							.filter((p) => p?.start && p.end)
+							.map((p) => ({
+								start: buildDateOnly(p.start),
+								end: buildDateOnly(p.end),
+								title: p.title,
+							})),
+					},
 				};
-				(msg.data as any).periods = (payload.periods || [])
-					.filter((p) => p?.start && p.end)
-					.map((p) => ({
-						start: buildDateOnly(p.start),
-						end: buildDateOnly(p.end),
-						title: p.title,
-					}));
 
 				const send = () => {
 					try {
@@ -617,25 +377,14 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	// Persist snapshot to sessionStorage to avoid blank UI on refresh
 	useEffect(() => {
 		try {
-			if (typeof window !== "undefined") {
-				sessionStorage.setItem(
-					STORAGE_KEY,
-					JSON.stringify({
-						reservations: state.reservations,
-						conversations: state.conversations,
-						// Re-enable vacation caching for instant load on refresh
-						vacations: state.vacations,
-						lastUpdate: state.lastUpdate,
-						__ts: Date.now(),
-					}),
-				);
-			}
+			persistState(state);
 		} catch {}
 	}, [
 		state.reservations,
 		state.conversations,
 		state.vacations,
 		state.lastUpdate,
+		state,
 	]);
 
 	return useMemo(

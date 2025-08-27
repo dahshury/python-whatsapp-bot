@@ -69,7 +69,7 @@ interface CalendarMainContentProps {
 	events: CalendarEvent[];
 	dataTableEditor: { handleEditReservation: (event: CalendarEvent) => void };
 	handleOpenConversation: (eventId: string) => void;
-	handleEventChange: (eventId: string, updates: unknown) => void;
+	handleEventChange: (info: EventChangeArg) => void;
 	handleCancelReservation: (eventId: string) => void;
 	handleViewDetails: (eventId: string) => void;
 	setCurrentView: (view: string) => void;
@@ -145,11 +145,8 @@ export function CalendarMainContent({
 				}}
 				onEventChange={(info: EventChangeArg) => {
 					try {
-						const id = String(info?.event?.id || "");
-						if (id) handleEventChange(id, info);
-					} catch {
-						// ignore
-					}
+						handleEventChange(info);
+					} catch {}
 				}}
 				onViewChange={onViewChange}
 				onContextMenu={contextMenu.handleContextMenu}

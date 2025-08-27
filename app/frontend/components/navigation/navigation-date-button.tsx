@@ -14,7 +14,7 @@ import type { NavigationDateButtonProps } from "@/types/navigation";
 export const NavigationDateButton = React.memo(function NavigationDateButton({
 	title,
 	isRTL = false,
-	isCalendarPage = false,
+	isCalendarPage: _isCalendarPage = false,
 	isTodayDisabled = false,
 	onToday,
 	navigationOnly = false,
@@ -54,12 +54,10 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 						)}
 					>
 						<span className={cn(textSize, "font-medium px-2")}>
-							{title ? (
+							{title && title.trim().length > 0 ? (
 								title
-							) : isCalendarPage ? (
-								<Loader2 className={cn(loaderSize, "animate-spin mx-auto")} />
 							) : (
-								"Calendar"
+								<Loader2 className={cn(loaderSize, "animate-spin mx-auto")} />
 							)}
 						</span>
 					</span>

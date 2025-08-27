@@ -149,3 +149,19 @@
 	font-size: 12px;
 	opacity: 0.9;
 }
+
+/* Error toast styling with destructive/error colors */
+.fancy-toast-error {
+	border: 1px solid hsl(var(--destructive));
+	background: hsl(var(--card));
+}
+
+/* Override the standard background for error toasts */
+.fancy-toast-error .fancy-toast-bg {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--destructive)) 0%,
+		hsl(var(--destructive) / 0.8) 100%
+	);
+	opacity: 0.15;
+}

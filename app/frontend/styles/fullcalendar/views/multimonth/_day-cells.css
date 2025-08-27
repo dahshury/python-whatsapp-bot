@@ -32,7 +32,7 @@
 
 /* Day cell events container */
 .fc-multimonth .fc-daygrid-day-events {
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
+	/* biome-ignore lint: Tailwind apply */
 	@apply min-h-0;
 	gap: 0.1em;
 }

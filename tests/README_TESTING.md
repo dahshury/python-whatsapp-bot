@@ -15,21 +15,22 @@ The easiest way to test is using the provided shell script:
 ```
 
 This will:
+
 1. Ensure Docker is running
-2. Start the backend container if it's not already running
-3. Run the test script inside the Docker container
-4. Show detailed diagnostics about any issues
+1. Start the backend container if it's not already running
+1. Run the test script inside the Docker container
+1. Show detailed diagnostics about any issues
 
 ### Manual Testing Steps
 
 If you prefer to run the tests manually, follow these steps:
 
 1. Ensure Docker is running
-2. Start the containers:
+1. Start the containers:
    ```bash
    docker-compose up -d
    ```
-3. Run the test script in the backend container:
+1. Run the test script in the backend container:
    ```bash
    docker-compose exec backend python -m app.scripts.docker_test_reminders 201017419800
    ```
@@ -39,15 +40,18 @@ If you prefer to run the tests manually, follow these steps:
 The test script performs several checks:
 
 1. **Environment Verification**:
+
    - Confirms that WhatsApp API keys are correctly configured
    - Validates that the appointment_reminder template exists and is approved
    - Checks that the template supports Arabic language
 
-2. **Direct API Test**:
+1. **Direct API Test**:
+
    - Directly sends a test message using the WhatsApp API
    - Bypasses the database to test only API connectivity
 
-3. **Full Flow Test**:
+1. **Full Flow Test**:
+
    - Creates a test reservation in the database
    - Triggers the scheduler's reminder job
    - Tests the entire reminder flow from database to WhatsApp API
@@ -81,4 +85,4 @@ To view detailed logs from the backend container:
 
 ```bash
 docker-compose logs -f backend
-``` 
+```

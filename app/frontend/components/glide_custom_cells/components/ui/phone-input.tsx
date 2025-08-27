@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/command";
 import {
 	Popover,
+	PopoverAnchor,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
@@ -297,8 +298,9 @@ const CountrySelect = ({
 					/>
 				</StablePopoverButton>
 			</PopoverTrigger>
+			<PopoverAnchor />
 			<PopoverContent
-				className="w-[210px] p-0 overflow-hidden"
+				className="w-[210px] p-0 overflow-hidden phone-input-dropdown"
 				align="start"
 				side="bottom"
 				sideOffset={4}

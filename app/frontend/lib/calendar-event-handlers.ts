@@ -1,22 +1,104 @@
-import { cancelReservation, modifyReservation } from "@/lib/api";
+import { cancelReservation } from "@/lib/api";
 import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import { to24h } from "./utils";
+import type { UpdateType } from "@/lib/realtime-utils";
+import { toastService } from "@/lib/toast-service";
+import { i18n } from "@/lib/i18n";
 
 // Toasts are centralized in WebSocketDataProvider to avoid duplicates
+
+// WebSocket message queue for operations before connection is established
+interface QueuedMessage {
+	message: any;
+	resolve: (success: boolean) => void;
+	timestamp: number;
+}
+
+const messageQueue: QueuedMessage[] = [];
+const QUEUE_TIMEOUT_MS = 10000; // 10 seconds max wait
+
+// Process queued messages when WebSocket connects
+function processMessageQueue() {
+	const wsRef = (globalThis as any).__wsConnection;
+	if (!wsRef?.current || wsRef.current.readyState !== WebSocket.OPEN) {
+		return;
+	}
+
+	console.log(`📤 Processing ${messageQueue.length} queued WebSocket messages`);
+
+	const now = Date.now();
+	while (messageQueue.length > 0) {
+		const queued = messageQueue.shift()!;
+
+		// Check if message has expired
+		if (now - queued.timestamp > QUEUE_TIMEOUT_MS) {
+			console.warn("⏰ Queued message expired:", queued.message.type);
+			queued.resolve(false);
+			continue;
+		}
+
+		try {
+			wsRef.current.send(JSON.stringify(queued.message));
+			console.log("📤 Queued message sent:", queued.message.type);
+			queued.resolve(true);
+		} catch (e) {
+			console.error("❌ Failed to send queued message:", e);
+			queued.resolve(false);
+		}
+	}
+}
+
+// Set up WebSocket connection event listener to process queue
+if (typeof globalThis !== "undefined" && !(globalThis as any).__wsQueueSetup) {
+	(globalThis as any).__wsQueueSetup = true;
+
+	// Check periodically if WebSocket connects and process queue
+	const checkConnection = () => {
+		const wsRef = (globalThis as any).__wsConnection;
+		if (
+			wsRef?.current?.readyState === WebSocket.OPEN &&
+			messageQueue.length > 0
+		) {
+			processMessageQueue();
+		}
+	};
+
+	setInterval(checkConnection, 500); // Check every 500ms
+}
 
 // WebSocket-based operations to replace HTTP API calls
 function sendWebSocketMessage(message: any): Promise<boolean> {
 	return new Promise((resolve) => {
 		try {
 			const wsRef = (globalThis as any).__wsConnection;
+
 			if (wsRef?.current?.readyState === WebSocket.OPEN) {
+				// WebSocket is connected, send immediately
 				wsRef.current.send(JSON.stringify(message));
+				console.log("📤 WebSocket message sent immediately:", message.type);
 				resolve(true);
+			} else if (wsRef?.current?.readyState === WebSocket.CONNECTING) {
+				// WebSocket is connecting, queue the message
+				console.log("⏳ WebSocket connecting, queuing message:", message.type);
+				messageQueue.push({
+					message,
+					resolve,
+					timestamp: Date.now(),
+				});
 			} else {
-				console.warn("WebSocket not connected, falling back to HTTP");
-				resolve(false);
+				// WebSocket is not available or closed, queue and wait for connection
+				console.log(
+					"🔌 WebSocket not connected, queuing message:",
+					message.type,
+				);
+				messageQueue.push({
+					message,
+					resolve,
+					timestamp: Date.now(),
+				});
 			}
-		} catch {
+		} catch (e) {
+			console.error("❌ WebSocket send error:", e);
 			resolve(false);
 		}
 	});
@@ -31,6 +113,7 @@ async function modifyReservationWS(
 		type?: number;
 		approximate?: boolean;
 		reservationId?: number;
+		isRTL?: boolean;
 	},
 ): Promise<{ success: boolean; message?: string }> {
 	const success = await sendWebSocketMessage({
@@ -43,15 +126,12 @@ async function modifyReservationWS(
 			type: updates.type,
 			approximate: updates.approximate,
 			reservation_id: updates.reservationId,
+			ar: updates.isRTL || false,
 		},
 	});
 	if (success) return { success: true };
-	// Fallback to HTTP if WebSocket unavailable
-	const resp = await modifyReservation(waId, updates);
-	return {
-		success: Boolean((resp as any)?.success),
-		message: (resp as any)?.message ?? (resp as any)?.error,
-	};
+	// Never fallback to HTTP
+	return { success: false, message: "WebSocket unavailable" };
 }
 
 async function cancelReservationWS(
@@ -70,6 +150,141 @@ async function cancelReservationWS(
 		success: Boolean((resp as any)?.success),
 		message: (resp as any)?.message ?? (resp as any)?.error,
 	};
+}
+
+// Wait for websocket confirmation, but only start timeout after WebSocket connects
+function waitForWSConfirmation(args: {
+	reservationId?: string | number;
+	waId?: string | number;
+	date: string;
+	time: string;
+	timeoutMs?: number;
+	isRTL?: boolean;
+}): Promise<{ success: boolean; message?: string }> {
+	const { reservationId, waId, date, timeoutMs = 10000, isRTL = false } = args;
+	return new Promise((resolve) => {
+		let resolved = false;
+		const wsRef = (globalThis as any).__wsConnection;
+
+		const handler = (ev: Event) => {
+			try {
+				const detail = (ev as CustomEvent).detail as
+					| { type?: UpdateType; data?: any }
+					| undefined;
+				const t = detail?.type;
+				const d = detail?.data || {};
+
+				// Debug modify_reservation events
+				if (t?.includes("modify_reservation")) {
+					console.log(
+						"🎯 WebSocket response:",
+						t,
+						(detail as any).error || d.message,
+					);
+				}
+
+				// Listen for direct WebSocket ack/nack responses
+				if (t === "modify_reservation_ack") {
+					console.log("✅ Received modify_reservation_ack");
+					if (!resolved) {
+						resolved = true;
+						window.removeEventListener("realtime", handler as EventListener);
+						resolve({ success: true, message: d.message });
+					}
+				} else if (t === "modify_reservation_nack") {
+					if (!resolved) {
+						resolved = true;
+						window.removeEventListener("realtime", handler as EventListener);
+						// Extract error message from the WebSocket message
+						const errorMessage =
+							(detail as any).error || d.message || "Operation failed";
+						resolve({
+							success: false,
+							message: errorMessage,
+						});
+					}
+				}
+				// Fallback: also listen for reservation_updated broadcasts (for backward compatibility)
+				else if (
+					(t === "reservation_updated" || t === "reservation_reinstated") &&
+					((reservationId != null && String(d.id) === String(reservationId)) ||
+						(waId != null &&
+							String(d.wa_id ?? d.waId) === String(waId) &&
+							String(d.date) === String(date)))
+				) {
+					console.log("✅ Received reservation_updated broadcast");
+					if (!resolved) {
+						resolved = true;
+						window.removeEventListener("realtime", handler as EventListener);
+						resolve({ success: true });
+					}
+				}
+			} catch {}
+		};
+
+		const startConfirmationTimeout = () => {
+			console.log(
+				`🎯 Starting confirmation timeout of ${timeoutMs}ms (WebSocket connected)`,
+			);
+			setTimeout(() => {
+				try {
+					window.removeEventListener("realtime", handler as EventListener);
+				} catch {}
+				if (!resolved) {
+					console.log(`⏰ WebSocket confirmation timeout after ${timeoutMs}ms`);
+					const timeoutMessage = i18n.getMessage(
+						"toast_request_timeout",
+						isRTL,
+					);
+					resolve({ success: false, message: timeoutMessage });
+				}
+			}, timeoutMs);
+		};
+
+		try {
+			window.addEventListener("realtime", handler as EventListener);
+		} catch {}
+
+		// Check if WebSocket is already connected
+		if (wsRef?.current?.readyState === WebSocket.OPEN) {
+			// WebSocket already connected, start timeout immediately
+			startConfirmationTimeout();
+		} else {
+			// WebSocket not connected yet, wait for it to connect before starting timeout
+			console.log(
+				"⏳ WebSocket not connected, waiting for connection before starting confirmation timeout",
+			);
+
+			const connectionCheckInterval = setInterval(() => {
+				if (resolved) {
+					clearInterval(connectionCheckInterval);
+					return;
+				}
+
+				if (wsRef?.current?.readyState === WebSocket.OPEN) {
+					console.log("🔌 WebSocket connected, starting confirmation timeout");
+					clearInterval(connectionCheckInterval);
+					startConfirmationTimeout();
+				}
+			}, 100); // Check every 100ms for connection
+
+			// Ultimate fallback timeout (much longer) in case WebSocket never connects
+			setTimeout(() => {
+				if (!resolved) {
+					clearInterval(connectionCheckInterval);
+					try {
+						window.removeEventListener("realtime", handler as EventListener);
+					} catch {}
+					console.log("💀 Ultimate timeout - WebSocket never connected");
+					const timeoutMessage = i18n.getMessage(
+						"toast_request_timeout",
+						isRTL,
+					);
+					resolve({ success: false, message: timeoutMessage });
+				}
+			}, 30000); // 30 seconds ultimate timeout
+		}
+	});
 }
 
 export async function handleEventChange(args: {
@@ -91,8 +306,17 @@ export async function handleEventChange(args: {
 		resolveEvent,
 	} = args;
 	try {
+		console.log("🔄 handleEventChange called with:", {
+			eventId: info?.event?.id,
+			startStr: info?.event?.startStr,
+			title: info?.event?.title,
+		});
+
 		const event = info?.event;
-		if (!event) return;
+		if (!event) {
+			console.warn("❌ No event in info, aborting");
+			return;
+		}
 
 		// Convert to backend payload (match Streamlit behavior)
 		const resolved = resolveEvent ? resolveEvent(String(event.id)) : undefined;
@@ -115,8 +339,18 @@ export async function handleEventChange(args: {
 			| undefined;
 		const title = event.title;
 
+		console.log("🔍 Extracted data:", {
+			waId,
+			newDate,
+			newTime,
+			type,
+			reservationId,
+			title,
+		});
+
 		// Skip if target date is a vacation day (let UI revert)
 		if (newDate && isVacationDate && isVacationDate(newDate)) {
+			console.log("❌ Vacation date detected, reverting");
 			if (info?.revert) info.revert();
 			return;
 		}
@@ -167,8 +401,9 @@ export async function handleEventChange(args: {
 		} catch {}
 
 		// Optimistic update: apply to calendar immediately; server confirmation will arrive via WS
-		const respPromise = modifyReservationWS(waId, {
-			date: newDate!,
+		console.log("📡 Sending WebSocket modification:", {
+			waId,
+			date: newDate,
 			time: newTime,
 			title,
 			type,
@@ -176,22 +411,72 @@ export async function handleEventChange(args: {
 			reservationId,
 		});
 
-		// Update local view immediately; preserve extendedProps as-is in state to avoid losing waId
-		updateEvent(event.id, {
-			id: event.id,
-			title: event.title,
-			start: event.startStr,
-			end: event.endStr || event.startStr,
-		});
+		// Send WebSocket modification and wait for ack/nack response
+		const [wsResult, resp] = await Promise.all([
+			modifyReservationWS(waId, {
+				date: newDate!,
+				time: newTime,
+				title,
+				type,
+				approximate: useApproximate,
+				reservationId,
+				isRTL: args.isRTL,
+			}),
+			waitForWSConfirmation({
+				reservationId,
+				waId,
+				date: newDate!,
+				time: newTime,
+				isRTL: args.isRTL,
+			}),
+		]);
 
-		const resp = await respPromise;
+		console.log("📥 WebSocket send result:", wsResult);
+		console.log("📥 WebSocket confirmation:", resp);
+
 		if (!resp?.success) {
+			console.log("❌ Backend rejected the modification, reverting", resp);
+
+			// Revert the visual change first (FullCalendar has already moved the event)
+			if (info?.revert) {
+				info.revert();
+				console.log("🔄 Event reverted to original position");
+			}
+
+			// Then show error notification
 			try {
-				const message = (resp && resp.message) || "";
-				const toaster = (await import("sonner")).toast;
-				toaster.error(message || "Slot fully booked");
-			} catch {}
-			if (info?.revert) info.revert();
+				// Backend already sends translated messages when ar=true is passed
+				// Use i18n fallback only if no message is provided
+				const message =
+					resp?.message || i18n.getMessage("slot_fully_booked", args.isRTL);
+				console.log("🔔 Showing error notification:", {
+					title,
+					waId,
+					newDate,
+					newTime,
+					message,
+				});
+				toastService.reservationModificationFailed({
+					customer: title,
+					wa_id: String(waId),
+					date: newDate,
+					time: newTime,
+					isRTL: args.isRTL,
+					error: message,
+				});
+			} catch (e) {
+				console.error("Failed to show error notification:", e);
+			}
+		} else {
+			console.log("✅ Backend accepted the modification");
+
+			// Only update local state if backend accepted the change
+			updateEvent(event.id, {
+				id: event.id,
+				title: event.title,
+				start: event.startStr,
+				end: event.endStr || event.startStr,
+			});
 		}
 		// Note: Removed post-drag reflow to prevent triggering eventChange for other events in slot
 		// Alignment will happen on next render via alignAndSortEventsForCalendar
@@ -239,7 +524,8 @@ export async function handleEventChange(args: {
 				} catch {}
 			}, 5000);
 		} catch {}
-	} catch (_e) {
+	} catch (error) {
+		console.error("💥 Exception in handleEventChange, reverting:", error);
 		// Revert on error
 		if (args?.info?.revert) args.info.revert();
 	}

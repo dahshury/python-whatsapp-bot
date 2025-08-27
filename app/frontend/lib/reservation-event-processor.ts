@@ -99,16 +99,6 @@ export function getReservationEventProcessor() {
 							// Emit timezone-naive strings; FullCalendar interprets them in configured timeZone
 							start: `${baseDate}T${startTime}`,
 							end: `${baseDate}T${endTime}`,
-							backgroundColor: cancelled
-								? "#e5e1e0"
-								: type === 0
-									? "#4caf50"
-									: "#3688d8",
-							borderColor: cancelled
-								? "#e5e1e0"
-								: type === 0
-									? "#4caf50"
-									: "#3688d8",
 							textColor: cancelled ? "#908584" : undefined,
 							// Allow dragging for reservations even if moved to past; backend will validate
 							editable: !isConversation && !cancelled,
@@ -229,7 +219,7 @@ function toSlotBase(
 		const minutes =
 			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
-		const { slotMinTime, slotMaxTime } = getSlotTimes(day, freeRoam, "");
+		const { slotMinTime } = getSlotTimes(day, freeRoam, "");
 		const [sH, sM] = String(slotMinTime || "00:00:00")
 			.slice(0, 5)
 			.split(":")

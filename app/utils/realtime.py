@@ -76,15 +76,23 @@ class RealtimeManager:
         async with self._lock:
             targets = list(self._clients.values())
 
+        logging.info(f"📢 Broadcasting {event_type} to {len(targets)} clients: {data}")
+
         to_drop: List[ClientConnection] = []
+        sent_count = 0
         for conn in targets:
             try:
                 if conn.accepts(event_type, affected_entities):
                     await conn.send_json(payload)
-            except Exception:
+                    sent_count += 1
+                else:
+                    logging.debug(f"🚫 Client filtered out event {event_type}")
+            except Exception as e:
                 # Collect for removal
-                logging.warning("WebSocket send failed. Scheduling disconnect.")
+                logging.warning(f"❌ WebSocket send failed: {e}. Scheduling disconnect.")
                 to_drop.append(conn)
+
+        logging.info(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
 
         # Clean up failed connections
         if to_drop:
@@ -203,6 +211,163 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         "metrics": metrics,
                     },
                 })
+            elif msg_type == "modify_reservation":
+                # Handle reservation modification via websocket
+                try:
+                    data = payload.get("data") or {}
+                    wa_id = data.get("wa_id")
+                    new_date = data.get("date")
+                    new_time_slot = data.get("time_slot")
+                    customer_name = data.get("customer_name")
+                    reservation_type = data.get("type")
+                    approximate = data.get("approximate", False)
+                    reservation_id = data.get("reservation_id")
+                    ar = data.get("ar", False)  # Extract Arabic/RTL flag
+                    
+                    if not wa_id or not new_date or not new_time_slot:
+                        # Use Arabic error message if requested
+                        error_msg = "Missing required fields: wa_id, date, time_slot"
+                        if ar:
+                            error_msg = "حقول مطلوبة مفقودة: wa_id, date, time_slot"
+                        await conn.send_json({
+                            "type": "modify_reservation_nack", 
+                            "timestamp": _utc_iso_now(),
+                            "data": {"message": error_msg}
+                        })
+                        continue
+                    
+                    # Import and call the modify function
+                    from app.services.assistant_functions import modify_reservation
+                    logging.info(f"🔄 WebSocket modify_reservation called with: wa_id={wa_id}, date={new_date}, time={new_time_slot}, reservation_id={reservation_id}, ar={ar}")
+                    
+                    result = modify_reservation(
+                        wa_id=wa_id,
+                        new_date=new_date,
+                        new_time_slot=new_time_slot,
+                        new_name=customer_name,
+                        new_type=reservation_type,
+                        approximate=approximate,
+                        ar=ar,  # Pass Arabic flag to get translated error messages
+                        reservation_id_to_modify=reservation_id
+                    )
+                    
+                    logging.info(f"📥 modify_reservation result: {result}")
+                    
+                    if result.get("success"):
+                        logging.info(f"✅ Sending modify_reservation_ack")
+                        await conn.send_json({
+                            "type": "modify_reservation_ack", 
+                            "timestamp": _utc_iso_now(),
+                            "data": result.get("data", {})
+                        })
+                    else:
+                        logging.info(f"❌ Sending modify_reservation_nack: {result.get('message', 'Modification failed')}")
+                        await conn.send_json({
+                            "type": "modify_reservation_nack", 
+                            "timestamp": _utc_iso_now(),
+                            "data": {"message": result.get("message", "Modification failed")}
+                        })
+                        
+                except Exception as e:
+                    logging.error(f"Modify reservation websocket error: {e}")
+                    await conn.send_json({
+                        "type": "modify_reservation_nack", 
+                        "timestamp": _utc_iso_now(),
+                        "data": {"message": "Server error during modification"}
+                    })
+                    
+            elif msg_type == "cancel_reservation":
+                # Handle reservation cancellation via websocket
+                try:
+                    data = payload.get("data") or {}
+                    wa_id = data.get("wa_id")
+                    date_str = data.get("date")
+                    reservation_id = data.get("reservation_id")
+                    
+                    if not wa_id:
+                        await conn.send_json({
+                            "type": "cancel_reservation_nack", 
+                            "timestamp": _utc_iso_now(),
+                            "error": "Missing required field: wa_id"
+                        })
+                        continue
+                    
+                    # Import and call the cancel function
+                    from app.services.assistant_functions import cancel_reservation
+                    result = cancel_reservation(
+                        wa_id=wa_id,
+                        date_str=date_str,
+                        reservation_id_to_cancel=reservation_id
+                    )
+                    
+                    if result.get("success"):
+                        await conn.send_json({
+                            "type": "cancel_reservation_ack", 
+                            "timestamp": _utc_iso_now(),
+                            "data": result.get("data", {})
+                        })
+                    else:
+                        await conn.send_json({
+                            "type": "cancel_reservation_nack", 
+                            "timestamp": _utc_iso_now(),
+                            "error": result.get("message", "Cancellation failed")
+                        })
+                        
+                except Exception as e:
+                    logging.error(f"Cancel reservation websocket error: {e}")
+                    await conn.send_json({
+                        "type": "cancel_reservation_nack", 
+                        "timestamp": _utc_iso_now(),
+                        "error": "Server error during cancellation"
+                    })
+                    
+            elif msg_type == "conversation_send_message":
+                # Handle sending messages via websocket
+                try:
+                    data = payload.get("data") or {}
+                    wa_id = data.get("wa_id")
+                    message = data.get("message")
+                    
+                    if not wa_id or not message:
+                        await conn.send_json({
+                            "type": "send_message_nack", 
+                            "timestamp": _utc_iso_now(),
+                            "error": "Missing required fields: wa_id, message"
+                        })
+                        continue
+                    
+                    # Import and call the message sending function
+                    from app.utils.whatsapp_utils import send_whatsapp_message
+                    success = send_whatsapp_message(wa_id, message)
+                    
+                    if success:
+                        await conn.send_json({
+                            "type": "send_message_ack", 
+                            "timestamp": _utc_iso_now()
+                        })
+                        # Broadcast the new message event
+                        await manager.broadcast("conversation_new_message", {
+                            "wa_id": wa_id,
+                            "message": message,
+                            "role": "admin",
+                            "date": _utc_iso_now()[:10],  # YYYY-MM-DD
+                            "time": _utc_iso_now()[11:16]  # HH:MM
+                        }, affected_entities=[wa_id])
+                    else:
+                        await conn.send_json({
+                            "type": "send_message_nack", 
+                            "timestamp": _utc_iso_now(),
+                            "error": "Failed to send message"
+                        })
+                        
+                except Exception as e:
+                    logging.error(f"Send message websocket error: {e}")
+                    await conn.send_json({
+                        "type": "send_message_nack", 
+                        "timestamp": _utc_iso_now(),
+                        "error": "Server error during message sending"
+                    })
+                    
             elif msg_type == "vacation_update":
                 # Accept websocket writes to update vacation periods and persist to DB (+config)
                 try:
@@ -268,14 +433,18 @@ async def broadcast(event_type: str, data: Dict[str, Any], affected_entities: Op
 
 def enqueue_broadcast(event_type: str, data: Dict[str, Any], affected_entities: Optional[List[str]] = None) -> None:
     try:
+        logging.info(f"📡 enqueue_broadcast called: type={event_type}, data={data}, affected_entities={affected_entities}")
         loop = asyncio.get_running_loop()
         loop.create_task(manager.broadcast(event_type, data, affected_entities))
+        logging.info(f"✅ broadcast task created successfully")
     except RuntimeError:
         # No running loop; best-effort fire-and-forget using new loop in thread
+        logging.info(f"⚠️ No running loop, using asyncio.run fallback")
         try:
             asyncio.run(manager.broadcast(event_type, data, affected_entities))
-        except Exception:
-            logging.debug("enqueue_broadcast failed without running loop")
+            logging.info(f"✅ fallback broadcast completed")
+        except Exception as e:
+            logging.error(f"❌ enqueue_broadcast failed without running loop: {e}")
 
 
 def start_metrics_push_task(app: FastAPI) -> None:

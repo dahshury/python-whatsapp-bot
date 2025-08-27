@@ -48,7 +48,6 @@
 .fc-list-table {
 	width: 100%;
 	border-style: hidden;
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply w-full;
 }
 
@@ -86,7 +85,6 @@
 	position: sticky;
 	top: 0;
 	background: var(--fc-page-bg-color);
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply sticky top-0 z-10 bg-muted/95 backdrop-blur-sm;
 }
 
@@ -139,7 +137,6 @@
 
 /* Event dot */
 .fc-list-event-dot {
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
 	@apply bg-primary;
 }
 

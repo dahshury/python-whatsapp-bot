@@ -197,13 +197,13 @@
 
 /* Reduce visual complexity in multiMonth view */
 .fc-multimonth .fc-event {
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
+	/* biome-ignore lint: Tailwind apply */
 	@apply text-xs leading-tight;
 	box-shadow: none;
 }
 
 .fc-multimonth .fc-event-title {
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
+	/* biome-ignore lint: Tailwind apply */
 	@apply truncate;
 	max-width: 100%;
 }
@@ -213,7 +213,7 @@
 }
 
 .fc-multimonth .fc-daygrid-day-events {
-	/* biome-ignore lint/suspicious/noUnknownAtRules: Tailwind apply */
+	/* biome-ignore lint: Tailwind apply */
 	@apply min-h-0;
 }
 

@@ -23,7 +23,7 @@ export function NotificationsButton({
 	notificationCount: _notificationCount = 0,
 }: NotificationsButtonProps) {
 	const { isRTL } = useLanguage();
-	const [items, setItems] = React.useState<Array<{ id: number; text: string }>>(
+	const [items, setItems] = React.useState<Array<{ id: string; text: string }>>(
 		[],
 	);
 	const [unreadCount, setUnreadCount] = React.useState<number>(0);
@@ -33,16 +33,16 @@ export function NotificationsButton({
 		const handler = (ev: Event) => {
 			const { type, data, ts, __local } = (ev as CustomEvent).detail || {};
 			if (!type) return;
-			const id = ts || Date.now();
+			const timestamp = Number(ts) || Date.now();
+			const compositeKey = `${type}:${data?.id ?? data?.wa_id ?? ""}:${data?.date ?? ""}:${data?.time_slot ?? ""}`;
 			// Suppress increments for locally-initiated operations; also do not increment while popover is open
 			try {
-				const key = `${type}:${data?.id ?? data?.wa_id ?? ""}:${data?.date ?? ""}:${data?.time_slot ?? ""}`;
 				const localOps: Set<string> | undefined = (
 					globalThis as { __localOps?: Set<string> }
 				).__localOps;
-				const isLocal = __local === true || !!localOps?.has(key);
+				const isLocal = __local === true || !!localOps?.has(compositeKey);
 				if (isLocal) {
-					localOps?.delete(key);
+					localOps?.delete(compositeKey);
 				} else if (!open) {
 					setUnreadCount((c) => c + 1);
 				}
@@ -60,7 +60,11 @@ export function NotificationsButton({
 					return isRTL ? "تم تحديث فترات الإجازة" : "Vacation periods updated";
 				return String(type);
 			})();
-			setItems((prev) => [{ id, text }, ...prev].slice(0, 100));
+			const uniqueId = `${timestamp}:${compositeKey}`;
+			setItems((prev) => {
+				if (prev.some((i) => i.id === uniqueId)) return prev;
+				return [{ id: uniqueId, text }, ...prev].slice(0, 100);
+			});
 		};
 		window.addEventListener("notification:add", handler as EventListener);
 		return () =>

@@ -735,15 +735,34 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 		setLoadingConversation,
 	]);
 
-	// Auto-scroll to bottom when messages change or conversation switches
+	// Auto-scroll: on conversation change jump to bottom instantly, then smooth on new messages
 	const lastCountRef = useRef<number>(0);
+	const lastScrolledConversationIdRef = useRef<string | null>(null);
+	const initialScrollPendingRef = useRef<boolean>(false);
 	useEffect(() => {
 		const nextCount = sortedMessages.length;
-		if (nextCount !== lastCountRef.current) {
-			messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+		const conversationChanged =
+			selectedConversationId !== lastScrolledConversationIdRef.current;
+		if (conversationChanged) {
+			// Mark that the first scroll after switching should be instant
+			initialScrollPendingRef.current = true;
+			lastScrolledConversationIdRef.current = selectedConversationId;
+			lastCountRef.current = nextCount;
+			// Jump to bottom immediately (no animation) on open
+			setTimeout(() => {
+				messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+			}, 0);
+			return;
+		}
+
+		// When new messages append in the same conversation, scroll
+		if (nextCount > lastCountRef.current) {
+			const behavior = initialScrollPendingRef.current ? "auto" : "smooth";
+			messagesEndRef.current?.scrollIntoView({ behavior });
+			initialScrollPendingRef.current = false;
 			lastCountRef.current = nextCount;
 		}
-	}, [sortedMessages]);
+	}, [sortedMessages, selectedConversationId]);
 
 	useEffect(() => {
 		selectedConversationIdRef.current = selectedConversationId;

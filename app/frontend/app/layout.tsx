@@ -169,11 +169,13 @@ export default function RootLayout({
 						}}
 					/>
 				</ThemeProvider>
+				{/* Required by Glide Data Grid overlay editor */}
+				{/* biome-ignore lint: Global portal container is intentionally static */}
+				<div id="portal" />
+				{/* Stable dialog overlay portal container */}
+				{/* biome-ignore lint: Global dialog overlay container is intentionally static */}
 				<div
-					id={`portal-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
-				/>
-				<div
-					id={`dialog-overlay-portal-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
+					id="dialog-overlay-portal"
 					style={{
 						position: "fixed",
 						top: 0,

@@ -93,9 +93,7 @@ export default function HomePage() {
 	// Use refs to capture calendar instances for integration with other components
 	const calendarRef = React.useRef<CalendarCoreRef>(null);
 
-	// Track the actual calendar ref that gets exposed by FullCalendarComponent
-	const [_actualCalendarRef, setActualCalendarRef] =
-		React.useState<React.RefObject<CalendarCoreRef> | null>(null);
+	// CalendarCore will populate calendarRef directly through forwardRef
 	// Stage C: Load events via existing hook (no extra UI around it)
 	const { isRTL } = useLanguage();
 	const eventsState = useCalendarEvents({
@@ -208,45 +206,7 @@ export default function HomePage() {
 	// Stage K: Enable real context menu manager
 	const contextMenu = useCalendarContextMenu();
 
-	// Stage L: (placeholder) event handlers will be initialized after calendarState
-	type EventHandlers = ReturnType<typeof useCalendarEventHandlers>;
-	let eventHandlers: EventHandlers = {
-		handleEventChange: async () => {},
-		handleOpenConversation: async () => {},
-		handleCancelReservation: async () => {},
-		handleViewDetails: () => {},
-		handleEventAdded: () => {},
-		handleEventModified: () => {},
-		handleEventCancelled: () => {},
-	};
-
-	// Callback ref to capture the calendar instance when it becomes available
-	const _calendarCallbackRef = React.useCallback(
-		(
-			calendarInstance: {
-				calendarRef: React.RefObject<CalendarCoreRef>;
-				currentView: string;
-			} | null,
-		) => {
-			mark("HomePage:calendarCallbackRef");
-			// Store the full calendar instance in the ref
-			if (
-				calendarInstance?.calendarRef.current &&
-				calendarRef.current !== calendarInstance.calendarRef.current
-			) {
-				(calendarRef as React.MutableRefObject<CalendarCoreRef>).current =
-					calendarInstance.calendarRef.current;
-			}
-
-			// Update state to trigger re-renders of dependent components
-			if (calendarInstance?.calendarRef) {
-				setActualCalendarRef(calendarInstance.calendarRef);
-			} else {
-				setActualCalendarRef(null);
-			}
-		},
-		[],
-	);
+	// No need for complex callback ref - CalendarCore will populate calendarRef directly
 
 	// Dual calendar refs and view states
 	const _dualCalendarRef = React.useRef<{
@@ -265,63 +225,9 @@ export default function HomePage() {
 	// Stage M: Enable real data-table editor state
 	const dataTableEditor = useCalendarDataTableEditor();
 
-	// Build calendar callbacks (dateClick/select/eventClick) using the same factory
-	const callbackHandlers = React.useMemo(
-		() => ({
-			isChangingHours: calendarState.isChangingHours,
-			setIsChangingHours: calendarState.setIsChangingHours,
-			isRTL,
-			currentView: calendarState.currentView,
-			isVacationDate,
-			openEditor: (opts: { start: string; end?: string }) => {
-				const startStr = String(opts.start);
-				const endStr = typeof opts.end === "string" ? opts.end : startStr;
-				dataTableEditor.openEditor({ start: startStr, end: endStr });
-			},
-			handleOpenConversation: () => {},
-			handleEventChange: eventHandlers.handleEventChange,
-		}),
-		[
-			calendarState.isChangingHours,
-			calendarState.setIsChangingHours,
-			isRTL,
-			calendarState.currentView,
-			dataTableEditor.openEditor,
-			eventHandlers.handleEventChange,
-			isVacationDate,
-		],
-	);
-
-	const callbacks = React.useMemo(
-		() =>
-			createCalendarCallbacks(
-				callbackHandlers,
-				freeRoam,
-				getTimezone(),
-				calendarState.currentDate,
-				recordingState.periodIndex !== null && recordingState.field !== null
-					? handleVacationDateClick
-					: undefined,
-				calendarState.setCurrentDate,
-				calendarState.updateSlotTimes,
-				calendarState.currentView,
-			),
-		[
-			callbackHandlers,
-			freeRoam,
-			calendarState.currentDate,
-			recordingState.periodIndex,
-			recordingState.field,
-			handleVacationDateClick,
-			calendarState.setCurrentDate,
-			calendarState.updateSlotTimes,
-			calendarState.currentView,
-		],
-	);
-
 	// Initialize event handlers now that calendarState exists
 	const { openConversation: openConversationFromStore } = useSidebarChatStore();
-	eventHandlers = useCalendarEventHandlers({
+	const eventHandlers = useCalendarEventHandlers({
 		events: eventsState.events,
 		conversations: {},
 		isRTL,
@@ -337,6 +243,54 @@ export default function HomePage() {
 		},
 		calendarRef,
 	});
+
+	// Build calendar callbacks (dateClick/select/eventClick) using the event handlers
+	const callbacks = React.useMemo(
+		() =>
+			createCalendarCallbacks(
+				{
+					isChangingHours: calendarState.isChangingHours,
+					setIsChangingHours: calendarState.setIsChangingHours,
+					isRTL,
+					currentView: calendarState.currentView,
+					isVacationDate,
+					openEditor: (opts: { start: string; end?: string }) => {
+						const startStr = String(opts.start);
+						const endStr = typeof opts.end === "string" ? opts.end : startStr;
+						dataTableEditor.openEditor({ start: startStr, end: endStr });
+					},
+					handleOpenConversation: eventHandlers.handleOpenConversation,
+					handleEventChange: eventHandlers.handleEventChange,
+				},
+				freeRoam,
+				getTimezone(),
+				calendarState.currentDate,
+				recordingState.periodIndex !== null && recordingState.field !== null
+					? handleVacationDateClick
+					: undefined,
+				calendarState.setCurrentDate,
+				calendarState.updateSlotTimes,
+				calendarState.currentView,
+			),
+		[
+			calendarState.isChangingHours,
+			calendarState.setIsChangingHours,
+			isRTL,
+			calendarState.currentView,
+			isVacationDate,
+			dataTableEditor.openEditor,
+			eventHandlers.handleOpenConversation,
+			eventHandlers.handleEventChange,
+			freeRoam,
+			calendarState.currentDate,
+			recordingState.periodIndex,
+			recordingState.field,
+			handleVacationDateClick,
+			calendarState.setCurrentDate,
+			calendarState.updateSlotTimes,
+		],
+	);
+
 	const [rightCalendarView, setRightCalendarView] = React.useState(() => {
 		if (typeof window !== "undefined") {
 			return (

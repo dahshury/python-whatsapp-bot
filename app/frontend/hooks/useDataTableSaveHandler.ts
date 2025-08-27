@@ -1,4 +1,5 @@
-import React, { useCallback, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useRef, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import type { IColumnDefinition } from "@/components/glide_custom_cells/components/core/interfaces/IDataSource";
 import type { DataProvider } from "@/components/glide_custom_cells/components/core/services/DataProvider";

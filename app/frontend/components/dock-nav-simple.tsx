@@ -25,6 +25,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { getValidRange } from "@/lib/calendar-config";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
 import { toastService } from "@/lib/toast-service";
@@ -205,7 +206,58 @@ export function DockNavSimple({
 		if (leftCalendarRef?.current) {
 			const api = leftCalendarRef.current.getApi?.();
 			if (api) {
-				api.changeView(view);
+				const doChange = () => {
+					try {
+						// Clear constraints before changing view to avoid plugin issues
+						api.setOption("validRange", undefined);
+						api.setOption("eventConstraint", undefined);
+						api.setOption("selectConstraint", undefined);
+					} catch {}
+
+					try {
+						api.changeView(view);
+					} catch {}
+
+					// Reapply constraints only for non-multimonth views
+					try {
+						const lower = (view || "").toLowerCase();
+						const isMultiMonth = lower === "multimonthyear";
+						if (!isMultiMonth) {
+							api.setOption(
+								"validRange",
+								freeRoam ? undefined : getValidRange(freeRoam),
+							);
+							if (lower.includes("timegrid")) {
+								api.setOption(
+									"eventConstraint",
+									freeRoam ? undefined : "businessHours",
+								);
+								api.setOption(
+									"selectConstraint",
+									freeRoam ? undefined : "businessHours",
+								);
+							}
+						}
+						// let the layout settle
+						requestAnimationFrame(() => {
+							try {
+								api.updateSize?.();
+							} catch {}
+						});
+					} catch {}
+				};
+
+				// If view is not ready yet, delay the change slightly
+				if (
+					!(
+						api?.view &&
+						(api as unknown as { view: { type?: string } }).view?.type
+					)
+				) {
+					setTimeout(doChange, 50);
+				} else {
+					doChange();
+				}
 			}
 		}
 		onLeftCalendarViewChange?.(view);
@@ -215,7 +267,54 @@ export function DockNavSimple({
 		if (rightCalendarRef?.current) {
 			const api = rightCalendarRef.current.getApi?.();
 			if (api) {
-				api.changeView(view);
+				const doChange = () => {
+					try {
+						api.setOption("validRange", undefined);
+						api.setOption("eventConstraint", undefined);
+						api.setOption("selectConstraint", undefined);
+					} catch {}
+
+					try {
+						api.changeView(view);
+					} catch {}
+
+					try {
+						const lower = (view || "").toLowerCase();
+						const isMultiMonth = lower === "multimonthyear";
+						if (!isMultiMonth) {
+							api.setOption(
+								"validRange",
+								freeRoam ? undefined : getValidRange(freeRoam),
+							);
+							if (lower.includes("timegrid")) {
+								api.setOption(
+									"eventConstraint",
+									freeRoam ? undefined : "businessHours",
+								);
+								api.setOption(
+									"selectConstraint",
+									freeRoam ? undefined : "businessHours",
+								);
+							}
+						}
+						requestAnimationFrame(() => {
+							try {
+								api.updateSize?.();
+							} catch {}
+						});
+					} catch {}
+				};
+
+				if (
+					!(
+						api?.view &&
+						(api as unknown as { view: { type?: string } }).view?.type
+					)
+				) {
+					setTimeout(doChange, 50);
+				} else {
+					doChange();
+				}
 			}
 		}
 		onRightCalendarViewChange?.(view);

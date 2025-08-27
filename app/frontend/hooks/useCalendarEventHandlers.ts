@@ -1,3 +1,4 @@
+import type { EventApi } from "@fullcalendar/core";
 import { useCallback, useEffect } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
@@ -9,6 +10,28 @@ import {
 } from "@/lib/calendar-event-handlers";
 import { to24h } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
+
+// Extend globalThis to include custom properties
+declare global {
+	interface Window {
+		__suppressEventChangeDepth?: number;
+		__isCalendarDragging?: boolean;
+		__calendarLocalMoves?: Map<string, number>;
+	}
+}
+
+// Helper function to safely access window properties
+function getWindowProperty<T>(property: keyof Window, defaultValue: T): T {
+	if (typeof window === 'undefined') return defaultValue;
+	return (window as any)[property] ?? defaultValue;
+}
+
+// Helper function to set window properties safely
+function setWindowProperty<T>(property: keyof Window, value: T): void {
+	if (typeof window !== 'undefined') {
+		(window as any)[property] = value;
+	}
+}
 
 interface UseCalendarEventHandlersProps {
 	events: CalendarEvent[];
@@ -23,6 +46,14 @@ interface UseCalendarEventHandlersProps {
 	removeEvent: (id: string) => void;
 	dataTableEditor: { handleEditReservation: (event: CalendarEvent) => void };
 	calendarRef?: React.RefObject<CalendarCoreRef>; // Optional calendar ref for API access
+}
+
+interface CalendarEventDetail {
+	type: string;
+	data: {
+		id?: string | number;
+		[key: string]: unknown;
+	};
 }
 
 export function useCalendarEventHandlers({
@@ -40,8 +71,12 @@ export function useCalendarEventHandlers({
 	calendarRef,
 }: UseCalendarEventHandlersProps) {
 	// Ensure global registry for locally-initiated moves to suppress stale WS thrash
-	globalThis.__calendarLocalMoves =
-		globalThis.__calendarLocalMoves || new Map<string, number>();
+	useEffect(() => {
+		const currentMap = getWindowProperty('__calendarLocalMoves', null);
+		if (!currentMap) {
+			setWindowProperty('__calendarLocalMoves', new Map<string, number>());
+		}
+	}, []);
 
 	// Listen to realtime CustomEvent and update FullCalendar API directly
 	useEffect(() => {
@@ -144,23 +179,24 @@ export function useCalendarEventHandlers({
 						end.getMinutes() + Math.floor(offset + minutesPerReservation),
 					);
 					try {
-						globalThis.__suppressEventChangeDepth =
-							(globalThis.__suppressEventChangeDepth || 0) + 1;
-						(ev as any).setDates(start, end);
+						const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
+						setWindowProperty('__suppressEventChangeDepth', currentDepth + 1);
+						(ev as EventApi).setDates(start, end);
 					} catch {
 					} finally {
 						try {
-							if (globalThis.__suppressEventChangeDepth) {
-								globalThis.__suppressEventChangeDepth -= 1;
+							const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
+							if (currentDepth > 0) {
+								setWindowProperty('__suppressEventChangeDepth', currentDepth - 1);
 							}
 						} catch {}
 					}
 					// Ensure metadata present for subsequent reflows
 					try {
-						(ev as any).setExtendedProp("slotDate", dateStr);
+						(ev as EventApi).setExtendedProp("slotDate", dateStr);
 					} catch {}
 					try {
-						(ev as any).setExtendedProp("slotTime", baseTime);
+						(ev as EventApi).setExtendedProp("slotTime", baseTime);
 					} catch {}
 					offset += minutesPerReservation + gapMinutes;
 				}
@@ -168,13 +204,13 @@ export function useCalendarEventHandlers({
 		};
 
 		const handler = (ev: Event) => {
-			const detail: any = (ev as CustomEvent).detail || {};
+			const detail: CalendarEventDetail = (ev as CustomEvent).detail || {};
 			const { type, data } = detail;
 			try {
 				if (!type || !data) return;
 				// Ignore updates while dragging the same reservation
 				try {
-					if (globalThis.__isCalendarDragging === true) {
+					if (getWindowProperty('__isCalendarDragging', false) === true) {
 						const draggingId = String(data?.id || "");
 						// If the update pertains to the same event being dragged, skip applying it now
 						if (draggingId && api.getEventById(draggingId)) {
@@ -214,16 +250,28 @@ export function useCalendarEventHandlers({
 					type === "reservation_updated" ||
 					type === "reservation_reinstated"
 				) {
+					console.log("📡 Received reservation_updated via WebSocket:", data);
+
 					// Suppress thrash if we just moved this event locally
 					try {
 						const localMoves: Map<string, number> | undefined =
-							globalThis.__calendarLocalMoves;
+							getWindowProperty('__calendarLocalMoves', undefined);
 						const ts = localMoves?.get(String(data.id));
 						if (ts && Date.now() - ts < 1000) {
+							console.log(
+								"🚫 Suppressing recent local move for event",
+								data.id,
+							);
 							return;
 						}
 					} catch {}
 					const evObj = api.getEventById(String(data.id));
+					console.log(
+						"🔍 Found calendar event for update:",
+						!!evObj,
+						"eventId:",
+						data.id,
+					);
 					const start = `${data.date}T${(data.time_slot || "00:00").slice(0, 5)}:00`;
 					if (evObj) {
 						evObj.setProp("title", data.customer_name || data.wa_id);
@@ -233,14 +281,14 @@ export function useCalendarEventHandlers({
 						evObj.setExtendedProp(
 							"waId",
 							data.wa_id ||
-								(evObj as any)?.extendedProps?.waId ||
-								(evObj as any)?.extendedProps?.wa_id,
+								(evObj as EventApi)?.extendedProps?.waId ||
+								(evObj as EventApi)?.extendedProps?.wa_id,
 						);
 						evObj.setExtendedProp(
 							"wa_id",
 							data.wa_id ||
-								(evObj as any)?.extendedProps?.wa_id ||
-								(evObj as any)?.extendedProps?.waId,
+								(evObj as EventApi)?.extendedProps?.wa_id ||
+								(evObj as EventApi)?.extendedProps?.waId,
 						);
 						evObj.setExtendedProp("slotDate", data.date);
 						evObj.setExtendedProp(
@@ -250,13 +298,16 @@ export function useCalendarEventHandlers({
 						const startDate = new Date(start);
 						const endDate = new Date(startDate.getTime() + 20 * 60 * 1000);
 						try {
-							(globalThis as any).__suppressEventChangeDepth =
-								((globalThis as any).__suppressEventChangeDepth || 0) + 1;
+							const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
+							setWindowProperty('__suppressEventChangeDepth', currentDepth + 1);
 							evObj.setDates(startDate, endDate);
 						} catch {
 						} finally {
 							try {
-								(globalThis as any).__suppressEventChangeDepth -= 1;
+								const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
+								if (currentDepth > 0) {
+									setWindowProperty('__suppressEventChangeDepth', currentDepth - 1);
+								}
 							} catch {}
 						}
 						// Reflow slot to enforce alignment and 1-minute gaps
@@ -378,7 +429,8 @@ export function useCalendarEventHandlers({
 				const api = calendarRef?.current?.getApi?.();
 				const ev = api?.getEventById(String(eventId));
 				const wa =
-					(ev as any)?.extendedProps?.waId || (ev as any)?.extendedProps?.wa_id;
+					(ev as EventApi)?.extendedProps?.waId ||
+					(ev as EventApi)?.extendedProps?.wa_id;
 				if (wa) conversationId = String(wa);
 			} catch {}
 

@@ -1,8 +1,8 @@
 # AI-WhatsApp-Reservation-App
 
 ![alt text](media/1.png)
-![alt text](<media/Screenshot 2025-03-14 014221.png>)
-![alt text](<media/Screenshot 2025-03-14 014527.png>)
+![alt text](media/Screenshot%202025-03-14%20014221.png)
+![alt text](media/Screenshot%202025-03-14%20014527.png)
 
 A powerful WhatsApp bot built using FastAPI, integrated with multiple AI providers (OpenAI, Anthropic, and Google Gemini) for generating intelligent responses to customer inquiries. The application includes a comprehensive Streamlit frontend for managing reservations and includes a fully containerized setup with Docker for easy deployment.
 
@@ -70,33 +70,40 @@ For the original repository and setup tutorial (Flask version), please refer to 
 The application operates as follows:
 
 1. **Webhook Handling**:
+
    - The FastAPI application listens for incoming webhooks from WhatsApp at the `/webhook` endpoint.
    - Incoming requests are verified using signature verification to ensure authenticity.
 
-2. **Message Processing**:
+1. **Message Processing**:
+
    - When a message is received, it is processed by the appropriate LLM service (OpenAI, Anthropic, or Gemini).
    - The application uses a configurable LLM provider to generate intelligent responses based on message content.
 
-3. **Database Interactions**:
+1. **Database Interactions**:
+
    - The application uses SQLite to store conversation history, reservation details, and thread information.
    - Multiple tables track different aspects of the business operations.
 
-4. **Reservation Management**:
+1. **Reservation Management**:
+
    - Users can interact with the bot via WhatsApp to make, modify, or cancel reservations.
    - Assistant functions handle these operations with natural language understanding.
 
-5. **Monitoring and Metrics**:
+1. **Monitoring and Metrics**:
+
    - Prometheus collects and stores metrics on system performance and business operations.
    - Alerts are configured for critical conditions and sent to a Discord channel.
 
-6. **Frontend Dashboard**:
-   - The Streamlit application provides multiple views:
-      - Calendar view for reservation management
-      - Conversation history browser
-      - Statistics dashboard with business analytics
-      - WhatsApp message sending interface
+1. **Frontend Dashboard**:
 
-7. **Automated Tasks**:
+   - The Streamlit application provides multiple views:
+     - Calendar view for reservation management
+     - Conversation history browser
+     - Statistics dashboard with business analytics
+     - WhatsApp message sending interface
+
+1. **Automated Tasks**:
+
    - Background scheduler runs daily to send appointment reminders via WhatsApp.
    - Regular database backups are performed and can be uploaded to remote storage.
 
@@ -145,11 +152,13 @@ DISCORD_WEBHOOK_URL=your_discord_webhook_url
 3. **Start the Application with Docker Compose**
 
 For development:
+
 ```bash
 docker-compose up
 ```
 
 For production:
+
 ```bash
 docker-compose -f docker-compose.prod.yml up -d
 ```
@@ -194,17 +203,17 @@ Then configure your webhook URL as: `https://your-ngrok-url.ngrok.io/webhook`
 The application includes a complete monitoring stack:
 
 1. **Prometheus**: Collects metrics at http://localhost:9090
-2. **AlertManager**: Manages alert notifications at http://localhost:9093
-3. **Discord Alerts**: Sends formatted alert notifications to Discord
+1. **AlertManager**: Manages alert notifications at http://localhost:9093
+1. **Discord Alerts**: Sends formatted alert notifications to Discord
 
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+1. Create a feature branch
+1. Make your changes
+1. Submit a pull request
 
 ## License
 
