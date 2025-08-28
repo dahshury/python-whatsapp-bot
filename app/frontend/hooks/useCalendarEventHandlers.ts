@@ -210,7 +210,7 @@ export function useCalendarEventHandlers({
 				if (!type || !data) return;
 				// Ignore updates while dragging the same reservation
 				try {
-					if (getWindowProperty('__isCalendarDragging', false) === true) {
+					if (getWindowProperty<boolean>('__isCalendarDragging', false)) {
 						const draggingId = String(data?.id || "");
 						// If the update pertains to the same event being dragged, skip applying it now
 						if (draggingId && api.getEventById(draggingId)) {
@@ -222,12 +222,12 @@ export function useCalendarEventHandlers({
 					// Add if not exists by reservation id
 					const existing = api.getEventById(String(data.id));
 					if (!existing) {
-						const start = `${data.date}T${(data.time_slot || "00:00").slice(0, 5)}:00`;
+						const start = `${data.date}T${String(data.time_slot || "00:00").slice(0, 5)}:00`;
 						const startDate = new Date(start);
 						const endDate = new Date(startDate.getTime() + 20 * 60 * 1000);
 						api.addEvent({
 							id: String(data.id),
-							title: data.customer_name || data.wa_id,
+							title: String((data as any).customer_name || (data as any).wa_id || ""),
 							start,
 							end: endDate,
 							extendedProps: {
@@ -237,14 +237,14 @@ export function useCalendarEventHandlers({
 								wa_id: data.wa_id || data.waId,
 								reservationId: String(data.id),
 								slotDate: data.date,
-								slotTime: to24h((data.time_slot || "00:00").slice(0, 5)),
+								slotTime: to24h(String(data.time_slot || "00:00").slice(0, 5)),
 							},
 						});
 					}
 					// Reflow slot to enforce alignment and 1-minute gaps (even if event already existed)
 					reflowSlot(
 						String(data.date),
-						String((data.time_slot || "00:00").slice(0, 5)),
+						String(String(data.time_slot || "00:00").slice(0, 5)),
 					);
 				} else if (
 					type === "reservation_updated" ||
@@ -254,8 +254,10 @@ export function useCalendarEventHandlers({
 
 					// Suppress thrash if we just moved this event locally
 					try {
-						const localMoves: Map<string, number> | undefined =
-							getWindowProperty('__calendarLocalMoves', undefined);
+						const localMoves = getWindowProperty<Map<string, number> | undefined>(
+							'__calendarLocalMoves',
+							undefined,
+						);
 						const ts = localMoves?.get(String(data.id));
 						if (ts && Date.now() - ts < 1000) {
 							console.log(
@@ -272,9 +274,9 @@ export function useCalendarEventHandlers({
 						"eventId:",
 						data.id,
 					);
-					const start = `${data.date}T${(data.time_slot || "00:00").slice(0, 5)}:00`;
+					const start = `${data.date}T${String(data.time_slot || "00:00").slice(0, 5)}:00`;
 					if (evObj) {
-						evObj.setProp("title", data.customer_name || data.wa_id);
+						evObj.setProp("title", String((data as any).customer_name || (data as any).wa_id || ""));
 						evObj.setExtendedProp("type", Number(data.type ?? 0));
 						evObj.setExtendedProp("cancelled", false);
 						// Preserve waId for future drags
@@ -293,7 +295,7 @@ export function useCalendarEventHandlers({
 						evObj.setExtendedProp("slotDate", data.date);
 						evObj.setExtendedProp(
 							"slotTime",
-							to24h((data.time_slot || "00:00").slice(0, 5)),
+							to24h(String(data.time_slot || "00:00").slice(0, 5)),
 						);
 						const startDate = new Date(start);
 						const endDate = new Date(startDate.getTime() + 20 * 60 * 1000);
@@ -313,12 +315,12 @@ export function useCalendarEventHandlers({
 						// Reflow slot to enforce alignment and 1-minute gaps
 						reflowSlot(
 							String(data.date),
-							String((data.time_slot || "00:00").slice(0, 5)),
+							String(String(data.time_slot || "00:00").slice(0, 5)),
 						);
 					} else {
 						api.addEvent({
 							id: String(data.id),
-							title: data.customer_name || data.wa_id,
+							title: String((data as any).customer_name || (data as any).wa_id || ""),
 							start,
 							end: new Date(new Date(start).getTime() + 20 * 60 * 1000),
 							extendedProps: {
@@ -328,13 +330,13 @@ export function useCalendarEventHandlers({
 								wa_id: data.wa_id || data.waId,
 								reservationId: String(data.id),
 								slotDate: data.date,
-								slotTime: to24h((data.time_slot || "00:00").slice(0, 5)),
+								slotTime: to24h(String(data.time_slot || "00:00").slice(0, 5)),
 							},
 						});
 						// Reflow slot to enforce alignment and 1-minute gaps
 						reflowSlot(
 							String(data.date),
-							String((data.time_slot || "00:00").slice(0, 5)),
+							String(String(data.time_slot || "00:00").slice(0, 5)),
 						);
 					}
 				} else if (type === "reservation_cancelled") {
@@ -351,7 +353,7 @@ export function useCalendarEventHandlers({
 					try {
 						reflowSlot(
 							String(data.date),
-							String((data.time_slot || "00:00").slice(0, 5)),
+							String(String(data.time_slot || "00:00").slice(0, 5)),
 						);
 					} catch {}
 				} else if (type === "vacation_period_updated") {

@@ -40,11 +40,11 @@ export class ReservationCancelService {
 				this.calendarIntegration.markEventCancelled(eventId);
 
 				// Backend cancellation
-				const resp = await cancelReservation({
+				const resp = (await cancelReservation({
 					id: waId,
 					date,
 					isRTL: this.isRTL,
-				});
+				})) as ApiResponse;
 
 				if (!resp?.success) {
 					throw new Error(resp?.message || resp?.error || "Cancel failed");
