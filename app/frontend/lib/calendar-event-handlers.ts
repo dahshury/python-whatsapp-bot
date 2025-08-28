@@ -3,6 +3,7 @@ import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import { to24h } from "./utils";
 import type { UpdateType } from "@/lib/realtime-utils";
 import { toastService } from "@/lib/toast-service";
+import { notificationManager } from "@/lib/services/notifications/notification-manager.service";
 import { i18n } from "@/lib/i18n";
 
 // Toasts are centralized in WebSocketDataProvider to avoid duplicates
@@ -297,6 +298,8 @@ export async function handleEventChange(args: {
 	updateEvent: (id: string, event: any) => void;
 	resolveEvent?: (id: string) => { extendedProps?: any } | undefined;
 }): Promise<void> {
+	// Check if this event change should be suppressed
+	const suppressDepth = (globalThis as any).__suppressEventChangeDepth || 0;
 	const {
 		info,
 		getCalendarApi,
@@ -305,6 +308,14 @@ export async function handleEventChange(args: {
 		isVacationDate,
 		resolveEvent,
 	} = args;
+
+	// Guard: ignore eventChange triggered by our own programmatic updates
+	if (suppressDepth > 0) {
+		try {
+			console.log("🚫 Suppressing handleEventChange (depth)", suppressDepth);
+		} catch {}
+		return;
+	}
 	try {
 		console.log("🔄 handleEventChange called with:", {
 			eventId: info?.event?.id,
@@ -470,6 +481,8 @@ export async function handleEventChange(args: {
 		} else {
 			console.log("✅ Backend accepted the modification");
 
+			// Success notification will come via WebSocket echo - no direct toast needed
+
 			// Only update local state if backend accepted the change
 			updateEvent(event.id, {
 				id: event.id,
@@ -586,7 +599,11 @@ export async function handleCancelReservation(args: {
 
 	// Optimistic: mark as cancelled immediately; rely on WS and removal on success
 	try {
+		// Use suppressed event change to prevent triggering modification events
+		const currentDepth = (globalThis as any).__suppressEventChangeDepth || 0;
+		(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
 		fcEvent?.setExtendedProp?.("cancelled", true);
+		(globalThis as any).__suppressEventChangeDepth = currentDepth;
 	} catch {}
 
 	try {
@@ -603,14 +620,23 @@ export async function handleCancelReservation(args: {
 				});
 			} catch {}
 			try {
+				// Use suppressed event change to prevent triggering modification events
+				const currentDepth =
+					(globalThis as any).__suppressEventChangeDepth || 0;
+				(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
 				fcEvent?.setExtendedProp?.("cancelled", false);
+				(globalThis as any).__suppressEventChangeDepth = currentDepth;
 			} catch {}
 			return;
 		}
 
 		// Remove event from calendar on success (align with grid UX)
 		try {
+			// Use suppressed event change to prevent triggering modification events
+			const currentDepth = (globalThis as any).__suppressEventChangeDepth || 0;
+			(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
 			fcEvent?.remove?.();
+			(globalThis as any).__suppressEventChangeDepth = currentDepth;
 		} catch {}
 		try {
 			onEventCancelled?.(String(eventId));
@@ -650,7 +676,11 @@ export async function handleCancelReservation(args: {
 			});
 		} catch {}
 		try {
+			// Use suppressed event change to prevent triggering modification events
+			const currentDepth = (globalThis as any).__suppressEventChangeDepth || 0;
+			(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
 			fcEvent?.setExtendedProp?.("cancelled", false);
+			(globalThis as any).__suppressEventChangeDepth = currentDepth;
 		} catch {}
 	}
 }

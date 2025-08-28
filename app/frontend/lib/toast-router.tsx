@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useLanguage } from "@/lib/language-context";
 import { toastService } from "@/lib/toast-service";
+import { notificationManager } from "@/lib/services/notifications/notification-manager.service";
 import { i18n } from "@/lib/i18n";
 
 export const ToastRouter: React.FC = () => {
@@ -16,18 +17,11 @@ export const ToastRouter: React.FC = () => {
 				if (!type || !data) return;
 				// Show toasts for both local and backend events; unread count is handled elsewhere
 
-				// Skip backend toasts for locally-initiated modifications to avoid duplicates.
-				if (
-					(type === "reservation_updated" ||
-						type === "reservation_reinstated") &&
-					__local === true
-				) {
-					return;
-				}
+				// Always emit notifications from WebSocket events; frontend never emits toasts directly
 
 				if (type === "reservation_created") {
-					toastService.reservationCreated({
-						id: data.id,
+					// Use centralized notification manager for WebSocket create echoes
+					notificationManager.showReservationCreated({
 						customer: data.customer_name,
 						wa_id: data.wa_id,
 						date: data.date,
@@ -38,20 +32,17 @@ export const ToastRouter: React.FC = () => {
 					type === "reservation_updated" ||
 					type === "reservation_reinstated"
 				) {
-					// Soft toast for modifications
-					console.log("🔔 Showing reservation modified toast for:", data);
-					toastService.reservationModified({
-						id: data.id,
+					// Use centralized notification manager for WebSocket echoes
+					notificationManager.showReservationModified({
 						customer: data.customer_name,
 						wa_id: data.wa_id,
 						date: data.date,
 						time: (data.time_slot || "").slice(0, 5),
 						isRTL,
 					});
-					console.log("🔔 Toast service called successfully");
 				} else if (type === "reservation_cancelled") {
-					toastService.reservationCancelled({
-						id: data.id,
+					// Use centralized notification manager for WebSocket cancellation echoes
+					notificationManager.showReservationCancelled({
 						customer: data.customer_name,
 						wa_id: data.wa_id,
 						date: data.date,
@@ -72,13 +63,11 @@ export const ToastRouter: React.FC = () => {
 			} catch {}
 		};
 		window.addEventListener("notification:add", handleAny as EventListener);
-		window.addEventListener("realtime", handleAny as EventListener);
 		return () => {
 			window.removeEventListener(
 				"notification:add",
 				handleAny as EventListener,
 			);
-			window.removeEventListener("realtime", handleAny as EventListener);
 		};
 	}, [isRTL]);
 

@@ -87,6 +87,7 @@
 	--z-date-picker: 3700;
 	--z-date-picker-widget: 3800;
 	--z-grid-modal: 3900;
+	--z-command-overlay: 4000;
 
 	/* ========================================
    * LAYER 5: FULLSCREEN MODE (8000)
@@ -389,11 +390,77 @@ select,
 .tempus-dominus,
 .react-tel-input .country-list,
 .phone-input-dropdown,
+.PhoneInputCountrySelectDropdown,
+.PhoneInputCountrySelect,
+.PhoneInput .country-list,
 .dropdown-menu,
 .select-dropdown,
 .autocomplete-dropdown,
 .combobox-dropdown {
 	z-index: var(--z-dialog-overlays);
+}
+
+/* ========================================
+ * RADIX POPOVER OVERRIDES - Critical Fix
+ * ======================================== */
+
+/* Override default Radix Popover z-50 when inside dialog context */
+[data-radix-popover-content].z-50 {
+	z-index: var(--z-dialog-overlays);
+}
+
+/* Force all popover content above dialog when dialog is present */
+body:has([data-radix-dialog-content]) [data-radix-popover-content] {
+	z-index: var(--z-dialog-overlays);
+}
+
+/* Command component inside popover should inherit proper z-index */
+[data-radix-popover-content] [cmdk-root],
+[data-radix-popover-content] [cmdk-list],
+[data-radix-popover-content] [cmdk-group],
+[data-radix-popover-content] [cmdk-item] {
+	position: relative;
+	z-index: inherit;
+}
+
+/* ========================================
+ * COMMAND COMPONENT GRID EDITOR OVERRIDES - Critical Fix
+ * ======================================== */
+
+/* Force popovers containing Command components above grid editors */
+[data-radix-popover-content]:has([cmdk-root]) {
+	z-index: var(--z-command-overlay);
+}
+
+/* Fallback approaches for better browser compatibility */
+
+/* Target popovers during grid editing sessions */
+body:has(.gdg-d19meir1) [data-radix-popover-content],
+body:has(.glide-data-grid-overlay-editor) [data-radix-popover-content],
+body:has(.click-outside-ignore) [data-radix-popover-content] {
+	z-index: var(--z-command-overlay);
+}
+
+/* Specific targeting for phone input popovers in grid context */
+.gdg-d19meir1 + [data-radix-popper-content-wrapper] [data-radix-popover-content],
+.glide-data-grid-overlay-editor + [data-radix-popper-content-wrapper] [data-radix-popover-content],
+.click-outside-ignore + [data-radix-popper-content-wrapper] [data-radix-popover-content] {
+	z-index: var(--z-command-overlay);
+}
+
+/* Force any popover that contains a Command component to use command overlay level */
+[data-radix-popover-content]:has(.PhoneInput),
+[data-radix-popover-content]:has(.phone-input),
+[data-radix-popover-content]:has([cmdk-item]) {
+	z-index: var(--z-command-overlay);
+}
+
+/* Direct Command component targeting */
+.gdg-d19meir1 [cmdk-root],
+.glide-data-grid-overlay-editor [cmdk-root],
+.click-outside-ignore [cmdk-root],
+[cmdk-root] {
+	z-index: var(--z-command-overlay);
 }
 
 /* Force positioned elements to use dialog overlay z-index - REMOVED as too broad */
@@ -422,18 +489,9 @@ select,
 .column-menu,
 .enhanced-column-menu,
 .gdg-dropdown,
-.dropdown-menu {
+.dropdown-menu,
+.PhoneInputCountrySelectDropdown,
+.PhoneInputCountrySelect,
+.PhoneInput .country-list {
 	z-index: var(--z-dialog-overlays);
-}
-
-/* ========================================
- * PHONE INPUT DROPDOWNS - Elevated above grid editor and dialogs
- * ======================================== */
-/* Elevate Radix wrapper when it contains our phone dropdown */
-[data-radix-popper-content-wrapper]:has(.phone-input-dropdown) {
-	z-index: var(--z-date-picker);
-}
-/* Elevate the dropdown content itself */
-.phone-input-dropdown {
-	z-index: var(--z-date-picker);
 }

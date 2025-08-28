@@ -2,6 +2,7 @@ import type { CalendarApi } from "@fullcalendar/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import { count } from "@/lib/dev-profiler";
+import { getValidRange } from "@/lib/calendar-config";
 
 interface UseCalendarToolbarProps {
 	calendarRef: React.RefObject<CalendarCoreRef> | null;
@@ -42,6 +43,7 @@ const getTitleFromAPI = (api: CalendarApi): string => {
 export function useCalendarToolbar({
 	calendarRef,
 	currentView,
+	freeRoam,
 }: UseCalendarToolbarProps): UseCalendarToolbarReturn {
 	const [title, setTitle] = useState(""); // empty until API supplies real title (spinner shows)
 	const [activeView, setActiveView] = useState(currentView);
@@ -105,9 +107,24 @@ export function useCalendarToolbar({
 					today < currentEnd;
 				setIsTodayDisabled(!!isTodayInRange);
 
-				// For navigation, use simple date-based logic
-				setIsPrevDisabled(false); // Always allow navigation
-				setIsNextDisabled(false); // Always allow navigation
+				// For navigation: disable prev when at or crossing earliest allowed date
+				try {
+					const validRange = getValidRange(!!freeRoam);
+					const earliestStart: Date | undefined =
+						(validRange && (validRange as { start?: Date }).start) || undefined;
+					let disablePrev = false;
+					if (!freeRoam && earliestStart && currentStart && currentEnd) {
+						// Disable when earliestStart falls within the currently visible range
+						disablePrev =
+							earliestStart >= currentStart && earliestStart < currentEnd;
+					}
+					setIsPrevDisabled(disablePrev);
+				} catch {
+					setIsPrevDisabled(false);
+				}
+
+				// No upper bound configured; keep Next enabled
+				setIsNextDisabled(false);
 
 				// Count visible events
 				if (currentStart && currentEnd) {
@@ -138,7 +155,7 @@ export function useCalendarToolbar({
 		} finally {
 			isUpdatingRef.current = false;
 		}
-	}, [calendarRef]);
+	}, [calendarRef, freeRoam]);
 
 	// Set up event listeners for calendar state changes
 	useEffect(() => {

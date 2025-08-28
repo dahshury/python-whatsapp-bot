@@ -137,8 +137,10 @@ export const toastService = {
 	reservationCancelled(payload: ReservationToastPayload) {
 		const { customer, wa_id, date, time, isRTL } = payload;
 		const title = i18n.getMessage("toast_reservation_cancelled", isRTL);
-		const name = customer || wa_id || "";
-		const details = [name, date, time]
+		// Show both name (if available) and phone number
+		const name = customer || "";
+		const phone = wa_id || "";
+		const details = [name, phone, date, time]
 			.filter(Boolean)
 			.join(isRTL ? " • " : " • ");
 		themed(title, details);

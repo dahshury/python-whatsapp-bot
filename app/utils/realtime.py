@@ -44,6 +44,9 @@ class RealtimeManager:
         self._clients: Dict[int, ClientConnection] = {}
         self._lock = asyncio.Lock()
         self._metrics_task: Optional[asyncio.Task] = None
+        # Recent reservation events to suppress contradictory duplicates
+        # key -> {"type": str, "ts": datetime.datetime}
+        self._recent_reservation_events: Dict[str, Dict[str, Any]] = {}
 
     async def connect(self, websocket: WebSocket) -> ClientConnection:
         await websocket.accept()
@@ -64,6 +67,71 @@ class RealtimeManager:
         data: Dict[str, Any],
         affected_entities: Optional[List[str]] = None,
     ) -> None:
+        # Optional: suppress contradictory duplicate reservation events within a short window
+        try:
+            reservation_event_types = {
+                "reservation_created",
+                "reservation_updated",
+                "reservation_reinstated",
+                "reservation_cancelled",
+            }
+            if event_type in reservation_event_types:
+                # Build a reservation key: prefer id, else composite of wa_id/date/time_slot
+                res_id = data.get("id")
+                if res_id is not None:
+                    key = f"id:{res_id}"
+                else:
+                    key = f"wa:{data.get('wa_id')}|d:{data.get('date')}|t:{data.get('time_slot')}"
+
+                # Event priority: higher wins and can replace; lower/equal within window is suppressed
+                priority = {
+                    "reservation_created": 3,
+                    "reservation_reinstated": 3,
+                    "reservation_updated": 2,
+                    "reservation_cancelled": 1,
+                }
+                now_ts = datetime.datetime.now(datetime.timezone.utc)
+
+                # Purge old entries (older than 2 seconds)
+                try:
+                    to_delete = []
+                    for k, v in self._recent_reservation_events.items():
+                        ts: datetime.datetime = v.get("ts")  # type: ignore
+                        if not isinstance(ts, datetime.datetime):
+                            to_delete.append(k)
+                            continue
+                        if (now_ts - ts).total_seconds() > 2.0:
+                            to_delete.append(k)
+                    for k in to_delete:
+                        self._recent_reservation_events.pop(k, None)
+                except Exception:
+                    pass
+
+                existing = self._recent_reservation_events.get(key)
+                if existing:
+                    existing_type = existing.get("type")
+                    existing_ts: datetime.datetime = existing.get("ts")  # type: ignore
+                    if isinstance(existing_ts, datetime.datetime):
+                        age_sec = (now_ts - existing_ts).total_seconds()
+                    else:
+                        age_sec = 0.0
+
+                    if age_sec <= 1.0:
+                        # Within suppression window
+                        if priority.get(event_type, 0) <= priority.get(str(existing_type), 0):
+                            logging.info(
+                                f"🚫 Suppressing {event_type} due to recent {existing_type} for key {key} ({age_sec:.3f}s)"
+                            )
+                            return
+                        # Replace existing with higher priority
+                        self._recent_reservation_events[key] = {"type": event_type, "ts": now_ts}
+                    else:
+                        # Window expired, overwrite
+                        self._recent_reservation_events[key] = {"type": event_type, "ts": now_ts}
+                else:
+                    self._recent_reservation_events[key] = {"type": event_type, "ts": now_ts}
+        except Exception as e:
+            logging.debug(f"reservation dedupe check failed: {e}")
         payload = {
             "type": event_type,
             "timestamp": _utc_iso_now(),
@@ -254,7 +322,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     logging.info(f"📥 modify_reservation result: {result}")
                     
                     if result.get("success"):
-                        logging.info(f"✅ Sending modify_reservation_ack")
+                        logging.info("✅ Sending modify_reservation_ack")
                         await conn.send_json({
                             "type": "modify_reservation_ack", 
                             "timestamp": _utc_iso_now(),
@@ -436,13 +504,13 @@ def enqueue_broadcast(event_type: str, data: Dict[str, Any], affected_entities: 
         logging.info(f"📡 enqueue_broadcast called: type={event_type}, data={data}, affected_entities={affected_entities}")
         loop = asyncio.get_running_loop()
         loop.create_task(manager.broadcast(event_type, data, affected_entities))
-        logging.info(f"✅ broadcast task created successfully")
+        logging.info("✅ broadcast task created successfully")
     except RuntimeError:
         # No running loop; best-effort fire-and-forget using new loop in thread
-        logging.info(f"⚠️ No running loop, using asyncio.run fallback")
+        logging.info("⚠️ No running loop, using asyncio.run fallback")
         try:
             asyncio.run(manager.broadcast(event_type, data, affected_entities))
-            logging.info(f"✅ fallback broadcast completed")
+            logging.info("✅ fallback broadcast completed")
         except Exception as e:
             logging.error(f"❌ enqueue_broadcast failed without running loop: {e}")
 

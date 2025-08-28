@@ -36,7 +36,18 @@ class BaseService(abc.ABC):
             Formatted error response
         """
         FUNCTION_ERRORS.labels(function=operation).inc()
-        self.logger.error(f"{operation} failed: {error}")
+        
+        # Log the full error with stack trace for debugging
+        self.logger.error(f"{operation} failed: {error}", exc_info=True)
+        
+        # For development/debugging, include more specific error information
+        import os
+        if os.environ.get('ENVIRONMENT', '').lower() in ('development', 'dev', 'debug'):
+            # In development, return more specific error information
+            error_details = str(error) if str(error) else error.__class__.__name__
+            return format_response(False, message=f"Operation '{operation}' failed: {error_details}")
+        
+        # In production, return generic message for security
         return format_response(False, message=get_message("system_error_try_later", ar))
     
     def _validate_wa_id(self, wa_id: str, ar: bool = False) -> Optional[Dict[str, Any]]:

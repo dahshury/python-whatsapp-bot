@@ -13,6 +13,11 @@ import type {
 	EditingChanges,
 	ValidationResult,
 } from "@/types/data-table-editor";
+import type {
+	CalendarEvent as LibCalendarEvent,
+	CalendarApi as LibCalendarApi,
+	RowChange,
+} from "@/lib/services/types/data-table-types";
 
 interface UseDataTableSaveHandlerProps {
 	calendarRef?: React.RefObject<CalendarCoreRef>;
@@ -131,9 +136,27 @@ export function useDataTableSaveHandler({
 
 			const calendarApi = getCalendarApi();
 
+			// Adapter callbacks to satisfy service types
+			const onAddedAdapter = onEventAdded
+				? (ev: LibCalendarEvent) => onEventAdded(ev as unknown as CalendarEvent)
+				: undefined;
+			const onModifiedAdapter = onEventModified
+				? (id: string, ev: LibCalendarEvent) =>
+						onEventModified(id, ev as unknown as CalendarEvent)
+				: undefined;
+
 			if (!operationsServiceRef.current) {
+				if (!calendarApi) {
+					console.error("❌ No calendar API available");
+					toastService.error(
+						getMessage("system_error_try_later", isRTL),
+						undefined,
+						5000,
+					);
+					return false;
+				}
 				operationsServiceRef.current = new DataTableOperationsService(
-					calendarApi,
+					calendarApi as LibCalendarApi,
 					isRTL,
 					slotDurationHours,
 					freeRoam,
@@ -148,7 +171,7 @@ export function useDataTableSaveHandler({
 					changes.deleted_rows,
 					gridRowToEventMapRef.current ?? new Map<number, CalendarEvent>(),
 					onEventCancelled,
-					onEventAdded,
+					undefined, // do not pass onEventAdded to avoid type mismatch; not needed for cancellations
 				);
 				hasErrors = hasErrors || result.hasErrors;
 				successfulOperations = [
@@ -158,22 +181,31 @@ export function useDataTableSaveHandler({
 			}
 
 			if (changes.edited_rows && Object.keys(changes.edited_rows).length > 0) {
-				const result = await operations.processModifications(
+				// Filter out edits for rows that are being deleted in the same save
+				const deletedSet = new Set<number>(changes.deleted_rows || []);
+				const filteredEditedEntries = Object.entries(
 					changes.edited_rows,
-					gridRowToEventMapRef.current ?? new Map<number, CalendarEvent>(),
-					onEventModified,
-				);
-				hasErrors = hasErrors || result.hasErrors;
-				successfulOperations = [
-					...successfulOperations,
-					...result.successfulOperations,
-				];
+				).filter(([rowIdxStr]) => !deletedSet.has(Number(rowIdxStr)));
+				const filteredEditedRows = Object.fromEntries(filteredEditedEntries);
+
+				if (Object.keys(filteredEditedRows).length > 0) {
+					const result = await operations.processModifications(
+						(filteredEditedRows as Record<string, RowChange>) ?? {},
+						gridRowToEventMapRef.current ?? new Map<number, CalendarEvent>(),
+						onModifiedAdapter,
+					);
+					hasErrors = hasErrors || result.hasErrors;
+					successfulOperations = [
+						...successfulOperations,
+						...result.successfulOperations,
+					];
+				}
 			}
 
 			if (changes.added_rows && changes.added_rows.length > 0) {
 				const result = await operations.processAdditions(
 					changes.added_rows,
-					onEventAdded,
+					onAddedAdapter,
 					onEventCancelled,
 				);
 				hasErrors = hasErrors || result.hasErrors;
@@ -186,7 +218,7 @@ export function useDataTableSaveHandler({
 			if (!hasErrors && successfulOperations.length > 0) {
 				operations.updateCalendarWithOperations(
 					successfulOperations,
-					onEventAdded,
+					onAddedAdapter,
 				);
 
 				if (dataProviderRef.current) {

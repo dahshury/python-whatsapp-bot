@@ -54,8 +54,22 @@ export function getSlotTimes(date: Date, freeRoam: boolean, _view: string) {
 
 // Simple Ramadan check using approximate Hijri conversion boundaries is handled on backend.
 // Here, treat Hijri month 9 via environment override window when available.
-export function isRamadan(_date: Date): boolean {
-	// Fallback: let backend enforce precise constraints; keep UI aligned with typical hours via rules above
+export function isRamadan(date: Date): boolean {
+	// Use env-configured window if present (approximate; backend is authoritative)
+	try {
+		const startStr = process.env.NEXT_PUBLIC_RAMADAN_START;
+		const endStr = process.env.NEXT_PUBLIC_RAMADAN_END;
+		if (startStr && endStr) {
+			const start = new Date(`${startStr}T00:00:00`);
+			const end = new Date(`${endStr}T23:59:59`);
+			if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+				return (
+					date.getTime() >= start.getTime() && date.getTime() <= end.getTime()
+				);
+			}
+		}
+	} catch {}
+	// Default: treat as non-Ramadan in UI
 	return false;
 }
 

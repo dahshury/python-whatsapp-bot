@@ -157,17 +157,42 @@ class ReservationService(BaseService):
             existing_reservations = self.reservation_repository.find_by_wa_id(wa_id)
             future_reservations = [res for res in existing_reservations if res.is_future(datetime.datetime.now(tz=ZoneInfo(self.timezone)))]
             
+            self.logger.info(f"Reservation check for wa_id={wa_id}: found {len(existing_reservations)} existing, {len(future_reservations)} future")
+            
             if future_reservations:
-                # Modify the existing active reservation
-                return self.modify_reservation(
+                # Modify the existing active reservation, but broadcast as "created" since user intended to create
+                result = self.modify_reservation(
                     wa_id, 
                     new_date=parsed_date_str, 
                     new_time_slot=parsed_time_str, 
                     new_name=customer_name, 
                     new_type=reservation_type, 
                     hijri=False, 
-                    ar=ar
+                    ar=ar,
+                    _internal_call_context="reserve_time_slot"  # Pass context to modify broadcast behavior
                 )
+                
+                # Override the broadcast to use "reservation_created" instead of "reservation_updated"
+                # since this was called from reserve_time_slot (user's intent was to create)
+                if result.get("success") and result.get("data"):
+                    try:
+                        reservation_data = result["data"]
+                        enqueue_broadcast(
+                            "reservation_created",  # Override: broadcast as created, not updated
+                            {
+                                "id": reservation_data.get("reservation_id"),
+                                "wa_id": wa_id,
+                                "date": parsed_date_str,
+                                "time_slot": parsed_time_str,
+                                "type": reservation_type,
+                                "customer_name": customer_name,
+                            },
+                            affected_entities=[wa_id],
+                        )
+                    except Exception:
+                        pass
+                
+                return result
             
             # Ensure customer record exists
             self.customer_service.get_or_create_customer(wa_id, customer_name)
@@ -222,9 +247,19 @@ class ReservationService(BaseService):
                 status='active'
             )
             
-            reservation_id = self.reservation_repository.save(new_reservation)
-            if not reservation_id:
-                return self._handle_error("reserve_time_slot", Exception("Failed to save reservation"), ar)
+            # Enhanced logging for debugging followup issues
+            self.logger.info(f"Creating new reservation: wa_id={wa_id}, type={reservation_type}, date={parsed_date_str}, time={parsed_time_str}")
+            
+            try:
+                reservation_id = self.reservation_repository.save(new_reservation)
+                if not reservation_id:
+                    self.logger.error(f"Repository save returned falsy ID: {reservation_id} for wa_id={wa_id}, type={reservation_type}")
+                    return self._handle_error("reserve_time_slot", Exception("Failed to save reservation - no ID returned"), ar)
+                    
+                self.logger.info(f"Successfully created reservation {reservation_id} for wa_id={wa_id}, type={reservation_type}")
+            except Exception as save_error:
+                self.logger.error(f"Exception during reservation save for wa_id={wa_id}, type={reservation_type}: {save_error}", exc_info=True)
+                return self._handle_error("reserve_time_slot", save_error, ar)
             
             result = format_response(True, data={
                 "reservation_id": reservation_id,
@@ -259,7 +294,8 @@ class ReservationService(BaseService):
                           new_time_slot: Optional[str] = None, new_name: Optional[str] = None,
                           new_type: Optional[int] = None, max_reservations: int = 5,
                           approximate: bool = False, hijri: bool = False, ar: bool = False,
-                          reservation_id_to_modify: Optional[int] = None) -> Dict[str, Any]:
+                          reservation_id_to_modify: Optional[int] = None,
+                          _internal_call_context: Optional[str] = None) -> Dict[str, Any]:
         """
         Modify an existing reservation for a customer.
         
@@ -447,23 +483,25 @@ class ReservationService(BaseService):
                 "original_data": original_data, # Data before modification for undo
                 "status": reservation_to_modify.status # current status
             }, message=get_message("reservation_modified_successfully", ar))
-            # Broadcast reservation updated
-            try:
-                enqueue_broadcast(
-                    "reservation_updated",
-                    {
-                        "id": reservation_to_modify.id,
-                        "wa_id": reservation_to_modify.wa_id,
-                        "date": reservation_to_modify.date,
-                        "time_slot": reservation_to_modify.time_slot,
-                        "type": reservation_to_modify.type.value,
-                        "customer_name": reservation_to_modify.customer_name,
-                        "status": reservation_to_modify.status,
-                    },
-                    affected_entities=[reservation_to_modify.wa_id],
-                )
-            except Exception:
-                pass
+            # Broadcast reservation updated (unless called from reserve_time_slot context)
+            # When called from reserve_time_slot, the parent function handles the broadcast as "created"
+            if _internal_call_context != "reserve_time_slot":
+                try:
+                    enqueue_broadcast(
+                        "reservation_updated",
+                        {
+                            "id": reservation_to_modify.id,
+                            "wa_id": reservation_to_modify.wa_id,
+                            "date": reservation_to_modify.date,
+                            "time_slot": reservation_to_modify.time_slot,
+                            "type": reservation_to_modify.type.value,
+                            "customer_name": reservation_to_modify.customer_name,
+                            "status": reservation_to_modify.status,
+                        },
+                        affected_entities=[reservation_to_modify.wa_id],
+                    )
+                except Exception:
+                    pass
             return result
             
         except Exception as e:

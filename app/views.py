@@ -218,12 +218,32 @@ async def api_get_all_reservations(future: bool = Query(True), include_cancelled
 # Reservation creation endpoint
 @router.post("/reserve")
 async def api_reserve_time_slot(payload: dict = Body(...)):
+    from app.services.domain.shared.wa_id import WaId
+    
+    # Extract and normalize wa_id from frontend payload
+    raw_wa_id = payload.get("id") or payload.get("wa_id")  # Support both formats
+    if not raw_wa_id:
+        return JSONResponse(
+            content={"success": False, "error": "Missing wa_id/id in payload"}, 
+            status_code=400
+        )
+    
+    try:
+        # Validate and normalize wa_id using WaId class
+        wa_id = WaId.from_any_format(raw_wa_id)
+        normalized_wa_id = wa_id.plain_format  # Always plain digits format
+    except Exception as e:
+        return JSONResponse(
+            content={"success": False, "error": f"Invalid phone number: {str(e)}"}, 
+            status_code=400
+        )
+    
     resp = reserve_time_slot(
-        payload.get("wa_id"),
-        payload.get("customer_name"),
-        payload.get("date_str"),
-        payload.get("time_slot"),
-        payload.get("reservation_type"),
+        normalized_wa_id,  # Use normalized plain format 
+        payload.get("title") or payload.get("customer_name"),  # Support both formats
+        payload.get("date") or payload.get("date_str"),        # Support both formats
+        payload.get("time") or payload.get("time_slot"),       # Support both formats  
+        payload.get("type") or payload.get("reservation_type"), # Support both formats
         hijri=payload.get("hijri", False),
         max_reservations=payload.get("max_reservations", 5),
         ar=payload.get("ar", False)

@@ -1,17 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { isLocalOperation, useDedupeKeyRef } from "@/lib/realtime-utils";
+import { isLocalOperation } from "@/lib/realtime-utils";
 
 export const RealtimeEventBus: React.FC = () => {
-	const { isDuplicate } = useDedupeKeyRef();
-
 	React.useEffect(() => {
 		const handler = (message: any) => {
 			try {
 				const { type, data } = message?.detail || {};
 				if (!type || !data) return;
-				if (isDuplicate(type, data)) return;
 
 				const local = isLocalOperation(type, data);
 				// Dispatch the notification capture event with local hint
@@ -29,7 +26,7 @@ export const RealtimeEventBus: React.FC = () => {
 		window.addEventListener("realtime", handler as EventListener);
 		return () =>
 			window.removeEventListener("realtime", handler as EventListener);
-	}, [isDuplicate]);
+	}, []);
 
 	return null;
 };

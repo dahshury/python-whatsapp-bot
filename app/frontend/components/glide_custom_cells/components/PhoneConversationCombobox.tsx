@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/command";
 import {
 	Popover,
-	PopoverAnchor,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
@@ -372,13 +371,9 @@ const PhoneConversationComboboxBase = React.forwardRef<
 							<ChevronsUpDown className="h-3 w-3 opacity-50 flex-shrink-0" />
 						</Button>
 					</PopoverTrigger>
-					<PopoverAnchor />
 					<PopoverContent
-						className="w-[300px] p-0 phone-input-dropdown"
+						className="w-[300px] p-0"
 						align="start"
-						side="bottom"
-						sideOffset={4}
-						collisionPadding={10}
 						onCloseAutoFocus={(e) => e.preventDefault()}
 						onEscapeKeyDown={(_e) => {
 							setSearchValue("");

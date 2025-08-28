@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { Z_INDEX } from "@/lib/z-index";
 
 // Simple dropdown menu implementation without external dependencies
 interface DropdownMenuProps {
@@ -152,7 +153,7 @@ const DropdownMenuContent = React.forwardRef<
 			<div
 				ref={ref}
 				className={cn(
-					"absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+					"absolute min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
 					"animate-in fade-in-0 zoom-in-95",
 					side === "bottom" && "slide-in-from-top-2",
 					side === "top" && "slide-in-from-bottom-2",

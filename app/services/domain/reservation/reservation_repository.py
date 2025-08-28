@@ -225,18 +225,31 @@ class ReservationRepository:
         Returns:
             ID of the newly created reservation
         """
-        with get_session() as session:
-            db_obj = ReservationModel(
-                wa_id=reservation.wa_id,
-                date=reservation.date,
-                time_slot=reservation.time_slot,
-                type=int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
-                status=reservation.status,
-            )
-            session.add(db_obj)
-            session.commit()
-            session.refresh(db_obj)
-            return int(db_obj.id)
+        import logging
+        logger = logging.getLogger(self.__class__.__name__)
+        
+        try:
+            with get_session() as session:
+                db_obj = ReservationModel(
+                    wa_id=reservation.wa_id,
+                    date=reservation.date,
+                    time_slot=reservation.time_slot,
+                    type=int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
+                    status=reservation.status,
+                )
+                
+                logger.debug(f"Saving reservation: wa_id={reservation.wa_id}, type={reservation.type}, date={reservation.date}, time={reservation.time_slot}")
+                
+                session.add(db_obj)
+                session.commit()
+                session.refresh(db_obj)
+                
+                logger.debug(f"Successfully saved reservation with ID: {db_obj.id}")
+                return int(db_obj.id)
+                
+        except Exception as e:
+            logger.error(f"Failed to save reservation: wa_id={reservation.wa_id}, type={reservation.type}, error={e}", exc_info=True)
+            raise  # Re-raise the exception so it can be handled by the service layer
     
     def update(self, reservation: Reservation) -> bool:
         """
