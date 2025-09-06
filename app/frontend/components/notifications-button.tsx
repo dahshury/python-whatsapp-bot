@@ -9,7 +9,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
 
@@ -18,24 +17,61 @@ interface NotificationsButtonProps {
 	notificationCount?: number;
 }
 
+function Dot({ className = "" }: { className?: string }) {
+	return (
+		<svg
+			width="6"
+			height="6"
+			fill="currentColor"
+			viewBox="0 0 6 6"
+			xmlns="http://www.w3.org/2000/svg"
+			className={className}
+			aria-hidden="true"
+		>
+			<circle cx="3" cy="3" r="3" />
+		</svg>
+	);
+}
+
 export function NotificationsButton({
 	className,
 	notificationCount: _notificationCount = 0,
 }: NotificationsButtonProps) {
 	const { isRTL } = useLanguage();
-	const [items, setItems] = React.useState<Array<{ id: string; text: string }>>(
-		[],
-	);
-	const [unreadCount, setUnreadCount] = React.useState<number>(0);
+	const [items, setItems] = React.useState<
+		Array<{ id: string; text: string; timestamp: number; unread: boolean }>
+	>([]);
 	const [open, setOpen] = React.useState(false);
+
+	const unreadCount = React.useMemo(
+		() => items.filter((n) => n.unread).length,
+		[items],
+	);
+
+	const formatTimeAgo = React.useCallback(
+		(ts: number) => {
+			const now = Date.now();
+			const diffSec = Math.max(1, Math.floor((now - ts) / 1000));
+			if (diffSec < 60) return isRTL ? "قبل ثوانٍ" : "just now";
+			const diffMin = Math.floor(diffSec / 60);
+			if (diffMin < 60)
+				return isRTL ? `${diffMin} دقيقة` : `${diffMin} min ago`;
+			const diffHr = Math.floor(diffMin / 60);
+			if (diffHr < 24) return isRTL ? `${diffHr} ساعة` : `${diffHr} h ago`;
+			const diffDay = Math.floor(diffHr / 24);
+			return isRTL ? `${diffDay} يوم` : `${diffDay} d ago`;
+		},
+		[isRTL],
+	);
 
 	React.useEffect(() => {
 		const handler = (ev: Event) => {
 			const { type, data, ts, __local } = (ev as CustomEvent).detail || {};
 			if (!type) return;
 			const timestamp = Number(ts) || Date.now();
-			const compositeKey = `${type}:${data?.id ?? data?.wa_id ?? ""}:${data?.date ?? ""}:${data?.time_slot ?? ""}`;
-			// Suppress increments for locally-initiated operations; also do not increment while popover is open
+			const compositeKey = `${type}:${data?.id ?? data?.wa_id ?? ""}:${
+				data?.date ?? ""
+			}:${data?.time_slot ?? ""}`;
 			try {
 				const localOps: Set<string> | undefined = (
 					globalThis as { __localOps?: Set<string> }
@@ -43,17 +79,25 @@ export function NotificationsButton({
 				const isLocal = __local === true || !!localOps?.has(compositeKey);
 				if (isLocal) {
 					localOps?.delete(compositeKey);
-				} else if (!open) {
-					setUnreadCount((c) => c + 1);
 				}
 			} catch {}
 			const text = (() => {
 				if (type === "reservation_created")
-					return `${isRTL ? "تم إنشاء حجز" : "Reservation created"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
+					return `${
+						isRTL ? "تم إنشاء حجز" : "Reservation created"
+					}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${
+						data.time_slot ?? ""
+					}`;
 				if (type === "reservation_updated" || type === "reservation_reinstated")
-					return `${isRTL ? "تم تعديل الحجز" : "Reservation modified"}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${data.time_slot ?? ""}`;
+					return `${
+						isRTL ? "تم تعديل الحجز" : "Reservation modified"
+					}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${
+						data.time_slot ?? ""
+					}`;
 				if (type === "reservation_cancelled")
-					return `${isRTL ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${data.wa_id}`;
+					return `${
+						isRTL ? "تم إلغاء الحجز" : "Reservation cancelled"
+					}: ${data.wa_id}`;
 				if (type === "conversation_new_message")
 					return `${isRTL ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
 				if (type === "vacation_period_updated")
@@ -63,7 +107,11 @@ export function NotificationsButton({
 			const uniqueId = `${timestamp}:${compositeKey}`;
 			setItems((prev) => {
 				if (prev.some((i) => i.id === uniqueId)) return prev;
-				return [{ id: uniqueId, text }, ...prev].slice(0, 100);
+				const shouldMarkUnread = !open; // mirror previous behavior: don't increment when open
+				return [
+					{ id: uniqueId, text, timestamp, unread: shouldMarkUnread },
+					...prev,
+				].slice(0, 100);
 			});
 		};
 		window.addEventListener("notification:add", handler as EventListener);
@@ -71,76 +119,90 @@ export function NotificationsButton({
 			window.removeEventListener("notification:add", handler as EventListener);
 	}, [isRTL, open]);
 
+	const handleMarkAllAsRead = React.useCallback(() => {
+		setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
+	}, []);
+
+	const handleNotificationClick = React.useCallback((id: string) => {
+		setItems((prev) =>
+			prev.map((n) => (n.id === id ? { ...n, unread: false } : n)),
+		);
+	}, []);
+
 	return (
-		<Popover
-			open={open}
-			onOpenChange={(v) => {
-				setOpen(v);
-				if (v) setUnreadCount(0);
-			}}
-		>
+		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button
-					variant="ghost"
 					size="icon"
-					className={cn(
-						"relative h-10 w-10 rounded-lg border border-border/50 bg-background/50 hover:bg-background/80 transition-colors duration-200",
-						className,
-					)}
+					variant="outline"
+					className={cn("relative", className)}
 					aria-label={isRTL ? "الإشعارات" : "Notifications"}
-					// Allow natural toggle; do not block events when open
 				>
 					<Bell className="h-4 w-4" />
 					{unreadCount > 0 && (
-						<Badge
-							variant="destructive"
-							className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs rounded-full"
-						>
+						<Badge className="absolute -top-2 left-full min-w-5 -translate-x-1/2 px-1">
 							{unreadCount > 99 ? "99+" : unreadCount}
 						</Badge>
 					)}
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent
-				className="w-80 p-0"
+				className="w-80 p-1"
 				side="bottom"
 				align="end"
 				sideOffset={8}
 			>
-				<div className="p-4 border-b">
-					<div className="flex items-center justify-between">
-						<h3 className="text-sm font-semibold">
-							{isRTL ? "الإشعارات" : "Notifications"}
-						</h3>
-						{unreadCount > 0 && (
-							<Badge variant="secondary" className="text-xs">
-								{unreadCount}
-							</Badge>
-						)}
+				<div className="flex items-baseline justify-between gap-4 px-3 py-2">
+					<div className="text-sm font-semibold">
+						{isRTL ? "الإشعارات" : "Notifications"}
 					</div>
+					{unreadCount > 0 && (
+						<button
+							type="button"
+							className="text-xs font-medium hover:underline"
+							onClick={handleMarkAllAsRead}
+						>
+							{isRTL ? "وضع الكل كمقروء" : "Mark all as read"}
+						</button>
+					)}
 				</div>
-
-				<ScrollArea className="h-[300px] w-full">
-					<div className="p-4 space-y-2">
-						{items.length === 0 ? (
-							<div className="text-center py-8">
-								<Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-								<p className="text-sm text-muted-foreground">
-									{isRTL ? "لا توجد إشعارات جديدة" : "No new notifications"}
-								</p>
-							</div>
-						) : (
-							items.map((it) => (
-								<div
-									key={it.id}
-									className="text-sm border-b last:border-b-0 pb-2"
+				<hr className="bg-border -mx-1 my-1 h-px" />
+				{items.map((notification) => (
+					<div
+						key={notification.id}
+						className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
+					>
+						<div className="relative flex items-start pe-3">
+							<div className="flex-1 space-y-1">
+								<button
+									type="button"
+									className="text-foreground/80 text-left after:absolute after:inset-0"
+									onClick={() => handleNotificationClick(notification.id)}
 								>
-									{it.text}
+									<span className="text-foreground font-medium">
+										{notification.text}
+									</span>
+								</button>
+								<div className="text-muted-foreground text-xs">
+									{formatTimeAgo(notification.timestamp)}
 								</div>
-							))
-						)}
+							</div>
+							{notification.unread && (
+								<div className="absolute end-0 self-center">
+									<span className="sr-only">
+										{isRTL ? "غير مقروء" : "Unread"}
+									</span>
+									<Dot />
+								</div>
+							)}
+						</div>
 					</div>
-				</ScrollArea>
+				))}
+				{items.length === 0 && (
+					<div className="px-3 py-6 text-center text-xs text-muted-foreground">
+						{isRTL ? "لا توجد إشعارات" : "No notifications"}
+					</div>
+				)}
 			</PopoverContent>
 		</Popover>
 	);

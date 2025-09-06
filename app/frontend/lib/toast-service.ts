@@ -19,6 +19,23 @@ export type MessageToastPayload = {
 	isRTL?: boolean;
 };
 
+// Convert 24-hour "HH:MM" to 12-hour "h:MM AM/PM"; return input if not simple time
+function to12HourFormat(time?: string): string {
+	try {
+		if (!time) return "";
+		const trimmed = String(time).trim();
+		const m = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
+		if (!m) return trimmed;
+		let hour = parseInt(m[1] || "0", 10);
+		const minutes = m[2];
+		const ampm = hour >= 12 ? "PM" : "AM";
+		const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+		return `${hour12}:${minutes} ${ampm}`;
+	} catch {
+		return String(time || "");
+	}
+}
+
 function themed(title: string, subtitle?: string, duration = 3000) {
 	sonner.custom(
 		() =>
@@ -129,7 +146,8 @@ export const toastService = {
 		const { customer, wa_id, date, time, isRTL } = payload;
 		const title = i18n.getMessage("toast_reservation_modified", isRTL);
 		const name = customer || wa_id || "";
-		const details = [name, date, time]
+		const displayTime = to12HourFormat(time);
+		const details = [name, date, displayTime]
 			.filter(Boolean)
 			.join(isRTL ? " • " : " • ");
 		themed(title, details);
@@ -154,7 +172,8 @@ export const toastService = {
 			isRTL,
 		);
 		const name = customer || wa_id || "";
-		const details = [name, date, time]
+		const displayTime = to12HourFormat(time);
+		const details = [name, date, displayTime]
 			.filter(Boolean)
 			.join(isRTL ? " • " : " • ");
 		const errorPrefix = i18n.getMessage("toast_error_prefix", isRTL);

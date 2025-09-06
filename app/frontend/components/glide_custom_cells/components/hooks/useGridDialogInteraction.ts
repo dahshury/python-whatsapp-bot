@@ -69,6 +69,9 @@ export function useGridDialogInteraction({
 
 	const handleEscapeKeyDown = useCallback(
 		(e: KeyboardEvent) => {
+			// Only handle Escape; allow Enter and other keys to propagate to nested editors
+			if (e.key !== "Escape") return;
+
 			// Check if fullscreen portal is active
 			const fullscreenPortal = document.getElementById(
 				"grid-fullscreen-portal",

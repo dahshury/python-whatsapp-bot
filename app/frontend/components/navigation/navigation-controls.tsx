@@ -9,6 +9,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useLongPressRepeat } from "@/hooks/use-long-press-repeat";
 import type { NavigationControlsProps } from "@/types/navigation";
 
 export const NavigationControls = React.memo(function NavigationControls({
@@ -20,6 +21,16 @@ export const NavigationControls = React.memo(function NavigationControls({
 	onNext,
 	className = "",
 }: NavigationControlsProps) {
+	const prevHoldHandlers = useLongPressRepeat(onPrev, {
+		startDelayMs: 3000,
+		intervalMs: 333,
+		disabled: isCalendarPage && isPrevDisabled,
+	});
+	const nextHoldHandlers = useLongPressRepeat(onNext, {
+		startDelayMs: 3000,
+		intervalMs: 333,
+		disabled: isCalendarPage && isNextDisabled,
+	});
 	// Enlarge clickable area and add subtle theme-aware styling
 	const prevButton = (
 		<DockIcon size={38} magnification={48} className="transition-colors">
@@ -33,6 +44,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 						className="size-10 rounded-full transition-all duration-200
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
+						{...prevHoldHandlers}
 					>
 						<ChevronLeft className="size-5" />
 					</Button>
@@ -56,6 +68,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 						className="size-10 rounded-full transition-all duration-200
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
+						{...nextHoldHandlers}
 					>
 						<ChevronRight className="size-5" />
 					</Button>

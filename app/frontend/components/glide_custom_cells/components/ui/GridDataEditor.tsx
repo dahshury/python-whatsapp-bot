@@ -10,6 +10,7 @@ import DataEditor, {
 	type Item,
 	type Theme,
 } from "@glideapps/glide-data-grid";
+import type { SpriteMap } from "@glideapps/glide-data-grid";
 import { DropdownCell as DropdownRenderer } from "@glideapps/glide-data-grid-cells";
 import { Resizable, type Size as ResizableSize } from "re-resizable";
 import type React from "react";
@@ -71,6 +72,8 @@ interface GridDataEditorProps {
 	onColumnResize?: (column: GridColumn, newSize: number) => void;
 	// Autosize functionality like st_DataFrame
 	onAutosize?: (columnIndex: number) => void;
+	// Custom header icons
+	headerIcons?: SpriteMap;
 }
 
 // Hook for managing column pinning (similar to Streamlit's useColumnPinning)
@@ -280,6 +283,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	clearSelection = () => {},
 	onColumnResize,
 	onAutosize,
+	headerIcons,
 }) => {
 	const {
 		isFullscreen,
@@ -619,6 +623,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					minColumnWidth={50}
 					scaleToRem
 					theme={theme as Theme}
+					headerIcons={headerIcons}
 					experimental={{
 						disableMinimumCellWidth: true,
 					}}

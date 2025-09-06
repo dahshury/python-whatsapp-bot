@@ -1,14 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-	ChevronLeft,
-	ChevronRight,
-	Clock,
-	MessageSquare,
-	TrendingUp,
-	Users,
-} from "lucide-react";
+import { Clock, MessageSquare, TrendingUp, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import {
 	Bar,
@@ -22,7 +15,6 @@ import {
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -36,6 +28,16 @@ import {
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Progress } from "@/components/ui/progress";
+import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 // import { WordCloudChart } from "./word-cloud"; // Remove for now to reduce heavy render cost
 import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
@@ -569,22 +571,94 @@ export function MessageAnalysis({
 								</div>
 
 								<div className="flex items-center space-x-1">
-									<Button
-										onClick={handlePrevPage}
-										disabled={currentPage === 0}
-										className="h-8"
-									>
-										<ChevronLeft className="h-4 w-4" />
-										{i18n.getMessage("msg_previous", isRTL)}
-									</Button>
-									<Button
-										onClick={handleNextPage}
-										disabled={currentPage >= totalPages - 1}
-										className="h-8"
-									>
-										{i18n.getMessage("msg_next", isRTL)}
-										<ChevronRight className="h-4 w-4" />
-									</Button>
+									<Pagination>
+										<PaginationContent>
+											<PaginationItem>
+												<PaginationPrevious
+													href="#"
+													onClick={(e) => {
+														e.preventDefault();
+														handlePrevPage();
+													}}
+													className={cn(
+														currentPage === 0 &&
+															"pointer-events-none opacity-50",
+													)}
+												/>
+											</PaginationItem>
+
+											{Array.from({ length: totalPages }).map((_, idx) => {
+												const pageNumber = idx + 1;
+												const isActive = idx === currentPage;
+
+												if (totalPages > 7) {
+													if (
+														pageNumber === 1 ||
+														pageNumber === totalPages ||
+														Math.abs(pageNumber - (currentPage + 1)) <= 1
+													) {
+														return (
+															<PaginationItem key={pageNumber}>
+																<PaginationLink
+																	href="#"
+																	isActive={isActive}
+																	onClick={(e) => {
+																		e.preventDefault();
+																		setCurrentPage(idx);
+																	}}
+																>
+																	{pageNumber}
+																</PaginationLink>
+															</PaginationItem>
+														);
+													}
+
+													if (
+														(pageNumber === 2 && currentPage + 1 > 3) ||
+														(pageNumber === totalPages - 1 &&
+															currentPage + 1 < totalPages - 2)
+													) {
+														return (
+															<PaginationItem key={`ellipsis-${pageNumber}`}>
+																<PaginationEllipsis />
+															</PaginationItem>
+														);
+													}
+
+													return null;
+												}
+
+												return (
+													<PaginationItem key={pageNumber}>
+														<PaginationLink
+															href="#"
+															isActive={isActive}
+															onClick={(e) => {
+																e.preventDefault();
+																setCurrentPage(idx);
+															}}
+														>
+															{pageNumber}
+														</PaginationLink>
+													</PaginationItem>
+												);
+											})}
+
+											<PaginationItem>
+												<PaginationNext
+													href="#"
+													onClick={(e) => {
+														e.preventDefault();
+														handleNextPage();
+													}}
+													className={cn(
+														currentPage >= totalPages - 1 &&
+															"pointer-events-none opacity-50",
+													)}
+												/>
+											</PaginationItem>
+										</PaginationContent>
+									</Pagination>
 								</div>
 							</div>
 						</CardHeader>

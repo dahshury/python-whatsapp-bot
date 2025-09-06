@@ -8,9 +8,9 @@ import type { DateRange } from "react-day-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRangeWithPresets } from "@/components/ui/date-range-with-presets";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { useDashboardData } from "@/lib/websocket-data-provider";
@@ -21,6 +21,7 @@ import { MessageAnalysis } from "./message-analysis";
 import { OperationMetrics } from "./operation-metrics";
 import { ResponseTimeAnalysis } from "./response-time-analysis";
 import { TrendCharts } from "./trend-charts";
+import { TransitionPanel } from "@/components/motion-primitives/transition-panel";
 
 export function EnhancedDashboardView() {
 	const { isRTL } = useLanguage();
@@ -39,6 +40,8 @@ export function EnhancedDashboardView() {
 	});
 
 	const [activeTab, setActiveTab] = useState("overview");
+	const tabOrder = ["overview", "trends", "messages", "insights"] as const;
+	const activeIndex = tabOrder.indexOf(activeTab as (typeof tabOrder)[number]);
 
 	// Use smart data loading that fetches filtered data directly from backend
 	const {
@@ -161,33 +164,7 @@ export function EnhancedDashboardView() {
 		}
 	};
 
-	// Fixed date range shortcuts to calculate from current date
-	const handleSevenDaysClick = () => {
-		const today = new Date();
-		const sevenDaysAgo = subDays(today, 7);
-		handleDateRangeChange({
-			from: sevenDaysAgo,
-			to: today,
-		});
-	};
-
-	const handleThirtyDaysClick = () => {
-		const today = new Date();
-		const thirtyDaysAgo = subDays(today, 30);
-		handleDateRangeChange({
-			from: thirtyDaysAgo,
-			to: today,
-		});
-	};
-
-	// Helper function to check if a specific day range is currently active
-	const isDateRangeActive = (days: number) => {
-		return (
-			filters.dateRange?.from &&
-			differenceInDays(new Date(), filters.dateRange.from) === days &&
-			Math.abs(differenceInDays(filters.dateRange.to, new Date())) <= 1
-		);
-	};
+	// Presets are now embedded in the date picker component
 
 	const handleExport = () => {
 		if (!dashboardData) return;
@@ -359,31 +336,10 @@ export function EnhancedDashboardView() {
 						)}
 
 						<div className="flex items-center gap-3">
-							<DatePickerWithRange
+							<DateRangeWithPresets
 								value={filters.dateRange}
 								onChange={handleDateRangeChange}
-								placeholder={i18n.getMessage(
-									"dashboard_select_date_range",
-									isRTL,
-								)}
 							/>
-
-							<div className="flex items-center gap-2">
-								<Button
-									onClick={handleSevenDaysClick}
-									variant={isDateRangeActive(7) ? "default" : "outline"}
-									size="sm"
-								>
-									{i18n.getMessage("dashboard_seven_days", isRTL)}
-								</Button>
-								<Button
-									onClick={handleThirtyDaysClick}
-									variant={isDateRangeActive(30) ? "default" : "outline"}
-									size="sm"
-								>
-									{i18n.getMessage("dashboard_thirty_days", isRTL)}
-								</Button>
-							</div>
 
 							<Button
 								onClick={handleExport}
@@ -461,224 +417,251 @@ export function EnhancedDashboardView() {
 						</TabsTrigger>
 					</TabsList>
 
-					<TabsContent value="overview" className="space-y-6">
-						<KPICards
-							stats={safeDashboard.stats}
-							prometheusMetrics={safeDashboard.prometheusMetrics}
-							isRTL={isRTL}
-						/>
+					<div className="overflow-hidden border-t border-zinc-200 dark:border-zinc-700">
+						<TransitionPanel
+							activeIndex={activeIndex}
+							transition={{ duration: 0.2, ease: "easeInOut" }}
+							variants={{
+								enter: { opacity: 0, y: -50, filter: "blur(4px)" },
+								center: { opacity: 1, y: 0, filter: "blur(0px)" },
+								exit: { opacity: 0, y: 50, filter: "blur(4px)" },
+							}}
+							className="pt-4"
+						>
+							{/* Overview */}
+							<div className="space-y-6">
+								<KPICards
+									stats={safeDashboard.stats}
+									prometheusMetrics={safeDashboard.prometheusMetrics}
+									isRTL={isRTL}
+								/>
 
-						<OperationMetrics
-							prometheusMetrics={safeDashboard.prometheusMetrics}
-							isRTL={isRTL}
-						/>
+								<OperationMetrics
+									prometheusMetrics={safeDashboard.prometheusMetrics}
+									isRTL={isRTL}
+								/>
 
-						{/* Quick Overview Charts (compact) */}
-						{activeTab === "overview" && (
-							<TrendCharts
-								dailyTrends={safeDashboard.dailyTrends}
-								typeDistribution={safeDashboard.typeDistribution}
-								timeSlots={safeDashboard.timeSlots}
-								dayOfWeekData={safeDashboard.dayOfWeekData}
-								monthlyTrends={safeDashboard.monthlyTrends}
-								funnelData={safeDashboard.funnelData}
-								customerSegments={safeDashboard.customerSegments}
-								isRTL={isRTL}
-								variant="compact"
-							/>
-						)}
-					</TabsContent>
+								<TrendCharts
+									dailyTrends={safeDashboard.dailyTrends}
+									typeDistribution={safeDashboard.typeDistribution}
+									timeSlots={safeDashboard.timeSlots}
+									dayOfWeekData={safeDashboard.dayOfWeekData}
+									monthlyTrends={safeDashboard.monthlyTrends}
+									funnelData={safeDashboard.funnelData}
+									customerSegments={safeDashboard.customerSegments}
+									isRTL={isRTL}
+									variant="compact"
+								/>
+							</div>
 
-					<TabsContent value="trends" className="space-y-6">
-						{activeTab === "trends" && (
-							<TrendCharts
-								dailyTrends={safeDashboard.dailyTrends}
-								typeDistribution={safeDashboard.typeDistribution}
-								timeSlots={safeDashboard.timeSlots}
-								dayOfWeekData={safeDashboard.dayOfWeekData}
-								monthlyTrends={safeDashboard.monthlyTrends}
-								funnelData={safeDashboard.funnelData}
-								customerSegments={safeDashboard.customerSegments}
-								isRTL={isRTL}
-							/>
-						)}
-					</TabsContent>
+							{/* Trends */}
+							<div className="space-y-6">
+								<TrendCharts
+									dailyTrends={safeDashboard.dailyTrends}
+									typeDistribution={safeDashboard.typeDistribution}
+									timeSlots={safeDashboard.timeSlots}
+									dayOfWeekData={safeDashboard.dayOfWeekData}
+									monthlyTrends={safeDashboard.monthlyTrends}
+									funnelData={safeDashboard.funnelData}
+									customerSegments={safeDashboard.customerSegments}
+									isRTL={isRTL}
+								/>
+							</div>
 
-					<TabsContent value="messages" className="space-y-6">
-						<ResponseTimeAnalysis
-							conversationAnalysis={dashboardData.conversationAnalysis}
-							isRTL={isRTL}
-						/>
+							{/* Messages */}
+							<div className="space-y-6">
+								<ResponseTimeAnalysis
+									conversationAnalysis={dashboardData.conversationAnalysis}
+									isRTL={isRTL}
+								/>
 
-						<ConversationLengthAnalysis
-							conversationAnalysis={safeDashboard.conversationAnalysis}
-							isRTL={isRTL}
-						/>
+								<ConversationLengthAnalysis
+									conversationAnalysis={safeDashboard.conversationAnalysis}
+									isRTL={isRTL}
+								/>
 
-						<MessageAnalysis
-							messageHeatmap={safeDashboard.messageHeatmap}
-							topCustomers={safeDashboard.topCustomers}
-							conversationAnalysis={safeDashboard.conversationAnalysis}
-							wordFrequency={safeDashboard.wordFrequency}
-							isRTL={isRTL}
-						/>
-					</TabsContent>
+								<MessageAnalysis
+									messageHeatmap={safeDashboard.messageHeatmap}
+									topCustomers={safeDashboard.topCustomers}
+									conversationAnalysis={safeDashboard.conversationAnalysis}
+									wordFrequency={safeDashboard.wordFrequency}
+									isRTL={isRTL}
+								/>
+							</div>
 
-					<TabsContent value="insights" className="space-y-6">
-						<div className="grid gap-6">
-							{/* Response Time Performance Insights */}
-							<Card>
-								<CardHeader>
-									<CardTitle>
-										{i18n.getMessage("response_time_insights", isRTL)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="space-y-2 text-sm">
-										{dashboardData.conversationAnalysis.responseTimeStats.avg <=
-											2 && (
-											<div className="p-3 bg-chart-1/20 border border-chart-1/30 rounded-lg">
-												<p className="text-chart-1">
-													{i18n.getMessage("response_time_excellent", isRTL)}
-												</p>
+							{/* Insights */}
+							<div className="space-y-6">
+								<div className="grid gap-6">
+									{/* Response Time Performance Insights */}
+									<Card>
+										<CardHeader>
+											<CardTitle>
+												{i18n.getMessage("response_time_insights", isRTL)}
+											</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="space-y-2 text-sm">
+												{dashboardData.conversationAnalysis.responseTimeStats
+													.avg <= 2 && (
+													<div className="p-3 bg-chart-1/20 border border-chart-1/30 rounded-lg">
+														<p className="text-chart-1">
+															{i18n.getMessage(
+																"response_time_excellent",
+																isRTL,
+															)}
+														</p>
+													</div>
+												)}
+												{dashboardData.conversationAnalysis.responseTimeStats
+													.avg > 2 &&
+													dashboardData.conversationAnalysis.responseTimeStats
+														.avg <= 5 && (
+														<div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
+															<p className="text-chart-2">
+																{i18n.getMessage("response_time_good", isRTL)}
+															</p>
+														</div>
+													)}
+												{dashboardData.conversationAnalysis.responseTimeStats
+													.avg > 5 &&
+													dashboardData.conversationAnalysis.responseTimeStats
+														.avg <= 10 && (
+														<div className="p-3 bg-chart-3/20 border border-chart-3/30 rounded-lg">
+															<p className="text-chart-3">
+																{i18n.getMessage(
+																	"response_time_needs_improvement",
+																	isRTL,
+																)}
+															</p>
+														</div>
+													)}
+												{dashboardData.conversationAnalysis.responseTimeStats
+													.avg > 10 && (
+													<div className="p-3 bg-destructive/20 border border-destructive/30 rounded-lg">
+														<p className="text-destructive">
+															{i18n.getMessage("response_time_poor", isRTL)}
+														</p>
+													</div>
+												)}
 											</div>
-										)}
-										{dashboardData.conversationAnalysis.responseTimeStats.avg >
-											2 &&
-											dashboardData.conversationAnalysis.responseTimeStats
-												.avg <= 5 && (
-												<div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
-													<p className="text-chart-2">
-														{i18n.getMessage("response_time_good", isRTL)}
-													</p>
-												</div>
-											)}
-										{dashboardData.conversationAnalysis.responseTimeStats.avg >
-											5 &&
-											dashboardData.conversationAnalysis.responseTimeStats
-												.avg <= 10 && (
-												<div className="p-3 bg-chart-3/20 border border-chart-3/30 rounded-lg">
-													<p className="text-chart-3">
+										</CardContent>
+									</Card>
+
+									{/* Conversation Engagement Insights */}
+									<Card>
+										<CardHeader>
+											<CardTitle>
+												{i18n.getMessage("conversation_insights", isRTL)}
+											</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="space-y-2 text-sm">
+												{dashboardData.conversationAnalysis
+													.avgMessagesPerCustomer >= 20 && (
+													<div className="p-3 bg-chart-1/20 border border-chart-1/30 rounded-lg">
+														<p className="text-chart-1">
+															{i18n.getMessage(
+																"conversation_insight_high",
+																isRTL,
+															)}
+														</p>
+													</div>
+												)}
+												{dashboardData.conversationAnalysis
+													.avgMessagesPerCustomer >= 10 &&
+													dashboardData.conversationAnalysis
+														.avgMessagesPerCustomer < 20 && (
+														<div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
+															<p className="text-chart-2">
+																{i18n.getMessage(
+																	"conversation_insight_medium",
+																	isRTL,
+																)}
+															</p>
+														</div>
+													)}
+												{dashboardData.conversationAnalysis
+													.avgMessagesPerCustomer < 10 && (
+													<div className="p-3 bg-chart-3/20 border border-chart-3/30 rounded-lg">
+														<p className="text-chart-3">
+															{i18n.getMessage(
+																"conversation_insight_low",
+																isRTL,
+															)}
+														</p>
+													</div>
+												)}
+											</div>
+										</CardContent>
+									</Card>
+
+									{/* Business Insights */}
+									<Card>
+										<CardHeader>
+											<CardTitle>
+												{i18n.getMessage("dashboard_business_insights", isRTL)}
+											</CardTitle>
+										</CardHeader>
+										<CardContent>
+											<div className="space-y-4">
+												<div className="p-4 bg-accent/10 rounded-lg border-l-4 border-accent">
+													<h4 className="font-semibold text-accent-foreground">
 														{i18n.getMessage(
-															"response_time_needs_improvement",
+															"dashboard_peak_hours_title",
+															isRTL,
+														)}
+													</h4>
+													<p className="text-accent-foreground/80 text-sm mt-1">
+														{i18n.getMessage(
+															"dashboard_peak_hours_desc",
 															isRTL,
 														)}
 													</p>
+													<span className="inline-block mt-2 px-2 py-1 bg-accent/20 text-accent text-xs rounded-full">
+														{i18n.getMessage("demo_data_warning", isRTL)}
+													</span>
 												</div>
-											)}
-										{dashboardData.conversationAnalysis.responseTimeStats.avg >
-											10 && (
-											<div className="p-3 bg-destructive/20 border border-destructive/30 rounded-lg">
-												<p className="text-destructive">
-													{i18n.getMessage("response_time_poor", isRTL)}
-												</p>
-											</div>
-										)}
-									</div>
-								</CardContent>
-							</Card>
 
-							{/* Conversation Engagement Insights */}
-							<Card>
-								<CardHeader>
-									<CardTitle>
-										{i18n.getMessage("conversation_insights", isRTL)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="space-y-2 text-sm">
-										{dashboardData.conversationAnalysis
-											.avgMessagesPerCustomer >= 20 && (
-											<div className="p-3 bg-chart-1/20 border border-chart-1/30 rounded-lg">
-												<p className="text-chart-1">
-													{i18n.getMessage("conversation_insight_high", isRTL)}
-												</p>
-											</div>
-										)}
-										{dashboardData.conversationAnalysis
-											.avgMessagesPerCustomer >= 10 &&
-											dashboardData.conversationAnalysis
-												.avgMessagesPerCustomer < 20 && (
-												<div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
-													<p className="text-chart-2">
+												<div className="p-4 bg-chart-1/10 rounded-lg border-l-4 border-chart-1">
+													<h4 className="font-semibold text-chart-1">
 														{i18n.getMessage(
-															"conversation_insight_medium",
+															"dashboard_customer_retention_title",
 															isRTL,
 														)}
+													</h4>
+													<p className="text-chart-1/80 text-sm mt-1">
+														{isRTL
+															? `${dashboardData.stats.returningRate.toFixed(1)}% من العملاء يعودون لحجوزات أخرى. هذا يدل على رضا جيد عن الخدمة.`
+															: `${dashboardData.stats.returningRate.toFixed(1)}% of customers return for follow-up appointments. This indicates good service satisfaction.`}
 													</p>
+													<span className="inline-block mt-2 px-2 py-1 bg-chart-1/20 text-chart-1 text-xs rounded-full">
+														{i18n.getMessage("real_data_available", isRTL)}
+													</span>
 												</div>
-											)}
-										{dashboardData.conversationAnalysis.avgMessagesPerCustomer <
-											10 && (
-											<div className="p-3 bg-chart-3/20 border border-chart-3/30 rounded-lg">
-												<p className="text-chart-3">
-													{i18n.getMessage("conversation_insight_low", isRTL)}
-												</p>
+
+												<div className="p-4 bg-chart-3/10 rounded-lg border-l-4 border-chart-3">
+													<h4 className="font-semibold text-chart-3">
+														{i18n.getMessage(
+															"dashboard_response_time_title",
+															isRTL,
+														)}
+													</h4>
+													<p className="text-chart-3/80 text-sm mt-1">
+														{isRTL
+															? `متوسط زمن الاستجابة هو ${dashboardData.stats.avgResponseTime.toFixed(1)} دقيقة. فكر في تطبيق ردود تلقائية للاستفسارات الشائعة.`
+															: `Average response time is ${dashboardData.stats.avgResponseTime.toFixed(1)} minutes. Consider implementing automated responses for common queries.`}
+													</p>
+													<span className="inline-block mt-2 px-2 py-1 bg-chart-3/20 text-chart-3 text-xs rounded-full">
+														{i18n.getMessage("real_data_available", isRTL)}
+													</span>
+												</div>
 											</div>
-										)}
-									</div>
-								</CardContent>
-							</Card>
-
-							{/* Business Insights */}
-							<Card>
-								<CardHeader>
-									<CardTitle>
-										{i18n.getMessage("dashboard_business_insights", isRTL)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="space-y-4">
-										<div className="p-4 bg-accent/10 rounded-lg border-l-4 border-accent">
-											<h4 className="font-semibold text-accent-foreground">
-												{i18n.getMessage("dashboard_peak_hours_title", isRTL)}
-											</h4>
-											<p className="text-accent-foreground/80 text-sm mt-1">
-												{i18n.getMessage("dashboard_peak_hours_desc", isRTL)}
-											</p>
-											<span className="inline-block mt-2 px-2 py-1 bg-accent/20 text-accent text-xs rounded-full">
-												{i18n.getMessage("demo_data_warning", isRTL)}
-											</span>
-										</div>
-
-										<div className="p-4 bg-chart-1/10 rounded-lg border-l-4 border-chart-1">
-											<h4 className="font-semibold text-chart-1">
-												{i18n.getMessage(
-													"dashboard_customer_retention_title",
-													isRTL,
-												)}
-											</h4>
-											<p className="text-chart-1/80 text-sm mt-1">
-												{isRTL
-													? `${dashboardData.stats.returningRate.toFixed(1)}% من العملاء يعودون لحجوزات أخرى. هذا يدل على رضا جيد عن الخدمة.`
-													: `${dashboardData.stats.returningRate.toFixed(1)}% of customers return for follow-up appointments. This indicates good service satisfaction.`}
-											</p>
-											<span className="inline-block mt-2 px-2 py-1 bg-chart-1/20 text-chart-1 text-xs rounded-full">
-												{i18n.getMessage("real_data_available", isRTL)}
-											</span>
-										</div>
-
-										<div className="p-4 bg-chart-3/10 rounded-lg border-l-4 border-chart-3">
-											<h4 className="font-semibold text-chart-3">
-												{i18n.getMessage(
-													"dashboard_response_time_title",
-													isRTL,
-												)}
-											</h4>
-											<p className="text-chart-3/80 text-sm mt-1">
-												{isRTL
-													? `متوسط زمن الاستجابة هو ${dashboardData.stats.avgResponseTime.toFixed(1)} دقيقة. فكر في تطبيق ردود تلقائية للاستفسارات الشائعة.`
-													: `Average response time is ${dashboardData.stats.avgResponseTime.toFixed(1)} minutes. Consider implementing automated responses for common queries.`}
-											</p>
-											<span className="inline-block mt-2 px-2 py-1 bg-chart-3/20 text-chart-3 text-xs rounded-full">
-												{i18n.getMessage("real_data_available", isRTL)}
-											</span>
-										</div>
-									</div>
-								</CardContent>
-							</Card>
-						</div>
-					</TabsContent>
+										</CardContent>
+									</Card>
+								</div>
+							</div>
+						</TransitionPanel>
+					</div>
 				</Tabs>
 			)}
 		</div>

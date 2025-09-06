@@ -12,6 +12,7 @@ import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
 import { useDataTableValidation } from "@/hooks/useDataTableValidation";
 
 import { formatDateRangeWithHijri } from "@/lib/hijri-utils";
+import { Z_INDEX } from "@/lib/z-index";
 import { useSettings } from "@/lib/settings-context";
 // formatDateTimeOptions removed - using inline options instead
 import type {
@@ -359,10 +360,17 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					dataProviderRef.current.refresh?.();
 				} catch {}
 			}
-			return () => clearTimeout(t);
+			// Add body class for CSS targeting when dialog is open
+			document.body.classList.add("has-dialog-backdrop");
+			return () => {
+				clearTimeout(t);
+				document.body.classList.remove("has-dialog-backdrop");
+			};
 		} else {
 			setShowSpinner(false);
 			setCanSave(false);
+			// Remove body class when dialog is closed
+			document.body.classList.remove("has-dialog-backdrop");
 		}
 	}, [open]);
 
@@ -537,7 +545,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			{open && (
 				<button
 					className="fixed inset-0 dialog-backdrop bg-black/80 backdrop-blur-sm"
-					style={{ zIndex: 1700 }}
+					style={{ zIndex: Z_INDEX.DIALOG_BACKDROP }}
 					onClick={(e) => {
 						if (e.target === e.currentTarget) {
 							handleCloseAttempt(() => onOpenChange(false));
@@ -556,7 +564,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 				<div
 					role="dialog"
 					className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
-					style={{ zIndex: 1710 }}
+					style={{ zIndex: Z_INDEX.DIALOG_CONTENT }}
 					aria-describedby="data-editor-description"
 					onKeyDown={(e) => {
 						if (e.key === "Escape") {

@@ -206,7 +206,13 @@ function _getColumnThemeOverride(
 	return overrides;
 }
 
-function getColumnIcon(column: IColumnDefinition): GridColumnIcon {
+function getColumnIcon(column: IColumnDefinition): GridColumn["icon"] {
+	// Custom icons for specific columns
+	if (column.id === "scheduled_time") return "icon-scheduled";
+	if (column.id === "phone") return "icon-phone";
+	if (column.id === "name") return "icon-name";
+
+	// Fallback to built-in icons based on data type
 	switch (column.dataType) {
 		case "text":
 			return GridColumnIcon.HeaderString;

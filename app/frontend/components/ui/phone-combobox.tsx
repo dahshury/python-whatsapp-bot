@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronsUpDown, Plus } from "lucide-react";
+import { CheckCircle2, ChevronsUpDown, Plus } from "lucide-react";
 import * as React from "react";
 import type * as RPNInput from "react-phone-number-input";
 import {
@@ -217,7 +217,6 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 	const { isLocalized } = useLanguage();
 	const [selectedPhone, setSelectedPhone] = React.useState<string>(value || "");
 	const [mounted, setMounted] = React.useState(false);
-	const [validationError, setValidationError] = React.useState<string>("");
 
 	React.useEffect(() => {
 		setMounted(true);
@@ -340,16 +339,22 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		}
 	}, [value, uncontrolled, selectedPhone]);
 
-	// Update country when phone number changes
+	// Initialize country from the initial value ONCE (e.g., when editing an existing number)
+	const hasInitializedCountryRef = React.useRef(false);
 	React.useEffect(() => {
-		if (selectedPhone) {
-			// Extract country from the actual phone number using parsing
-			const extractedCountry = getCountryFromPhone(selectedPhone);
-			setCountry(extractedCountry);
-		} else {
-			setCountry(undefined);
+		if (hasInitializedCountryRef.current) return;
+		const initial = (value ?? selectedPhone ?? "").trim();
+		if (initial) {
+			try {
+				const inferred = getCountryFromPhone(initial);
+				if (inferred) setCountry(inferred);
+			} catch {}
 		}
-	}, [selectedPhone]);
+		hasInitializedCountryRef.current = true;
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	// Do not auto-change country based on the typed phone value after initialization
 
 	// Update filtered phones when search changes (uses memoized index)
 	React.useEffect(() => {
@@ -373,38 +378,59 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		setFilteredPhones(filtered);
 	}, [debouncedPhoneSearch, indexedOptions]);
 
-	// While typing in the combobox, infer country from the typed number (if any)
-	React.useEffect(() => {
-		const raw = debouncedPhoneSearch.trim();
-		if (!raw) return;
-
-		// Normalize: convert 00 to + and strip non-digits (except leading +)
-		let normalized = convertZeroZeroToPlus(raw);
-		if (normalized.startsWith("+")) normalized = normalized.slice(1);
-		const digits = normalized.replace(/\D/g, "");
-		if (!digits) return;
-
-		// Find the longest matching calling code prefix
-		const match = CALLING_CODES_SORTED.find((code) => digits.startsWith(code));
-		if (match) {
-			const inferred = CALLING_CODE_TO_COUNTRY[match];
-			if (inferred && inferred !== country) setCountry(inferred);
-		}
-	}, [debouncedPhoneSearch, country]);
+	// Do not infer country while typing; keep the selected flag as the source of truth.
 
 	// Limit initial render count when there is no search to speed up popover opening
 	const VISIBLE_LIMIT_NO_SEARCH = 120;
 	const visiblePhones = React.useMemo(() => {
-		if (!debouncedPhoneSearch)
+		if (!debouncedPhoneSearch) {
+			const normalize = (s: string) =>
+				String(s)
+					.replace(/[\s\-+]/g, "")
+					.toLowerCase();
+			if (selectedPhone) {
+				const selectedIndex = filteredPhones.findIndex(
+					(opt) =>
+						opt.number === selectedPhone ||
+						normalize(opt.number) === normalize(selectedPhone),
+				);
+				if (selectedIndex >= 0) {
+					const half = Math.floor(VISIBLE_LIMIT_NO_SEARCH / 2);
+					const maxStart = Math.max(
+						0,
+						filteredPhones.length - VISIBLE_LIMIT_NO_SEARCH,
+					);
+					const start = Math.max(0, Math.min(maxStart, selectedIndex - half));
+					const end = Math.min(
+						filteredPhones.length,
+						start + VISIBLE_LIMIT_NO_SEARCH,
+					);
+					return filteredPhones.slice(start, end);
+				}
+			}
 			return filteredPhones.slice(0, VISIBLE_LIMIT_NO_SEARCH);
+		}
 		return filteredPhones;
-	}, [filteredPhones, debouncedPhoneSearch]);
+	}, [filteredPhones, debouncedPhoneSearch, selectedPhone]);
+
+	// Preview label for creating a new phone using the currently selected country
+	const addPreviewDisplay = React.useMemo(() => {
+		const raw = debouncedPhoneSearch.trim();
+		if (!raw) return "";
+		const digits = raw.replace(/\D/g, "");
+		try {
+			const selected = country || ("SA" as RPNInput.Country);
+			const cc = getCountryCallingCode(selected);
+			return digits ? `+${cc}${digits}` : `+${cc} `;
+		} catch {
+			return digits ? `+${digits}` : "+";
+		}
+	}, [debouncedPhoneSearch, country]);
 
 	// Create a new phone number option
 	const createNewPhoneOption = (phoneNumber: string): PhoneOption => {
-		// Always perform validation but don't block creation
-		const validation = validatePhoneNumber(phoneNumber);
-		setValidationError(validation.error || "");
+		// Always perform validation but don't block creation (suppress inline errors)
+		validatePhoneNumber(phoneNumber);
 
 		// Format the phone number properly, respecting the currently selected country
 		let formattedNumber = convertZeroZeroToPlus(phoneNumber.trim());
@@ -450,9 +476,8 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 
 	// Handle phone selection with different behavior for controlled vs uncontrolled
 	const handlePhoneSelectInternal = (phoneNumber: string) => {
-		// Validate the phone number
-		const validation = validatePhoneNumber(phoneNumber);
-		setValidationError(validation.error || "");
+		// Validate the phone number (suppress inline errors)
+		validatePhoneNumber(phoneNumber);
 
 		setSelectedPhone(phoneNumber);
 		if (!uncontrolled && onChange) {
@@ -478,6 +503,12 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		const selectedCustomer = phoneOptions.find(
 			(option) => option.number === phoneNumber,
 		);
+
+		// When selecting an existing option, adapt country to the selected number
+		try {
+			const inferred = getCountryFromPhone(phoneNumber);
+			if (inferred) setCountry(inferred);
+		} catch {}
 		if (
 			selectedCustomer &&
 			selectedCustomer.name !== "New Phone Number" &&
@@ -502,11 +533,8 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		setCountrySearch("");
 		setIsCountryOpen(false);
 
-		// Re-validate current phone number when country changes (if any)
-		if (selectedPhone) {
-			const validation = validatePhoneNumber(selectedPhone);
-			setValidationError(validation.error || "");
-		}
+		// Re-validate current phone number when country changes (no inline errors)
+		if (selectedPhone) validatePhoneNumber(selectedPhone);
 
 		// If there's a selected phone number, convert it to the new country's format
 		if (selectedPhone?.trim()) {
@@ -708,6 +736,26 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 										"phone_country_search_placeholder",
 										isLocalized,
 									)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											try {
+												const root = (e.currentTarget.closest("[cmdk-root]") ||
+													e.currentTarget.parentElement) as HTMLElement | null;
+												const active = root?.querySelector(
+													"[cmdk-item][data-selected='true']",
+												) as HTMLElement | null;
+												const selectedCountry = active?.getAttribute(
+													"data-option-country",
+												);
+												if (selectedCountry) {
+													e.preventDefault();
+													e.stopPropagation();
+													handleCountrySelect(selectedCountry as any);
+													return;
+												}
+											} catch {}
+										}
+									}}
 								/>
 								<CommandList>
 									<ThemedScrollbar className="h-72">
@@ -732,6 +780,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 																? selectedCountryRef
 																: undefined
 														}
+														data-option-country={option.value}
 													>
 														<FlagComponent
 															country={option.value}
@@ -740,13 +789,9 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 														<span className="flex-1 text-sm">
 															{option.label}
 														</span>
-														<CheckIcon
-															className={`ml-auto size-4 ${
-																country === option.value
-																	? "opacity-100"
-																	: "opacity-0"
-															}`}
-														/>
+														{country === option.value && (
+															<CheckCircle2 className="ms-auto size-4 text-primary" />
+														)}
 													</CommandItem>
 												))}
 										</CommandGroup>
@@ -765,7 +810,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 							variant="outline"
 							disabled={disabled}
 							className={cn(
-								"flex-1 w-full max-w-full overflow-hidden justify-between",
+								"flex-1 w-full max-w-full overflow-hidden justify-between text-left",
 								showCountrySelector
 									? "rounded-s-none rounded-e-lg border-l-0"
 									: "rounded-lg",
@@ -775,7 +820,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 							onMouseLeave={onMouseLeave}
 						>
 							<div
-								className="flex-1 min-w-0 mr-2 overflow-hidden"
+								className="flex-1 min-w-0 mr-2 overflow-hidden text-left"
 								ref={textContainerRef}
 							>
 								<div
@@ -793,8 +838,9 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 													transform: `scale(${textScale})`,
 													transformOrigin: "left center",
 													willChange: "transform",
+													direction: "ltr",
 												}
-											: undefined
+											: { direction: "ltr" }
 									}
 								>
 									{showNameAndPhoneWhenClosed && selectedPhone ? (
@@ -815,7 +861,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 											</span>
 										</>
 									) : (
-										<span>
+										<span className="block w-full text-left" dir="ltr">
 											{selectedPhone ||
 												(country
 													? `+${getCountryCallingCode(country) || ""} ...`
@@ -839,14 +885,35 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 									isLocalized,
 								)}
 								onKeyDown={(e) => {
-									if (
-										e.key === "Enter" &&
-										phoneSearch.trim() &&
-										filteredPhones.length === 0 &&
-										allowCreateNew
-									) {
-										e.preventDefault();
-										handleCreateNewPhone(phoneSearch);
+									if (e.key === "Enter") {
+										// Handle create-new when no options are shown
+										if (
+											phoneSearch.trim() &&
+											filteredPhones.length === 0 &&
+											allowCreateNew
+										) {
+											e.preventDefault();
+											e.stopPropagation();
+											handleCreateNewPhone(phoneSearch);
+											return;
+										}
+
+										// Otherwise, select the currently highlighted item from the list
+										try {
+											const root = (e.currentTarget.closest("[cmdk-root]") ||
+												e.currentTarget.parentElement) as HTMLElement | null;
+											const active = root?.querySelector(
+												"[cmdk-item][data-selected='true']",
+											) as HTMLElement | null;
+											const selectedNumber =
+												active?.getAttribute("data-option-number");
+											if (selectedNumber) {
+												e.preventDefault();
+												e.stopPropagation();
+												handlePhoneSelectControlled(selectedNumber);
+												return;
+											}
+										} catch {}
 									}
 								}}
 							/>
@@ -867,7 +934,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 												<span>
 													{i18n
 														.getMessage("phone_add_number_label", isLocalized)
-														.replace("{value}", debouncedPhoneSearch)}
+														.replace("{value}", addPreviewDisplay)}
 												</span>
 											</CommandItem>
 										</div>
@@ -890,6 +957,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 																? selectedPhoneRef
 																: undefined
 														}
+														data-option-number={option.number}
 													>
 														<div className="flex flex-col space-y-2 min-w-0 flex-1">
 															{/* Name row */}
@@ -913,13 +981,9 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 																</span>
 															</div>
 														</div>
-														<CheckIcon
-															className={`ml-auto size-4 ${
-																selectedPhone === option.number
-																	? "opacity-100"
-																	: "opacity-0"
-															}`}
-														/>
+														{selectedPhone === option.number && (
+															<CheckCircle2 className="ms-auto size-4 text-primary" />
+														)}
 													</CommandItem>
 												))}
 												{!debouncedPhoneSearch &&
@@ -939,10 +1003,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 				</Popover>
 			</div>
 
-			{/* Validation Error Display */}
-			{validationError && (
-				<div className="text-xs text-red-600 mt-1 px-3">{validationError}</div>
-			)}
+			{/* Inline validation is suppressed; cell-level validation will handle errors */}
 		</div>
 	);
 };

@@ -11,6 +11,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCalendarToolbar } from "@/hooks/useCalendarToolbar";
+import { useLongPressRepeat } from "@/hooks/use-long-press-repeat";
 import { cn } from "@/lib/utils";
 import type { CalendarCoreRef } from "./calendar-core";
 
@@ -50,6 +51,17 @@ export function CalendarDock({
 		freeRoam,
 	});
 
+	const prevHoldHandlers = useLongPressRepeat(handlePrev, {
+		startDelayMs: 3000,
+		intervalMs: 333,
+		disabled: isPrevDisabled,
+	});
+	const nextHoldHandlers = useLongPressRepeat(handleNext, {
+		startDelayMs: 3000,
+		intervalMs: 333,
+		disabled: isNextDisabled,
+	});
+
 	// Define navigation buttons with proper arrow directions for RTL
 	const prevButton = (
 		<DockIcon>
@@ -61,6 +73,7 @@ export function CalendarDock({
 						onClick={handlePrev}
 						disabled={isPrevDisabled}
 						className="size-9 rounded-full transition-all duration-200"
+						{...prevHoldHandlers}
 					>
 						{/* In RTL, use right arrow for previous (pointing outward) */}
 						{isRTL ? (
@@ -87,6 +100,7 @@ export function CalendarDock({
 						onClick={handleNext}
 						disabled={isNextDisabled}
 						className="size-9 rounded-full transition-all duration-200"
+						{...nextHoldHandlers}
 					>
 						{/* In RTL, use left arrow for next (pointing outward) */}
 						{isRTL ? (

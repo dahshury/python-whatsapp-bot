@@ -104,45 +104,69 @@ export function createCalendarCallbacks(
 			// Skip vacation days
 			if (handlers.isVacationDate(dateOnly as string)) return;
 
-			// Always sync currentDate to the clicked date
-			if (setCurrentDate) setCurrentDate(clickedDate);
-
 			const viewType: string =
 				info?.view?.type || (currentView as string) || "";
 			const isTimeGrid = viewType?.toLowerCase().includes("timegrid");
 
-			// Get slot times for the clicked date
-			const slotTimes = getSlotTimes(
+			// Compute slot times for the clicked date and currently displayed range
+			const targetSlotTimes = getSlotTimes(
 				atMidday(dateOnly || ""),
 				freeRoam,
 				viewType,
 			);
+			const currentDateForSlots: Date = (() => {
+				try {
+					if (typeof _currentDate === "string") return new Date(_currentDate);
+					if (_currentDate instanceof Date) return _currentDate;
+				} catch {}
+				return clickedDate;
+			})();
+			const currentSlotTimes = getSlotTimes(
+				atMidday(getDateOnly(currentDateForSlots)),
+				freeRoam,
+				viewType,
+			);
+
+			// If in a time grid view and the displayed business hour window differs
+			// from the clicked date's business hours, update the displayed range only
+			if (
+				isTimeGrid &&
+				!freeRoam &&
+				(currentSlotTimes.slotMinTime !== targetSlotTimes.slotMinTime ||
+					currentSlotTimes.slotMaxTime !== targetSlotTimes.slotMaxTime)
+			) {
+				if (setCurrentDate) setCurrentDate(clickedDate);
+				return; // Do not open editor; just update displayed slot range
+			}
+
+			// Sync currentDate to the clicked date (no-op if already equal)
+			if (setCurrentDate) setCurrentDate(clickedDate);
 
 			// Open editor: include time (with computed end) for timeGrid, date-only otherwise
 			if (isTimeGrid) {
 				// Ensure clicks outside business hours snap to the day's slotMinTime
 				let startStr: string =
-					info?.dateStr || `${dateOnly}T${slotTimes.slotMinTime}`;
+					info?.dateStr || `${dateOnly}T${targetSlotTimes.slotMinTime}`;
 				try {
-					const timePart = startStr.split("T")[1] || slotTimes.slotMinTime;
+					const timePart = startStr.split("T")[1] || targetSlotTimes.slotMinTime;
 					const timeParts = timePart
 						.split(":")
 						.map((v) => parseInt(v || "0", 10));
 					const [hh = 0, mm = 0, _ss = 0] = timeParts;
-					const [minH = 0, minM = 0] = slotTimes.slotMinTime
+					const [minH = 0, minM = 0] = targetSlotTimes.slotMinTime
 						.split(":")
 						.map((v) => parseInt(v || "0", 10));
-					const [maxH = 24, maxM = 0] = slotTimes.slotMaxTime
+					const [maxH = 24, maxM = 0] = targetSlotTimes.slotMaxTime
 						.split(":")
 						.map((v) => parseInt(v || "0", 10));
 					const currentMin = hh * 60 + mm;
 					const allowedMin = minH * 60 + minM;
 					const allowedMax = maxH * 60 + maxM;
 					if (currentMin < allowedMin || currentMin >= allowedMax) {
-						startStr = `${dateOnly}T${slotTimes.slotMinTime}`;
+						startStr = `${dateOnly}T${targetSlotTimes.slotMinTime}`;
 					}
 				} catch {
-					startStr = `${dateOnly}T${slotTimes.slotMinTime}`;
+					startStr = `${dateOnly}T${targetSlotTimes.slotMinTime}`;
 				}
 				const startDate = new Date(startStr);
 				// If not in free roam and the clicked time is in the past, do not open the editor

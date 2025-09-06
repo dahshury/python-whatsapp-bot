@@ -968,50 +968,59 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			</div>
 
 			{/* Messages Area */}
-			<ThemedScrollbar
-				className="flex-1 bg-card scrollbar-autohide chat-scrollbar"
-				style={{ height: "100%" }}
-				noScrollX={true}
-				rtl={false}
-			>
-				<div className="message-list px-4 pt-4 pb-2">
-					{sortedMessages.length === 0 ? (
-						<div className="flex items-center justify-center min-h-[200px] text-muted-foreground p-4">
-							<div className="text-center">
-								<MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
-								<p className="text-sm">
-									{i18n.getMessage("chat_no_messages", isRTL)}
-								</p>
+			<div className="relative flex-1">
+				<div
+					className="absolute inset-0 z-0"
+					style={{
+						background:
+							"radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.25), transparent 70%), hsl(var(--card))",
+					}}
+				/>
+				<ThemedScrollbar
+					className="flex-1 bg-transparent scrollbar-autohide chat-scrollbar relative z-10"
+					style={{ height: "100%" }}
+					noScrollX={true}
+					rtl={false}
+				>
+					<div className="message-list px-4 pt-4 pb-2">
+						{sortedMessages.length === 0 ? (
+							<div className="flex items-center justify-center min-h-[200px] text-muted-foreground p-4">
+								<div className="text-center">
+									<MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
+									<p className="text-sm">
+										{i18n.getMessage("chat_no_messages", isRTL)}
+									</p>
+								</div>
 							</div>
-						</div>
-					) : (
-						<AnimatePresence initial={false}>
-							{sortedMessages.map((message, idx) => (
-								<motion.div
-									key={`${message.date}|${message.time}|${message.role}|${(message.message || "").slice(0, 24)}|${idx}`}
-									className={cn(
-										"message-row",
-										message.role === "user" && "message-row-user",
-										message.role === "admin" && "message-row-admin",
-										message.role === "assistant" && "message-row-assistant",
-										message.role === "secretary" && "message-row-secretary",
-									)}
-									initial={{ opacity: 0, y: 8 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -8 }}
-									transition={{ duration: 0.18, ease: "easeOut" }}
-								>
-									<MessageBubble
-										message={message}
-										isUser={message.role === "user"}
-									/>
-								</motion.div>
-							))}
-						</AnimatePresence>
-					)}
-					<div ref={messagesEndRef} />
-				</div>
-			</ThemedScrollbar>
+						) : (
+							<AnimatePresence initial={false}>
+								{sortedMessages.map((message, idx) => (
+									<motion.div
+										key={`${message.date}|${message.time}|${message.role}|${(message.message || "").slice(0, 24)}|${idx}`}
+										className={cn(
+											"message-row",
+											message.role === "user" && "message-row-user",
+											message.role === "admin" && "message-row-admin",
+											message.role === "assistant" && "message-row-assistant",
+											message.role === "secretary" && "message-row-secretary",
+										)}
+										initial={{ opacity: 0, y: 8 }}
+										animate={{ opacity: 1, y: 0 }}
+										exit={{ opacity: 0, y: -8 }}
+										transition={{ duration: 0.18, ease: "easeOut" }}
+									>
+										<MessageBubble
+											message={message}
+											isUser={message.role === "user"}
+										/>
+									</motion.div>
+								))}
+							</AnimatePresence>
+						)}
+						<div ref={messagesEndRef} />
+					</div>
+				</ThemedScrollbar>
+			</div>
 
 			{/* Message Input - Enhanced textarea with 24h inactivity detection */}
 			<div className="input-bubble">

@@ -74,6 +74,7 @@ export function CalendarLegend({
 					className={cn(
 						"h-6 px-2 rounded-md border border-border/50 bg-muted/50 hover:bg-muted transition-colors",
 						"flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground",
+						"calendar-legend-trigger", // Add specific class for CSS targeting
 						className,
 					)}
 					aria-label={isRTL ? "إظهار دليل الألوان" : "Show color legend"}

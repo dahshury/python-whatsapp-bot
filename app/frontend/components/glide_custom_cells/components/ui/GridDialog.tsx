@@ -92,7 +92,7 @@ export function GridDialog({
 	unsavedChangesLabels = {},
 	isRTL,
 	isLocalized,
-	zIndex = Z_INDEX.MODAL_BACKDROP,
+	zIndex = Z_INDEX.DIALOG_BACKDROP,
 }: GridDialogProps) {
 	const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] =
 		useState(false);
@@ -148,8 +148,11 @@ export function GridDialog({
 		if (open) {
 			const originalStyle = document.body.style.overflow;
 			document.body.style.overflow = "hidden";
+			// Add body class for CSS targeting when dialog is open
+			document.body.classList.add("has-dialog-backdrop");
 			return () => {
 				document.body.style.overflow = originalStyle;
+				document.body.classList.remove("has-dialog-backdrop");
 			};
 		}
 	}, [open]);
@@ -161,7 +164,7 @@ export function GridDialog({
 			{/* Backdrop */}
 			<button
 				type="button"
-				className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+				className="fixed inset-0 bg-black/80 backdrop-blur-sm dialog-backdrop"
 				style={{ zIndex }}
 				onClick={(e) => {
 					if (e.target === e.currentTarget) {
@@ -182,7 +185,7 @@ export function GridDialog({
 				role="dialog"
 				className={`fixed inset-4 md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2 ${sizeClasses[size]} w-full ${className}`}
 				style={{
-					zIndex: Z_INDEX.MODAL_CONTENT,
+					zIndex: Z_INDEX.DIALOG_CONTENT,
 					maxHeight: "90vh",
 				}}
 				onPointerDown={
@@ -283,7 +286,7 @@ export function GridDialog({
 									right: 0,
 									bottom: 0,
 									pointerEvents: "auto",
-									zIndex: Z_INDEX.MODAL_CONTENT + 100, // Above dialog content
+									zIndex: Z_INDEX.DIALOG_CONTENT + 100, // Above dialog content
 								}}
 							/>
 						</div>

@@ -65,14 +65,14 @@
 	--z-grid-hover: 25;
 
 	/* ========================================
-   * LAYER 2: DIALOG BACKDROP (1000)
+   * LAYER 2: DIALOG BACKDROP (9999)
    * ======================================== */
-	--z-dialog-backdrop: 1000;
+	--z-dialog-backdrop: 9999;
 
 	/* ========================================
-   * LAYER 3: DIALOG CONTENT (2000)
+   * LAYER 3: DIALOG CONTENT (10000)
    * ======================================== */
-	--z-dialog-content: 2000;
+	--z-dialog-content: 10000;
 
 	/* ========================================
    * LAYER 4: DATA CELL EDITORS & WIDGETS (3000)
@@ -381,7 +381,6 @@ select,
 [data-radix-dropdown-menu-content],
 [data-radix-popover-content],
 [data-radix-tooltip-content],
-[data-radix-hover-card-content],
 [data-radix-context-menu-content],
 .tempus-dominus-widget,
 .td-picker,
@@ -394,6 +393,73 @@ select,
 .autocomplete-dropdown,
 .combobox-dropdown {
 	z-index: var(--z-dialog-overlays);
+}
+
+/* Hover card content: default to hover-card layer, not dialog overlays */
+[data-radix-hover-card-content] {
+	z-index: var(--z-hover-card);
+}
+
+/* Force dialog backdrop to highest z-index */
+.dialog-backdrop {
+	position: fixed !important;
+	inset: 0 !important;
+	z-index: var(--z-dialog-backdrop) !important;
+}
+
+/* Force all potentially conflicting elements to lower z-index */
+.animated-sidebar-trigger {
+	z-index: 40 !important; /* Default Tailwind z-40 value */
+}
+
+.calendar-legend-trigger {
+	z-index: 40 !important; /* Same as sidebar trigger */
+}
+
+[data-radix-hover-card-content] {
+	z-index: var(--z-hover-card) !important;
+}
+
+/* Nuclear option: When dialog backdrop exists anywhere, force specific elements below it */
+html:has(.dialog-backdrop) .animated-sidebar-trigger,
+html:has(.dialog-backdrop) .calendar-legend-trigger,
+html:has(.dialog-backdrop) [data-radix-hover-card-content] {
+	z-index: 39 !important;
+	opacity: 0.3 !important; /* Visual debugging: make them dimmed */
+}
+
+/* Alternative fallback using sibling selector */
+.dialog-backdrop ~ * .animated-sidebar-trigger,
+.dialog-backdrop ~ * .calendar-legend-trigger,
+.dialog-backdrop ~ * [data-radix-hover-card-content] {
+	z-index: 39 !important;
+	opacity: 0.3 !important;
+}
+
+/* Direct override approach - check for dialog backdrop in document */
+body:has(.dialog-backdrop) .animated-sidebar-trigger,
+body:has(.dialog-backdrop) .calendar-legend-trigger {
+	z-index: 39 !important;
+	opacity: 0.3 !important;
+}
+
+body:has(.dialog-backdrop) [data-radix-hover-card-content] {
+	z-index: 39 !important;
+	opacity: 0.3 !important;
+	pointer-events: none !important;
+}
+
+/* JavaScript-based fallback using body class */
+body.has-dialog-backdrop .animated-sidebar-trigger,
+body.has-dialog-backdrop .calendar-legend-trigger {
+	z-index: 39 !important;
+	opacity: 0.3 !important;
+}
+
+body.has-dialog-backdrop [data-radix-hover-card-content] {
+	z-index: 39 !important;
+	opacity: 0.3 !important;
+	pointer-events: none !important;
 }
 
 /* ========================================
