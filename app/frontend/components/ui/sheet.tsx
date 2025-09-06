@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { Z_INDEX } from "@/lib/z-index";
 
 const Sheet = SheetPrimitive.Root;
 

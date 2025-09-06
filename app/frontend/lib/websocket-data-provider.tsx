@@ -2,8 +2,7 @@
 import * as React from "react";
 import { BackendConnectionOverlay } from "@/components/backend-connection-overlay";
 import { useWebSocketData } from "@/hooks/useWebSocketData";
-import { useLanguage } from "@/lib/language-context";
-import { useDedupeKeyRef } from "@/lib/realtime-utils";
+
 import type { DashboardData, PrometheusMetrics } from "@/types/dashboard";
 
 export interface ConversationMessage {
@@ -54,7 +53,7 @@ const DataContext = React.createContext<DataShape>({
 	sendVacationUpdate: async () => {},
 });
 
-export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
+export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	children,
 }) => {
 	// Hydrate from cached snapshot to prevent blank UI on refresh
@@ -106,12 +105,6 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
 	// Subscribe to backend websocket for realtime updates (disable internal toasts)
 	const ws = useWebSocketData({ enableNotifications: false });
-	const { isRTL } = useLanguage();
-	const { isDuplicate } = useDedupeKeyRef();
-	// Track pending update toasts so a subsequent cancellation can suppress them
-	const _pendingUpdateToastRef = React.useRef<
-		Map<string, ReturnType<typeof setTimeout>>
-	>(new Map());
 
 	// Offline overlay state
 	const [showOffline, setShowOffline] = React.useState<boolean>(false);
@@ -170,7 +163,10 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 
 	// Mirror websocket state into provider state
 	React.useEffect(() => {
-		if (ws?.conversations) setConversations(ws.conversations as any);
+		if (ws?.conversations)
+			setConversations(
+				ws.conversations as Record<string, ConversationMessage[]>,
+			);
 		// Mark as loaded once we receive any data via websocket
 		try {
 			if (
@@ -184,7 +180,10 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 	}, [ws?.conversations, ws.reservations, ws]);
 
 	React.useEffect(() => {
-		if (ws?.reservations) setReservations(ws.reservations as any);
+		if (ws?.reservations)
+			setReservations(
+				ws.reservations as unknown as Record<string, Reservation[]>,
+			);
 		try {
 			if (
 				!hasLoadedRef.current &&
@@ -197,7 +196,7 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 	}, [ws?.reservations, ws.conversations, ws]);
 
 	React.useEffect(() => {
-		if (ws?.vacations) setVacations(ws.vacations as any);
+		if (ws?.vacations) setVacations(ws.vacations as Vacation[]);
 		try {
 			if (
 				!hasLoadedRef.current &&
@@ -212,7 +211,10 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 	// Initialize metrics from global if present
 	React.useEffect(() => {
 		try {
-			setPrometheusMetrics((globalThis as any).__prom_metrics__ || {});
+			setPrometheusMetrics(
+				(globalThis as { __prom_metrics__?: PrometheusMetrics })
+					.__prom_metrics__ || {},
+			);
 		} catch {}
 	}, []);
 
@@ -220,9 +222,13 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 	React.useEffect(() => {
 		const handler = (ev: Event) => {
 			try {
-				const detail: any = (ev as any).detail || {};
+				const customEvent = ev as CustomEvent;
+				const detail: { type?: string } = customEvent.detail || {};
 				if (detail?.type === "metrics_updated" || detail?.type === "snapshot") {
-					setPrometheusMetrics((globalThis as any).__prom_metrics__ || {});
+					setPrometheusMetrics(
+						(globalThis as { __prom_metrics__?: PrometheusMetrics })
+							.__prom_metrics__ || {},
+					);
 				}
 			} catch {}
 		};
@@ -240,7 +246,7 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 			}
 			// If needed, request a fresh snapshot from the websocket
 			try {
-				(ws as any)?.refreshData?.();
+				(ws as { refreshData?: () => void })?.refreshData?.();
 			} catch {}
 		},
 		[ws],
@@ -258,8 +264,18 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 		return () => window.removeEventListener("realtime", handler);
 	}, []);
 
-	const value = React.useMemo<DataShape>(
-		() => ({
+	const value = React.useMemo<DataShape>(() => {
+		const sendVacationUpdateFn = (
+			ws as {
+				sendVacationUpdate?: (payload: {
+					periods?: Array<{ start: string | Date; end: string | Date }>;
+					start_dates?: string;
+					durations?: string;
+				}) => Promise<void> | void;
+			}
+		)?.sendVacationUpdate;
+
+		return {
 			conversations,
 			reservations,
 			vacations,
@@ -268,20 +284,19 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 			error,
 			refresh,
 			activeRange,
-			sendVacationUpdate: (ws as any)?.sendVacationUpdate,
-		}),
-		[
-			conversations,
-			reservations,
-			vacations,
-			prometheusMetrics,
-			isLoading,
-			error,
-			refresh,
-			activeRange,
-			ws,
-		],
-	);
+			...(sendVacationUpdateFn && { sendVacationUpdate: sendVacationUpdateFn }),
+		};
+	}, [
+		conversations,
+		reservations,
+		vacations,
+		prometheusMetrics,
+		isLoading,
+		error,
+		refresh,
+		activeRange,
+		ws,
+	]);
 
 	return (
 		<DataContext.Provider value={value}>
@@ -289,7 +304,9 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren<{}>> = ({
 			{showOffline && (
 				<BackendConnectionOverlay
 					onRetry={handleRetry}
-					isRetrying={isRetrying || (ws as any)?.isReconnecting}
+					isRetrying={Boolean(
+						isRetrying || (ws as { isReconnecting?: boolean })?.isReconnecting,
+					)}
 				/>
 			)}
 		</DataContext.Provider>
@@ -335,20 +352,30 @@ export const useDashboardData = () => {
 				const d = new Date(value);
 				return Number.isNaN(d.getTime()) ? null : d;
 			};
-			const parseReservationDate = (r: any) => {
+			const parseReservationDate = (r: Reservation) => {
 				const iso = parseISO(r?.start);
 				if (iso) return iso;
-				const date: string | undefined = r?.date;
-				const time: string | undefined = r?.time_slot || r?.time;
+				const date: string | undefined = (r as Reservation & { date?: string })
+					?.date;
+				const time: string | undefined =
+					(r as Reservation & { time_slot?: string; time?: string })
+						?.time_slot ||
+					(r as Reservation & { time_slot?: string; time?: string })?.time;
 				if (date && time) return parseISO(`${date}T${time}`);
 				if (date) return parseISO(`${date}T00:00:00`);
 				return null;
 			};
-			const parseMessageDate = (m: any) => {
-				const iso = parseISO(m?.ts || m?.datetime);
+			const parseMessageDate = (m: ConversationMessage) => {
+				const iso = parseISO(
+					m?.ts || (m as ConversationMessage & { datetime?: string })?.datetime,
+				);
 				if (iso) return iso;
-				const date: string | undefined = m?.date;
-				const time: string | undefined = m?.time;
+				const date: string | undefined = (
+					m as ConversationMessage & { date?: string }
+				)?.date;
+				const time: string | undefined = (
+					m as ConversationMessage & { time?: string }
+				)?.time;
 				if (date && time) return parseISO(`${date}T${time}`);
 				if (date) return parseISO(`${date}T00:00:00`);
 				return null;
@@ -459,7 +486,7 @@ export const useDashboardData = () => {
 						withinRange(parseReservationDate(r)),
 					),
 				],
-			) as [string, any[]][];
+			) as [string, Reservation[]][];
 			const filteredConversationEntries = conversationEntries.map(
 				([id, msgs]) => [
 					id,
@@ -467,7 +494,7 @@ export const useDashboardData = () => {
 						withinRange(parseMessageDate(m)),
 					),
 				],
-			) as [string, any[]][];
+			) as [string, ConversationMessage[]][];
 
 			// Previous period filtered datasets
 			const prevReservationEntries = reservationEntries.map(([id, items]) => [
@@ -475,13 +502,13 @@ export const useDashboardData = () => {
 				(Array.isArray(items) ? items : []).filter((r) =>
 					withinPrevRange(parseReservationDate(r)),
 				),
-			]) as [string, any[]][];
+			]) as [string, Reservation[]][];
 			const prevConversationEntries = conversationEntries.map(([id, msgs]) => [
 				id,
 				(Array.isArray(msgs) ? msgs : []).filter((m) =>
 					withinPrevRange(parseMessageDate(m)),
 				),
-			]) as [string, any[]][];
+			]) as [string, ConversationMessage[]][];
 
 			const totalReservations = filteredReservationEntries.reduce(
 				(sum, [, items]) => sum + (Array.isArray(items) ? items.length : 0),
@@ -492,10 +519,6 @@ export const useDashboardData = () => {
 				0,
 			);
 			const totalMessages = filteredConversationEntries.reduce(
-				(sum, [, msgs]) => sum + (Array.isArray(msgs) ? msgs.length : 0),
-				0,
-			);
-			const _prevTotalMessages = prevConversationEntries.reduce(
 				(sum, [, msgs]) => sum + (Array.isArray(msgs) ? msgs.length : 0),
 				0,
 			);
@@ -590,9 +613,27 @@ export const useDashboardData = () => {
 						.map((m) => ({
 							d: parseMessageDate(m),
 							role:
-								(m as any).role ||
-								(m as any).sender ||
-								(m as any).author ||
+								(
+									m as ConversationMessage & {
+										role?: string;
+										sender?: string;
+										author?: string;
+									}
+								).role ||
+								(
+									m as ConversationMessage & {
+										role?: string;
+										sender?: string;
+										author?: string;
+									}
+								).sender ||
+								(
+									m as ConversationMessage & {
+										role?: string;
+										sender?: string;
+										author?: string;
+									}
+								).author ||
 								"user",
 						}))
 						.filter((x) => Boolean(x.d))
@@ -600,6 +641,7 @@ export const useDashboardData = () => {
 					for (let i = 1; i < sorted.length; i++) {
 						const prev = sorted[i - 1];
 						const curr = sorted[i];
+						if (!prev || !curr) continue;
 						// Measure only customer -> assistant transitions
 						const prevIsCustomer =
 							String(prev.role).toLowerCase() !== "assistant";
@@ -621,9 +663,27 @@ export const useDashboardData = () => {
 						.map((m) => ({
 							d: parseMessageDate(m),
 							role:
-								(m as any).role ||
-								(m as any).sender ||
-								(m as any).author ||
+								(
+									m as ConversationMessage & {
+										role?: string;
+										sender?: string;
+										author?: string;
+									}
+								).role ||
+								(
+									m as ConversationMessage & {
+										role?: string;
+										sender?: string;
+										author?: string;
+									}
+								).sender ||
+								(
+									m as ConversationMessage & {
+										role?: string;
+										sender?: string;
+										author?: string;
+									}
+								).author ||
 								"user",
 						}))
 						.filter((x) => Boolean(x.d))
@@ -631,6 +691,7 @@ export const useDashboardData = () => {
 					for (let i = 1; i < sorted.length; i++) {
 						const prev = sorted[i - 1];
 						const curr = sorted[i];
+						if (!prev || !curr) continue;
 						const prevIsCustomer =
 							String(prev.role).toLowerCase() !== "assistant";
 						const currIsAssistant =
@@ -647,11 +708,13 @@ export const useDashboardData = () => {
 
 			const avg = (arr: number[]) =>
 				arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-			const median = (arr: number[]) => {
+			const median = (arr: number[]): number => {
 				if (arr.length === 0) return 0;
 				const s = [...arr].sort((a, b) => a - b);
 				const mid = Math.floor(s.length / 2);
-				return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
+				return s.length % 2
+					? (s[mid] ?? 0)
+					: ((s[mid - 1] ?? 0) + (s[mid] ?? 0)) / 2;
 			};
 
 			const avgResponseTime = Math.min(60, avg(responseDurationsMinutes));
@@ -666,29 +729,52 @@ export const useDashboardData = () => {
 				const d = new Date(value);
 				return Number.isNaN(d.getTime()) ? null : d;
 			};
-			const getReservationModificationDate = (r: any): Date | null => {
+			const getReservationModificationDate = (r: Reservation): Date | null => {
 				// Prefer explicit timestamps if present
 				const createdAt = parseReservationDate(r);
-				const ts =
-					parseMaybeDateString(r?.updated_at) ||
-					parseMaybeDateString(r?.modified_at) ||
-					parseMaybeDateString(r?.last_modified) ||
-					parseMaybeDateString(r?.modified_on) ||
-					parseMaybeDateString(r?.update_ts) ||
-					(Array.isArray(r?.history) && r.history.length
-						? parseMaybeDateString(
-								r.history[r.history.length - 1]?.ts ||
-									r.history[r.history.length - 1]?.timestamp,
-							)
-						: null);
+				let ts: Date | null = null;
+
+				// Try explicit timestamp fields first
+				ts =
+					parseMaybeDateString(
+						(r as Reservation & { updated_at?: string })?.updated_at,
+					) ||
+					parseMaybeDateString(
+						(r as Reservation & { modified_at?: string })?.modified_at,
+					) ||
+					parseMaybeDateString(
+						(r as Reservation & { last_modified?: string })?.last_modified,
+					) ||
+					parseMaybeDateString(
+						(r as Reservation & { modified_on?: string })?.modified_on,
+					) ||
+					parseMaybeDateString(
+						(r as Reservation & { update_ts?: string })?.update_ts,
+					);
+
+				// If no explicit timestamp, try history
+				if (!ts) {
+					const history = (
+						r as Reservation & {
+							history?: Array<{ ts?: string; timestamp?: string }>;
+						}
+					)?.history;
+					if (history && history.length > 0) {
+						const lastEntry = history[history.length - 1];
+						ts = parseMaybeDateString(lastEntry?.ts || lastEntry?.timestamp);
+					}
+				}
+
 				if (!ts) return null;
-				// Ignore timestamps that are effectively the same as the creation time (common when backends set updated_at on insert)
+
+				// Ignore timestamps that are effectively the same as the creation time
 				try {
 					if (createdAt) {
 						const deltaMs = Math.abs(ts.getTime() - createdAt.getTime());
 						if (deltaMs < 60_000) return null; // less than 1 minute difference: treat as creation, not modification
 					}
 				} catch {}
+
 				return ts;
 			};
 
@@ -708,7 +794,8 @@ export const useDashboardData = () => {
 						modifications: 0,
 					};
 					entry.reservations += 1;
-					if ((r as any).cancelled === true) entry.cancellations += 1;
+					if ((r as Reservation & { cancelled?: boolean }).cancelled === true)
+						entry.cancellations += 1;
 					dailyMap.set(key, entry);
 				});
 			});
@@ -743,14 +830,20 @@ export const useDashboardData = () => {
 				let followup = 0;
 				filteredReservationEntries.forEach(([, items]) => {
 					(Array.isArray(items) ? items : []).forEach((r) => {
-						if (typeof (r as any).type === "number") {
-							if ((r as any).type === 1) {
+						if (
+							typeof (r as Reservation & { type?: number }).type === "number"
+						) {
+							if ((r as Reservation & { type?: number }).type === 1) {
 								followup += 1;
 							} else {
 								checkup += 1;
 							}
 						} else {
-							const title = ((r as any).title || "").toString().toLowerCase();
+							const title = (
+								(r as Reservation & { title?: string }).title || ""
+							)
+								.toString()
+								.toLowerCase();
 							if (title.includes("follow")) {
 								followup += 1;
 							} else {
@@ -801,16 +894,22 @@ export const useDashboardData = () => {
 				(Array.isArray(msgs) ? msgs : []).forEach((m) => {
 					const d = parseMessageDate(m);
 					if (!d) return;
-					const key = `${weekdays[d.getDay()]}_${d.getHours()}`;
+					const dayIndex = d.getDay();
+					if (dayIndex < 0 || dayIndex >= weekdays.length) return;
+					const key = `${weekdays[dayIndex]}_${d.getHours()}`;
 					heatmapMap.set(key, (heatmapMap.get(key) || 0) + 1);
 				});
 			});
-			const messageHeatmap = Array.from(heatmapMap.entries()).map(
-				([k, count]) => {
-					const [weekday, hourStr] = k.split("_");
-					return { weekday, hour: Number(hourStr), count };
-				},
-			);
+			const messageHeatmap = Array.from(heatmapMap.entries())
+				.map(([k, count]) => {
+					const parts = k.split("_");
+					if (parts.length !== 2) return null;
+					const [weekday, hourStr] = parts;
+					const hour = Number(hourStr);
+					if (!weekday || Number.isNaN(hour)) return null;
+					return { weekday, hour, count };
+				})
+				.filter((item): item is NonNullable<typeof item> => item !== null);
 
 			const topCustomers = (() => {
 				const map = new Map<
@@ -824,10 +923,10 @@ export const useDashboardData = () => {
 				uniqueCustomerIds.forEach((id) => {
 					const msgs = (filteredConversationEntries.find(
 						([k]) => k === id,
-					)?.[1] ?? []) as any[];
+					)?.[1] ?? []) as ConversationMessage[];
 					const resv = (filteredReservationEntries.find(
 						([k]) => k === id,
-					)?.[1] ?? []) as any[];
+					)?.[1] ?? []) as Reservation[];
 					const lastMsg = msgs
 						.map((m) => parseMessageDate(m))
 						.filter(Boolean)
@@ -863,7 +962,13 @@ export const useDashboardData = () => {
 			const words: Record<string, number> = {};
 			filteredConversationEntries.forEach(([, msgs]) => {
 				(Array.isArray(msgs) ? msgs : []).forEach((m) => {
-					const text = ((m as any).text || (m as any).message || "")
+					const text = (
+						(m as ConversationMessage & { text?: string; message?: string })
+							.text ||
+						(m as ConversationMessage & { text?: string; message?: string })
+							.message ||
+						""
+					)
 						.toString()
 						.toLowerCase();
 					const tokens = text
@@ -891,14 +996,17 @@ export const useDashboardData = () => {
 				(Array.isArray(items) ? items : []).forEach((r) => {
 					const d = parseReservationDate(r);
 					if (!d) return;
-					const day = weekdays[d.getDay()];
-					const entry = dayOfWeekMap.get(day) || {
+					const dayIndex = d.getDay();
+					if (dayIndex < 0 || dayIndex >= weekdays.length) return;
+					const day = weekdays[dayIndex];
+					const entry = dayOfWeekMap.get(day || "") || {
 						reservations: 0,
 						cancellations: 0,
 					};
 					entry.reservations += 1;
-					if ((r as any).cancelled === true) entry.cancellations += 1;
-					dayOfWeekMap.set(day, entry);
+					if ((r as Reservation & { cancelled?: boolean }).cancelled === true)
+						entry.cancellations += 1;
+					dayOfWeekMap.set(day || "", entry);
 				});
 			});
 			const dayOfWeekData = Array.from(dayOfWeekMap.entries()).map(
@@ -926,7 +1034,8 @@ export const useDashboardData = () => {
 						conversations: 0,
 					};
 					entry.reservations += 1;
-					if ((r as any).cancelled === true) entry.cancellations += 1;
+					if ((r as Reservation & { cancelled?: boolean }).cancelled === true)
+						entry.cancellations += 1;
 					monthMap.set(key, entry);
 				});
 			});
@@ -948,6 +1057,9 @@ export const useDashboardData = () => {
 				.sort((a, b) => a[0].localeCompare(b[0]))
 				.map(([key, v]) => {
 					const [y, m] = key.split("-").map(Number);
+					if (!y || !m || Number.isNaN(y) || Number.isNaN(m)) {
+						return null;
+					}
 					const date = new Date(y, m - 1, 1);
 					const isRTLFlag = (() => {
 						if (typeof window === "undefined") return false;
@@ -966,7 +1078,8 @@ export const useDashboardData = () => {
 						cancellations: v.cancellations,
 						conversations: v.conversations,
 					};
-				});
+				})
+				.filter((item): item is NonNullable<typeof item> => item !== null);
 
 			const prom = prometheusMetrics || {};
 
@@ -976,7 +1089,11 @@ export const useDashboardData = () => {
 			reservationEntries.forEach(([id, items]) => {
 				const hasUpcoming = (Array.isArray(items) ? items : []).some((r) => {
 					const d = parseReservationDate(r);
-					return d && d > now && (r as any).cancelled !== true;
+					return (
+						d &&
+						d > now &&
+						(r as Reservation & { cancelled?: boolean }).cancelled !== true
+					);
 				});
 				if (hasUpcoming) activeUpcomingCustomerIds.add(id);
 			});
@@ -985,7 +1102,11 @@ export const useDashboardData = () => {
 				(sum, [, items]) =>
 					sum +
 					(Array.isArray(items)
-						? items.filter((r) => (r as any).cancelled === true).length
+						? items.filter(
+								(r) =>
+									(r as Reservation & { cancelled?: boolean }).cancelled ===
+									true,
+							).length
 						: 0),
 				0,
 			);
@@ -993,7 +1114,11 @@ export const useDashboardData = () => {
 				(sum, [, items]) =>
 					sum +
 					(Array.isArray(items)
-						? items.filter((r) => (r as any).cancelled === true).length
+						? items.filter(
+								(r) =>
+									(r as Reservation & { cancelled?: boolean }).cancelled ===
+									true,
+							).length
 						: 0),
 				0,
 			);
@@ -1060,38 +1185,58 @@ export const useDashboardData = () => {
 					},
 				},
 				prometheusMetrics: {
-					cpu_percent: ((): number | undefined => {
-						const p: any = prom as any;
-						if (typeof p.process_cpu_percent === "number")
-							return p.process_cpu_percent as number;
-						if (typeof (prom as any).cpu_percent === "number")
-							return (prom as any).cpu_percent as number;
-						return undefined;
-					})(),
-					memory_bytes: ((): number | undefined => {
-						const p: any = prom as any;
-						if (typeof p.process_memory_bytes === "number")
-							return p.process_memory_bytes as number;
-						if (typeof (prom as any).memory_bytes === "number")
-							return (prom as any).memory_bytes as number;
-						return undefined;
-					})(),
-					reservations_requested_total: prom.reservations_requested_total,
-					reservations_successful_total: prom.reservations_successful_total,
-					reservations_failed_total: prom.reservations_failed_total,
-					reservations_cancellation_requested_total:
-						prom.reservations_cancellation_requested_total,
-					reservations_cancellation_successful_total:
-						prom.reservations_cancellation_successful_total,
-					reservations_cancellation_failed_total:
-						prom.reservations_cancellation_failed_total,
-					reservations_modification_requested_total:
-						prom.reservations_modification_requested_total,
-					reservations_modification_successful_total:
-						prom.reservations_modification_successful_total,
-					reservations_modification_failed_total:
-						prom.reservations_modification_failed_total,
-				},
+					...(typeof prom.process_cpu_percent === "number" && {
+						cpu_percent: prom.process_cpu_percent,
+					}),
+					...(typeof prom.cpu_percent === "number" && {
+						cpu_percent: prom.cpu_percent,
+					}),
+					...(typeof prom.process_memory_bytes === "number" && {
+						memory_bytes: prom.process_memory_bytes,
+					}),
+					...(typeof prom.memory_bytes === "number" && {
+						memory_bytes: prom.memory_bytes,
+					}),
+					...(typeof prom.reservations_requested_total === "number" && {
+						reservations_requested_total: prom.reservations_requested_total,
+					}),
+					...(typeof prom.reservations_successful_total === "number" && {
+						reservations_successful_total: prom.reservations_successful_total,
+					}),
+					...(typeof prom.reservations_failed_total === "number" && {
+						reservations_failed_total: prom.reservations_failed_total,
+					}),
+					...(typeof prom.reservations_cancellation_requested_total ===
+						"number" && {
+						reservations_cancellation_requested_total:
+							prom.reservations_cancellation_requested_total,
+					}),
+					...(typeof prom.reservations_cancellation_successful_total ===
+						"number" && {
+						reservations_cancellation_successful_total:
+							prom.reservations_cancellation_successful_total,
+					}),
+					...(typeof prom.reservations_cancellation_failed_total ===
+						"number" && {
+						reservations_cancellation_failed_total:
+							prom.reservations_cancellation_failed_total,
+					}),
+					...(typeof prom.reservations_modification_requested_total ===
+						"number" && {
+						reservations_modification_requested_total:
+							prom.reservations_modification_requested_total,
+					}),
+					...(typeof prom.reservations_modification_successful_total ===
+						"number" && {
+						reservations_modification_successful_total:
+							prom.reservations_modification_successful_total,
+					}),
+					...(typeof prom.reservations_modification_failed_total ===
+						"number" && {
+						reservations_modification_failed_total:
+							prom.reservations_modification_failed_total,
+					}),
+				} as PrometheusMetrics,
 				dailyTrends,
 				typeDistribution,
 				timeSlots,
@@ -1108,8 +1253,18 @@ export const useDashboardData = () => {
 													(s, m) =>
 														s +
 														(
-															(m as any).text ||
-															(m as any).message ||
+															(
+																m as ConversationMessage & {
+																	text?: string;
+																	message?: string;
+																}
+															).text ||
+															(
+																m as ConversationMessage & {
+																	text?: string;
+																	message?: string;
+																}
+															).message ||
 															""
 														).toString().length,
 													0,
@@ -1127,7 +1282,21 @@ export const useDashboardData = () => {
 											? msgs.reduce(
 													(s, m) =>
 														s +
-														((m as any).text || (m as any).message || "")
+														(
+															(
+																m as ConversationMessage & {
+																	text?: string;
+																	message?: string;
+																}
+															).text ||
+															(
+																m as ConversationMessage & {
+																	text?: string;
+																	message?: string;
+																}
+															).message ||
+															""
+														)
 															.toString()
 															.trim()
 															.split(/\s+/)
@@ -1144,9 +1313,7 @@ export const useDashboardData = () => {
 					uniqueCustomers,
 					responseTimeStats: {
 						avg: Number.isFinite(avgResponseTime) ? avgResponseTime : 0,
-						median: Number.isFinite(median(responseDurationsMinutes))
-							? median(responseDurationsMinutes)
-							: 0,
+						median: median(responseDurationsMinutes),
 						max: responseDurationsMinutes.length
 							? Math.max(...responseDurationsMinutes)
 							: 0,

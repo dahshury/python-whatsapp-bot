@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import { useVacationsData } from "@/lib/websocket-data-provider";
+import { useVacationsData, type Vacation } from "@/lib/websocket-data-provider";
 
 export interface VacationPeriod {
 	start: Date;
@@ -34,7 +34,7 @@ const VacationContext = React.createContext<VacationContextValue>({
 	handleDateClick: () => {},
 });
 
-export const VacationProvider: React.FC<React.PropsWithChildren<{}>> = ({
+export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 	children,
 }) => {
 	const [vacationPeriods, setVacationPeriods] = React.useState<
@@ -59,7 +59,7 @@ export const VacationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 			// Guard against overwriting local optimistic updates immediately after user changes
 			if (Date.now() < suppressSyncUntilRef.current) return;
 			if (Array.isArray(vacations)) {
-				const periods = vacations.map((p: any) => ({
+				const periods = vacations.map((p: Vacation) => ({
 					start: new Date(p.start),
 					end: new Date(p.end),
 				}));
@@ -137,12 +137,14 @@ export const VacationProvider: React.FC<React.PropsWithChildren<{}>> = ({
 				const current = { ...next[idx] };
 				if (field === "start") {
 					current.start = normalized;
-					if (current.end < current.start) current.end = new Date(normalized);
+					if (current.end && current.end < current.start)
+						current.end = new Date(normalized);
 				} else {
 					current.end = normalized;
-					if (current.start > current.end) current.start = new Date(normalized);
+					if (current.start && current.start > current.end)
+						current.start = new Date(normalized);
 				}
-				next[idx] = current;
+				next[idx] = current as VacationPeriod;
 				vacationUpdatedRef.current?.(next);
 				try {
 					sendVacationUpdate?.({

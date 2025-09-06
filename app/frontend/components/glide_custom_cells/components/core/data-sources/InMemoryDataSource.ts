@@ -93,14 +93,6 @@ export class InMemoryDataSource implements IDataSource {
 				dataType: ColumnDataType.TIME,
 				isEditable: true,
 			},
-			{
-				id: "phone",
-				name: "Phone",
-				title: "Phone",
-				dataType: ColumnDataType.PHONE,
-				isEditable: true,
-				width: 105,
-			},
 		];
 	}
 

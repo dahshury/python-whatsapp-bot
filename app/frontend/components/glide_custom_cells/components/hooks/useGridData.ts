@@ -8,7 +8,7 @@ import {
 } from "@glideapps/glide-data-grid";
 import React from "react";
 import { EditingState } from "../models/EditingState";
-import type { PhoneInputCell } from "../PhoneInputCell";
+
 import { FormattingService } from "../services/FormattingService";
 import type { TempusDateCell } from "../TempusDominusDateCell";
 import type { TimekeeperCell } from "../TimekeeperCell";
@@ -116,8 +116,6 @@ const generateSampleData = (row: number, col: number): unknown => {
 				Math.floor(random() * 24),
 				Math.floor(random() * 60),
 			);
-		case 5:
-			return `+1${Math.floor(4160000000 + random() * 1000000000)}`;
 		default:
 			return `Cell ${row},${col}`;
 	}
@@ -273,18 +271,6 @@ function getInitialCell(
 				allowOverlay: true,
 			} as TimekeeperCell;
 		}
-		case 5: // Phone
-			return {
-				kind: GridCellKind.Custom,
-				data: {
-					kind: "phone-input-cell",
-					phone: String(data ?? ""),
-					displayPhone: String(data ?? ""),
-					isDarkTheme: theme === darkTheme,
-				},
-				copyData: String(data ?? ""),
-				allowOverlay: true,
-			} as PhoneInputCell;
 		default:
 			return {
 				kind: GridCellKind.Text,

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
-import { VacationEventsService } from "@/lib/vacation-events-service";
 import type { VacationPeriod } from "@/types/calendar";
 
 interface UseCalendarInitializationProps {
@@ -43,7 +42,7 @@ export function useCalendarInitialization({
 			if (calendarRef?.current) {
 				const api = calendarRef.current.getApi();
 				if (api) {
-					VacationEventsService.updateVacationEvents(api, vacationPeriods);
+					updateVacationEvents(api, vacationPeriods);
 					console.log(
 						"🔄 [CALENDAR-INIT] Vacation events updated via FullCalendar API",
 					);

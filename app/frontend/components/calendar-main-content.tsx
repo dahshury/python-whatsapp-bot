@@ -16,7 +16,8 @@ interface CalendarMainContentProps {
 	processedEvents: CalendarEvent[];
 	currentView: string;
 	currentDate: Date;
-	isRTL: boolean;
+	isRTL?: boolean;
+	isLocalized?: boolean;
 	freeRoam: boolean;
 	slotTimes: {
 		slotMinTime: string;
@@ -86,6 +87,7 @@ export function CalendarMainContent({
 	currentView,
 	currentDate,
 	isRTL,
+	isLocalized,
 	freeRoam,
 	slotTimes,
 	slotTimesKey,
@@ -110,6 +112,7 @@ export function CalendarMainContent({
 	isHydrated,
 	setCurrentDate,
 }: CalendarMainContentProps) {
+	const _isRTL = (isRTL ?? isLocalized === true) === true;
 	return (
 		<>
 			<CalendarCore
@@ -117,7 +120,7 @@ export function CalendarMainContent({
 				events={processedEvents}
 				currentView={currentView}
 				currentDate={currentDate}
-				isRTL={isRTL}
+				isRTL={_isRTL}
 				freeRoam={freeRoam}
 				slotTimes={slotTimes}
 				slotTimesKey={slotTimesKey}
@@ -137,7 +140,7 @@ export function CalendarMainContent({
 								event?: { extendedProps?: { wa_id?: string; waId?: string } };
 							}
 						)?.event?.extendedProps?.waId ||
-						info.event.id;
+						info.event?.id;
 					handleOpenConversation(waId);
 					if (callbacks.eventClick) {
 						callbacks.eventClick(info);
@@ -148,16 +151,16 @@ export function CalendarMainContent({
 						handleEventChange(info);
 					} catch {}
 				}}
-				onViewChange={onViewChange}
+				{...(onViewChange && { onViewChange })}
 				onContextMenu={contextMenu.handleContextMenu}
 				onViewDidMount={(info) => {
 					if (isHydrated) {
 						const newHeight = calculateCalendarHeight(info.view.type);
 						setCalendarHeight(newHeight);
-						setCurrentView(info.view.type);
+						if (info.view.type !== currentView) setCurrentView(info.view.type);
 
 						if (onViewChange) {
-							onViewChange(info.view.type);
+							if (info.view.type !== currentView) onViewChange(info.view.type);
 						}
 
 						if (info.view.type === "multiMonthYear") {
@@ -169,9 +172,11 @@ export function CalendarMainContent({
 				}}
 				onDatesSet={(info) => {
 					if (isHydrated) {
-						setCurrentView(info.view.type);
-						if (onViewChange) {
-							onViewChange(info.view.type);
+						if (info.view.type !== currentView) {
+							setCurrentView(info.view.type);
+							if (onViewChange) {
+								onViewChange(info.view.type);
+							}
 						}
 					}
 				}}
@@ -212,7 +217,7 @@ export function CalendarMainContent({
 						isDragging={dragHandlers.isDragging}
 						conversations={conversations}
 						reservations={reservations}
-						isRTL={isRTL}
+						isRTL={_isRTL}
 						onMouseEnter={hoverCard.onHoverCardMouseEnter}
 						onMouseLeave={hoverCard.onHoverCardMouseLeave}
 					/>

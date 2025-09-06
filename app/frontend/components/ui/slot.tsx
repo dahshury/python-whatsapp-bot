@@ -30,11 +30,13 @@ function composeRefs<T>(
 export const Slot = React.forwardRef<HTMLElement, SlotProps>((props, ref) => {
 	const { children, ...rest } = props;
 	if (React.isValidElement(children)) {
-		const childElement = children as React.ReactElement<any>;
-		const childProps = (childElement.props as any) ?? {};
+		const childElement = children as React.ReactElement;
+		const childProps = (childElement.props ?? {}) as Record<string, unknown>;
 		const childRef = childProps.ref as React.Ref<HTMLElement> | undefined;
-		const mergedProps: any = { ...rest, ref: composeRefs(childRef, ref) };
-		return React.cloneElement(childElement as any, mergedProps);
+		const mergedProps: Record<string, unknown> & {
+			ref: React.RefCallback<HTMLElement> | React.Ref<HTMLElement>;
+		} = { ...rest, ref: composeRefs(childRef, ref) };
+		return React.cloneElement(childElement, mergedProps);
 	}
 	return null;
 });

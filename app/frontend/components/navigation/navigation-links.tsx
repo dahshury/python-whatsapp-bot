@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils";
 import type { NavigationLinksProps } from "@/types/navigation";
 
 export const NavigationLinks = React.memo(function NavigationLinks({
-	isRTL = false,
+	isLocalized = false,
 	className = "",
 }: NavigationLinksProps) {
 	const pathname = usePathname();
@@ -28,7 +28,7 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 					<TooltipTrigger asChild>
 						<Link
 							href="/dashboard"
-							aria-label={isRTL ? "لوحة التحكم" : "Dashboard"}
+							aria-label={isLocalized ? "لوحة التحكم" : "Dashboard"}
 							className={cn(
 								buttonVariants({
 									variant: isDashboardActive ? "default" : "ghost",
@@ -43,7 +43,7 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 						</Link>
 					</TooltipTrigger>
 					<TooltipContent>
-						<p>{isRTL ? "لوحة التحكم" : "Dashboard"}</p>
+						<p>{isLocalized ? "لوحة التحكم" : "Dashboard"}</p>
 					</TooltipContent>
 				</Tooltip>
 			</DockIcon>
@@ -54,15 +54,15 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 });
 
 export const CalendarLink = React.memo(function CalendarLink({
-	isRTL = false,
+	isLocalized = false,
 	className = "",
-}: Pick<NavigationLinksProps, "isRTL" | "className">) {
+}: Pick<NavigationLinksProps, "isLocalized" | "className">) {
 	return (
 		<DockIcon>
 			<Link
 				href="/"
 				prefetch={false}
-				aria-label={isRTL ? "التقويم" : "Calendar"}
+				aria-label={isLocalized ? "التقويم" : "Calendar"}
 				className={cn(
 					buttonVariants({
 						variant: "ghost",

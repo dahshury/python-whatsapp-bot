@@ -25,6 +25,17 @@ export interface Reservation {
 	customer_name: string;
 	type: number; // 0 or 1
 	cancelled?: boolean;
+	// Optional timestamp fields that may be present
+	updated_at?: string;
+	modified_at?: string;
+	last_modified?: string;
+	modified_on?: string;
+	update_ts?: string;
+	history?: Array<{
+		ts?: string;
+		timestamp?: string;
+		[key: string]: unknown;
+	}>;
 	[key: string]: unknown;
 }
 

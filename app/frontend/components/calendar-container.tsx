@@ -1,6 +1,7 @@
+"use client";
+
 import type React from "react";
 import { CalendarSkeleton } from "./calendar-skeleton";
-import { CalendarErrorFallback, ErrorBoundary } from "./error-boundary";
 
 interface CalendarContainerProps {
 	loading: boolean;
@@ -20,9 +21,7 @@ export function CalendarContainer({
 		return <CalendarSkeleton />;
 	}
 
-	const content = (
-		<ErrorBoundary fallback={CalendarErrorFallback}>{children}</ErrorBoundary>
-	);
+	const content = children;
 
 	// Show blurred calendar when refreshing
 	if (isRefreshing) {

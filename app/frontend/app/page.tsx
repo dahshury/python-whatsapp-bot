@@ -51,17 +51,7 @@ import {
 	useReservationsData,
 } from "@/lib/websocket-data-provider";
 
-// Lazy load the calendar components to improve initial load time
-const _FullCalendarComponent = dynamic(
-	() =>
-		import("@/components/fullcalendar").then((mod) => ({
-			default: mod.FullCalendarComponent,
-		})),
-	{
-		loading: () => <CalendarSkeleton />,
-		ssr: false,
-	},
-);
+// FullCalendar component is loaded dynamically in DualCalendarComponent when needed
 
 const DualCalendarComponent = dynamic(
 	() =>
@@ -95,10 +85,10 @@ export default function HomePage() {
 
 	// CalendarCore will populate calendarRef directly through forwardRef
 	// Stage C: Load events via existing hook (no extra UI around it)
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const eventsState = useCalendarEvents({
 		freeRoam,
-		isRTL,
+		isRTL: isLocalized,
 		autoRefresh: false,
 	});
 	// Pull live conversations/reservations so hover card has real data
@@ -152,7 +142,7 @@ export default function HomePage() {
 						time_slot: time,
 						customer_name: String(r?.customer_name || r?.title || waId),
 						type: typeof r?.type === "number" ? (r.type as number) : 0,
-						cancelled: r?.cancelled === true ? true : undefined,
+						cancelled: r?.cancelled === true,
 					};
 				},
 			);
@@ -208,18 +198,11 @@ export default function HomePage() {
 
 	// No need for complex callback ref - CalendarCore will populate calendarRef directly
 
-	// Dual calendar refs and view states
-	const _dualCalendarRef = React.useRef<{
-		leftCalendarRef: React.RefObject<CalendarCoreRef>;
-		rightCalendarRef: React.RefObject<CalendarCoreRef>;
-		leftView: string;
-		rightView: string;
-	}>(null);
+	// Dual calendar refs and view states (ref is managed by callback ref below)
 	// Stage I: adopt useCalendarState for robust view/date/slotTimes
 	const calendarState = useCalendarState({
 		freeRoam,
 		initialView: "multiMonthYear",
-		initialDate: undefined,
 	});
 
 	// Stage M: Enable real data-table editor state
@@ -230,7 +213,7 @@ export default function HomePage() {
 	const eventHandlers = useCalendarEventHandlers({
 		events: eventsState.events,
 		conversations: {},
-		isRTL,
+		isRTL: isLocalized,
 		currentView: calendarState.currentView,
 		isVacationDate,
 		handleRefreshWithBlur: async () => {},
@@ -249,9 +232,7 @@ export default function HomePage() {
 		() =>
 			createCalendarCallbacks(
 				{
-					isChangingHours: calendarState.isChangingHours,
-					setIsChangingHours: calendarState.setIsChangingHours,
-					isRTL,
+					isRTL: isLocalized,
 					currentView: calendarState.currentView,
 					isVacationDate,
 					openEditor: (opts: { start: string; end?: string }) => {
@@ -269,13 +250,10 @@ export default function HomePage() {
 					? handleVacationDateClick
 					: undefined,
 				calendarState.setCurrentDate,
-				calendarState.updateSlotTimes,
 				calendarState.currentView,
 			),
 		[
-			calendarState.isChangingHours,
-			calendarState.setIsChangingHours,
-			isRTL,
+			isLocalized,
 			calendarState.currentView,
 			isVacationDate,
 			dataTableEditor.openEditor,
@@ -287,7 +265,6 @@ export default function HomePage() {
 			recordingState.field,
 			handleVacationDateClick,
 			calendarState.setCurrentDate,
-			calendarState.updateSlotTimes,
 		],
 	);
 
@@ -317,7 +294,7 @@ export default function HomePage() {
 		}
 	}, [rightCalendarView]);
 
-	// Track dual calendar refs directly
+	// Track dual calendar refs directly with guard to avoid re-render loops
 	const [leftCalendarRef, setLeftCalendarRef] =
 		React.useState<React.RefObject<CalendarCoreRef> | null>(null);
 	const [rightCalendarRef, setRightCalendarRef] =
@@ -335,8 +312,16 @@ export default function HomePage() {
 		) => {
 			mark("HomePage:dualCalendarCallbackRef");
 			if (dualCalendarInstance) {
-				setLeftCalendarRef(dualCalendarInstance.leftCalendarRef);
-				setRightCalendarRef(dualCalendarInstance.rightCalendarRef);
+				setLeftCalendarRef((prev) =>
+					prev !== dualCalendarInstance.leftCalendarRef
+						? dualCalendarInstance.leftCalendarRef
+						: prev,
+				);
+				setRightCalendarRef((prev) =>
+					prev !== dualCalendarInstance.rightCalendarRef
+						? dualCalendarInstance.rightCalendarRef
+						: prev,
+				);
 			}
 		},
 		[],
@@ -356,7 +341,7 @@ export default function HomePage() {
 								currentView={calendarState.currentView}
 								calendarRef={leftCalendarRef}
 								freeRoam={freeRoam}
-								isRTL={isRTL}
+								isRTL={isLocalized}
 							/>
 						</div>
 						<DockNavSimple
@@ -376,7 +361,7 @@ export default function HomePage() {
 								currentView={rightCalendarView}
 								calendarRef={rightCalendarRef}
 								freeRoam={freeRoam}
-								isRTL={isRTL}
+								isRTL={isLocalized}
 							/>
 						</div>
 					</div>
@@ -461,7 +446,7 @@ export default function HomePage() {
 										processedEvents={filteredEvents}
 										currentView={calendarState.currentView}
 										currentDate={calendarState.currentDate}
-										isRTL={isRTL}
+										isLocalized={isLocalized}
 										freeRoam={freeRoam}
 										slotTimes={calendarState.slotTimes}
 										slotTimesKey={calendarState.slotTimesKey}
@@ -506,7 +491,7 @@ export default function HomePage() {
 									events={eventsState.events}
 									freeRoam={freeRoam}
 									calendarRef={calendarRef}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 									slotDurationHours={SLOT_DURATION_HOURS}
 									onOpenChange={dataTableEditor.setEditorOpen}
 									onEventAdded={eventHandlers.handleEventAdded ?? (() => {})}

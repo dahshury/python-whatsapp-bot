@@ -1,8 +1,24 @@
 import type { DashboardData } from "@/types/dashboard";
 
+interface ReservationItem {
+	date?: string;
+	time_slot?: string;
+	time?: string;
+	start?: string;
+	[key: string]: unknown;
+}
+
+interface ConversationItem {
+	date?: string;
+	time?: string;
+	ts?: string;
+	datetime?: string;
+	[key: string]: unknown;
+}
+
 export function computeDashboardData(
-	conversations: Record<string, any[]>,
-	reservations: Record<string, any[]>,
+	conversations: Record<string, ConversationItem[]>,
+	reservations: Record<string, ReservationItem[]>,
 	activeRange?: { fromDate?: string; toDate?: string },
 ): DashboardData | null {
 	try {
@@ -14,7 +30,7 @@ export function computeDashboardData(
 			const d = new Date(value);
 			return Number.isNaN(d.getTime()) ? null : d;
 		};
-		const parseReservationDate = (r: any) => {
+		const parseReservationDate = (r: ReservationItem) => {
 			const iso = parseISO(r?.start);
 			if (iso) return iso;
 			const date: string | undefined = r?.date;
@@ -23,7 +39,7 @@ export function computeDashboardData(
 			if (date) return parseISO(`${date}T00:00:00`);
 			return null;
 		};
-		const parseMessageDate = (m: any) => {
+		const parseMessageDate = (m: ConversationItem) => {
 			const iso = parseISO(m?.ts || m?.datetime);
 			if (iso) return iso;
 			const date: string | undefined = m?.date;
@@ -122,17 +138,13 @@ export function computeDashboardData(
 
 		// Unique customers based on full datasets (not filtered) so denominators make sense,
 		// while time-bounded metrics use filtered subsets
-		const _uniqueCustomerIds = new Set<string>([
-			...Object.keys(reservations ?? {}),
-			...Object.keys(conversations ?? {}),
-		]);
 
 		const filteredReservationEntries = reservationEntries.map(([id, items]) => [
 			id,
 			(Array.isArray(items) ? items : []).filter((r) =>
 				withinRange(parseReservationDate(r)),
 			),
-		]) as [string, any[]][];
+		]) as [string, ConversationMessage[]][];
 		const filteredConversationEntries = conversationEntries.map(
 			([id, msgs]) => [
 				id,
@@ -140,7 +152,7 @@ export function computeDashboardData(
 					withinRange(parseMessageDate(m)),
 				),
 			],
-		) as [string, any[]][];
+		) as [string, ConversationMessage[]][];
 
 		// Previous period filtered datasets
 		const prevReservationEntries = reservationEntries.map(([id, items]) => [
@@ -148,13 +160,13 @@ export function computeDashboardData(
 			(Array.isArray(items) ? items : []).filter((r) =>
 				withinPrevRange(parseReservationDate(r)),
 			),
-		]) as [string, any[]][];
+		]) as [string, ConversationMessage[]][];
 		const prevConversationEntries = conversationEntries.map(([id, msgs]) => [
 			id,
 			(Array.isArray(msgs) ? msgs : []).filter((m) =>
 				withinPrevRange(parseMessageDate(m)),
 			),
-		]) as [string, any[]][];
+		]) as [string, ConversationMessage[]][];
 
 		const totalReservations = filteredReservationEntries.reduce(
 			(sum, [, items]) => sum + (Array.isArray(items) ? items.length : 0),
@@ -165,10 +177,6 @@ export function computeDashboardData(
 			0,
 		);
 		const totalMessages = filteredConversationEntries.reduce(
-			(sum, [, msgs]) => sum + (Array.isArray(msgs) ? msgs.length : 0),
-			0,
-		);
-		const _prevTotalMessages = prevConversationEntries.reduce(
 			(sum, [, msgs]) => sum + (Array.isArray(msgs) ? msgs.length : 0),
 			0,
 		);
@@ -263,9 +271,9 @@ export function computeDashboardData(
 					.map((m) => ({
 						d: parseMessageDate(m),
 						role:
-							(m as any).role ||
-							(m as any).sender ||
-							(m as any).author ||
+							(m as ConversationMessage & { role?: string }).role ||
+							(m as ConversationMessage & { sender?: string }).sender ||
+							(m as ConversationMessage & { author?: string }).author ||
 							"user",
 					}))
 					.filter((x) => Boolean(x.d))
@@ -273,6 +281,7 @@ export function computeDashboardData(
 				for (let i = 1; i < sorted.length; i++) {
 					const prev = sorted[i - 1];
 					const curr = sorted[i];
+					if (!prev || !curr) continue;
 					const prevIsCustomer =
 						String(prev.role).toLowerCase() !== "assistant";
 					const currIsAssistant =
@@ -293,9 +302,9 @@ export function computeDashboardData(
 					.map((m) => ({
 						d: parseMessageDate(m),
 						role:
-							(m as any).role ||
-							(m as any).sender ||
-							(m as any).author ||
+							(m as ConversationMessage & { role?: string }).role ||
+							(m as ConversationMessage & { sender?: string }).sender ||
+							(m as ConversationMessage & { author?: string }).author ||
 							"user",
 					}))
 					.filter((x) => Boolean(x.d))
@@ -303,6 +312,7 @@ export function computeDashboardData(
 				for (let i = 1; i < sorted.length; i++) {
 					const prev = sorted[i - 1];
 					const curr = sorted[i];
+					if (!prev || !curr) continue;
 					const prevIsCustomer =
 						String(prev.role).toLowerCase() !== "assistant";
 					const currIsAssistant =
@@ -319,17 +329,13 @@ export function computeDashboardData(
 
 		const avg = (arr: number[]) =>
 			arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
-		const _median = (arr: number[]) => {
-			if (arr.length === 0) return 0;
-			const s = [...arr].sort((a, b) => a - b);
-			const mid = Math.floor(s.length / 2);
-			return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-		};
 
 		const avgResponseTime = Math.min(60, avg(responseDurationsMinutes));
 		const prevAvgResponseTime = Math.min(60, avg(prevResponseDurationsMinutes));
 
-		const prom = (globalThis as any).__prom_metrics__ || {};
+		const prom =
+			(globalThis as { __prom_metrics__?: Record<string, unknown> })
+				.__prom_metrics__ || {};
 
 		// Active customers: customers with at least one upcoming (future) reservation
 		const now = new Date();
@@ -337,7 +343,11 @@ export function computeDashboardData(
 		reservationEntries.forEach(([id, items]) => {
 			const hasUpcoming = (Array.isArray(items) ? items : []).some((r) => {
 				const d = parseReservationDate(r);
-				return d && d > now && (r as any).cancelled !== true;
+				return (
+					d &&
+					d > now &&
+					(r as Reservation & { cancelled?: boolean }).cancelled !== true
+				);
 			});
 			if (hasUpcoming) activeUpcomingCustomerIds.add(id);
 		});
@@ -346,7 +356,10 @@ export function computeDashboardData(
 			(sum, [, items]) =>
 				sum +
 				(Array.isArray(items)
-					? items.filter((r) => (r as any).cancelled === true).length
+					? items.filter(
+							(r) =>
+								(r as Reservation & { cancelled?: boolean }).cancelled === true,
+						).length
 					: 0),
 			0,
 		);
@@ -354,7 +367,10 @@ export function computeDashboardData(
 			(sum, [, items]) =>
 				sum +
 				(Array.isArray(items)
-					? items.filter((r) => (r as any).cancelled === true).length
+					? items.filter(
+							(r) =>
+								(r as Reservation & { cancelled?: boolean }).cancelled === true,
+						).length
 					: 0),
 			0,
 		);

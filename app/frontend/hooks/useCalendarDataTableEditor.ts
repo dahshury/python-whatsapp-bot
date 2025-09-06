@@ -15,13 +15,14 @@ export function useCalendarDataTableEditor() {
 
 	const openEditor = useCallback((dateRange: DateRange) => {
 		setSelectedDateRange(dateRange);
+		// Load immediately to avoid empty state and flicker on rapid re-opens
+		setShouldLoadEditor(true);
 		setEditorOpen(true);
-		setTimeout(() => setShouldLoadEditor(true), 50);
 	}, []);
 
 	const closeEditor = useCallback(() => {
 		setEditorOpen(false);
-		setShouldLoadEditor(false);
+		// Keep shouldLoadEditor true after the first load to avoid remount flicker
 	}, []);
 
 	const handleEditReservation = useCallback(

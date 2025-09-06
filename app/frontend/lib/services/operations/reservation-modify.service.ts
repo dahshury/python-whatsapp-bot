@@ -1,17 +1,16 @@
 /* eslint-disable */
 import { toastService } from "@/lib/toast-service";
-import { notificationManager } from "../notifications/notification-manager.service";
+import type { CalendarIntegrationService } from "../calendar/calendar-integration.service";
 import type {
+	ApiResponse,
 	CalendarEvent,
 	OperationResult,
 	RowChange,
 	SuccessfulOperation,
-	ApiResponse,
 } from "../types/data-table-types";
-import { CalendarIntegrationService } from "../calendar/calendar-integration.service";
-import { WebSocketService } from "../websocket/websocket.service";
-import { FormattingService } from "../utils/formatting.service";
-import { LocalEchoManager } from "../utils/local-echo.manager";
+import type { FormattingService } from "../utils/formatting.service";
+import type { LocalEchoManager } from "../utils/local-echo.manager";
+import type { WebSocketService } from "../websocket/websocket.service";
 
 export class ReservationModifyService {
 	constructor(
@@ -42,6 +41,22 @@ export class ReservationModifyService {
 			try {
 				// Optimistic UI updates
 				this.applyOptimisticUpdates(modificationData);
+
+				// Reflow previous slot first (use base slot time if known)
+				try {
+					const prevDate = modificationData.prevDate;
+					const prevTime = (String(original?.extendedProps?.slotTime || "") ||
+						modificationData.prevStartStr.split("T")[1]?.slice(0, 5) ||
+						"00:00") as string;
+					if (prevDate && prevTime) {
+						console.log("[CAL] reflow prev slot", {
+							prevDate,
+							prevTime,
+							evId: modificationData.evId,
+						});
+						this.calendarIntegration.reflowSlot(prevDate, prevTime);
+					}
+				} catch {}
 
 				// Backend modification - normalize time to slot base
 				const slotTime = this.formattingService.normalizeToSlotBase(
@@ -93,6 +108,23 @@ export class ReservationModifyService {
 					},
 				});
 
+				// Reflow new slot to apply deterministic ordering and spacing (use normalized slot time)
+				try {
+					const baseTimeNew = this.formattingService.normalizeToSlotBase(
+						modificationData.dateStrNew,
+						modificationData.timeStrNew,
+					);
+					console.log("[CAL] reflow new slot", {
+						date: modificationData.dateStrNew,
+						baseTimeNew,
+						evId: modificationData.evId,
+					});
+					this.calendarIntegration.reflowSlot(
+						modificationData.dateStrNew,
+						baseTimeNew,
+					);
+				} catch {}
+
 				// Track successful operation
 				successful.push({
 					type: "modify",
@@ -132,10 +164,31 @@ export class ReservationModifyService {
 		const prevStartStr = original.start;
 		const prevDate = prevStartStr.split("T")[0];
 
-		const timeStrNew = this.formattingService.to24h(
-			change.time || prevStartStr.split("T")[1]?.slice(0, 5) || "00:00",
-		);
-		const dateStrNew = (change.date || prevDate) as string;
+		let dateStrNew = prevDate as string;
+		let timeStrNew = prevStartStr.split("T")[1]?.slice(0, 5) || "00:00";
+		if (change.scheduled_time instanceof Date) {
+			const s = change.scheduled_time;
+			dateStrNew = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, "0")}-${String(s.getDate()).padStart(2, "0")}`;
+			timeStrNew = `${String(s.getHours()).padStart(2, "0")}:${String(s.getMinutes()).padStart(2, "0")}`;
+		} else if (
+			typeof change.scheduled_time === "string" &&
+			change.scheduled_time.includes("T")
+		) {
+			const [dPart, tPart] = change.scheduled_time.split("T");
+			dateStrNew = dPart as string;
+			timeStrNew = this.formattingService.to24h(
+				tPart || prevStartStr.split("T")[1]?.slice(0, 5) || "00:00",
+			);
+		} else {
+			// Backward compatibility
+			timeStrNew = this.formattingService.to24h(
+				(change as unknown as { time?: string }).time ||
+					prevStartStr.split("T")[1]?.slice(0, 5) ||
+					"00:00",
+			);
+			dateStrNew = ((change as unknown as { date?: string }).date ||
+				prevDate) as string;
+		}
 		const typeNew = this.formattingService.parseType(
 			change.type ?? original.extendedProps?.type,
 		);

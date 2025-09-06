@@ -144,7 +144,11 @@ export class DateColumnType implements IColumnType {
 		return { isValid: true };
 	}
 
-	formatValue(value: unknown, formatting?: IColumnFormatting): string {
+	formatValue(
+		value: unknown,
+		formatting?: IColumnFormatting,
+		isLocalized?: boolean,
+	): string {
 		if (!value) return "";
 
 		const date = value instanceof Date ? value : new Date(String(value));
@@ -152,7 +156,9 @@ export class DateColumnType implements IColumnType {
 
 		// Check if we should show Hijri date based on locale/language
 		const isRTL =
-			typeof window !== "undefined" && localStorage.getItem("isRTL") === "true";
+			isLocalized === true ||
+			(typeof window !== "undefined" &&
+				localStorage.getItem("isRTL") === "true");
 
 		if (isRTL && !formatting?.pattern) {
 			// Show Hijri date only

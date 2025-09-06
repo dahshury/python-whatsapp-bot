@@ -8,6 +8,7 @@
 
 "use client";
 
+import type { EventChangeArg } from "@fullcalendar/core";
 import React, {
 	useCallback,
 	useEffect,
@@ -30,7 +31,6 @@ import { handleEventChange as handleEventChangeService } from "@/lib/calendar-ev
 import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { useLanguage } from "@/lib/language-context";
 import { useVacation } from "@/lib/vacation-context";
-import { VacationEventsService } from "@/lib/vacation-events-service";
 import type { CalendarEvent, VacationPeriod } from "@/types/calendar";
 // Components
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
@@ -77,7 +77,7 @@ export const DualCalendarComponent = React.forwardRef<
 		},
 		ref,
 	) => {
-		const { isRTL } = useLanguage();
+		const { isLocalized } = useLanguage();
 		const {
 			handleDateClick: handleVacationDateClick,
 			recordingState,
@@ -120,7 +120,7 @@ export const DualCalendarComponent = React.forwardRef<
 		// Calendar events management - fix conditional hook usage
 		const localEventsState = useCalendarEvents({
 			freeRoam,
-			isRTL,
+			isRTL: isLocalized,
 			autoRefresh: false,
 		});
 
@@ -357,7 +357,7 @@ export const DualCalendarComponent = React.forwardRef<
 				await handleEventChangeService({
 					info,
 					isVacationDate,
-					isRTL,
+					isRTL: isLocalized,
 					currentView: leftCalendarState.currentView,
 					onRefresh: handleRefreshWithBlur,
 					getCalendarApi: leftGetCalendarApi,
@@ -367,7 +367,7 @@ export const DualCalendarComponent = React.forwardRef<
 			},
 			[
 				isVacationDate,
-				isRTL,
+				isLocalized,
 				leftCalendarState.currentView,
 				handleRefreshWithBlur,
 				leftGetCalendarApi,
@@ -423,7 +423,7 @@ export const DualCalendarComponent = React.forwardRef<
 				await handleEventChangeService({
 					info,
 					isVacationDate,
-					isRTL,
+					isRTL: isLocalized,
 					currentView: rightCalendarState.currentView,
 					onRefresh: handleRefreshWithBlur,
 					getCalendarApi: rightGetCalendarApi,
@@ -433,7 +433,7 @@ export const DualCalendarComponent = React.forwardRef<
 			},
 			[
 				isVacationDate,
-				isRTL,
+				isLocalized,
 				rightCalendarState.currentView,
 				handleRefreshWithBlur,
 				rightGetCalendarApi,
@@ -454,36 +454,26 @@ export const DualCalendarComponent = React.forwardRef<
 		// Calendar callback handlers for both calendars (provide required fields)
 		const leftCallbackHandlers: CalendarCallbackHandlers = useMemo(
 			() => ({
-				isChangingHours: false,
-				setIsChangingHours: () => {},
-				isRTL,
+				isRTL: isLocalized,
 				currentView: leftCalendarState.currentView,
 				isVacationDate,
 				openEditor: (_opts: { start: string; end?: string }) => {},
 				handleOpenConversation: (_id: string) => {},
-				handleEventChange: (
-					_eventId: string,
-					_updates: Record<string, unknown>,
-				) => {},
+				handleEventChange: async (_info: EventChangeArg) => {},
 			}),
-			[isRTL, leftCalendarState.currentView, isVacationDate],
+			[isLocalized, leftCalendarState.currentView, isVacationDate],
 		);
 
 		const rightCallbackHandlers: CalendarCallbackHandlers = useMemo(
 			() => ({
-				isChangingHours: false,
-				setIsChangingHours: () => {},
-				isRTL,
+				isRTL: isLocalized,
 				currentView: rightCalendarState.currentView,
 				isVacationDate,
 				openEditor: (_opts: { start: string; end?: string }) => {},
 				handleOpenConversation: (_id: string) => {},
-				handleEventChange: (
-					_eventId: string,
-					_updates: Record<string, unknown>,
-				) => {},
+				handleEventChange: async (_info: EventChangeArg) => {},
 			}),
-			[isRTL, rightCalendarState.currentView, isVacationDate],
+			[isLocalized, rightCalendarState.currentView, isVacationDate],
 		);
 
 		const leftCallbacks = useMemo(
@@ -498,7 +488,6 @@ export const DualCalendarComponent = React.forwardRef<
 						? handleVacationDateClick
 						: undefined,
 					leftCalendarState.setCurrentDate,
-					leftCalendarState.updateSlotTimes,
 					leftCalendarState.currentView,
 				),
 			[
@@ -509,7 +498,6 @@ export const DualCalendarComponent = React.forwardRef<
 				recordingState.field,
 				handleVacationDateClick,
 				leftCalendarState.setCurrentDate,
-				leftCalendarState.updateSlotTimes,
 				leftCalendarState.currentView,
 			],
 		);
@@ -526,7 +514,6 @@ export const DualCalendarComponent = React.forwardRef<
 						? handleVacationDateClick
 						: undefined,
 					rightCalendarState.setCurrentDate,
-					rightCalendarState.updateSlotTimes,
 					rightCalendarState.currentView,
 				),
 			[
@@ -537,7 +524,6 @@ export const DualCalendarComponent = React.forwardRef<
 				recordingState.field,
 				handleVacationDateClick,
 				rightCalendarState.setCurrentDate,
-				rightCalendarState.updateSlotTimes,
 				rightCalendarState.currentView,
 			],
 		);
@@ -555,13 +541,13 @@ export const DualCalendarComponent = React.forwardRef<
 				const rightApi = rightCalendarRef.current?.getApi();
 
 				if (leftApi) {
-					VacationEventsService.updateVacationEvents(leftApi, vacationPeriods);
+					updateVacationEvents(leftApi, vacationPeriods);
 					console.log(
 						"🔄 [DUAL-CALENDAR] Left calendar vacation events updated",
 					);
 				}
 				if (rightApi) {
-					VacationEventsService.updateVacationEvents(rightApi, vacationPeriods);
+					updateVacationEvents(rightApi, vacationPeriods);
 					console.log(
 						"🔄 [DUAL-CALENDAR] Right calendar vacation events updated",
 					);
@@ -592,7 +578,7 @@ export const DualCalendarComponent = React.forwardRef<
 							events={processedLeftEvents}
 							currentView={leftCalendarState.currentView}
 							currentDate={leftCalendarState.currentDate}
-							isRTL={isRTL}
+							isRTL={isLocalized}
 							freeRoam={freeRoam}
 							slotTimes={leftCalendarState.slotTimes}
 							slotTimesKey={leftCalendarState.slotTimesKey}
@@ -631,7 +617,7 @@ export const DualCalendarComponent = React.forwardRef<
 							events={processedRightEvents}
 							currentView={rightCalendarState.currentView}
 							currentDate={rightCalendarState.currentDate}
-							isRTL={isRTL}
+							isRTL={isLocalized}
 							freeRoam={freeRoam}
 							slotTimes={rightCalendarState.slotTimes}
 							slotTimesKey={rightCalendarState.slotTimesKey}

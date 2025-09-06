@@ -45,7 +45,7 @@ import { useLanguage } from "@/lib/language-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
-import type { ConversationMessage } from "@/types/calendar";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 
 interface ChatSidebarContentProps {
 	selectedConversationId: string | null;
@@ -249,7 +249,7 @@ const BasicChatInput: React.FC<{
 		if (!messages.length) return true; // No messages = inactive
 
 		const lastMessage = messages[messages.length - 1];
-		if (!lastMessage.date || !lastMessage.time) return false;
+		if (!lastMessage || !lastMessage.date || !lastMessage.time) return false;
 
 		try {
 			const lastMessageDateTime = new Date(
@@ -590,21 +590,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 			>
-				{/* Role gradient backdrop to ensure visibility above any parent overlays */}
-				<div
-					className={cn(
-						"absolute inset-0 rounded-lg z-0 pointer-events-none",
-						message.role === "user" &&
-							"bg-gradient-to-b from-primary/15 to-primary/5",
-						message.role === "admin" &&
-							"bg-gradient-to-b from-accent/20 to-accent/10",
-						message.role === "assistant" &&
-							"bg-gradient-to-b from-ring/20 to-ring/10",
-						message.role === "secretary" &&
-							"bg-gradient-to-b from-muted-foreground/20 to-muted-foreground/10",
-					)}
-					aria-hidden="true"
-				/>
 				<div className="flex gap-2 items-start">
 					{/* Avatar - rounded rectangle style */}
 					<div
@@ -668,7 +653,20 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	const selectedConversationIdRef = useRef<string | null>(null);
 
 	// Use centralized customer data
-	const { conversations, reservations } = useCustomerData();
+	const { conversations: rawConversations, reservations: rawReservations } =
+		useCustomerData();
+
+	// Cast conversations to match expected type
+	const conversations = rawConversations as unknown as Record<
+		string,
+		ConversationMessage[]
+	>;
+
+	// Cast reservations to match expected type
+	const reservations = rawReservations as unknown as Record<
+		string,
+		Reservation[]
+	>;
 
 	// Local state for additional messages (not optimistic - only added on success)
 	const [additionalMessages, setAdditionalMessages] = useState<
@@ -679,21 +677,25 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	// Debug: Conversations and reservations loaded
 
 	const currentConversation = selectedConversationId
-		? conversations[selectedConversationId] || []
+		? ((rawConversations[selectedConversationId] ||
+				[]) as ConversationMessage[])
 		: [];
 
 	// Combine real messages with additional messages for this conversation
 	const conversationAdditional = selectedConversationId
 		? additionalMessages[selectedConversationId] || []
 		: [];
-	const allMessages = [...currentConversation, ...conversationAdditional];
+	const allMessages = [
+		...currentConversation,
+		...conversationAdditional,
+	] as ConversationMessage[];
 
 	// Sort messages by date and time
 	const sortedMessages = [...allMessages].sort((a, b) => {
 		const aTime = new Date(`${a.date} ${a.time}`);
 		const bTime = new Date(`${b.date} ${b.time}`);
 		return aTime.getTime() - bTime.getTime();
-	});
+	}) as ConversationMessage[];
 
 	// Clear additional messages when conversation changes
 	const lastConversationIdRef = useRef<string | null>(null);

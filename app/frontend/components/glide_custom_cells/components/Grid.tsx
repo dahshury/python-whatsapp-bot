@@ -9,6 +9,8 @@ import {
 	type Theme,
 } from "@glideapps/glide-data-grid";
 import React from "react";
+import { useCustomerData } from "@/lib/customer-data-context";
+import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 import { useFullscreen } from "./contexts/FullscreenContext";
 import { GridPortalProvider } from "./contexts/GridPortalContext";
 import { InMemoryDataSource } from "./core/data-sources/InMemoryDataSource";
@@ -90,6 +92,7 @@ export default function Grid({
 		: iconColor;
 
 	const { isFullscreen, toggleFullscreen } = useFullscreen();
+	const { customers } = useCustomerData();
 	const [gridKey, setGridKey] = React.useState(0); // Force re-render after loading state
 	const [isStateLoaded, setIsStateLoaded] = React.useState(false);
 	const [isInitializing, setIsInitializing] = React.useState(true);
@@ -301,6 +304,22 @@ export default function Grid({
 		[dataEditorRef.current?.updateCells],
 	);
 
+	// Force a redraw of all visible cells when display geometry changes
+	// to ensure migrated editing state is reflected immediately (avoids "None" until hover)
+	React.useEffect(() => {
+		if (!isDataReady) return;
+		try {
+			const cells: { cell: [number, number] }[] = [];
+			for (let c = 0; c < displayColumns.length; c++) {
+				for (let r = 0; r < filteredRowCount; r++) {
+					cells.push({ cell: [c as number, r as number] });
+				}
+			}
+			const t = setTimeout(() => refreshCells(cells), 30);
+			return () => clearTimeout(t);
+		} catch {}
+	}, [displayColumns.length, filteredRowCount, isDataReady, refreshCells]);
+
 	// Track previous formats to detect changes
 	const prevFormatsRef = React.useRef<Record<string, string>>({});
 
@@ -387,13 +406,61 @@ export default function Grid({
 	const onCellEdited = React.useCallback(
 		(cell: Item, newVal: unknown) => {
 			const cast = newVal as EditableGridCell;
+			const [displayCol, displayRow] = cell;
+			const actualRow = filteredRows[displayRow];
+			const column = displayColumns[displayCol];
+
+			// Handle phone cell editing with customer auto-fill
+			if (column?.id === "phone" && actualRow !== undefined) {
+				const phoneCell = cast as { data?: { kind?: string; value?: string } };
+				if (phoneCell?.data?.kind === "phone-cell") {
+					const phoneNumber = phoneCell.data.value;
+
+					// Find customer by phone number
+					const customer = customers.find(
+						(c) =>
+							c.phone === phoneNumber ||
+							c.id === phoneNumber ||
+							normalizePhoneForStorage(c.phone || c.id) ===
+								normalizePhoneForStorage(phoneNumber),
+					);
+
+					// Update name field if customer found
+					if (customer?.name && customer.name !== "Unknown Customer") {
+						// Find name column index
+						const nameColIndex = displayColumns.findIndex(
+							(col) => col.id === "name",
+						);
+						if (nameColIndex !== -1) {
+							const nameCell: EditableGridCell = {
+								kind: GridCellKind.Text,
+								data: customer.name,
+								displayData: customer.name,
+								allowOverlay: true,
+							};
+							baseOnCellEdited(filteredRows)(
+								[nameColIndex, displayRow],
+								nameCell,
+							);
+						}
+					}
+				}
+			}
+
 			baseOnCellEdited(filteredRows)(cell, cast);
 			// Save state after each edit - but only if no external dataSource
 			if (!externalDataSource) {
 				saveState();
 			}
 		},
-		[filteredRows, baseOnCellEdited, saveState, externalDataSource],
+		[
+			filteredRows,
+			baseOnCellEdited,
+			saveState,
+			externalDataSource,
+			displayColumns,
+			customers,
+		],
 	);
 
 	const {

@@ -6,7 +6,7 @@ import { useLanguage } from "@/lib/language-context";
 
 export function UndoManager() {
 	const { popUndo, canUndo } = useUndoStore();
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 
 	useEffect(() => {
 		const handleUndo = (event: KeyboardEvent) => {
@@ -17,14 +17,14 @@ export function UndoManager() {
 					if (operationToUndo) {
 						import("sonner").then(({ toast: sonner }) => {
 							sonner.promise(operationToUndo.execute(), {
-								loading: isRTL
+								loading: isLocalized
 									? `جاري التراجع: ${operationToUndo.description}...`
 									: `Undoing: ${operationToUndo.description}...`,
 								success: () => {
 									try {
 										const { toastService } = require("@/lib/toast-service");
 										toastService.success(
-											isRTL ? "تم التراجع بنجاح" : "Undo successful",
+											isLocalized ? "تم التراجع بنجاح" : "Undo successful",
 											operationToUndo.description,
 										);
 									} catch {}
@@ -37,11 +37,11 @@ export function UndoManager() {
 										const errorMessage =
 											err instanceof Error
 												? err.message
-												: isRTL
+												: isLocalized
 													? "خطأ غير معروف"
 													: "Unknown error";
 										toastService.error(
-											isRTL ? "فشل التراجع" : "Undo failed",
+											isLocalized ? "فشل التراجع" : "Undo failed",
 											`${operationToUndo.description}: ${errorMessage}`,
 										);
 									} catch {}
@@ -61,7 +61,7 @@ export function UndoManager() {
 		return () => {
 			document.removeEventListener("keydown", handleUndo);
 		};
-	}, [popUndo, canUndo, isRTL]);
+	}, [popUndo, canUndo, isLocalized]);
 
 	return null; // This component does not render anything
 }

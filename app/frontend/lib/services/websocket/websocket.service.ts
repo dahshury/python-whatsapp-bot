@@ -39,7 +39,7 @@ export class WebSocketService {
 			const handler = (ev: Event) => {
 				try {
 					const detail = (ev as CustomEvent).detail as
-						| { type?: string; data?: any; error?: string }
+						| { type?: string; data?: Record<string, unknown>; error?: string }
 						| undefined;
 					const t = detail?.type;
 					const d = detail?.data || {};
@@ -49,7 +49,7 @@ export class WebSocketService {
 						if (!resolved) {
 							resolved = true;
 							window.removeEventListener("realtime", handler as EventListener);
-							resolve({ success: true, message: d.message });
+							resolve({ success: true, message: String(d.message || "") });
 						}
 					} else if (t === "modify_reservation_nack") {
 						if (!resolved) {
@@ -57,7 +57,7 @@ export class WebSocketService {
 							window.removeEventListener("realtime", handler as EventListener);
 							const errorMessage =
 								detail?.error || d.message || "Operation failed";
-							resolve({ success: false, message: errorMessage });
+							resolve({ success: false, message: String(errorMessage) });
 						}
 					}
 					// Fallback: listen for reservation_updated broadcasts
@@ -147,7 +147,7 @@ export class WebSocketService {
 
 			return {
 				success: confirmation.success,
-				message: confirmation.message,
+				...(confirmation.message && { message: confirmation.message }),
 			};
 		}
 

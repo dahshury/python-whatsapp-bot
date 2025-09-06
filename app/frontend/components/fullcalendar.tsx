@@ -58,7 +58,11 @@ export const FullCalendarComponent = React.forwardRef<
 			conversations,
 			reservations,
 			isRTL,
-		} = useCalendarCore({ freeRoam, initialView, initialDate });
+		} = useCalendarCore({
+			freeRoam,
+			initialView,
+			...(initialDate && { initialDate }),
+		});
 
 		// Expose ref and current view to parent
 		React.useImperativeHandle(

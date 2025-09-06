@@ -17,15 +17,18 @@ declare global {
 }
 
 // Helper function to safely access window properties
-function getWindowProperty<T>(property: keyof Window, defaultValue: T): T {
-	if (typeof window === 'undefined') return defaultValue;
-	return (window as any)[property] ?? defaultValue;
+function _getWindowProperty<T>(property: keyof Window, defaultValue: T): T {
+	if (typeof window === "undefined") return defaultValue;
+	return (
+		((window as unknown as Record<string, unknown>)[property] as T) ??
+		defaultValue
+	);
 }
 
 // Helper function to set window properties safely
-function setWindowProperty<T>(property: keyof Window, value: T): void {
-	if (typeof window !== 'undefined') {
-		(window as any)[property] = value;
+function setWindowProperty<T>(property: string, value: T): void {
+	if (typeof window !== "undefined") {
+		(window as unknown as Record<string, unknown>)[property] = value;
 	}
 }
 
@@ -83,7 +86,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		try {
 			const payload = data as { metrics?: Record<string, unknown> };
 			if (type === "metrics_updated" || type === "snapshot") {
-				setWindowProperty('__prom_metrics__', payload.metrics || {});
+				setWindowProperty("__prom_metrics__", payload.metrics || {});
 			}
 		} catch {}
 		try {
@@ -122,7 +125,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				reconnectAttemptsRef.current = 0;
 				connectingRef.current = false;
 				try {
-					setWindowProperty('__wsConnection', wsRef);
+					setWindowProperty("__wsConnection", wsRef);
 				} catch {}
 
 				// Start heartbeat ping to keep proxies from closing idle connections
@@ -182,7 +185,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				// Only nullify if this is the same instance
 				if (wsRef.current === ws) wsRef.current = null;
 				try {
-					setWindowProperty('__wsConnection', null);
+					setWindowProperty("__wsConnection", null);
 				} catch {}
 				connectingRef.current = false;
 

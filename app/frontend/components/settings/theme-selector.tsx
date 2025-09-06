@@ -10,10 +10,10 @@ import { toastService } from "@/lib/toast-service";
 import { getThemeName, THEME_OPTIONS } from "./theme-data";
 
 interface ThemeSelectorProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }
 
-export function ThemeSelector({ isRTL = false }: ThemeSelectorProps) {
+export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 	const { theme: appTheme, setTheme: setAppTheme } = useSettings();
 
 	// Dark mode toggle is handled by ThemeToggleButton component
@@ -22,7 +22,7 @@ export function ThemeSelector({ isRTL = false }: ThemeSelectorProps) {
 		setAppTheme(value as Theme);
 		const themeName = getThemeName(value);
 		toastService.success(
-			isRTL
+			isLocalized
 				? `تم تغيير المظهر إلى ${themeName}`
 				: `Theme changed to ${themeName}`,
 		);
@@ -34,7 +34,7 @@ export function ThemeSelector({ isRTL = false }: ThemeSelectorProps) {
 				<div className="flex items-center gap-2">
 					<Palette className="h-4 w-4" />
 					<span className="text-sm font-medium">
-						{isRTL ? "المظهر" : "Theme"}
+						{isLocalized ? "المظهر" : "Theme"}
 					</span>
 				</div>
 				<div className="flex items-center gap-1.5">
@@ -85,7 +85,7 @@ export function ThemeSelector({ isRTL = false }: ThemeSelectorProps) {
 									/>
 								</div>
 								<span className="text-xs">
-									{isRTL ? themeOption.nameRTL : themeOption.name}
+									{isLocalized ? themeOption.nameRTL : themeOption.name}
 								</span>
 							</Label>
 						</div>

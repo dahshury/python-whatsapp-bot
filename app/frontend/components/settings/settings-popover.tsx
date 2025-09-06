@@ -17,7 +17,7 @@ import { useVacation } from "@/lib/vacation-context";
 import { SettingsTabs } from "./settings-tabs";
 
 interface SettingsPopoverProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	activeTab?: string;
 	onTabChange?: (value: string) => void;
 	currentCalendarView?: string;
@@ -27,7 +27,7 @@ interface SettingsPopoverProps {
 }
 
 export function SettingsPopover({
-	isRTL = false,
+	isLocalized = false,
 	activeTab,
 	onTabChange,
 	currentCalendarView,
@@ -48,14 +48,14 @@ export function SettingsPopover({
 								variant="ghost"
 								size="icon"
 								className="size-9 rounded-full"
-								aria-label={isRTL ? "الإعدادات" : "Settings"}
+								aria-label={isLocalized ? "الإعدادات" : "Settings"}
 							>
 								<Settings className="size-4" />
 							</StablePopoverButton>
 						</PopoverTrigger>
 					</TooltipTrigger>
 					<TooltipContent>
-						<p>{isRTL ? "الإعدادات" : "Settings"}</p>
+						<p>{isLocalized ? "الإعدادات" : "Settings"}</p>
 					</TooltipContent>
 				</Tooltip>
 
@@ -64,7 +64,7 @@ export function SettingsPopover({
 					className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
 				>
 					<SettingsTabs
-						isRTL={isRTL}
+						isLocalized={isLocalized}
 						activeTab={activeTab}
 						onTabChange={onTabChange}
 						currentCalendarView={currentCalendarView}

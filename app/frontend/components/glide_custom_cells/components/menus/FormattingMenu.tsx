@@ -186,7 +186,7 @@ export function FormattingMenu({
 	const menuContent = (
 		<div
 			role="menu"
-			id={menuId}
+			id={"formatting-menu"}
 			className="formatting-menu"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}

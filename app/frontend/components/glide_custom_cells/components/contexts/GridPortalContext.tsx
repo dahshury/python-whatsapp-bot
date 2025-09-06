@@ -13,7 +13,12 @@ const GridPortalContext = createContext<GridPortalContextType>({
 
 export const useGridPortal = () => {
 	const context = useContext(GridPortalContext);
-	// Fallback to document.body if no portal container is provided
+	// Prefer dialog overlay portal when present to avoid reparenting issues
+	if (typeof document !== "undefined") {
+		const dialogOverlay = document.getElementById("dialog-overlay-portal");
+		if (dialogOverlay) return dialogOverlay;
+	}
+	// Fallback to provided container or document.body
 	return (
 		context.portalContainer ||
 		(typeof document !== "undefined" ? document.body : null)

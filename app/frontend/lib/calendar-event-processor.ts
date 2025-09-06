@@ -69,11 +69,17 @@ export function alignAndSortEventsForCalendar(
 			const slotEvents = groups.get(key) || [];
 			// Sort by type then title for deterministic order
 			slotEvents.sort((a, b) => {
-				const t1 = Number((a as any)?.extendedProps?.type ?? 0);
-				const t2 = Number((b as any)?.extendedProps?.type ?? 0);
+				const t1 = Number(
+					(a as { extendedProps?: { type?: unknown } })?.extendedProps?.type ??
+						0,
+				);
+				const t2 = Number(
+					(b as { extendedProps?: { type?: unknown } })?.extendedProps?.type ??
+						0,
+				);
 				if (t1 !== t2) return t1 - t2;
-				const n1 = String((a as any)?.title || "");
-				const n2 = String((b as any)?.title || "");
+				const n1 = String((a as { title?: string })?.title || "");
+				const n2 = String((b as { title?: string })?.title || "");
 				return n1.localeCompare(n2);
 			});
 			// Re-sequence visible events only (cancelled removed earlier), so lengths reflect view
@@ -96,7 +102,10 @@ export function alignAndSortEventsForCalendar(
 						...(ev.extendedProps || {}),
 						slotDate: dateStr,
 						slotTime: base,
-						type: Number((ev as any)?.extendedProps?.type ?? 0),
+						type: Number(
+							(ev as { extendedProps?: { type?: unknown } })?.extendedProps
+								?.type ?? 0,
+						),
 					},
 				});
 				offset += minutesPerReservation + gapMinutes;
@@ -128,7 +137,7 @@ function toSlotBase(
 		const [sH, sM] = String(slotMinTime || "00:00:00")
 			.slice(0, 5)
 			.split(":")
-			.map((v) => parseInt(v, 10));
+			.map((v) => parseInt(v || "0", 10));
 		const minMinutes =
 			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
@@ -146,7 +155,7 @@ function toSlotBase(
 // Add minutes to an HH:MM clock string and return HH:MM:SS (no timezone)
 function addMinutesToClock(baseTime: string, minutesToAdd: number): string {
 	try {
-		const [h, m] = baseTime.split(":").map((v) => parseInt(v, 10));
+		const [h, m] = baseTime.split(":").map((v) => parseInt(v || "0", 10));
 		let total =
 			(Number.isFinite(h) ? h : 0) * 60 +
 			(Number.isFinite(m) ? m : 0) +
@@ -188,10 +197,16 @@ export function transformEventsForDataTable(
 				const n = typeof rid === "string" ? Number(rid) : (rid as number);
 				return Number.isFinite(n) ? (n as number) : undefined;
 			})(),
-			customerName: (e as any).extendedProps?.customerName,
-			phone: (e as any).extendedProps?.phone,
-			waId: (e as any).extendedProps?.waId || (e as any).extendedProps?.wa_id,
-			status: (e as any).extendedProps?.status,
+			customerName: (e as { extendedProps?: { customerName?: string } })
+				.extendedProps?.customerName,
+			phone: (e as { extendedProps?: { phone?: string } }).extendedProps?.phone,
+			waId:
+				(e as { extendedProps?: { waId?: string; wa_id?: string } })
+					.extendedProps?.waId ||
+				(e as { extendedProps?: { waId?: string; wa_id?: string } })
+					.extendedProps?.wa_id,
+			status: (e as { extendedProps?: { status?: string } }).extendedProps
+				?.status,
 		},
 	}));
 }

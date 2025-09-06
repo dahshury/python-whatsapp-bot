@@ -3,7 +3,6 @@
 import { Calendar, Clock, MessageCircle, User } from "lucide-react";
 import React from "react";
 import { CustomerReservationsGrid } from "@/components/customer-reservations-grid";
-import { PhoneInput } from "@/components/glide_custom_cells/components/ui/phone-input";
 import { InlineCopyBtn } from "@/components/inline-copy-btn";
 import {
 	Accordion,
@@ -95,7 +94,7 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
 			}
 			// Convert 24-hour format to 12-hour format
 			const [hours, minutes] = timeStr.split(":");
-			const hour = parseInt(hours, 10);
+			const hour = parseInt(hours || "0", 10);
 			const ampm = hour >= 12 ? "PM" : "AM";
 			const hour12 = hour % 12 || 12;
 			return `${hour12}:${minutes} ${ampm}`;
@@ -154,15 +153,11 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
 								<div
 									className={`${isHoverCard ? "scale-90 w-full" : "w-full"} mt-0.5 flex justify-center`}
 								>
-									<PhoneInput
-										value={formattedPhone}
-										onChange={() => {}}
-										disabled
-										defaultCountry="SA"
-										className={`phone-input-centered ${isHoverCard ? "phone-input-hover-card" : "phone-input-regular"}`}
-										international
-										countryCallingCodeEditable={false}
-									/>
+									<span
+										className={`text-muted-foreground ${isHoverCard ? "text-xs" : "text-sm"} font-mono`}
+									>
+										{formattedPhone}
+									</span>
 								</div>
 							</div>
 

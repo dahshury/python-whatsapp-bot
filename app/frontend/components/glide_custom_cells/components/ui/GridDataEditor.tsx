@@ -15,7 +15,7 @@ import { Resizable, type Size as ResizableSize } from "re-resizable";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useFullscreen } from "../contexts/FullscreenContext";
-import PhoneInputCellRenderer from "../PhoneInputCell";
+import PhoneCellRenderer from "../PhoneCellRenderer";
 import TempusDateCellRenderer from "../TempusDominusDateCell";
 import TimekeeperCellRenderer from "../TimekeeperCell";
 import { drawAttentionIndicator } from "../utils/cellDrawHelpers";
@@ -24,8 +24,8 @@ import { messages } from "../utils/i18n";
 const customRenderers = [
 	DropdownRenderer,
 	TempusDateCellRenderer,
-	PhoneInputCellRenderer,
 	TimekeeperCellRenderer,
+	PhoneCellRenderer,
 ];
 
 // Column configuration interface (similar to Streamlit's ColumnConfigProps)
@@ -455,17 +455,19 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 						const data = (cell as { data?: unknown }).data as
 							| {
 									kind?: string;
-									phone?: string;
 									date?: Date;
 									time?: Date;
 									value?: unknown;
 							  }
 							| undefined;
-						if (data?.kind === "phone-input-cell") return !!data.phone;
-						if (data?.kind === "tempus-date-cell") return !!data.date;
+						if (data?.kind === "tempus-date-cell")
+							return !!(
+								data.date || (data as { displayDate?: string }).displayDate
+							);
 						if (data?.kind === "timekeeper-cell")
 							return !!(data as { time?: Date }).time;
 						if (data?.kind === "dropdown-cell") return !!data.value;
+						if (data?.kind === "phone-cell") return !!data.value;
 						return false;
 					}
 

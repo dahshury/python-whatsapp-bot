@@ -6,13 +6,13 @@ const BACKEND_URL =
 export async function callPythonBackend(
 	path: string,
 	init?: RequestInit,
-): Promise<any> {
+): Promise<unknown> {
 	const url = `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
 	const res = await fetch(url, {
 		method: init?.method || "GET",
 		headers: {
 			"Content-Type": "application/json",
-			...(init?.headers as any),
+			...(init?.headers as Record<string, string>),
 		},
 		body: init?.body,
 		cache: "no-store",

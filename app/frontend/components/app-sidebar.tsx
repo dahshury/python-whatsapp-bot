@@ -62,10 +62,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		],
 	);
 
-	const _closeSidebar = useCallback(() => {
-		setChatSidebarOpen(false);
-	}, [setChatSidebarOpen]);
-
 	const setOpenState = useCallback(
 		(isOpen: boolean) => {
 			setChatSidebarOpen(isOpen);
@@ -121,15 +117,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	}, [conversations, reservations]);
 
 	const conversationOptions = useMemo(() => {
-		return customers.map((customer) => ({
-			waId: customer.phone,
-			customerName: customer.name,
-			messageCount: conversations[customer.phone]?.length || 0,
-			lastMessage:
-				conversations[customer.phone]?.[
-					conversations[customer.phone].length - 1
-				],
-		}));
+		return customers.map((customer) => {
+			const customerConversations = conversations[customer.phone];
+			return {
+				waId: customer.phone,
+				customerName: customer.name,
+				messageCount: customerConversations?.length || 0,
+				lastMessage: customerConversations?.[customerConversations.length - 1],
+			};
+		});
 	}, [customers, conversations]);
 
 	// Handle keyboard navigation
@@ -164,10 +160,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					newIndex = Math.min(conversationOptions.length - 1, currentIndex + 1);
 				}
 
-				const newConversationId = conversationOptions[newIndex].waId;
-				if (newConversationId) {
+				const selectedConversation = conversationOptions[newIndex];
+				if (selectedConversation?.waId) {
 					setLoadingConversation(true);
-					selectConversation(newConversationId);
+					selectConversation(selectedConversation.waId);
 				}
 			}
 		};

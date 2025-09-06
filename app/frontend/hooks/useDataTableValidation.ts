@@ -24,9 +24,12 @@ export function useDataTableValidation(
 				)
 				.replace(
 					"Date is required",
-					isRTL ? "التاريخ مطلوب" : "Date is required",
+					isRTL ? "التوقيت مطلوب" : "Scheduled time is required",
 				)
-				.replace("Time is required", isRTL ? "الوقت مطلوب" : "Time is required")
+				.replace(
+					"Time is required",
+					isRTL ? "التوقيت مطلوب" : "Scheduled time is required",
+				)
 				.replace(
 					"Invalid phone number format",
 					isRTL ? "صيغة رقم الهاتف غير صالحة" : "Invalid phone number format",

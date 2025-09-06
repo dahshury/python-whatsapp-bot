@@ -55,6 +55,7 @@ interface GridDialogProps {
 	};
 	/** Whether content is RTL */
 	isRTL?: boolean;
+	isLocalized?: boolean;
 	/** Z-index for the dialog */
 	zIndex?: number;
 }
@@ -89,7 +90,8 @@ export function GridDialog({
 	showCloseButton = true,
 	loadingOptions = {},
 	unsavedChangesLabels = {},
-	isRTL = false,
+	isRTL,
+	isLocalized,
 	zIndex = Z_INDEX.MODAL_BACKDROP,
 }: GridDialogProps) {
 	const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] =
@@ -98,6 +100,8 @@ export function GridDialog({
 		(() => void) | null
 	>(null);
 	const portalId = React.useId();
+
+	const _isRTL = (isRTL ?? isLocalized === true) === true;
 
 	const {
 		handlePointerDownOutside,
@@ -196,13 +200,13 @@ export function GridDialog({
 				>
 					{/* Header */}
 					<div
-						className={`px-6 py-4 border-b flex items-start justify-between ${isRTL ? "flex-row-reverse" : ""}`}
+						className={`px-6 py-4 border-b flex items-start justify-between ${_isRTL ? "flex-row-reverse" : ""}`}
 						style={{
 							borderColor: "var(--gdg-border-color, hsl(var(--border)))",
 						}}
 					>
 						<div
-							className={`flex flex-col gap-1 ${isRTL ? "text-right" : "text-left"}`}
+							className={`flex flex-col gap-1 ${_isRTL ? "text-right" : "text-left"}`}
 						>
 							<h2 className="text-lg font-semibold">{title}</h2>
 							{description && (
@@ -211,7 +215,7 @@ export function GridDialog({
 						</div>
 
 						<div
-							className={`flex items-center gap-2 ${isRTL ? "flex-row-reverse" : ""}`}
+							className={`flex items-center gap-2 ${_isRTL ? "flex-row-reverse" : ""}`}
 						>
 							{headerExtra}
 							{showCloseButton && (
@@ -220,8 +224,8 @@ export function GridDialog({
 									onClick={() => handleCloseAttempt(() => onOpenChange(false))}
 									className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 									style={{
-										marginLeft: isRTL ? 0 : "8px",
-										marginRight: isRTL ? "8px" : 0,
+										marginLeft: _isRTL ? 0 : "8px",
+										marginRight: _isRTL ? "8px" : 0,
 									}}
 								>
 									<svg
@@ -288,7 +292,7 @@ export function GridDialog({
 					{/* Footer */}
 					{footerContent && (
 						<div
-							className={`px-6 py-4 border-t ${isRTL ? "text-right" : "text-left"}`}
+							className={`px-6 py-4 border-t ${_isRTL ? "text-right" : "text-left"}`}
 							style={{
 								borderColor: "var(--gdg-border-color, hsl(var(--border)))",
 							}}

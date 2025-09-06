@@ -1,14 +1,36 @@
 import * as React from "react";
 import type { DashboardData } from "@/types/dashboard";
 
+interface ReservationItem {
+	date?: string;
+	time_slot?: string;
+	time?: string;
+	start?: string;
+	[key: string]: unknown;
+}
+
+interface ConversationItem {
+	date?: string;
+	time?: string;
+	ts?: string;
+	datetime?: string;
+	[key: string]: unknown;
+}
+
+interface VacationItem {
+	start: string;
+	end: string;
+	[key: string]: unknown;
+}
+
 // Expect reservations and conversations to be provided from a higher-level data context
 export function useDashboardDataFrom(state: {
-	conversations: Record<string, any[]>;
-	reservations: Record<string, any[]>;
-	vacations: any[];
+	conversations: Record<string, ConversationItem[]>;
+	reservations: Record<string, ReservationItem[]>;
+	vacations: VacationItem[];
 	activeRange?: { fromDate?: string; toDate?: string };
 }) {
-	const { conversations, reservations, activeRange, vacations } = state;
+	const { conversations, reservations, activeRange } = state;
 
 	const dashboardData = React.useMemo<DashboardData | null>(() => {
 		try {
@@ -20,7 +42,7 @@ export function useDashboardDataFrom(state: {
 				const d = new Date(value);
 				return Number.isNaN(d.getTime()) ? null : d;
 			};
-			const parseReservationDate = (r: any) => {
+			const parseReservationDate = (r: ReservationItem) => {
 				const iso = parseISO(r?.start);
 				if (iso) return iso;
 				const date: string | undefined = r?.date;
@@ -29,7 +51,7 @@ export function useDashboardDataFrom(state: {
 				if (date) return parseISO(`${date}T00:00:00`);
 				return null;
 			};
-			const parseMessageDate = (m: any) => {
+			const parseMessageDate = (m: ConversationItem) => {
 				const iso = parseISO(m?.ts || m?.datetime);
 				if (iso) return iso;
 				const date: string | undefined = m?.date;
@@ -75,7 +97,7 @@ export function useDashboardDataFrom(state: {
 						withinRange(parseReservationDate(r)),
 					),
 				],
-			) as [string, any[]][];
+			) as [string, Reservation[]][];
 			const conversationEntriesFiltered = conversationEntries.map(
 				([id, msgs]) => [
 					id,
@@ -83,7 +105,7 @@ export function useDashboardDataFrom(state: {
 						withinRange(parseMessageDate(m)),
 					),
 				],
-			) as [string, any[]][];
+			) as [string, ConversationMessage[]][];
 
 			const totalReservations = reservationEntriesFiltered.reduce(
 				(sum, [, items]) => sum + (Array.isArray(items) ? items.length : 0),
@@ -120,7 +142,9 @@ export function useDashboardDataFrom(state: {
 						conversionRate: { percentChange: 0, isPositive: true },
 					},
 				},
-				prometheusMetrics: (globalThis as any).__prom_metrics__ || {},
+				prometheusMetrics:
+					(globalThis as { __prom_metrics__?: Record<string, unknown> })
+						.__prom_metrics__ || {},
 				dailyTrends: [],
 				typeDistribution: [],
 				timeSlots: [],

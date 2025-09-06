@@ -1,3 +1,7 @@
+import { CalendarIntegrationService } from "./calendar/calendar-integration.service";
+import { ReservationCancelService } from "./operations/reservation-cancel.service";
+import { ReservationCreateService } from "./operations/reservation-create.service";
+import { ReservationModifyService } from "./operations/reservation-modify.service";
 import type {
 	CalendarApi,
 	CalendarEvent,
@@ -5,13 +9,9 @@ import type {
 	RowChange,
 	SuccessfulOperation,
 } from "./types/data-table-types";
-import { WebSocketService } from "./websocket/websocket.service";
 import { FormattingService } from "./utils/formatting.service";
 import { LocalEchoManager } from "./utils/local-echo.manager";
-import { CalendarIntegrationService } from "./calendar/calendar-integration.service";
-import { ReservationCancelService } from "./operations/reservation-cancel.service";
-import { ReservationModifyService } from "./operations/reservation-modify.service";
-import { ReservationCreateService } from "./operations/reservation-create.service";
+import { WebSocketService } from "./websocket/websocket.service";
 
 /**
  * Main service orchestrator for data table operations
@@ -26,8 +26,6 @@ export class DataTableOperationsService {
 	constructor(
 		calendarApi: CalendarApi,
 		private readonly isRTL: boolean,
-		private readonly slotDurationHours: number,
-		private readonly freeRoam: boolean,
 		private readonly refreshCustomerData?: () => Promise<void>,
 	) {
 		// Initialize core services
@@ -110,10 +108,30 @@ export class DataTableOperationsService {
 	 * Update calendar after operations complete
 	 */
 	updateCalendarWithOperations(
-		_successfulOperations: SuccessfulOperation[],
+		successfulOperations: SuccessfulOperation[],
 		_onEventAdded?: (event: CalendarEvent) => void,
 	): void {
 		try {
+			// Reflow slots for newly created reservations to ensure deterministic sorting
+			// and spacing immediately after additions (drag/modify/cancel already reflow elsewhere).
+			try {
+				const seen = new Set<string>();
+				for (const op of successfulOperations || []) {
+					if (!op || op.type !== "create") continue;
+					const date = (op as { data?: { date?: string } })?.data?.date;
+					const time = (op as { data?: { time?: string } })?.data?.time;
+					if (!date || !time) continue;
+					const key = `${date}T${time}`;
+					if (seen.has(key)) continue;
+					seen.add(key);
+					// Best-effort: reflow the affected slot; if the event isn't mounted yet,
+					// this still stabilizes ordering of existing events. The WS echo path also reflows.
+					try {
+						this.calendarIntegration.reflowSlot(date, time);
+					} catch {}
+				}
+			} catch {}
+
 			this.calendarIntegration.updateSize();
 			if (typeof this.refreshCustomerData === "function") {
 				void this.refreshCustomerData();
@@ -124,9 +142,9 @@ export class DataTableOperationsService {
 
 // Re-export types for external consumption
 export type {
+	CalendarApi,
+	CalendarEvent,
+	OperationResult,
 	RowChange,
 	SuccessfulOperation,
-	CalendarEvent,
-	CalendarApi,
-	OperationResult,
 } from "./types/data-table-types";

@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { ViewMode } from "@/types/navigation";
 
 interface ViewSettingsProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	currentCalendarView?: string;
 	activeView?: string;
 	onCalendarViewChange?: (view: string) => void;
@@ -23,7 +23,7 @@ const VIEW_MODES: ViewMode[] = [
 ];
 
 export function ViewSettings({
-	isRTL = false,
+	isLocalized = false,
 	currentCalendarView = "multiMonthYear",
 	activeView,
 	onCalendarViewChange,
@@ -36,7 +36,7 @@ export function ViewSettings({
 		: showDualCalendar
 			? "dual"
 			: "default";
-	const viewOptions = getCalendarViewOptions(isRTL);
+	const viewOptions = getCalendarViewOptions(isLocalized);
 
 	const handleViewModeChange = (value: ViewMode["value"]) => {
 		const isFreeRoam = value === "freeRoam";
@@ -46,7 +46,7 @@ export function ViewSettings({
 		setShowDualCalendar(isDual);
 
 		toastService.success(
-			isRTL
+			isLocalized
 				? `تم تغيير وضع العرض إلى ${value}`
 				: `View mode changed to ${value}`,
 		);
@@ -58,7 +58,7 @@ export function ViewSettings({
 				<div className="flex items-center gap-2">
 					<Eye className="h-4 w-4" />
 					<span className="text-sm font-medium">
-						{isRTL ? "إعدادات العرض" : "View Settings"}
+						{isLocalized ? "إعدادات العرض" : "View Settings"}
 					</span>
 				</div>
 
@@ -75,7 +75,7 @@ export function ViewSettings({
 									: "text-muted-foreground hover:text-foreground",
 							)}
 						>
-							{isRTL ? mode.labelRTL : mode.label}
+							{isLocalized ? mode.labelRTL : mode.label}
 						</button>
 					))}
 				</div>

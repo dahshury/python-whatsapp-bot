@@ -7,14 +7,15 @@ import { useLanguage } from "@/lib/language-context";
 import { toastService } from "@/lib/toast-service";
 
 interface GeneralSettingsProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }
 
-export function GeneralSettings({ isRTL = false }: GeneralSettingsProps) {
-	const { isRTL: currentIsRTL, setUseArabicText } = useLanguage();
+export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
+	const { isLocalized: currentIsLocalized, setUseLocalizedText } =
+		useLanguage();
 
 	const handleLanguageToggle = (checked: boolean) => {
-		setUseArabicText(checked);
+		setUseLocalizedText(checked);
 		toastService.success(
 			checked ? "تم التبديل إلى العربية" : "Switched to English",
 		);
@@ -26,16 +27,16 @@ export function GeneralSettings({ isRTL = false }: GeneralSettingsProps) {
 				<div className="space-y-0.5">
 					<Label className="text-sm font-medium flex items-center gap-2">
 						<Languages className="h-4 w-4" />
-						{isRTL ? "اللغة" : "Language"}
+						{isLocalized ? "اللغة" : "Language"}
 					</Label>
 					<p className="text-xs text-muted-foreground">
-						{isRTL
+						{isLocalized
 							? "التبديل بين العربية والإنجليزية"
 							: "Switch between Arabic and English"}
 					</p>
 				</div>
 				<Switch
-					checked={currentIsRTL}
+					checked={currentIsLocalized}
 					onCheckedChange={handleLanguageToggle}
 					className="data-[state=checked]:bg-primary"
 				/>

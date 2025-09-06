@@ -1,6 +1,5 @@
 export type RowChange = {
-	date?: string;
-	time?: string;
+	scheduled_time?: string | Date;
 	phone?: string;
 	type?: string | number;
 	name?: string;
@@ -29,13 +28,17 @@ export interface CalendarEvent {
 		cancelled?: boolean;
 		reservationId?: number;
 		customerName?: string;
+		slotDate?: string;
+		slotTime?: string;
 	};
 }
 
 export interface CalendarApi {
 	getEventById?: (id: string) => CalendarEventObject | null;
+	getEvents?: () => CalendarEventObject[];
 	addEvent?: (event: Partial<CalendarEvent>) => CalendarEventObject | null;
 	updateSize?: () => void;
+	rerenderEvents?: () => void;
 	view?: { type?: string };
 }
 
@@ -43,6 +46,7 @@ export interface CalendarEventObject {
 	id: string;
 	title: string;
 	start: string;
+	startStr?: string;
 	end?: string;
 	extendedProps?: Record<string, unknown>;
 	setProp?: (prop: string, value: unknown) => void;

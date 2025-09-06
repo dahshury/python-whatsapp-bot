@@ -218,8 +218,6 @@ function getColumnIcon(column: IColumnDefinition): GridColumnIcon {
 			return GridColumnIcon.HeaderTime;
 		case "dropdown":
 			return GridColumnIcon.HeaderArray;
-		case "phone":
-			return GridColumnIcon.HeaderPhone;
 		case "boolean":
 			return GridColumnIcon.HeaderBoolean;
 		default:

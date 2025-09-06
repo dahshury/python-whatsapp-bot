@@ -33,7 +33,19 @@ export function normalizeTime12To24(
 	}
 }
 
-export function buildLocalOpCandidates(type: string, data: any): string[] {
+export interface LocalOpData {
+	id?: string | number;
+	wa_id?: string;
+	date?: string;
+	time_slot?: string;
+	time?: string;
+	[key: string]: unknown;
+}
+
+export function buildLocalOpCandidates(
+	type: string,
+	data: LocalOpData,
+): string[] {
 	const idPart = String(data?.id ?? "");
 	const waPart = String(data?.wa_id ?? "");
 	const datePart = String(data?.date ?? "");
@@ -47,19 +59,22 @@ export function buildLocalOpCandidates(type: string, data: any): string[] {
 	return Array.from(cands);
 }
 
-export function isLocalOperation(type: string, data: any): boolean {
+export function isLocalOperation(type: string, data: LocalOpData): boolean {
 	try {
 		const candidates = buildLocalOpCandidates(type, data);
-		(globalThis as any).__localOps =
-			(globalThis as any).__localOps || new Set<string>();
+		(globalThis as { __localOps?: Set<string> }).__localOps =
+			(globalThis as { __localOps?: Set<string> }).__localOps ||
+			new Set<string>();
 		for (const k of candidates) {
-			if ((globalThis as any).__localOps.has(k)) return true;
+			if ((globalThis as { __localOps?: Set<string> }).__localOps?.has(k))
+				return true;
 		}
 	} catch {}
 	// Fallback: detect very recent local DnD moves tracked by calendar
 	try {
-		const moves: Map<string, number> | undefined = (globalThis as any)
-			.__calendarLocalMoves;
+		const moves: Map<string, number> | undefined = (
+			globalThis as { __calendarLocalMoves?: Map<string, number> }
+		).__calendarLocalMoves;
 		const ts1 = moves?.get(String(data?.id ?? ""));
 		const ts2 = moves?.get(String(data?.wa_id ?? ""));
 		const now = Date.now();
@@ -70,7 +85,7 @@ export function isLocalOperation(type: string, data: any): boolean {
 
 export function useDedupeKeyRef() {
 	const ref = useRef<string>("");
-	const isDuplicate = (type: string, data: any): boolean => {
+	const isDuplicate = (type: string, data: LocalOpData): boolean => {
 		const candidates = buildLocalOpCandidates(type, data);
 		const key =
 			candidates[0] ||

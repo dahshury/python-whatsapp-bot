@@ -13,7 +13,7 @@ import type { NavigationDateButtonProps } from "@/types/navigation";
 
 export const NavigationDateButton = React.memo(function NavigationDateButton({
 	title,
-	isRTL = false,
+	isLocalized = false,
 	isCalendarPage: _isCalendarPage = false,
 	isTodayDisabled = false,
 	onToday,
@@ -80,14 +80,16 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 							{title}
 							<span className="text-muted-foreground text-xs">
 								(
-								{isRTL ? "أنت بالفعل في اليوم الحالي" : "Already showing today"}
+								{isLocalized
+									? "أنت بالفعل في اليوم الحالي"
+									: "Already showing today"}
 								)
 							</span>
 						</>
 					) : (
 						<>
 							<CalendarDays className="h-3.5 w-3.5" />
-							{isRTL ? "الذهاب إلى اليوم" : "Go to today"}
+							{isLocalized ? "الذهاب إلى اليوم" : "Go to today"}
 							<span className="text-muted-foreground text-xs">({title})</span>
 						</>
 					)}

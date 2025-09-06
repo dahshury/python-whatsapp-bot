@@ -27,7 +27,7 @@ export class FormattingService {
 		try {
 			const normalized = this.to24h(hhmm);
 			const [hStr, _m] = normalized.split(":");
-			const hour = parseInt(hStr, 10);
+			const hour = parseInt(hStr || "0", 10);
 			if (!Number.isFinite(hour)) return normalized;
 
 			// Build allowed slot starts based on business hours and SLOT_DURATION_HOURS
@@ -41,7 +41,9 @@ export class FormattingService {
 				.map((v) => parseInt(v, 10));
 			const duration = Math.max(1, SLOT_DURATION_HOURS);
 			const allowed: number[] = [];
-			for (let h = minH; h < maxH; h += duration) allowed.push(h);
+			const startH = Number.isFinite(minH) ? minH : 0;
+			const endH = Number.isFinite(maxH) ? maxH : 24;
+			for (let h = startH; h < endH; h += duration) allowed.push(h);
 
 			// Snap down to the nearest allowed slot start
 			let snapped = allowed[0] ?? hour;
@@ -80,7 +82,7 @@ export class FormattingService {
 
 			const str = String(value).trim();
 			if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-			if (str.includes("T")) return str.split("T")[0];
+			if (str.includes("T")) return str.split("T")[0] || str;
 
 			const d = new Date(str);
 			if (Number.isNaN(d.getTime())) return null;
@@ -123,11 +125,11 @@ export class FormattingService {
 			const m1 = str.match(
 				/^([01]?\d|2\d):([0-5]\d)(?::[0-5]\d(?:\.\d{1,3}Z)?)?$/,
 			);
-			if (m1) return `${m1[1].padStart(2, "0")}:${m1[2]}`;
+			if (m1?.[1] && m1[2]) return `${m1[1].padStart(2, "0")}:${m1[2]}`;
 
 			// 12h
 			const m2 = str.match(/^(0?\d|1[0-2]):([0-5]\d)\s*(am|pm)$/i);
-			if (m2) {
+			if (m2?.[1] && m2[2] && m2[3]) {
 				let hours = parseInt(m2[1], 10);
 				const minutes = m2[2];
 				const isPM = m2[3].toLowerCase() === "pm";

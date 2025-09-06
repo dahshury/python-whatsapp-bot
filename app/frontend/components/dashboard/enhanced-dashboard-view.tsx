@@ -137,6 +137,10 @@ export function EnhancedDashboardView() {
 
 			return () => clearTimeout(timeoutId);
 		}
+
+		return () => {
+			// No cleanup needed when conditions are not met
+		};
 	}, [filters, refreshDashboard, isInitialized]);
 
 	// Check if using mock data

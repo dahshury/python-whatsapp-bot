@@ -10,9 +10,9 @@ const BackendConnectionContext = React.createContext<BackendConnectionState>({
 	isConnected: true,
 });
 
-export const BackendConnectionProvider: React.FC<
-	React.PropsWithChildren<{}>
-> = ({ children }) => {
+export const BackendConnectionProvider: React.FC<React.PropsWithChildren> = ({
+	children,
+}) => {
 	const [state] = React.useState<BackendConnectionState>({ isConnected: true });
 	return (
 		<BackendConnectionContext.Provider value={state}>

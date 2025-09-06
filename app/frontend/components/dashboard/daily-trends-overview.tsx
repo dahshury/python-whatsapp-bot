@@ -69,8 +69,8 @@ export function DailyTrendsOverview({
 	const dateRangeLabel = React.useMemo(() => {
 		if (!dailyTrends || dailyTrends.length === 0)
 			return i18n.getMessage("chart_no_data", isRTL);
-		const first = new Date(dailyTrends[0].date);
-		const last = new Date(dailyTrends[dailyTrends.length - 1].date);
+		const first = new Date(dailyTrends[0]?.date || "");
+		const last = new Date(dailyTrends[dailyTrends.length - 1]?.date || "");
 		const fmt = (d: Date) =>
 			d.toLocaleDateString(isRTL ? "ar" : "en", {
 				month: "short",

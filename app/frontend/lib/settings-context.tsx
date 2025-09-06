@@ -17,7 +17,7 @@ const SettingsContext = React.createContext<SettingsState | undefined>(
 	undefined,
 );
 
-export const SettingsProvider: React.FC<React.PropsWithChildren<{}>> = ({
+export const SettingsProvider: React.FC<React.PropsWithChildren> = ({
 	children,
 }) => {
 	const [theme, setTheme] = React.useState<Theme>("theme-default");

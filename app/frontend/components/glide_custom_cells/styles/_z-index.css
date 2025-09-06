@@ -389,10 +389,6 @@ select,
 .td-widget,
 .tempus-dominus,
 .react-tel-input .country-list,
-.phone-input-dropdown,
-.PhoneInputCountrySelectDropdown,
-.PhoneInputCountrySelect,
-.PhoneInput .country-list,
 .dropdown-menu,
 .select-dropdown,
 .autocomplete-dropdown,
@@ -441,16 +437,7 @@ body:has(.click-outside-ignore) [data-radix-popover-content] {
 	z-index: var(--z-command-overlay);
 }
 
-/* Specific targeting for phone input popovers in grid context */
-.gdg-d19meir1 + [data-radix-popper-content-wrapper] [data-radix-popover-content],
-.glide-data-grid-overlay-editor + [data-radix-popper-content-wrapper] [data-radix-popover-content],
-.click-outside-ignore + [data-radix-popper-content-wrapper] [data-radix-popover-content] {
-	z-index: var(--z-command-overlay);
-}
-
 /* Force any popover that contains a Command component to use command overlay level */
-[data-radix-popover-content]:has(.PhoneInput),
-[data-radix-popover-content]:has(.phone-input),
 [data-radix-popover-content]:has([cmdk-item]) {
 	z-index: var(--z-command-overlay);
 }
@@ -489,9 +476,6 @@ select,
 .column-menu,
 .enhanced-column-menu,
 .gdg-dropdown,
-.dropdown-menu,
-.PhoneInputCountrySelectDropdown,
-.PhoneInputCountrySelect,
-.PhoneInput .country-list {
+.dropdown-menu {
 	z-index: var(--z-dialog-overlays);
 }

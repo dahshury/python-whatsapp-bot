@@ -96,6 +96,13 @@ const en = {
 	msg_total: "Total",
 	msg_previous: "Previous",
 	msg_next: "Next",
+	// Phone combobox
+	phone_country_search_placeholder: "Search countries...",
+	phone_no_country_found: "No country found.",
+	phone_search_placeholder: "Search phone numbers...",
+	phone_no_phone_found: "No phone number found.",
+	phone_add_number_label: 'Add "{value}" as new phone number',
+	phone_select_placeholder: "Select a phone number",
 };
 
 const ar = {
@@ -113,6 +120,13 @@ const ar = {
 	chat_no_conversations: "لا توجد محادثات",
 	chat_message_sent: "تم إرسال الرسالة",
 	chat_message_failed: "فشل إرسال الرسالة",
+	// Phone combobox
+	phone_country_search_placeholder: "ابحث عن الدول...",
+	phone_no_country_found: "لا توجد دولة.",
+	phone_search_placeholder: "ابحث عن أرقام الهواتف...",
+	phone_no_phone_found: "لا يوجد رقم هاتف.",
+	phone_add_number_label: 'إضافة "{value}" كرقم هاتف جديد',
+	phone_select_placeholder: "اختر رقم هاتف",
 	// Dashboard
 	dashboard_title: "لوحة التحكم",
 	dashboard_subtitle: "نظرة عامة على الأداء والحجوزات والرسائل",
@@ -463,9 +477,11 @@ Object.assign(ar, {
 	slot_fully_booked: "هذا الوقت محجوز بالكامل. يرجى اختيار وقت آخر.",
 });
 
-const isRTL = () => {
+const isLocalized = () => {
 	if (typeof window === "undefined") return false;
 	try {
+		const loc = localStorage.getItem("locale");
+		if (loc && loc !== "en") return true;
 		return localStorage.getItem("isRTL") === "true";
 	} catch {
 		return false;
@@ -476,31 +492,32 @@ export const messages = {
 	validation: {
 		// Generic required message with field name
 		required: (field: string) =>
-			isRTL() ? `${field} مطلوب` : `${field} is required`,
+			isLocalized() ? `${field} مطلوب` : `${field} is required`,
 		// When field name is not known
 		thisFieldIsRequired: () =>
-			isRTL() ? "هذا الحقل مطلوب" : "This field is required",
+			isLocalized() ? "هذا الحقل مطلوب" : "This field is required",
 		// Formats / validity
-		invalidFormat: () => (isRTL() ? "تنسيق غير صالح" : "Invalid format"),
-		invalidDate: () => (isRTL() ? "تاريخ غير صالح" : "Invalid date"),
-		invalidTime: () => (isRTL() ? "وقت غير صالح" : "Invalid time"),
+		invalidFormat: () => (isLocalized() ? "تنسيق غير صالح" : "Invalid format"),
+		invalidDate: () => (isLocalized() ? "تاريخ غير صالح" : "Invalid date"),
+		invalidTime: () => (isLocalized() ? "وقت غير صالح" : "Invalid time"),
 		invalidPhone: () =>
-			isRTL() ? "رقم هاتف غير صالح" : "Invalid phone number",
-		invalidName: () => (isRTL() ? "اسم غير صالح" : "Invalid name"),
+			isLocalized() ? "رقم هاتف غير صالح" : "Invalid phone number",
+		invalidName: () => (isLocalized() ? "اسم غير صالح" : "Invalid name"),
 		// Name-specific messages
-		nameRequired: () => (isRTL() ? "الاسم مطلوب" : "Name is required"),
-		nameTooShort: () => (isRTL() ? "الاسم قصير جدًا" : "Name is too short"),
+		nameRequired: () => (isLocalized() ? "الاسم مطلوب" : "Name is required"),
+		nameTooShort: () =>
+			isLocalized() ? "الاسم قصير جدًا" : "Name is too short",
 		nameInvalidCharacters: () =>
-			isRTL()
+			isLocalized()
 				? "الاسم يحتوي على أحرف غير صالحة"
 				: "Name contains invalid characters",
 		nameWordsTooShort: () =>
-			isRTL()
+			isLocalized()
 				? "كل كلمة يجب أن تحتوي على حرفين على الأقل"
 				: "Each word must be at least 2 characters",
 	},
 	grid: {
-		none: () => (isRTL() ? "لا يوجد" : "None"),
+		none: () => (isLocalized() ? "لا يوجد" : "None"),
 	},
 	en,
 	ar,
@@ -508,9 +525,9 @@ export const messages = {
 
 export const i18n = {
 	t: (key: string, fallback?: string) => fallback ?? key,
-	getMessage: (key: string, isRTL?: boolean): string => {
-		const dict = isRTL ? ar : en;
-		const direct = (dict as any)[key];
+	getMessage: (key: string, isLocalizedArg?: boolean): string => {
+		const dict = isLocalizedArg ? ar : en;
+		const direct = (dict as Record<string, string>)[key];
 		if (typeof direct === "string") return direct;
 
 		// Humanized fallback for unknown keys, e.g. "kpi_conversion_rate" -> "Conversion Rate"
@@ -534,5 +551,7 @@ export const i18n = {
 };
 
 // Extend dictionaries with calendar strings if missing
-(en as any).calendar_events = (en as any).calendar_events || "events";
-(ar as any).calendar_events = (ar as any).calendar_events || "أحداث";
+(en as Record<string, string>).calendar_events =
+	(en as Record<string, string>).calendar_events || "events";
+(ar as Record<string, string>).calendar_events =
+	(ar as Record<string, string>).calendar_events || "أحداث";

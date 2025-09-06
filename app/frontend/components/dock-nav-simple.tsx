@@ -46,7 +46,7 @@ interface DockNavSimpleProps {
 }
 
 interface DualCalendarViewSelectorProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	leftCalendarView?: string;
 	rightCalendarView?: string;
 	onLeftCalendarViewChange?: (view: string) => void;
@@ -57,7 +57,7 @@ interface DualCalendarViewSelectorProps {
 }
 
 function DualCalendarViewSelector({
-	isRTL = false,
+	isLocalized = false,
 	leftCalendarView,
 	rightCalendarView,
 	onLeftCalendarViewChange,
@@ -65,13 +65,13 @@ function DualCalendarViewSelector({
 	leftCalendarRef: _leftCalendarRef,
 	rightCalendarRef: _rightCalendarRef,
 }: DualCalendarViewSelectorProps) {
-	const viewOptions = getCalendarViewOptions(isRTL);
+	const viewOptions = getCalendarViewOptions(isLocalized);
 
 	return (
 		<div className="grid grid-cols-2 gap-4">
 			<div className="space-y-2">
 				<Label className="text-xs text-muted-foreground text-center block">
-					{isRTL ? "التقويم الأيسر" : "Left Calendar"}
+					{isLocalized ? "التقويم الأيسر" : "Left Calendar"}
 				</Label>
 				<RadioGroup
 					value={leftCalendarView}
@@ -99,7 +99,7 @@ function DualCalendarViewSelector({
 
 			<div className="space-y-2">
 				<Label className="text-xs text-muted-foreground text-center block">
-					{isRTL ? "التقويم الأيمن" : "Right Calendar"}
+					{isLocalized ? "التقويم الأيمن" : "Right Calendar"}
 				</Label>
 				<RadioGroup
 					value={rightCalendarView}
@@ -141,7 +141,7 @@ export function DockNavSimple({
 	isDualMode: _isDualMode = false,
 }: DockNavSimpleProps) {
 	const pathname = usePathname();
-	const { isRTL, setUseArabicText } = useLanguage();
+	const { isLocalized, setUseLocalizedText } = useLanguage();
 	const { freeRoam, setFreeRoam, showDualCalendar, setShowDualCalendar } =
 		useSettings();
 	const { recordingState } = useVacation();
@@ -168,7 +168,7 @@ export function DockNavSimple({
 	}, [viewMode, activeTab]);
 
 	const _handleLanguageToggle = (checked: boolean) => {
-		setUseArabicText(checked);
+		setUseLocalizedText(checked);
 		toastService.success(
 			checked ? "تم التبديل إلى العربية" : "Switched to English",
 		);
@@ -178,7 +178,7 @@ export function DockNavSimple({
 		const newTheme = checked ? "dark" : "light";
 		setTheme(newTheme);
 		toastService.success(
-			isRTL
+			isLocalized
 				? `تم التبديل إلى الوضع ${newTheme === "dark" ? "الليلي" : "النهاري"}`
 				: `Switched to ${newTheme} mode`,
 		);
@@ -192,7 +192,7 @@ export function DockNavSimple({
 		setShowDualCalendar(isDual);
 
 		toastService.success(
-			isRTL
+			isLocalized
 				? `تم تغيير وضع العرض إلى ${value}`
 				: `View mode changed to ${value}`,
 		);
@@ -320,7 +320,7 @@ export function DockNavSimple({
 		onRightCalendarViewChange?.(view);
 	};
 
-	const _viewOptions = getCalendarViewOptions(isRTL);
+	const _viewOptions = getCalendarViewOptions(isLocalized);
 
 	const _isRecording = recordingState.periodIndex !== null;
 
@@ -342,7 +342,7 @@ export function DockNavSimple({
 						<TooltipTrigger asChild>
 							<Link
 								href="/dashboard"
-								aria-label={isRTL ? "لوحة التحكم" : "Dashboard"}
+								aria-label={isLocalized ? "لوحة التحكم" : "Dashboard"}
 								className={cn(
 									buttonVariants({
 										variant: isActive("/dashboard") ? "default" : "ghost",
@@ -356,7 +356,7 @@ export function DockNavSimple({
 							</Link>
 						</TooltipTrigger>
 						<TooltipContent>
-							<p>{isRTL ? "لوحة التحكم" : "Dashboard"}</p>
+							<p>{isLocalized ? "لوحة التحكم" : "Dashboard"}</p>
 						</TooltipContent>
 					</Tooltip>
 				</DockIcon>
@@ -374,14 +374,14 @@ export function DockNavSimple({
 										variant="ghost"
 										size="icon"
 										className="size-9 rounded-full"
-										aria-label={isRTL ? "الإعدادات" : "Settings"}
+										aria-label={isLocalized ? "الإعدادات" : "Settings"}
 									>
 										<Settings className="size-4" />
 									</StablePopoverButton>
 								</PopoverTrigger>
 							</TooltipTrigger>
 							<TooltipContent>
-								<p>{isRTL ? "الإعدادات" : "Settings"}</p>
+								<p>{isLocalized ? "الإعدادات" : "Settings"}</p>
 							</TooltipContent>
 						</Tooltip>
 
@@ -390,7 +390,7 @@ export function DockNavSimple({
 							className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
 						>
 							<SettingsTabs
-								isRTL={isRTL}
+								isLocalized={isLocalized}
 								activeTab={activeTab}
 								onTabChange={setActiveTab}
 								currentCalendarView={currentCalendarView}
@@ -399,7 +399,7 @@ export function DockNavSimple({
 								customViewSelector={
 									_isDualMode && viewMode === "dual" ? (
 										<DualCalendarViewSelector
-											isRTL={isRTL}
+											isLocalized={isLocalized}
 											leftCalendarView={leftCalendarView}
 											rightCalendarView={rightCalendarView}
 											onLeftCalendarViewChange={handleLeftCalendarViewChange}

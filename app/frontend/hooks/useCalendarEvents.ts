@@ -122,8 +122,33 @@ export function useCalendarEvents(
 				};
 
 				const processedEvents = eventProcessor.generateCalendarEvents(
-					reservations,
-					conversations,
+					Object.fromEntries(
+						Object.entries(reservations).map(([key, reservationList]) => [
+							key,
+							reservationList.map((reservation) => ({
+								date: (reservation as { date?: string }).date,
+								time_slot: (reservation as { time_slot?: string }).time_slot,
+								customer_name: (reservation as { customer_name?: string })
+									.customer_name,
+								title: (reservation as { customer_name?: string })
+									.customer_name,
+								...reservation,
+							})),
+						]),
+					) as Record<
+						string,
+						Array<{
+							date: string;
+							time_slot: string;
+							customer_name?: string;
+							title?: string;
+							[key: string]: unknown;
+						}>
+					>,
+					conversations as Record<
+						string,
+						Array<{ id?: string; text?: string; ts?: string }>
+					>,
 					fullProcessingOptions,
 				);
 

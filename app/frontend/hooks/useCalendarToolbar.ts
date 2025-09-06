@@ -1,14 +1,13 @@
 import type { CalendarApi } from "@fullcalendar/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
+// validRange handled via FullCalendar internals for button disabling
 import { count } from "@/lib/dev-profiler";
-import { getValidRange } from "@/lib/calendar-config";
 
 interface UseCalendarToolbarProps {
 	calendarRef: React.RefObject<CalendarCoreRef> | null;
 	currentView: string;
-	freeRoam?: boolean;
-	onViewChange?: (view: string) => void;
+	onViewChange: (view: string) => void;
 }
 
 interface UseCalendarToolbarReturn {
@@ -43,7 +42,7 @@ const getTitleFromAPI = (api: CalendarApi): string => {
 export function useCalendarToolbar({
 	calendarRef,
 	currentView,
-	freeRoam,
+	onViewChange,
 }: UseCalendarToolbarProps): UseCalendarToolbarReturn {
 	const [title, setTitle] = useState(""); // empty until API supplies real title (spinner shows)
 	const [activeView, setActiveView] = useState(currentView);
@@ -107,24 +106,86 @@ export function useCalendarToolbar({
 					today < currentEnd;
 				setIsTodayDisabled(!!isTodayInRange);
 
-				// For navigation: disable prev when at or crossing earliest allowed date
+				// Prefer FullCalendar's own validity computation for prev navigation
+				let computedByFc: boolean | null = null;
 				try {
-					const validRange = getValidRange(!!freeRoam);
-					const earliestStart: Date | undefined =
-						(validRange && (validRange as { start?: Date }).start) || undefined;
-					let disablePrev = false;
-					if (!freeRoam && earliestStart && currentStart && currentEnd) {
-						// Disable when earliestStart falls within the currently visible range
-						disablePrev =
-							earliestStart >= currentStart && earliestStart < currentEnd;
+					// Narrow types locally without polluting file-level types
+					const api = (
+						calendarRef?.current as unknown as { getApi?: () => unknown }
+					)?.getApi?.() as
+						| {
+								currentDataManager?: {
+									data?: {
+										dateProfileGenerator?: {
+											buildPrev: (
+												dp: unknown,
+												cd: unknown,
+												f?: boolean,
+											) => { isValid: boolean };
+										};
+									};
+									state?: { dateProfile?: unknown; currentDate?: unknown };
+								};
+						  }
+						| undefined;
+					const dm = api?.currentDataManager;
+					const gen = dm?.data?.dateProfileGenerator;
+					const state = dm?.state;
+					if (gen && state?.dateProfile && state?.currentDate) {
+						const prevInfo = gen.buildPrev(
+							state.dateProfile,
+							state.currentDate,
+							false,
+						);
+						computedByFc = !prevInfo?.isValid;
+						setIsPrevDisabled(computedByFc);
 					}
-					setIsPrevDisabled(disablePrev);
 				} catch {
-					setIsPrevDisabled(false);
+					// ignore and fall back
 				}
 
-				// No upper bound configured; keep Next enabled
-				setIsNextDisabled(false);
+				// If unable to compute via FC internals, default to enabled
+				if (computedByFc === null) setIsPrevDisabled(false);
+
+				// Compute Next disabled state using FullCalendar internals when possible
+				let nextComputedByFc: boolean | null = null;
+				try {
+					const api = (
+						calendarRef?.current as unknown as { getApi?: () => unknown }
+					)?.getApi?.() as
+						| {
+								currentDataManager?: {
+									data?: {
+										dateProfileGenerator?: {
+											buildNext: (
+												dp: unknown,
+												cd: unknown,
+												f?: boolean,
+											) => { isValid: boolean };
+										};
+									};
+									state?: { dateProfile?: unknown; currentDate?: unknown };
+								};
+						  }
+						| undefined;
+					const dm = api?.currentDataManager;
+					const gen = dm?.data?.dateProfileGenerator;
+					const state = dm?.state;
+					if (gen && state?.dateProfile && state?.currentDate) {
+						const nextInfo = gen.buildNext(
+							state.dateProfile,
+							state.currentDate,
+							false,
+						);
+						nextComputedByFc = !nextInfo?.isValid;
+						setIsNextDisabled(nextComputedByFc);
+					}
+				} catch {
+					// ignore and fall back
+				}
+
+				// If unable to compute via FC internals, default to enabled
+				if (nextComputedByFc === null) setIsNextDisabled(false);
 
 				// Count visible events
 				if (currentStart && currentEnd) {
@@ -155,7 +216,7 @@ export function useCalendarToolbar({
 		} finally {
 			isUpdatingRef.current = false;
 		}
-	}, [calendarRef, freeRoam]);
+	}, [calendarRef]);
 
 	// Set up event listeners for calendar state changes
 	useEffect(() => {

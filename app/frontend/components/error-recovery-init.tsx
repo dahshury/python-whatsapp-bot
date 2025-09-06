@@ -10,15 +10,16 @@ export function ErrorRecoveryInit() {
 			// Error recovery system initialized
 
 			// Add global keyboard shortcut for manual recovery (Ctrl+Shift+R)
-			const handleKeydown = async (event: KeyboardEvent) => {
+			const handleKeydown = (event: KeyboardEvent) => {
 				if (event.ctrlKey && event.shiftKey && event.key === "R") {
 					event.preventDefault();
-					try {
-						const { ErrorRecovery } = await import("@/lib/error-recovery");
-						ErrorRecovery.forceRecovery();
-					} catch (error) {
-						console.error("Failed to load error recovery:", error);
-					}
+					import("@/lib/error-recovery")
+						.then(({ ErrorRecovery }) => {
+							ErrorRecovery.forceRecovery();
+						})
+						.catch((error) => {
+							console.error("Failed to load error recovery:", error);
+						});
 				}
 			};
 

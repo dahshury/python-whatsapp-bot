@@ -1,9 +1,9 @@
 import type {
+	VacationSnapshot,
 	WebSocketDataState,
 	WebSocketMessage,
-	VacationSnapshot,
 } from "@/lib/ws/types";
-import type { Reservation, ConversationMessage } from "@/types/calendar";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 
 export function reduceOnMessage(
 	prev: WebSocketDataState,

@@ -11,7 +11,7 @@ export interface DockNavProps {
 }
 
 export interface NavigationControlsProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	isCalendarPage?: boolean;
 	isPrevDisabled?: boolean;
 	isNextDisabled?: boolean;
@@ -22,7 +22,7 @@ export interface NavigationControlsProps {
 
 export interface NavigationDateButtonProps {
 	title?: string;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	isCalendarPage?: boolean;
 	isTodayDisabled?: boolean;
 	onToday?: () => void;
@@ -31,7 +31,7 @@ export interface NavigationDateButtonProps {
 }
 
 export interface NavigationLinksProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	isActive?: (href: string) => boolean;
 	className?: string;
 }
@@ -76,7 +76,7 @@ export interface ExtendedNavigationContextValue extends NavigationContextValue {
 		handleNext: () => void;
 		handleToday: () => void;
 		isCalendarPage: boolean;
-		isRTL: boolean;
+		isLocalized: boolean;
 		visibleEventCount: number;
 	};
 }

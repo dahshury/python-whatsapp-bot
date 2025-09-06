@@ -173,7 +173,6 @@ export function useCalendarHoverCard({
 					}
 
 					const rect = el.getBoundingClientRect();
-					const _viewportHeight = window.innerHeight;
 					const viewportWidth = window.innerWidth;
 					const cardHeight = 250;
 					const cardWidth = 300;

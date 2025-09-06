@@ -1,35 +1,20 @@
 "use client";
 
-import {
-	ChevronLeft,
-	ChevronRight,
-	ChevronsUpDown,
-	MessageSquare,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Button } from "@/components/ui/button";
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
 import {
 	HoverCard,
 	HoverCardContent,
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+	PhoneCombobox,
+	type PhoneOption,
+} from "@/components/ui/phone-combobox";
 import { useCustomerData } from "@/lib/customer-data-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
-import { cn } from "@/lib/utils";
 import type { Conversations, Reservation } from "@/types/calendar";
 
 interface ConversationComboboxProps {
@@ -47,12 +32,10 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	onConversationSelect,
 	isRTL = false,
 }) => {
-	const [open, setOpen] = useState(false);
-	const [searchValue, setSearchValue] = useState("");
 	const [showHoverCard, setShowHoverCard] = useState(false);
 	const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
 	const [closeTimer, setCloseTimer] = useState<NodeJS.Timeout | null>(null);
-	const triggerRef = useRef<HTMLButtonElement>(null);
+
 	const hoverCardRef = useRef<HTMLDivElement>(null);
 
 	// Use persistent chat store for managing conversation selection
@@ -139,16 +122,24 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	// Navigation handlers
 	const handlePrevious = () => {
 		if (conversationOptions.length === 0) return;
-		const newIndex =
-			currentIndex >= conversationOptions.length - 1 ? 0 : currentIndex + 1;
-		handleConversationSelect(conversationOptions[newIndex].value);
+		// Move toward older items; stop at the end
+		if (currentIndex >= conversationOptions.length - 1) return;
+		const newIndex = currentIndex + 1;
+		const selectedOption = conversationOptions[newIndex];
+		if (selectedOption) {
+			handleConversationSelect(selectedOption.value);
+		}
 	};
 
 	const handleNext = () => {
 		if (conversationOptions.length === 0) return;
-		const newIndex =
-			currentIndex <= 0 ? conversationOptions.length - 1 : currentIndex - 1;
-		handleConversationSelect(conversationOptions[newIndex].value);
+		// Move toward newer items; stop at the start
+		if (currentIndex <= 0) return;
+		const newIndex = currentIndex - 1;
+		const selectedOption = conversationOptions[newIndex];
+		if (selectedOption) {
+			handleConversationSelect(selectedOption.value);
+		}
 	};
 
 	// Clear timers when component unmounts
@@ -163,52 +154,11 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 		};
 	}, [hoverTimer, closeTimer]);
 
-	// Filter options based on search
-	const filteredOptions = React.useMemo(() => {
-		if (!searchValue) return conversationOptions;
-
-		const searchLower = searchValue.toLowerCase();
-		return conversationOptions.filter(
-			(option) =>
-				option.value.toLowerCase().includes(searchLower) ||
-				option.customerName?.toLowerCase().includes(searchLower),
-		);
-	}, [conversationOptions, searchValue]);
-
-	// Get selected option
-	const selectedOption = conversationOptions.find(
-		(option) => option.value === effectiveSelectedId,
-	);
-
-	// Format time for display
-	const _formatTime = (
-		lastMessage: { date?: string; time?: string } | undefined,
-	) => {
-		if (!lastMessage) return "";
-
-		try {
-			const messageDate = new Date(`${lastMessage.date} ${lastMessage.time}`);
-			const now = new Date();
-			const diffMs = now.getTime() - messageDate.getTime();
-			const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-			const diffDays = Math.floor(diffHours / 24);
-
-			if (diffDays > 0) {
-				return isRTL ? `قبل ${diffDays}ي` : `${diffDays}d ago`;
-			} else if (diffHours > 0) {
-				return isRTL ? `قبل ${diffHours}س` : `${diffHours}h ago`;
-			} else {
-				const diffMinutes = Math.floor(diffMs / (1000 * 60));
-				return isRTL ? `قبل ${diffMinutes}د` : `${diffMinutes}m ago`;
-			}
-		} catch {
-			return "";
-		}
-	};
+	// Removed local search state; PhoneCombobox manages its own input
 
 	const handleMouseEnter = useCallback(() => {
-		// Only start timer if combobox is closed and we have a selected conversation
-		if (!open && effectiveSelectedId) {
+		// Only start timer if we have a selected conversation
+		if (effectiveSelectedId) {
 			// Clear any close timer
 			if (closeTimer) {
 				clearTimeout(closeTimer);
@@ -222,19 +172,22 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 
 			const timer = setTimeout(() => {
 				setShowHoverCard(true);
-			}, 2000);
+			}, 1500);
 			setHoverTimer(timer);
 		}
-	}, [open, effectiveSelectedId, closeTimer, hoverTimer]);
+	}, [effectiveSelectedId, closeTimer, hoverTimer]);
 
 	const handleMouseLeave = useCallback(
 		(e: React.MouseEvent) => {
-			// Don't do anything if combobox is open
-			if (open) return;
-
 			// Check if we're moving to the hover card
-			const relatedTarget = e.relatedTarget as HTMLElement;
-			if (relatedTarget && hoverCardRef.current?.contains(relatedTarget)) {
+			const relatedTarget = e.relatedTarget as EventTarget | null;
+			const hoverEl = hoverCardRef.current;
+			if (
+				relatedTarget &&
+				hoverEl &&
+				relatedTarget instanceof Node &&
+				hoverEl.contains(relatedTarget as Node)
+			) {
 				// Moving to hover card, keep it open
 				return;
 			}
@@ -257,23 +210,36 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 
 			setCloseTimer(timer);
 		},
-		[hoverTimer, closeTimer, open],
+		[hoverTimer, closeTimer],
 	);
 
-	// Scroll to selected item when dropdown opens
-	useEffect(() => {
-		if (open && effectiveSelectedId) {
-			// Small delay to ensure the dropdown is rendered
-			setTimeout(() => {
-				const selectedElement = document.querySelector(
-					`[data-value="${effectiveSelectedId}"]`,
-				);
-				if (selectedElement) {
-					selectedElement.scrollIntoView({ block: "center", behavior: "auto" });
-				}
-			}, 50);
-		}
-	}, [open, effectiveSelectedId]);
+	// Note: Scroll behavior is now handled by the PhoneCombobox component
+
+	// Build PhoneCombobox options from centralized customer data, sorted by recency
+	const phoneOptions: PhoneOption[] = React.useMemo(() => {
+		const enriched = customers.map((customer) => {
+			const key = String(customer.phone ?? "");
+			const convList = conversations[key] ?? [];
+			const lastMessage = convList[convList.length - 1];
+			let lastMessageTime = 0;
+			if (lastMessage) {
+				const t = new Date(`${lastMessage.date} ${lastMessage.time}`).getTime();
+				if (!Number.isNaN(t)) lastMessageTime = t;
+			}
+			return {
+				number: key,
+				name: customer.name || "",
+				country: "US",
+				label: customer.name || key,
+				id: key,
+				__lastMessageTime: lastMessageTime,
+			};
+		});
+		enriched.sort(
+			(a, b) => (b.__lastMessageTime || 0) - (a.__lastMessageTime || 0),
+		);
+		return enriched.map(({ __lastMessageTime, ...rest }) => rest);
+	}, [customers, conversations]);
 
 	return (
 		<div className="space-y-2">
@@ -290,99 +256,31 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 					<ChevronLeft className="h-4 w-4" />
 				</Button>
 
-				{/* Combobox + HoverCard */}
-				<div className="flex-1">
-					<HoverCard open={showHoverCard && !open}>
-						<Popover
-							open={open}
-							modal={false}
-							onOpenChange={(newOpen) => {
-								setOpen(newOpen);
-								// Close hover card when opening combobox
-								if (newOpen) {
-									setShowHoverCard(false);
-									if (hoverTimer) {
-										clearTimeout(hoverTimer);
-										setHoverTimer(null);
+				{/* Conversation Selector with HoverCard */}
+				<div className="flex-1 min-w-0 overflow-hidden">
+					<HoverCard open={showHoverCard}>
+						<HoverCardTrigger asChild>
+							<div className="w-full">
+								<PhoneCombobox
+									value={effectiveSelectedId || ""}
+									onChange={handleConversationSelect}
+									placeholder={
+										isRTL ? "اختر محادثة..." : "Select conversation..."
 									}
-								}
-							}}
-						>
-							<HoverCardTrigger asChild>
-								<PopoverTrigger asChild>
-									<Button
-										ref={triggerRef}
-										variant="outline"
-										aria-expanded={open}
-										onMouseEnter={handleMouseEnter}
-										onMouseLeave={handleMouseLeave}
-										className="w-full justify-between text-[11px] h-8 px-2"
-									>
-										<div className="flex items-center gap-1.5 truncate">
-											<MessageSquare className="h-2.5 w-2.5 flex-shrink-0" />
-											<span className="truncate">
-												{selectedOption
-													? selectedOption.label
-													: isRTL
-														? "اختر محادثة..."
-														: "Select conversation..."}
-											</span>
-										</div>
-										<ChevronsUpDown className="h-2.5 w-2.5 opacity-50 flex-shrink-0" />
-									</Button>
-								</PopoverTrigger>
-							</HoverCardTrigger>
-							<PopoverContent
-								forceMount
-								side="bottom"
-								className="w-[var(--radix-popover-trigger-width)] p-0 data-[state=open]:animate-none data-[state=closed]:animate-none"
-								align="start"
-								onOpenAutoFocus={(e) => e.preventDefault()}
-							>
-								<Command shouldFilter={false}>
-									{/* Disable built-in filtering since we have custom logic */}
-									<CommandInput
-										placeholder={
-											isRTL ? "ابحث في المحادثات..." : "Search conversations..."
-										}
-										className="text-sm"
-										value={searchValue}
-										onValueChange={setSearchValue}
-									/>
-									<CommandList>
-										<CommandEmpty className="text-xs py-2 text-center">
-											{isRTL ? "لا توجد محادثات" : "No conversations found"}
-										</CommandEmpty>
-										<CommandGroup>
-											{filteredOptions.map((option) => (
-												<CommandItem
-													key={option.value}
-													value={option.value}
-													data-value={option.value}
-													onSelect={() => {
-														handleConversationSelect(option.value);
-														setOpen(false);
-													}}
-													className={cn(
-														"text-sm py-1.5",
-														effectiveSelectedId === option.value &&
-															"ring-1 ring-primary ring-offset-1",
-													)}
-												>
-													<div className="flex items-center justify-between w-full">
-														<div className="flex items-center gap-2 flex-1 min-w-0">
-															<span className="truncate">{option.label}</span>
-														</div>
-													</div>
-												</CommandItem>
-											))}
-										</CommandGroup>
-									</CommandList>
-								</Command>
-							</PopoverContent>
-						</Popover>
+									phoneOptions={phoneOptions}
+									uncontrolled={false}
+									showCountrySelector={false}
+									showNameAndPhoneWhenClosed={true}
+									size="sm"
+									className="w-full"
+									shrinkTextToFit={true}
+									onMouseEnter={handleMouseEnter}
+									onMouseLeave={handleMouseLeave}
+								/>
+							</div>
+						</HoverCardTrigger>
 
-						{effectiveSelectedId && !open && (
+						{effectiveSelectedId && (
 							<HoverCardContent
 								ref={hoverCardRef}
 								className="w-[300px] p-0 z-50"
@@ -401,11 +299,11 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 									}
 								}}
 								onMouseLeave={(e: React.MouseEvent) => {
-									// Check if we're moving back to the trigger
+									// Check if we're moving back to the trigger (PhoneCombobox)
 									const relatedTarget = e.relatedTarget as HTMLElement;
 									if (
 										relatedTarget &&
-										triggerRef.current?.contains(relatedTarget)
+										(e.currentTarget as HTMLElement).contains(relatedTarget)
 									) {
 										return;
 									}

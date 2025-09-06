@@ -62,7 +62,7 @@ export function useCalendarCore({
 	const calendarState = useCalendarState({
 		freeRoam,
 		initialView,
-		initialDate,
+		...(initialDate && { initialDate }),
 	});
 
 	// Calendar events management
@@ -156,12 +156,17 @@ export function useCalendarCore({
 
 	// Calendar callback handlers
 	const callbackHandlers = createCallbackHandlers({
-		isChangingHours: calendarState.isChangingHours,
-		setIsChangingHours: calendarState.setIsChangingHours,
 		isRTL,
 		currentView: calendarState.currentView,
 		isVacationDate: isVacationDateString,
-		openEditor: dataTableEditor.openEditor,
+		openEditor: (opts?: { start: string; end?: string }) => {
+			if (opts?.start) {
+				dataTableEditor.openEditor({
+					start: opts.start,
+					end: opts.end || opts.start,
+				});
+			}
+		},
 		handleOpenConversation: eventHandlers.handleOpenConversation,
 		handleEventChange: eventHandlers.handleEventChange,
 	});
@@ -178,7 +183,6 @@ export function useCalendarCore({
 					? handleVacationDateClick
 					: undefined,
 				calendarState.setCurrentDate,
-				calendarState.updateSlotTimes,
 				calendarState.currentView,
 			),
 		[
@@ -189,7 +193,6 @@ export function useCalendarCore({
 			recordingState.field,
 			handleVacationDateClick,
 			calendarState.setCurrentDate,
-			calendarState.updateSlotTimes,
 			calendarState.currentView,
 		],
 	);

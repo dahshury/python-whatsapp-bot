@@ -57,8 +57,8 @@ const GlowingEffect = memo(
 
 					const center = [left + width * 0.5, top + height * 0.5];
 					const distanceFromCenter = Math.hypot(
-						mouseX - center[0],
-						mouseY - center[1],
+						mouseX - (center[0] ?? 0),
+						mouseY - (center[1] ?? 0),
 					);
 					const inactiveRadius = 0.5 * Math.min(width, height) * inactiveZone;
 

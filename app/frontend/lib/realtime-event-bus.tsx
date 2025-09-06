@@ -1,11 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { isLocalOperation } from "@/lib/realtime-utils";
+import { isLocalOperation, type LocalOpData } from "@/lib/realtime-utils";
+
+interface RealtimeMessage {
+	detail?: {
+		type?: string;
+		data?: LocalOpData;
+	};
+}
 
 export const RealtimeEventBus: React.FC = () => {
 	React.useEffect(() => {
-		const handler = (message: any) => {
+		const handler = (message: RealtimeMessage) => {
 			try {
 				const { type, data } = message?.detail || {};
 				if (!type || !data) return;

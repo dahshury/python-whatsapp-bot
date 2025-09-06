@@ -44,7 +44,12 @@ export class GridOperationService {
 	private operationHistory: SuccessfulOperation[] = [];
 	private maxHistorySize = 50;
 
-	constructor(private isRTL: boolean = false) {}
+	constructor(
+		private isRTL: boolean = false,
+		private isLocalized?: boolean,
+	) {}
+
+	private _isRTL = (this.isRTL ?? this.isLocalized === true) === true;
 
 	/**
 	 * Register an operation handler
@@ -264,7 +269,7 @@ export class GridOperationService {
 				},
 			};
 
-			return messages[key]?.[this.isRTL ? "ar" : "en"] || key;
+			return messages[key]?.[this._isRTL ? "ar" : "en"] || key;
 		};
 
 		toastService.undoable(

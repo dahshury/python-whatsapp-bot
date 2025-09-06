@@ -26,7 +26,7 @@ export function useDockNavigation({
 }: UseDockNavigationProps): ExtendedNavigationContextValue {
 	const pathname = usePathname();
 	const router = useRouter();
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const { freeRoam, showDualCalendar } = useSettings();
 	const { recordingState } = useVacation();
 
@@ -57,8 +57,7 @@ export function useDockNavigation({
 	} = useCalendarToolbar({
 		calendarRef: isCalendarPage && calendarRef ? calendarRef : null,
 		currentView: currentCalendarView,
-		freeRoam,
-		onViewChange: onCalendarViewChange,
+		onViewChange: onCalendarViewChange || (() => {}),
 	});
 
 	const handlePrev = React.useCallback(() => {
@@ -124,12 +123,12 @@ export function useDockNavigation({
 						}
 					} catch {}
 					try {
-						const opts = getCalendarViewOptions(isRTL);
+						const opts = getCalendarViewOptions(isLocalized);
 						const label = (
 							opts.find((o) => o.value === view)?.label ?? view
 						).toString();
 						toastService.info(
-							isRTL ? "تم تغيير العرض" : "View changed",
+							isLocalized ? "تم تغيير العرض" : "View changed",
 							label,
 							1500,
 						);
@@ -138,7 +137,7 @@ export function useDockNavigation({
 			}
 			onCalendarViewChange?.(view);
 		},
-		[isCalendarPage, calendarRef, onCalendarViewChange, isRTL, freeRoam],
+		[isCalendarPage, calendarRef, onCalendarViewChange, isLocalized, freeRoam],
 	);
 
 	const isActive = React.useCallback(
@@ -206,7 +205,7 @@ export function useDockNavigation({
 					handleNext,
 					handleToday,
 					isCalendarPage,
-					isRTL,
+					isLocalized,
 					visibleEventCount,
 				},
 			}) as ExtendedNavigationContextValue,
@@ -227,7 +226,7 @@ export function useDockNavigation({
 			handleNext,
 			handleToday,
 			isCalendarPage,
-			isRTL,
+			isLocalized,
 			visibleEventCount,
 		],
 	);

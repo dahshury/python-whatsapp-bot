@@ -104,3 +104,4 @@ pyproject.toml
 .gitignore
 uv.lock
 node_modules
+*.sqlite

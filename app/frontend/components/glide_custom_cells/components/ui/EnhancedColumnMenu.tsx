@@ -14,7 +14,6 @@ import {
 	Link,
 	Mail,
 	Palette,
-	Phone,
 	Pin,
 	PinOff,
 	Type,
@@ -30,6 +29,7 @@ interface EnhancedColumnMenuProps {
 	columnType?: string;
 	isPinned?: boolean;
 	isRTL?: boolean;
+	isLocalized?: boolean;
 	onClose: () => void;
 	onSort?: (direction: "asc" | "desc") => void;
 	onPin?: () => void;
@@ -68,7 +68,8 @@ export function EnhancedColumnMenu({
 	columnTitle,
 	columnType = "text",
 	isPinned = false,
-	isRTL = false,
+	isRTL,
+	isLocalized,
 	onClose,
 	onSort,
 	onPin,
@@ -82,20 +83,22 @@ export function EnhancedColumnMenu({
 }: EnhancedColumnMenuProps) {
 	const [showFormatMenu, setShowFormatMenu] = useState(false);
 
+	const _isRTL = (isRTL ?? isLocalized === true) === true;
+
 	// Default labels
 	const defaultLabels = {
-		sortAsc: isRTL ? "ترتيب تصاعدي" : "Sort Ascending",
-		sortDesc: isRTL ? "ترتيب تنازلي" : "Sort Descending",
-		pin: isRTL ? "تثبيت العمود" : "Pin Column",
-		unpin: isRTL ? "إلغاء التثبيت" : "Unpin Column",
-		hide: isRTL ? "إخفاء العمود" : "Hide Column",
-		autosize: isRTL ? "تحجيم تلقائي" : "Auto-size",
-		copy: isRTL ? "نسخ العمود" : "Copy Column",
-		filter: isRTL ? "تصفية" : "Filter",
-		format: isRTL ? "تنسيق" : "Format",
-		textFormat: isRTL ? "تنسيق النص" : "Text Format",
-		numberFormat: isRTL ? "تنسيق الأرقام" : "Number Format",
-		dateFormat: isRTL ? "تنسيق التاريخ" : "Date Format",
+		sortAsc: _isRTL ? "ترتيب تصاعدي" : "Sort Ascending",
+		sortDesc: _isRTL ? "ترتيب تنازلي" : "Sort Descending",
+		pin: _isRTL ? "تثبيت العمود" : "Pin Column",
+		unpin: _isRTL ? "إلغاء التثبيت" : "Unpin Column",
+		hide: _isRTL ? "إخفاء العمود" : "Hide Column",
+		autosize: _isRTL ? "تحجيم تلقائي" : "Auto-size",
+		copy: _isRTL ? "نسخ العمود" : "Copy Column",
+		filter: _isRTL ? "تصفية" : "Filter",
+		format: _isRTL ? "تنسيق" : "Format",
+		textFormat: _isRTL ? "تنسيق النص" : "Text Format",
+		numberFormat: _isRTL ? "تنسيق الأرقام" : "Number Format",
+		dateFormat: _isRTL ? "تنسيق التاريخ" : "Date Format",
 		...labels,
 	};
 
@@ -144,8 +147,6 @@ export function EnhancedColumnMenu({
 				return <Clock className="h-4 w-4" />;
 			case "number":
 				return <Hash className="h-4 w-4" />;
-			case "phone":
-				return <Phone className="h-4 w-4" />;
 			case "email":
 				return <Mail className="h-4 w-4" />;
 			case "url":

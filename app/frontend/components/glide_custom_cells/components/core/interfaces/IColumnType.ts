@@ -45,6 +45,12 @@ export interface IColumnType {
 		cell: GridCell,
 		column: IColumnDefinition,
 	): EditableGridCell;
+
+	coercePasteValue?(
+		value: string,
+		cell: GridCell,
+		column: IColumnDefinition,
+	): GridCell | undefined;
 }
 
 export interface IColumnTypeRegistry {

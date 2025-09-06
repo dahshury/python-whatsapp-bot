@@ -11,6 +11,11 @@ import {
 import { to24h } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
 
+type HandleEventChangeArgs = Parameters<typeof handleEventChangeService>[0];
+type CancelReservationArgs = Parameters<
+	typeof handleCancelReservationService
+>[0];
+
 // Extend globalThis to include custom properties
 declare global {
 	interface Window {
@@ -22,21 +27,25 @@ declare global {
 
 // Helper function to safely access window properties
 function getWindowProperty<T>(property: keyof Window, defaultValue: T): T {
-	if (typeof window === 'undefined') return defaultValue;
-	return (window as any)[property] ?? defaultValue;
+	if (typeof window === "undefined") return defaultValue;
+	return (
+		((window as unknown as Record<string, unknown>)[property] as T) ??
+		defaultValue
+	);
 }
 
 // Helper function to set window properties safely
-function setWindowProperty<T>(property: keyof Window, value: T): void {
-	if (typeof window !== 'undefined') {
-		(window as any)[property] = value;
+function setWindowProperty<T>(property: string, value: T): void {
+	if (typeof window !== "undefined") {
+		(window as unknown as Record<string, unknown>)[property] = value;
 	}
 }
 
 interface UseCalendarEventHandlersProps {
 	events: CalendarEvent[];
 	conversations: Record<string, unknown>;
-	isRTL: boolean;
+	isRTL?: boolean;
+	isLocalized?: boolean;
 	currentView: string;
 	isVacationDate: (date: string) => boolean;
 	handleRefreshWithBlur: () => Promise<void>;
@@ -60,6 +69,7 @@ export function useCalendarEventHandlers({
 	events,
 	conversations: _conversations,
 	isRTL,
+	isLocalized,
 	currentView,
 	isVacationDate,
 	handleRefreshWithBlur,
@@ -70,11 +80,13 @@ export function useCalendarEventHandlers({
 	dataTableEditor,
 	calendarRef,
 }: UseCalendarEventHandlersProps) {
+	const _isRTL = (isRTL ?? isLocalized === true) === true;
+
 	// Ensure global registry for locally-initiated moves to suppress stale WS thrash
 	useEffect(() => {
-		const currentMap = getWindowProperty('__calendarLocalMoves', null);
+		const currentMap = getWindowProperty("__calendarLocalMoves", null);
 		if (!currentMap) {
-			setWindowProperty('__calendarLocalMoves', new Map<string, number>());
+			setWindowProperty("__calendarLocalMoves", new Map<string, number>());
 		}
 	}, []);
 
@@ -88,15 +100,20 @@ export function useCalendarEventHandlers({
 		const computeSlotBase = (dateStr: string, timeSlotRaw: string) => {
 			try {
 				const baseTime = to24h(String(timeSlotRaw || "00:00"));
-				const [hh, mm] = baseTime.split(":").map((v) => parseInt(v, 10));
+				const parts = baseTime.split(":");
+				const hh = parseInt(String(parts[0] ?? "0"), 10);
+				const mm = parseInt(String(parts[1] ?? "0"), 10);
 				const minutes =
 					(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 				const day = new Date(`${dateStr}T00:00:00`);
-				const { slotMinTime } = getSlotTimes(day, false, "");
-				const [sH, sM] = String(slotMinTime || "00:00:00")
+				const { slotMinTime } = getSlotTimes(day, false, "") || {
+					slotMinTime: "00:00:00",
+				};
+				const tparts = String(slotMinTime || "00:00:00")
 					.slice(0, 5)
-					.split(":")
-					.map((v) => parseInt(v, 10));
+					.split(":");
+				const sH = parseInt(String(tparts[0] ?? "0"), 10);
+				const sM = parseInt(String(tparts[1] ?? "0"), 10);
 				const minMinutes =
 					(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 				const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
@@ -115,6 +132,7 @@ export function useCalendarEventHandlers({
 		const reflowSlot = (dateStr: string, timeSlotRaw: string) => {
 			try {
 				const baseTime = computeSlotBase(dateStr, timeSlotRaw);
+				if (!api?.getEvents) return;
 				const all = api.getEvents();
 				// Slot window
 				const slotStart = new Date(`${dateStr}T${baseTime}:00`);
@@ -179,15 +197,26 @@ export function useCalendarEventHandlers({
 						end.getMinutes() + Math.floor(offset + minutesPerReservation),
 					);
 					try {
-						const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
-						setWindowProperty('__suppressEventChangeDepth', currentDepth + 1);
-						(ev as EventApi).setDates(start, end);
+						const currentDepth = getWindowProperty(
+							"__suppressEventChangeDepth",
+							0,
+						);
+						setWindowProperty("__suppressEventChangeDepth", currentDepth + 1);
+						try {
+							(ev as EventApi).setDates(start, end);
+						} catch {}
 					} catch {
 					} finally {
 						try {
-							const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
+							const currentDepth = getWindowProperty(
+								"__suppressEventChangeDepth",
+								0,
+							);
 							if (currentDepth > 0) {
-								setWindowProperty('__suppressEventChangeDepth', currentDepth - 1);
+								setWindowProperty(
+									"__suppressEventChangeDepth",
+									currentDepth - 1,
+								);
 							}
 						} catch {}
 					}
@@ -210,7 +239,7 @@ export function useCalendarEventHandlers({
 				if (!type || !data) return;
 				// Ignore updates while dragging the same reservation
 				try {
-					if (getWindowProperty<boolean>('__isCalendarDragging', false)) {
+					if (getWindowProperty<boolean>("__isCalendarDragging", false)) {
 						const draggingId = String(data?.id || "");
 						// If the update pertains to the same event being dragged, skip applying it now
 						if (draggingId && api.getEventById(draggingId)) {
@@ -227,7 +256,19 @@ export function useCalendarEventHandlers({
 						const endDate = new Date(startDate.getTime() + 20 * 60 * 1000);
 						api.addEvent({
 							id: String(data.id),
-							title: String((data as any).customer_name || (data as any).wa_id || ""),
+							title: String(
+								(
+									data as
+										| { customer_name?: unknown; wa_id?: unknown }
+										| undefined
+								)?.customer_name ||
+									(
+										data as
+											| { customer_name?: unknown; wa_id?: unknown }
+											| undefined
+									)?.wa_id ||
+									"",
+							),
 							start,
 							end: endDate,
 							extendedProps: {
@@ -254,10 +295,9 @@ export function useCalendarEventHandlers({
 
 					// Suppress thrash if we just moved this event locally
 					try {
-						const localMoves = getWindowProperty<Map<string, number> | undefined>(
-							'__calendarLocalMoves',
-							undefined,
-						);
+						const localMoves = getWindowProperty<
+							Map<string, number> | undefined
+						>("__calendarLocalMoves", undefined);
 						const ts = localMoves?.get(String(data.id));
 						if (ts && Date.now() - ts < 1000) {
 							console.log(
@@ -276,7 +316,22 @@ export function useCalendarEventHandlers({
 					);
 					const start = `${data.date}T${String(data.time_slot || "00:00").slice(0, 5)}:00`;
 					if (evObj) {
-						evObj.setProp("title", String((data as any).customer_name || (data as any).wa_id || ""));
+						evObj.setProp(
+							"title",
+							String(
+								(
+									data as
+										| { customer_name?: unknown; wa_id?: unknown }
+										| undefined
+								)?.customer_name ||
+									(
+										data as
+											| { customer_name?: unknown; wa_id?: unknown }
+											| undefined
+									)?.wa_id ||
+									"",
+							),
+						);
 						evObj.setExtendedProp("type", Number(data.type ?? 0));
 						evObj.setExtendedProp("cancelled", false);
 						// Preserve waId for future drags
@@ -300,15 +355,24 @@ export function useCalendarEventHandlers({
 						const startDate = new Date(start);
 						const endDate = new Date(startDate.getTime() + 20 * 60 * 1000);
 						try {
-							const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
-							setWindowProperty('__suppressEventChangeDepth', currentDepth + 1);
+							const currentDepth = getWindowProperty(
+								"__suppressEventChangeDepth",
+								0,
+							);
+							setWindowProperty("__suppressEventChangeDepth", currentDepth + 1);
 							evObj.setDates(startDate, endDate);
 						} catch {
 						} finally {
 							try {
-								const currentDepth = getWindowProperty('__suppressEventChangeDepth', 0);
+								const currentDepth = getWindowProperty(
+									"__suppressEventChangeDepth",
+									0,
+								);
 								if (currentDepth > 0) {
-									setWindowProperty('__suppressEventChangeDepth', currentDepth - 1);
+									setWindowProperty(
+										"__suppressEventChangeDepth",
+										currentDepth - 1,
+									);
 								}
 							} catch {}
 						}
@@ -320,7 +384,19 @@ export function useCalendarEventHandlers({
 					} else {
 						api.addEvent({
 							id: String(data.id),
-							title: String((data as any).customer_name || (data as any).wa_id || ""),
+							title: String(
+								(
+									data as
+										| { customer_name?: unknown; wa_id?: unknown }
+										| undefined
+								)?.customer_name ||
+									(
+										data as
+											| { customer_name?: unknown; wa_id?: unknown }
+											| undefined
+									)?.wa_id ||
+									"",
+							),
 							start,
 							end: new Date(new Date(start).getTime() + 20 * 60 * 1000),
 							extendedProps: {
@@ -367,7 +443,7 @@ export function useCalendarEventHandlers({
 	}, [calendarRef]);
 	// Handle event change (drag and drop)
 	const handleEventChange = useCallback(
-		async (info: unknown) => {
+		async (info: import("@fullcalendar/core").EventChangeArg) => {
 			// Debug calendar API access
 			const getCalendarApi = calendarRef?.current
 				? () => {
@@ -380,7 +456,7 @@ export function useCalendarEventHandlers({
 								Object.keys(api).slice(0, 10),
 							); // Show first 10 methods
 						}
-						return api;
+						return api || undefined;
 					}
 				: undefined;
 
@@ -389,13 +465,21 @@ export function useCalendarEventHandlers({
 			}
 
 			await handleEventChangeService({
-				info,
+				info: info as unknown as HandleEventChangeArgs["info"],
 				isVacationDate,
-				isRTL,
+				isRTL: _isRTL,
 				currentView,
 				onRefresh: handleRefreshWithBlur,
-				getCalendarApi,
-				updateEvent,
+				...(getCalendarApi
+					? {
+							getCalendarApi: () =>
+								getCalendarApi() as unknown as ReturnType<
+									NonNullable<HandleEventChangeArgs["getCalendarApi"]>
+								>,
+						}
+					: {}),
+				updateEvent:
+					updateEvent as unknown as HandleEventChangeArgs["updateEvent"],
 				resolveEvent: (id: string) => {
 					// Prefer React state events for reliable extendedProps
 					const stateEvent = events.find((e) => e.id === String(id));
@@ -403,8 +487,10 @@ export function useCalendarEventHandlers({
 						return { extendedProps: stateEvent.extendedProps || {} };
 					try {
 						const api = getCalendarApi?.();
-						const ev = api?.getEventById(String(id));
-						return ev ? { extendedProps: ev.extendedProps || {} } : undefined;
+						const ev = api?.getEventById?.(String(id));
+						return ev
+							? { extendedProps: (ev as EventApi).extendedProps || {} }
+							: undefined;
 					} catch {
 						return undefined;
 					}
@@ -413,7 +499,7 @@ export function useCalendarEventHandlers({
 		},
 		[
 			isVacationDate,
-			isRTL,
+			_isRTL,
 			currentView,
 			handleRefreshWithBlur,
 			calendarRef,
@@ -449,14 +535,21 @@ export function useCalendarEventHandlers({
 		async (eventId: string) => {
 			// Provide FullCalendar API accessor so the handler can update/remove events
 			const getCalendarApi = calendarRef?.current
-				? () => calendarRef.current?.getApi?.()
+				? () => calendarRef.current?.getApi?.() || undefined
 				: undefined;
 			await handleCancelReservationService({
 				eventId,
 				events,
-				isRTL,
+				isRTL: _isRTL,
 				onRefresh: handleRefreshWithBlur,
-				getCalendarApi,
+				...(getCalendarApi
+					? {
+							getCalendarApi: () =>
+								getCalendarApi() as unknown as ReturnType<
+									NonNullable<CancelReservationArgs["getCalendarApi"]>
+								>,
+						}
+					: {}),
 				onEventCancelled: (id: string) => {
 					// Mirror DataTableOperationsService behavior: also update React state immediately
 					try {
@@ -465,7 +558,7 @@ export function useCalendarEventHandlers({
 				},
 			});
 		},
-		[events, isRTL, handleRefreshWithBlur, calendarRef, removeEvent],
+		[events, _isRTL, handleRefreshWithBlur, calendarRef, removeEvent],
 	);
 
 	const handleViewDetails = useCallback(
@@ -481,14 +574,53 @@ export function useCalendarEventHandlers({
 	// Data table editor event handlers
 	const handleEventAdded = useCallback(
 		(event: unknown) => {
-			addEvent(convertDataTableEventToCalendarEvent(event));
+			if (event && typeof event === "object") {
+				const calendarEvent = convertDataTableEventToCalendarEvent(
+					event as Record<string, unknown>,
+				);
+				addEvent({
+					id: calendarEvent.id,
+					title: calendarEvent.title,
+					start:
+						typeof calendarEvent.start === "string" ? calendarEvent.start : "",
+					end:
+						typeof calendarEvent.end === "string"
+							? calendarEvent.end
+							: typeof calendarEvent.start === "string"
+								? calendarEvent.start
+								: "",
+					extendedProps: {
+						...calendarEvent.extendedProps,
+						type:
+							typeof calendarEvent.extendedProps?.type === "number"
+								? calendarEvent.extendedProps.type
+								: Number(calendarEvent.extendedProps?.type) || 0,
+					},
+				});
+			}
 		},
 		[addEvent],
 	);
 
 	const handleEventModified = useCallback(
 		(eventId: string, event: unknown) => {
-			updateEvent(eventId, convertDataTableEventToCalendarEvent(event));
+			if (event && typeof event === "object") {
+				const calendarEvent = convertDataTableEventToCalendarEvent(
+					event as Record<string, unknown>,
+				);
+				updateEvent(eventId, {
+					id: calendarEvent.id,
+					title: calendarEvent.title,
+					start:
+						typeof calendarEvent.start === "string" ? calendarEvent.start : "",
+					end:
+						typeof calendarEvent.end === "string"
+							? calendarEvent.end
+							: typeof calendarEvent.start === "string"
+								? calendarEvent.start
+								: "",
+				});
+			}
 		},
 		[updateEvent],
 	);

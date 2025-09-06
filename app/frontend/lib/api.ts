@@ -1,6 +1,6 @@
 // Lightweight API client used across the frontend. Routes proxy to the Python backend via Next.js API.
 
-type Json = Record<string, any>;
+type Json = Record<string, unknown>;
 
 async function fetchJson(path: string, init?: RequestInit): Promise<Json> {
 	const res = await fetch(path, {

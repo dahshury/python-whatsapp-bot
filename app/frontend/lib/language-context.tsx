@@ -3,48 +3,57 @@ import * as React from "react";
 
 export interface LanguageState {
 	locale: string;
+	isLocalized: boolean;
 	isRTL: boolean;
 	setLocale: (locale: string) => void;
-	setUseArabicText: (useArabic: boolean) => void;
+	setUseLocalizedText: (useLocalized: boolean) => void;
 }
 
 const LanguageContext = React.createContext<LanguageState | undefined>(
 	undefined,
 );
 
-export const LanguageProvider: React.FC<React.PropsWithChildren<{}>> = ({
+export const LanguageProvider: React.FC<React.PropsWithChildren> = ({
 	children,
 }) => {
 	const [locale, setLocale] = React.useState<string>("en");
+	const isLocalized = locale !== "en";
 	const isRTL = locale.startsWith("ar") || locale === "fa";
 
 	React.useEffect(() => {
 		if (typeof window === "undefined") return;
 		const stored = localStorage.getItem("locale");
-		if (stored) setLocale(stored);
+		if (stored) {
+			setLocale(stored);
+			return;
+		}
+		// Backward compatibility: migrate old isRTL flag to locale
+		const legacyIsRTL = localStorage.getItem("isRTL");
+		if (legacyIsRTL === "true") {
+			setLocale("ar");
+		}
 	}, []);
 
 	React.useEffect(() => {
 		if (typeof window === "undefined") return;
 		localStorage.setItem("locale", locale);
-		localStorage.setItem("isRTL", String(isRTL));
 		// Do not toggle document direction; keep layout LTR while translating text in-place
-	}, [locale, isRTL]);
+	}, [locale]);
 
-	const setUseArabicText = React.useCallback((useArabic: boolean) => {
+	const setUseLocalizedText = React.useCallback((useLocalized: boolean) => {
 		setLocale((prev) => {
-			if (useArabic) {
-				// If already Arabic (ar or fa), keep current; otherwise switch to Arabic
-				return prev.startsWith("ar") || prev === "fa" ? prev : "ar";
+			if (useLocalized) {
+				// If already non-English, keep current; otherwise switch to Arabic for now
+				return prev !== "en" ? prev : "ar";
 			}
-			// Switch to English for in-place LTR text
+			// Switch to English
 			return "en";
 		});
 	}, []);
 
 	const value = React.useMemo<LanguageState>(
-		() => ({ locale, isRTL, setLocale, setUseArabicText }),
-		[locale, isRTL, setUseArabicText],
+		() => ({ locale, isLocalized, isRTL, setLocale, setUseLocalizedText }),
+		[locale, isLocalized, isRTL, setUseLocalizedText],
 	);
 	return (
 		<LanguageContext.Provider value={value}>

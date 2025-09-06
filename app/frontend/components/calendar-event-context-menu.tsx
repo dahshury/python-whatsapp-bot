@@ -46,8 +46,8 @@ export function CalendarEventContextMenu({
 			onClose();
 		};
 
-		const handleEscape = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
+		const handleEscape = (e: Event) => {
+			if ((e as KeyboardEvent).key === "Escape") {
 				onClose();
 			}
 		};
@@ -61,6 +61,10 @@ export function CalendarEventContextMenu({
 				document.removeEventListener("keydown", handleEscape);
 			};
 		}
+
+		return () => {
+			// No cleanup needed when event/position are not available
+		};
 	}, [event, position, onClose]);
 
 	if (!mounted || !event || !position) {

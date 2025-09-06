@@ -32,8 +32,6 @@ export function extractCellDisplayText(cell: GridCell): string {
 						kind?: string;
 						value?: unknown;
 						displayDate?: string;
-						displayPhone?: string;
-						phone?: string;
 						data?: unknown;
 						displayData?: unknown;
 				  }
@@ -47,8 +45,8 @@ export function extractCellDisplayText(cell: GridCell): string {
 				case "tempus-date-cell":
 					return String(customData.displayDate ?? "");
 
-				case "phone-input-cell":
-					return String(customData.displayPhone ?? customData.phone ?? "");
+				case "phone-cell":
+					return String(customData.value ?? "");
 
 				default:
 					// Fallback for unknown custom cell types

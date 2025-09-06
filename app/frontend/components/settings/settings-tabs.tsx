@@ -13,7 +13,7 @@ import { ThemeSelector } from "./theme-selector";
 import { ViewSettings } from "./view-settings";
 
 interface SettingsTabsProps {
-	isRTL?: boolean;
+	isLocalized?: boolean;
 	activeTab?: string;
 	onTabChange?: (value: string) => void;
 	currentCalendarView?: string;
@@ -30,7 +30,7 @@ const VIEW_MODES: ViewMode[] = [
 ];
 
 export function SettingsTabs({
-	isRTL = false,
+	isLocalized = false,
 	activeTab = "view",
 	onTabChange,
 	currentCalendarView,
@@ -55,7 +55,7 @@ export function SettingsTabs({
 		setShowDualCalendar(isDual);
 
 		toastService.success(
-			isRTL
+			isLocalized
 				? `تم تغيير وضع العرض إلى ${value}`
 				: `View mode changed to ${value}`,
 		);
@@ -82,24 +82,24 @@ export function SettingsTabs({
 				{showViewTab && (
 					<TabsTrigger value="view">
 						<View className="h-4 w-4 mr-2" />
-						{isRTL ? "العرض" : "View"}
+						{isLocalized ? "العرض" : "View"}
 					</TabsTrigger>
 				)}
 				<TabsTrigger value="general">
 					<Settings2 className="h-4 w-4 mr-2" />
-					{isRTL ? "عام" : "General"}
+					{isLocalized ? "عام" : "General"}
 				</TabsTrigger>
 				{showVacationTab && (
 					<TabsTrigger value="vacation" className="w-full relative">
 						<Plane className="h-4 w-4 mr-2" />
-						{isRTL ? "الإجازة" : "Vacation"}
+						{isLocalized ? "الإجازة" : "Vacation"}
 					</TabsTrigger>
 				)}
 			</TabsList>
 
 			<TabsContent value="general" className="pt-4 space-y-4">
-				<GeneralSettings isRTL={isRTL} />
-				<ThemeSelector isRTL={isRTL} />
+				<GeneralSettings isLocalized={isLocalized} />
+				<ThemeSelector isLocalized={isLocalized} />
 			</TabsContent>
 
 			{showViewTab && (
@@ -110,7 +110,7 @@ export function SettingsTabs({
 								<div className="flex items-center gap-2">
 									<View className="h-4 w-4" />
 									<span className="text-sm font-medium">
-										{isRTL ? "إعدادات العرض" : "View Settings"}
+										{isLocalized ? "إعدادات العرض" : "View Settings"}
 									</span>
 								</div>
 
@@ -127,7 +127,7 @@ export function SettingsTabs({
 													: "text-muted-foreground hover:text-foreground",
 											)}
 										>
-											{isRTL ? mode.labelRTL : mode.label}
+											{isLocalized ? mode.labelRTL : mode.label}
 										</button>
 									))}
 								</div>
@@ -137,7 +137,7 @@ export function SettingsTabs({
 						</div>
 					) : (
 						<ViewSettings
-							isRTL={isRTL}
+							isLocalized={isLocalized}
 							currentCalendarView={currentCalendarView}
 							activeView={activeView}
 							onCalendarViewChange={onCalendarViewChange}

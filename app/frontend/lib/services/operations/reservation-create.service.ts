@@ -1,30 +1,28 @@
 /* eslint-disable */
 import { reserveTimeSlot } from "@/lib/api";
 import { toastService } from "@/lib/toast-service";
-import { notificationManager } from "../notifications/notification-manager.service";
 import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
+import type { CalendarIntegrationService } from "../calendar/calendar-integration.service";
 import type {
+	ApiResponse,
 	CalendarEvent,
 	OperationResult,
 	RowChange,
 	SuccessfulOperation,
-	ApiResponse,
 } from "../types/data-table-types";
-import { CalendarIntegrationService } from "../calendar/calendar-integration.service";
-import { FormattingService } from "../utils/formatting.service";
-import { LocalEchoManager } from "../utils/local-echo.manager";
+import type { FormattingService } from "../utils/formatting.service";
+import type { LocalEchoManager } from "../utils/local-echo.manager";
 
 export class ReservationCreateService {
 	constructor(
 		private readonly calendarIntegration: CalendarIntegrationService,
 		private readonly formattingService: FormattingService,
 		private readonly localEchoManager: LocalEchoManager,
-		private readonly isRTL: boolean,
 	) {}
 
 	async processAdditions(
 		addedRows: Array<RowChange>,
-		onEventAdded?: (event: CalendarEvent) => void,
+		_onEventAdded?: (event: CalendarEvent) => void,
 	): Promise<OperationResult> {
 		let hasErrors = false;
 		const successful: SuccessfulOperation[] = [];
@@ -41,12 +39,18 @@ export class ReservationCreateService {
 			}
 
 			try {
+				// Normalize time to slot base on the backend's slot granularity
+				const slotTime = this.formattingService.normalizeToSlotBase(
+					creationData.dStr,
+					creationData.tStr,
+				);
+
 				// Backend creation
 				const resp = (await reserveTimeSlot({
 					id: creationData.waId,
 					title: creationData.name || creationData.waId,
 					date: creationData.dStr,
-					time: creationData.tStr,
+					time: slotTime,
 					type: Number(creationData.type),
 					ar: this.isRTL,
 				})) as ApiResponse;
@@ -55,22 +59,21 @@ export class ReservationCreateService {
 					throw new Error(this.extractErrorMessage(resp, creationData));
 				}
 
-				// Do not add locally; rely on WebSocket echo to add the event
-
 				// Track successful operation
 				successful.push({
 					type: "create",
 					id: creationData.waId,
 					data: {
 						date: creationData.dStr,
-						time: creationData.tStr,
+						time: slotTime,
 					},
 				});
 
-				// Success notification will come via WebSocket echo - no direct toast needed
-
 				// Mark local echo (suppress duplicate WS-driven UI side effects)
-				this.markLocalEchoForCreation(resp, creationData);
+				this.markLocalEchoForCreation(resp, {
+					...creationData,
+					tStr: slotTime,
+				});
 			} catch (e) {
 				hasErrors = true;
 				this.handleCreationError(e as Error, creationData);
@@ -81,12 +84,45 @@ export class ReservationCreateService {
 	}
 
 	private prepareCreationData(row: RowChange) {
-		const dStr = this.formattingService.formatDateOnly(row.date) || "";
-		const tStr =
-			this.formattingService.formatHHmmInZone(row.time, "Asia/Riyadh") ||
-			this.formattingService.formatHHmm(row.time) ||
-			this.formattingService.to24h((row.time || "").toString()) ||
-			"";
+		let dStr = "";
+		let tStr = "";
+		const st = row.scheduled_time as unknown;
+		if (st instanceof Date) {
+			// Use timezone-aware formatting
+			dStr = this.formattingService.formatDateOnly(st) || "";
+			tStr =
+				this.formattingService.formatHHmmInZone(st, "Asia/Riyadh") ||
+				this.formattingService.formatHHmm(st) ||
+				"";
+		} else if (typeof st === "string" && st.includes("T")) {
+			const dateObj = new Date(st);
+			dStr =
+				this.formattingService.formatDateOnly(dateObj) ||
+				st.split("T")[0] ||
+				"";
+			tStr =
+				this.formattingService.formatHHmmInZone(dateObj, "Asia/Riyadh") ||
+				this.formattingService.formatHHmm(dateObj) ||
+				"";
+		} else {
+			// Backward compatibility
+			dStr =
+				this.formattingService.formatDateOnly(
+					(row as unknown as { date?: string }).date,
+				) || "";
+			tStr =
+				this.formattingService.formatHHmmInZone(
+					(row as unknown as { time?: string }).time,
+					"Asia/Riyadh",
+				) ||
+				this.formattingService.formatHHmm(
+					(row as unknown as { time?: string }).time,
+				) ||
+				this.formattingService.to24h(
+					String((row as unknown as { time?: string }).time || ""),
+				) ||
+				"";
+		}
 
 		// Normalize phone number for backend - removes + prefix and cleans format
 		const waId = normalizePhoneForStorage((row.phone || "").toString());
@@ -108,8 +144,7 @@ export class ReservationCreateService {
 		const missing: string[] = [];
 		if (!data.waId) missing.push("id/phone");
 		if (!data.name) missing.push("name");
-		if (!data.dStr) missing.push("date");
-		if (!data.tStr) missing.push("time");
+		if (!data.dStr || !data.tStr) missing.push("scheduled_time");
 
 		return {
 			isValid: missing.length === 0,
@@ -143,32 +178,6 @@ export class ReservationCreateService {
 		]
 			.filter(Boolean)
 			.join("\n");
-	}
-
-	private addEventToCalendar(
-		resp: ApiResponse,
-		data: ReturnType<typeof this.prepareCreationData>,
-	) {
-		const startIso = `${data.dStr}T${data.tStr}:00`;
-		const eventId = String(
-			resp?.id ||
-				resp?.reservationId ||
-				`${data.waId}-${data.dStr}-${data.tStr}`,
-		);
-
-		return this.calendarIntegration.addEvent({
-			id: eventId,
-			title: data.name || data.waId,
-			start: startIso,
-			end: startIso,
-			extendedProps: {
-				type: Number(data.type),
-				cancelled: false,
-				waId: data.waId,
-				wa_id: data.waId,
-				reservationId: Number(resp?.id || resp?.reservationId) || undefined,
-			},
-		});
 	}
 
 	private createEventObject(

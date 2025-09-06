@@ -525,7 +525,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					onDatesSet(info);
 				}
 
-				// Only call onNavDate for non-timegrid views to avoid conflicts with slot time switching
+				// Only call onNavDate for non-timegrid views to avoid conflicts with dateClick behavior
 				// In timegrid views, dateClick handles the date updates directly
 				if (onNavDate && !info.view.type.includes("timeGrid")) {
 					onNavDate(info.view.currentStart);

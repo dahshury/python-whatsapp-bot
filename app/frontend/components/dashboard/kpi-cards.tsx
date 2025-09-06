@@ -362,16 +362,16 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 							value={metric.value}
 							description={metric.description}
 							icon={metric.icon}
-							trend={"trend" in metric ? metric.trend : undefined}
-							progress={"progress" in metric ? metric.progress : undefined}
 							variant={metric.variant}
-							hasTooltip={
-								"hasTooltip" in metric ? metric.hasTooltip : undefined
-							}
-							tooltipContent={
-								"tooltipContent" in metric ? metric.tooltipContent : undefined
-							}
 							isRTL={isRTL}
+							{...("trend" in metric ? { trend: metric.trend } : {})}
+							{...("progress" in metric ? { progress: metric.progress } : {})}
+							{...("hasTooltip" in metric
+								? { hasTooltip: metric.hasTooltip }
+								: {})}
+							{...("tooltipContent" in metric
+								? { tooltipContent: metric.tooltipContent }
+								: {})}
 						/>
 					</motion.div>
 				))}

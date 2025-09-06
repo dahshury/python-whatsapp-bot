@@ -12,7 +12,7 @@ import {
 import type { NavigationControlsProps } from "@/types/navigation";
 
 export const NavigationControls = React.memo(function NavigationControls({
-	isRTL = false,
+	isLocalized = false,
 	isCalendarPage = false,
 	isPrevDisabled = false,
 	isNextDisabled = false,
@@ -34,15 +34,11 @@ export const NavigationControls = React.memo(function NavigationControls({
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
 					>
-						{isRTL ? (
-							<ChevronRight className="size-5" />
-						) : (
-							<ChevronLeft className="size-5" />
-						)}
+						<ChevronLeft className="size-5" />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isRTL ? "السابق" : "Previous"}</p>
+					<p>{isLocalized ? "السابق" : "Previous"}</p>
 				</TooltipContent>
 			</Tooltip>
 		</DockIcon>
@@ -61,15 +57,11 @@ export const NavigationControls = React.memo(function NavigationControls({
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
 					>
-						{isRTL ? (
-							<ChevronLeft className="size-5" />
-						) : (
-							<ChevronRight className="size-5" />
-						)}
+						<ChevronRight className="size-5" />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isRTL ? "التالي" : "Next"}</p>
+					<p>{isLocalized ? "التالي" : "Next"}</p>
 				</TooltipContent>
 			</Tooltip>
 		</DockIcon>
@@ -77,8 +69,8 @@ export const NavigationControls = React.memo(function NavigationControls({
 
 	return (
 		<div className={`flex items-center gap-1 ${className}`}>
-			{isRTL ? nextButton : prevButton}
-			{isRTL ? prevButton : nextButton}
+			{prevButton}
+			{nextButton}
 		</div>
 	);
 });

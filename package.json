@@ -19,7 +19,7 @@
 		"check": "biome check app/frontend"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.0.6",
+		"@biomejs/biome": "2.2.2",
 		"typescript": "^5"
 	}
 }

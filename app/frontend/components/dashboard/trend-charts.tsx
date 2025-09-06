@@ -103,14 +103,14 @@ function useThemeColors() {
 	return colors;
 }
 
-export const TrendCharts = memo(function TrendChartsComponent({
+function TrendChartsComponent({
 	dailyTrends,
 	typeDistribution,
-	timeSlots,
-	dayOfWeekData,
+	timeSlots: _timeSlots,
+	dayOfWeekData: _dayOfWeekData,
 	monthlyTrends,
-	funnelData,
-	customerSegments,
+	funnelData: _funnelData,
+	customerSegments: _customerSegments,
 	isRTL,
 	variant = "full",
 }: TrendChartsProps) {
@@ -139,7 +139,7 @@ export const TrendCharts = memo(function TrendChartsComponent({
 	};
 
 	// Helper function to translate day names
-	const translateDayName = (dayName: string, isShort = false) => {
+	const _translateDayName = (dayName: string, isShort = false) => {
 		const dayMap = {
 			Monday: isShort ? "day_mon" : "day_monday",
 			Tuesday: isShort ? "day_tue" : "day_tuesday",
@@ -175,14 +175,6 @@ export const TrendCharts = memo(function TrendChartsComponent({
 		}));
 	}, [dailyTrends, isRTL]);
 
-	// Generate a key based on the date range to force chart re-render when data changes
-	const _chartKey = useMemo(() => {
-		if (dailyTrends.length === 0) return "empty";
-		const first = dailyTrends[0].date;
-		const last = dailyTrends[dailyTrends.length - 1].date;
-		return `${first}_${last}_${dailyTrends.length}`;
-	}, [dailyTrends]);
-
 	// Transform type distribution with translated labels
 	const transformedTypeDistribution = typeDistribution.map((type) => ({
 		...type,
@@ -193,7 +185,7 @@ export const TrendCharts = memo(function TrendChartsComponent({
 	}));
 
 	// Previous period comparison derived from monthlyTrends: take last two months as proxy
-	const prevTypeDistribution = useMemo(() => {
+	const _prevTypeDistribution = useMemo(() => {
 		try {
 			if (!Array.isArray(monthlyTrends) || monthlyTrends.length < 2)
 				return [] as Array<{ type: number; label: string; count?: number }>;
@@ -230,7 +222,7 @@ export const TrendCharts = memo(function TrendChartsComponent({
 		for (const t of transformedTypeDistribution) {
 			map.set(t.type, { label: t.label, current: t.count || 0, previous: 0 });
 		}
-		prevTypeDistribution.forEach(
+		_prevTypeDistribution.forEach(
 			(p: { type: number; label: string; count?: number }) => {
 				const entry = map.get(p.type) || {
 					label: p.label,
@@ -242,16 +234,16 @@ export const TrendCharts = memo(function TrendChartsComponent({
 			},
 		);
 		return Array.from(map.values());
-	}, [transformedTypeDistribution, prevTypeDistribution]);
+	}, [transformedTypeDistribution, _prevTypeDistribution]);
 
 	// Transform day of week data with translated day names
-	const transformedDayOfWeekData = dayOfWeekData.map((data) => ({
+	const transformedDayOfWeekData = _dayOfWeekData.map((data) => ({
 		...data,
-		day: translateDayName(data.day, false),
+		day: _translateDayName(data.day, false),
 	}));
 
 	// Transform time slots with translated types
-	const transformedTimeSlots = timeSlots.map((slot) => ({
+	const transformedTimeSlots = _timeSlots.map((slot) => ({
 		...slot,
 		typeLabel:
 			slot.type === "regular"
@@ -264,7 +256,7 @@ export const TrendCharts = memo(function TrendChartsComponent({
 	}));
 
 	// Sort funnel data from highest to lowest count then translate stage names
-	const sortedFunnel = [...funnelData].sort((a, b) => b.count - a.count);
+	const sortedFunnel = [..._funnelData].sort((a, b) => b.count - a.count);
 
 	const transformedFunnelData = sortedFunnel.map((stage) => {
 		let translatedStage = stage.stage;
@@ -293,7 +285,7 @@ export const TrendCharts = memo(function TrendChartsComponent({
 	});
 
 	// Transform customer segments with translated names
-	const transformedCustomerSegments = customerSegments.map((segment) => {
+	const transformedCustomerSegments = _customerSegments.map((segment) => {
 		let translatedSegment = segment.segment;
 
 		switch (segment.segment.toLowerCase()) {
@@ -613,4 +605,6 @@ export const TrendCharts = memo(function TrendChartsComponent({
 			</motion.div>
 		</div>
 	);
-});
+}
+
+export const TrendCharts = memo(TrendChartsComponent);

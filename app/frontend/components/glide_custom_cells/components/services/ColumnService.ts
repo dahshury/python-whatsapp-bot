@@ -38,12 +38,7 @@ export class ColumnService {
 	private extractDisplayText(cell: GridCell): string {
 		type DropdownData = { kind: "dropdown-cell"; value?: unknown };
 		type TempusDateData = { kind: "tempus-date-cell"; date?: Date };
-		type PhoneInputData = { kind: "phone-input-cell"; phone?: string };
-		type CustomData =
-			| DropdownData
-			| TempusDateData
-			| PhoneInputData
-			| { kind: string };
+		type CustomData = DropdownData | TempusDateData | { kind: string };
 		if (cell.kind === GridCellKind.Text) {
 			const disp = (cell as { displayData?: unknown }).displayData;
 			const data = (cell as { data?: unknown }).data;
@@ -64,9 +59,6 @@ export class ColumnService {
 			if (customData?.kind === "tempus-date-cell") {
 				const d = (customData as TempusDateData).date;
 				return d ? String(d.toLocaleDateString("en-GB")) : "";
-			}
-			if (customData?.kind === "phone-input-cell") {
-				return String((customData as PhoneInputData).phone ?? "");
 			}
 			const disp = (cell as { displayData?: unknown }).displayData;
 			const data = (cell as { data?: unknown }).data;

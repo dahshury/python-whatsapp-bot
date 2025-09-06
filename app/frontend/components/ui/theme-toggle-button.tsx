@@ -28,7 +28,7 @@ export default function ThemeToggleButton({
 	url = "",
 }: ThemeToggleAnimationProps) {
 	const { theme, setTheme } = useTheme();
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 
 	const styleId = "theme-transition-styles";
 
@@ -57,13 +57,13 @@ export default function ThemeToggleButton({
 			const next = theme === "light" ? "dark" : "light";
 			setTheme(next);
 			try {
-				const title = isRTL ? "تم تغيير السمة" : "Theme changed";
+				const title = isLocalized ? "تم تغيير السمة" : "Theme changed";
 				const desc =
 					next === "dark"
-						? isRTL
+						? isLocalized
 							? "داكن"
 							: "Dark"
-						: isRTL
+						: isLocalized
 							? "فاتح"
 							: "Light";
 				toastService.info(title, desc, 1500);
@@ -76,7 +76,7 @@ export default function ThemeToggleButton({
 		}
 
 		document.startViewTransition(switchTheme);
-	}, [theme, setTheme, isRTL, start, updateStyles, url, variant]);
+	}, [theme, setTheme, isLocalized, start, updateStyles, url, variant]);
 
 	const handleButtonPointerDown = React.useCallback(
 		(e: React.PointerEvent<HTMLButtonElement>) => {

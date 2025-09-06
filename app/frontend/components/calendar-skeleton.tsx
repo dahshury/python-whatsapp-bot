@@ -11,6 +11,7 @@ export function CalendarSkeleton({
 	isBlurred = false,
 	children,
 }: CalendarSkeletonProps) {
+	// Prevent potential re-render loops by only rendering blurred children once
 	if (isBlurred && children) {
 		// Show blurred version of the actual calendar
 		return (

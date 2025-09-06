@@ -1,5 +1,67 @@
-export function convertDataTableEventToCalendarEvent(event: any): any {
-	if (!event) return event;
+interface DataTableEvent {
+	id?: string | number;
+	reservationId?: string;
+	key?: string | number;
+	start?: string | Date;
+	startDate?: string | Date;
+	date?: string | Date;
+	begin?: string | Date;
+	end?: string | Date;
+	endDate?: string | Date;
+	title?: string;
+	name?: string;
+	backgroundColor?: string;
+	bgColor?: string;
+	borderColor?: string;
+	editable?: boolean;
+	extendedProps?: {
+		slotDate?: string;
+		slotTime?: string;
+		type?: string | number;
+		cancelled?: boolean;
+		reservationId?: string;
+		[key: string]: unknown;
+	};
+	type?: string | number;
+	cancelled?: boolean;
+	[key: string]: unknown;
+}
+
+interface CalendarEvent {
+	id: string;
+	title: string;
+	start: string | Date | undefined;
+	end: string | Date | undefined;
+	backgroundColor: string;
+	borderColor: string;
+	editable: boolean;
+	extendedProps: {
+		type: string | number;
+		cancelled: boolean;
+		reservationId?: string;
+		slotDate?: string;
+		slotTime?: string;
+		[key: string]: unknown;
+	};
+}
+
+export function convertDataTableEventToCalendarEvent(
+	event: DataTableEvent,
+): CalendarEvent {
+	if (!event)
+		return {
+			id: "",
+			title: "",
+			start: undefined,
+			end: undefined,
+			backgroundColor: "",
+			borderColor: "",
+			editable: false,
+			extendedProps: {
+				type: 0,
+				cancelled: false,
+			},
+		};
 	const start = event.start || event.startDate || event.date || event.begin;
 	const end = event.end || event.endDate || start;
 	const slotDate =
@@ -21,7 +83,12 @@ export function convertDataTableEventToCalendarEvent(event: any): any {
 		extendedProps: {
 			type: event.extendedProps?.type ?? event.type ?? 0,
 			cancelled: event.extendedProps?.cancelled ?? event.cancelled ?? false,
-			reservationId: event.extendedProps?.reservationId ?? event.reservationId,
+			...((event.extendedProps?.reservationId ?? event.reservationId)
+				? {
+						reservationId:
+							event.extendedProps?.reservationId ?? event.reservationId,
+					}
+				: {}),
 			slotDate,
 			slotTime,
 			...event.extendedProps,

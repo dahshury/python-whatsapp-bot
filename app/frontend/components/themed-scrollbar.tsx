@@ -70,6 +70,9 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 		);
 	}
 
+	// Extract remaining props from the spread
+	const { elementRef, rtl, ...otherProps } = props;
+
 	return (
 		<Scrollbar
 			style={style}
@@ -80,6 +83,7 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 			minimalThumbSize={minimalThumbSize}
 			disableTracksWidthCompensation={disableTracksWidthCompensation}
 			removeTracksWhenNotUsed={removeTracksWhenNotUsed}
+			{...(elementRef && { elementRef })}
 			thumbXProps={{
 				className: cn(
 					"ScrollbarsCustom-Thumb ScrollbarsCustom-ThumbX",
@@ -113,7 +117,10 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 			scrollerProps={{
 				className: "ScrollbarsCustom-Scroller",
 			}}
-			{...props}
+			{...(rtl !== undefined && { rtl })}
+			{...Object.fromEntries(
+				Object.entries(otherProps).filter(([_, value]) => value !== undefined),
+			)}
 		>
 			{children}
 		</Scrollbar>

@@ -14,7 +14,7 @@
 		"dev:classic": "next dev",
 		"dev:clean": "rm -rf .next && next dev --turbo",
 		"dev:reset": "rm -rf .next node_modules/.cache && pnpm install && next dev --turbo",
-		"build": "next build --turbo",
+		"build": "next build",
 		"build:classic": "next build",
 		"start": "next start --turbo",
 		"lint": "next lint",
@@ -115,7 +115,7 @@
 		"zustand": "^5.0.5"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.0.6",
+		"@biomejs/biome": "2.2.2",
 		"@tailwindcss/typography": "^0.5.16",
 		"@types/d3-cloud": "^1.2.9",
 		"@types/lodash": "^4.17.20",

@@ -124,9 +124,12 @@ export const formatTimeForDisplay = (
 };
 
 // Parse time from picker with enhanced validation
+// Creates a Date object with a fixed date (2000-01-01) to avoid timezone issues
 export const parseTimeFromPicker = (timeString: string): Date => {
 	try {
-		const today = new Date();
+		// Use a fixed date to avoid timezone conversion issues
+		// The date part doesn't matter since we only care about time
+		const baseDate = new Date(2000, 0, 1); // January 1, 2000 in local time
 
 		// Handle 24-hour format (HH:MM or H:MM)
 		const timeRegex24 = /^(\d{1,2}):(\d{2})$/;
@@ -141,7 +144,7 @@ export const parseTimeFromPicker = (timeString: string): Date => {
 			const minutes = parseInt(match24[2], 10);
 
 			if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
-				const newDate = new Date(today);
+				const newDate = new Date(baseDate);
 				newDate.setHours(hours, minutes, 0, 0);
 				return newDate;
 			}
@@ -154,7 +157,7 @@ export const parseTimeFromPicker = (timeString: string): Date => {
 				if (isPM && hours !== 12) hours += 12;
 				if (!isPM && hours === 12) hours = 0;
 
-				const newDate = new Date(today);
+				const newDate = new Date(baseDate);
 				newDate.setHours(hours, minutes, 0, 0);
 				return newDate;
 			}
@@ -163,7 +166,7 @@ export const parseTimeFromPicker = (timeString: string): Date => {
 		throw new Error(`Invalid time format: ${timeString}`);
 	} catch (error) {
 		console.warn("Error parsing time string:", timeString, error);
-		const fallbackDate = new Date();
+		const fallbackDate = new Date(2000, 0, 1);
 		fallbackDate.setHours(12, 0, 0, 0); // Default to noon
 		return fallbackDate;
 	}

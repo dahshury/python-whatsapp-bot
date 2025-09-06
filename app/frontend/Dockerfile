@@ -17,8 +17,7 @@ RUN corepack enable && corepack prepare pnpm@10.1.0 --activate
 # Copy manifest and lockfile when available
 COPY package.json ./
 COPY pnpm-lock.yaml* ./
-RUN pnpm --version \
-    && pnpm install --no-frozen-lockfile
+RUN pnpm --version && pnpm install --no-frozen-lockfile
 
 # 2) Builder layer
 FROM node:20-slim AS builder
@@ -38,7 +37,7 @@ ARG NEXT_PUBLIC_TIMEZONE=Asia/Riyadh
 ENV BACKEND_URL=${BACKEND_URL}
 ENV NEXT_PUBLIC_TIMEZONE=${NEXT_PUBLIC_TIMEZONE}
 
-# Build Next.js app
+# Build Next.js app (without turbo for stability)
 RUN pnpm build
 
 # 3) Runner layer (slim)

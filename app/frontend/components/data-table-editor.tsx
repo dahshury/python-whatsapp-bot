@@ -1,10 +1,6 @@
 "use client";
 
-import {
-	type DataEditorRef,
-	GridCellKind,
-	type TextCell,
-} from "@glideapps/glide-data-grid";
+import type { DataEditorRef } from "@glideapps/glide-data-grid";
 import { Save, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
@@ -14,27 +10,23 @@ import { Button } from "@/components/ui/button";
 import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
 import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
 import { useDataTableValidation } from "@/hooks/useDataTableValidation";
-import { useCustomerData } from "@/lib/customer-data-context";
+
 import { formatDateRangeWithHijri } from "@/lib/hijri-utils";
 import { useSettings } from "@/lib/settings-context";
 // formatDateTimeOptions removed - using inline options instead
-import type { DataTableEditorProps } from "@/types/data-table-editor";
+import type {
+	CalendarEvent as DataTableCalendarEvent,
+	DataTableEditorProps,
+} from "@/types/data-table-editor";
 
 import { UnsavedChangesDialog } from "./data-table-editor/UnsavedChangesDialog";
 import { FullscreenProvider } from "./glide_custom_cells/components/contexts/FullscreenContext";
-import type { IColumnDefinition } from "./glide_custom_cells/components/core/interfaces/IDataSource";
 import type { DataProvider } from "./glide_custom_cells/components/core/services/DataProvider";
-import { useDialogOverlayPortal } from "./glide_custom_cells/components/ui/DialogPortal";
-import { configureCustomerAutoFill } from "./glide_custom_cells/components/utils/phoneInputCellFactory";
+
 import { createGlideTheme } from "./glide_custom_cells/components/utils/streamlitGlideTheme";
 
 const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), {
 	ssr: false,
-	loading: () => (
-		<div className="flex items-center justify-center" style={{ height: 200 }}>
-			<div className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" />
-		</div>
-	),
 });
 
 export function DataTableEditor(props: DataTableEditorProps) {
@@ -44,6 +36,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		events,
 		selectedDateRange,
 		isRTL,
+		isLocalized,
 		slotDurationHours,
 		onSave: _onSave,
 		onEventClick: _onEventClick,
@@ -58,6 +51,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	} = props;
 
 	const [isGridReady, setIsGridReady] = useState(false);
+	const [showSpinner, setShowSpinner] = useState(false);
 	const [canSave, setCanSave] = useState(false);
 	const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] =
 		useState(false);
@@ -68,22 +62,44 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	const { theme: _styleTheme } = useSettings();
 	const isDarkMode = appTheme === "dark";
 
+	const _isRTL = (isRTL ?? isLocalized === true) === true;
+
 	const dataProviderRef = useRef<DataProvider | null>(null);
 	const dataEditorRef = useRef<DataEditorRef>(null);
-	const [themeKey, setThemeKey] = useState(0);
+	// Removed themeKey to prevent forced Grid remounts that cause flicker
 
-	// Use the dialog overlay portal to move overlay editors outside dialog
-	useDialogOverlayPortal();
+	// Maintain a local, merge-friendly events source while editing to avoid losing draft rows/cells
+	const [sourceEvents, setSourceEvents] =
+		useState<DataTableCalendarEvent[]>(events);
+	const previousEventsRef = useRef<DataTableCalendarEvent[]>(events);
 
-	// Get customer data refresh function
-	const { refresh: refreshCustomerData } = useCustomerData();
+	// Stable reservation identity used for locking and dedupe
+	const getReservationKey = useCallback(
+		(ev: DataTableCalendarEvent): string => {
+			try {
+				const ex = ev?.extendedProps as Record<string, unknown> | undefined;
+				const rid =
+					(ex?.reservationId as string | number | undefined) ?? undefined;
+				if (rid !== undefined && rid !== null) return String(rid);
+				const wa =
+					(ex?.waId as string | undefined) ||
+					(ex?.wa_id as string | undefined) ||
+					(ex?.phone as string | undefined) ||
+					"";
+				const start = ev?.start || "";
+				return `${wa}__${start}`;
+			} catch {
+				return String(ev?.id ?? ev?.start ?? "");
+			}
+		},
+		[],
+	);
 
-	React.useEffect(() => {
-		const timer = setTimeout(() => {
-			setThemeKey((prev) => prev + 1);
-		}, 50);
-		return () => clearTimeout(timer);
-	}, []);
+	useEffect(() => {
+		previousEventsRef.current = sourceEvents;
+	}, [sourceEvents]);
+
+	// Theme changes are handled via props; avoid forced remount timers
 
 	const gridTheme = React.useMemo(
 		() => createGlideTheme(isDarkMode ? "dark" : "light"),
@@ -91,30 +107,41 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	);
 
 	const { dataSource, gridRowToEventMapRef } = useDataTableDataSource(
-		events,
+		sourceEvents,
 		selectedDateRange,
 		slotDurationHours,
 		freeRoam,
-		isRTL,
+		isRTL || _isRTL,
+		isLocalized ?? false,
 		open,
 	);
 
 	const { validateAllCells, checkEditingState, hasUnsavedChanges } =
-		useDataTableValidation(dataProviderRef, isRTL);
+		useDataTableValidation(dataProviderRef, _isRTL);
 
 	const { isSaving, handleSaveChanges: performSave } = useDataTableSaveHandler({
-		calendarRef,
-		isRTL,
+		...(calendarRef ? { calendarRef } : {}),
+		isRTL: _isRTL,
 		slotDurationHours,
 		freeRoam,
 		gridRowToEventMapRef,
 		dataProviderRef,
 		validateAllCells,
-		onEventAdded,
-		onEventModified,
-		onEventCancelled,
-		refreshCustomerData,
+		...(onEventAdded ? { onEventAdded } : {}),
+		...(onEventModified ? { onEventModified } : {}),
+		...(onEventCancelled ? { onEventCancelled } : {}),
 	});
+
+	// Stabilize function references used inside effects to keep dependency arrays constant
+	const getReservationKeyRef = useRef(getReservationKey);
+	useEffect(() => {
+		getReservationKeyRef.current = getReservationKey;
+	}, [getReservationKey]);
+
+	const hasUnsavedChangesRef = useRef(hasUnsavedChanges);
+	useEffect(() => {
+		hasUnsavedChangesRef.current = hasUnsavedChanges;
+	}, [hasUnsavedChanges]);
 
 	const formatDateRange = () => {
 		if (!selectedDateRange) return "";
@@ -125,7 +152,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			: null;
 		const hasTimeInfo = selectedDateRange.start.includes("T");
 
-		if (isRTL) {
+		if (_isRTL) {
 			let computedEnd: Date | undefined;
 			if (
 				hasTimeInfo &&
@@ -288,7 +315,6 @@ export function DataTableEditor(props: DataTableEditorProps) {
 						if (kind === "dropdown-cell") return !data.value;
 						if (kind === "tempus-date-cell") return !data.date;
 						if (kind === "timekeeper-cell") return !data.time;
-						if (kind === "phone-input-cell") return !data.phone;
 					}
 					if (k === "Text") {
 						const gridCell = cell as { data?: unknown };
@@ -324,25 +350,129 @@ export function DataTableEditor(props: DataTableEditorProps) {
 
 	useEffect(() => {
 		if (open) {
-			setIsGridReady(false);
+			// Delay spinner to avoid flashing on very fast readiness
+			setShowSpinner(false);
+			const t = setTimeout(() => setShowSpinner(true), 150);
 			setCanSave(false);
-
 			if (dataProviderRef.current) {
-				const editingState = dataProviderRef.current.getEditingState();
-				editingState.clearMemory();
-				dataProviderRef.current.refresh();
+				try {
+					dataProviderRef.current.refresh?.();
+				} catch {}
 			}
+			return () => clearTimeout(t);
 		} else {
-			setIsGridReady(false);
+			setShowSpinner(false);
 			setCanSave(false);
+		}
+	}, [open]);
 
+	useEffect(() => {
+		return () => {
 			const provider = dataProviderRef.current as
 				| (DataProvider & { unsubscribe?: () => void })
 				| null;
-			if (!provider) return;
-			if (provider.unsubscribe) provider.unsubscribe();
+			if (provider?.unsubscribe) provider.unsubscribe();
+		};
+	}, []);
+
+	// Merge incoming websocket-driven events with local editing state so edited rows don't disappear
+	// Use layout effect to avoid a visible frame where rows flicker before merge applies
+	React.useLayoutEffect(() => {
+		try {
+			if (!open) {
+				setSourceEvents(events);
+				return;
+			}
+
+			const provider = dataProviderRef.current;
+			if (!provider) {
+				setSourceEvents(events);
+				return;
+			}
+
+			// If there are no unsaved changes, accept incoming events wholesale
+			if (!hasUnsavedChangesRef.current()) {
+				setSourceEvents(events);
+				return;
+			}
+
+			// Compute which existing grid rows have edits
+			const editingState = provider.getEditingState?.();
+			const baseRowCount: number = provider.getRowCount?.() ?? 0;
+			const totalRows: number = editingState?.getNumRows?.() ?? baseRowCount;
+			const colCount: number = provider.getColumnCount?.() ?? 0;
+			const editedRowSet = new Set<number>();
+			for (let r = 0; r < totalRows; r++) {
+				for (let c = 0; c < colCount; c++) {
+					const cell = editingState?.getCell?.(c, r);
+					if (cell !== undefined) {
+						editedRowSet.add(r);
+						break;
+					}
+				}
+			}
+
+			// Map edited existing rows to their event keys via the previous grid row → event map
+			const blockedKeys = new Set<string>();
+			try {
+				const mapRef = gridRowToEventMapRef?.current as
+					| Map<number, DataTableCalendarEvent>
+					| undefined;
+				if (mapRef && mapRef.size > 0) {
+					for (const [rowIndex, ev] of mapRef.entries()) {
+						if (rowIndex < baseRowCount && editedRowSet.has(rowIndex)) {
+							const key = getReservationKeyRef.current(ev);
+							if (key) blockedKeys.add(key);
+						}
+					}
+				}
+			} catch {}
+
+			// Build quick lookup of previous events by key
+			const prevMap = new Map<string, DataTableCalendarEvent>();
+			(previousEventsRef.current || []).forEach((ev) => {
+				const k = getReservationKeyRef.current(ev);
+				if (k) prevMap.set(k, ev);
+			});
+
+			// Merge: follow new ordering, but preserve blocked keys' prior versions
+			const merged: DataTableCalendarEvent[] = [];
+			(events || []).forEach((ev) => {
+				const k = getReservationKeyRef.current(ev);
+				if (k && blockedKeys.has(k)) {
+					merged.push(prevMap.get(k) ?? ev);
+				} else {
+					merged.push(ev);
+				}
+			});
+
+			// If a blocked event was deleted on server, keep it locally until edits are resolved
+			prevMap.forEach((oldEv, k) => {
+				if (blockedKeys.has(k)) {
+					const stillExists = (events || []).some(
+						(ev) => getReservationKeyRef.current(ev) === k,
+					);
+					if (!stillExists) merged.push(oldEv);
+				}
+			});
+
+			// Dedupe by stable reservationId; fall back to getEventKey if missing
+			const seen = new Set<string>();
+			const deduped: DataTableCalendarEvent[] = [];
+			for (const ev of merged) {
+				const key = getReservationKeyRef.current(ev);
+				if (!seen.has(key)) {
+					seen.add(key);
+					deduped.push(ev);
+				}
+			}
+			setSourceEvents(deduped);
+		} catch {
+			// On any failure, fall back to incoming events to avoid stale UI
+			setSourceEvents(events);
 		}
-	}, [open]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [events, open, gridRowToEventMapRef?.current]);
 
 	const handleSaveChanges = useCallback(async () => {
 		console.log("💾 DataTableEditor: Save button clicked!");
@@ -444,15 +574,15 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
 						<div className="flex flex-col space-y-1.5">
 							<h2
-								className={`text-xl font-semibold leading-none tracking-tight py-2 ${isRTL ? "text-right" : "text-left"}`}
+								className={`text-xl font-semibold leading-none tracking-tight py-2 ${_isRTL ? "text-right" : "text-left"}`}
 							>
-								{isRTL ? "محرر البيانات" : "Data Editor"} - {formatDateRange()}
+								{_isRTL ? "محرر البيانات" : "Data Editor"} - {formatDateRange()}
 							</h2>
 							<p
 								id={`data-editor-description-${typeof window !== "undefined" ? "client" : "ssr"}`}
 								className="sr-only"
 							>
-								{isRTL
+								{_isRTL
 									? "محرر لإدارة الحجوزات وبيانات العملاء"
 									: "Editor for managing reservations and customer data"}
 							</p>
@@ -471,19 +601,21 @@ export function DataTableEditor(props: DataTableEditorProps) {
 						<div className="overflow-visible relative w-full h-full">
 							{!isGridReady && (
 								<div className="absolute inset-0 z-10 bg-background flex items-center justify-center">
-									<div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+									{showSpinner && (
+										<div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+									)}
 								</div>
 							)}
 							<div
 								style={{
 									opacity: isGridReady ? 1 : 0,
+									transition: "opacity 120ms ease-out",
 									pointerEvents: isGridReady ? "auto" : "none",
 								}}
 							>
 								<FullscreenProvider>
 									{Grid && (
 										<Grid
-											key={`grid-${themeKey}`}
 											showThemeToggle={false}
 											fullWidth={true}
 											theme={gridTheme}
@@ -506,71 +638,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 													}
 												).unsubscribe = unsubscribe;
 
-												// Configure customer auto-fill service
-												console.log("Configuring CustomerAutoFillService...");
-
 												handleCheckEditingState();
-
-												configureCustomerAutoFill(
-													(rowIndex: number, customerName: string) => {
-														// Get columns from the data provider
-														const columnCount = dataProvider.getColumnCount();
-														const columns: IColumnDefinition[] = [];
-
-														// Build column definitions array
-														for (let i = 0; i < columnCount; i++) {
-															columns.push(dataProvider.getColumnDefinition(i));
-														}
-														if (columns) {
-															const nameColumnIndex = columns.findIndex(
-																(col: { id?: string }) => col.id === "name",
-															);
-															// Use column definitions for display order since displayColumns is out of scope here
-															const nameDisplayIndex = columns.findIndex(
-																(col: { id?: string }) => col.id === "name",
-															);
-
-															if (nameColumnIndex >= 0) {
-																// Update the underlying data via provider.setCell
-																const _columnDef = columns[nameColumnIndex];
-
-																// Get the existing cell to use as a template for creating the new cell
-																const existingCell = dataProvider.getCell(
-																	nameColumnIndex,
-																	rowIndex,
-																);
-																if (existingCell) {
-																	const newCell: TextCell = {
-																		kind: GridCellKind.Text,
-																		data: customerName,
-																		displayData: customerName,
-																		allowOverlay: true,
-																	};
-
-																	dataProvider.setCell(
-																		nameColumnIndex,
-																		rowIndex,
-																		newCell,
-																	);
-																}
-
-																// Repaint cell
-																if (dataEditorRef.current?.updateCells) {
-																	dataEditorRef.current.updateCells([
-																		{
-																			cell: [
-																				nameDisplayIndex >= 0
-																					? nameDisplayIndex
-																					: nameColumnIndex,
-																				rowIndex,
-																			],
-																		},
-																	]);
-																}
-															}
-														}
-													},
-												);
 											}}
 										/>
 									)}
@@ -588,12 +656,12 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							{isSaving ? (
 								<>
 									<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-									{isRTL ? "جاري الحفظ..." : "Saving..."}
+									{_isRTL ? "جاري الحفظ..." : "Saving..."}
 								</>
 							) : (
 								<>
 									<Save className="h-4 w-4" />
-									{isRTL ? "حفظ التغييرات" : "Save Changes"}
+									{_isRTL ? "حفظ التغييرات" : "Save Changes"}
 								</>
 							)}
 						</Button>
@@ -604,7 +672,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			<UnsavedChangesDialog
 				open={showUnsavedChangesDialog}
 				onOpenChange={setShowUnsavedChangesDialog}
-				isRTL={isRTL}
+				isRTL={_isRTL}
 				onDiscard={handleDiscardChanges}
 				onSaveAndClose={handleSaveAndClose}
 				isSaving={isSaving}

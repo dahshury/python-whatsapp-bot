@@ -1,5 +1,5 @@
 import type { UpdateType as BaseUpdateType } from "@/lib/realtime-utils";
-import type { Reservation, ConversationMessage } from "@/types/calendar";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 
 export type UpdateType =
 	| BaseUpdateType

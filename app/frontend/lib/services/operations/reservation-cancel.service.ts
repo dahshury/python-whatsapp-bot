@@ -1,15 +1,15 @@
 /* eslint-disable */
 import { cancelReservation } from "@/lib/api";
 import { toastService } from "@/lib/toast-service";
+import type { CalendarIntegrationService } from "../calendar/calendar-integration.service";
 import type {
+	ApiResponse,
 	CalendarEvent,
 	OperationResult,
 	SuccessfulOperation,
-	ApiResponse,
 } from "../types/data-table-types";
-import { CalendarIntegrationService } from "../calendar/calendar-integration.service";
-import { LocalEchoManager } from "../utils/local-echo.manager";
-import { notificationManager } from "../notifications/notification-manager.service";
+
+import type { LocalEchoManager } from "../utils/local-echo.manager";
 
 export class ReservationCancelService {
 	constructor(
@@ -32,7 +32,7 @@ export class ReservationCancelService {
 
 			const eventId = String(mapped.id);
 			const waId = this.extractWaId(mapped);
-			const date = mapped.start?.split("T")[0];
+			const date = mapped.start?.split("T")[0] || "";
 			const time = this.extractTimeFromEvent(mapped);
 
 			try {
@@ -53,6 +53,47 @@ export class ReservationCancelService {
 				// Remove from calendar
 				this.calendarIntegration.removeEvent(eventId);
 
+				// Reflow remaining events in the affected slot using slot base time when available
+				const baseTime = ((): string | null => {
+					try {
+						// Prefer existing slotTime metadata
+						if (mapped?.extendedProps?.slotTime) {
+							const slotTime = String(mapped.extendedProps.slotTime).slice(
+								0,
+								5,
+							);
+							console.log(
+								`🔄 Using existing slotTime: ${slotTime} for event ${eventId}`,
+							);
+							return slotTime;
+						}
+						// Fallback: use the raw time from the event (don't normalize to avoid slot jumping)
+						if (time) {
+							console.log(
+								`🔄 Using raw time: ${time} for event ${eventId} on ${date}`,
+							);
+							return time;
+						}
+						return null;
+					} catch (e) {
+						console.error(
+							`❌ Error computing baseTime for event ${eventId}:`,
+							e,
+						);
+						return null;
+					}
+				})();
+				if (date && baseTime) {
+					console.log(
+						`🔄 Reflowing slot ${date} ${baseTime} after cancelling ${eventId}`,
+					);
+					try {
+						this.calendarIntegration.reflowSlot(date, baseTime);
+					} catch (e) {
+						console.error(`❌ Error reflowing slot:`, e);
+					}
+				}
+
 				// Notify callback
 				onEventCancelled?.(eventId);
 
@@ -60,13 +101,15 @@ export class ReservationCancelService {
 				successful.push({
 					type: "cancel",
 					id: eventId,
-					data: { waId, date },
+					data: { waId, ...(date && { date }) },
 				});
 
 				// Success notification will come via WebSocket echo - no direct toast needed
 
 				// Mark local echo to suppress WebSocket notifications
-				this.markLocalEchoForCancellation(resp, mapped, eventId, date, waId);
+				if (date) {
+					this.markLocalEchoForCancellation(resp, mapped, eventId, date, waId);
+				}
 			} catch (e) {
 				hasErrors = true;
 				this.handleCancellationError(e as Error);
@@ -86,15 +129,15 @@ export class ReservationCancelService {
 	}
 
 	private extractTimeFromEvent(mapped: CalendarEvent): string {
-		if (mapped.start) {
-			const startDate = new Date(mapped.start);
-			return startDate.toLocaleTimeString("en-US", {
-				hour: "2-digit",
-				minute: "2-digit",
-				hour12: false,
-			});
+		try {
+			const slot = mapped?.extendedProps?.slotTime;
+			if (slot) return String(slot).slice(0, 5);
+			const s = mapped?.start || "";
+			if (s?.includes("T")) return s.split("T")[1]?.slice(0, 5) || "";
+			return "";
+		} catch {
+			return "";
 		}
-		return "";
 	}
 
 	private markLocalEchoForCancellation(

@@ -112,7 +112,7 @@ export function CustomerReservationsGrid({
 			}
 			// Convert 24-hour format to 12-hour format
 			const [hours, minutes] = timeStr.split(":");
-			const hour = parseInt(hours, 10);
+			const hour = parseInt(hours || "0", 10);
 			const ampm = hour >= 12 ? "PM" : "AM";
 			const hour12 = hour % 12 || 12;
 			return `${hour12}:${minutes} ${ampm}`;
@@ -163,7 +163,16 @@ export function CustomerReservationsGrid({
 				};
 			}
 
-			switch (columns[col].id) {
+			const column = columns[col];
+			if (!column) {
+				return {
+					kind: GridCellKind.Text,
+					data: "",
+					displayData: "",
+					allowOverlay: false,
+				};
+			}
+			switch (column.id) {
 				case "date":
 					return {
 						kind: GridCellKind.Text,

@@ -32,7 +32,7 @@ export function DockNav({
 		currentCalendarView,
 		onCalendarViewChange,
 	}) as ExtendedNavigationContextValue;
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 
 	if (!nav.state.mounted) {
 		return null;
@@ -49,7 +49,7 @@ export function DockNav({
 				{navigationOnly ? (
 					<>
 						<NavigationControls
-							isRTL={navigation.isRTL}
+							isLocalized={navigation.isLocalized}
 							isCalendarPage={navigation.isCalendarPage}
 							isPrevDisabled={navigation.isPrevDisabled}
 							isNextDisabled={navigation.isNextDisabled}
@@ -59,7 +59,7 @@ export function DockNav({
 
 						<NavigationDateButton
 							title={navigation.title}
-							isRTL={navigation.isRTL}
+							isLocalized={navigation.isLocalized}
 							isCalendarPage={navigation.isCalendarPage}
 							isTodayDisabled={navigation.isTodayDisabled}
 							onToday={navigation.handleToday}
@@ -68,16 +68,16 @@ export function DockNav({
 						{typeof navigation.visibleEventCount === "number" && (
 							<Badge variant="secondary" className="ml-2">
 								{navigation.visibleEventCount}{" "}
-								{i18n.getMessage("calendar_events", isRTL)}
+								{i18n.getMessage("calendar_events", isLocalized)}
 							</Badge>
 						)}
 					</>
 				) : !navigation.isCalendarPage ? (
-					<CalendarLink isRTL={navigation.isRTL} />
+					<CalendarLink isLocalized={navigation.isLocalized} />
 				) : (
 					<>
 						<NavigationControls
-							isRTL={navigation.isRTL}
+							isLocalized={navigation.isLocalized}
 							isCalendarPage={navigation.isCalendarPage}
 							isPrevDisabled={navigation.isPrevDisabled}
 							isNextDisabled={navigation.isNextDisabled}
@@ -87,7 +87,7 @@ export function DockNav({
 
 						<NavigationDateButton
 							title={navigation.title}
-							isRTL={navigation.isRTL}
+							isLocalized={navigation.isLocalized}
 							isCalendarPage={navigation.isCalendarPage}
 							isTodayDisabled={navigation.isTodayDisabled}
 							onToday={navigation.handleToday}
@@ -96,7 +96,7 @@ export function DockNav({
 						{typeof navigation.visibleEventCount === "number" && (
 							<Badge variant="outline" className="ml-2">
 								{navigation.visibleEventCount}{" "}
-								{i18n.getMessage("calendar_events", isRTL)}
+								{i18n.getMessage("calendar_events", isLocalized)}
 							</Badge>
 						)}
 					</>
@@ -105,12 +105,12 @@ export function DockNav({
 				{!navigationOnly && (
 					<>
 						<NavigationLinks
-							isRTL={navigation.isRTL}
+							isLocalized={navigation.isLocalized}
 							isActive={nav.computed.isActive}
 						/>
 
 						<SettingsPopover
-							isRTL={navigation.isRTL}
+							isLocalized={navigation.isLocalized}
 							activeTab={nav.state.activeTab}
 							onTabChange={nav.handlers.setActiveTab}
 							currentCalendarView={currentCalendarView}

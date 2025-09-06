@@ -1,5 +1,6 @@
 import type { IColumnDefinition } from "@/components/glide_custom_cells/components/core/interfaces/IDataSource";
 import { ColumnDataType } from "@/components/glide_custom_cells/components/core/interfaces/IDataSource";
+import { getSlotTimes } from "@/lib/calendar-config";
 
 export function getDataTableColumns(
 	isRTL: boolean,
@@ -8,52 +9,38 @@ export function getDataTableColumns(
 ): IColumnDefinition[] {
 	const t = (en: string, ar: string) => (isRTL ? ar : en);
 
-	// Derive defaults from the opened calendar slot/range
+	// Derive default scheduled datetime from the opened calendar slot/range
 	const startStr = selectedDateRange?.start;
 	const hasTime = !!startStr && startStr.includes("T");
-	const defaultDateValue = startStr
-		? hasTime
-			? startStr.split("T")[0]
-			: startStr
-		: undefined;
-	const defaultTimeValue = hasTime
-		? (() => {
-				try {
-					const d = new Date(startStr!);
-					if (Number.isNaN(d.getTime())) return undefined;
-					const hh = String(d.getHours()).padStart(2, "0");
-					const mm = String(d.getMinutes()).padStart(2, "0");
-					return `${hh}:${mm}`;
-				} catch {
-					return undefined;
-				}
-			})()
-		: undefined;
+	const defaultDateTimeValue = (() => {
+		if (!startStr) return undefined;
+		try {
+			if (hasTime) return startStr;
+			const base = new Date(`${startStr}T00:00:00`);
+			if (Number.isNaN(base.getTime())) return undefined;
+			const { slotMinTime } = getSlotTimes(base, !!freeRoam, "");
+			const [h, m] = String(slotMinTime || "11:00:00")
+				.split(":")
+				.map((v) => parseInt(v, 10));
+			const hh = String(Number.isFinite(h) ? h : 11).padStart(2, "0");
+			const mm = String(Number.isFinite(m) ? m : 0).padStart(2, "0");
+			return `${startStr}T${hh}:${mm}`;
+		} catch {
+			return undefined;
+		}
+	})();
 
 	const columns: IColumnDefinition[] = [
 		{
-			id: "date",
-			name: "date",
-			title: t("Date", "التاريخ"),
-			dataType: ColumnDataType.DATE,
+			id: "scheduled_time",
+			name: "scheduled_time",
+			title: t("Scheduled time", "التوقيت"),
+			dataType: ColumnDataType.DATETIME,
 			isEditable: true,
 			isRequired: true,
-			// Default to the opened slot's day when available
-			defaultValue: defaultDateValue,
-			formatting: { pattern: "YYYY-MM-DD" },
-			width: 130,
+			defaultValue: defaultDateTimeValue,
+			width: 190,
 			metadata: { freeRoam: !!freeRoam },
-		},
-		{
-			id: "time",
-			name: "time",
-			title: t("Time", "الوقت"),
-			dataType: ColumnDataType.TIME,
-			isEditable: true,
-			isRequired: true,
-			// In time grid views, default to the clicked slot time; otherwise empty
-			defaultValue: defaultTimeValue,
-			width: 110,
 		},
 		{
 			id: "phone",
@@ -62,7 +49,8 @@ export function getDataTableColumns(
 			dataType: ColumnDataType.PHONE,
 			isEditable: true,
 			isRequired: true,
-			width: 140,
+			defaultValue: "+966 ",
+			width: 320, // Increased width for phone input widget
 		},
 		{
 			id: "type",
@@ -91,15 +79,14 @@ export function getDataTableColumns(
 }
 
 export function getColumnNamesForParsing(): string[] {
-	return ["date", "time", "phone", "type", "name"];
+	return ["scheduled_time", "phone", "type", "name"];
 }
 
 export function getValidationColumns(_isRTL?: boolean) {
 	return [
 		{ name: "phone", required: true },
 		{ name: "name", required: true },
-		{ name: "date", required: true },
-		{ name: "time", required: true },
+		{ name: "scheduled_time", required: true },
 		{ name: "type", required: true },
 	];
 }

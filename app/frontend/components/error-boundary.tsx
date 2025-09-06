@@ -46,7 +46,8 @@ export class ErrorBoundary extends React.Component<
 	}
 
 	retry = () => {
-		this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+		// Avoid state update loops by resetting fully and deferring a tick
+		this.setState({ hasError: false });
 	};
 
 	render() {

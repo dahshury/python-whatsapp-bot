@@ -4,7 +4,6 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
-import { Z_INDEX } from "@/lib/z-index";
 
 const TooltipProvider = TooltipPrimitive.Provider;
 

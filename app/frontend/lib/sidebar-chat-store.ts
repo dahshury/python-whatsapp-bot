@@ -41,11 +41,11 @@ export const useSidebarChatStore = create<SidebarChatState>((set) => ({
 	_hasHydrated: true,
 
 	// Legacy open/close
-	open: (id) =>
+	open: (id?: string | null) =>
 		set((s) => ({
 			isOpen: true,
 			isChatSidebarOpen: true,
-			selectedConversationId: id ?? s.selectedConversationId,
+			selectedConversationId: id ?? s.selectedConversationId ?? null,
 		})),
 	close: () => set({ isOpen: false, isChatSidebarOpen: false }),
 

@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { useLanguage } from "@/lib/language-context";
-import { toastService } from "@/lib/toast-service";
-import { notificationManager } from "@/lib/services/notifications/notification-manager.service";
 import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
+import { notificationManager } from "@/lib/services/notifications/notification-manager.service";
+import { toastService } from "@/lib/toast-service";
 
 export const ToastRouter: React.FC = () => {
 	const { isRTL } = useLanguage();

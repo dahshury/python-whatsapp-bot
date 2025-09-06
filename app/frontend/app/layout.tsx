@@ -170,10 +170,8 @@ export default function RootLayout({
 					/>
 				</ThemeProvider>
 				{/* Required by Glide Data Grid overlay editor */}
-				{/* biome-ignore lint: Global portal container is intentionally static */}
 				<div id="portal" />
 				{/* Stable dialog overlay portal container */}
-				{/* biome-ignore lint: Global dialog overlay container is intentionally static */}
 				<div
 					id="dialog-overlay-portal"
 					style={{

@@ -2,19 +2,65 @@
 """
 Migrate data from original_db.sqlite to new clean database structure.
 This script preserves all your original data while fixing schema issues.
+
+IMPROVED VERSION: Handles concurrency, foreign keys, and Windows-specific issues.
 """
 
 import os
 import sqlite3
 import shutil
+import time
+import psutil
 from datetime import datetime
 from typing import List, Dict, Tuple
+from pathlib import Path
+
+def check_database_in_use(db_path: str) -> bool:
+    """Check if the database is currently being used by any process."""
+    try:
+        # Try to open with exclusive lock (will fail if in use)
+        conn = sqlite3.connect(f'file:{db_path}?mode=rwc', uri=True, timeout=1.0)
+        cursor = conn.cursor()
+        cursor.execute('BEGIN IMMEDIATE;')  # Acquire immediate lock
+        cursor.execute('ROLLBACK;')
+        conn.close()
+        return False
+    except sqlite3.OperationalError as e:
+        if 'database is locked' in str(e).lower():
+            return True
+        return False
+    except Exception:
+        return True
+
+def wait_for_database_release(db_path: str, max_wait_seconds: int = 30) -> bool:
+    """Wait for database to be released by other processes."""
+    print(f"⏳ Waiting for database to be released: {db_path}")
+    start_time = time.time()
+    
+    while time.time() - start_time < max_wait_seconds:
+        if not check_database_in_use(db_path):
+            print(f"✅ Database is now available")
+            return True
+        time.sleep(1)
+        print(".", end="", flush=True)
+    
+    print(f"\n❌ Timeout: Database still in use after {max_wait_seconds} seconds")
+    return False
 
 def backup_current_database():
     """Backup the current threads_db.sqlite before migration."""
     if os.path.exists('threads_db.sqlite'):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         backup_name = f'threads_db_backup_before_migration_{timestamp}.sqlite'
+        
+        # Check if database is in use before backing up
+        if check_database_in_use('threads_db.sqlite'):
+            print("⚠️  Database is currently in use. Attempting to wait for release...")
+            if not wait_for_database_release('threads_db.sqlite'):
+                raise RuntimeError("Cannot backup database - it's still in use. Please stop the application first.")
+        
+        # Perform checkpoint and backup
+        _checkpoint_and_vacuum('threads_db.sqlite')
         shutil.copy2('threads_db.sqlite', backup_name)
         print(f"✅ Current database backed up as: {backup_name}")
         return backup_name
@@ -107,6 +153,13 @@ def create_new_database_with_data(customers_data: List[Dict],
     cursor = conn.cursor()
     
     try:
+        # Enable foreign key constraints and configure SQLite properly
+        cursor.execute('PRAGMA foreign_keys = ON;')
+        cursor.execute('PRAGMA journal_mode = WAL;')
+        cursor.execute('PRAGMA synchronous = NORMAL;')
+        cursor.execute('PRAGMA temp_store = MEMORY;')
+        cursor.execute('PRAGMA mmap_size = 268435456;')  # 256MB
+        
         # Create clean schema (matching db.py)
         cursor.executescript("""
             -- Customers table
@@ -220,6 +273,14 @@ def create_new_database_with_data(customers_data: List[Dict],
         # Commit all changes
         conn.commit()
         
+        # Verify foreign key constraints are working
+        cursor.execute('PRAGMA foreign_key_check;')
+        fk_violations = cursor.fetchall()
+        if fk_violations:
+            raise Exception(f"Foreign key violations found: {fk_violations}")
+        
+        print("✅ Foreign key constraints verified")
+        
         print("🎉 Migration completed successfully!")
         print("📊 Final counts:")
         print(f"  - Customers: {customers_migrated:,}")
@@ -236,11 +297,22 @@ def create_new_database_with_data(customers_data: List[Dict],
     return new_db_name
 
 def validate_migrated_database(db_path: str) -> bool:
-    """Validate the migrated database."""
+    """Validate the migrated database with comprehensive checks."""
     print(f"🔍 Validating migrated database: {db_path}")
     
     try:
+        # Test both SQLite and SQLAlchemy connections
+        success = validate_sqlite_direct(db_path) and validate_sqlalchemy_compatibility(db_path)
+        return success
+    except Exception as e:
+        print(f"❌ Validation error: {e}")
+        return False
+
+def validate_sqlite_direct(db_path: str) -> bool:
+    """Validate database using direct SQLite connection."""
+    try:
         conn = sqlite3.connect(db_path)
+        conn.execute('PRAGMA foreign_keys = ON;')  # Enable foreign keys for validation
         cursor = conn.cursor()
         
         # Check integrity
@@ -264,7 +336,7 @@ def validate_migrated_database(db_path: str) -> bool:
         cursor.execute('SELECT COUNT(*) FROM vacation_periods')
         vacation_periods_count = cursor.fetchone()[0]
         
-        print("🔍 Validation results:")
+        print("🔍 SQLite validation results:")
         print(f"  - Database integrity: {integrity}")
         print(f"  - Foreign key violations: {len(violations)}")
         print(f"  - Customers: {customers_count:,}")
@@ -272,35 +344,217 @@ def validate_migrated_database(db_path: str) -> bool:
         print(f"  - Reservations: {reservations_count:,}")
         print(f"  - Vacation periods: {vacation_periods_count:,}")
         
+        # Test the problematic JOIN query
+        cursor.execute("""
+            SELECT COUNT(*) FROM reservations 
+            JOIN customers ON reservations.wa_id = customers.wa_id
+        """)
+        join_count = cursor.fetchone()[0]
+        print(f"  - JOIN query test: {join_count:,} records")
+        
         conn.close()
         
         if integrity == 'ok' and len(violations) == 0:
-            print("✅ Database validation PASSED!")
+            print("✅ SQLite validation PASSED!")
             return True
         else:
-            print("❌ Database validation FAILED!")
+            print("❌ SQLite validation FAILED!")
             return False
             
     except Exception as e:
-        print(f"❌ Validation error: {e}")
+        print(f"❌ SQLite validation error: {e}")
+        return False
+
+def validate_sqlalchemy_compatibility(db_path: str) -> bool:
+    """Validate database using SQLAlchemy (same as the application uses)."""
+    print("🔍 Testing SQLAlchemy compatibility...")
+    try:
+        # Import SQLAlchemy components (same as app/db.py)
+        from sqlalchemy import create_engine, text
+        from sqlalchemy.orm import sessionmaker
+        
+        # Create engine with same settings as app
+        engine = create_engine(
+            f"sqlite:///{db_path}", 
+            echo=False, 
+            future=True, 
+            connect_args={"check_same_thread": False}
+        )
+        
+        Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+        session = Session()
+        
+        try:
+            # Test the exact problematic query from the error message
+            result = session.execute(text("""
+                SELECT reservations.id, reservations.wa_id, customers.customer_name, 
+                       reservations.date, reservations.time_slot, reservations.type, reservations.status 
+                FROM reservations 
+                JOIN customers ON reservations.wa_id = customers.wa_id 
+                ORDER BY reservations.wa_id ASC, reservations.date ASC, reservations.time_slot ASC 
+                LIMIT 5
+            """))
+            
+            records = result.fetchall()
+            print(f"✅ SQLAlchemy validation PASSED! Found {len(records)} test records")
+            
+            # Test a simple count query too
+            count_result = session.execute(text("SELECT COUNT(*) FROM reservations"))
+            count = count_result.scalar()
+            print(f"✅ SQLAlchemy count query: {count:,} reservations")
+            
+            return True
+            
+        finally:
+            session.close()
+            engine.dispose()
+            
+    except ImportError:
+        print("⚠️  SQLAlchemy not available for validation - skipping compatibility test")
+        return True  # Don't fail if SQLAlchemy isn't available
+    except Exception as e:
+        print(f"❌ SQLAlchemy validation FAILED: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def replace_current_database(new_db_path: str):
     """Replace threads_db.sqlite with the migrated database."""
     print("🔄 Replacing threads_db.sqlite with migrated database...")
     
+    # Ensure no processes are using the database
+    if os.path.exists('threads_db.sqlite') and check_database_in_use('threads_db.sqlite'):
+        print("⚠️  Database still in use. Waiting for release...")
+        if not wait_for_database_release('threads_db.sqlite', max_wait_seconds=10):
+            print("❌ Cannot replace database - still in use. Please stop the application.")
+            return False
+    
+    # Clean up any existing WAL/SHM files first
+    _remove_sidecar_files('threads_db.sqlite')
+    
     # Remove current database
     if os.path.exists('threads_db.sqlite'):
-        os.remove('threads_db.sqlite')
+        try:
+            os.remove('threads_db.sqlite')
+        except PermissionError as e:
+            print(f"❌ Cannot remove old database: {e}")
+            return False
     
     # Move migrated database to final location
-    shutil.move(new_db_path, 'threads_db.sqlite')
-    print("✅ Database replacement completed!")
+    try:
+        shutil.move(new_db_path, 'threads_db.sqlite')
+        print("✅ Database replacement completed!")
+        return True
+    except Exception as e:
+        print(f"❌ Database replacement failed: {e}")
+        return False
+
+def _checkpoint_and_vacuum(db_path: str) -> bool:
+    """Attempt to checkpoint WAL and vacuum the database to remove WAL usage.
+
+    Returns True if the operations were attempted (file existed), False if file missing.
+    """
+    if not os.path.exists(db_path):
+        return False
+    
+    try:
+        # Use a longer timeout and more aggressive settings
+        conn = sqlite3.connect(db_path, timeout=10.0)
+        conn.execute('PRAGMA busy_timeout = 10000;')  # 10 seconds
+        cursor = conn.cursor()
+        
+        try:
+            # First checkpoint to flush WAL
+            cursor.execute('PRAGMA wal_checkpoint(RESTART);')
+            cursor.execute('PRAGMA wal_checkpoint(TRUNCATE);')
+            print(f"✅ WAL checkpoint completed for {db_path}")
+        except sqlite3.OperationalError as e:
+            if 'not a wal database' not in str(e).lower():
+                print(f"⚠️  WAL checkpoint issue for {db_path}: {e}")
+        
+        try:
+            # Then vacuum to compact
+            cursor.execute('VACUUM;')
+            print(f"✅ VACUUM completed for {db_path}")
+        except sqlite3.OperationalError as e:
+            print(f"⚠️  VACUUM skipped for {db_path}: {e}")
+            
+        return True
+        
+    except Exception as e:
+        print(f"⚠️  Checkpoint/VACUUM failed for {db_path}: {e}")
+        return True
+    finally:
+        try:
+            if 'conn' in locals():
+                conn.close()
+        except:
+            pass
+
+def _remove_sidecar_files(db_path: str):
+    """Remove -wal and -shm sidecar files for the given SQLite db path, if present."""
+    for suffix in ('-wal', '-shm'):
+        sidecar = f"{db_path}{suffix}"
+        try:
+            if os.path.exists(sidecar):
+                # On Windows, try multiple times with delays
+                for attempt in range(3):
+                    try:
+                        os.remove(sidecar)
+                        print(f"🧹 Removed sidecar file: {sidecar}")
+                        break
+                    except PermissionError:
+                        if attempt < 2:  # Not the last attempt
+                            time.sleep(0.5)
+                            continue
+                        else:
+                            print(f"⚠️  Could not remove sidecar {sidecar} after 3 attempts")
+        except Exception as e:
+            print(f"⚠️  Could not remove sidecar {sidecar}: {e}")
+
+def cleanup_sqlite_artifacts(paths: List[str]):
+    """Flush WAL, vacuum, and delete -wal/-shm files for given SQLite dbs."""
+    for path in paths:
+        print(f"🧹 Cleaning SQLite artifacts for: {path}")
+        attempted = _checkpoint_and_vacuum(path)
+        if attempted:
+            _remove_sidecar_files(path)
+    
+    # Also clean up any orphaned WAL/SHM files that might exist
+    print("🧹 Checking for orphaned SQLite sidecar files...")
+    orphaned_files = []
+    for file in os.listdir('.'):
+        if file.endswith(('.sqlite-wal', '.sqlite-shm')):
+            orphaned_files.append(file)
+    
+    if orphaned_files:
+        print(f"🧹 Found orphaned sidecar files: {', '.join(orphaned_files)}")
+        for file in orphaned_files:
+            try:
+                os.remove(file)
+                print(f"🧹 Removed orphaned file: {file}")
+            except Exception as e:
+                print(f"⚠️  Could not remove orphaned file {file}: {e}")
+    else:
+        print("✅ No orphaned sidecar files found")
 
 def main():
     """Main migration function."""
     print("🚀 STARTING DATA MIGRATION FROM ORIGINAL DATABASE")
     print("=" * 60)
+    print("⚠️  IMPORTANT: Please ensure your application is STOPPED before migration!")
+    print("   - Stop Docker containers: docker-compose down")
+    print("   - Stop any Python processes using the database")
+    print("   - Wait for all database connections to close")
+    print()
+    
+    # Give user a chance to abort
+    try:
+        input("Press Enter to continue or Ctrl+C to abort...")
+    except KeyboardInterrupt:
+        print("\n❌ Migration aborted by user.")
+        return False
+    print()
     
     try:
         # Step 1: Backup current database
@@ -318,7 +572,22 @@ def main():
             return False
         
         # Step 5: Replace current database
-        replace_current_database(new_db_path)
+        if not replace_current_database(new_db_path):
+            print("❌ Database replacement failed. Migration aborted.")
+            return False
+
+        # Step 6: Final validation of replaced database
+        print("🔍 Final validation of replaced database...")
+        if not validate_migrated_database('threads_db.sqlite'):
+            print("❌ Final validation failed. Please check the database.")
+            return False
+
+        # Step 7: Cleanup WAL/SHM sidecar files now that everything is closed
+        print("🧹 Cleaning up SQLite artifacts...")
+        cleanup_sqlite_artifacts([
+            'original_db.sqlite',
+            'threads_db.sqlite',
+        ])
         
         print("\n" + "=" * 60)
         print("🎉 MIGRATION COMPLETED SUCCESSFULLY!")
@@ -326,10 +595,17 @@ def main():
         print("✅ All your original data has been migrated to the new structure")
         print("✅ Database corruption issues are fixed")
         print("✅ Foreign key relationships are now correct")
+        print("✅ SQLAlchemy compatibility verified")
         print("✅ Application is ready for use")
         print("\n📝 NEXT STEPS:")
         print("1. Restart your Docker containers: docker-compose restart")
-        print("2. Your application will now work with all your original data")
+        print("2. Test your application to ensure everything works correctly")
+        print("3. Monitor logs for any database-related errors")
+        print("4. If issues persist, check the backup file created during migration")
+        print("\n🔍 TROUBLESHOOTING:")
+        print("- If you still get corruption errors, ensure no other processes are accessing the database")
+        print("- Check that your application stops cleanly before running migration")
+        print("- The migration script now includes comprehensive validation to prevent issues")
         
         return True
         

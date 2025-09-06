@@ -21,15 +21,13 @@ export class GridDataService {
 
 		if (cell.kind === GridCellKind.Custom) {
 			const data = (cell as { data?: unknown }).data as
-				| { kind?: string; value?: unknown; date?: Date; phone?: string }
+				| { kind?: string; value?: unknown; date?: Date }
 				| undefined;
 			switch (data?.kind) {
 				case "dropdown-cell":
 					return data.value ?? "";
 				case "tempus-date-cell":
 					return data.date ?? null;
-				case "phone-input-cell":
-					return data.phone ?? "";
 				default:
 					return (
 						(cell as { displayData?: unknown }).displayData ??

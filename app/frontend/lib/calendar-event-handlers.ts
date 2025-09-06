@@ -1,16 +1,78 @@
 import { cancelReservation } from "@/lib/api";
 import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
-import { to24h } from "./utils";
+import { i18n } from "@/lib/i18n";
 import type { UpdateType } from "@/lib/realtime-utils";
 import { toastService } from "@/lib/toast-service";
-import { notificationManager } from "@/lib/services/notifications/notification-manager.service";
-import { i18n } from "@/lib/i18n";
+import { to24h } from "./utils";
 
 // Toasts are centralized in WebSocketDataProvider to avoid duplicates
 
+// WebSocket message interfaces
+interface WebSocketMessage {
+	type: string;
+	data?: Record<string, unknown>;
+	[key: string]: unknown;
+}
+
+// FullCalendar event interfaces
+interface FullCalendarEventChangeInfo {
+	event: {
+		id: string;
+		title: string;
+		start: Date;
+		end?: Date;
+		startStr?: string;
+		endStr?: string;
+		extendedProps?: Record<string, unknown>;
+	};
+	oldEvent?: {
+		id: string;
+		title: string;
+		start: Date;
+		end?: Date;
+		startStr?: string;
+		extendedProps?: Record<string, unknown>;
+	};
+	revert?: () => void;
+}
+
+interface FullCalendarApi {
+	getEvents: () => Array<{
+		id: string;
+		title: string;
+		start: Date;
+		end?: Date;
+		extendedProps?: Record<string, unknown>;
+		remove: () => void;
+	}>;
+	getEventById?: (id: string) => FullCalendarEvent | null;
+	refetchEvents: () => void;
+	[key: string]: unknown;
+}
+
+interface FullCalendarEvent {
+	id: string;
+	title?: string;
+	start?: Date;
+	end?: Date;
+	startStr?: string;
+	endStr?: string;
+	extendedProps?: Record<string, unknown>;
+	setExtendedProp?: (key: string, value: unknown) => void;
+	remove?: () => void;
+}
+
+interface CalendarEventData {
+	id: string;
+	title?: string;
+	start?: string;
+	end?: string;
+	extendedProps?: Record<string, unknown>;
+}
+
 // WebSocket message queue for operations before connection is established
 interface QueuedMessage {
-	message: any;
+	message: WebSocketMessage;
 	resolve: (success: boolean) => void;
 	timestamp: number;
 }
@@ -20,7 +82,8 @@ const QUEUE_TIMEOUT_MS = 10000; // 10 seconds max wait
 
 // Process queued messages when WebSocket connects
 function processMessageQueue() {
-	const wsRef = (globalThis as any).__wsConnection;
+	const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
+		.__wsConnection;
 	if (!wsRef?.current || wsRef.current.readyState !== WebSocket.OPEN) {
 		return;
 	}
@@ -29,7 +92,8 @@ function processMessageQueue() {
 
 	const now = Date.now();
 	while (messageQueue.length > 0) {
-		const queued = messageQueue.shift()!;
+		const queued = messageQueue.shift();
+		if (!queued) break;
 
 		// Check if message has expired
 		if (now - queued.timestamp > QUEUE_TIMEOUT_MS) {
@@ -50,12 +114,16 @@ function processMessageQueue() {
 }
 
 // Set up WebSocket connection event listener to process queue
-if (typeof globalThis !== "undefined" && !(globalThis as any).__wsQueueSetup) {
-	(globalThis as any).__wsQueueSetup = true;
+if (
+	typeof globalThis !== "undefined" &&
+	!(globalThis as { __wsQueueSetup?: boolean }).__wsQueueSetup
+) {
+	(globalThis as { __wsQueueSetup?: boolean }).__wsQueueSetup = true;
 
 	// Check periodically if WebSocket connects and process queue
 	const checkConnection = () => {
-		const wsRef = (globalThis as any).__wsConnection;
+		const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
+			.__wsConnection;
 		if (
 			wsRef?.current?.readyState === WebSocket.OPEN &&
 			messageQueue.length > 0
@@ -68,10 +136,11 @@ if (typeof globalThis !== "undefined" && !(globalThis as any).__wsQueueSetup) {
 }
 
 // WebSocket-based operations to replace HTTP API calls
-function sendWebSocketMessage(message: any): Promise<boolean> {
+function sendWebSocketMessage(message: WebSocketMessage): Promise<boolean> {
 	return new Promise((resolve) => {
 		try {
-			const wsRef = (globalThis as any).__wsConnection;
+			const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
+				.__wsConnection;
 
 			if (wsRef?.current?.readyState === WebSocket.OPEN) {
 				// WebSocket is connected, send immediately
@@ -146,10 +215,20 @@ async function cancelReservationWS(
 	});
 	if (success) return { success: true };
 	// Fallback to HTTP if WebSocket unavailable
-	const resp = await cancelReservation({ id: waId, date, isRTL });
+	const resp = await cancelReservation({
+		id: waId,
+		date,
+		...(typeof isRTL === "boolean" ? { isRTL } : {}),
+	});
 	return {
-		success: Boolean((resp as any)?.success),
-		message: (resp as any)?.message ?? (resp as any)?.error,
+		success: Boolean((resp as { success?: unknown })?.success),
+		...(typeof (resp as { message?: string; error?: string })?.message ===
+		"string"
+			? { message: (resp as { message?: string })?.message as string }
+			: typeof (resp as { message?: string; error?: string })?.error ===
+					"string"
+				? { message: (resp as { error?: string })?.error as string }
+				: {}),
 	};
 }
 
@@ -165,12 +244,13 @@ function waitForWSConfirmation(args: {
 	const { reservationId, waId, date, timeoutMs = 10000, isRTL = false } = args;
 	return new Promise((resolve) => {
 		let resolved = false;
-		const wsRef = (globalThis as any).__wsConnection;
+		const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
+			.__wsConnection;
 
 		const handler = (ev: Event) => {
 			try {
 				const detail = (ev as CustomEvent).detail as
-					| { type?: UpdateType; data?: any }
+					| { type?: UpdateType; data?: Record<string, unknown> }
 					| undefined;
 				const t = detail?.type;
 				const d = detail?.data || {};
@@ -180,7 +260,7 @@ function waitForWSConfirmation(args: {
 					console.log(
 						"🎯 WebSocket response:",
 						t,
-						(detail as any).error || d.message,
+						(detail as { error?: string }).error || d.message,
 					);
 				}
 
@@ -190,7 +270,7 @@ function waitForWSConfirmation(args: {
 					if (!resolved) {
 						resolved = true;
 						window.removeEventListener("realtime", handler as EventListener);
-						resolve({ success: true, message: d.message });
+						resolve({ success: true, message: d.message as string });
 					}
 				} else if (t === "modify_reservation_nack") {
 					if (!resolved) {
@@ -198,7 +278,13 @@ function waitForWSConfirmation(args: {
 						window.removeEventListener("realtime", handler as EventListener);
 						// Extract error message from the WebSocket message
 						const errorMessage =
-							(detail as any).error || d.message || "Operation failed";
+							(typeof (detail as { error?: unknown })?.error === "string"
+								? (detail as { error?: string }).error
+								: undefined) ||
+							(typeof d.message === "string"
+								? (d.message as string)
+								: undefined) ||
+							"Operation failed";
 						resolve({
 							success: false,
 							message: errorMessage,
@@ -289,25 +375,22 @@ function waitForWSConfirmation(args: {
 }
 
 export async function handleEventChange(args: {
-	info: any;
+	info: FullCalendarEventChangeInfo;
 	isVacationDate: (date: string) => boolean;
 	isRTL: boolean;
 	currentView: string;
 	onRefresh: () => Promise<void>;
-	getCalendarApi?: () => any;
-	updateEvent: (id: string, event: any) => void;
-	resolveEvent?: (id: string) => { extendedProps?: any } | undefined;
+	getCalendarApi?: () => FullCalendarApi;
+	updateEvent: (id: string, event: CalendarEventData) => void;
+	resolveEvent?: (
+		id: string,
+	) => { extendedProps?: Record<string, unknown> } | undefined;
 }): Promise<void> {
 	// Check if this event change should be suppressed
-	const suppressDepth = (globalThis as any).__suppressEventChangeDepth || 0;
-	const {
-		info,
-		getCalendarApi,
-		updateEvent,
-		currentView,
-		isVacationDate,
-		resolveEvent,
-	} = args;
+	const suppressDepth =
+		(globalThis as { __suppressEventChangeDepth?: number })
+			.__suppressEventChangeDepth || 0;
+	const { info, updateEvent, currentView, isVacationDate, resolveEvent } = args;
 
 	// Guard: ignore eventChange triggered by our own programmatic updates
 	if (suppressDepth > 0) {
@@ -331,12 +414,13 @@ export async function handleEventChange(args: {
 
 		// Convert to backend payload (match Streamlit behavior)
 		const resolved = resolveEvent ? resolveEvent(String(event.id)) : undefined;
-		const waId =
+		const waId = String(
 			event.extendedProps?.waId ||
-			event.extendedProps?.wa_id ||
-			resolved?.extendedProps?.waId ||
-			resolved?.extendedProps?.wa_id ||
-			event.id;
+				event.extendedProps?.wa_id ||
+				resolved?.extendedProps?.waId ||
+				resolved?.extendedProps?.wa_id ||
+				event.id,
+		);
 		const newDate = event.startStr?.split("T")[0];
 		// Derive HH:mm deterministically from startStr to avoid timezone skew
 		const rawTime = (event.startStr?.split("T")[1] || "00:00").slice(0, 5);
@@ -376,12 +460,14 @@ export async function handleEventChange(args: {
 
 		// Mark this move locally to suppress immediate WS echo thrash
 		try {
-			(globalThis as any).__calendarLocalMoves =
-				(globalThis as any).__calendarLocalMoves || new Map<string, number>();
-			(globalThis as any).__calendarLocalMoves.set(
-				String(event.id),
-				Date.now(),
-			);
+			(
+				globalThis as { __calendarLocalMoves?: Map<string, number> }
+			).__calendarLocalMoves =
+				(globalThis as { __calendarLocalMoves?: Map<string, number> })
+					.__calendarLocalMoves || new Map<string, number>();
+			(
+				globalThis as { __calendarLocalMoves?: Map<string, number> }
+			).__calendarLocalMoves?.set(String(event.id), Date.now());
 		} catch {}
 
 		// Capture previous state for rich success toast after WS confirmation
@@ -395,10 +481,14 @@ export async function handleEventChange(args: {
 				?.type ?? event.extendedProps?.type) as number | undefined;
 			const prevName: string | undefined = (info?.oldEvent?.title ||
 				event.title) as string | undefined;
-			(globalThis as any).__calendarLastModifyContext =
-				(globalThis as any).__calendarLastModifyContext ||
-				new Map<string, any>();
-			(globalThis as any).__calendarLastModifyContext.set(String(event.id), {
+			(
+				globalThis as { __calendarLastModifyContext?: Map<string, unknown> }
+			).__calendarLastModifyContext =
+				(globalThis as { __calendarLastModifyContext?: Map<string, unknown> })
+					.__calendarLastModifyContext || new Map<string, unknown>();
+			(
+				globalThis as { __calendarLastModifyContext?: Map<string, unknown> }
+			).__calendarLastModifyContext?.set(String(event.id), {
 				waId,
 				prevDate,
 				prevTime,
@@ -425,20 +515,20 @@ export async function handleEventChange(args: {
 		// Send WebSocket modification and wait for ack/nack response
 		const [wsResult, resp] = await Promise.all([
 			modifyReservationWS(waId, {
-				date: newDate!,
+				date: String(newDate || ""),
 				time: newTime,
-				title,
-				type,
+				type: Number(type) || 0,
 				approximate: useApproximate,
-				reservationId,
 				isRTL: args.isRTL,
+				...(title && { title }),
+				...(reservationId != null ? { reservationId } : {}),
 			}),
 			waitForWSConfirmation({
-				reservationId,
-				waId,
-				date: newDate!,
+				...(reservationId != null ? { reservationId } : {}),
+				waId: String(waId),
+				date: String(newDate || ""),
 				time: newTime,
-				isRTL: args.isRTL,
+				...(typeof args.isRTL === "boolean" ? { isRTL: args.isRTL } : {}),
 			}),
 		]);
 
@@ -470,9 +560,9 @@ export async function handleEventChange(args: {
 				toastService.reservationModificationFailed({
 					customer: title,
 					wa_id: String(waId),
-					date: newDate,
+					date: String(newDate || ""),
 					time: newTime,
-					isRTL: args.isRTL,
+					isRTL: Boolean(args.isRTL),
 					error: message,
 				});
 			} catch (e) {
@@ -487,52 +577,28 @@ export async function handleEventChange(args: {
 			updateEvent(event.id, {
 				id: event.id,
 				title: event.title,
-				start: event.startStr,
-				end: event.endStr || event.startStr,
+				start: event.startStr || "",
+				...(event.endStr && { end: event.endStr }),
 			});
 		}
 		// Note: Removed post-drag reflow to prevent triggering eventChange for other events in slot
 		// Alignment will happen on next render via alignAndSortEventsForCalendar
 		// Mark this operation as local to suppress unread increments on WS echo (cover id/wa_id and time variants)
 		try {
-			(globalThis as any).__localOps =
-				(globalThis as any).__localOps || new Set<string>();
-			const idPart = String(reservationId ?? event.id ?? "");
-			const waPart = String(
-				event.extendedProps?.waId ||
-					event.extendedProps?.wa_id ||
-					event.id ||
-					"",
-			);
-			const datePart = String(newDate || "");
-			const time12 = String(newTime || "");
-			const time24 = (() => {
-				try {
-					const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(time12);
-					if (!m) return time12;
-					let h = parseInt(m[1], 10);
-					const mm = m[2];
-					const ap = m[3].toUpperCase();
-					if (ap === "PM" && h < 12) h += 12;
-					if (ap === "AM" && h === 12) h = 0;
-					return `${String(h).padStart(2, "0")}:${mm}`;
-				} catch {
-					return time12;
-				}
-			})();
-			const keys = [
-				`reservation_updated:${idPart}:${datePart}:${time12}`,
-				`reservation_updated:${idPart}:${datePart}:${time24}`,
-				`reservation_updated:${waPart}:${datePart}:${time12}`,
-				`reservation_updated:${waPart}:${datePart}:${time24}`,
+			const localOpsSet = (globalThis as { __localOps?: Set<string> })
+				.__localOps;
+			const keysArr = [
+				`reservation_updated:${String(event.id)}:${String(newDate || "")}:${newTime}`,
+				`reservation_updated:${String(waId)}:${String(newDate || "")}:${newTime}`,
 			];
-			for (const k of keys) {
-				(globalThis as any).__localOps.add(k);
+			for (const k of keysArr) {
+				localOpsSet?.add(k);
 			}
 			setTimeout(() => {
 				try {
-					for (const k of keys) {
-						(globalThis as any).__localOps.delete(k);
+					const s = (globalThis as { __localOps?: Set<string> }).__localOps;
+					for (const k of keysArr) {
+						s?.delete(k);
 					}
 				} catch {}
 			}, 5000);
@@ -555,17 +621,17 @@ export async function handleOpenConversation(args: {
 
 export async function handleCancelReservation(args: {
 	eventId: string;
-	events: any[];
+	events: CalendarEventData[];
 	isRTL: boolean;
 	onRefresh: () => Promise<void>;
-	getCalendarApi?: () => any;
+	getCalendarApi?: () => FullCalendarApi;
 	onEventCancelled?: (eventId: string) => void;
 }): Promise<void> {
 	const { eventId, events, isRTL, getCalendarApi, onEventCancelled } = args;
 	// Resolve from state first, then FullCalendar for freshest extendedProps (tolerate number/string ids)
 	const stateEv = events.find((e) => String(e.id) === String(eventId));
-	let api: any | null = null;
-	let fcEvent: any | null = null;
+	let api: FullCalendarApi | null = null;
+	let fcEvent: FullCalendarEvent | null = null;
 	try {
 		api = typeof getCalendarApi === "function" ? getCalendarApi() : null;
 		fcEvent = api?.getEventById?.(String(eventId)) || null;
@@ -600,18 +666,24 @@ export async function handleCancelReservation(args: {
 	// Optimistic: mark as cancelled immediately; rely on WS and removal on success
 	try {
 		// Use suppressed event change to prevent triggering modification events
-		const currentDepth = (globalThis as any).__suppressEventChangeDepth || 0;
-		(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
+		const currentDepth =
+			(globalThis as { __suppressEventChangeDepth?: number })
+				.__suppressEventChangeDepth || 0;
+		(
+			globalThis as { __suppressEventChangeDepth?: number }
+		).__suppressEventChangeDepth = currentDepth + 1;
 		fcEvent?.setExtendedProp?.("cancelled", true);
-		(globalThis as any).__suppressEventChangeDepth = currentDepth;
+		(
+			globalThis as { __suppressEventChangeDepth?: number }
+		).__suppressEventChangeDepth = currentDepth;
 	} catch {}
 
 	try {
-		const resp = await cancelReservationWS(waId, date, isRTL);
+		const resp = await cancelReservationWS(waId, date, Boolean(isRTL));
 		if (!resp?.success) {
 			try {
 				const toaster = (await import("sonner")).toast;
-				const message = (resp && resp.message) || "";
+				const message = resp?.message ?? "";
 				toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
 					description:
 						message ||
@@ -622,10 +694,15 @@ export async function handleCancelReservation(args: {
 			try {
 				// Use suppressed event change to prevent triggering modification events
 				const currentDepth =
-					(globalThis as any).__suppressEventChangeDepth || 0;
-				(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
+					(globalThis as { __suppressEventChangeDepth?: number })
+						.__suppressEventChangeDepth || 0;
+				(
+					globalThis as { __suppressEventChangeDepth?: number }
+				).__suppressEventChangeDepth = currentDepth + 1;
 				fcEvent?.setExtendedProp?.("cancelled", false);
-				(globalThis as any).__suppressEventChangeDepth = currentDepth;
+				(
+					globalThis as { __suppressEventChangeDepth?: number }
+				).__suppressEventChangeDepth = currentDepth;
 			} catch {}
 			return;
 		}
@@ -633,24 +710,33 @@ export async function handleCancelReservation(args: {
 		// Remove event from calendar on success (align with grid UX)
 		try {
 			// Use suppressed event change to prevent triggering modification events
-			const currentDepth = (globalThis as any).__suppressEventChangeDepth || 0;
-			(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
+			const currentDepth =
+				(globalThis as { __suppressEventChangeDepth?: number })
+					.__suppressEventChangeDepth || 0;
+			(
+				globalThis as { __suppressEventChangeDepth?: number }
+			).__suppressEventChangeDepth = currentDepth + 1;
 			fcEvent?.remove?.();
-			(globalThis as any).__suppressEventChangeDepth = currentDepth;
+			(
+				globalThis as { __suppressEventChangeDepth?: number }
+			).__suppressEventChangeDepth = currentDepth;
 		} catch {}
 		try {
-			onEventCancelled?.(String(eventId));
+			if (onEventCancelled) onEventCancelled(String(eventId));
 		} catch {}
 
 		// Local echo suppression to avoid duplicate WS toasts
 		const markLocalEcho = (key: string) => {
 			try {
-				(globalThis as any).__localOps =
-					(globalThis as any).__localOps || new Set<string>();
-				(globalThis as any).__localOps.add(key);
+				(globalThis as { __localOps?: Set<string> }).__localOps =
+					(globalThis as { __localOps?: Set<string> }).__localOps ||
+					new Set<string>();
+				const s = (globalThis as { __localOps?: Set<string> }).__localOps;
+				s?.add(key);
 				setTimeout(() => {
 					try {
-						(globalThis as any).__localOps.delete(key);
+						const s2 = (globalThis as { __localOps?: Set<string> }).__localOps;
+						s2?.delete(key);
 					} catch {}
 				}, 4000);
 			} catch {}
@@ -661,8 +747,8 @@ export async function handleCancelReservation(args: {
 				eventId) ??
 				"",
 		);
-		const key1 = `reservation_cancelled:${reservationId}:${date}:`;
-		const key2 = `reservation_cancelled:${String(waId)}:${date}:`;
+		const key1 = `reservation_cancelled:${reservationId}:${String(date)}:`;
+		const key2 = `reservation_cancelled:${String(waId)}:${String(date)}:`;
 		markLocalEcho(key1);
 		markLocalEcho(key2);
 	} catch (_e) {
@@ -677,10 +763,16 @@ export async function handleCancelReservation(args: {
 		} catch {}
 		try {
 			// Use suppressed event change to prevent triggering modification events
-			const currentDepth = (globalThis as any).__suppressEventChangeDepth || 0;
-			(globalThis as any).__suppressEventChangeDepth = currentDepth + 1;
+			const currentDepth =
+				(globalThis as { __suppressEventChangeDepth?: number })
+					.__suppressEventChangeDepth || 0;
+			(
+				globalThis as { __suppressEventChangeDepth?: number }
+			).__suppressEventChangeDepth = currentDepth + 1;
 			fcEvent?.setExtendedProp?.("cancelled", false);
-			(globalThis as any).__suppressEventChangeDepth = currentDepth;
+			(
+				globalThis as { __suppressEventChangeDepth?: number }
+			).__suppressEventChangeDepth = currentDepth;
 		} catch {}
 	}
 }
@@ -689,15 +781,17 @@ export async function handleCancelReservation(args: {
 function normalizeToSlotBase(dateStr: string, timeStr: string): string {
 	try {
 		const baseTime = to24h(String(timeStr || "00:00"));
-		const [hh, mm] = baseTime.split(":").map((v) => parseInt(v, 10));
+		const baseParts = baseTime.split(":");
+		const hh = parseInt(String(baseParts[0] ?? "0"), 10);
+		const mm = parseInt(String(baseParts[1] ?? "0"), 10);
 		const minutes =
 			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
-		const { slotMinTime } = getSlotTimes(day, false, "");
-		const [sH, sM] = String(slotMinTime || "00:00:00")
-			.slice(0, 5)
-			.split(":")
-			.map((v) => parseInt(v, 10));
+		const res = getSlotTimes(day, false, "") || { slotMinTime: "00:00:00" };
+		const slotMin = String(res.slotMinTime || "00:00:00").slice(0, 5);
+		const parts = slotMin.split(":");
+		const sH = parseInt(String(parts[0] ?? "0"), 10);
+		const sM = parseInt(String(parts[1] ?? "0"), 10);
 		const minMinutes =
 			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);

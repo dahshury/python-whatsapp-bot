@@ -1,5 +1,4 @@
 export interface CustomerAutoFillConfig {
-	phoneColumnId?: string;
 	nameColumnId?: string;
 	onNameUpdate?: (rowIndex: number, customerName: string) => void;
 }

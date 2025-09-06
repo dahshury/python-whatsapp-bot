@@ -5,7 +5,6 @@ import {
 	GridCellKind,
 } from "@glideapps/glide-data-grid";
 import * as React from "react";
-import { Z_INDEX } from "@/lib/z-index";
 import {
 	formatForTempusDominus,
 	getDateRestrictions,
@@ -92,6 +91,78 @@ const hideNativeDatePickerCSS = `
   }
 `;
 
+// Module-scope helpers for stable identity
+const toLocalDateInputValue = (date: Date): string =>
+	date.toLocaleDateString("en-GB"); // DD/MM/YYYY
+
+const toLocalDateTimeInputValue = (date: Date): string => {
+	const pad = (n: number) => n.toString().padStart(2, "0");
+	return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
+		date.getMinutes(),
+	)}`;
+};
+
+const parseDisplayToDate = (
+	display?: string,
+	format?: string,
+): Date | undefined => {
+	if (!display || typeof display !== "string") return undefined;
+	const s = display.trim();
+	if (!s) return undefined;
+	try {
+		if (format === "date") {
+			// Expect dd/MM/yyyy
+			const m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
+			if (!m) return undefined;
+			const day = parseInt(m[1], 10);
+			const month = parseInt(m[2], 10) - 1;
+			let year = parseInt(m[3], 10);
+			if (year < 100) year += 2000;
+			const d = new Date(year, month, day);
+			return Number.isNaN(d.getTime()) ? undefined : d;
+		}
+		if (format === "time") {
+			// Support HH:mm or hh:mm AM/PM
+			const m = s.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
+			if (!m) return undefined;
+			let hours = parseInt(m[1], 10);
+			const minutes = parseInt(m[2], 10);
+			const ampm = m[3]?.toLowerCase();
+			if (ampm) {
+				if (ampm === "pm" && hours < 12) hours += 12;
+				if (ampm === "am" && hours === 12) hours = 0;
+			}
+			const today = new Date();
+			const d = new Date(
+				today.getFullYear(),
+				today.getMonth(),
+				today.getDate(),
+				hours,
+				minutes,
+			);
+			return Number.isNaN(d.getTime()) ? undefined : d;
+		}
+		// datetime: expect dd/MM/yyyy hh:mm AM/PM
+		const m = s.match(
+			/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\s+(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/,
+		);
+		if (!m) return undefined;
+		const day = parseInt(m[1], 10);
+		const month = parseInt(m[2], 10) - 1;
+		let year = parseInt(m[3], 10);
+		if (year < 100) year += 2000;
+		let hours = parseInt(m[4], 10);
+		const minutes = parseInt(m[5], 10);
+		const ampm = m[6].toLowerCase();
+		if (ampm === "pm" && hours < 12) hours += 12;
+		if (ampm === "am" && hours === 12) hours = 0;
+		const d = new Date(year, month, day, hours, minutes);
+		return Number.isNaN(d.getTime()) ? undefined : d;
+	} catch {
+		return undefined;
+	}
+};
+
 const renderer: CustomRenderer<TempusDateCell> = {
 	kind: GridCellKind.Custom,
 	isMatch: (c): c is TempusDateCell =>
@@ -123,18 +194,17 @@ const renderer: CustomRenderer<TempusDateCell> = {
 				dispose?: () => void;
 			} | null>(null);
 
+			// Animation state refs (top-level to satisfy hooks rules)
+			const lastAnimationRef = React.useRef<{
+				action: "show" | "hide";
+				at: number;
+			} | null>(null);
+			const isWidgetVisibleRef = React.useRef<boolean>(false);
+
 			// Get vacation periods from context
 			const { vacationPeriods } = useVacation();
 
-			const toLocalDateInputValue = (date: Date): string =>
-				date.toLocaleDateString("en-GB"); // DD/MM/YYYY
-
-			const toLocalDateTimeInputValue = (date: Date): string => {
-				const pad = (n: number) => n.toString().padStart(2, "0");
-				return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(
-					date.getMinutes(),
-				)}`;
-			};
+			// Using module-scope helpers: toLocalDateInputValue, toLocalDateTimeInputValue
 
 			// Inject CSS to hide native date picker controls
 			React.useEffect(() => {
@@ -173,6 +243,28 @@ const renderer: CustomRenderer<TempusDateCell> = {
 				},
 				[],
 			);
+
+			// Keep the visible input in sync with a chosen date
+			const setInputFromDate = React.useCallback(
+				(date: Date) => {
+					if (!inputRef.current) return;
+					let nextVal = "";
+					switch (data.format) {
+						case "time":
+							nextVal = date.toTimeString().slice(0, 5);
+							break;
+						case "datetime":
+							nextVal = toLocalDateTimeInputValue(date);
+							break;
+						default:
+							nextVal = toLocalDateInputValue(date);
+					}
+					inputRef.current.value = nextVal;
+				},
+				[data.format],
+			);
+
+			// Using module-scope helper: parseDisplayToDate
 
 			const handleIconClick = React.useCallback(
 				async (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -263,7 +355,17 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							},
 
 							container: document.body,
-							stepping: 120,
+							stepping: (() => {
+								try {
+									const env = process.env.NEXT_PUBLIC_SLOT_DURATION_HOURS;
+									const parsed = env !== undefined ? Number(env) : Number.NaN;
+									return Number.isFinite(parsed) && parsed > 0
+										? Math.max(1, Math.floor(parsed * 60))
+										: 120;
+								} catch {
+									return 120;
+								}
+							})(),
 						};
 
 						const inputElement = inputRef.current;
@@ -290,12 +392,27 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							});
 						}, 0);
 
-						// Set initial value
-						if (data.date) {
-							try {
-								instance.dates.setValue(new DateTime(data.date));
-							} catch (error) {
-								console.warn("Failed to set initial date value:", error);
+						// Set initial value (plugin and input) from data.date or parsed display
+						{
+							const initialDate =
+								data.date || parseDisplayToDate(data.displayDate, data.format);
+							if (initialDate) {
+								try {
+									instance.dates.setValue(new DateTime(initialDate));
+									if (inputRef.current) {
+										let seededValue = "";
+										if (data.format === "time") {
+											seededValue = initialDate.toTimeString().slice(0, 5);
+										} else if (data.format === "datetime") {
+											seededValue = toLocalDateTimeInputValue(initialDate);
+										} else {
+											seededValue = toLocalDateInputValue(initialDate);
+										}
+										inputRef.current.value = seededValue;
+									}
+								} catch (error) {
+									console.warn("Failed to set initial date value:", error);
+								}
 							}
 						}
 
@@ -355,173 +472,118 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							}
 						};
 
-						// Function to find and animate the widget
+						// Function to find and animate the widget with throttling
 						const animateWidget = (action: "show" | "hide") => {
-							requestAnimationFrame(() => {
-								let widget: HTMLElement | null = null;
+							const now =
+								typeof performance !== "undefined"
+									? performance.now()
+									: Date.now();
+							const last = lastAnimationRef.current;
+							if (last && last.action === action && now - last.at < 350) {
+								return; // Skip duplicate animation calls in a short window
+							}
+							if (action === "show" && isWidgetVisibleRef.current) return;
+							if (action === "hide" && !isWidgetVisibleRef.current) return;
+							lastAnimationRef.current = { action, at: now };
 
-								// Method 1: Look for the widget in the instance
-								try {
-									if (
-										(instance as { display?: { widget?: Element } }).display
-											?.widget
-									) {
-										widget = (instance as { display?: { widget?: Element } })
-											.display?.widget as HTMLElement;
-									} else if (
-										(instance as { popover?: { tip?: Element } }).popover?.tip
-									) {
-										widget = (instance as { popover?: { tip?: Element } })
-											.popover?.tip as HTMLElement;
-									} else if ((instance as { _widget?: Element })._widget) {
-										widget = (instance as { _widget?: Element })
-											._widget as HTMLElement;
-									}
-								} catch (_e) {
-									// Silently fail
+							let widget: HTMLElement | null = null;
+
+							// Method 1: Look for the widget in the instance
+							try {
+								if (
+									(instance as { display?: { widget?: Element } }).display
+										?.widget
+								) {
+									widget = (instance as { display?: { widget?: Element } })
+										.display?.widget as HTMLElement;
+								} else if (
+									(instance as { popover?: { tip?: Element } }).popover?.tip
+								) {
+									widget = (instance as { popover?: { tip?: Element } }).popover
+										?.tip as HTMLElement;
+								} else if ((instance as { _widget?: Element })._widget) {
+									widget = (instance as { _widget?: Element })
+										._widget as HTMLElement;
 								}
+							} catch (_e) {
+								// Silently fail
+							}
 
-								// Method 2: Query for the widget - prioritize body-level widgets
-								if (!widget) {
-									const bodyWidgets = Array.from(
-										document.body.querySelectorAll(
-											':scope > .tempus-dominus-widget, :scope > [class*="tempus-dominus"], :scope > .dropdown-menu[id*="tempus"]',
-										),
-									) as HTMLElement[];
+							// Method 2: Query for the widget - prioritize body-level widgets
+							if (!widget) {
+								const bodyWidgets = Array.from(
+									document.body.querySelectorAll(
+										':scope > .tempus-dominus-widget, :scope > [class*="tempus-dominus"], :scope > .dropdown-menu[id*="tempus"]',
+									),
+								) as HTMLElement[];
 
-									const allWidgets =
-										bodyWidgets.length > 0
-											? bodyWidgets
-											: (Array.from(
-													document.querySelectorAll(
-														'.tempus-dominus-widget, .tempus-dominus-container, [class*="tempus-dominus"], .dropdown-menu[id*="tempus"]',
-													),
-												) as HTMLElement[]);
+								const allWidgets =
+									bodyWidgets.length > 0
+										? bodyWidgets
+										: (Array.from(
+												document.querySelectorAll(
+													'.tempus-dominus-widget, .tempus-dominus-container, [class*="tempus-dominus"], .dropdown-menu[id*="tempus"]',
+												),
+											) as HTMLElement[]);
 
-									widget =
-										allWidgets.find((w) => {
-											const display = window.getComputedStyle(w).display;
-											return display !== "none";
-										}) ||
-										allWidgets[allWidgets.length - 1] ||
-										null;
-								}
+								widget =
+									allWidgets.find((w) => {
+										const display = window.getComputedStyle(w).display;
+										return display !== "none";
+									}) ||
+									allWidgets[allWidgets.length - 1] ||
+									null;
+							}
 
-								if (widget) {
-									markWidgetSafe(widget);
+							if (!widget) return;
 
-									// Ensure widget is in body before animating
-									if (
-										widget.parentElement !== document.body &&
-										action === "show"
-									) {
-										document.body.appendChild(widget);
-									}
+							markWidgetSafe(widget);
 
-									// Position the widget relative to the input if showing
-									if (action === "show" && inputRef.current) {
-										const inputRect = inputRef.current.getBoundingClientRect();
-										const widgetHeight = widget.offsetHeight || 300;
-										const widgetWidth = widget.offsetWidth || 300;
+							// Ensure widget is in body before positioning/animating
+							if (widget.parentElement !== document.body) {
+								document.body.appendChild(widget);
+							}
 
-										// Find the cell container to get better positioning
-										let cellElement = inputRef.current.parentElement;
-										while (
-											cellElement &&
-											!cellElement.hasAttribute("data-testid")
-										) {
-											cellElement = cellElement.parentElement;
-										}
+							if (action === "show") {
+								// Start animation after Popper computes position
+								requestAnimationFrame(() => {
+									widget.classList.remove(
+										"tempus-dominus-widget-animated-out",
+										"tempus-dominus-widget-hidden",
+									);
+									widget.style.animation = "none";
+									void widget.offsetHeight;
 
-										const positionRect = cellElement
-											? cellElement.getBoundingClientRect()
-											: inputRect;
+									widget.classList.add("tempus-dominus-widget-animated-in");
+									widget.classList.add("tempus-dominus-widget-transition");
 
-										let top = positionRect.bottom + 2;
-										let left = positionRect.left;
-										let transformOrigin = "top left";
+									widget.style.opacity = "0";
+									widget.style.transition = "none";
 
-										// Check if widget would go off screen bottom
-										if (top + widgetHeight > window.innerHeight - 20) {
-											top = positionRect.top - widgetHeight - 2;
-											transformOrigin = "bottom left";
-										}
+									void widget.offsetHeight;
 
-										// Check if widget would go off screen right
-										if (left + widgetWidth > window.innerWidth - 20) {
-											left = Math.max(10, window.innerWidth - widgetWidth - 20);
-											if (left < positionRect.left) {
-												left = positionRect.right - widgetWidth;
-												transformOrigin = transformOrigin.replace(
-													"left",
-													"right",
-												);
-											}
-										}
-
-										// Ensure minimum distance from edges
-										top = Math.max(
-											10,
-											Math.min(top, window.innerHeight - widgetHeight - 10),
-										);
-										left = Math.max(
-											10,
-											Math.min(left, window.innerWidth - widgetWidth - 10),
-										);
-
-										// Apply positioning
-										widget.style.position = "fixed";
-										widget.style.top = `${top}px`;
-										widget.style.left = `${left}px`;
-										widget.style.zIndex = Z_INDEX.DATE_PICKER.toString();
-										widget.style.transformOrigin = transformOrigin;
-										widget.style.right = "auto";
-										widget.style.bottom = "auto";
-										widget.style.margin = "0";
-										widget.style.transform = "";
-									}
-
-									// Apply animations
-									if (action === "show") {
-										widget.classList.remove(
-											"tempus-dominus-widget-animated-out",
-											"tempus-dominus-widget-hidden",
-										);
-										widget.style.animation = "none";
-										void widget.offsetHeight;
-
-										widget.classList.add("tempus-dominus-widget-animated-in");
-										widget.classList.add("tempus-dominus-widget-transition");
-
-										widget.style.opacity = "0";
-										widget.style.transform = "translateY(-10px) scale(0.95)";
-										widget.style.transition = "none";
-
-										void widget.offsetHeight;
-
-										requestAnimationFrame(() => {
-											widget.style.transition =
-												"opacity 250ms cubic-bezier(0.16, 1, 0.3, 1), transform 250ms cubic-bezier(0.16, 1, 0.3, 1)";
-											widget.style.opacity = "1";
-											widget.style.transform = "translateY(0) scale(1)";
-											widget.classList.add("tempus-dominus-widget-visible");
-										});
-									} else {
-										widget.classList.remove(
-											"tempus-dominus-widget-animated-in",
-											"tempus-dominus-widget-visible",
-										);
-										widget.classList.add("tempus-dominus-widget-animated-out");
-										widget.classList.add("tempus-dominus-widget-transition");
-										widget.classList.add("tempus-dominus-widget-hidden");
-
+									requestAnimationFrame(() => {
 										widget.style.transition =
-											"opacity 200ms cubic-bezier(0.4, 0, 1, 1), transform 200ms cubic-bezier(0.4, 0, 1, 1)";
-										widget.style.opacity = "0";
-										widget.style.transform = "translateY(-10px) scale(0.95)";
-									}
-								}
-							});
+											"opacity 250ms cubic-bezier(0.16, 1, 0.3, 1)";
+										widget.style.opacity = "1";
+										widget.classList.add("tempus-dominus-widget-visible");
+										isWidgetVisibleRef.current = true;
+									});
+								});
+							} else {
+								widget.classList.remove(
+									"tempus-dominus-widget-animated-in",
+									"tempus-dominus-widget-visible",
+								);
+								widget.classList.add("tempus-dominus-widget-animated-out");
+								widget.classList.add("tempus-dominus-widget-transition");
+								widget.classList.add("tempus-dominus-widget-hidden");
+
+								widget.style.transition =
+									"opacity 200ms cubic-bezier(0.4, 0, 1, 1)";
+								widget.style.opacity = "0";
+								isWidgetVisibleRef.current = false;
+							}
 						};
 
 						// Handle show event for animations
@@ -551,8 +613,6 @@ const renderer: CustomRenderer<TempusDateCell> = {
 									animateWidget("show");
 								}
 							}, 0);
-
-							setTimeout(() => animateWidget("show"), 50);
 						};
 
 						// Subscribe to date change events
@@ -569,12 +629,15 @@ const renderer: CustomRenderer<TempusDateCell> = {
 										},
 									} as typeof props.value;
 									props.onChange(newCell);
+									// Ensure the visible input reflects the chosen value immediately
+									setInputFromDate(jsDate);
 								} else if ((e as { isClear?: boolean })?.isClear) {
 									const cleared = {
 										...props.value,
 										data: { ...data, date: undefined, displayDate: "" },
 									} as typeof props.value;
 									props.onChange(cleared);
+									if (inputRef.current) inputRef.current.value = "";
 								}
 							} catch (error) {
 								console.warn("Failed to handle date change:", error);
@@ -615,6 +678,8 @@ const renderer: CustomRenderer<TempusDateCell> = {
 										},
 									} as typeof props.value;
 									props.onChange(newCell);
+									// Sync the visible input with the chosen date
+									setInputFromDate(jsDate);
 									onFinishedEditing?.(newCell);
 								}
 							} catch (error) {
@@ -670,53 +735,15 @@ const renderer: CustomRenderer<TempusDateCell> = {
 											node.id?.includes("tempus");
 
 										if (isWidget) {
-											markWidgetSafe(node as HTMLElement);
+											const widget = node.classList.contains(
+												"tempus-dominus-widget",
+											)
+												? (node as HTMLElement)
+												: (node.querySelector(
+														".tempus-dominus-widget",
+													) as HTMLElement) || (node as HTMLElement);
 
-											// Position the widget immediately
-											if (inputRef.current) {
-												const widget = node.classList.contains(
-													"tempus-dominus-widget",
-												)
-													? node
-													: (node.querySelector(
-															".tempus-dominus-widget",
-														) as HTMLElement) || node;
-
-												const inputRect =
-													inputRef.current.getBoundingClientRect();
-												const widgetHeight = widget.offsetHeight || 300;
-												const widgetWidth = widget.offsetWidth || 300;
-
-												let top = inputRect.bottom + 5;
-												let left = inputRect.left;
-												let transformOrigin = "top left";
-
-												if (top + widgetHeight > window.innerHeight) {
-													top = inputRect.top - widgetHeight - 5;
-													transformOrigin = "bottom left";
-												}
-
-												if (left + widgetWidth > window.innerWidth) {
-													left = Math.max(
-														0,
-														window.innerWidth - widgetWidth - 10,
-													);
-													transformOrigin = transformOrigin.replace(
-														"left",
-														"right",
-													);
-												}
-
-												widget.style.position = "fixed";
-												widget.style.top = `${top}px`;
-												widget.style.left = `${left}px`;
-												widget.style.zIndex = Z_INDEX.DATE_PICKER.toString();
-												widget.style.transformOrigin = transformOrigin;
-												widget.style.right = "auto";
-												widget.style.bottom = "auto";
-												widget.style.margin = "0";
-											}
-
+											markWidgetSafe(widget);
 											setTimeout(() => animateWidget("show"), 10);
 											break;
 										}
@@ -772,14 +799,49 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						instanceWithProps._inputHandler = handleInputChange;
 						instanceWithProps._widgetObserver = widgetObserver;
 
-						// Show the widget after initialization
-						setTimeout(() => {
+						// Show the widget after initialization with proper positioning
+						requestAnimationFrame(() => {
+							// Ensure focus before toggling for consistent TD behavior
+							inputRef.current?.focus();
 							try {
-								(td.show ?? (() => {}))();
+								if ((instance as { toggle?: () => void }).toggle) {
+									(instance as { toggle?: () => void }).toggle?.();
+								} else {
+									(td.show ?? (() => {}))();
+								}
+								// Force Popper to compute initial position
+								try {
+									(
+										instance as unknown as {
+											display?: { updatePopup?: () => void };
+										}
+									).display?.updatePopup?.();
+								} catch {}
+
+								// Wait a bit longer for TD to create the widget, then animate
+								setTimeout(() => {
+									const widget = document.querySelector(
+										'.tempus-dominus-widget, [class*="tempus-dominus"], .dropdown-menu[id*="tempus"]',
+									) as HTMLElement | null;
+
+									if (widget) {
+										markWidgetSafe(widget);
+										// Small delay to ensure Popper applied position before animation
+										setTimeout(() => animateWidget("show"), 10);
+									}
+									// Extra assurance: update Popper again
+									try {
+										(
+											instance as unknown as {
+												display?: { updatePopup?: () => void };
+											}
+										).display?.updatePopup?.();
+									} catch {}
+								}, 50);
 							} catch (error) {
 								console.warn("Failed to show Tempus Dominus widget:", error);
 							}
-						}, 100);
+						});
 					} catch (error) {
 						console.warn(
 							"Tempus Dominus failed to load, falling back to native input:",
@@ -790,11 +852,12 @@ const renderer: CustomRenderer<TempusDateCell> = {
 				[
 					tempusInstance,
 					data,
-					formatDisplayDate, // Still call onFinishedEditing to close the editor
+					formatDisplayDate,
 					onFinishedEditing,
 					props.onChange,
 					props.value,
 					vacationPeriods,
+					setInputFromDate,
 				],
 			);
 
@@ -870,20 +933,31 @@ const renderer: CustomRenderer<TempusDateCell> = {
 			};
 
 			const getInputValue = () => {
-				if (!data.date) return "";
-
+				let baseDate = data.date;
+				if (!baseDate && data.displayDate) {
+					baseDate = parseDisplayToDate(data.displayDate, data.format);
+				}
+				if (!baseDate) return "";
 				switch (data.format) {
 					case "time":
-						return data.date.toTimeString().slice(0, 5);
+						return baseDate.toTimeString().slice(0, 5);
 					case "datetime":
-						return toLocalDateTimeInputValue(data.date);
+						return toLocalDateTimeInputValue(baseDate);
 					default:
-						return toLocalDateInputValue(data.date);
+						return toLocalDateInputValue(baseDate);
 				}
 			};
 
 			const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 				const value = e.target.value;
+
+				// Ignore empty string changes to avoid unintended clearing when
+				// initializing or opening the Tempus Dominus widget programmatically.
+				// Clearing should only happen via explicit picker events (e.g., clear)
+				// or validated manual input, not incidental empty inputs.
+				if (value == null || value.trim() === "") {
+					return;
+				}
 				let newDate: Date | undefined;
 
 				if (value) {

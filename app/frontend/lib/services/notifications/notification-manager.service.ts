@@ -27,7 +27,7 @@ export class NotificationManager {
 		isRTL?: boolean;
 	}): void {
 		toastService.reservationModified({
-			customer: payload.customer,
+			...(payload.customer && { customer: payload.customer }),
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
@@ -46,7 +46,7 @@ export class NotificationManager {
 		isRTL?: boolean;
 	}): void {
 		toastService.reservationCreated({
-			customer: payload.customer,
+			...(payload.customer && { customer: payload.customer }),
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
@@ -65,7 +65,7 @@ export class NotificationManager {
 		isRTL?: boolean;
 	}): void {
 		toastService.reservationCancelled({
-			customer: payload.customer,
+			...(payload.customer && { customer: payload.customer }),
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,

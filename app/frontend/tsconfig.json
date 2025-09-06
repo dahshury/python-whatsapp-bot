@@ -1,11 +1,26 @@
 {
 	"compilerOptions": {
 		"lib": ["dom", "dom.iterable", "esnext"],
-		"allowJs": true,
-		"skipLibCheck": true,
+		"allowJs": false,
+		"skipLibCheck": false,
 		"strict": true,
+		"noImplicitAny": true,
+		"noImplicitThis": true,
+		"alwaysStrict": true,
+		"strictBindCallApply": true,
+		"strictNullChecks": true,
+		"strictFunctionTypes": true,
+		"strictPropertyInitialization": true,
+		"useUnknownInCatchVariables": true,
 		"noEmit": true,
 		"esModuleInterop": true,
+		"forceConsistentCasingInFileNames": true,
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
 		"module": "esnext",
 		"moduleResolution": "bundler",
 		"resolveJsonModule": true,
@@ -20,11 +35,10 @@
 		],
 		"types": ["node"],
 		"paths": {
-			"@/*": ["./*"],
-			"~lib/*": ["components/glide-data-editor-streamlit/*"]
+			"@/*": ["./*"]
 		},
 		"target": "ES2017"
 	},
 	"include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],
-	"exclude": ["node_modules", ".next", "**/__tests__/**"]
+	"exclude": ["node_modules", "../../node_modules", ".next", "**/__tests__/**"]
 }

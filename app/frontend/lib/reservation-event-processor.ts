@@ -2,6 +2,19 @@ import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import type { CalendarEvent } from "@/types/calendar";
 import { to24h } from "./utils";
 
+interface ReservationItem {
+	date: string;
+	time_slot: string;
+	customer_name?: string;
+	title?: string;
+	[key: string]: unknown;
+}
+
+interface ConversationItem {
+	customer_name?: string;
+	[key: string]: unknown;
+}
+
 export interface ReservationProcessingOptions {
 	freeRoam: boolean;
 	isRTL: boolean;
@@ -11,18 +24,20 @@ export interface ReservationProcessingOptions {
 export function getReservationEventProcessor() {
 	return {
 		generateCalendarEvents(
-			reservationsByUser: Record<string, any[]>,
-			conversationsByUser: Record<string, any[]>,
+			reservationsByUser: Record<string, ReservationItem[]>,
+			conversationsByUser: Record<string, ConversationItem[]>,
 			options: ReservationProcessingOptions,
 		): CalendarEvent[] {
 			if (!reservationsByUser || typeof reservationsByUser !== "object")
 				return [];
 
 			const events: CalendarEvent[] = [];
-			const today = new Date();
 
 			// Build reservation events grouped by date + normalized slot start time, sequential within slot
-			const groupMap: Record<string, Array<{ waId: string; r: any }>> = {};
+			const groupMap: Record<
+				string,
+				Array<{ waId: string; r: ReservationItem }>
+			> = {};
 			Object.entries(reservationsByUser).forEach(([waId, list]) => {
 				(list || []).forEach((r) => {
 					const dateStr = r.date;
@@ -52,7 +67,6 @@ export function getReservationEventProcessor() {
 			});
 
 			// Build events within each 2-hour slot with dynamic per-reservation duration
-			const _slotMinutes = 120;
 
 			// Ensure slots are processed in chronological order (by date then slot start time)
 			const orderedGroups = Object.entries(groupMap).sort(([ka], [kb]) => {
@@ -87,19 +101,16 @@ export function getReservationEventProcessor() {
 						offsetMinutes += minutesPerReservation + gapMinutes;
 
 						// Determine past-ness using local date-only comparison
-						const startComparable = new Date(`${baseDate}T${startTime}`);
-						const _isPast = startComparable < today;
 						const cancelled = Boolean(r.cancelled);
 						const type = Number(r.type ?? 0);
 
 						const isConversation = type === 2;
-						events.push({
+						const eventData: Record<string, unknown> = {
 							id: String(r.id ?? waId),
 							title: r.customer_name ?? String(waId),
 							// Emit timezone-naive strings; FullCalendar interprets them in configured timeZone
 							start: `${baseDate}T${startTime}`,
 							end: `${baseDate}T${endTime}`,
-							textColor: cancelled ? "#908584" : undefined,
 							// Allow dragging for reservations even if moved to past; backend will validate
 							editable: !isConversation && !cancelled,
 							extendedProps: {
@@ -109,7 +120,11 @@ export function getReservationEventProcessor() {
 								slotDate: baseDate,
 								slotTime: baseTime,
 							},
-						});
+						};
+						if (cancelled) {
+							eventData.textColor = "#908584";
+						}
+						events.push(eventData);
 					} catch {
 						// skip bad rows
 					}
@@ -126,16 +141,20 @@ export function getReservationEventProcessor() {
 					const last = conv[conv.length - 1];
 					if (!last?.date) return;
 					const baseDate = String(last.date);
-					const baseTime = to24h(last.time || "00:00");
+					const baseTime = to24h(
+						typeof last.time === "string" ? last.time : "00:00",
+					);
 					const startTime = `${baseTime}:00`;
 					const endTime = addMinutesToClock(baseTime, Math.floor(120 / 6));
-					const convArr: any[] = Array.isArray(conversationsByUser?.[waId])
-						? (conversationsByUser as any)[waId]
+					const convArr: ConversationItem[] = Array.isArray(
+						conversationsByUser?.[waId],
+					)
+						? conversationsByUser[waId]
 						: [];
 					const convNameFromConv = (() => {
 						try {
 							const found = convArr.find(
-								(m: any) =>
+								(m: ConversationItem) =>
 									typeof m?.customer_name === "string" &&
 									m.customer_name.trim(),
 							);
@@ -144,13 +163,15 @@ export function getReservationEventProcessor() {
 							return "";
 						}
 					})();
-					const resArr: any[] = Array.isArray(reservationsByUser?.[waId])
-						? (reservationsByUser as any)[waId]
+					const resArr: ReservationItem[] = Array.isArray(
+						reservationsByUser?.[waId],
+					)
+						? reservationsByUser[waId]
 						: [];
 					const convNameFromRes = (() => {
 						try {
 							const found = resArr.find(
-								(r: any) =>
+								(r: ReservationItem) =>
 									typeof r?.customer_name === "string" &&
 									r.customer_name.trim(),
 							);
@@ -179,23 +200,16 @@ export function getReservationEventProcessor() {
 	};
 }
 
-function _cryptoRandom(): string {
-	try {
-		// Browsers
-		const arr = new Uint32Array(2);
-		crypto.getRandomValues(arr);
-		return `${arr[0].toString(16)}${arr[1].toString(16)}`;
-	} catch {
-		// Fallback
-		return Math.random().toString(16).slice(2);
-	}
-}
-
 // Add minutes to an HH:MM clock string and return HH:MM:SS (no timezone)
 function addMinutesToClock(baseTime: string, minutesToAdd: number): string {
 	try {
-		const [h, m] = baseTime.split(":").map((v) => parseInt(v, 10));
-		let total = h * 60 + (Number.isFinite(m) ? m : 0) + minutesToAdd;
+		const parts = baseTime.split(":");
+		const h = parts[0] ? parseInt(parts[0], 10) : 0;
+		const m = parts[1] ? parseInt(parts[1], 10) : 0;
+		let total =
+			(Number.isFinite(h) ? h : 0) * 60 +
+			(Number.isFinite(m) ? m : 0) +
+			minutesToAdd;
 		// Clamp within the day
 		if (total < 0) total = 0;
 		if (total > 24 * 60 - 1) total = 24 * 60 - 1;
@@ -215,15 +229,18 @@ function toSlotBase(
 ): string {
 	try {
 		const baseTime = to24h(String(timeStr || "00:00"));
-		const [hh, mm] = baseTime.split(":").map((v) => parseInt(v, 10));
+		const timeParts = baseTime.split(":");
+		const hh = timeParts[0] ? parseInt(timeParts[0], 10) : 0;
+		const mm = timeParts[1] ? parseInt(timeParts[1], 10) : 0;
 		const minutes =
 			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
 		const { slotMinTime } = getSlotTimes(day, freeRoam, "");
-		const [sH, sM] = String(slotMinTime || "00:00:00")
+		const slotParts = String(slotMinTime || "00:00:00")
 			.slice(0, 5)
-			.split(":")
-			.map((v) => parseInt(v, 10));
+			.split(":");
+		const sH = slotParts[0] ? parseInt(slotParts[0], 10) : 0;
+		const sM = slotParts[1] ? parseInt(slotParts[1], 10) : 0;
 		const minMinutes =
 			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);

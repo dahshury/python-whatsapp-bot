@@ -32,7 +32,8 @@ export interface DataTableEditorProps {
 	onOpenChange: (open: boolean) => void;
 	events: CalendarEvent[];
 	selectedDateRange: { start: string; end: string } | null;
-	isRTL: boolean;
+	isRTL?: boolean;
+	isLocalized?: boolean;
 	slotDurationHours: number;
 	onSave: (events: CalendarEvent[]) => void;
 	onEventClick: (event: CalendarEvent) => void;

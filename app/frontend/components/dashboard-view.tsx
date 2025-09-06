@@ -18,7 +18,7 @@ export function DashboardView() {
 }
 
 // Keep original implementation as backup
-function _OriginalDashboardView() {
+export function _OriginalDashboardView() {
 	const stats = {
 		totalReservations: 156,
 		totalConversations: 89,

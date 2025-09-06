@@ -7,17 +7,17 @@ import type { BaseColumnProps } from "@/components/glide_custom_cells/components
 import { getMessage } from "@/lib/api";
 import type { DataTableOperationsService as _D } from "@/lib/services/data-table-operations.service";
 import { DataTableOperationsService } from "@/lib/services/data-table-operations.service";
+import type {
+	CalendarApi as LibCalendarApi,
+	CalendarEvent as LibCalendarEvent,
+	RowChange,
+} from "@/lib/services/types/data-table-types";
 import { toastService } from "@/lib/toast-service";
 import type {
 	CalendarEvent,
 	EditingChanges,
 	ValidationResult,
 } from "@/types/data-table-editor";
-import type {
-	CalendarEvent as LibCalendarEvent,
-	CalendarApi as LibCalendarApi,
-	RowChange,
-} from "@/lib/services/types/data-table-types";
 
 interface UseDataTableSaveHandlerProps {
 	calendarRef?: React.RefObject<CalendarCoreRef>;
@@ -36,8 +36,8 @@ interface UseDataTableSaveHandlerProps {
 export function useDataTableSaveHandler({
 	calendarRef,
 	isRTL,
-	slotDurationHours,
-	freeRoam,
+	slotDurationHours: _slotDurationHours,
+	freeRoam: _freeRoam,
 	gridRowToEventMapRef,
 	dataProviderRef,
 	validateAllCells,
@@ -156,10 +156,8 @@ export function useDataTableSaveHandler({
 					return false;
 				}
 				operationsServiceRef.current = new DataTableOperationsService(
-					calendarApi as LibCalendarApi,
+					calendarApi as unknown as LibCalendarApi,
 					isRTL,
-					slotDurationHours,
-					freeRoam,
 					refreshCustomerData,
 				);
 			}
@@ -246,8 +244,6 @@ export function useDataTableSaveHandler({
 		isSaving,
 		validateAllCells,
 		getCalendarApi,
-		slotDurationHours,
-		freeRoam,
 		gridRowToEventMapRef,
 		onEventCancelled,
 		onEventAdded,

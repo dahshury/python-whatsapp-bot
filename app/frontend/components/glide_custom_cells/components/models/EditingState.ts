@@ -50,22 +50,11 @@ export function isMissingValueCell(cell: GridCell): boolean {
 		).data as
 			| {
 					kind?: string;
-					phone?: string;
 					date?: Date;
 					value?: string;
 					time?: Date;
 			  }
 			| undefined;
-
-		if (customData?.kind === "phone-input-cell") {
-			const phoneData = customData as { phone?: string };
-			const isMissing = !phoneData.phone || phoneData.phone === "";
-			console.log("🔍 isMissingValueCell phone-input-cell:", {
-				phone: phoneData.phone,
-				isMissing,
-			});
-			return isMissing;
-		}
 		if (customData?.kind === "tempus-date-cell") {
 			const dateData = customData as { date?: Date };
 			const isMissing = !dateData.date;
@@ -80,6 +69,17 @@ export function isMissingValueCell(cell: GridCell): boolean {
 			const isMissing = !dropdownData.value || dropdownData.value === "";
 			console.log("🔍 isMissingValueCell dropdown-cell:", {
 				value: dropdownData.value,
+				isMissing,
+			});
+			return isMissing;
+		}
+		// Phone cells store phone under data.value; displayData may be undefined.
+		if (customData?.kind === "phone-cell") {
+			const phoneData = customData as { value?: string };
+			const v = (phoneData.value ?? "").trim();
+			const isMissing = v.length === 0;
+			console.log("🔍 isMissingValueCell phone-cell:", {
+				value: phoneData.value,
 				isMissing,
 			});
 			return isMissing;
@@ -659,7 +659,6 @@ export class EditingState {
 					kind?: string;
 					value?: unknown;
 					date?: unknown;
-					phone?: unknown;
 				};
 			};
 			if (customCell.data?.kind === "dropdown-cell") {
@@ -668,9 +667,7 @@ export class EditingState {
 			if (customCell.data?.kind === "tempus-date-cell") {
 				return customCell.data.date;
 			}
-			if (customCell.data?.kind === "phone-input-cell") {
-				return customCell.data.phone;
-			}
+
 			return customCell.data;
 		}
 		return (cell as { data?: unknown }).data;
@@ -890,22 +887,6 @@ export class EditingState {
 				kind: GridCellKind.Boolean,
 				data: Boolean(value),
 				allowOverlay: false,
-			};
-		}
-
-		// PHONE
-		if (lowerId.includes("phone") || lowerName.includes("phone")) {
-			const phoneValue = value?.toString() || "";
-			return {
-				kind: GridCellKind.Custom,
-				data: {
-					kind: "phone-input-cell",
-					phone: phoneValue,
-					displayPhone: phoneValue,
-					isDarkTheme: this.isDarkTheme,
-				},
-				copyData: phoneValue,
-				allowOverlay: true,
 			};
 		}
 

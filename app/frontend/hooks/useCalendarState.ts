@@ -6,7 +6,7 @@
  * optimized state updates.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getSlotTimes } from "@/lib/calendar-config";
 
 export interface CalendarStateOptions {
@@ -24,14 +24,11 @@ export interface CalendarViewState {
 	};
 	slotTimesKey: number;
 	isHydrated: boolean;
-	isChangingHours: boolean;
 }
 
 export interface CalendarStateActions {
 	setCurrentView: (view: string) => void;
 	setCurrentDate: (date: Date) => void;
-	updateSlotTimes: (date: Date, force?: boolean) => void;
-	setIsChangingHours: (changing: boolean) => void;
 }
 
 export type UseCalendarStateReturn = CalendarViewState & CalendarStateActions;
@@ -44,15 +41,7 @@ export function useCalendarState(
 ): UseCalendarStateReturn {
 	const { freeRoam, initialView, initialDate } = options;
 	const [isHydrated, setIsHydrated] = useState(false);
-	const [isChangingHours, setIsChangingHours] = useState(false);
 	const [slotTimesKey, setSlotTimesKey] = useState(0);
-
-	// Refs to track state and prevent infinite loops
-	const changingHoursTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-	const isChangingHoursRef = useRef<boolean>(false);
-	const currentDateRef = useRef<Date | null>(null);
-	const isUpdatingSlotTimesRef = useRef<boolean>(false);
-	const lastSlotUpdateDateRef = useRef<Date | null>(null);
 
 	// Initialize current date from localStorage or options
 	const [currentDate, setCurrentDateState] = useState<Date>(() => {
@@ -61,13 +50,11 @@ export function useCalendarState(
 			if (savedDate) {
 				const date = new Date(savedDate);
 				if (!Number.isNaN(date.getTime())) {
-					currentDateRef.current = date;
 					return date;
 				}
 			}
 		}
 		const date = initialDate ? new Date(initialDate) : new Date();
-		currentDateRef.current = date;
 		return date;
 	});
 
@@ -86,8 +73,6 @@ export function useCalendarState(
 	const [currentView, setCurrentViewState] = useState<string>(
 		initialViewFromStorage,
 	);
-	const viewRef = useRef<string>(initialViewFromStorage);
-	const _freeRoamRef = useRef<boolean>(freeRoam);
 
 	// Calculate slot times based on current date and view
 	const slotTimes = useMemo(
@@ -108,7 +93,6 @@ export function useCalendarState(
 	useEffect(() => {
 		if (isHydrated && currentView) {
 			localStorage.setItem("calendar-view", currentView);
-			viewRef.current = currentView;
 		}
 	}, [currentView, isHydrated]);
 
@@ -118,7 +102,6 @@ export function useCalendarState(
 	useEffect(() => {
 		if (isHydrated && currentDate) {
 			localStorage.setItem("calendar-date", currentDate.toISOString());
-			currentDateRef.current = currentDate;
 		}
 	}, [currentDate, isHydrated]);
 
@@ -137,17 +120,6 @@ export function useCalendarState(
 	}, [freeRoam, isHydrated]);
 
 	/**
-	 * Cleanup timeout on unmount
-	 */
-	useEffect(() => {
-		return () => {
-			if (changingHoursTimeoutRef.current) {
-				clearTimeout(changingHoursTimeoutRef.current);
-			}
-		};
-	}, []);
-
-	/**
 	 * Set current view with validation
 	 */
 	const setCurrentView = useCallback(
@@ -162,125 +134,15 @@ export function useCalendarState(
 	);
 
 	/**
-	 * Set current date with validation - NO slotTimesKey increment here
+	 * Set current date with validation
 	 */
 	const setCurrentDate = useCallback(
 		(date: Date) => {
 			if (date.getTime() !== currentDate.getTime()) {
 				setCurrentDateState(date);
-				// DON'T increment slotTimesKey here - let updateSlotTimes handle it
 			}
 		},
 		[currentDate],
-	);
-
-	/**
-	 * Set isChangingHours with ref sync
-	 */
-	const setIsChangingHoursSync = useCallback((changing: boolean) => {
-		isChangingHoursRef.current = changing;
-		setIsChangingHours(changing);
-	}, []);
-
-	/**
-	 * Update slot times with optional force refresh - FIXED to prevent infinite loops
-	 */
-	const updateSlotTimes = useCallback(
-		(date: Date, force = false) => {
-			// Prevent overlapping slot time computations
-			if (isUpdatingSlotTimesRef.current && !force) {
-				console.debug("Skipping updateSlotTimes - already updating");
-				return;
-			}
-
-			// Skip if the date is the same as the last slot update to avoid re-entrancy
-			if (
-				!force &&
-				lastSlotUpdateDateRef.current &&
-				lastSlotUpdateDateRef.current.getTime() === date.getTime()
-			) {
-				console.debug("Skipping updateSlotTimes - same date as last update");
-				return;
-			}
-
-			if (isChangingHoursRef.current && !force) {
-				console.debug("Skipping updateSlotTimes - changing hours");
-				return;
-			}
-
-			// Set the updating flag immediately with longer protection
-			isUpdatingSlotTimesRef.current = true;
-
-			try {
-				// Use ref values to avoid state dependency issues
-				const currentDateToUse = currentDateRef.current || currentDate;
-
-				// Calculate slot times directly without relying on state
-				const oldSlotTimes = getSlotTimes(
-					currentDateToUse,
-					freeRoam,
-					currentView,
-				);
-				const newSlotTimes = getSlotTimes(date, freeRoam, currentView);
-
-				// Check if slot times are actually changing
-				const isTimeChange =
-					oldSlotTimes.slotMinTime !== newSlotTimes.slotMinTime ||
-					oldSlotTimes.slotMaxTime !== newSlotTimes.slotMaxTime;
-
-				console.debug("updateSlotTimes:", {
-					oldSlotTimes,
-					newSlotTimes,
-					isTimeChange,
-					currentDate: currentDateToUse.toISOString(),
-					newDate: date.toISOString(),
-					force,
-				});
-
-				// Update the current date if needed (this won't trigger slotTimesKey increment)
-				if (date.getTime() !== currentDateToUse.getTime()) {
-					setCurrentDateState(date);
-				}
-
-				// Remember this date to prevent loops
-				lastSlotUpdateDateRef.current = date;
-
-				// ONLY increment slotTimesKey if there's an actual slot time change
-				if (isTimeChange || force) {
-					console.debug("Slot times changed - incrementing key ONCE");
-
-					// Clear any existing timeout
-					if (changingHoursTimeoutRef.current) {
-						clearTimeout(changingHoursTimeoutRef.current);
-					}
-
-					isChangingHoursRef.current = true;
-					setIsChangingHours(true);
-
-					// Increment slotTimesKey exactly ONCE
-					setSlotTimesKey((prev) => prev + 1);
-
-					// Reset isChangingHours after a longer delay
-					changingHoursTimeoutRef.current = setTimeout(() => {
-						console.debug("Resetting isChangingHours flag");
-						isChangingHoursRef.current = false;
-						setIsChangingHours(false);
-						changingHoursTimeoutRef.current = null;
-					}, 1000);
-				} else {
-					console.debug(
-						"No slot time change detected - skipping key increment",
-					);
-				}
-			} finally {
-				// Always reset the updating flag after a longer delay
-				setTimeout(() => {
-					console.debug("Resetting isUpdatingSlotTimes flag");
-					isUpdatingSlotTimesRef.current = false;
-				}, 500);
-			}
-		},
-		[currentDate, currentView, freeRoam],
 	);
 
 	return {
@@ -289,10 +151,7 @@ export function useCalendarState(
 		slotTimes,
 		slotTimesKey,
 		isHydrated,
-		isChangingHours,
 		setCurrentView,
 		setCurrentDate,
-		updateSlotTimes,
-		setIsChangingHours: setIsChangingHoursSync,
 	};
 }

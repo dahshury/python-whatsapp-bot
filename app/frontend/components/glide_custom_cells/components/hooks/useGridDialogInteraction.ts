@@ -54,7 +54,8 @@ export function useGridDialogInteraction({
 			if (
 				target.closest('[role="tooltip"]') ||
 				target.closest("[data-radix-popper-content-wrapper]") ||
-				target.closest(".popover-content")
+				target.closest(".popover-content") ||
+				target.closest(".click-outside-ignore")
 			) {
 				e.preventDefault();
 				return;
@@ -91,6 +92,15 @@ export function useGridDialogInteraction({
 				".tempus-dominus-widget, .td-picker, .react-datepicker, .flatpickr-calendar",
 			);
 			if (datePicker) {
+				e.preventDefault();
+				return;
+			}
+
+			// Check for active phone cell editor popovers
+			const phoneCellEditor = document.querySelector(
+				".glide-data-grid-overlay-editor",
+			);
+			if (phoneCellEditor) {
 				e.preventDefault();
 				return;
 			}

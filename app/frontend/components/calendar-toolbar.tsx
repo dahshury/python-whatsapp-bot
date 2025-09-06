@@ -52,7 +52,7 @@ export function CalendarToolbar({
 		calendarRef,
 		currentView,
 		freeRoam,
-		onViewChange,
+		...(onViewChange && { onViewChange }),
 	});
 
 	// Define navigation buttons with proper arrow directions for RTL

@@ -182,7 +182,6 @@ export class DataSourceMapper<T = unknown> {
 		switch (column.dataType) {
 			case "text":
 			case "dropdown":
-			case "phone":
 				input = value == null ? "" : String(value);
 				break;
 			case "number":

@@ -1,8 +1,8 @@
 import {
-	EditableGridCell,
-	GridCell,
+	type EditableGridCell,
+	type GridCell,
 	GridCellKind,
-	Theme,
+	type Theme,
 } from "@glideapps/glide-data-grid";
 import { FormattingService } from "../../services/FormattingService";
 import type { TempusDateCell } from "../../TempusDominusDateCell";
@@ -10,8 +10,8 @@ import { messages } from "../../utils/i18n";
 import type { IColumnType } from "../interfaces/IColumnType";
 import {
 	ColumnDataType,
-	IColumnDefinition,
-	IColumnFormatting,
+	type IColumnDefinition,
+	type IColumnFormatting,
 } from "../interfaces/IDataSource";
 
 export class DateTimeColumnType implements IColumnType {
@@ -25,7 +25,10 @@ export class DateTimeColumnType implements IColumnType {
 		isDarkTheme: boolean,
 		_rowContext?: unknown,
 	): GridCell {
-		const date = this.parseValue(value, column);
+		// Parse incoming value; if missing, fall back to column defaultValue
+		const parsed = this.parseValue(value, column) as Date | null;
+		const fallback = (this.getDefaultValue(column) as Date | null) ?? null;
+		const date = (parsed ?? fallback) as Date | null;
 		const displayDate = this.formatValue(date, column.formatting);
 
 		const cell = {
