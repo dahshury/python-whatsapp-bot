@@ -159,7 +159,7 @@ const BasicChatInput: React.FC<{
 	isSending = false,
 	messages = [],
 }) => {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const [emojiOpen, setEmojiOpen] = useState(false);
 	const editorWrapperRef = useRef<HTMLDivElement>(null);
 	const baseMinHeightPx = 70;
@@ -299,8 +299,11 @@ const BasicChatInput: React.FC<{
 					<Clock className="h-4 w-4 text-muted-foreground" />
 					<span className="text-xs text-muted-foreground">
 						{messages.length === 0
-							? i18n.getMessage("chat_cannot_message_no_conversation", isRTL)
-							: i18n.getMessage("chat_messaging_unavailable", isRTL)}
+							? i18n.getMessage(
+									"chat_cannot_message_no_conversation",
+									isLocalized,
+								)
+							: i18n.getMessage("chat_messaging_unavailable", isLocalized)}
 					</span>
 				</div>
 			)}
@@ -507,7 +510,7 @@ const BasicChatInput: React.FC<{
 						)}
 					>
 						{isSending ? (
-							<div className="animate-spin rounded-full h-3 w-3 border-b border-primary-foreground"></div>
+							<div className="animate-spin rounded-full h-3 w-3 border-b border-primary-foreground" />
 						) : (
 							<svg
 								className="h-3 w-3"
@@ -644,11 +647,18 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	onRefresh: _onRefresh,
 	className,
 }) => {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const { isLoadingConversation, setLoadingConversation } =
 		useSidebarChatStore();
 	const [isSending, setIsSending] = useState(false);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
+	const messageListRef = useRef<HTMLDivElement>(null);
+	const pendingScrollTargetRef = useRef<{
+		waId?: string;
+		date?: string;
+		time?: string;
+		message?: string;
+	} | null>(null);
 	const previousConversationIdRef = useRef<string | null>(null);
 	const selectedConversationIdRef = useRef<string | null>(null);
 
@@ -696,6 +706,108 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 		const bTime = new Date(`${b.date} ${b.time}`);
 		return aTime.getTime() - bTime.getTime();
 	}) as ConversationMessage[];
+
+	// Normalize time to HH:mm for comparison regardless of seconds
+	const normalizeTime = React.useCallback((t?: string | null) => {
+		try {
+			if (!t) return "";
+			const s = String(t);
+			return s.length >= 5 ? s.slice(0, 5) : s;
+		} catch {
+			return String(t || "");
+		}
+	}, []);
+
+	// Try to scroll to a specific message based on incoming event/target
+	const tryScrollToTarget = React.useCallback(() => {
+		const target = pendingScrollTargetRef.current;
+		if (!target) return;
+		if (!selectedConversationId) return;
+		const waId = String(target.waId || "");
+		if (!waId || waId !== String(selectedConversationId)) return;
+
+		const targetDate = (target.date || "").toString();
+		const targetTime = normalizeTime(target.time);
+		const targetMsg = (target.message || "").toString().trim();
+
+		// Find index in current sortedMessages
+		let foundIndex = -1;
+		for (let i = 0; i < sortedMessages.length; i++) {
+			const m = sortedMessages[i];
+			if (!m) continue;
+			const sameDate =
+				String((m as { date?: string }).date || "") === targetDate;
+			const sameTime =
+				normalizeTime((m as { time?: string }).time || "") === targetTime;
+			if (!sameDate || !sameTime) continue;
+			if (targetMsg) {
+				const text = (
+					(m as { message?: string; text?: string }).message ||
+					(m as { message?: string; text?: string }).text ||
+					""
+				).toString();
+				if (text && text.indexOf(targetMsg.slice(0, 24)) === -1) continue;
+			}
+			foundIndex = i;
+			break;
+		}
+
+		if (foundIndex >= 0) {
+			try {
+				const el = messageListRef.current?.querySelector(
+					`[data-message-index="${foundIndex}"]`,
+				) as HTMLElement | null;
+				if (el && typeof el.scrollIntoView === "function") {
+					el.scrollIntoView({ behavior: "smooth", block: "center" });
+					// Clear target after successful scroll
+					pendingScrollTargetRef.current = null;
+					return;
+				}
+			} catch {}
+		}
+	}, [selectedConversationId, sortedMessages, normalizeTime]);
+
+	// Listen for global requests to scroll to a message
+	useEffect(() => {
+		const onScrollRequest = (e: Event) => {
+			try {
+				const { wa_id, date, time, message } = (e as CustomEvent).detail || {};
+				pendingScrollTargetRef.current = { waId: wa_id, date, time, message };
+				// Attempt after a short delay to ensure layout
+				setTimeout(() => tryScrollToTarget(), 30);
+			} catch {}
+		};
+		window.addEventListener(
+			"chat:scrollToMessage",
+			onScrollRequest as EventListener,
+		);
+		return () =>
+			window.removeEventListener(
+				"chat:scrollToMessage",
+				onScrollRequest as EventListener,
+			);
+	}, [tryScrollToTarget]);
+
+	// On conversation mount/change, check if a target was stashed globally
+	useEffect(() => {
+		try {
+			const w = globalThis as unknown as {
+				__chatScrollTarget?: {
+					waId?: string;
+					date?: string;
+					time?: string;
+					message?: string;
+				} | null;
+			};
+			const t = w.__chatScrollTarget ?? null;
+			if (t?.waId && String(t.waId) === String(selectedConversationId)) {
+				pendingScrollTargetRef.current = t;
+				// Consume the global stash
+				w.__chatScrollTarget = null;
+				setTimeout(() => tryScrollToTarget(), 50);
+			}
+		} catch {}
+	}, [selectedConversationId, tryScrollToTarget]);
 
 	// Clear additional messages when conversation changes
 	const lastConversationIdRef = useRef<string | null>(null);
@@ -874,10 +986,10 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			}));
 
 			// Show success toast
-			toastService.success(i18n.getMessage("chat_message_sent", isRTL));
+			toastService.success(i18n.getMessage("chat_message_sent", isLocalized));
 		} catch (error) {
 			console.error("Error sending message:", error);
-			const errorMessage = `${i18n.getMessage("chat_message_failed", isRTL)}: ${error instanceof Error ? error.message : "Unknown error"}`;
+			const errorMessage = `${i18n.getMessage("chat_message_failed", isLocalized)}: ${error instanceof Error ? error.message : "Unknown error"}`;
 			toastService.error(errorMessage);
 		} finally {
 			setIsSending(false);
@@ -888,8 +1000,8 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	const hasConversationSelected = !!selectedConversationId;
 	const inputDisabled = !hasConversationSelected || isSending;
 	const inputPlaceholder = hasConversationSelected
-		? i18n.getMessage("chat_type_message", isRTL)
-		: i18n.getMessage("chat_no_conversation", isRTL);
+		? i18n.getMessage("chat_type_message", isLocalized)
+		: i18n.getMessage("chat_no_conversation", isLocalized);
 
 	// Show combobox only when we have data
 	const shouldShowCombobox = Object.keys(conversations).length > 0;
@@ -901,9 +1013,9 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 				{isLoadingConversation && (
 					<div className="absolute inset-0 chat-loading-overlay bg-background/50 backdrop-blur-sm flex items-center justify-center">
 						<div className="flex flex-col items-center gap-2">
-							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
 							<p className="text-sm text-muted-foreground">
-								{i18n.getMessage("chat_loading_conversation", isRTL)}
+								{i18n.getMessage("chat_loading_conversation", isLocalized)}
 							</p>
 						</div>
 					</div>
@@ -917,11 +1029,11 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 							reservations={reservations}
 							selectedConversationId={selectedConversationId}
 							onConversationSelect={onConversationSelect}
-							isRTL={isRTL}
+							isLocalized={isLocalized}
 						/>
 					) : (
 						<div className="text-xs text-muted-foreground text-center py-2">
-							{i18n.getMessage("chat_loading_conversations", isRTL)}
+							{i18n.getMessage("chat_loading_conversations", isLocalized)}
 						</div>
 					)}
 				</div>
@@ -932,8 +1044,8 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 						<MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
 						<p className="text-sm">
 							{shouldShowCombobox
-								? i18n.getMessage("chat_select_conversation", isRTL)
-								: i18n.getMessage("chat_no_conversations", isRTL)}
+								? i18n.getMessage("chat_select_conversation", isLocalized)
+								: i18n.getMessage("chat_no_conversations", isLocalized)}
 						</p>
 					</div>
 				</div>
@@ -947,9 +1059,9 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			{isLoadingConversation && (
 				<div className="absolute inset-0 chat-loading-overlay bg-background/50 backdrop-blur-sm flex items-center justify-center">
 					<div className="flex flex-col items-center gap-2">
-						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
 						<p className="text-sm text-muted-foreground">
-							{i18n.getMessage("chat_loading_conversation", isRTL)}
+							{i18n.getMessage("chat_loading_conversation", isLocalized)}
 						</p>
 					</div>
 				</div>
@@ -963,7 +1075,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 					reservations={reservations}
 					selectedConversationId={selectedConversationId}
 					onConversationSelect={onConversationSelect}
-					isRTL={isRTL}
+					isLocalized={isLocalized}
 				/>
 			</div>
 
@@ -982,13 +1094,13 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 					noScrollX={true}
 					rtl={false}
 				>
-					<div className="message-list px-4 pt-4 pb-2">
+					<div ref={messageListRef} className="message-list px-4 pt-4 pb-2">
 						{sortedMessages.length === 0 ? (
 							<div className="flex items-center justify-center min-h-[200px] text-muted-foreground p-4">
 								<div className="text-center">
 									<MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
 									<p className="text-sm">
-										{i18n.getMessage("chat_no_messages", isRTL)}
+										{i18n.getMessage("chat_no_messages", isLocalized)}
 									</p>
 								</div>
 							</div>
@@ -1003,6 +1115,13 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 											message.role === "admin" && "message-row-admin",
 											message.role === "assistant" && "message-row-assistant",
 											message.role === "secretary" && "message-row-secretary",
+										)}
+										data-message-index={idx}
+										data-message-date={
+											(message as { date?: string }).date || ""
+										}
+										data-message-time={normalizeTime(
+											(message as { time?: string }).time || "",
 										)}
 										initial={{ opacity: 0, y: 8 }}
 										animate={{ opacity: 1, y: 0 }}

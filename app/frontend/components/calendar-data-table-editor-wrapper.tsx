@@ -36,8 +36,7 @@ interface CalendarDataTableEditorWrapperProps {
 	selectedDateRange: { start: string; end: string } | null;
 	events: CalendarEventForCalendar[];
 	freeRoam: boolean;
-	calendarRef: React.RefObject<CalendarCoreRef>;
-	isRTL?: boolean;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	isLocalized?: boolean;
 	slotDurationHours: number;
 	onOpenChange: (open: boolean) => void;
@@ -56,7 +55,6 @@ export function CalendarDataTableEditorWrapper({
 	events,
 	freeRoam,
 	calendarRef,
-	isRTL,
 	isLocalized,
 	slotDurationHours,
 	onOpenChange,
@@ -101,13 +99,13 @@ export function CalendarDataTableEditorWrapper({
 			slotDurationHours={slotDurationHours}
 			freeRoam={freeRoam}
 			data={[]}
-			calendarRef={calendarRef}
+			calendarRef={calendarRef || null}
 			onEventAdded={onEventAdded}
 			onEventModified={onEventModified}
 			onEventCancelled={onEventCancelled}
 			events={mappedEvents}
 			selectedDateRange={selectedDateRange}
-			isRTL={isRTL ?? isLocalized === true}
+			isLocalized={isLocalized ?? false}
 			onSave={handleSave}
 			onEventClick={() => {}}
 		/>

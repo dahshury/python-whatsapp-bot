@@ -12,13 +12,13 @@ import type { FormattingService } from "../utils/formatting.service";
 import type { LocalEchoManager } from "../utils/local-echo.manager";
 import type { WebSocketService } from "../websocket/websocket.service";
 
-export class ReservationModifyService {
+class ReservationModifyService {
 	constructor(
 		private readonly calendarIntegration: CalendarIntegrationService,
 		private readonly webSocketService: WebSocketService,
 		private readonly formattingService: FormattingService,
 		private readonly localEchoManager: LocalEchoManager,
-		private readonly isRTL: boolean,
+		private readonly isLocalized: boolean,
 	) {}
 
 	async processModifications(
@@ -63,16 +63,30 @@ export class ReservationModifyService {
 					modificationData.dateStrNew,
 					modificationData.timeStrNew,
 				);
+				const reservationId = original.extendedProps?.reservationId;
+				const modifyParams: {
+					date: string;
+					time: string;
+					title?: string;
+					type?: number;
+					reservationId?: number;
+					approximate?: boolean;
+				} = {
+					date: modificationData.dateStrNew,
+					time: slotTime,
+					title: modificationData.titleNew,
+					type: Number(modificationData.typeNew),
+					approximate: !this.calendarIntegration.isTimeGridView(),
+				};
+
+				// Only add reservationId if it's defined
+				if (typeof reservationId === 'number') {
+					modifyParams.reservationId = reservationId;
+				}
+
 				const resp = await this.webSocketService.modifyReservation(
 					modificationData.waId,
-					{
-						date: modificationData.dateStrNew,
-						time: slotTime,
-						title: modificationData.titleNew,
-						type: Number(modificationData.typeNew),
-						reservationId: original.extendedProps?.reservationId,
-						approximate: !this.calendarIntegration.isTimeGridView(),
-					},
+					modifyParams,
 				);
 
 				if (!resp?.success) {
@@ -86,7 +100,7 @@ export class ReservationModifyService {
 						wa_id: modificationData.waId,
 						date: modificationData.dateStrNew,
 						time: modificationData.timeStrNew,
-						isRTL: this.isRTL,
+						isLocalized: this.isLocalized,
 						error: errorMessage,
 					});
 
@@ -96,16 +110,26 @@ export class ReservationModifyService {
 				}
 
 				// Notify callback
+				const extendedProps: {
+					type: number;
+					cancelled: boolean;
+					reservationId?: number;
+				} = {
+					type: Number(modificationData.typeNew),
+					cancelled: false,
+				};
+
+				// Only add reservationId if it's defined
+				if (typeof original.extendedProps?.reservationId === 'number') {
+					extendedProps.reservationId = original.extendedProps.reservationId;
+				}
+
 				onEventModified?.(modificationData.evId, {
 					id: modificationData.evId,
 					title: modificationData.titleNew,
 					start: `${modificationData.dateStrNew}T${slotTime}:00`,
 					end: `${modificationData.dateStrNew}T${slotTime}:00`,
-					extendedProps: {
-						type: Number(modificationData.typeNew),
-						cancelled: false,
-						reservationId: original.extendedProps?.reservationId,
-					},
+					extendedProps,
 				});
 
 				// Reflow new slot to apply deterministic ordering and spacing (use normalized slot time)
@@ -263,10 +287,12 @@ export class ReservationModifyService {
 
 	private handleModificationError(error: Error): void {
 		toastService.error(
-			this.isRTL ? "فشل التعديل" : "Update Failed",
+			this.isLocalized ? "فشل التعديل" : "Update Failed",
 			error?.message ||
-				(this.isRTL ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+				(this.isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
 			3000,
 		);
 	}
 }
+
+export { ReservationModifyService };

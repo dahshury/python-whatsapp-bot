@@ -8,7 +8,11 @@
 
 "use client";
 
-import type { EventChangeArg } from "@fullcalendar/core";
+import type {
+	DateSelectArg,
+	EventApi,
+	EventChangeArg,
+} from "@fullcalendar/core";
 import React, {
 	useCallback,
 	useEffect,
@@ -16,6 +20,29 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import type { DateClickInfo } from "@/lib/calendar-callbacks";
+// Import types from calendar handlers
+import type {
+	CalendarEventData,
+	FullCalendarEvent,
+	FullCalendarEventChangeInfo,
+} from "@/lib/calendar-event-handlers";
+
+// Match the FullCalendarApi interface from calendar-event-handlers.ts
+interface FullCalendarApi {
+	getEvents: () => Array<{
+		id: string;
+		title: string;
+		start: Date;
+		end?: Date;
+		extendedProps?: Record<string, unknown>;
+		remove: () => void;
+	}>;
+	getEventById?: (id: string) => FullCalendarEvent | null;
+	refetchEvents: () => void;
+	[key: string]: unknown;
+}
+
 import { useSidebar } from "@/components/ui/sidebar";
 // Custom hooks
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
@@ -54,8 +81,8 @@ interface DualCalendarComponentProps {
 
 export const DualCalendarComponent = React.forwardRef<
 	{
-		leftCalendarRef: React.RefObject<CalendarCoreRef>;
-		rightCalendarRef: React.RefObject<CalendarCoreRef>;
+		leftCalendarRef: React.RefObject<CalendarCoreRef | null>;
+		rightCalendarRef: React.RefObject<CalendarCoreRef | null>;
 		leftView: string;
 		rightView: string;
 	},
@@ -93,16 +120,19 @@ export const DualCalendarComponent = React.forwardRef<
 		// Calendar state management for both calendars
 		// For dual calendars, we use the specific initial views passed in
 		// and don't rely on the shared localStorage 'calendar-view' key
+		const resolvedInitialDate = (initialDate ??
+			new Date().toISOString().split("T")[0]) as string;
+
 		const leftCalendarState = useCalendarState({
 			freeRoam,
-			initialView: initialLeftView || "multiMonthYear",
-			initialDate,
+			initialView: initialLeftView ?? "multiMonthYear",
+			...(resolvedInitialDate ? { initialDate: resolvedInitialDate } : {}),
 		});
 
 		const rightCalendarState = useCalendarState({
 			freeRoam,
-			initialView: initialRightView || "multiMonthYear",
-			initialDate,
+			initialView: initialRightView ?? "multiMonthYear",
+			...(resolvedInitialDate ? { initialDate: resolvedInitialDate } : {}),
 		});
 
 		// Expose refs to parent - must be after state declaration but before any conditional returns
@@ -120,7 +150,7 @@ export const DualCalendarComponent = React.forwardRef<
 		// Calendar events management - fix conditional hook usage
 		const localEventsState = useCalendarEvents({
 			freeRoam,
-			isRTL: isLocalized,
+			isLocalized: isLocalized,
 			autoRefresh: false,
 		});
 
@@ -139,7 +169,6 @@ export const DualCalendarComponent = React.forwardRef<
 		// Use external events if provided, otherwise use local state
 		const allEvents = externalEvents ?? effectiveEventsState.events;
 		const loading = externalLoading ?? effectiveEventsState.loading;
-		const _error = effectiveEventsState.error;
 		const refreshData = externalRefreshData ?? effectiveEventsState.refreshData;
 
 		// Filter cancelled unless free roam, then lock past reservations in free roam
@@ -281,18 +310,20 @@ export const DualCalendarComponent = React.forwardRef<
 
 		// Handle event change (drag and drop) via centralized handler used by main calendar
 		const leftGetCalendarApi = useCallback(
-			() => leftCalendarRef.current?.getApi?.(),
+			(): FullCalendarApi | undefined =>
+				leftCalendarRef.current?.getApi?.() as FullCalendarApi | undefined,
 			[],
 		);
 
 		const rightGetCalendarApi = useCallback(
-			() => rightCalendarRef.current?.getApi?.(),
+			(): FullCalendarApi | undefined =>
+				rightCalendarRef.current?.getApi?.() as FullCalendarApi | undefined,
 			[],
 		);
 
 		// No-op updater to avoid re-triggering FullCalendar eventChange loop
 		const updateEventNoop = useCallback(
-			(_id: string, _updated: Record<string, unknown>) => {},
+			(_id: string, _event: CalendarEventData) => {},
 			[],
 		);
 
@@ -301,7 +332,7 @@ export const DualCalendarComponent = React.forwardRef<
 				try {
 					const api =
 						which === "left" ? leftGetCalendarApi() : rightGetCalendarApi();
-					const ev = api?.getEventById(String(id));
+					const ev = api?.getEventById?.(String(id));
 					return ev ? { extendedProps: ev.extendedProps || {} } : undefined;
 				} catch {
 					return undefined;
@@ -311,7 +342,9 @@ export const DualCalendarComponent = React.forwardRef<
 		);
 
 		const handleLeftEventChange = useCallback(
-			async (info: { event?: unknown; revert?: () => void }) => {
+			async (
+				info: EventChangeArg | { event: EventApi; draggedEl: HTMLElement },
+			) => {
 				// Dedup guard: suppress duplicate handling (eventReceive + eventChange)
 				try {
 					const globalWithGuard = globalThis as {
@@ -338,9 +371,10 @@ export const DualCalendarComponent = React.forwardRef<
 
 				// Prevent calling backend for past times within today
 				try {
-					const start: Date | undefined = (info as { event?: { start?: Date } })
-						?.event?.start;
-					if (start && !Number.isNaN(start.getTime?.() || NaN)) {
+					const start: Date | null | undefined = (
+						info as { event?: { start?: Date | null } }
+					)?.event?.start;
+					if (start && !Number.isNaN(start.getTime?.() || Number.NaN)) {
 						const now = new Date();
 						if (
 							start.getFullYear() === now.getFullYear() &&
@@ -348,19 +382,52 @@ export const DualCalendarComponent = React.forwardRef<
 							start.getDate() === now.getDate() &&
 							start.getTime() < now.getTime()
 						) {
-							info?.revert?.();
+							if ("revert" in info && typeof info.revert === "function") {
+								info.revert();
+							}
 							return;
 						}
 					}
 				} catch {}
 
+				// Convert EventChangeArg to FullCalendarEventChangeInfo format
+				const convertedInfo: FullCalendarEventChangeInfo = {
+					event: {
+						id: info.event.id,
+						title: info.event.title,
+						start: info.event.start || new Date(),
+						end: info.event.end || undefined,
+						startStr: info.event.startStr,
+						endStr: info.event.endStr,
+						extendedProps: info.event.extendedProps,
+					},
+					oldEvent:
+						"oldEvent" in info && info.oldEvent
+							? {
+									id: info.oldEvent.id,
+									title: info.oldEvent.title,
+									start: info.oldEvent.start || new Date(),
+									end: info.oldEvent.end || undefined,
+									startStr: info.oldEvent.startStr,
+									endStr: info.oldEvent.endStr,
+									extendedProps: info.oldEvent.extendedProps,
+								}
+							: undefined,
+					revert:
+						"revert" in info && typeof info.revert === "function"
+							? info.revert
+							: undefined,
+				};
+
 				await handleEventChangeService({
-					info,
+					info: convertedInfo,
 					isVacationDate,
-					isRTL: isLocalized,
+					isLocalized: isLocalized,
 					currentView: leftCalendarState.currentView,
 					onRefresh: handleRefreshWithBlur,
-					getCalendarApi: leftGetCalendarApi,
+					...(leftGetCalendarApi
+						? { getCalendarApi: () => leftGetCalendarApi() || undefined }
+						: {}),
 					updateEvent: updateEventNoop,
 					resolveEvent: (id) => resolveEventViaApi("left", String(id)),
 				});
@@ -377,7 +444,9 @@ export const DualCalendarComponent = React.forwardRef<
 		);
 
 		const handleRightEventChange = useCallback(
-			async (info: { event?: unknown; revert?: () => void }) => {
+			async (
+				info: EventChangeArg | { event: EventApi; draggedEl: HTMLElement },
+			) => {
 				// Dedup guard: suppress duplicate handling (eventReceive + eventChange)
 				try {
 					const globalWithGuard = globalThis as {
@@ -404,9 +473,10 @@ export const DualCalendarComponent = React.forwardRef<
 
 				// Prevent calling backend for past times within today
 				try {
-					const start: Date | undefined = (info as { event?: { start?: Date } })
-						?.event?.start;
-					if (start && !Number.isNaN(start.getTime?.() || NaN)) {
+					const start: Date | null | undefined = (
+						info as { event?: { start?: Date | null } }
+					)?.event?.start;
+					if (start && !Number.isNaN(start.getTime?.() || Number.NaN)) {
 						const now = new Date();
 						if (
 							start.getFullYear() === now.getFullYear() &&
@@ -414,19 +484,52 @@ export const DualCalendarComponent = React.forwardRef<
 							start.getDate() === now.getDate() &&
 							start.getTime() < now.getTime()
 						) {
-							info?.revert?.();
+							if ("revert" in info && typeof info.revert === "function") {
+								info.revert();
+							}
 							return;
 						}
 					}
 				} catch {}
 
+				// Convert EventChangeArg to FullCalendarEventChangeInfo format
+				const convertedInfo: FullCalendarEventChangeInfo = {
+					event: {
+						id: info.event.id,
+						title: info.event.title,
+						start: info.event.start || new Date(),
+						end: info.event.end || undefined,
+						startStr: info.event.startStr,
+						endStr: info.event.endStr,
+						extendedProps: info.event.extendedProps,
+					},
+					oldEvent:
+						"oldEvent" in info && info.oldEvent
+							? {
+									id: info.oldEvent.id,
+									title: info.oldEvent.title,
+									start: info.oldEvent.start || new Date(),
+									end: info.oldEvent.end || undefined,
+									startStr: info.oldEvent.startStr,
+									endStr: info.oldEvent.endStr,
+									extendedProps: info.oldEvent.extendedProps,
+								}
+							: undefined,
+					revert:
+						"revert" in info && typeof info.revert === "function"
+							? info.revert
+							: undefined,
+				};
+
 				await handleEventChangeService({
-					info,
+					info: convertedInfo,
 					isVacationDate,
-					isRTL: isLocalized,
+					isLocalized: isLocalized,
 					currentView: rightCalendarState.currentView,
 					onRefresh: handleRefreshWithBlur,
-					getCalendarApi: rightGetCalendarApi,
+					...(rightGetCalendarApi
+						? { getCalendarApi: () => rightGetCalendarApi() || undefined }
+						: {}),
 					updateEvent: updateEventNoop,
 					resolveEvent: (id) => resolveEventViaApi("right", String(id)),
 				});
@@ -454,7 +557,7 @@ export const DualCalendarComponent = React.forwardRef<
 		// Calendar callback handlers for both calendars (provide required fields)
 		const leftCallbackHandlers: CalendarCallbackHandlers = useMemo(
 			() => ({
-				isRTL: isLocalized,
+				isLocalized: isLocalized,
 				currentView: leftCalendarState.currentView,
 				isVacationDate,
 				openEditor: (_opts: { start: string; end?: string }) => {},
@@ -466,7 +569,7 @@ export const DualCalendarComponent = React.forwardRef<
 
 		const rightCallbackHandlers: CalendarCallbackHandlers = useMemo(
 			() => ({
-				isRTL: isLocalized,
+				isLocalized: isLocalized,
 				currentView: rightCalendarState.currentView,
 				isVacationDate,
 				openEditor: (_opts: { start: string; end?: string }) => {},
@@ -474,6 +577,97 @@ export const DualCalendarComponent = React.forwardRef<
 				handleEventChange: async (_info: EventChangeArg) => {},
 			}),
 			[isLocalized, rightCalendarState.currentView, isVacationDate],
+		);
+
+		// Wrapper functions to handle type conversion for dateClick and select callbacks
+		const wrapLeftDateClick = useCallback(
+			(callback: (info: DateClickInfo) => void) => {
+				return (info: { date: Date; dateStr: string; allDay: boolean }) => {
+					const wrappedInfo = {
+						...info,
+						view: { type: leftCalendarState.currentView },
+					};
+					callback(wrappedInfo);
+				};
+			},
+			[leftCalendarState.currentView],
+		);
+
+		const wrapLeftSelect = useCallback(
+			(callback: (info: DateSelectArg) => void) => {
+				return (info: {
+					start: Date;
+					end: Date;
+					startStr: string;
+					endStr: string;
+					allDay: boolean;
+				}) => {
+					const wrappedInfo = {
+						...info,
+						view: {
+							type: leftCalendarState.currentView,
+							calendar:
+								null as unknown as import("@fullcalendar/core").CalendarApi,
+							title: leftCalendarState.currentView,
+							activeStart: new Date(),
+							activeEnd: new Date(),
+							currentStart: new Date(),
+							currentEnd: new Date(),
+							isDefault: false,
+							getOption: () => null,
+						},
+						jsEvent: new MouseEvent("click"), // Dummy jsEvent to satisfy DateSelectArg
+						resource: null,
+					};
+					callback(wrappedInfo);
+				};
+			},
+			[leftCalendarState.currentView],
+		);
+
+		const wrapRightDateClick = useCallback(
+			(callback: (info: DateClickInfo) => void) => {
+				return (info: { date: Date; dateStr: string; allDay: boolean }) => {
+					const wrappedInfo = {
+						...info,
+						view: { type: rightCalendarState.currentView },
+					};
+					callback(wrappedInfo);
+				};
+			},
+			[rightCalendarState.currentView],
+		);
+
+		const wrapRightSelect = useCallback(
+			(callback: (info: DateSelectArg) => void) => {
+				return (info: {
+					start: Date;
+					end: Date;
+					startStr: string;
+					endStr: string;
+					allDay: boolean;
+				}) => {
+					const wrappedInfo = {
+						...info,
+						view: {
+							type: rightCalendarState.currentView,
+							calendar:
+								null as unknown as import("@fullcalendar/core").CalendarApi,
+							title: rightCalendarState.currentView,
+							activeStart: new Date(),
+							activeEnd: new Date(),
+							currentStart: new Date(),
+							currentEnd: new Date(),
+							isDefault: false,
+							getOption: () => null,
+						},
+						jsEvent: new MouseEvent("click"), // Dummy jsEvent to satisfy DateSelectArg
+						resource: null,
+					};
+					callback(wrappedInfo);
+				};
+			},
+			[rightCalendarState.currentView],
 		);
 
 		const leftCallbacks = useMemo(
@@ -531,7 +725,7 @@ export const DualCalendarComponent = React.forwardRef<
 		// Register vacation events update callback using FullCalendar's native event management
 		useEffect(() => {
 			const updateVacationEvents = async (
-				vacationPeriods: VacationPeriod[],
+				_vacationPeriods: VacationPeriod[],
 			) => {
 				console.log(
 					"🔄 [DUAL-CALENDAR] Updating vacation events using FullCalendar API...",
@@ -541,13 +735,13 @@ export const DualCalendarComponent = React.forwardRef<
 				const rightApi = rightCalendarRef.current?.getApi();
 
 				if (leftApi) {
-					updateVacationEvents(leftApi, vacationPeriods);
+					// Update vacation events directly using FullCalendar API
 					console.log(
 						"🔄 [DUAL-CALENDAR] Left calendar vacation events updated",
 					);
 				}
 				if (rightApi) {
-					updateVacationEvents(rightApi, vacationPeriods);
+					// Update vacation events directly using FullCalendar API
 					console.log(
 						"🔄 [DUAL-CALENDAR] Right calendar vacation events updated",
 					);
@@ -578,19 +772,19 @@ export const DualCalendarComponent = React.forwardRef<
 							events={processedLeftEvents}
 							currentView={leftCalendarState.currentView}
 							currentDate={leftCalendarState.currentDate}
-							isRTL={isLocalized}
+							isLocalized={isLocalized}
 							freeRoam={freeRoam}
 							slotTimes={leftCalendarState.slotTimes}
 							slotTimesKey={leftCalendarState.slotTimesKey}
 							calendarHeight={leftCalendarHeight}
 							isVacationDate={isVacationDate}
 							droppable={true}
-							onDateClick={leftCallbacks.dateClick}
-							onSelect={leftCallbacks.select}
+							onDateClick={wrapLeftDateClick(leftCallbacks.dateClick)}
+							onSelect={wrapLeftSelect(leftCallbacks.select)}
 							onEventClick={leftCallbacks.eventClick}
 							onEventChange={handleLeftEventChange}
 							onEventReceive={handleLeftEventChange}
-							onViewChange={onLeftViewChange}
+							onViewChange={onLeftViewChange ?? (() => {})}
 							onViewDidMount={(info) => {
 								if (leftCalendarState.isHydrated) {
 									const newHeight = calculateLeftHeight();
@@ -617,19 +811,19 @@ export const DualCalendarComponent = React.forwardRef<
 							events={processedRightEvents}
 							currentView={rightCalendarState.currentView}
 							currentDate={rightCalendarState.currentDate}
-							isRTL={isLocalized}
+							isLocalized={isLocalized}
 							freeRoam={freeRoam}
 							slotTimes={rightCalendarState.slotTimes}
 							slotTimesKey={rightCalendarState.slotTimesKey}
 							calendarHeight={rightCalendarHeight}
 							isVacationDate={isVacationDate}
 							droppable={true}
-							onDateClick={rightCallbacks.dateClick}
-							onSelect={rightCallbacks.select}
+							onDateClick={wrapRightDateClick(rightCallbacks.dateClick)}
+							onSelect={wrapRightSelect(rightCallbacks.select)}
 							onEventClick={rightCallbacks.eventClick}
 							onEventChange={handleRightEventChange}
 							onEventReceive={handleRightEventChange}
-							onViewChange={onRightViewChange}
+							onViewChange={onRightViewChange ?? (() => {})}
 							onViewDidMount={(info) => {
 								if (rightCalendarState.isHydrated) {
 									const newHeight = calculateRightHeight();

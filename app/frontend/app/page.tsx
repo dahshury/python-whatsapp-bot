@@ -81,14 +81,14 @@ export default function HomePage() {
 	}, []);
 
 	// Use refs to capture calendar instances for integration with other components
-	const calendarRef = React.useRef<CalendarCoreRef>(null);
+	const calendarRef = React.useRef<CalendarCoreRef | null>(null);
 
 	// CalendarCore will populate calendarRef directly through forwardRef
 	// Stage C: Load events via existing hook (no extra UI around it)
 	const { isLocalized } = useLanguage();
 	const eventsState = useCalendarEvents({
 		freeRoam,
-		isRTL: isLocalized,
+		isLocalized: isLocalized,
 		autoRefresh: false,
 	});
 	// Pull live conversations/reservations so hover card has real data
@@ -213,7 +213,7 @@ export default function HomePage() {
 	const eventHandlers = useCalendarEventHandlers({
 		events: eventsState.events,
 		conversations: {},
-		isRTL: isLocalized,
+		isLocalized: isLocalized,
 		currentView: calendarState.currentView,
 		isVacationDate,
 		handleRefreshWithBlur: async () => {},
@@ -232,7 +232,7 @@ export default function HomePage() {
 		() =>
 			createCalendarCallbacks(
 				{
-					isRTL: isLocalized,
+					isLocalized: isLocalized,
 					currentView: calendarState.currentView,
 					isVacationDate,
 					openEditor: (opts: { start: string; end?: string }) => {
@@ -296,16 +296,16 @@ export default function HomePage() {
 
 	// Track dual calendar refs directly with guard to avoid re-render loops
 	const [leftCalendarRef, setLeftCalendarRef] =
-		React.useState<React.RefObject<CalendarCoreRef> | null>(null);
+		React.useState<React.RefObject<CalendarCoreRef | null> | null>(null);
 	const [rightCalendarRef, setRightCalendarRef] =
-		React.useState<React.RefObject<CalendarCoreRef> | null>(null);
+		React.useState<React.RefObject<CalendarCoreRef | null> | null>(null);
 
 	// Callback ref to capture the dual calendar refs when they become available
 	const dualCalendarCallbackRef = React.useCallback(
 		(
 			dualCalendarInstance: {
-				leftCalendarRef: React.RefObject<CalendarCoreRef>;
-				rightCalendarRef: React.RefObject<CalendarCoreRef>;
+				leftCalendarRef: React.RefObject<CalendarCoreRef | null>;
+				rightCalendarRef: React.RefObject<CalendarCoreRef | null>;
 				leftView: string;
 				rightView: string;
 			} | null,
@@ -341,7 +341,7 @@ export default function HomePage() {
 								currentView={calendarState.currentView}
 								calendarRef={leftCalendarRef}
 								freeRoam={freeRoam}
-								isRTL={isLocalized}
+								isLocalized={isLocalized}
 							/>
 						</div>
 						<DockNavSimple
@@ -361,7 +361,7 @@ export default function HomePage() {
 								currentView={rightCalendarView}
 								calendarRef={rightCalendarRef}
 								freeRoam={freeRoam}
-								isRTL={isLocalized}
+								isLocalized={isLocalized}
 							/>
 						</div>
 					</div>
@@ -403,7 +403,7 @@ export default function HomePage() {
 				if (!mounted) {
 					return (
 						<div
-							className={`flex flex-1 flex-col gap-4 p-4 h-[calc(100vh-4rem)]`}
+							className={"flex flex-1 flex-col gap-4 p-4 h-[calc(100vh-4rem)]"}
 						>
 							<CalendarContainer
 								loading={true}

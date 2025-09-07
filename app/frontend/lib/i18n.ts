@@ -127,6 +127,16 @@ const ar = {
 	phone_no_phone_found: "لا يوجد رقم هاتف.",
 	phone_add_number_label: 'إضافة "{value}" كرقم هاتف جديد',
 	phone_select_placeholder: "اختر رقم هاتف",
+	// Phone validation error messages
+	phoneFormatNotRecognized: "تنسيق رقم الهاتف غير معروف",
+	phoneHasInvalidCountryCode: "رمز الدولة غير صالح",
+	phoneContainsInvalidCharacters: "رقم الهاتف يحتوي على أحرف غير صالحة",
+	phoneIsTooShort: "رقم الهاتف قصير جداً",
+	phoneIsTooLong: "رقم الهاتف طويل جداً",
+	phoneHasInvalidLengthForCountry: "طول رقم الهاتف غير صالح لهذه الدولة",
+	phoneInvalidFormat: "تنسيق رقم الهاتف غير صالح",
+	phoneMayHaveInvalidAreaCode: "قد يحتوي على رمز منطقة غير صالح",
+	phoneFormatIsInvalid: "تنسيق رقم الهاتف غير صحيح",
 	// Dashboard
 	dashboard_title: "لوحة التحكم",
 	dashboard_subtitle: "نظرة عامة على الأداء والحجوزات والرسائل",
@@ -309,6 +319,15 @@ Object.assign(en, {
 	// Error messages
 	slot_fully_booked:
 		"This time slot is fully booked. Please choose another slot.",
+	// Validation popover messages
+	validation_issues: "Validation Issues",
+	validation_issues_details: "Please fix these issues before saving",
+	row: "Row",
+	// Field labels
+	field_scheduled_time: "Scheduled Time",
+	field_phone: "Phone",
+	field_type: "Type",
+	field_name: "Name",
 });
 
 // Extend Arabic with additional dashboard and analysis keys
@@ -475,6 +494,15 @@ Object.assign(ar, {
 	toast_request_timeout: "انتهت مهلة الطلب",
 	// Error messages
 	slot_fully_booked: "هذا الوقت محجوز بالكامل. يرجى اختيار وقت آخر.",
+	// Validation popover messages
+	validation_issues: "مشاكل التحقق",
+	validation_issues_details: "يرجى إصلاح هذه المشاكل قبل الحفظ",
+	row: "الصف",
+	// Field labels
+	field_scheduled_time: "الوقت المحدد",
+	field_phone: "الهاتف",
+	field_type: "النوع",
+	field_name: "الاسم",
 });
 
 const isLocalized = () => {
@@ -482,7 +510,7 @@ const isLocalized = () => {
 	try {
 		const loc = localStorage.getItem("locale");
 		if (loc && loc !== "en") return true;
-		return localStorage.getItem("isRTL") === "true";
+		return localStorage.getItem("isLocalized") === "true";
 	} catch {
 		return false;
 	}
@@ -502,11 +530,29 @@ export const messages = {
 		invalidTime: () => (isLocalized() ? "وقت غير صالح" : "Invalid time"),
 		invalidPhone: () =>
 			isLocalized() ? "رقم هاتف غير صالح" : "Invalid phone number",
+		phoneFormatNotRecognized: () =>
+			isLocalized() ? "تنسيق رقم الهاتف غير معروف" : "Phone format not recognized",
+		phoneHasInvalidCountryCode: () =>
+			isLocalized() ? "رمز الدولة غير صالح" : "Invalid country code",
+		phoneContainsInvalidCharacters: () =>
+			isLocalized() ? "رقم الهاتف يحتوي على أحرف غير صالحة" : "Phone number contains invalid characters",
+		phoneIsTooShort: () =>
+			isLocalized() ? "رقم الهاتف قصير جداً" : "Phone number is too short",
+		phoneIsTooLong: () =>
+			isLocalized() ? "رقم الهاتف طويل جداً" : "Phone number is too long",
+		phoneHasInvalidLengthForCountry: () =>
+			isLocalized() ? "طول رقم الهاتف غير صالح لهذه الدولة" : "Phone number length is invalid for this country",
+		phoneInvalidFormat: () =>
+			isLocalized() ? "تنسيق رقم الهاتف غير صالح" : "Invalid phone number format",
+		phoneMayHaveInvalidAreaCode: () =>
+			isLocalized() ? "قد يحتوي على رمز منطقة غير صالح" : "May have invalid area code",
+		phoneFormatIsInvalid: () =>
+			isLocalized() ? "تنسيق رقم الهاتف غير صحيح" : "Phone number format is invalid",
 		invalidName: () => (isLocalized() ? "اسم غير صالح" : "Invalid name"),
 		// Name-specific messages
 		nameRequired: () => (isLocalized() ? "الاسم مطلوب" : "Name is required"),
 		nameTooShort: () =>
-			isLocalized() ? "الاسم قصير جدًا" : "Name is too short",
+			isLocalized() ? "يجب أن يتكون الاسم من كلمتين على الأقل" : "At least two words",
 		nameInvalidCharacters: () =>
 			isLocalized()
 				? "الاسم يحتوي على أحرف غير صالحة"
@@ -515,6 +561,8 @@ export const messages = {
 			isLocalized()
 				? "كل كلمة يجب أن تحتوي على حرفين على الأقل"
 				: "Each word must be at least 2 characters",
+		nameTooLong: () =>
+			isLocalized() ? "الاسم طويل جداً" : "Name is too long",
 	},
 	grid: {
 		none: () => (isLocalized() ? "لا يوجد" : "None"),

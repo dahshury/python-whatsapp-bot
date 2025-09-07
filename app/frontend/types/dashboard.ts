@@ -67,18 +67,6 @@ export interface TimeSlotData {
 	availDays: number;
 }
 
-export interface MessageData {
-	wa_id: string;
-	date: string;
-	time: string;
-	message: string;
-	datetime: Date;
-	hour: number;
-	weekday: string;
-	length_chars: number;
-	length_words: number;
-}
-
 export interface MessageHeatmapData {
 	weekday: string;
 	hour: number;

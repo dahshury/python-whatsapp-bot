@@ -40,7 +40,7 @@ export function useCalendarCore({
 	initialView,
 	initialDate,
 }: UseCalendarCoreProps) {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const {
 		handleDateClick: handleVacationDateClick,
 		recordingState,
@@ -68,7 +68,7 @@ export function useCalendarCore({
 	// Calendar events management
 	const eventsState = useCalendarEvents({
 		freeRoam,
-		isRTL,
+		isLocalized,
 		autoRefresh: false,
 	});
 
@@ -98,7 +98,7 @@ export function useCalendarCore({
 		calculateHeight,
 		sidebarOpen,
 		refreshData: eventsState.refreshData,
-		setOnVacationUpdated: setOnVacationUpdated,
+		...(setOnVacationUpdated ? { setOnVacationUpdated } : {}),
 		calendarRef,
 	});
 
@@ -107,7 +107,7 @@ export function useCalendarCore({
 	const isVacationDateString = useCallback(
 		(date: string) => {
 			// Ensure date-only string
-			const dateOnly = date.includes("T") ? date.split("T")[0] : date;
+			const dateOnly = date.includes("T") ? date.split("T")[0] || date : date;
 			return vacationDateChecker(dateOnly);
 		},
 		[vacationDateChecker],
@@ -139,7 +139,7 @@ export function useCalendarCore({
 	const eventHandlers = useCalendarEventHandlers({
 		events: eventsState.events,
 		conversations,
-		isRTL,
+		isLocalized,
 		currentView: calendarState.currentView,
 		isVacationDate: vacationDateChecker,
 		handleRefreshWithBlur,
@@ -156,7 +156,7 @@ export function useCalendarCore({
 
 	// Calendar callback handlers
 	const callbackHandlers = createCallbackHandlers({
-		isRTL,
+		isLocalized,
 		currentView: calendarState.currentView,
 		isVacationDate: isVacationDateString,
 		openEditor: (opts?: { start: string; end?: string }) => {
@@ -228,6 +228,6 @@ export function useCalendarCore({
 		// External data
 		conversations,
 		reservations,
-		isRTL,
+		isLocalized,
 	};
 }

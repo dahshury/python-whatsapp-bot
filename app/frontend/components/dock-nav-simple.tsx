@@ -28,9 +28,7 @@ import {
 import { getValidRange } from "@/lib/calendar-config";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
-import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
-import { useVacation } from "@/lib/vacation-context";
 
 interface DockNavSimpleProps {
 	className?: string;
@@ -40,8 +38,8 @@ interface DockNavSimpleProps {
 	rightCalendarView?: string;
 	onLeftCalendarViewChange?: (view: string) => void;
 	onRightCalendarViewChange?: (view: string) => void;
-	leftCalendarRef?: React.RefObject<CalendarCoreRef> | null;
-	rightCalendarRef?: React.RefObject<CalendarCoreRef> | null;
+	leftCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
+	rightCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	isDualMode?: boolean;
 }
 
@@ -51,8 +49,8 @@ interface DualCalendarViewSelectorProps {
 	rightCalendarView?: string;
 	onLeftCalendarViewChange?: (view: string) => void;
 	onRightCalendarViewChange?: (view: string) => void;
-	leftCalendarRef?: React.RefObject<CalendarCoreRef> | null;
-	rightCalendarRef?: React.RefObject<CalendarCoreRef> | null;
+	leftCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
+	rightCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	isDualMode?: boolean;
 }
 
@@ -74,8 +72,8 @@ function DualCalendarViewSelector({
 					{isLocalized ? "التقويم الأيسر" : "Left Calendar"}
 				</Label>
 				<RadioGroup
-					value={leftCalendarView}
-					onValueChange={onLeftCalendarViewChange}
+					value={leftCalendarView ?? null}
+					onValueChange={onLeftCalendarViewChange ?? (() => {})}
 					className="grid grid-cols-2 gap-1"
 				>
 					{viewOptions.map((option) => (
@@ -102,8 +100,8 @@ function DualCalendarViewSelector({
 					{isLocalized ? "التقويم الأيمن" : "Right Calendar"}
 				</Label>
 				<RadioGroup
-					value={rightCalendarView}
-					onValueChange={onRightCalendarViewChange}
+					value={rightCalendarView ?? null}
+					onValueChange={onRightCalendarViewChange ?? (() => {})}
 					className="grid grid-cols-2 gap-1"
 				>
 					{viewOptions.map((option) => (
@@ -141,11 +139,9 @@ export function DockNavSimple({
 	isDualMode: _isDualMode = false,
 }: DockNavSimpleProps) {
 	const pathname = usePathname();
-	const { isLocalized, setUseLocalizedText } = useLanguage();
-	const { freeRoam, setFreeRoam, showDualCalendar, setShowDualCalendar } =
-		useSettings();
-	const { recordingState } = useVacation();
-	const { theme: _theme, setTheme } = useTheme();
+	const { isLocalized } = useLanguage();
+	const { freeRoam, showDualCalendar } = useSettings();
+	const { theme: _theme } = useTheme();
 	const [mounted, setMounted] = React.useState(false);
 	const [activeTab, setActiveTab] = React.useState("view");
 
@@ -166,37 +162,6 @@ export function DockNavSimple({
 			setActiveTab("view");
 		}
 	}, [viewMode, activeTab]);
-
-	const _handleLanguageToggle = (checked: boolean) => {
-		setUseLocalizedText(checked);
-		toastService.success(
-			checked ? "تم التبديل إلى العربية" : "Switched to English",
-		);
-	};
-
-	const _handleThemeToggle = (checked: boolean) => {
-		const newTheme = checked ? "dark" : "light";
-		setTheme(newTheme);
-		toastService.success(
-			isLocalized
-				? `تم التبديل إلى الوضع ${newTheme === "dark" ? "الليلي" : "النهاري"}`
-				: `Switched to ${newTheme} mode`,
-		);
-	};
-
-	const _handleViewModeChange = (value: "default" | "freeRoam" | "dual") => {
-		const isFreeRoam = value === "freeRoam";
-		const isDual = value === "dual";
-
-		setFreeRoam(isFreeRoam);
-		setShowDualCalendar(isDual);
-
-		toastService.success(
-			isLocalized
-				? `تم تغيير وضع العرض إلى ${value}`
-				: `View mode changed to ${value}`,
-		);
-	};
 
 	const handleCalendarViewChange = (view: string) => {
 		onCalendarViewChange?.(view);
@@ -320,10 +285,6 @@ export function DockNavSimple({
 		onRightCalendarViewChange?.(view);
 	};
 
-	const _viewOptions = getCalendarViewOptions(isLocalized);
-
-	const _isRecording = recordingState.periodIndex !== null;
-
 	const isActive = (href: string) => {
 		if (href === "/" && pathname === "/") return true;
 		if (href !== "/" && pathname.startsWith(href)) return true;
@@ -371,8 +332,6 @@ export function DockNavSimple({
 							<TooltipTrigger asChild>
 								<PopoverTrigger asChild>
 									<StablePopoverButton
-										variant="ghost"
-										size="icon"
 										className="size-9 rounded-full"
 										aria-label={isLocalized ? "الإعدادات" : "Settings"}
 									>
@@ -389,29 +348,36 @@ export function DockNavSimple({
 							align="center"
 							className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
 						>
-							<SettingsTabs
-								isLocalized={isLocalized}
-								activeTab={activeTab}
-								onTabChange={setActiveTab}
-								currentCalendarView={currentCalendarView}
-								onCalendarViewChange={handleCalendarViewChange}
-								isCalendarPage={isCalendarPage}
-								customViewSelector={
-									_isDualMode && viewMode === "dual" ? (
+							{_isDualMode && viewMode === "dual" ? (
+								<SettingsTabs
+									isLocalized={isLocalized}
+									activeTab={activeTab}
+									onTabChange={setActiveTab}
+									currentCalendarView={currentCalendarView}
+									onCalendarViewChange={handleCalendarViewChange}
+									isCalendarPage={isCalendarPage}
+									customViewSelector={
 										<DualCalendarViewSelector
 											isLocalized={isLocalized}
 											leftCalendarView={leftCalendarView}
 											rightCalendarView={rightCalendarView}
 											onLeftCalendarViewChange={handleLeftCalendarViewChange}
 											onRightCalendarViewChange={handleRightCalendarViewChange}
-											leftCalendarRef={leftCalendarRef}
-											rightCalendarRef={rightCalendarRef}
+											leftCalendarRef={leftCalendarRef || null}
+											rightCalendarRef={rightCalendarRef || null}
 										/>
-									) : (
-										(undefined as React.ReactElement | undefined)
-									)
-								}
-							/>
+									}
+								/>
+							) : (
+								<SettingsTabs
+									isLocalized={isLocalized}
+									activeTab={activeTab}
+									onTabChange={setActiveTab}
+									currentCalendarView={currentCalendarView}
+									onCalendarViewChange={handleCalendarViewChange}
+									isCalendarPage={isCalendarPage}
+								/>
+							)}
 						</PopoverContent>
 					</Popover>
 				</DockIcon>

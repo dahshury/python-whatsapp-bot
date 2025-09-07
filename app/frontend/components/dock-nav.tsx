@@ -1,5 +1,8 @@
 "use client";
 
+import * as React from "react";
+import type { CalendarCoreRef } from "@/components/calendar-core";
+import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import {
 	CalendarLink,
 	NavigationControls,
@@ -10,6 +13,7 @@ import { SettingsPopover } from "@/components/settings";
 import { Badge } from "@/components/ui/badge";
 import { Dock } from "@/components/ui/dock";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useCtrlViewSwitch } from "@/hooks/use-ctrl-view-switch";
 import { useDockNavigation } from "@/hooks/use-dock-navigation";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
@@ -28,11 +32,50 @@ export function DockNav({
 	variant: _variant = "default",
 }: DockNavProps) {
 	const nav = useDockNavigation({
-		calendarRef,
+		calendarRef: (calendarRef ||
+			null) as React.RefObject<CalendarCoreRef> | null,
 		currentCalendarView,
-		onCalendarViewChange,
+		onCalendarViewChange: onCalendarViewChange || (() => {}),
 	}) as ExtendedNavigationContextValue;
 	const { isLocalized } = useLanguage();
+
+	// Bind Ctrl+ArrowUp/Down to change calendar view using existing handler
+	// Compute next/prev view values from activeView
+	const onCtrlUp = React.useCallback(() => {
+		try {
+			const opts = getCalendarViewOptions(isLocalized);
+			const current = nav.navigation.activeView || currentCalendarView;
+			const index = opts.findIndex((o) => o.value === current);
+			const nextIndex = (index - 1 + opts.length) % opts.length;
+			nav.handlers.handleCalendarViewChange(
+				opts[nextIndex]?.value || "multiMonthYear",
+			);
+		} catch {}
+	}, [
+		isLocalized,
+		nav.navigation.activeView,
+		nav.handlers,
+		currentCalendarView,
+	]);
+
+	const onCtrlDown = React.useCallback(() => {
+		try {
+			const opts = getCalendarViewOptions(isLocalized);
+			const current = nav.navigation.activeView || currentCalendarView;
+			const index = opts.findIndex((o) => o.value === current);
+			const nextIndex = (index + 1) % opts.length;
+			nav.handlers.handleCalendarViewChange(
+				opts[nextIndex]?.value || "multiMonthYear",
+			);
+		} catch {}
+	}, [
+		isLocalized,
+		nav.navigation.activeView,
+		nav.handlers,
+		currentCalendarView,
+	]);
+
+	useCtrlViewSwitch({ onUp: onCtrlUp, onDown: onCtrlDown });
 
 	if (!nav.state.mounted) {
 		return null;

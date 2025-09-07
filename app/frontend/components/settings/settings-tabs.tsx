@@ -68,7 +68,7 @@ export function SettingsTabs({
 	const showVacationTab = true;
 
 	return (
-		<Tabs value={activeTab} onValueChange={onTabChange}>
+		<Tabs value={activeTab} onValueChange={onTabChange ?? (() => {})}>
 			<TabsList
 				className={cn(
 					"grid w-full bg-muted/40 backdrop-blur-sm",
@@ -138,9 +138,9 @@ export function SettingsTabs({
 					) : (
 						<ViewSettings
 							isLocalized={isLocalized}
-							currentCalendarView={currentCalendarView}
-							activeView={activeView}
-							onCalendarViewChange={onCalendarViewChange}
+							{...(currentCalendarView ? { currentCalendarView } : {})}
+							{...(activeView ? { activeView } : {})}
+							{...(onCalendarViewChange ? { onCalendarViewChange } : {})}
 						/>
 					)}
 				</TabsContent>

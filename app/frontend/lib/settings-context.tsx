@@ -1,5 +1,5 @@
 "use client";
-import * as React from "react";
+import React from "react";
 
 // Style theme used for UI accent themes (e.g., "theme-default", "theme-claude").
 // This is intentionally separate from color scheme (light/dark/system), which is handled by next-themes.
@@ -17,7 +17,7 @@ const SettingsContext = React.createContext<SettingsState | undefined>(
 	undefined,
 );
 
-export const SettingsProvider: React.FC<React.PropsWithChildren> = ({
+const SettingsProvider: React.FC<React.PropsWithChildren> = ({
 	children,
 }) => {
 	const [theme, setTheme] = React.useState<Theme>("theme-default");
@@ -86,8 +86,10 @@ export const SettingsProvider: React.FC<React.PropsWithChildren> = ({
 	);
 };
 
-export function useSettings(): SettingsState {
+function useSettings(): SettingsState {
 	const ctx = React.useContext(SettingsContext);
 	if (!ctx) throw new Error("useSettings must be used within SettingsProvider");
 	return ctx;
 }
+
+export { SettingsProvider, useSettings };

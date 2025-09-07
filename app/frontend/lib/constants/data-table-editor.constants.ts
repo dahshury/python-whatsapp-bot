@@ -3,11 +3,11 @@ import { ColumnDataType } from "@/components/glide_custom_cells/components/core/
 import { getSlotTimes } from "@/lib/calendar-config";
 
 export function getDataTableColumns(
-	isRTL: boolean,
+	isLocalized: boolean,
 	selectedDateRange?: { start: string; end?: string } | null,
 	freeRoam?: boolean,
 ): IColumnDefinition[] {
-	const t = (en: string, ar: string) => (isRTL ? ar : en);
+	const t = (en: string, ar: string) => (isLocalized ? ar : en);
 
 	// Derive default scheduled datetime from the opened calendar slot/range
 	const startStr = selectedDateRange?.start;
@@ -49,7 +49,7 @@ export function getDataTableColumns(
 			dataType: ColumnDataType.PHONE,
 			isEditable: true,
 			isRequired: true,
-			defaultValue: "+966 ",
+			defaultValue: "",
 			width: 320, // Increased width for phone input widget
 		},
 		{
@@ -60,7 +60,7 @@ export function getDataTableColumns(
 			isEditable: true,
 			isRequired: true,
 			metadata: {
-				options: isRTL ? ["كشف", "مراجعة"] : ["Check-up", "Follow-up"],
+				options: isLocalized ? ["كشف", "مراجعة"] : ["Check-up", "Follow-up"],
 			},
 			width: 140,
 		},
@@ -82,7 +82,7 @@ export function getColumnNamesForParsing(): string[] {
 	return ["scheduled_time", "phone", "type", "name"];
 }
 
-export function getValidationColumns(_isRTL?: boolean) {
+export function getValidationColumns(_isLocalized?: boolean) {
 	return [
 		{ name: "phone", required: true },
 		{ name: "name", required: true },

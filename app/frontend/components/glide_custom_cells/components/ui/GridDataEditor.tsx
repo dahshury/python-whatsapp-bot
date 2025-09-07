@@ -1,4 +1,4 @@
-import type { GridMouseEventArgs } from "@glideapps/glide-data-grid";
+import type { GridMouseEventArgs, SpriteMap } from "@glideapps/glide-data-grid";
 import DataEditor, {
 	type DataEditorRef,
 	type DrawCellCallback,
@@ -10,7 +10,6 @@ import DataEditor, {
 	type Item,
 	type Theme,
 } from "@glideapps/glide-data-grid";
-import type { SpriteMap } from "@glideapps/glide-data-grid";
 import { DropdownCell as DropdownRenderer } from "@glideapps/glide-data-grid-cells";
 import { Resizable, type Size as ResizableSize } from "re-resizable";
 import type React from "react";
@@ -57,7 +56,7 @@ interface GridDataEditorProps {
 	theme: Partial<Theme>;
 	darkTheme: Partial<Theme>;
 	hoverRow?: number;
-	dataEditorRef: React.RefObject<DataEditorRef>;
+	dataEditorRef: React.RefObject<DataEditorRef | null>;
 	onMouseEnter?: () => void;
 	onMouseLeave?: () => void;
 	gridWidth?: number;
@@ -655,7 +654,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 						sticky: false,
 						tint: true,
 					}}
-					onColumnResize={onColumnResize}
+					{...(onColumnResize && { onColumnResize })}
 					editOnType={false}
 					keybindings={{
 						downFill: true,

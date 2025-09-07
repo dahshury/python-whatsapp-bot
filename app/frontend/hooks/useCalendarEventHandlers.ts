@@ -44,7 +44,6 @@ function setWindowProperty<T>(property: string, value: T): void {
 interface UseCalendarEventHandlersProps {
 	events: CalendarEvent[];
 	conversations: Record<string, unknown>;
-	isRTL?: boolean;
 	isLocalized?: boolean;
 	currentView: string;
 	isVacationDate: (date: string) => boolean;
@@ -54,7 +53,7 @@ interface UseCalendarEventHandlersProps {
 	updateEvent: (id: string, event: CalendarEvent) => void;
 	removeEvent: (id: string) => void;
 	dataTableEditor: { handleEditReservation: (event: CalendarEvent) => void };
-	calendarRef?: React.RefObject<CalendarCoreRef>; // Optional calendar ref for API access
+	calendarRef?: React.RefObject<CalendarCoreRef | null>; // Optional calendar ref for API access
 }
 
 interface CalendarEventDetail {
@@ -68,7 +67,6 @@ interface CalendarEventDetail {
 export function useCalendarEventHandlers({
 	events,
 	conversations: _conversations,
-	isRTL,
 	isLocalized,
 	currentView,
 	isVacationDate,
@@ -80,7 +78,7 @@ export function useCalendarEventHandlers({
 	dataTableEditor,
 	calendarRef,
 }: UseCalendarEventHandlersProps) {
-	const _isRTL = (isRTL ?? isLocalized === true) === true;
+	const _isLocalized = isLocalized ?? false;
 
 	// Ensure global registry for locally-initiated moves to suppress stale WS thrash
 	useEffect(() => {
@@ -101,8 +99,8 @@ export function useCalendarEventHandlers({
 			try {
 				const baseTime = to24h(String(timeSlotRaw || "00:00"));
 				const parts = baseTime.split(":");
-				const hh = parseInt(String(parts[0] ?? "0"), 10);
-				const mm = parseInt(String(parts[1] ?? "0"), 10);
+				const hh = Number.parseInt(String(parts[0] ?? "0"), 10);
+				const mm = Number.parseInt(String(parts[1] ?? "0"), 10);
 				const minutes =
 					(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 				const day = new Date(`${dateStr}T00:00:00`);
@@ -112,8 +110,8 @@ export function useCalendarEventHandlers({
 				const tparts = String(slotMinTime || "00:00:00")
 					.slice(0, 5)
 					.split(":");
-				const sH = parseInt(String(tparts[0] ?? "0"), 10);
-				const sM = parseInt(String(tparts[1] ?? "0"), 10);
+				const sH = Number.parseInt(String(tparts[0] ?? "0"), 10);
+				const sM = Number.parseInt(String(tparts[1] ?? "0"), 10);
 				const minMinutes =
 					(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 				const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
@@ -134,10 +132,9 @@ export function useCalendarEventHandlers({
 				const baseTime = computeSlotBase(dateStr, timeSlotRaw);
 				if (!api?.getEvents) return;
 				const all = api.getEvents();
-				// Slot window
-				const slotStart = new Date(`${dateStr}T${baseTime}:00`);
-				const slotEnd = new Date(slotStart.getTime() + 120 * 60 * 1000);
-				// Select events that belong to this slot via metadata OR by time range on the same date
+				// Slot base removed; strict metadata match doesn't need Date math
+				// Select events that belong to this slot by STRICT metadata match only
+				// We no longer fall back to time-range checks to avoid including stale/removed events
 				const inSlot = all.filter((e: unknown) => {
 					const getExt = (key: string): unknown => {
 						try {
@@ -158,16 +155,7 @@ export function useCalendarEventHandlers({
 					if (getExt("cancelled") === true) return false;
 					const sd = getExt("slotDate");
 					const st = getExt("slotTime");
-					if (sd === dateStr && st === baseTime) return true;
-					try {
-						const ev = e as { start?: Date; startStr?: string };
-						const s: Date | null =
-							ev.start || (ev.startStr ? new Date(ev.startStr) : null);
-						if (!s) return false;
-						return s >= slotStart && s < slotEnd;
-					} catch {
-						return false;
-					}
+					return sd === dateStr && st === baseTime;
 				});
 				if (inSlot.length === 0) return;
 				// Sort: checkups first (type 0), then followups (type 1), then by title
@@ -205,21 +193,16 @@ export function useCalendarEventHandlers({
 						try {
 							(ev as EventApi).setDates(start, end);
 						} catch {}
-					} catch {
-					} finally {
-						try {
-							const currentDepth = getWindowProperty(
-								"__suppressEventChangeDepth",
-								0,
-							);
-							if (currentDepth > 0) {
-								setWindowProperty(
-									"__suppressEventChangeDepth",
-									currentDepth - 1,
-								);
-							}
-						} catch {}
-					}
+						// Defer decrement to next tick to cover async eventChange dispatch
+						setTimeout(() => {
+							try {
+								const d = getWindowProperty("__suppressEventChangeDepth", 0);
+								if (d > 0) {
+									setWindowProperty("__suppressEventChangeDepth", d - 1);
+								}
+							} catch {}
+						}, 0);
+					} catch {}
 					// Ensure metadata present for subsequent reflows
 					try {
 						(ev as EventApi).setExtendedProp("slotDate", dateStr);
@@ -418,11 +401,25 @@ export function useCalendarEventHandlers({
 				} else if (type === "reservation_cancelled") {
 					const evObj = api.getEventById(String(data.id));
 					if (evObj) {
-						// Mark cancelled; let processor recolor on next render
-						evObj.setExtendedProp("cancelled", true);
-						// Remove from calendar to prevent visual overlap until next full render
+						// Mark cancelled and remove under suppression; keep suppression until next tick
 						try {
-							evObj.remove();
+							const currentDepth = getWindowProperty(
+								"__suppressEventChangeDepth",
+								0,
+							);
+							setWindowProperty("__suppressEventChangeDepth", currentDepth + 1);
+							evObj.setExtendedProp("cancelled", true);
+							try {
+								evObj.remove();
+							} catch {}
+							setTimeout(() => {
+								try {
+									const d = getWindowProperty("__suppressEventChangeDepth", 0);
+									if (d > 0) {
+										setWindowProperty("__suppressEventChangeDepth", d - 1);
+									}
+								} catch {}
+							}, 0);
 						} catch {}
 					}
 					// Reflow the affected slot since counts changed
@@ -467,7 +464,7 @@ export function useCalendarEventHandlers({
 			await handleEventChangeService({
 				info: info as unknown as HandleEventChangeArgs["info"],
 				isVacationDate,
-				isRTL: _isRTL,
+				isLocalized: _isLocalized,
 				currentView,
 				onRefresh: handleRefreshWithBlur,
 				...(getCalendarApi
@@ -499,7 +496,7 @@ export function useCalendarEventHandlers({
 		},
 		[
 			isVacationDate,
-			_isRTL,
+			_isLocalized,
 			currentView,
 			handleRefreshWithBlur,
 			calendarRef,
@@ -540,7 +537,7 @@ export function useCalendarEventHandlers({
 			await handleCancelReservationService({
 				eventId,
 				events,
-				isRTL: _isRTL,
+				isLocalized: _isLocalized,
 				onRefresh: handleRefreshWithBlur,
 				...(getCalendarApi
 					? {
@@ -558,7 +555,7 @@ export function useCalendarEventHandlers({
 				},
 			});
 		},
-		[events, _isRTL, handleRefreshWithBlur, calendarRef, removeEvent],
+		[events, _isLocalized, handleRefreshWithBlur, calendarRef, removeEvent],
 	);
 
 	const handleViewDetails = useCallback(

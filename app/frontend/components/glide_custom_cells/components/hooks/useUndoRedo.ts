@@ -63,7 +63,11 @@ function reducer(state: ReducerState, action: Action) {
 			if (state.canUndo) {
 				newState.undoHistory = [...state.undoHistory];
 				const operation = newState.undoHistory.pop();
-				newState.operation = operation;
+				if (operation) {
+					newState.operation = operation;
+				} else {
+					delete newState.operation;
+				}
 				newState.canUndo = newState.undoHistory.length > 0;
 				newState.isApplyingUndo = true;
 
@@ -75,7 +79,11 @@ function reducer(state: ReducerState, action: Action) {
 			if (state.canRedo) {
 				newState.redoHistory = [...state.redoHistory];
 				const operation = newState.redoHistory.pop();
-				newState.operation = operation;
+				if (operation) {
+					newState.operation = operation;
+				} else {
+					delete newState.operation;
+				}
 				newState.canRedo = newState.redoHistory.length > 0;
 				newState.isApplyingRedo = true;
 
@@ -84,7 +92,7 @@ function reducer(state: ReducerState, action: Action) {
 			return state;
 
 		case "operationApplied":
-			newState.operation = undefined;
+			delete newState.operation;
 			newState.isApplyingRedo = false;
 			newState.isApplyingUndo = false;
 
@@ -117,7 +125,7 @@ function reducer(state: ReducerState, action: Action) {
 }
 
 export function useUndoRedo(
-	gridRef: React.RefObject<DataEditorRef>,
+	gridRef: React.RefObject<DataEditorRef | null>,
 	getCellContent: (cell: Item) => unknown,
 	onCellEdited: (cell: Item, newValue: EditableGridCell) => void,
 	onGridSelectionChange?: (newVal: GridSelection) => void,

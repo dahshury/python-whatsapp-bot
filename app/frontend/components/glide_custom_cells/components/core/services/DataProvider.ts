@@ -59,9 +59,8 @@ export class DataProvider implements IDataProvider {
 		const cachedCell = this.cellCache.get(cacheKey);
 		if (cachedCell) {
 			// Make sure original value is stored for cached cells
-			const columnType = this.columnTypeRegistry.get(
-				this.columnDefinitions[col]?.dataType,
-			);
+			const dt = this.columnDefinitions[col]?.dataType;
+			const columnType = dt ? this.columnTypeRegistry.get(dt) : undefined;
 			if (columnType) {
 				const cellValue = columnType.getCellValue(cachedCell);
 				this.editingState.storeOriginalValue(row, col, cellValue);
@@ -215,19 +214,38 @@ export class DataProvider implements IDataProvider {
 			rowContext,
 		);
 
+		// Store validation error information on the cell
+		const cellWithValidation = updatedCell as {
+			isMissingValue?: boolean;
+			validationError?: string | undefined;
+		};
+
 		// If the cell has isMissingValue flag, preserve it (important for validation)
-		if ((updatedCell as { isMissingValue?: boolean }).isMissingValue === true) {
-			// Already set by createCell
+		if (cellWithValidation.isMissingValue === true) {
+			// Already set by createCell - preserve any existing validation error
+		} else if (!validation.isValid) {
+			// Store the specific validation error message from the column type
+			cellWithValidation.isMissingValue = true;
+			if (validation.error) {
+				cellWithValidation.validationError = validation.error;
+			}
 		} else if (
-			!validation.isValid ||
-			(column.isRequired &&
-				(cellValue === null || cellValue === undefined || cellValue === ""))
+			column.isRequired &&
+			(cellValue === null || cellValue === undefined || cellValue === "")
 		) {
-			// Mark as missing value if validation failed or required field is empty
-			(updatedCell as { isMissingValue?: boolean }).isMissingValue = true;
+			// Mark as missing value for empty required fields
+			cellWithValidation.isMissingValue = true;
+			// Don't set validationError, will use default required message
 		}
 
 		this.editingState.setCell(col, row, updatedCell);
+
+		// Force revalidation flag for this cell so external validation UIs can pick up changes
+		try {
+			(
+				this as unknown as { onCellDataLoaded?: (c: number, r: number) => void }
+			).onCellDataLoaded?.(col, row);
+		} catch {}
 
 		if (validation.isValid) {
 			this.dataSource.setCellData(col, row, cellValue).catch((error) => {
@@ -241,7 +259,7 @@ export class DataProvider implements IDataProvider {
 	}
 
 	public getColumnDefinition(col: number): IColumnDefinition {
-		return this.columnDefinitions[col];
+		return this.columnDefinitions[col] as IColumnDefinition;
 	}
 
 	public getRowCount(): number {
@@ -257,6 +275,10 @@ export class DataProvider implements IDataProvider {
 		this.columnDefinitions = this.dataSource.getColumnDefinitions();
 		this.editingState.setColumnDefinitions(this.columnDefinitions);
 		await this.dataSource.refresh();
+		// Sync editing state's base row count with data source after refresh
+		try {
+			this.editingState.setBaseRowCount?.(this.dataSource.rowCount);
+		} catch {}
 	}
 
 	public updateTheme(theme: Partial<Theme>, isDarkTheme: boolean): void {
@@ -282,8 +304,9 @@ export class DataProvider implements IDataProvider {
 		if (columnsToInvalidate.size > 0) {
 			const keysToDelete: string[] = [];
 			this.cellCache.forEach((_, key) => {
-				const [col] = key.split("-").map(Number);
-				if (columnsToInvalidate.has(col)) {
+				const parts = key.split("-");
+				const colNum = Number(parts[0]);
+				if (Number.isFinite(colNum) && columnsToInvalidate.has(colNum)) {
 					keysToDelete.push(key);
 				}
 			});

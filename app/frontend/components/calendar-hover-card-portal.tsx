@@ -16,7 +16,7 @@ interface CalendarHoverCardPortalProps {
 	isDragging: boolean;
 	conversations: Conversations;
 	reservations: Record<string, Reservation[]>;
-	isRTL: boolean;
+	isLocalized: boolean;
 	onMouseEnter: () => void;
 	onMouseLeave: () => void;
 }
@@ -29,7 +29,7 @@ export function CalendarHoverCardPortal({
 	isDragging,
 	conversations,
 	reservations,
-	isRTL,
+	isLocalized,
 	onMouseEnter,
 	onMouseLeave,
 }: CalendarHoverCardPortalProps) {
@@ -79,7 +79,7 @@ export function CalendarHoverCardPortal({
 						selectedConversationId={hoveredEventId}
 						conversations={conversations}
 						reservations={reservations}
-						isRTL={isRTL}
+						isLocalized={isLocalized}
 						isHoverCard={true}
 					/>
 				</div>

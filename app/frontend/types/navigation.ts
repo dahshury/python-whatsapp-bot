@@ -4,7 +4,7 @@ import type { CalendarCoreRef } from "@/components/calendar-core";
 export interface DockNavProps {
 	className?: string;
 	currentCalendarView?: string;
-	calendarRef?: React.RefObject<CalendarCoreRef> | null;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	onCalendarViewChange?: (view: string) => void;
 	navigationOnly?: boolean;
 	variant?: "default" | "left" | "right";

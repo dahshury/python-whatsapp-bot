@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/lib/backend";
 
+interface UndoCancelResponse {
+	success: boolean;
+	message?: string;
+	data?: unknown;
+}
+
 export async function POST(request: Request) {
 	try {
 		const body = await request.json();
@@ -18,27 +24,28 @@ export async function POST(request: Request) {
 			`API CALL (Python Backend): undo_cancel_reservation for ID: ${reservationId}, lang_ar: ${ar || false}`,
 		);
 
-		const pythonResponse = await callPythonBackend("/undo-cancel", {
-			method: "POST",
-			body: JSON.stringify({
-				reservation_id: reservationId,
-				ar: ar || false,
-				max_reservations: 6,
-			}),
-		});
+		const pythonResponse = await callPythonBackend<UndoCancelResponse>(
+			"/undo-cancel",
+			{
+				method: "POST",
+				body: JSON.stringify({
+					reservation_id: reservationId,
+					ar: ar || false,
+					max_reservations: 6,
+				}),
+			},
+		);
 
 		if (pythonResponse.success) {
 			return NextResponse.json(pythonResponse);
-		} else {
-			return NextResponse.json(
-				{
-					success: false,
-					message:
-						pythonResponse.message || "Undo operation failed in backend.",
-				},
-				{ status: 500 },
-			);
 		}
+		return NextResponse.json(
+			{
+				success: false,
+				message: pythonResponse.message || "Undo operation failed in backend.",
+			},
+			{ status: 500 },
+		);
 	} catch (error: unknown) {
 		console.error("Error in /api/reservations/undo-cancel API:", error);
 		return NextResponse.json(

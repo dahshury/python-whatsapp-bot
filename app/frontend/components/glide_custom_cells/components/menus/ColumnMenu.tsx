@@ -176,9 +176,6 @@ export function ColumnMenu({
 		portalContainer && portalContainer !== document.body
 			? portalContainer.getBoundingClientRect()
 			: null;
-	const _adjustedX = containerRect
-		? position.x - containerRect.left
-		: position.x;
 	const adjustedY = containerRect ? position.y - containerRect.top : position.y;
 	const adjustedMenuLeft = containerRect
 		? menuLeft - containerRect.left
@@ -197,7 +194,7 @@ export function ColumnMenu({
 	const menuContent = (
 		<div
 			id={menuId}
-			className="column-menu"
+			className="column-menu click-outside-ignore"
 			style={{
 				position: "absolute",
 				top: adjustedY,
@@ -213,6 +210,18 @@ export function ColumnMenu({
 				transformOrigin: "top left",
 			}}
 			role="menu"
+			onClick={(e) => {
+				// Prevent click events from bubbling up to parent popover
+				e.preventDefault();
+				e.stopPropagation();
+			}}
+			onKeyDown={(e) => {
+				// Handle keyboard navigation
+				if (e.key === "Escape") {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			}}
 		>
 			{onSort && (
 				<>
@@ -357,12 +366,17 @@ function MenuItem({
 	return (
 		<div
 			className={`menu-item ${active ? "active" : ""}`}
-			onClick={onClick}
+			onClick={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				onClick?.();
+			}}
 			role="menuitem"
 			tabIndex={0}
 			onKeyDown={(e) => {
 				if (onClick && (e.key === "Enter" || e.key === " ")) {
 					e.preventDefault();
+					e.stopPropagation();
 					onClick();
 				}
 			}}

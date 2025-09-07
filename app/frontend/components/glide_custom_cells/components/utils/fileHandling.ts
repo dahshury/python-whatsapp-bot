@@ -72,7 +72,7 @@ export async function writeCSVToStream(
 export class FileExporter {
 	private enforceDownloadInNewTab: boolean;
 
-	constructor(enforceDownloadInNewTab: boolean = false) {
+	constructor(enforceDownloadInNewTab = false) {
 		this.enforceDownloadInNewTab = enforceDownloadInNewTab;
 	}
 
@@ -175,7 +175,7 @@ export class FileUploader {
 		this.maxFileSize = maxFileSize;
 	}
 
-	async selectFile(multiple: boolean = false): Promise<File[]> {
+	async selectFile(multiple = false): Promise<File[]> {
 		return new Promise((resolve, reject) => {
 			const input = document.createElement("input");
 			input.type = "file";

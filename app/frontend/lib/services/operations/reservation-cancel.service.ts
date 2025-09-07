@@ -15,7 +15,7 @@ export class ReservationCancelService {
 	constructor(
 		private readonly calendarIntegration: CalendarIntegrationService,
 		private readonly localEchoManager: LocalEchoManager,
-		private readonly isRTL: boolean,
+		private readonly isLocalized: boolean,
 	) {}
 
 	async processCancellations(
@@ -43,8 +43,8 @@ export class ReservationCancelService {
 				const resp = (await cancelReservation({
 					id: waId,
 					date,
-					isRTL: this.isRTL,
-				})) as ApiResponse;
+					isLocalized: this.isLocalized,
+				})) as unknown as ApiResponse;
 
 				if (!resp?.success) {
 					throw new Error(resp?.message || resp?.error || "Cancel failed");
@@ -158,9 +158,9 @@ export class ReservationCancelService {
 
 	private handleCancellationError(error: Error): void {
 		toastService.error(
-			this.isRTL ? "فشل الإلغاء" : "Cancel Failed",
+			this.isLocalized ? "فشل الإلغاء" : "Cancel Failed",
 			error?.message ||
-				(this.isRTL ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+				(this.isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
 			3000,
 		);
 	}

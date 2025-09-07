@@ -10,13 +10,13 @@ export type ReservationToastPayload = {
 	wa_id?: string;
 	date?: string;
 	time?: string;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 };
 
 export type MessageToastPayload = {
 	title: string;
 	description?: string;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 };
 
 // Convert 24-hour "HH:MM" to 12-hour "h:MM AM/PM"; return input if not simple time
@@ -134,49 +134,51 @@ function themedUndoable(
 
 export const toastService = {
 	reservationCreated(payload: ReservationToastPayload) {
-		const { customer, wa_id, date, time, isRTL } = payload;
-		const title = i18n.getMessage("toast_reservation_created", isRTL);
-		const name = customer || wa_id || "";
-		const details = [name, date, time]
-			.filter(Boolean)
-			.join(isRTL ? " • " : " • ");
-		themed(title, details);
-	},
-	reservationModified(payload: ReservationToastPayload) {
-		const { customer, wa_id, date, time, isRTL } = payload;
-		const title = i18n.getMessage("toast_reservation_modified", isRTL);
+		const { customer, wa_id, date, time, isLocalized } = payload;
+		const title = i18n.getMessage("toast_reservation_created", isLocalized);
 		const name = customer || wa_id || "";
 		const displayTime = to12HourFormat(time);
 		const details = [name, date, displayTime]
 			.filter(Boolean)
-			.join(isRTL ? " • " : " • ");
+			.join(isLocalized ? " • " : " • ");
+		themed(title, details);
+	},
+	reservationModified(payload: ReservationToastPayload) {
+		const { customer, wa_id, date, time, isLocalized } = payload;
+		const title = i18n.getMessage("toast_reservation_modified", isLocalized);
+		const name = customer || wa_id || "";
+		const displayTime = to12HourFormat(time);
+		const details = [name, date, displayTime]
+			.filter(Boolean)
+			.join(isLocalized ? " • " : " • ");
 		themed(title, details);
 	},
 	reservationCancelled(payload: ReservationToastPayload) {
-		const { customer, wa_id, date, time, isRTL } = payload;
-		const title = i18n.getMessage("toast_reservation_cancelled", isRTL);
+		const { customer, wa_id, date, time, isLocalized } = payload;
+		const title = i18n.getMessage("toast_reservation_cancelled", isLocalized);
 		// Show both name (if available) and phone number
 		const name = customer || "";
 		const phone = wa_id || "";
-		const details = [name, phone, date, time]
+		const displayTime = to12HourFormat(time);
+		const details = [name, phone, date, displayTime]
 			.filter(Boolean)
-			.join(isRTL ? " • " : " • ");
+			.join(isLocalized ? " • " : " • ");
 		themed(title, details);
 	},
 	reservationModificationFailed(
 		payload: ReservationToastPayload & { error?: string },
 	) {
-		const { customer, wa_id, date, time, isRTL, error } = payload;
+		const { customer, wa_id, date, time, isLocalized, error } = payload;
 		const title = i18n.getMessage(
 			"toast_reservation_modification_failed",
-			isRTL,
+			isLocalized,
 		);
 		const name = customer || wa_id || "";
 		const displayTime = to12HourFormat(time);
 		const details = [name, date, displayTime]
 			.filter(Boolean)
-			.join(isRTL ? " • " : " • ");
-		const errorPrefix = i18n.getMessage("toast_error_prefix", isRTL);
+			.join(isLocalized ? " • " : " • ");
+		const errorPrefix = i18n.getMessage("toast_error_prefix", isLocalized);
 		const subtitle = error ? `${errorPrefix}: ${error}` : details;
 
 		// Use themedError for consistent styling with success toasts but error colors
@@ -187,7 +189,42 @@ export const toastService = {
 		themed(title, description, duration);
 	},
 	error(title: string, description?: string, duration = 4000) {
-		sonner.error(title, description ? { description, duration } : { duration });
+		// Use themed error to keep styling and layering consistent
+		themedError(title, description, duration);
+	},
+	// Promise-based toast wrapper to prevent direct Sonner usage outside
+	promise<T>(
+		promise: Promise<T>,
+		messages: {
+			loading: string;
+			success: string | ((value: T) => string | React.ReactNode);
+			error: string | ((error: unknown) => string | React.ReactNode);
+			duration?: number;
+		},
+	) {
+		const { loading, success, error, duration } = messages;
+
+		// Ensure functions return valid React nodes
+		const successHandler = typeof success === 'function'
+			? (value: T) => {
+				const result = success(value);
+				return result === undefined ? '' : result;
+			}
+			: success;
+
+		const errorHandler = typeof error === 'function'
+			? (errorValue: unknown) => {
+				const result = error(errorValue);
+				return result === undefined ? '' : result;
+			}
+			: error;
+
+		return sonner.promise(promise, {
+			loading,
+			success: successHandler,
+			error: errorHandler,
+			...(typeof duration === "number" ? { duration } : {}),
+		});
 	},
 	undoable(
 		title: string,

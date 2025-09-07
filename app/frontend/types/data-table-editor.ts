@@ -32,7 +32,6 @@ export interface DataTableEditorProps {
 	onOpenChange: (open: boolean) => void;
 	events: CalendarEvent[];
 	selectedDateRange: { start: string; end: string } | null;
-	isRTL?: boolean;
 	isLocalized?: boolean;
 	slotDurationHours: number;
 	onSave: (events: CalendarEvent[]) => void;
@@ -41,16 +40,10 @@ export interface DataTableEditorProps {
 	data: ReservationData[];
 	onDataChange?: (data: ReservationData[]) => void;
 	language?: "en" | "ar";
-	calendarRef?: React.RefObject<CalendarCoreRef>;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	onEventAdded?: (event: CalendarEvent) => void;
 	onEventModified?: (eventId: string, event: CalendarEvent) => void;
 	onEventCancelled?: (eventId: string) => void;
-}
-
-export interface SuccessfulOperation {
-	type: "create" | "modify" | "cancel";
-	id: string | number;
-	data?: unknown;
 }
 
 export interface ValidationResult {
@@ -59,6 +52,7 @@ export interface ValidationResult {
 		row: number;
 		col: number;
 		message: string;
+		fieldName?: string;
 	}>;
 }
 

@@ -1,4 +1,5 @@
 import type { DashboardData } from "@/types/dashboard";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 
 interface ReservationItem {
 	date?: string;
@@ -144,7 +145,7 @@ export function computeDashboardData(
 			(Array.isArray(items) ? items : []).filter((r) =>
 				withinRange(parseReservationDate(r)),
 			),
-		]) as [string, ConversationMessage[]][];
+		]) as unknown as [string, ConversationMessage[]][];
 		const filteredConversationEntries = conversationEntries.map(
 			([id, msgs]) => [
 				id,
@@ -152,7 +153,7 @@ export function computeDashboardData(
 					withinRange(parseMessageDate(m)),
 				),
 			],
-		) as [string, ConversationMessage[]][];
+		) as unknown as [string, ConversationMessage[]][];
 
 		// Previous period filtered datasets
 		const prevReservationEntries = reservationEntries.map(([id, items]) => [
@@ -160,13 +161,13 @@ export function computeDashboardData(
 			(Array.isArray(items) ? items : []).filter((r) =>
 				withinPrevRange(parseReservationDate(r)),
 			),
-		]) as [string, ConversationMessage[]][];
+		]) as unknown as [string, ConversationMessage[]][];
 		const prevConversationEntries = conversationEntries.map(([id, msgs]) => [
 			id,
 			(Array.isArray(msgs) ? msgs : []).filter((m) =>
 				withinPrevRange(parseMessageDate(m)),
 			),
-		]) as [string, ConversationMessage[]][];
+		]) as unknown as [string, ConversationMessage[]][];
 
 		const totalReservations = filteredReservationEntries.reduce(
 			(sum, [, items]) => sum + (Array.isArray(items) ? items.length : 0),
@@ -269,7 +270,7 @@ export function computeDashboardData(
 			filteredConversationEntries.forEach(([, msgs]) => {
 				const sorted = (Array.isArray(msgs) ? msgs : [])
 					.map((m) => ({
-						d: parseMessageDate(m),
+						d: parseMessageDate(m as unknown as ConversationItem),
 						role:
 							(m as ConversationMessage & { role?: string }).role ||
 							(m as ConversationMessage & { sender?: string }).sender ||
@@ -300,7 +301,7 @@ export function computeDashboardData(
 			prevConversationEntries.forEach(([, msgs]) => {
 				const sorted = (Array.isArray(msgs) ? msgs : [])
 					.map((m) => ({
-						d: parseMessageDate(m),
+						d: parseMessageDate(m as unknown as ConversationItem),
 						role:
 							(m as ConversationMessage & { role?: string }).role ||
 							(m as ConversationMessage & { sender?: string }).sender ||
@@ -358,7 +359,7 @@ export function computeDashboardData(
 				(Array.isArray(items)
 					? items.filter(
 							(r) =>
-								(r as Reservation & { cancelled?: boolean }).cancelled === true,
+								(r as unknown as Reservation & { cancelled?: boolean }).cancelled === true,
 						).length
 					: 0),
 			0,
@@ -369,7 +370,7 @@ export function computeDashboardData(
 				(Array.isArray(items)
 					? items.filter(
 							(r) =>
-								(r as Reservation & { cancelled?: boolean }).cancelled === true,
+								(r as unknown as Reservation & { cancelled?: boolean }).cancelled === true,
 						).length
 					: 0),
 			0,
@@ -438,26 +439,26 @@ export function computeDashboardData(
 				cpu_percent:
 					typeof prom.process_cpu_percent === "number"
 						? prom.process_cpu_percent
-						: undefined,
+						: 0,
 				memory_bytes:
 					typeof prom.process_memory_bytes === "number"
 						? prom.process_memory_bytes
-						: undefined,
-				reservations_requested_total: prom.reservations_requested_total,
-				reservations_successful_total: prom.reservations_successful_total,
-				reservations_failed_total: prom.reservations_failed_total,
+						: 0,
+				reservations_requested_total: prom.reservations_requested_total as number,
+				reservations_successful_total: prom.reservations_successful_total as number,
+				reservations_failed_total: prom.reservations_failed_total as number,
 				reservations_cancellation_requested_total:
-					prom.reservations_cancellation_requested_total,
+					prom.reservations_cancellation_requested_total as number,
 				reservations_cancellation_successful_total:
-					prom.reservations_cancellation_successful_total,
+					prom.reservations_cancellation_successful_total as number,
 				reservations_cancellation_failed_total:
-					prom.reservations_cancellation_failed_total,
+					prom.reservations_cancellation_failed_total as number,
 				reservations_modification_requested_total:
-					prom.reservations_modification_requested_total,
+					prom.reservations_modification_requested_total as number,
 				reservations_modification_successful_total:
-					prom.reservations_modification_successful_total,
+					prom.reservations_modification_successful_total as number,
 				reservations_modification_failed_total:
-					prom.reservations_modification_failed_total,
+					prom.reservations_modification_failed_total as number,
 			},
 			dailyTrends: [],
 			typeDistribution: [],

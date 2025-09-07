@@ -187,9 +187,21 @@ export function FormattingMenu({
 		<div
 			role="menu"
 			id={"formatting-menu"}
-			className="formatting-menu"
+			className="formatting-menu click-outside-ignore"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
+			onClick={(e) => {
+				// Prevent click events from bubbling up to parent popover
+				e.preventDefault();
+				e.stopPropagation();
+			}}
+			onKeyDown={(e) => {
+				// Handle keyboard navigation
+				if (e.key === "Escape") {
+					e.preventDefault();
+					e.stopPropagation();
+				}
+			}}
 			style={{
 				position: "absolute",
 				top: position.y,
@@ -244,10 +256,15 @@ function FormatMenuItem({
 		<div
 			role="menuitem"
 			className="format-menu-item"
-			onClick={onClick}
+			onClick={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				onClick();
+			}}
 			onKeyDown={(e) => {
 				if (e.key === "Enter" || e.key === " ") {
 					e.preventDefault();
+					e.stopPropagation();
 					onClick();
 				}
 			}}

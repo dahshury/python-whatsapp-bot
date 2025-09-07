@@ -33,13 +33,15 @@ export function getDateRestrictions(
 			const [maxH] = String(slotMaxTime || "24:00:00")
 				.split(":")
 				.map((v) => parseInt(v, 10));
-			const startH = Number.isFinite(minH) ? minH : 0;
-			const endH = Number.isFinite(maxH) ? maxH : 24;
+			const startH = Math.max(0, Number.isFinite(minH) ? (minH as number) : 0);
+			const endH = Math.min(24, Number.isFinite(maxH) ? (maxH as number) : 24);
 			enabledHours = [];
-			for (let h = startH; h < endH; h++) enabledHours.push(h);
+			for (let h = startH; h < endH; h++) {
+				enabledHours.push(h);
+			}
 		}
-	} catch {}
-	return { disabledDates, enabledHours };
+		} catch {}
+		return { disabledDates, enabledHours: enabledHours || [] };
 }
 
 export function formatForTempusDominus(r: DateRestrictions) {

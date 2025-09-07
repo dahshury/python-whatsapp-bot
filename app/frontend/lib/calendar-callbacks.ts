@@ -3,7 +3,7 @@ export type VacationDateChecker = (dateStr: string) => boolean;
 import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 
 export interface CalendarCallbackHandlers {
-	isRTL: boolean;
+	isLocalized: boolean;
 	currentView: string;
 	isVacationDate: (d: string) => boolean;
 	openEditor: (opts: { start: string; end?: string }) => void;
@@ -14,7 +14,7 @@ export interface CalendarCallbackHandlers {
 }
 
 // FullCalendar callback info types
-interface DateClickInfo {
+export interface DateClickInfo {
 	date: Date;
 	dateStr: string;
 	allDay: boolean;

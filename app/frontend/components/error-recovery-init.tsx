@@ -26,6 +26,7 @@ export function ErrorRecoveryInit() {
 			window.addEventListener("keydown", handleKeydown);
 			return () => window.removeEventListener("keydown", handleKeydown);
 		}
+		return undefined;
 	}, []);
 
 	return null; // This component doesn't render anything

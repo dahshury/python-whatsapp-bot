@@ -84,10 +84,7 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 			onMouseEnter={onMouseEnter}
 			onMouseLeave={onMouseLeave}
 		>
-			{React.cloneElement(icon as React.ReactElement, {
-				size: 12,
-				style: { flexShrink: 0 },
-			})}
+			{React.cloneElement(icon as React.ReactElement, {})}
 		</button>
 	);
 };
@@ -281,5 +278,3 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 		</div>
 	);
 };
-
-export default GridToolbar;

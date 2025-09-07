@@ -22,7 +22,7 @@ interface ConversationComboboxProps {
 	reservations: Record<string, Reservation[]>;
 	selectedConversationId: string | null;
 	onConversationSelect: (conversationId: string) => void;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }
 
 export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
@@ -30,7 +30,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	reservations,
 	selectedConversationId,
 	onConversationSelect,
-	isRTL = false,
+	isLocalized = false,
 }) => {
 	const [showHoverCard, setShowHoverCard] = useState(false);
 	const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
@@ -251,7 +251,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 					onClick={handleNext}
 					disabled={conversationOptions.length === 0 || currentIndex === 0}
 					className="h-8 w-8 p-0 flex-shrink-0"
-					title={isRTL ? "الأحدث" : "More Recent"}
+					title={isLocalized ? "الأحدث" : "More Recent"}
 				>
 					<ChevronLeft className="h-4 w-4" />
 				</Button>
@@ -265,7 +265,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 									value={effectiveSelectedId || ""}
 									onChange={handleConversationSelect}
 									placeholder={
-										isRTL ? "اختر محادثة..." : "Select conversation..."
+										isLocalized ? "اختر محادثة..." : "Select conversation..."
 									}
 									phoneOptions={phoneOptions}
 									uncontrolled={false}
@@ -318,7 +318,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 									selectedConversationId={effectiveSelectedId}
 									conversations={conversations}
 									reservations={reservations}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 									isHoverCard={true}
 								/>
 							</HoverCardContent>
@@ -335,7 +335,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 						currentIndex === conversationOptions.length - 1
 					}
 					className="h-8 w-8 p-0 flex-shrink-0"
-					title={isRTL ? "الأقدم" : "Older"}
+					title={isLocalized ? "الأقدم" : "Older"}
 				>
 					<ChevronRight className="h-4 w-4" />
 				</Button>

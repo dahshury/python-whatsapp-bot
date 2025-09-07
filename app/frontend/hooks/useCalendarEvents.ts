@@ -20,7 +20,7 @@ import type { CalendarEvent } from "@/types/calendar";
 
 export interface UseCalendarEventsOptions {
 	freeRoam: boolean;
-	isRTL: boolean;
+	isLocalized: boolean;
 	autoRefresh?: boolean;
 	refreshInterval?: number;
 }
@@ -91,9 +91,9 @@ export function useCalendarEvents(
 	const processingOptions = useMemo(
 		(): Omit<ReservationProcessingOptions, "vacationPeriods"> => ({
 			freeRoam: options.freeRoam,
-			isRTL: options.isRTL,
+			isLocalized: options.isLocalized,
 		}),
-		[options.freeRoam, options.isRTL],
+		[options.freeRoam, options.isLocalized],
 	);
 
 	/**
@@ -129,8 +129,6 @@ export function useCalendarEvents(
 								date: (reservation as { date?: string }).date,
 								time_slot: (reservation as { time_slot?: string }).time_slot,
 								customer_name: (reservation as { customer_name?: string })
-									.customer_name,
-								title: (reservation as { customer_name?: string })
 									.customer_name,
 								...reservation,
 							})),

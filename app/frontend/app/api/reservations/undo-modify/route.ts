@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/lib/backend";
+
+interface UndoModifyResponse {
+	success: boolean;
+	message?: string;
+	data?: unknown;
+}
 // import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path
 
 export async function POST(request: Request) {
@@ -52,24 +58,26 @@ export async function POST(request: Request) {
 			payloadForPython,
 		);
 
-		const pythonResponse = await callPythonBackend("/undo-modify", {
-			method: "POST",
-			body: JSON.stringify(payloadForPython),
-		});
+		const pythonResponse = await callPythonBackend<UndoModifyResponse>(
+			"/undo-modify",
+			{
+				method: "POST",
+				body: JSON.stringify(payloadForPython),
+			},
+		);
 
-		console.log(`Python backend response for undo-modify:`, pythonResponse);
+		console.log("Python backend response for undo-modify:", pythonResponse);
 
 		if (pythonResponse?.success) {
 			return NextResponse.json(pythonResponse);
-		} else {
-			const errorMessage =
-				pythonResponse?.message || "Undo modification failed in backend.";
-			console.error(`Undo modification failed:`, errorMessage, pythonResponse);
-			return NextResponse.json(
-				{ success: false, message: errorMessage },
-				{ status: 500 },
-			);
 		}
+		const errorMessage =
+			pythonResponse?.message || "Undo modification failed in backend.";
+		console.error("Undo modification failed:", errorMessage, pythonResponse);
+		return NextResponse.json(
+			{ success: false, message: errorMessage },
+			{ status: 500 },
+		);
 	} catch (error: unknown) {
 		console.error("Error in /api/reservations/undo-modify API:", error);
 		const errorMessage =

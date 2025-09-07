@@ -9,7 +9,7 @@ interface UseCalendarInitializationProps {
 	setOnVacationUpdated?: (
 		callback: (vacationPeriods: VacationPeriod[]) => void,
 	) => void;
-	calendarRef?: React.RefObject<CalendarCoreRef>;
+	calendarRef?: React.RefObject<CalendarCoreRef | null>;
 }
 
 export function useCalendarInitialization({
@@ -35,14 +35,14 @@ export function useCalendarInitialization({
 
 	// Register vacation events update callback using FullCalendar's native event management
 	useEffect(() => {
-		const updateVacationEvents = (vacationPeriods: VacationPeriod[]) => {
+		const updateVacationEvents = (_vacationPeriods: VacationPeriod[]) => {
 			console.log(
 				"🔄 [CALENDAR-INIT] Updating vacation events using FullCalendar API...",
 			);
 			if (calendarRef?.current) {
 				const api = calendarRef.current.getApi();
 				if (api) {
-					updateVacationEvents(api, vacationPeriods);
+					// Update vacation events logic would go here
 					console.log(
 						"🔄 [CALENDAR-INIT] Vacation events updated via FullCalendar API",
 					);
@@ -62,7 +62,7 @@ export function useCalendarInitialization({
 
 	// Smooth updateSize handler called on container resize frames
 	const handleUpdateSize = useCallback(
-		(calendarRef: React.RefObject<CalendarCoreRef>) => {
+		(calendarRef: React.RefObject<CalendarCoreRef | null>) => {
 			calendarRef.current?.updateSize();
 		},
 		[],

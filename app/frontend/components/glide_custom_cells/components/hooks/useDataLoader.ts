@@ -91,9 +91,11 @@ export function useDataLoader(
 
 					// Maintain cache size limit
 					if (newCache.size > fullConfig.cacheSize) {
-						const oldestPage = Array.from(newCache.keys())[0];
-						newCache.delete(oldestPage);
-						prev.loadedPages.delete(oldestPage);
+						const oldestPage = Array.from(newCache.keys())[0]; // Safe because size > 0
+						if (oldestPage !== undefined) {
+							newCache.delete(oldestPage);
+							prev.loadedPages.delete(oldestPage);
+						}
 					}
 
 					return {

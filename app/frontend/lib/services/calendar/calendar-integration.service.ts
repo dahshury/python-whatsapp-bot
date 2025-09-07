@@ -180,8 +180,8 @@ export class CalendarIntegrationService {
 					const inputTime = fmt.to24h(String(timeSlotRaw || "00:00"));
 					const [hh, mm] = inputTime.split(":").map((v) => parseInt(v, 10));
 					const minutes =
-						(Number.isFinite(hh) ? hh : 0) * 60 +
-						(Number.isFinite(mm) ? mm : 0);
+						(Number.isFinite(hh ?? 0) ? hh ?? 0 : 0) * 60 +
+						(Number.isFinite(mm ?? 0) ? mm ?? 0 : 0);
 					const day = new Date(`${dateStr}T00:00:00`);
 					const { slotMinTime } = getSlotTimes(day, false, "");
 					const [sH, sM] = String(slotMinTime || "00:00:00")
@@ -189,8 +189,8 @@ export class CalendarIntegrationService {
 						.split(":")
 						.map((v) => parseInt(v, 10));
 					const minMinutes =
-						(Number.isFinite(sH) ? sH : 0) * 60 +
-						(Number.isFinite(sM) ? sM : 0);
+						(Number.isFinite(sH ?? 0) ? sH ?? 0 : 0) * 60 +
+						(Number.isFinite(sM ?? 0) ? sM ?? 0 : 0);
 					const duration = 2 * 60; // 2 hours = 120 minutes
 					const rel = Math.max(0, minutes - minMinutes);
 					const slotIndex = Math.floor(rel / duration);
@@ -283,8 +283,8 @@ export class CalendarIntegrationService {
 				try {
 					const [h, m] = hhmm.split(":").map((v) => parseInt(v, 10));
 					const total =
-						(Number.isFinite(h) ? h : 0) * 60 +
-						(Number.isFinite(m) ? m : 0) +
+						(Number.isFinite(h ?? 0) ? h ?? 0 : 0) * 60 +
+						(Number.isFinite(m ?? 0) ? m ?? 0 : 0) +
 						Math.max(0, Math.floor(minutesToAdd));
 					const hh = Math.floor(total / 60);
 					const mm = total % 60;
@@ -299,6 +299,7 @@ export class CalendarIntegrationService {
 			const gapMinutes = 1;
 			for (let i = 0; i < inSlot.length; i++) {
 				const ev = inSlot[i];
+				if (!ev) continue; // Skip if event is undefined
 				const prev = (ev as { startStr?: string }).startStr || ev.start || "";
 				const offsetMinutes = i * (minutesPerReservation + gapMinutes);
 				const startClock = addMinutesToClock(baseTime, offsetMinutes);

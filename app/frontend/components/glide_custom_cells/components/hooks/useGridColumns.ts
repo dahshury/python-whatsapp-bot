@@ -76,18 +76,23 @@ export function useGridColumns(
 		// Use dataSource column definitions
 		const columnDefinitions = dataSource.getColumnDefinitions();
 		const gridColumns: GridColumn[] = columnDefinitions.map(
-			(colDef: IColumnDefinition, index: number) => ({
-				id: colDef.id,
-				title: colDef.title || colDef.name || `Column ${index + 1}`,
-				width: colDef.width || 150,
-				icon: getColumnIcon(colDef),
-				isRequired: colDef.isRequired || false,
-				isEditable: colDef.isEditable !== false,
-				hasMenu: true,
-				dataType: colDef.dataType,
-				themeOverride: (colDef as { themeOverride?: Record<string, unknown> })
-					.themeOverride,
-			}),
+			(colDef: IColumnDefinition, index: number) => {
+				const icon = getColumnIcon(colDef);
+				const themeOverride = (
+					colDef as { themeOverride?: Record<string, unknown> }
+				).themeOverride;
+				return {
+					id: colDef.id,
+					title: colDef.title || colDef.name || `Column ${index + 1}`,
+					width: colDef.width || 150,
+					...(icon && { icon }),
+					isRequired: colDef.isRequired || false,
+					isEditable: colDef.isEditable !== false,
+					hasMenu: true,
+					dataType: colDef.dataType,
+					...(themeOverride && { themeOverride }),
+				};
+			},
 		);
 
 		setColumnsState(gridColumns);
@@ -113,7 +118,10 @@ export function useGridColumns(
 
 		visibleColumns.forEach((col, idx) => {
 			const originalIndex = visibleColumnIndices[idx];
-			if (pinnedColumns.includes(originalIndex)) {
+			if (
+				originalIndex !== undefined &&
+				pinnedColumns.includes(originalIndex)
+			) {
 				pinnedCols.push({
 					...col,
 					hasMenu: true,
@@ -121,7 +129,8 @@ export function useGridColumns(
 				} as GridColumn);
 			} else {
 				// Check if column has been explicitly sized (has grow: 0)
-				const originalCol = columnsState[originalIndex];
+				const originalCol =
+					originalIndex !== undefined ? columnsState[originalIndex] : undefined;
 				const hasExplicitSize =
 					originalCol && "grow" in originalCol && originalCol.grow === 0;
 
@@ -163,7 +172,9 @@ export function useGridColumns(
 			setColumnsState((prev) => {
 				const result = [...prev];
 				const [removed] = result.splice(startIndex, 1);
-				result.splice(endIndex, 0, removed);
+				if (removed) {
+					result.splice(endIndex, 0, removed);
+				}
 				return result;
 			});
 		},
@@ -191,19 +202,6 @@ export function useGridColumns(
 		togglePin,
 		pinnedColumns,
 	};
-}
-
-function _getColumnThemeOverride(
-	column: IColumnDefinition,
-): Record<string, unknown> {
-	const overrides: Record<string, unknown> = {};
-
-	// Add specific theme overrides based on column type or metadata
-	if (column.dataType === "number" && column.formatting?.type === "currency") {
-		overrides.textDark = "#00c896";
-	}
-
-	return overrides;
 }
 
 function getColumnIcon(column: IColumnDefinition): GridColumn["icon"] {

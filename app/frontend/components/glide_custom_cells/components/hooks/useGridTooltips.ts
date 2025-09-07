@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from "react";
 export const TOOLTIP_DEBOUNCE_MS = 600;
 
 export const getRequiredCellTooltip = () => {
-	return `⚠️ This field is required`;
+	return "⚠️ This field is required";
 };
 
 export interface TooltipState {
@@ -53,6 +53,12 @@ function isErrorCell(cell: unknown): cell is { errorDetails: string } {
 export function useGridTooltips(
 	getCellContent: (cell: readonly [number, number]) => unknown,
 	columns: Array<{ isRequired?: boolean; isEditable?: boolean; help?: string }>,
+	validationErrors?: Array<{
+		row: number;
+		col: number;
+		message: string;
+		fieldName?: string;
+	}>,
 ) {
 	const [tooltip, setTooltip] = useState<TooltipState | undefined>();
 	const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -94,15 +100,40 @@ export function useGridTooltips(
 					try {
 						const cell = getCellContent([colIdx, rowIdx]);
 
-						if (isErrorCell(cell)) {
+						// Check for validation errors first (highest priority)
+						if (validationErrors && validationErrors.length > 0) {
+							const cellValidationError = validationErrors.find(
+								(error) => error.row === rowIdx && error.col === colIdx,
+							);
+							if (cellValidationError) {
+								tooltipContent = `❌ ${cellValidationError.message}`;
+								console.log("[Tooltip] Showing validation error tooltip:", {
+									row: rowIdx,
+									col: colIdx,
+									message: cellValidationError.message,
+									fieldName: cellValidationError.fieldName,
+								});
+							}
+						}
+
+						// Fallback to cell-level errors
+						if (!tooltipContent && isErrorCell(cell)) {
 							tooltipContent = `❌ ${cell.errorDetails}`;
-						} else if (
+						}
+
+						// Required field missing value
+						if (
+							!tooltipContent &&
+							column &&
 							!!column.isRequired &&
 							!!column.isEditable &&
 							isMissingValueCell(cell)
 						) {
 							tooltipContent = getRequiredCellTooltip();
-						} else if (hasTooltip(cell)) {
+						}
+
+						// Cell-specific tooltip
+						if (!tooltipContent && hasTooltip(cell)) {
 							tooltipContent = cell.tooltip;
 						}
 					} catch {
@@ -124,7 +155,7 @@ export function useGridTooltips(
 				}
 			}
 		},
-		[columns, getCellContent],
+		[columns, getCellContent, validationErrors],
 	);
 
 	return { tooltip, clearTooltip, onItemHovered };

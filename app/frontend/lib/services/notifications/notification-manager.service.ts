@@ -24,14 +24,14 @@ export class NotificationManager {
 		wa_id: string;
 		date: string;
 		time: string;
-		isRTL?: boolean;
+		isLocalized?: boolean;
 	}): void {
 		toastService.reservationModified({
 			...(payload.customer && { customer: payload.customer }),
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
-			isRTL: payload.isRTL || false,
+			isLocalized: payload.isLocalized || false,
 		});
 	}
 
@@ -43,14 +43,14 @@ export class NotificationManager {
 		wa_id: string;
 		date: string;
 		time: string;
-		isRTL?: boolean;
+		isLocalized?: boolean;
 	}): void {
 		toastService.reservationCreated({
 			...(payload.customer && { customer: payload.customer }),
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
-			isRTL: payload.isRTL || false,
+			isLocalized: payload.isLocalized || false,
 		});
 	}
 
@@ -62,14 +62,14 @@ export class NotificationManager {
 		wa_id: string;
 		date: string;
 		time: string;
-		isRTL?: boolean;
+		isLocalized?: boolean;
 	}): void {
 		toastService.reservationCancelled({
 			...(payload.customer && { customer: payload.customer }),
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
-			isRTL: payload.isRTL || false,
+			isLocalized: payload.isLocalized || false,
 		});
 	}
 }

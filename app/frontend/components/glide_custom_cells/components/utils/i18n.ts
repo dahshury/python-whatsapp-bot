@@ -3,4 +3,4 @@
  * This maintains backward compatibility for grid components
  */
 
-export { messages } from "@/lib/i18n";
+export { messages } from "../../../../lib/i18n";

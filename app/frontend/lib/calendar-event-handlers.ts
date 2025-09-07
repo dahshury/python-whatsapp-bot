@@ -15,12 +15,12 @@ interface WebSocketMessage {
 }
 
 // FullCalendar event interfaces
-interface FullCalendarEventChangeInfo {
+export interface FullCalendarEventChangeInfo {
 	event: {
 		id: string;
 		title: string;
 		start: Date;
-		end?: Date;
+		end?: Date | undefined;
 		startStr?: string;
 		endStr?: string;
 		extendedProps?: Record<string, unknown>;
@@ -29,14 +29,15 @@ interface FullCalendarEventChangeInfo {
 		id: string;
 		title: string;
 		start: Date;
-		end?: Date;
+		end?: Date | undefined;
 		startStr?: string;
+		endStr?: string;
 		extendedProps?: Record<string, unknown>;
-	};
-	revert?: () => void;
+	} | undefined;
+	revert?: (() => void) | undefined;
 }
 
-interface FullCalendarApi {
+export interface FullCalendarApi {
 	getEvents: () => Array<{
 		id: string;
 		title: string;
@@ -50,7 +51,7 @@ interface FullCalendarApi {
 	[key: string]: unknown;
 }
 
-interface FullCalendarEvent {
+export interface FullCalendarEvent {
 	id: string;
 	title?: string;
 	start?: Date;
@@ -62,7 +63,7 @@ interface FullCalendarEvent {
 	remove?: () => void;
 }
 
-interface CalendarEventData {
+export interface CalendarEventData {
 	id: string;
 	title?: string;
 	start?: string;
@@ -183,7 +184,7 @@ async function modifyReservationWS(
 		type?: number;
 		approximate?: boolean;
 		reservationId?: number;
-		isRTL?: boolean;
+		isLocalized?: boolean;
 	},
 ): Promise<{ success: boolean; message?: string }> {
 	const success = await sendWebSocketMessage({
@@ -196,7 +197,7 @@ async function modifyReservationWS(
 			type: updates.type,
 			approximate: updates.approximate,
 			reservation_id: updates.reservationId,
-			ar: updates.isRTL || false,
+			ar: updates.isLocalized || false,
 		},
 	});
 	if (success) return { success: true };
@@ -207,18 +208,18 @@ async function modifyReservationWS(
 async function cancelReservationWS(
 	waId: string,
 	date: string,
-	isRTL?: boolean,
+	isLocalized?: boolean,
 ): Promise<{ success: boolean; message?: string }> {
 	const success = await sendWebSocketMessage({
 		type: "cancel_reservation",
-		data: { wa_id: waId, date: date, ar: isRTL || false },
+		data: { wa_id: waId, date: date, ar: isLocalized || false },
 	});
 	if (success) return { success: true };
 	// Fallback to HTTP if WebSocket unavailable
 	const resp = await cancelReservation({
 		id: waId,
 		date,
-		...(typeof isRTL === "boolean" ? { isRTL } : {}),
+		...(typeof isLocalized === "boolean" ? { isLocalized } : {}),
 	});
 	return {
 		success: Boolean((resp as { success?: unknown })?.success),
@@ -239,9 +240,9 @@ function waitForWSConfirmation(args: {
 	date: string;
 	time: string;
 	timeoutMs?: number;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }): Promise<{ success: boolean; message?: string }> {
-	const { reservationId, waId, date, timeoutMs = 10000, isRTL = false } = args;
+	const { reservationId, waId, date, timeoutMs = 10000, isLocalized = false } = args;
 	return new Promise((resolve) => {
 		let resolved = false;
 		const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
@@ -321,7 +322,7 @@ function waitForWSConfirmation(args: {
 					console.log(`⏰ WebSocket confirmation timeout after ${timeoutMs}ms`);
 					const timeoutMessage = i18n.getMessage(
 						"toast_request_timeout",
-						isRTL,
+						isLocalized,
 					);
 					resolve({ success: false, message: timeoutMessage });
 				}
@@ -365,7 +366,7 @@ function waitForWSConfirmation(args: {
 					console.log("💀 Ultimate timeout - WebSocket never connected");
 					const timeoutMessage = i18n.getMessage(
 						"toast_request_timeout",
-						isRTL,
+						isLocalized,
 					);
 					resolve({ success: false, message: timeoutMessage });
 				}
@@ -377,10 +378,10 @@ function waitForWSConfirmation(args: {
 export async function handleEventChange(args: {
 	info: FullCalendarEventChangeInfo;
 	isVacationDate: (date: string) => boolean;
-	isRTL: boolean;
+	isLocalized: boolean;
 	currentView: string;
 	onRefresh: () => Promise<void>;
-	getCalendarApi?: () => FullCalendarApi;
+	getCalendarApi?: () => FullCalendarApi | undefined;
 	updateEvent: (id: string, event: CalendarEventData) => void;
 	resolveEvent?: (
 		id: string,
@@ -519,7 +520,7 @@ export async function handleEventChange(args: {
 				time: newTime,
 				type: Number(type) || 0,
 				approximate: useApproximate,
-				isRTL: args.isRTL,
+				isLocalized: args.isLocalized,
 				...(title && { title }),
 				...(reservationId != null ? { reservationId } : {}),
 			}),
@@ -528,12 +529,82 @@ export async function handleEventChange(args: {
 				waId: String(waId),
 				date: String(newDate || ""),
 				time: newTime,
-				...(typeof args.isRTL === "boolean" ? { isRTL: args.isRTL } : {}),
+				...(typeof args.isLocalized === "boolean" ? { isLocalized: args.isLocalized } : {}),
 			}),
 		]);
 
 		console.log("📥 WebSocket send result:", wsResult);
 		console.log("📥 WebSocket confirmation:", resp);
+
+		// Diagnostics: log snapshots for source and target slots around the move
+		try {
+			const api = typeof args.getCalendarApi === "function" ? args.getCalendarApi() : undefined;
+			const prevStartStr: string | undefined = args?.info?.oldEvent?.startStr;
+			const prevDate = prevStartStr ? prevStartStr.split("T")[0] : undefined;
+			const prevRawTime = prevStartStr
+				? (prevStartStr.split("T")[1] || "00:00").slice(0, 5)
+				: undefined;
+			const prevBase = prevDate && prevRawTime ? normalizeToSlotBase(prevDate, prevRawTime) : undefined;
+			const targetDate = String(newDate || "");
+			const targetBase = newTime;
+
+			const collectSlotSnapshot = (
+				api2: FullCalendarApi | undefined,
+				dateStr: string,
+				baseTime: string,
+			): { id: string; title: string; slotTime?: string; start?: string }[] => {
+				try {
+					const events = api2?.getEvents?.() || [];
+					const inSlot = events.filter((e) => {
+						try {
+							const ext = (e?.extendedProps || {}) as {
+								slotDate?: string;
+								slotTime?: string;
+								cancelled?: boolean;
+								type?: unknown;
+							};
+							if (ext.cancelled === true) return false;
+							const t = Number(ext.type ?? 0);
+							if (t === 2) return false;
+							return ext.slotDate === dateStr && ext.slotTime === baseTime;
+						} catch {
+							return false;
+						}
+					});
+					return inSlot.map((e) => {
+						const slotTime = (e as { extendedProps?: { slotTime?: string } })?.extendedProps?.slotTime;
+						const startStr = (e as { startStr?: string }).startStr;
+						const startDate = (e as { start?: Date }).start;
+						const start = startStr || (startDate ? startDate.toISOString() : undefined);
+
+						const result: { id: string; title: string; slotTime?: string; start?: string } = {
+							id: String((e as { id?: string }).id || ""),
+							title: String((e as { title?: string }).title || ""),
+						};
+
+						if (slotTime) {
+							result.slotTime = slotTime;
+						}
+
+						if (start) {
+							result.start = start;
+						}
+
+						return result;
+					});
+				} catch {
+					return [];
+				}
+			};
+
+			const fromBefore = prevDate && prevBase ? collectSlotSnapshot(api, prevDate, prevBase) : [];
+			const toBefore = targetDate && targetBase ? collectSlotSnapshot(api, targetDate, targetBase) : [];
+			console.groupCollapsed("🧭 DND Slot Snapshot (before)");
+			console.log("move", { id: event.id, from: { prevDate, prevBase }, to: { targetDate, targetBase } });
+			console.table(fromBefore.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
+			console.table(toBefore.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
+			console.groupEnd();
+		} catch {}
 
 		if (!resp?.success) {
 			console.log("❌ Backend rejected the modification, reverting", resp);
@@ -549,7 +620,7 @@ export async function handleEventChange(args: {
 				// Backend already sends translated messages when ar=true is passed
 				// Use i18n fallback only if no message is provided
 				const message =
-					resp?.message || i18n.getMessage("slot_fully_booked", args.isRTL);
+					resp?.message || i18n.getMessage("slot_fully_booked", args.isLocalized);
 				console.log("🔔 Showing error notification:", {
 					title,
 					waId,
@@ -562,7 +633,7 @@ export async function handleEventChange(args: {
 					wa_id: String(waId),
 					date: String(newDate || ""),
 					time: newTime,
-					isRTL: Boolean(args.isRTL),
+					isLocalized: Boolean(args.isLocalized),
 					error: message,
 				});
 			} catch (e) {
@@ -580,6 +651,208 @@ export async function handleEventChange(args: {
 				start: event.startStr || "",
 				...(event.endStr && { end: event.endStr }),
 			});
+
+			// Normalize UI event to slot base and strictly reflow previous and target slots
+			try {
+				const api = typeof args.getCalendarApi === "function" ? args.getCalendarApi() : undefined;
+				if (api && api.getEventById) {
+					const evObj = api.getEventById(String(event.id));
+					if (evObj) {
+						try {
+							const depth = ((globalThis as { __suppressEventChangeDepth?: number })
+								.__suppressEventChangeDepth || 0) + 1;
+							(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth = depth;
+							const baseStart = new Date(`${String(newDate || "")}T${newTime}:00`);
+							const baseEnd = new Date(baseStart.getTime() + 20 * 60000);
+							(evObj as unknown as { setDates?: (s: Date, e: Date) => void })?.setDates?.(baseStart, baseEnd);
+							try {
+								(evObj as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
+									"slotDate",
+									String(newDate || ""),
+								);
+							} catch {}
+							try {
+								(evObj as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
+									"slotTime",
+									newTime,
+								);
+							} catch {}
+							try {
+								(evObj as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
+									"cancelled",
+									false,
+								);
+							} catch {}
+							setTimeout(() => {
+								try {
+									const d = (globalThis as { __suppressEventChangeDepth?: number })
+										.__suppressEventChangeDepth;
+									if (typeof d === "number" && d > 0)
+										(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth =
+											d - 1;
+								} catch {}
+							}, 0);
+						} catch {}
+
+						const reflowSlotStrict = (dateStr: string, baseTime: string) => {
+							try {
+								const all = api.getEvents();
+								const inSlot = all
+									.filter((e) => {
+										try {
+											const ext = (e?.extendedProps || {}) as {
+												slotDate?: string;
+												slotTime?: string;
+												cancelled?: boolean;
+												type?: unknown;
+											};
+											if (ext.cancelled === true) return false;
+											const t = Number(ext.type ?? 0);
+											if (t === 2) return false;
+											return ext.slotDate === dateStr && ext.slotTime === baseTime;
+										} catch {
+											return false;
+										}
+									})
+									.sort((a, b) => {
+										const ta = Number(
+											((a as { extendedProps?: { type?: unknown } }).extendedProps || {}).type ?? 0,
+										);
+										const tb = Number(
+											((b as { extendedProps?: { type?: unknown } }).extendedProps || {}).type ?? 0,
+										);
+										if (ta !== tb) return ta - tb;
+										const na = String((a as { title?: string }).title || "");
+										const nb = String((b as { title?: string }).title || "");
+										return na.localeCompare(nb);
+									});
+
+							const minutesPerReservation = inSlot.length >= 6 ? 15 : 20;
+							const gapMinutes = 1;
+							for (let i = 0; i < inSlot.length; i++) {
+								const ev = inSlot[i];
+								const offset = i * (minutesPerReservation + gapMinutes);
+								const timeParts = baseTime.split(":");
+								const h = timeParts[0] ? parseInt(timeParts[0], 10) : 0;
+								const m = timeParts[1] ? parseInt(timeParts[1], 10) : 0;
+								const base = new Date(`${dateStr}T00:00:00`);
+								const start = new Date(base);
+								start.setHours((Number.isFinite(h) ? h : 0), (Number.isFinite(m) ? m : 0), 0, 0);
+								start.setMinutes(start.getMinutes() + offset);
+								const end = new Date(start.getTime() + minutesPerReservation * 60000);
+								try {
+									const depth2 = ((globalThis as { __suppressEventChangeDepth?: number })
+										.__suppressEventChangeDepth || 0) + 1;
+									(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth =
+										depth2;
+									(ev as unknown as { setDates?: (s: Date, e: Date) => void })?.setDates?.(start, end);
+									try {
+										(ev as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
+											"slotDate",
+											dateStr,
+										);
+									} catch {}
+									try {
+										(ev as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
+											"slotTime",
+											baseTime,
+										);
+									} catch {}
+								} catch {}
+								setTimeout(() => {
+									try {
+										const d2 = (globalThis as { __suppressEventChangeDepth?: number })
+											.__suppressEventChangeDepth;
+										if (typeof d2 === "number" && d2 > 0)
+											(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth =
+												d2 - 1;
+									} catch {}
+								}, 0);
+							}
+						} catch {}
+					};
+
+					const prevStartStr: string | undefined = args?.info?.oldEvent?.startStr;
+					const prevDate = prevStartStr ? prevStartStr.split("T")[0] : undefined;
+					const prevRawTime = prevStartStr
+						? (prevStartStr.split("T")[1] || "00:00").slice(0, 5)
+						: undefined;
+					const prevBase = prevDate && prevRawTime ? normalizeToSlotBase(prevDate, prevRawTime) : undefined;
+
+					if (prevDate && prevBase) reflowSlotStrict(prevDate, prevBase);
+					if (newDate && newTime) reflowSlotStrict(String(newDate), newTime);
+				}
+			}
+		} catch {}
+
+			// After success: log snapshots again so we can spot mismatches
+			try {
+				const api = typeof args.getCalendarApi === "function" ? args.getCalendarApi() : undefined;
+				const prevStartStr2: string | undefined = args?.info?.oldEvent?.startStr;
+				const prevDate2 = prevStartStr2 ? prevStartStr2.split("T")[0] : undefined;
+				const prevRawTime2 = prevStartStr2
+					? (prevStartStr2.split("T")[1] || "00:00").slice(0, 5)
+					: undefined;
+				const prevBase2 = prevDate2 && prevRawTime2 ? normalizeToSlotBase(prevDate2, prevRawTime2) : undefined;
+				const targetDate2 = String(newDate || "");
+				const targetBase2 = newTime;
+
+				const collectSlotSnapshot2 = (
+					api2: FullCalendarApi | undefined,
+					dateStr: string,
+					baseTime: string,
+				): { id: string; title: string; slotTime?: string; start?: string }[] => {
+					try {
+						const events = api2?.getEvents?.() || [];
+						const inSlot = events.filter((e) => {
+							try {
+								const ext = (e?.extendedProps || {}) as {
+									slotDate?: string;
+									slotTime?: string;
+									cancelled?: boolean;
+									type?: unknown;
+								};
+								if (ext.cancelled === true) return false;
+								const t = Number(ext.type ?? 0);
+								if (t === 2) return false;
+								return ext.slotDate === dateStr && ext.slotTime === baseTime;
+							} catch {
+								return false;
+							}
+						});
+						return inSlot.map((e) => {
+							const slotTime = (e as { extendedProps?: { slotTime?: string } })?.extendedProps?.slotTime;
+							const startStr = (e as { startStr?: string }).startStr;
+							const startDate = (e as { start?: Date }).start;
+							const start = startStr || (startDate ? startDate.toISOString() : undefined);
+
+							const result: { id: string; title: string; slotTime?: string; start?: string } = {
+								id: String((e as { id?: string }).id || ""),
+								title: String((e as { title?: string }).title || ""),
+							};
+
+							if (slotTime) {
+								result.slotTime = slotTime;
+							}
+
+							if (start) {
+								result.start = start;
+							}
+
+							return result;
+						});
+					} catch {
+						return [];
+					}
+				};
+
+				const fromAfter = prevDate2 && prevBase2 ? collectSlotSnapshot2(api, prevDate2, prevBase2) : [];
+				const toAfter = targetDate2 && targetBase2 ? collectSlotSnapshot2(api, targetDate2, targetBase2) : [];
+				console.groupCollapsed("🧭 DND Slot Snapshot (after)");
+				console.table(fromAfter.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
+				console.table(toAfter.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
+				console.groupEnd();
+			} catch {}
 		}
 		// Note: Removed post-drag reflow to prevent triggering eventChange for other events in slot
 		// Alignment will happen on next render via alignAndSortEventsForCalendar
@@ -622,12 +895,12 @@ export async function handleOpenConversation(args: {
 export async function handleCancelReservation(args: {
 	eventId: string;
 	events: CalendarEventData[];
-	isRTL: boolean;
+	isLocalized: boolean;
 	onRefresh: () => Promise<void>;
 	getCalendarApi?: () => FullCalendarApi;
 	onEventCancelled?: (eventId: string) => void;
 }): Promise<void> {
-	const { eventId, events, isRTL, getCalendarApi, onEventCancelled } = args;
+	const { eventId, events, isLocalized, getCalendarApi, onEventCancelled } = args;
 	// Resolve from state first, then FullCalendar for freshest extendedProps (tolerate number/string ids)
 	const stateEv = events.find((e) => String(e.id) === String(eventId));
 	let api: FullCalendarApi | null = null;
@@ -651,15 +924,11 @@ export async function handleCancelReservation(args: {
 	if (!waId) waId = String(eventId);
 
 	if (!waId || !date) {
-		try {
-			const toaster = (await import("sonner")).toast;
-			toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
-				description: isRTL
-					? "بيانات غير كاملة (الهاتف/التاريخ)"
-					: "Missing waId/date to cancel",
-				duration: 3000,
-			});
-		} catch {}
+		toastService.error(
+			isLocalized ? "فشل الإلغاء" : "Cancel Failed",
+			isLocalized ? "بيانات غير كاملة (الهاتف/التاريخ)" : "Missing waId/date to cancel",
+			3000,
+		);
 		return;
 	}
 
@@ -679,18 +948,14 @@ export async function handleCancelReservation(args: {
 	} catch {}
 
 	try {
-		const resp = await cancelReservationWS(waId, date, Boolean(isRTL));
+		const resp = await cancelReservationWS(waId, date, Boolean(isLocalized));
 		if (!resp?.success) {
-			try {
-				const toaster = (await import("sonner")).toast;
-				const message = resp?.message ?? "";
-				toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
-					description:
-						message ||
-						(isRTL ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
-					duration: 3000,
-				});
-			} catch {}
+			const message = resp?.message ?? "";
+			toastService.error(
+				isLocalized ? "فشل الإلغاء" : "Cancel Failed",
+				message || (isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+				3000,
+			);
 			try {
 				// Use suppressed event change to prevent triggering modification events
 				const currentDepth =
@@ -752,15 +1017,11 @@ export async function handleCancelReservation(args: {
 		markLocalEcho(key1);
 		markLocalEcho(key2);
 	} catch (_e) {
-		try {
-			const toaster = (await import("sonner")).toast;
-			toaster.error(isRTL ? "فشل الإلغاء" : "Cancel Failed", {
-				description: isRTL
-					? "خطأ بالنظام، حاول لاحقًا"
-					: "System error, try later",
-				duration: 3000,
-			});
-		} catch {}
+		toastService.error(
+			isLocalized ? "فشل الإلغاء" : "Cancel Failed",
+			isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later",
+			3000,
+		);
 		try {
 			// Use suppressed event change to prevent triggering modification events
 			const currentDepth =

@@ -14,12 +14,12 @@ import type { Reservation } from "@/types/calendar";
 
 interface CustomerReservationsGridProps {
 	reservations: Reservation[];
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 export function CustomerReservationsGrid({
 	reservations,
-	isRTL,
+	isLocalized,
 }: CustomerReservationsGridProps) {
 	const { theme: currentTheme } = useTheme();
 	const isDarkMode = currentTheme === "dark";
@@ -87,22 +87,22 @@ export function CustomerReservationsGrid({
 
 		return [
 			{
-				title: isRTL ? "التاريخ" : "Date",
+				title: isLocalized ? "التاريخ" : "Date",
 				id: "date",
 				width: dateWidth,
 			},
 			{
-				title: isRTL ? "الوقت" : "Time",
+				title: isLocalized ? "الوقت" : "Time",
 				id: "time",
 				width: timeWidth,
 			},
 			{
-				title: isRTL ? "النوع" : "Type",
+				title: isLocalized ? "النوع" : "Type",
 				id: "type",
 				width: typeWidth,
 			},
 		];
-	}, [isRTL, containerWidth]);
+	}, [isLocalized, containerWidth]);
 
 	const formatTime = useCallback((timeStr: string) => {
 		try {
@@ -112,7 +112,7 @@ export function CustomerReservationsGrid({
 			}
 			// Convert 24-hour format to 12-hour format
 			const [hours, minutes] = timeStr.split(":");
-			const hour = parseInt(hours || "0", 10);
+			const hour = Number.parseInt(hours || "0", 10);
 			const ampm = hour >= 12 ? "PM" : "AM";
 			const hour12 = hour % 12 || 12;
 			return `${hour12}:${minutes} ${ampm}`;
@@ -125,7 +125,7 @@ export function CustomerReservationsGrid({
 		(dateStr: string) => {
 			try {
 				const date = new Date(dateStr);
-				return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+				return date.toLocaleDateString(isLocalized ? "ar-SA" : "en-US", {
 					month: "short",
 					day: "numeric",
 				});
@@ -133,20 +133,19 @@ export function CustomerReservationsGrid({
 				return dateStr;
 			}
 		},
-		[isRTL],
+		[isLocalized],
 	);
 
 	const getServiceType = useCallback(
 		(reservation: Reservation) => {
 			// Map reservation types to display names - same as drawer implementation
 			const typeValue = reservation.type || 0;
-			if (isRTL) {
+			if (isLocalized) {
 				return typeValue === 0 ? "كشف" : "مراجعة";
-			} else {
-				return typeValue === 0 ? "Check-up" : "Follow-up";
 			}
+			return typeValue === 0 ? "Check-up" : "Follow-up";
 		},
-		[isRTL],
+		[isLocalized],
 	);
 
 	const getCellContent = React.useCallback(
@@ -209,7 +208,7 @@ export function CustomerReservationsGrid({
 	if (reservations.length === 0) {
 		return (
 			<div className="text-center py-2 text-xs text-muted-foreground">
-				{isRTL ? "لا توجد حجوزات" : "No reservations"}
+				{isLocalized ? "لا توجد حجوزات" : "No reservations"}
 			</div>
 		);
 	}

@@ -44,7 +44,6 @@
 
 /* External Library Imports - MUST come first */
 @import "@eonasdan/tempus-dominus/dist/css/tempus-dominus.min.css";
-@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 /* =================================
    Z-INDEX VARIABLES (CRITICAL FIRST)
@@ -135,7 +134,6 @@
 @import "markdown.css";
 @import "sidebar.css";
 @import "portal.css";
-@import "table-skeleton.css";
 @import "tempus-dominus.css";
 @import "timekeeper.css";
 @import "themed-scrollbar.css";

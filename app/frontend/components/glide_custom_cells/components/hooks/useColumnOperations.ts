@@ -1,6 +1,5 @@
 import type { GridCell, GridColumn } from "@glideapps/glide-data-grid";
 import React from "react";
-import { ColumnService } from "../services/ColumnService";
 import { extractCellDisplayText } from "../utils/cellTextExtraction";
 
 // Column configuration interface (same as in GridDataEditor and Grid)
@@ -39,8 +38,6 @@ export const useColumnOperations = ({
 	clearSelection,
 	dataEditorRef,
 }: UseColumnOperationsProps) => {
-	const _columnService = React.useMemo(() => new ColumnService(), []);
-
 	const handleAutosize = React.useCallback(
 		(columnId: string) => {
 			if (!dataEditorRef?.current) {
@@ -52,7 +49,7 @@ export const useColumnOperations = ({
 			const displayColIndex = displayColumns.findIndex(
 				(c) => c.id === columnId,
 			);
-			if (displayColIndex < 0) return;
+			if (displayColIndex < 0 || !displayColumns[displayColIndex]) return;
 
 			// Find the actual column index in the original columns array
 			const actualColIndex = visibleColumnIndices[displayColIndex];

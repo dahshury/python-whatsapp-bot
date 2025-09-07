@@ -1,7 +1,7 @@
 import { modifyReservation } from "@/lib/api";
 import type { ApiResponse, WebSocketMessage } from "../types/data-table-types";
 
-export class WebSocketService {
+class WebSocketService {
 	/**
 	 * Send a message via WebSocket with HTTP fallback
 	 */
@@ -139,7 +139,7 @@ export class WebSocketService {
 		if (wsSuccess) {
 			// Wait for backend confirmation
 			const confirmation = await this.waitForWSConfirmation({
-				reservationId: updates.reservationId,
+				reservationId: updates.reservationId || '',
 				waId,
 				date: updates.date,
 				time: updates.time,
@@ -152,6 +152,8 @@ export class WebSocketService {
 		}
 
 		// Fallback to HTTP API
-		return (await modifyReservation(waId, updates)) as ApiResponse;
+		return (await modifyReservation(waId, updates)) as unknown as ApiResponse;
 	}
 }
+
+export { WebSocketService };

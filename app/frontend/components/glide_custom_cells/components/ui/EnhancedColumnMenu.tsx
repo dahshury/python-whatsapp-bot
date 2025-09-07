@@ -28,7 +28,6 @@ interface EnhancedColumnMenuProps {
 	columnTitle: string;
 	columnType?: string;
 	isPinned?: boolean;
-	isRTL?: boolean;
 	isLocalized?: boolean;
 	onClose: () => void;
 	onSort?: (direction: "asc" | "desc") => void;
@@ -68,7 +67,6 @@ export function EnhancedColumnMenu({
 	columnTitle,
 	columnType = "text",
 	isPinned = false,
-	isRTL,
 	isLocalized,
 	onClose,
 	onSort,
@@ -83,22 +81,22 @@ export function EnhancedColumnMenu({
 }: EnhancedColumnMenuProps) {
 	const [showFormatMenu, setShowFormatMenu] = useState(false);
 
-	const _isRTL = (isRTL ?? isLocalized === true) === true;
+	const _isLocalized = isLocalized ?? false;
 
 	// Default labels
 	const defaultLabels = {
-		sortAsc: _isRTL ? "ترتيب تصاعدي" : "Sort Ascending",
-		sortDesc: _isRTL ? "ترتيب تنازلي" : "Sort Descending",
-		pin: _isRTL ? "تثبيت العمود" : "Pin Column",
-		unpin: _isRTL ? "إلغاء التثبيت" : "Unpin Column",
-		hide: _isRTL ? "إخفاء العمود" : "Hide Column",
-		autosize: _isRTL ? "تحجيم تلقائي" : "Auto-size",
-		copy: _isRTL ? "نسخ العمود" : "Copy Column",
-		filter: _isRTL ? "تصفية" : "Filter",
-		format: _isRTL ? "تنسيق" : "Format",
-		textFormat: _isRTL ? "تنسيق النص" : "Text Format",
-		numberFormat: _isRTL ? "تنسيق الأرقام" : "Number Format",
-		dateFormat: _isRTL ? "تنسيق التاريخ" : "Date Format",
+		sortAsc: _isLocalized ? "ترتيب تصاعدي" : "Sort Ascending",
+		sortDesc: _isLocalized ? "ترتيب تنازلي" : "Sort Descending",
+		pin: _isLocalized ? "تثبيت العمود" : "Pin Column",
+		unpin: _isLocalized ? "إلغاء التثبيت" : "Unpin Column",
+		hide: _isLocalized ? "إخفاء العمود" : "Hide Column",
+		autosize: _isLocalized ? "تحجيم تلقائي" : "Auto-size",
+		copy: _isLocalized ? "نسخ العمود" : "Copy Column",
+		filter: _isLocalized ? "تصفية" : "Filter",
+		format: _isLocalized ? "تنسيق" : "Format",
+		textFormat: _isLocalized ? "تنسيق النص" : "Text Format",
+		numberFormat: _isLocalized ? "تنسيق الأرقام" : "Number Format",
+		dateFormat: _isLocalized ? "تنسيق التاريخ" : "Date Format",
 		...labels,
 	};
 
@@ -287,7 +285,7 @@ export function EnhancedColumnMenu({
 	const groupedItems = menuItems.reduce(
 		(acc, item) => {
 			if (!acc[item.section]) acc[item.section] = [];
-			acc[item.section].push(item);
+			acc[item.section]?.push(item);
 			return acc;
 		},
 		{} as Record<string, typeof menuItems>,
@@ -544,5 +542,3 @@ export function EnhancedColumnMenu({
 		</div>
 	);
 }
-
-export default EnhancedColumnMenu;

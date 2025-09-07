@@ -4,11 +4,13 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { DockIcon } from "@/components/ui/dock";
+import { useSidebar } from "@/components/ui/sidebar";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useKeyboardRepeatNavigation } from "@/hooks/use-keyboard-repeat-navigation";
 import { useLongPressRepeat } from "@/hooks/use-long-press-repeat";
 import type { NavigationControlsProps } from "@/types/navigation";
 
@@ -17,23 +19,39 @@ export const NavigationControls = React.memo(function NavigationControls({
 	isCalendarPage = false,
 	isPrevDisabled = false,
 	isNextDisabled = false,
-	onPrev,
-	onNext,
+	onPrev = () => {},
+	onNext = () => {},
 	className = "",
 }: NavigationControlsProps) {
+	const { open, openMobile } = useSidebar();
 	const prevHoldHandlers = useLongPressRepeat(onPrev, {
-		startDelayMs: 3000,
+		startDelayMs: 2000,
 		intervalMs: 333,
 		disabled: isCalendarPage && isPrevDisabled,
 	});
 	const nextHoldHandlers = useLongPressRepeat(onNext, {
-		startDelayMs: 3000,
+		startDelayMs: 2000,
 		intervalMs: 333,
 		disabled: isCalendarPage && isNextDisabled,
 	});
+
+	useKeyboardRepeatNavigation({
+		onLeft: onPrev,
+		onRight: onNext,
+		disabledLeft: isCalendarPage && isPrevDisabled,
+		disabledRight: isCalendarPage && isNextDisabled,
+		startDelayMs: 2000,
+		intervalMs: 333,
+		isSidebarOpen: open || openMobile,
+	});
 	// Enlarge clickable area and add subtle theme-aware styling
 	const prevButton = (
-		<DockIcon size={38} magnification={48} className="transition-colors">
+		<DockIcon
+			size={38}
+			magnification={48}
+			className="transition-colors"
+			{...prevHoldHandlers}
+		>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Button
@@ -57,7 +75,12 @@ export const NavigationControls = React.memo(function NavigationControls({
 	);
 
 	const nextButton = (
-		<DockIcon size={38} magnification={48} className="transition-colors">
+		<DockIcon
+			size={38}
+			magnification={48}
+			className="transition-colors"
+			{...nextHoldHandlers}
+		>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Button

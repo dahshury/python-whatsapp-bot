@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Download } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
+import { TransitionPanel } from "@/components/motion-primitives/transition-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,10 +22,9 @@ import { MessageAnalysis } from "./message-analysis";
 import { OperationMetrics } from "./operation-metrics";
 import { ResponseTimeAnalysis } from "./response-time-analysis";
 import { TrendCharts } from "./trend-charts";
-import { TransitionPanel } from "@/components/motion-primitives/transition-panel";
 
 export function EnhancedDashboardView() {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 
 	// Initialize with last 30 days as default for both UI and data loading
 	const defaultDateRange = React.useMemo(
@@ -218,11 +218,11 @@ export function EnhancedDashboardView() {
 							</svg>
 						</div>
 						<h3 className="text-lg font-semibold mb-2">
-							{i18n.getMessage("dashboard_error_title", isRTL)}
+							{i18n.getMessage("dashboard_error_title", isLocalized)}
 						</h3>
 						<p className="text-muted-foreground mb-4">{error}</p>
 						<Button onClick={() => refreshDashboard()} variant="outline">
-							{i18n.getMessage("dashboard_try_again", isRTL)}
+							{i18n.getMessage("dashboard_try_again", isLocalized)}
 						</Button>
 					</CardContent>
 				</Card>
@@ -301,19 +301,19 @@ export function EnhancedDashboardView() {
 			>
 				<div>
 					<h1 className="text-3xl font-bold tracking-tight">
-						{i18n.getMessage("dashboard_title", isRTL)}
+						{i18n.getMessage("dashboard_title", isLocalized)}
 					</h1>
 					<p className="text-muted-foreground">
-						{i18n.getMessage("dashboard_subtitle", isRTL) ||
+						{i18n.getMessage("dashboard_subtitle", isLocalized) ||
 							"Showing all available data. Use date filters to view specific timeframes."}
 					</p>
 					{isUsingMockData && (
 						<div className="mt-2 p-3 bg-accent/10 border border-accent/20 rounded-lg">
 							<p className="text-sm text-accent-foreground">
 								<strong>
-									{i18n.getMessage("dashboard_demo_mode", isRTL)}:
+									{i18n.getMessage("dashboard_demo_mode", isLocalized)}:
 								</strong>{" "}
-								{i18n.getMessage("dashboard_demo_description", isRTL)}
+								{i18n.getMessage("dashboard_demo_description", isLocalized)}
 							</p>
 						</div>
 					)}
@@ -326,11 +326,11 @@ export function EnhancedDashboardView() {
 						{dashboardData && (
 							<div className="flex items-center gap-2 self-start">
 								<Badge variant="secondary">
-									{daysCount} {i18n.getMessage("dashboard_days", isRTL)}
+									{daysCount} {i18n.getMessage("dashboard_days", isLocalized)}
 								</Badge>
 								<Badge variant="outline">
 									{dashboardData.stats.totalReservations}{" "}
-									{i18n.getMessage("dashboard_reservations", isRTL)}
+									{i18n.getMessage("dashboard_reservations", isLocalized)}
 								</Badge>
 							</div>
 						)}
@@ -348,7 +348,7 @@ export function EnhancedDashboardView() {
 								disabled={!dashboardData}
 							>
 								<Download className="w-4 h-4 mr-2" />
-								{i18n.getMessage("dashboard_export", isRTL)}
+								{i18n.getMessage("dashboard_export", isLocalized)}
 							</Button>
 						</div>
 					</div>
@@ -404,16 +404,16 @@ export function EnhancedDashboardView() {
 				>
 					<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 lg:max-w-[600px]">
 						<TabsTrigger value="overview" className="whitespace-nowrap w-full">
-							{i18n.getMessage("dashboard_overview", isRTL)}
+							{i18n.getMessage("dashboard_overview", isLocalized)}
 						</TabsTrigger>
 						<TabsTrigger value="trends" className="whitespace-nowrap w-full">
-							{i18n.getMessage("dashboard_trends", isRTL)}
+							{i18n.getMessage("dashboard_trends", isLocalized)}
 						</TabsTrigger>
 						<TabsTrigger value="messages" className="whitespace-nowrap w-full">
-							{i18n.getMessage("dashboard_messages", isRTL)}
+							{i18n.getMessage("dashboard_messages", isLocalized)}
 						</TabsTrigger>
 						<TabsTrigger value="insights" className="whitespace-nowrap w-full">
-							{i18n.getMessage("dashboard_insights", isRTL)}
+							{i18n.getMessage("dashboard_insights", isLocalized)}
 						</TabsTrigger>
 					</TabsList>
 
@@ -433,12 +433,12 @@ export function EnhancedDashboardView() {
 								<KPICards
 									stats={safeDashboard.stats}
 									prometheusMetrics={safeDashboard.prometheusMetrics}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 								/>
 
 								<OperationMetrics
 									prometheusMetrics={safeDashboard.prometheusMetrics}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 								/>
 
 								<TrendCharts
@@ -449,7 +449,7 @@ export function EnhancedDashboardView() {
 									monthlyTrends={safeDashboard.monthlyTrends}
 									funnelData={safeDashboard.funnelData}
 									customerSegments={safeDashboard.customerSegments}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 									variant="compact"
 								/>
 							</div>
@@ -464,7 +464,7 @@ export function EnhancedDashboardView() {
 									monthlyTrends={safeDashboard.monthlyTrends}
 									funnelData={safeDashboard.funnelData}
 									customerSegments={safeDashboard.customerSegments}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 								/>
 							</div>
 
@@ -472,12 +472,12 @@ export function EnhancedDashboardView() {
 							<div className="space-y-6">
 								<ResponseTimeAnalysis
 									conversationAnalysis={dashboardData.conversationAnalysis}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 								/>
 
 								<ConversationLengthAnalysis
 									conversationAnalysis={safeDashboard.conversationAnalysis}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 								/>
 
 								<MessageAnalysis
@@ -485,7 +485,7 @@ export function EnhancedDashboardView() {
 									topCustomers={safeDashboard.topCustomers}
 									conversationAnalysis={safeDashboard.conversationAnalysis}
 									wordFrequency={safeDashboard.wordFrequency}
-									isRTL={isRTL}
+									isLocalized={isLocalized}
 								/>
 							</div>
 
@@ -496,7 +496,7 @@ export function EnhancedDashboardView() {
 									<Card>
 										<CardHeader>
 											<CardTitle>
-												{i18n.getMessage("response_time_insights", isRTL)}
+												{i18n.getMessage("response_time_insights", isLocalized)}
 											</CardTitle>
 										</CardHeader>
 										<CardContent>
@@ -507,7 +507,7 @@ export function EnhancedDashboardView() {
 														<p className="text-chart-1">
 															{i18n.getMessage(
 																"response_time_excellent",
-																isRTL,
+																isLocalized,
 															)}
 														</p>
 													</div>
@@ -518,7 +518,10 @@ export function EnhancedDashboardView() {
 														.avg <= 5 && (
 														<div className="p-3 bg-chart-2/20 border border-chart-2/30 rounded-lg">
 															<p className="text-chart-2">
-																{i18n.getMessage("response_time_good", isRTL)}
+																{i18n.getMessage(
+																	"response_time_good",
+																	isLocalized,
+																)}
 															</p>
 														</div>
 													)}
@@ -530,7 +533,7 @@ export function EnhancedDashboardView() {
 															<p className="text-chart-3">
 																{i18n.getMessage(
 																	"response_time_needs_improvement",
-																	isRTL,
+																	isLocalized,
 																)}
 															</p>
 														</div>
@@ -539,7 +542,10 @@ export function EnhancedDashboardView() {
 													.avg > 10 && (
 													<div className="p-3 bg-destructive/20 border border-destructive/30 rounded-lg">
 														<p className="text-destructive">
-															{i18n.getMessage("response_time_poor", isRTL)}
+															{i18n.getMessage(
+																"response_time_poor",
+																isLocalized,
+															)}
 														</p>
 													</div>
 												)}
@@ -551,7 +557,7 @@ export function EnhancedDashboardView() {
 									<Card>
 										<CardHeader>
 											<CardTitle>
-												{i18n.getMessage("conversation_insights", isRTL)}
+												{i18n.getMessage("conversation_insights", isLocalized)}
 											</CardTitle>
 										</CardHeader>
 										<CardContent>
@@ -562,7 +568,7 @@ export function EnhancedDashboardView() {
 														<p className="text-chart-1">
 															{i18n.getMessage(
 																"conversation_insight_high",
-																isRTL,
+																isLocalized,
 															)}
 														</p>
 													</div>
@@ -575,7 +581,7 @@ export function EnhancedDashboardView() {
 															<p className="text-chart-2">
 																{i18n.getMessage(
 																	"conversation_insight_medium",
-																	isRTL,
+																	isLocalized,
 																)}
 															</p>
 														</div>
@@ -586,7 +592,7 @@ export function EnhancedDashboardView() {
 														<p className="text-chart-3">
 															{i18n.getMessage(
 																"conversation_insight_low",
-																isRTL,
+																isLocalized,
 															)}
 														</p>
 													</div>
@@ -599,7 +605,10 @@ export function EnhancedDashboardView() {
 									<Card>
 										<CardHeader>
 											<CardTitle>
-												{i18n.getMessage("dashboard_business_insights", isRTL)}
+												{i18n.getMessage(
+													"dashboard_business_insights",
+													isLocalized,
+												)}
 											</CardTitle>
 										</CardHeader>
 										<CardContent>
@@ -608,17 +617,17 @@ export function EnhancedDashboardView() {
 													<h4 className="font-semibold text-accent-foreground">
 														{i18n.getMessage(
 															"dashboard_peak_hours_title",
-															isRTL,
+															isLocalized,
 														)}
 													</h4>
 													<p className="text-accent-foreground/80 text-sm mt-1">
 														{i18n.getMessage(
 															"dashboard_peak_hours_desc",
-															isRTL,
+															isLocalized,
 														)}
 													</p>
 													<span className="inline-block mt-2 px-2 py-1 bg-accent/20 text-accent text-xs rounded-full">
-														{i18n.getMessage("demo_data_warning", isRTL)}
+														{i18n.getMessage("demo_data_warning", isLocalized)}
 													</span>
 												</div>
 
@@ -626,16 +635,19 @@ export function EnhancedDashboardView() {
 													<h4 className="font-semibold text-chart-1">
 														{i18n.getMessage(
 															"dashboard_customer_retention_title",
-															isRTL,
+															isLocalized,
 														)}
 													</h4>
 													<p className="text-chart-1/80 text-sm mt-1">
-														{isRTL
+														{isLocalized
 															? `${dashboardData.stats.returningRate.toFixed(1)}% من العملاء يعودون لحجوزات أخرى. هذا يدل على رضا جيد عن الخدمة.`
 															: `${dashboardData.stats.returningRate.toFixed(1)}% of customers return for follow-up appointments. This indicates good service satisfaction.`}
 													</p>
 													<span className="inline-block mt-2 px-2 py-1 bg-chart-1/20 text-chart-1 text-xs rounded-full">
-														{i18n.getMessage("real_data_available", isRTL)}
+														{i18n.getMessage(
+															"real_data_available",
+															isLocalized,
+														)}
 													</span>
 												</div>
 
@@ -643,16 +655,19 @@ export function EnhancedDashboardView() {
 													<h4 className="font-semibold text-chart-3">
 														{i18n.getMessage(
 															"dashboard_response_time_title",
-															isRTL,
+															isLocalized,
 														)}
 													</h4>
 													<p className="text-chart-3/80 text-sm mt-1">
-														{isRTL
+														{isLocalized
 															? `متوسط زمن الاستجابة هو ${dashboardData.stats.avgResponseTime.toFixed(1)} دقيقة. فكر في تطبيق ردود تلقائية للاستفسارات الشائعة.`
 															: `Average response time is ${dashboardData.stats.avgResponseTime.toFixed(1)} minutes. Consider implementing automated responses for common queries.`}
 													</p>
 													<span className="inline-block mt-2 px-2 py-1 bg-chart-3/20 text-chart-3 text-xs rounded-full">
-														{i18n.getMessage("real_data_available", isRTL)}
+														{i18n.getMessage(
+															"real_data_available",
+															isLocalized,
+														)}
 													</span>
 												</div>
 											</div>

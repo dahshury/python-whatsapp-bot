@@ -141,7 +141,7 @@ export function setCookie(
 			w.cookieStore.set({
 				name,
 				value: value || "",
-				expires: expiration?.getTime(),
+				...(expiration ? { expires: expiration.getTime() } : {}),
 				path: "/",
 			});
 		} catch {

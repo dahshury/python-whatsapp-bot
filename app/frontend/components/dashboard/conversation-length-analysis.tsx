@@ -10,7 +10,7 @@ import type { ConversationAnalysis } from "@/types/dashboard";
 
 interface ConversationLengthAnalysisProps {
 	conversationAnalysis: ConversationAnalysis;
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 interface ConversationMetricProps {
@@ -54,7 +54,7 @@ function ConversationMetric({
 
 export function ConversationLengthAnalysis({
 	conversationAnalysis,
-	isRTL,
+	isLocalized,
 }: ConversationLengthAnalysisProps) {
 	const {
 		avgMessagesPerCustomer,
@@ -70,25 +70,25 @@ export function ConversationLengthAnalysis({
 
 	const conversationMetrics = [
 		{
-			title: i18n.getMessage("conversation_length_average", isRTL),
+			title: i18n.getMessage("conversation_length_average", isLocalized),
 			value: avgMessages,
-			unit: i18n.getMessage("msg_messages", isRTL),
+			unit: i18n.getMessage("msg_messages", isLocalized),
 			icon: <MessageSquare className="h-4 w-4 text-muted-foreground" />,
-			description: i18n.getMessage("conversation_per_customer", isRTL),
+			description: i18n.getMessage("conversation_per_customer", isLocalized),
 		},
 		{
-			title: i18n.getMessage("conversation_length_median", isRTL),
+			title: i18n.getMessage("conversation_length_median", isLocalized),
 			value: medianMessages,
-			unit: i18n.getMessage("msg_messages", isRTL),
+			unit: i18n.getMessage("msg_messages", isLocalized),
 			icon: <BarChart3 className="h-4 w-4 text-muted-foreground" />,
-			description: i18n.getMessage("conversation_per_customer", isRTL),
+			description: i18n.getMessage("conversation_per_customer", isLocalized),
 		},
 		{
-			title: i18n.getMessage("conversation_length_maximum", isRTL),
+			title: i18n.getMessage("conversation_length_maximum", isLocalized),
 			value: maxMessages,
-			unit: i18n.getMessage("msg_messages", isRTL),
+			unit: i18n.getMessage("msg_messages", isLocalized),
 			icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
-			description: i18n.getMessage("conversation_per_customer", isRTL),
+			description: i18n.getMessage("conversation_per_customer", isLocalized),
 		},
 	];
 
@@ -98,18 +98,18 @@ export function ConversationLengthAnalysis({
 			return {
 				level: "high",
 				color: "text-green-600",
-				label: i18n.getMessage("engagement_high", isRTL),
+				label: i18n.getMessage("engagement_high", isLocalized),
 			};
 		if (avgMessages >= 10)
 			return {
 				level: "medium",
 				color: "text-yellow-600",
-				label: i18n.getMessage("engagement_medium", isRTL),
+				label: i18n.getMessage("engagement_medium", isLocalized),
 			};
 		return {
 			level: "low",
 			color: "text-red-600",
-			label: i18n.getMessage("engagement_low", isRTL),
+			label: i18n.getMessage("engagement_low", isLocalized),
 		};
 	};
 
@@ -120,7 +120,7 @@ export function ConversationLengthAnalysis({
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<h2 className="text-xl font-semibold">
-					{i18n.getMessage("conversation_analysis_title", isRTL)}
+					{i18n.getMessage("conversation_analysis_title", isLocalized)}
 				</h2>
 				<Badge variant="outline" className={engagement.color}>
 					{engagement.label}
@@ -152,13 +152,13 @@ export function ConversationLengthAnalysis({
 					<CardHeader>
 						<CardTitle className="text-sm flex items-center gap-2">
 							<Users className="h-4 w-4" />
-							{i18n.getMessage("conversation_overview", isRTL)}
+							{i18n.getMessage("conversation_overview", isLocalized)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div className="flex justify-between items-center">
 							<span className="text-sm text-muted-foreground">
-								{i18n.getMessage("msg_total_messages", isRTL)}
+								{i18n.getMessage("msg_total_messages", isLocalized)}
 							</span>
 							<span className="font-semibold">
 								{totalMessages.toLocaleString()}
@@ -166,7 +166,7 @@ export function ConversationLengthAnalysis({
 						</div>
 						<div className="flex justify-between items-center">
 							<span className="text-sm text-muted-foreground">
-								{i18n.getMessage("msg_unique_customers", isRTL)}
+								{i18n.getMessage("msg_unique_customers", isLocalized)}
 							</span>
 							<span className="font-semibold">
 								{uniqueCustomers.toLocaleString()}
@@ -174,7 +174,7 @@ export function ConversationLengthAnalysis({
 						</div>
 						<div className="flex justify-between items-center">
 							<span className="text-sm text-muted-foreground">
-								{i18n.getMessage("conversation_avg_per_customer", isRTL)}
+								{i18n.getMessage("conversation_avg_per_customer", isLocalized)}
 							</span>
 							<span className="font-semibold">
 								{avgMessagesPerCustomer.toFixed(1)}
@@ -186,14 +186,17 @@ export function ConversationLengthAnalysis({
 				<Card>
 					<CardHeader>
 						<CardTitle className="text-sm">
-							{i18n.getMessage("conversation_engagement", isRTL)}
+							{i18n.getMessage("conversation_engagement", isLocalized)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-2">
 							<div className="flex justify-between items-center">
 								<span className="text-sm text-muted-foreground">
-									{i18n.getMessage("conversation_engagement_level", isRTL)}
+									{i18n.getMessage(
+										"conversation_engagement_level",
+										isLocalized,
+									)}
 								</span>
 								<span className={`text-sm font-semibold ${engagement.color}`}>
 									{engagement.label}
@@ -201,8 +204,8 @@ export function ConversationLengthAnalysis({
 							</div>
 							<Progress value={engagementScore} className="h-2" />
 							<div className="flex justify-between text-xs text-muted-foreground">
-								<span>{i18n.getMessage("engagement_low", isRTL)}</span>
-								<span>{i18n.getMessage("engagement_high", isRTL)}</span>
+								<span>{i18n.getMessage("engagement_low", isLocalized)}</span>
+								<span>{i18n.getMessage("engagement_high", isLocalized)}</span>
 							</div>
 						</div>
 					</CardContent>

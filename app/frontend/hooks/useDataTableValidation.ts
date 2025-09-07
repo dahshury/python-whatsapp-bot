@@ -1,52 +1,55 @@
 import type React from "react";
 import { useCallback, useMemo } from "react";
+import type { IColumnDefinition } from "@/components/glide_custom_cells/components/core/interfaces/IDataSource";
 import type { DataProvider } from "@/components/glide_custom_cells/components/core/services/DataProvider";
 import type { BaseColumnProps } from "@/components/glide_custom_cells/components/core/types";
 import { useGridValidation } from "@/components/glide_custom_cells/components/hooks/useGridValidation";
-import { getValidationColumns } from "@/lib/constants/data-table-editor.constants";
 import type { ValidationResult } from "@/types/data-table-editor";
 
 export function useDataTableValidation(
 	dataProviderRef: React.RefObject<DataProvider | null>,
-	isRTL: boolean,
 ) {
-	// Translation function
-	const translateMessage = useCallback(
-		(message: string) => {
-			return message
-				.replace(
-					"Phone is required",
-					isRTL ? "رقم الهاتف مطلوب" : "Phone number is required",
-				)
-				.replace(
-					"Name is required",
-					isRTL ? "اسم العميل مطلوب" : "Customer name is required",
-				)
-				.replace(
-					"Date is required",
-					isRTL ? "التوقيت مطلوب" : "Scheduled time is required",
-				)
-				.replace(
-					"Time is required",
-					isRTL ? "التوقيت مطلوب" : "Scheduled time is required",
-				)
-				.replace(
-					"Invalid phone number format",
-					isRTL ? "صيغة رقم الهاتف غير صالحة" : "Invalid phone number format",
-				)
-				.replace(
-					"Phone number must be between 8 and 15 digits",
-					isRTL
-						? "رقم الهاتف يجب أن يكون بين 8-15 رقمًا"
-						: "Phone number must be between 8-15 digits",
-				);
-		},
-		[isRTL],
-	);
-
-	const columns = useMemo<BaseColumnProps[]>(() => {
-		const cols = getValidationColumns(isRTL);
-		return cols.map((c, index) => ({
+	// Build column list using the provider's true order and flags; fallback to sensible defaults
+	const columns: BaseColumnProps[] = useMemo(() => {
+		const provider = dataProviderRef.current as
+			| (DataProvider & {
+					getColumnCount?: () => number;
+					getColumnDefinition?: (c: number) => IColumnDefinition;
+			  })
+			| null;
+		try {
+			const count = provider?.getColumnCount?.() ?? 0;
+			if (count > 0 && provider?.getColumnDefinition) {
+				const list: BaseColumnProps[] = [];
+				for (let i = 0; i < count; i++) {
+					const def = provider.getColumnDefinition(i) as IColumnDefinition;
+					list.push({
+						id: def?.id ?? def?.name ?? `col_${i}`,
+						name: def?.name ?? def?.id ?? `col_${i}`,
+						title: def?.title ?? def?.name ?? def?.id ?? `Column ${i}`,
+						width: def?.width ?? 150,
+						isEditable: def?.isEditable !== false,
+						isHidden: def?.isHidden === true,
+						isRequired: def?.isRequired === true,
+						isPinned: def?.isPinned === true,
+						isIndex: false,
+						indexNumber: i,
+						contentAlignment: "left",
+						defaultValue: def?.defaultValue,
+						columnTypeOptions: {},
+					});
+				}
+				return list;
+			}
+		} catch {}
+		// Fallback order that mirrors getDataTableColumns
+		const fallback = [
+			{ name: "scheduled_time", required: true },
+			{ name: "phone", required: true },
+			{ name: "type", required: true },
+			{ name: "name", required: true },
+		];
+		return fallback.map((c, i) => ({
 			id: c.name,
 			name: c.name,
 			title: c.name,
@@ -56,9 +59,11 @@ export function useDataTableValidation(
 			isRequired: Boolean(c.required),
 			isPinned: false,
 			isIndex: false,
-			indexNumber: index,
+			indexNumber: i,
+			contentAlignment: "left",
+			columnTypeOptions: {},
 		}));
-	}, [isRTL]);
+	}, [dataProviderRef.current]);
 
 	// Use the generic validation hook
 	const {
@@ -66,21 +71,79 @@ export function useDataTableValidation(
 		getValidationState,
 		hasUnsavedChanges,
 	} = useGridValidation(dataProviderRef, columns, {
-		translateMessage,
 		validateOnlyChanged: false,
 	});
 
 	const validateAllCells = useCallback((): ValidationResult => {
 		const result = baseValidateAllCells();
+
+		// Post-process to suppress false-positive scheduled_time required errors
+		// by checking the actual cell value via the provider (ensures default is applied).
+		const provider = dataProviderRef.current as {
+			getColumnDefinition?: (c: number) => {
+				id?: string;
+				name?: string;
+				title?: string;
+				defaultValue?: unknown;
+			};
+			getCell?: (c: number, r: number) => unknown;
+		} | null;
+
+		const filtered = (result.errors || [])
+			.map((err) => {
+				let fieldName = (err as { fieldName?: string })?.fieldName;
+				if (!fieldName && provider?.getColumnDefinition) {
+					try {
+						const def = provider.getColumnDefinition(err.col) as
+							| {
+									id?: string;
+									name?: string;
+									title?: string;
+									defaultValue?: unknown;
+							  }
+							| undefined;
+						fieldName = def?.id || def?.name || def?.title;
+					} catch {}
+				}
+				return { ...err, fieldName } as typeof err & { fieldName?: string };
+			})
+			.filter((err) => {
+				const fn = String(
+					(err as { fieldName?: string }).fieldName || "",
+				).toLowerCase();
+				if (fn !== "scheduled_time") return true;
+				// Ensure the cell is realized; this will create a default cell if needed
+				try {
+					const cell = provider?.getCell?.(err.col, err.row) as
+						| { data?: { kind?: string; date?: unknown } }
+						| undefined;
+					const hasDate = Boolean(
+						cell &&
+							(cell as { data?: { kind?: string; date?: unknown } }).data
+								?.kind === "tempus-date-cell" &&
+							(cell as { data?: { kind?: string; date?: unknown } }).data?.date,
+					);
+					return !hasDate;
+				} catch {
+					return true;
+				}
+			});
+
 		return {
-			isValid: result.isValid,
-			errors: result.errors.map((err) => ({
-				row: err.row,
-				col: err.col,
-				message: err.message,
-			})),
+			isValid: filtered.length === 0,
+			errors: filtered.map((err) => {
+				const errWithField = err as { fieldName?: string };
+				return {
+					row: err.row,
+					col: err.col,
+					message: err.message,
+					...(errWithField.fieldName
+						? { fieldName: errWithField.fieldName }
+						: {}),
+				};
+			}),
 		};
-	}, [baseValidateAllCells]);
+	}, [baseValidateAllCells, dataProviderRef]);
 
 	const checkEditingState = useCallback(() => {
 		const state = getValidationState();

@@ -10,7 +10,7 @@ import {
 	useTransform,
 } from "motion/react";
 import React, { type PropsWithChildren, useRef } from "react";
-
+import { GlowingEffect } from "@/components/glowing-effect";
 import { cn } from "@/lib/utils";
 
 export interface DockProps extends VariantProps<typeof dockVariants> {
@@ -43,7 +43,7 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
 		},
 		ref,
 	) => {
-		const mouseX = useMotionValue(Infinity);
+		const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
 
 		const renderChildren = () => {
 			return React.Children.map(children, (child) => {
@@ -69,7 +69,7 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
 			<motion.div
 				ref={ref}
 				onMouseMove={(e) => mouseX.set(e.pageX)}
-				onMouseLeave={() => mouseX.set(Infinity)}
+				onMouseLeave={() => mouseX.set(Number.POSITIVE_INFINITY)}
 				{...props}
 				className={cn(dockVariants({ className }), {
 					"items-start": direction === "top",
@@ -107,7 +107,7 @@ const DockIcon = ({
 }: DockIconProps) => {
 	const ref = useRef<HTMLDivElement>(null);
 	const padding = Math.max(6, size * 0.2);
-	const defaultMouseX = useMotionValue(Infinity);
+	const defaultMouseX = useMotionValue(Number.POSITIVE_INFINITY);
 
 	const distanceCalc = useTransform(mouseX ?? defaultMouseX, (val: number) => {
 		const bounds = ref.current?.getBoundingClientRect() ?? { x: 0, width: 0 };
@@ -131,11 +131,21 @@ const DockIcon = ({
 			ref={ref}
 			style={{ width: scaleSize, height: scaleSize, padding }}
 			className={cn(
-				"flex aspect-square cursor-pointer items-center justify-center rounded-full",
+				"flex aspect-square cursor-pointer items-center justify-center rounded-full relative",
 				className,
 			)}
 			{...props}
 		>
+			<GlowingEffect
+				glow={true}
+				disabled={false}
+				variant="default"
+				proximity={50}
+				spread={20}
+				inactiveZone={0.8}
+				borderWidth={2}
+				className="z-10"
+			/>
 			{children}
 		</motion.div>
 	);

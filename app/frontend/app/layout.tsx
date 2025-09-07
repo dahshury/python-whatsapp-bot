@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
+import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
 import { ThemeWrapper } from "@/components/theme-wrapper";
 import { UndoManager } from "@/components/UndoManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -105,36 +106,38 @@ export default function RootLayout({
 					defaultTheme="system"
 					enableSystem
 					disableTransitionOnChange
-					storageKey="theme-preference"
+					storageKey="ui-theme"
 				>
 					<ErrorRecoveryInit />
 					<LanguageProvider>
 						<SettingsProvider>
-							<BackendConnectionProvider>
-								<WebSocketDataProvider>
-									<UnifiedDataProvider>
-										<ThemeWrapper>
-											<VacationProvider>
-												<CustomerDataProvider>
-													<div className="flex flex-col h-screen">
-														<div className="flex flex-1 overflow-hidden">
-															<SidebarProvider>
-																<AppSidebar />
-																<MainContentWrapper>
-																	{children}
-																</MainContentWrapper>
-															</SidebarProvider>
+							<SpacemanThemeBridge>
+								<BackendConnectionProvider>
+									<WebSocketDataProvider>
+										<UnifiedDataProvider>
+											<ThemeWrapper>
+												<VacationProvider>
+													<CustomerDataProvider>
+														<div className="flex flex-col h-screen">
+															<div className="flex flex-1 overflow-hidden">
+																<SidebarProvider>
+																	<AppSidebar />
+																	<MainContentWrapper>
+																		{children}
+																	</MainContentWrapper>
+																</SidebarProvider>
+															</div>
 														</div>
-													</div>
-													<RealtimeEventBus />
-													<ToastRouter />
-												</CustomerDataProvider>
-											</VacationProvider>
-											<UndoManager />
-										</ThemeWrapper>
-									</UnifiedDataProvider>
-								</WebSocketDataProvider>
-							</BackendConnectionProvider>
+														<RealtimeEventBus />
+														<ToastRouter />
+													</CustomerDataProvider>
+												</VacationProvider>
+												<UndoManager />
+											</ThemeWrapper>
+										</UnifiedDataProvider>
+									</WebSocketDataProvider>
+								</BackendConnectionProvider>
+							</SpacemanThemeBridge>
 						</SettingsProvider>
 					</LanguageProvider>
 					<Toaster

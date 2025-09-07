@@ -83,7 +83,7 @@ export function ViewSettings({
 
 			<RadioGroup
 				value={activeView || currentCalendarView}
-				onValueChange={onCalendarViewChange}
+				onValueChange={onCalendarViewChange ?? (() => {})}
 				className="grid grid-cols-4 gap-2"
 			>
 				{viewOptions.map((option) => (

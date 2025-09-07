@@ -16,15 +16,6 @@ declare global {
 	}
 }
 
-// Helper function to safely access window properties
-function _getWindowProperty<T>(property: keyof Window, defaultValue: T): T {
-	if (typeof window === "undefined") return defaultValue;
-	return (
-		((window as unknown as Record<string, unknown>)[property] as T) ??
-		defaultValue
-	);
-}
-
 // Helper function to set window properties safely
 function setWindowProperty<T>(property: string, value: T): void {
 	if (typeof window !== "undefined") {
@@ -116,11 +107,9 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		connectingRef.current = true;
 		try {
 			const wsUrl = getWebSocketUrl();
-			console.log("Manually connecting to WebSocket:", wsUrl);
 			const ws = new WebSocket(wsUrl);
 
 			ws.onopen = () => {
-				console.log("WebSocket manually connected");
 				setState((prev) => ({ ...prev, isConnected: true }));
 				reconnectAttemptsRef.current = 0;
 				connectingRef.current = false;
@@ -172,11 +161,6 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			};
 
 			ws.onclose = (event) => {
-				console.log(
-					"WebSocket manually disconnected:",
-					event.code,
-					event.reason,
-				);
 				setState((prev) => ({ ...prev, isConnected: false }));
 				if (pingIntervalRef.current) {
 					clearInterval(pingIntervalRef.current);
@@ -327,9 +311,6 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 	// Initialize WebSocket connection immediately (no artificial delay)
 	useEffect(() => {
-		console.log(
-			"Initializing WebSocket connection with cached snapshot hydration",
-		);
 		connect();
 
 		// Request snapshot aggressively for faster load

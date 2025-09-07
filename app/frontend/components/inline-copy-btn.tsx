@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils";
 interface InlineCopyBtnProps extends HTMLAttributes<HTMLButtonElement> {
 	text: string;
 	className?: string;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }
 
 export function InlineCopyBtn({
 	text,
 	className,
-	isRTL = false,
+	isLocalized = false,
 	...props
 }: InlineCopyBtnProps) {
 	const [copied, setCopied] = useState(false);
@@ -37,12 +37,24 @@ export function InlineCopyBtn({
 			)}
 			onClick={copyToClipboard}
 			aria-label={
-				copied ? (isRTL ? "تم النسخ" : "Copied") : isRTL ? "نسخ" : "Copy"
+				copied
+					? isLocalized
+						? "تم النسخ"
+						: "Copied"
+					: isLocalized
+						? "نسخ"
+						: "Copy"
 			}
 			{...props}
 		>
 			<span className="sr-only">
-				{copied ? (isRTL ? "تم النسخ" : "Copied") : isRTL ? "نسخ" : "Copy"}
+				{copied
+					? isLocalized
+						? "تم النسخ"
+						: "Copied"
+					: isLocalized
+						? "نسخ"
+						: "Copy"}
 			</span>
 			<motion.div
 				initial={false}

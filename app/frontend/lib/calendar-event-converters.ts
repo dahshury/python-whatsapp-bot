@@ -89,8 +89,8 @@ export function convertDataTableEventToCalendarEvent(
 							event.extendedProps?.reservationId ?? event.reservationId,
 					}
 				: {}),
-			slotDate,
-			slotTime,
+			...(slotDate ? { slotDate } : {}),
+			...(slotTime ? { slotTime } : {}),
 			...event.extendedProps,
 		},
 	};

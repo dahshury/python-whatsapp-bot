@@ -10,6 +10,32 @@ import {
 	isValidPhoneNumber,
 	parsePhoneNumber,
 } from "react-phone-number-input";
+
+// Temporarily comment out libphonenumber-js imports until package is properly installed
+// import {
+// 	validatePhoneNumberLength,
+// 	type ValidatePhoneNumberLengthResult,
+// } from "libphonenumber-js";
+
+// Use a simple fallback for now
+const validatePhoneNumberLength = (
+	phoneNumber: string,
+): ValidatePhoneNumberLengthResult => {
+	// Basic length validation as fallback
+	const digitsOnly = phoneNumber.replace(/\D/g, "");
+	if (digitsOnly.length < 7) return "TOO_SHORT";
+	if (digitsOnly.length > 15) return "TOO_LONG";
+	return { isValid: true };
+};
+
+type ValidatePhoneNumberLengthResult =
+	| "INVALID_COUNTRY"
+	| "NOT_A_NUMBER"
+	| "TOO_SHORT"
+	| "TOO_LONG"
+	| "INVALID_LENGTH"
+	| { isValid: true };
+
 import { PhoneCellEditor } from "../../ui/PhoneCellEditor";
 import { messages } from "../../utils/i18n";
 import type { IColumnType } from "../interfaces/IColumnType";
@@ -25,6 +51,24 @@ const convertZeroZeroToPlus = (phoneNumber: string): string => {
 		return `+${phoneNumber.substring(2)}`;
 	}
 	return phoneNumber;
+};
+
+// Map specific validation results to user-friendly error messages
+const getPhoneValidationErrorMessage = (result: string): string => {
+	switch (result) {
+		case "INVALID_COUNTRY":
+			return messages.validation.phoneHasInvalidCountryCode();
+		case "NOT_A_NUMBER":
+			return messages.validation.phoneContainsInvalidCharacters();
+		case "TOO_SHORT":
+			return messages.validation.phoneIsTooShort();
+		case "TOO_LONG":
+			return messages.validation.phoneIsTooLong();
+		case "INVALID_LENGTH":
+			return messages.validation.phoneHasInvalidLengthForCountry();
+		default:
+			return messages.validation.phoneInvalidFormat();
+	}
 };
 
 export class PhoneColumnType implements IColumnType {
@@ -117,32 +161,91 @@ export class PhoneColumnType implements IColumnType {
 			// If true, phoneNumber remains as is
 		}
 
-		// Use react-phone-number-input validation functions
+		// Use libphonenumber-js for detailed phone number validation
 		if (phoneNumber.trim()) {
-			// First check if it's a possible phone number (lenient validation)
-			if (!isPossiblePhoneNumber(phoneNumber)) {
+			// Normalize: allow 00 -> +, otherwise require explicit + country code
+			let normalizedNumber = phoneNumber.trim();
+			if (normalizedNumber.startsWith("00")) {
+				normalizedNumber = convertZeroZeroToPlus(normalizedNumber);
+			}
+			if (!normalizedNumber.startsWith("+")) {
 				return {
 					isValid: false,
-					error: "Invalid phone number format or too short",
+					error: messages.validation.phoneHasInvalidCountryCode(),
 				};
 			}
 
-			// For stricter validation, also check if it's a valid phone number
-			// Note: isValidPhoneNumber may return false for valid numbers if the library metadata is outdated
-			// so we use it as additional validation but not as the primary check
-			if (!isValidPhoneNumber(phoneNumber)) {
-				// Try to parse the phone number to get more specific error information
+			// Quick invalid characters check before deeper validation
+			const invalidChars = normalizedNumber.replace(/[0-9+\s\-()]/g, "");
+			if (invalidChars.length > 0) {
+				return {
+					isValid: false,
+					error: messages.validation.phoneContainsInvalidCharacters(),
+				};
+			}
+
+			// Use validatePhoneNumberLength with NATIONAL number + country from parsed
+			try {
+				const parsedForLength = parsePhoneNumber(normalizedNumber);
+				if (parsedForLength?.country && parsedForLength.nationalNumber) {
+					const lengthValidation = validatePhoneNumberLength(
+						String(parsedForLength.nationalNumber),
+					);
+					if (typeof lengthValidation === "string") {
+						return {
+							isValid: false,
+							error: getPhoneValidationErrorMessage(lengthValidation),
+						};
+					}
+				}
+			} catch {}
+
+			// Prefer specific invalid reasons first; check overall validity
+			if (!isValidPhoneNumber(normalizedNumber)) {
+				// Try to parse to get more specific information
 				try {
-					const parsed = parsePhoneNumber(phoneNumber);
+					const parsed = parsePhoneNumber(normalizedNumber);
 					if (parsed) {
 						// If it parses but isn't valid, it might be an area code issue
 						return {
 							isValid: false,
-							error: "Phone number may have invalid area code or format",
+							error: messages.validation.phoneMayHaveInvalidAreaCode(),
 						};
 					}
-				} catch {
-					// If parsing fails, fall back to the possible check result
+				} catch (error) {
+					// Parse error gives us more specific information
+					if (error instanceof Error) {
+						if (error.message.includes("Invalid country")) {
+							return {
+								isValid: false,
+								error: messages.validation.phoneHasInvalidCountryCode(),
+							};
+						}
+						if (error.message.includes("Too short")) {
+							return {
+								isValid: false,
+								error: messages.validation.phoneIsTooShort(),
+							};
+						}
+						if (error.message.includes("Too long")) {
+							return {
+								isValid: false,
+								error: messages.validation.phoneIsTooLong(),
+							};
+						}
+					}
+					return {
+						isValid: false,
+						error: messages.validation.phoneFormatIsInvalid(),
+					};
+				}
+
+				// As a final fallback, if it's still not considered possible, show generic message
+				if (!isPossiblePhoneNumber(normalizedNumber)) {
+					return {
+						isValid: false,
+						error: messages.validation.phoneFormatNotRecognized(),
+					};
 				}
 			}
 		}

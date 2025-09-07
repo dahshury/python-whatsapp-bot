@@ -352,7 +352,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		}
 		hasInitializedCountryRef.current = true;
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [selectedPhone, value]);
 
 	// Do not auto-change country based on the typed phone value after initialization
 
@@ -750,7 +750,9 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 												if (selectedCountry) {
 													e.preventDefault();
 													e.stopPropagation();
-													handleCountrySelect(selectedCountry as any);
+													handleCountrySelect(
+														selectedCountry as RPNInput.Country,
+													);
 													return;
 												}
 											} catch {}

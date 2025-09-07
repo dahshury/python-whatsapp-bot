@@ -183,8 +183,10 @@ export const useTimekeeperEditor = ({
 
 			if (data.use24Hour && TIME_REGEX_24.test(inputValue)) {
 				const [hours, minutes] = inputValue.split(":").map(Number);
-				parsedDate = new Date(1970, 0, 1);
-				parsedDate.setHours(hours, minutes, 0, 0);
+				if (hours !== undefined && minutes !== undefined) {
+					parsedDate = new Date(1970, 0, 1);
+					parsedDate.setHours(hours, minutes, 0, 0);
+				}
 			} else if (!data.use24Hour && TIME_REGEX_12.test(inputValue)) {
 				parsedDate = parseTimeFromPicker(inputValue);
 			}

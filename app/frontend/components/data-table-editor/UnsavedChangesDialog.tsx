@@ -8,7 +8,7 @@ import { Z_INDEX } from "@/lib/z-index";
 interface UnsavedChangesDialogProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	isRTL: boolean;
+	isLocalized: boolean;
 	onDiscard: () => void;
 	onSaveAndClose: () => void;
 	isSaving: boolean;
@@ -18,7 +18,7 @@ interface UnsavedChangesDialogProps {
 export function UnsavedChangesDialog({
 	open,
 	onOpenChange,
-	isRTL,
+	isLocalized,
 	onDiscard,
 	onSaveAndClose,
 	isSaving,
@@ -61,7 +61,7 @@ export function UnsavedChangesDialog({
 				}}
 				onClick={() => onOpenChange(false)}
 				type="button"
-				aria-label={isRTL ? "إغلاق الحوار" : "Close dialog"}
+				aria-label={isLocalized ? "إغلاق الحوار" : "Close dialog"}
 			/>
 
 			{/* Dialog Content */}
@@ -85,15 +85,15 @@ export function UnsavedChangesDialog({
 					}}
 				>
 					<div className="space-y-4">
-						<div className={isRTL ? "text-right" : "text-left"}>
+						<div className={isLocalized ? "text-right" : "text-left"}>
 							<h2
 								id={`unsaved-changes-title-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
 								className="text-lg font-semibold"
 							>
-								{isRTL ? "تغييرات غير محفوظة" : "Unsaved Changes"}
+								{isLocalized ? "تغييرات غير محفوظة" : "Unsaved Changes"}
 							</h2>
 							<p className="text-sm text-muted-foreground mt-2">
-								{isRTL
+								{isLocalized
 									? "لديك تغييرات غير محفوظة. هل تريد حفظ التغييرات قبل الإغلاق؟"
 									: "You have unsaved changes. Would you like to save your changes before closing?"}
 							</p>
@@ -101,12 +101,12 @@ export function UnsavedChangesDialog({
 						<div className="flex items-center justify-between gap-2">
 							<div className="flex">
 								<Button variant="outline" onClick={() => onOpenChange(false)}>
-									{isRTL ? "إلغاء" : "Cancel"}
+									{isLocalized ? "إلغاء" : "Cancel"}
 								</Button>
 							</div>
 							<div className="flex gap-2">
 								<Button variant="outline" onClick={onDiscard}>
-									{isRTL ? "تجاهل التغييرات" : "Discard Changes"}
+									{isLocalized ? "تجاهل التغييرات" : "Discard Changes"}
 								</Button>
 								<Button
 									onClick={onSaveAndClose}
@@ -115,9 +115,9 @@ export function UnsavedChangesDialog({
 									{isSaving ? (
 										<>
 											<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-											{isRTL ? "جاري الحفظ..." : "Saving..."}
+											{isLocalized ? "جاري الحفظ..." : "Saving..."}
 										</>
-									) : isRTL ? (
+									) : isLocalized ? (
 										"حفظ والإغلاق"
 									) : (
 										"Save & Close"

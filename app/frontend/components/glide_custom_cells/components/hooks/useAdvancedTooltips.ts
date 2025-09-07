@@ -134,6 +134,7 @@ export function useAdvancedTooltips(config: Partial<TooltipConfig> = {}) {
 			return () =>
 				document.removeEventListener("mousemove", handleGlobalMouseMove);
 		}
+		return undefined;
 	}, [tooltipData?.visible, updateTooltipPosition]);
 
 	return {
@@ -160,7 +161,12 @@ export function useGridTooltips(
 			const cellValue = data[row]?.[col];
 			const columnName = columnNames[col];
 
-			if (cellValue !== undefined && cellValue !== null && cellValue !== "") {
+			if (
+				cellValue !== undefined &&
+				cellValue !== null &&
+				cellValue !== "" &&
+				columnName
+			) {
 				const content = formatTooltipContent(cellValue, columnName, row, col);
 				showTooltip(content, mouseX, mouseY);
 			} else {

@@ -13,6 +13,7 @@ import {
 	UserCheck,
 	Users,
 } from "lucide-react";
+import { MagicCard } from "@/components/magicui/magic-card";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -24,10 +25,15 @@ import {
 import { i18n } from "@/lib/i18n";
 import type { DashboardStats, PrometheusMetrics } from "@/types/dashboard";
 
+// Type for metrics that can have optional properties
+interface MetricData extends Omit<KPICardProps, "isLocalized"> {
+	// All properties are inherited from KPICardProps except isLocalized
+}
+
 interface KPICardsProps {
 	stats: DashboardStats;
 	prometheusMetrics: PrometheusMetrics;
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 interface KPICardProps {
@@ -44,7 +50,7 @@ interface KPICardProps {
 	variant?: "default" | "success" | "warning" | "danger";
 	hasTooltip?: boolean;
 	tooltipContent?: string;
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }
 
 function KPICard({
@@ -57,7 +63,7 @@ function KPICard({
 	variant = "default",
 	hasTooltip,
 	tooltipContent,
-	isRTL: _isRTL,
+	isLocalized: _isLocalized,
 }: KPICardProps) {
 	const getVariantClasses = () => {
 		switch (variant) {
@@ -79,110 +85,129 @@ function KPICard({
 			transition={{ duration: 0.4 }}
 			className="h-full"
 		>
-			<Card className={`h-full flex flex-col ${getVariantClasses()}`}>
-				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
-					<CardTitle className="text-sm font-medium line-clamp-2 flex items-center gap-1">
-						{title}
-						{hasTooltip && tooltipContent && (
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<span className="inline-flex items-center cursor-help">
-										<HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-									</span>
-								</TooltipTrigger>
-								<TooltipContent
-									side="top"
-									align="start"
-									sideOffset={10}
-									className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg"
-								>
-									<p className="text-sm opacity-90">{tooltipContent}</p>
-								</TooltipContent>
-							</Tooltip>
-						)}
-					</CardTitle>
-					<div className="flex-shrink-0">{icon}</div>
-				</CardHeader>
-				<CardContent className="flex-1 flex flex-col justify-between">
-					<div>
-						<div className="text-2xl font-bold transition-all duration-300 will-change-contents">
-							{value}
-						</div>
-						<div className="flex items-center justify-between mt-1 min-h-[2.5rem]">
-							<p className="text-xs text-muted-foreground line-clamp-2 flex-1 mr-2">
-								{description}
-							</p>
-							{trend && (
-								<Badge
-									variant={trend.isPositive ? "default" : "secondary"}
-									className={`text-xs flex-shrink-0 ${
-										trend.isPositive
-											? "bg-chart-1/20 text-chart-1 hover:bg-chart-1/20"
-											: "bg-destructive/20 text-destructive hover:bg-destructive/20"
-									}`}
-								>
-									{trend.isPositive ? "+" : "-"}
-									{trend.value.toFixed(1)}%{trend.label && ` ${trend.label}`}
-								</Badge>
+			<MagicCard
+				className={`h-full flex flex-col ${getVariantClasses()}`}
+				gradientSize={250}
+				gradientColor="hsl(var(--muted-foreground) / 0.08)"
+				gradientOpacity={0.5}
+				gradientFrom="hsl(var(--primary))"
+				gradientTo="hsl(var(--accent))"
+			>
+				<Card className="h-full flex flex-col bg-transparent border-0 shadow-none">
+					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
+						<CardTitle className="text-sm font-medium line-clamp-2 flex items-center gap-1">
+							{title}
+							{hasTooltip && tooltipContent && (
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<span className="inline-flex items-center cursor-help">
+											<HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+										</span>
+									</TooltipTrigger>
+									<TooltipContent
+										side="top"
+										align="start"
+										sideOffset={10}
+										className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg"
+									>
+										<p className="text-sm opacity-90">{tooltipContent}</p>
+									</TooltipContent>
+								</Tooltip>
 							)}
+						</CardTitle>
+						<div className="flex-shrink-0">{icon}</div>
+					</CardHeader>
+					<CardContent className="flex-1 flex flex-col justify-between">
+						<div>
+							<div className="text-2xl font-bold transition-all duration-300 will-change-contents">
+								{value}
+							</div>
+							<div className="flex items-center justify-between mt-1 min-h-[2.5rem]">
+								<p className="text-xs text-muted-foreground line-clamp-2 flex-1 mr-2">
+									{description}
+								</p>
+								{trend && (
+									<Badge
+										variant={trend.isPositive ? "default" : "secondary"}
+										className={`text-xs flex-shrink-0 ${
+											trend.isPositive
+												? "bg-chart-1/20 text-chart-1 hover:bg-chart-1/20"
+												: "bg-destructive/20 text-destructive hover:bg-destructive/20"
+										}`}
+									>
+										{trend.isPositive ? "+" : "-"}
+										{trend.value.toFixed(1)}%{trend.label && ` ${trend.label}`}
+									</Badge>
+								)}
+							</div>
 						</div>
-					</div>
-					{progress !== undefined && (
-						<div className="mt-3">
-							<Progress value={progress} className="h-2" />
-						</div>
-					)}
-				</CardContent>
-			</Card>
+						{progress !== undefined && (
+							<div className="mt-3">
+								<Progress value={progress} className="h-2" />
+							</div>
+						)}
+					</CardContent>
+				</Card>
+			</MagicCard>
 		</motion.div>
 	);
 }
 
-export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
-	const kpiData = [
+export function KPICards({
+	stats,
+	prometheusMetrics,
+	isLocalized,
+}: KPICardsProps) {
+	const kpiData: MetricData[] = [
 		{
-			title: i18n.getMessage("kpi_total_reservations", isRTL),
+			title: i18n.getMessage("kpi_total_reservations", isLocalized),
 			value: stats.totalReservations.toLocaleString(),
-			description: i18n.getMessage("kpi_this_period", isRTL),
+			description: i18n.getMessage("kpi_this_period", isLocalized),
 			icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
-			trend: stats.trends?.totalReservations
-				? {
-						value: Math.abs(stats.trends.totalReservations.percentChange),
-						isPositive: stats.trends.totalReservations.isPositive,
-					}
-				: undefined,
+			...(stats.trends?.totalReservations && {
+				trend: {
+					value: Math.abs(stats.trends.totalReservations.percentChange),
+					isPositive: stats.trends.totalReservations.isPositive,
+				},
+			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_total_reservations_tooltip", isRTL),
+			tooltipContent: i18n.getMessage(
+				"kpi_total_reservations_tooltip",
+				isLocalized,
+			),
 			variant: "default" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_active_customers", isRTL),
+			title: i18n.getMessage("kpi_active_customers", isLocalized),
 			value: stats.activeCustomers.toLocaleString(),
-			description: i18n.getMessage("kpi_active_customers_desc", isRTL),
+			description: i18n.getMessage("kpi_active_customers_desc", isLocalized),
 			icon: <Users className="h-4 w-4 text-muted-foreground" />,
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_active_customers_tooltip", isRTL),
+			tooltipContent: i18n.getMessage(
+				"kpi_active_customers_tooltip",
+				isLocalized,
+			),
 			variant: "success" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_cancellations", isRTL),
+			title: i18n.getMessage("kpi_cancellations", isLocalized),
 			value: stats.totalCancellations.toLocaleString(),
-			description: i18n.getMessage("kpi_this_period", isRTL),
+			description: i18n.getMessage("kpi_this_period", isLocalized),
 			icon: <MessageSquare className="h-4 w-4 text-muted-foreground" />,
-			trend: stats.trends?.cancellations
-				? {
-						value: Math.abs(stats.trends.cancellations.percentChange),
-						isPositive: stats.trends.cancellations.isPositive,
-					}
-				: undefined,
+			...(stats.trends?.cancellations && {
+				trend: {
+					value: Math.abs(stats.trends.cancellations.percentChange),
+					isPositive: stats.trends.cancellations.isPositive,
+				},
+			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_cancellations_tooltip", isRTL),
+			tooltipContent: i18n.getMessage("kpi_cancellations_tooltip", isLocalized),
 			variant: "warning" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_conversion_rate", isRTL),
+			title: i18n.getMessage("kpi_conversion_rate", isLocalized),
 			value: `${stats.conversionRate.toFixed(1)}%`,
-			description: i18n.getMessage("kpi_conversation_to_booking", isRTL),
+			description: i18n.getMessage("kpi_conversation_to_booking", isLocalized),
 			icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
 			trend: {
 				value: 3.8,
@@ -192,40 +217,43 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 			variant: "success" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_returning_rate", isRTL),
+			title: i18n.getMessage("kpi_returning_rate", isLocalized),
 			value: `${stats.returningRate.toFixed(1)}%`,
-			description: i18n.getMessage("kpi_customer_retention", isRTL),
+			description: i18n.getMessage("kpi_customer_retention", isLocalized),
 			icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
 			trend: {
 				value: 2.1,
 				isPositive: true,
-				label: i18n.getMessage("kpi_improvement", isRTL),
+				label: i18n.getMessage("kpi_improvement", isLocalized),
 			},
 			progress: stats.returningRate,
 			variant: "default" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_avg_response_time", isRTL),
-			value: `${stats.avgResponseTime.toFixed(1)}${i18n.getMessage("msg_minutes", isRTL)}`,
-			description: i18n.getMessage("response_time_calculated", isRTL),
+			title: i18n.getMessage("kpi_avg_response_time", isLocalized),
+			value: `${stats.avgResponseTime.toFixed(1)}${i18n.getMessage("msg_minutes", isLocalized)}`,
+			description: i18n.getMessage("response_time_calculated", isLocalized),
 			icon: <Clock className="h-4 w-4 text-muted-foreground" />,
-			trend: stats.trends?.avgResponseTime
-				? {
-						value: Math.abs(stats.trends.avgResponseTime.percentChange),
-						isPositive: stats.trends.avgResponseTime.isPositive,
-					}
-				: undefined,
+			...(stats.trends?.avgResponseTime && {
+				trend: {
+					value: Math.abs(stats.trends.avgResponseTime.percentChange),
+					isPositive: stats.trends.avgResponseTime.isPositive,
+				},
+			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_avg_response_time_tooltip", isRTL),
+			tooltipContent: i18n.getMessage(
+				"kpi_avg_response_time_tooltip",
+				isLocalized,
+			),
 			progress: Math.max(0, 100 - stats.avgResponseTime * 2),
 			variant: "default" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_returning_customers", isRTL),
+			title: i18n.getMessage("kpi_returning_customers", isLocalized),
 			value: stats.returningCustomers.toLocaleString(),
 			description: i18n.getMessage(
 				"kpi_customers_with_multiple_bookings",
-				isRTL,
+				isLocalized,
 			),
 			icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
 			trend: {
@@ -235,54 +263,57 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 			variant: "success" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_avg_followups", isRTL),
+			title: i18n.getMessage("kpi_avg_followups", isLocalized),
 			value: stats.avgFollowups.toFixed(1),
 			description: i18n.getMessage(
 				"kpi_additional_bookings_per_returning_customer",
-				isRTL,
+				isLocalized,
 			),
 			icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
-			trend: stats.trends?.avgFollowups
-				? {
-						value: Math.abs(stats.trends.avgFollowups.percentChange),
-						isPositive: stats.trends.avgFollowups.isPositive,
-					}
-				: undefined,
+			...(stats.trends?.avgFollowups && {
+				trend: {
+					value: Math.abs(stats.trends.avgFollowups.percentChange),
+					isPositive: stats.trends.avgFollowups.isPositive,
+				},
+			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_avg_followups_tooltip", isRTL),
+			tooltipContent: i18n.getMessage("kpi_avg_followups_tooltip", isLocalized),
 			variant: "default" as const,
 		},
 		{
-			title: i18n.getMessage("kpi_unique_customers", isRTL),
+			title: i18n.getMessage("kpi_unique_customers", isLocalized),
 			value: stats.uniqueCustomers.toLocaleString(),
-			description: i18n.getMessage("kpi_this_period", isRTL),
+			description: i18n.getMessage("kpi_this_period", isLocalized),
 			icon: <Users className="h-4 w-4 text-muted-foreground" />,
-			trend: stats.trends?.uniqueCustomers
-				? {
-						value: Math.abs(stats.trends.uniqueCustomers.percentChange),
-						isPositive: stats.trends.uniqueCustomers.isPositive,
-					}
-				: undefined,
+			...(stats.trends?.uniqueCustomers && {
+				trend: {
+					value: Math.abs(stats.trends.uniqueCustomers.percentChange),
+					isPositive: stats.trends.uniqueCustomers.isPositive,
+				},
+			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_unique_customers_tooltip", isRTL),
+			tooltipContent: i18n.getMessage(
+				"kpi_unique_customers_tooltip",
+				isLocalized,
+			),
 			variant: "success" as const,
 		},
 	];
 
 	// System metrics if available
-	const systemMetrics =
+	const systemMetrics: MetricData[] =
 		prometheusMetrics && Object.keys(prometheusMetrics).length > 0
 			? [
 					{
-						title: i18n.getMessage("kpi_cpu_usage", isRTL),
+						title: i18n.getMessage("kpi_cpu_usage", isLocalized),
 						value:
 							prometheusMetrics.cpu_percent !== undefined
 								? `${prometheusMetrics.cpu_percent.toFixed(1)}%`
 								: "45.2%",
 						description:
 							prometheusMetrics.cpu_percent !== undefined
-								? i18n.getMessage("kpi_current_usage", isRTL)
-								: i18n.getMessage("kpi_demo_data", isRTL),
+								? i18n.getMessage("kpi_current_usage", isLocalized)
+								: i18n.getMessage("kpi_demo_data", isLocalized),
 						icon: <Cpu className="h-4 w-4 text-muted-foreground" />,
 						progress: prometheusMetrics.cpu_percent || 45.2,
 						variant:
@@ -291,20 +322,20 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 								: ("default" as const),
 					},
 					{
-						title: i18n.getMessage("kpi_memory_usage", isRTL),
+						title: i18n.getMessage("kpi_memory_usage", isLocalized),
 						value:
 							prometheusMetrics.memory_bytes !== undefined
 								? `${(prometheusMetrics.memory_bytes / 1024 ** 3).toFixed(1)}GB`
 								: "0.5GB",
 						description:
 							prometheusMetrics.memory_bytes !== undefined
-								? i18n.getMessage("kpi_current_usage", isRTL)
-								: i18n.getMessage("kpi_demo_data", isRTL),
+								? i18n.getMessage("kpi_current_usage", isLocalized)
+								: i18n.getMessage("kpi_demo_data", isLocalized),
 						icon: <HardDrive className="h-4 w-4 text-muted-foreground" />,
 						variant: "default" as const,
 					},
 					{
-						title: i18n.getMessage("kpi_success_rate", isRTL),
+						title: i18n.getMessage("kpi_success_rate", isLocalized),
 						value:
 							prometheusMetrics.reservations_successful_total !== undefined &&
 							prometheusMetrics.reservations_requested_total !== undefined
@@ -312,8 +343,8 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 								: "96.8%",
 						description:
 							prometheusMetrics.reservations_successful_total !== undefined
-								? i18n.getMessage("kpi_operational_rate", isRTL)
-								: i18n.getMessage("kpi_demo_data", isRTL),
+								? i18n.getMessage("kpi_operational_rate", isLocalized)
+								: i18n.getMessage("kpi_demo_data", isLocalized),
 						icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
 						progress:
 							prometheusMetrics.reservations_successful_total !== undefined &&
@@ -333,7 +364,10 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 									: ("success" as const)
 								: ("success" as const),
 						hasTooltip: true,
-						tooltipContent: i18n.getMessage("tooltip_success_rate", isRTL),
+						tooltipContent: i18n.getMessage(
+							"tooltip_success_rate",
+							isLocalized,
+						),
 					},
 				]
 			: [];
@@ -344,7 +378,7 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 		<div className="space-y-4">
 			{/* Section Title */}
 			<h2 className="text-xl font-semibold">
-				{i18n.getMessage("kpi_performance_metrics", isRTL)}
+				{i18n.getMessage("kpi_performance_metrics", isLocalized)}
 			</h2>
 
 			{/* KPI Grid */}
@@ -362,14 +396,14 @@ export function KPICards({ stats, prometheusMetrics, isRTL }: KPICardsProps) {
 							value={metric.value}
 							description={metric.description}
 							icon={metric.icon}
-							variant={metric.variant}
-							isRTL={isRTL}
-							{...("trend" in metric ? { trend: metric.trend } : {})}
-							{...("progress" in metric ? { progress: metric.progress } : {})}
-							{...("hasTooltip" in metric
-								? { hasTooltip: metric.hasTooltip }
+							variant={metric.variant || "default"}
+							isLocalized={isLocalized}
+							{...(metric.trend ? { trend: metric.trend } : {})}
+							{...(typeof metric.progress === "number"
+								? { progress: metric.progress }
 								: {})}
-							{...("tooltipContent" in metric
+							{...(metric.hasTooltip === true ? { hasTooltip: true } : {})}
+							{...(typeof metric.tooltipContent === "string"
 								? { tooltipContent: metric.tooltipContent }
 								: {})}
 						/>

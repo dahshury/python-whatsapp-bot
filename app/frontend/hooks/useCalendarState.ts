@@ -6,7 +6,7 @@
  * optimized state updates.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getSlotTimes } from "@/lib/calendar-config";
 
 export interface CalendarStateOptions {
@@ -106,15 +106,15 @@ export function useCalendarState(
 	}, [currentDate, isHydrated]);
 
 	/**
-	 * Update slot times key when free roam mode changes
-	 * This ensures FullCalendar re-renders with correct slot times
+	 * Update slot times key only when freeRoam actually changes after hydration
+	 * Avoid triggering on initial hydration when freeRoam hasn't changed
 	 */
+	const prevFreeRoamRef = useRef<boolean>(freeRoam);
 	useEffect(() => {
-		if (isHydrated) {
-			// Force re-render when freeRoam changes to update slot times
-			console.debug(
-				`Calendar re-rendering due to freeRoam change: ${freeRoam}`,
-			);
+		if (!isHydrated) return;
+		const previous = prevFreeRoamRef.current;
+		if (previous !== freeRoam) {
+			prevFreeRoamRef.current = freeRoam;
 			setSlotTimesKey((prevKey) => prevKey + 1);
 		}
 	}, [freeRoam, isHydrated]);

@@ -84,7 +84,8 @@ export function GridLoadingState({
 									borderRadius: "4px",
 									animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
 									animationDelay: `${
-										(parseInt(key.split("-")[1], 10) + colIndex) * 0.05
+										(Number.parseInt(key.split("-")[1] || "0", 10) + colIndex) *
+										0.05
 									}s`,
 								}}
 							/>
@@ -147,5 +148,3 @@ if (
   `;
 	document.head.appendChild(style);
 }
-
-export default GridLoadingState;

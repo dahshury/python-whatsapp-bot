@@ -20,8 +20,8 @@ import type {
 } from "@/types/data-table-editor";
 
 interface UseDataTableSaveHandlerProps {
-	calendarRef?: React.RefObject<CalendarCoreRef>;
-	isRTL: boolean;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
+	isLocalized: boolean;
 	slotDurationHours: number;
 	freeRoam: boolean;
 	gridRowToEventMapRef: React.RefObject<Map<number, CalendarEvent>>;
@@ -35,7 +35,7 @@ interface UseDataTableSaveHandlerProps {
 
 export function useDataTableSaveHandler({
 	calendarRef,
-	isRTL,
+	isLocalized,
 	slotDurationHours: _slotDurationHours,
 	freeRoam: _freeRoam,
 	gridRowToEventMapRef,
@@ -54,12 +54,10 @@ export function useDataTableSaveHandler({
 	}, [calendarRef]);
 
 	const handleSaveChanges = useCallback(async () => {
-		console.log("🚀 useDataTableSaveHandler: handleSaveChanges called");
-
 		if (!dataProviderRef.current) {
 			console.error("❌ No data provider available");
 			toastService.error(
-				getMessage("system_error_try_later", isRTL),
+				getMessage("system_error_try_later", isLocalized),
 				undefined,
 				5000,
 			);
@@ -75,12 +73,13 @@ export function useDataTableSaveHandler({
 		if (!validation.isValid) {
 			const errorMessages = validation.errors
 				.map(
-					(err) => `${isRTL ? "الصف" : "Row"} ${err.row + 1}: ${err.message}`,
+					(err) =>
+						`${isLocalized ? "الصف" : "Row"} ${err.row + 1}: ${err.message}`,
 				)
 				.join("\n");
 
 			toastService.error(
-				isRTL ? "أخطاء في التحقق" : "Validation Errors",
+				isLocalized ? "أخطاء في التحقق" : "Validation Errors",
 				errorMessages,
 				8000,
 			);
@@ -120,15 +119,6 @@ export function useDataTableSaveHandler({
 			const changesJson = editingState.toJson(baseColumns);
 			const changes: EditingChanges = JSON.parse(changesJson);
 
-			console.log("📝 Changes detected:", {
-				changesJson,
-				changes,
-				hasDeletedRows: (changes.deleted_rows?.length ?? 0) > 0,
-				hasEditedRows:
-					changes.edited_rows && Object.keys(changes.edited_rows).length > 0,
-				hasAddedRows: (changes.added_rows?.length ?? 0) > 0,
-			});
-
 			let hasErrors = false;
 			let successfulOperations: Awaited<
 				ReturnType<_D["processAdditions"]>
@@ -149,7 +139,7 @@ export function useDataTableSaveHandler({
 				if (!calendarApi) {
 					console.error("❌ No calendar API available");
 					toastService.error(
-						getMessage("system_error_try_later", isRTL),
+						getMessage("system_error_try_later", isLocalized),
 						undefined,
 						5000,
 					);
@@ -157,7 +147,7 @@ export function useDataTableSaveHandler({
 				}
 				operationsServiceRef.current = new DataTableOperationsService(
 					calendarApi as unknown as LibCalendarApi,
-					isRTL,
+					isLocalized === true,
 					refreshCustomerData,
 				);
 			}
@@ -230,8 +220,8 @@ export function useDataTableSaveHandler({
 		} catch (error) {
 			console.error("Error saving changes:", error);
 			toastService.error(
-				isRTL ? "خطأ في الحفظ" : "Save Error",
-				getMessage("system_error_try_later", isRTL),
+				isLocalized ? "خطأ في الحفظ" : "Save Error",
+				getMessage("system_error_try_later", isLocalized),
 				5000,
 			);
 			return false;
@@ -240,7 +230,7 @@ export function useDataTableSaveHandler({
 		}
 	}, [
 		dataProviderRef,
-		isRTL,
+		isLocalized,
 		isSaving,
 		validateAllCells,
 		getCalendarApi,

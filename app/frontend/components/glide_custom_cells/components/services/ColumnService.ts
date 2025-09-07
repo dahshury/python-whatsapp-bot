@@ -23,7 +23,7 @@ export class ColumnService {
 
 	private measureTextWidth(
 		text: string,
-		font: string = "13px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+		font = "13px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 	): number {
 		const ctx = this.getCanvasContext();
 		if (!ctx) {
@@ -82,9 +82,10 @@ export class ColumnService {
 		if (actualColIndex === undefined) return this.MIN_COLUMN_WIDTH;
 
 		// Measure header width with bold font (600 weight)
+		const columnTitle = displayColumns[colIdx]?.title || "Column";
 		const headerWidth =
 			this.measureTextWidth(
-				displayColumns[colIdx].title,
+				columnTitle,
 				"600 13px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
 			) + this.HEADER_PADDING;
 
@@ -94,15 +95,17 @@ export class ColumnService {
 
 		for (let i = 0; i < sampleSize; i++) {
 			const row = filteredRows[i];
-			const cell = getRawCellContent(actualColIndex, row);
-			const text = this.extractDisplayText(cell);
+			if (row !== undefined) {
+				const cell = getRawCellContent(actualColIndex, row);
+				const text = this.extractDisplayText(cell);
 
-			if (text) {
-				const cellWidth = this.measureTextWidth(
-					text,
-					"13px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-				);
-				maxCellWidth = Math.max(maxCellWidth, cellWidth);
+				if (text) {
+					const cellWidth = this.measureTextWidth(
+						text,
+						"13px Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+					);
+					maxCellWidth = Math.max(maxCellWidth, cellWidth);
+				}
 			}
 		}
 

@@ -58,10 +58,7 @@ export const getSafeTimeValue = (time?: Date): Date => {
 };
 
 // Enhanced time formatting with complete NaN prevention
-export const formatTimeForPicker = (
-	date: Date,
-	use24Hour: boolean = false,
-): string => {
+export const formatTimeForPicker = (date: Date, use24Hour = false): string => {
 	try {
 		if (!isValidDate(date)) {
 			throw new Error("Invalid date provided to formatTimeForPicker");
@@ -81,12 +78,11 @@ export const formatTimeForPicker = (
 
 		if (use24Hour) {
 			return `${safeHours.toString().padStart(2, "0")}:${minutesStr}`;
-		} else {
-			const isPM = safeHours >= 12;
-			const displayHours =
-				safeHours === 0 ? 12 : safeHours > 12 ? safeHours - 12 : safeHours;
-			return `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 		}
+		const isPM = safeHours >= 12;
+		const displayHours =
+			safeHours === 0 ? 12 : safeHours > 12 ? safeHours - 12 : safeHours;
+		return `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 	} catch (error) {
 		console.warn("Error formatting time for picker:", error);
 		// Return a guaranteed safe default
@@ -97,7 +93,7 @@ export const formatTimeForPicker = (
 // Format time for display
 export const formatTimeForDisplay = (
 	date: Date | undefined,
-	use24Hour: boolean = false,
+	use24Hour = false,
 ): string => {
 	if (!date || !isValidDate(date)) return "";
 
@@ -112,11 +108,10 @@ export const formatTimeForDisplay = (
 
 		if (use24Hour) {
 			return `${hours.toString().padStart(2, "0")}:${minutesStr}`;
-		} else {
-			const isPM = hours >= 12;
-			const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-			return `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 		}
+		const isPM = hours >= 12;
+		const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+		return `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 	} catch (error) {
 		console.warn("Error formatting time for display:", error);
 		return "";
@@ -140,8 +135,8 @@ export const parseTimeFromPicker = (timeString: string): Date => {
 		const match12 = timeString.match(timeRegex12);
 
 		if (match24) {
-			const hours = parseInt(match24[1], 10);
-			const minutes = parseInt(match24[2], 10);
+			const hours = match24[1] ? Number.parseInt(match24[1], 10) : 0;
+			const minutes = match24[2] ? Number.parseInt(match24[2], 10) : 0;
 
 			if (hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59) {
 				const newDate = new Date(baseDate);
@@ -149,9 +144,9 @@ export const parseTimeFromPicker = (timeString: string): Date => {
 				return newDate;
 			}
 		} else if (match12) {
-			let hours = parseInt(match12[1], 10);
-			const minutes = parseInt(match12[2], 10);
-			const isPM = match12[3].toLowerCase() === "pm";
+			let hours = match12[1] ? Number.parseInt(match12[1], 10) : 0;
+			const minutes = match12[2] ? Number.parseInt(match12[2], 10) : 0;
+			const isPM = match12[3] ? match12[3].toLowerCase() === "pm" : false;
 
 			if (hours >= 1 && hours <= 12 && minutes >= 0 && minutes <= 59) {
 				if (isPM && hours !== 12) hours += 12;

@@ -7,7 +7,7 @@ import { CalendarSkeleton } from "./calendar-skeleton";
 
 interface ErrorBoundaryState {
 	hasError: boolean;
-	error?: Error;
+	error?: Error | undefined;
 	errorInfo?: React.ErrorInfo;
 	isRecovering?: boolean;
 }

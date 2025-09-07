@@ -17,7 +17,7 @@ export interface SortState {
 export function useColumnSorting(
 	columns: BaseColumnProps[],
 	data: unknown[][],
-	maxSortRules: number = 3,
+	maxSortRules = 3,
 ) {
 	const [sortState, setSortState] = useState<SortState>({
 		rules: [],
@@ -35,7 +35,7 @@ export function useColumnSorting(
 					const existingRule = prev.rules[existingRuleIndex];
 					const newRules = [...prev.rules];
 
-					if (existingRule.direction === "asc") {
+					if (existingRule && existingRule.direction === "asc") {
 						newRules[existingRuleIndex] = {
 							...existingRule,
 							direction: "desc",
@@ -45,19 +45,17 @@ export function useColumnSorting(
 					}
 
 					return { ...prev, rules: newRules };
-				} else {
-					const newRule: SortRule = { columnId, direction: "asc" };
-
-					if (prev.isMultiSort) {
-						const newRules = [...prev.rules, newRule];
-						if (newRules.length > maxSortRules) {
-							newRules.shift();
-						}
-						return { ...prev, rules: newRules };
-					} else {
-						return { ...prev, rules: [newRule] };
-					}
 				}
+				const newRule: SortRule = { columnId, direction: "asc" };
+
+				if (prev.isMultiSort) {
+					const newRules = [...prev.rules, newRule];
+					if (newRules.length > maxSortRules) {
+						newRules.shift();
+					}
+					return { ...prev, rules: newRules };
+				}
+				return { ...prev, rules: [newRule] };
 			});
 		},
 		[maxSortRules],
@@ -161,7 +159,8 @@ export function useColumnSorting(
 			(indexA, indexB) => {
 				for (const rule of sortState.rules) {
 					const columnIndex = columnIndices.get(rule.columnId);
-					if (columnIndex === undefined) continue;
+					if (columnIndex === undefined || !data[indexA] || !data[indexB])
+						continue;
 
 					const valueA = data[indexA][columnIndex];
 					const valueB = data[indexB][columnIndex];

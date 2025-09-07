@@ -11,7 +11,7 @@ import type { PrometheusMetrics } from "@/types/dashboard";
 
 interface OperationMetricsProps {
 	prometheusMetrics: PrometheusMetrics;
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 interface OperationMetricCardProps {
@@ -20,7 +20,7 @@ interface OperationMetricCardProps {
 	attempts: number;
 	success: number;
 	failures: number;
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 function OperationMetricCard({
@@ -29,7 +29,7 @@ function OperationMetricCard({
 	attempts,
 	success,
 	failures,
-	isRTL,
+	isLocalized,
 }: OperationMetricCardProps) {
 	const successRate = attempts > 0 ? (success / attempts) * 100 : 0;
 	const failureRate = attempts > 0 ? (failures / attempts) * 100 : 0;
@@ -49,7 +49,7 @@ function OperationMetricCard({
 					<div className="flex items-center justify-between">
 						<div className="text-2xl font-bold">{attempts}</div>
 						<Badge variant="outline" className="text-xs">
-							{i18n.getMessage("operation_attempts", isRTL)}
+							{i18n.getMessage("operation_attempts", isLocalized)}
 						</Badge>
 					</div>
 
@@ -70,11 +70,11 @@ function OperationMetricCard({
 						<div className="flex justify-between text-xs text-muted-foreground">
 							<span>
 								{successRate.toFixed(1)}%{" "}
-								{i18n.getMessage("operation_success", isRTL)}
+								{i18n.getMessage("operation_success", isLocalized)}
 							</span>
 							<span>
 								{failureRate.toFixed(1)}%{" "}
-								{i18n.getMessage("operation_failed", isRTL)}
+								{i18n.getMessage("operation_failed", isLocalized)}
 							</span>
 						</div>
 					</div>
@@ -86,7 +86,7 @@ function OperationMetricCard({
 
 export function OperationMetrics({
 	prometheusMetrics,
-	isRTL,
+	isLocalized,
 }: OperationMetricsProps) {
 	const hasMetrics =
 		prometheusMetrics && Object.keys(prometheusMetrics).length > 0;
@@ -95,7 +95,7 @@ export function OperationMetrics({
 		return (
 			<div className="space-y-4">
 				<h2 className="text-xl font-semibold">
-					{i18n.getMessage("operation_metrics_title", isRTL)}
+					{i18n.getMessage("operation_metrics_title", isLocalized)}
 				</h2>
 				<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
 					{Array.from({ length: 3 }).map((_, i) => (
@@ -116,14 +116,14 @@ export function OperationMetrics({
 
 	const operations = [
 		{
-			title: i18n.getMessage("operation_reservations", isRTL),
+			title: i18n.getMessage("operation_reservations", isLocalized),
 			icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
 			attempts: prometheusMetrics.reservations_requested_total || 0,
 			success: prometheusMetrics.reservations_successful_total || 0,
 			failures: prometheusMetrics.reservations_failed_total || 0,
 		},
 		{
-			title: i18n.getMessage("operation_cancellations", isRTL),
+			title: i18n.getMessage("operation_cancellations", isLocalized),
 			icon: <X className="h-4 w-4 text-muted-foreground" />,
 			attempts:
 				prometheusMetrics.reservations_cancellation_requested_total || 0,
@@ -132,7 +132,7 @@ export function OperationMetrics({
 			failures: prometheusMetrics.reservations_cancellation_failed_total || 0,
 		},
 		{
-			title: i18n.getMessage("operation_modifications", isRTL),
+			title: i18n.getMessage("operation_modifications", isLocalized),
 			icon: <Edit className="h-4 w-4 text-muted-foreground" />,
 			attempts:
 				prometheusMetrics.reservations_modification_requested_total || 0,
@@ -145,7 +145,7 @@ export function OperationMetrics({
 	return (
 		<div className="space-y-4">
 			<h2 className="text-xl font-semibold">
-				{i18n.getMessage("operation_metrics_title", isRTL)}
+				{i18n.getMessage("operation_metrics_title", isLocalized)}
 			</h2>
 
 			<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
@@ -162,7 +162,7 @@ export function OperationMetrics({
 							attempts={operation.attempts}
 							success={operation.success}
 							failures={operation.failures}
-							isRTL={isRTL}
+							isLocalized={isLocalized}
 						/>
 					</motion.div>
 				))}

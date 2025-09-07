@@ -27,7 +27,6 @@ import {
 	HoverCardContent,
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import { Progress } from "@/components/ui/progress";
 import {
 	Pagination,
 	PaginationContent,
@@ -37,11 +36,12 @@ import {
 	PaginationNext,
 	PaginationPrevious,
 } from "@/components/ui/pagination";
-import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 // import { WordCloudChart } from "./word-cloud"; // Remove for now to reduce heavy render cost
 import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
+import { cn } from "@/lib/utils";
 
 import type {
 	ConversationAnalysis,
@@ -55,7 +55,7 @@ interface MessageAnalysisProps {
 	topCustomers: CustomerActivity[];
 	conversationAnalysis: ConversationAnalysis;
 	wordFrequency: WordFrequency[];
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 type WordTooltipProps = {
@@ -82,7 +82,7 @@ function WordTooltip({ active, payload, label }: WordTooltipProps) {
 				<div className="space-y-1 text-sm">
 					<div className="flex items-center justify-between gap-4">
 						<div className="flex items-center gap-2">
-							<div className="w-3 h-3 rounded-sm bg-chart-1"></div>
+							<div className="w-3 h-3 rounded-sm bg-chart-1" />
 							<span className="text-muted-foreground">
 								{i18n.getMessage("msg_customers", false)}:
 							</span>
@@ -91,7 +91,7 @@ function WordTooltip({ active, payload, label }: WordTooltipProps) {
 					</div>
 					<div className="flex items-center justify-between gap-4">
 						<div className="flex items-center gap-2">
-							<div className="w-3 h-3 rounded-sm bg-chart-2"></div>
+							<div className="w-3 h-3 rounded-sm bg-chart-2" />
 							<span className="text-muted-foreground">
 								{i18n.getMessage("msg_assistant", false)}:
 							</span>
@@ -116,7 +116,7 @@ export function MessageAnalysis({
 	topCustomers,
 	conversationAnalysis,
 	wordFrequency,
-	isRTL,
+	isLocalized,
 }: MessageAnalysisProps) {
 	const [currentPage, setCurrentPage] = useState(0);
 	const customersPerPage = 10;
@@ -156,9 +156,9 @@ export function MessageAnalysis({
 			};
 
 			const key = dayMap[dayName as keyof typeof dayMap];
-			return key ? i18n.getMessage(key, isRTL) : dayName;
+			return key ? i18n.getMessage(key, isLocalized) : dayName;
 		},
-		[isRTL],
+		[isLocalized],
 	);
 
 	// Create heatmap grid
@@ -201,12 +201,12 @@ export function MessageAnalysis({
 
 	const getIntensityLabel = (count: number) => {
 		const intensity = count / maxCount;
-		if (intensity === 0) return i18n.getMessage("msg_no_messages", isRTL);
-		if (intensity < 0.2) return i18n.getMessage("msg_very_low", isRTL);
-		if (intensity < 0.4) return i18n.getMessage("msg_low", isRTL);
-		if (intensity < 0.6) return i18n.getMessage("msg_medium", isRTL);
-		if (intensity < 0.8) return i18n.getMessage("msg_high", isRTL);
-		return i18n.getMessage("msg_very_high", isRTL);
+		if (intensity === 0) return i18n.getMessage("msg_no_messages", isLocalized);
+		if (intensity < 0.2) return i18n.getMessage("msg_very_low", isLocalized);
+		if (intensity < 0.4) return i18n.getMessage("msg_low", isLocalized);
+		if (intensity < 0.6) return i18n.getMessage("msg_medium", isLocalized);
+		if (intensity < 0.8) return i18n.getMessage("msg_high", isLocalized);
+		return i18n.getMessage("msg_very_high", isLocalized);
 	};
 
 	// Precomputed labels to avoid JSX inline IIFEs and multiline parentheses
@@ -284,7 +284,7 @@ export function MessageAnalysis({
 					<Card className="h-full">
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm font-medium">
-								{i18n.getMessage("msg_total_messages", isRTL)}
+								{i18n.getMessage("msg_total_messages", isLocalized)}
 							</CardTitle>
 							<MessageSquare className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
@@ -293,7 +293,7 @@ export function MessageAnalysis({
 								{conversationAnalysis.totalMessages.toLocaleString()}
 							</div>
 							<p className="text-xs text-muted-foreground">
-								{i18n.getMessage("msg_across_all_conversations", isRTL)}
+								{i18n.getMessage("msg_across_all_conversations", isLocalized)}
 							</p>
 						</CardContent>
 					</Card>
@@ -308,7 +308,7 @@ export function MessageAnalysis({
 					<Card className="h-full">
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm font-medium">
-								{i18n.getMessage("msg_avg_message_length", isRTL)}
+								{i18n.getMessage("msg_avg_message_length", isLocalized)}
 							</CardTitle>
 							<TrendingUp className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
@@ -317,9 +317,9 @@ export function MessageAnalysis({
 								{conversationAnalysis.avgMessageLength.toFixed(0)}
 							</div>
 							<p className="text-xs text-muted-foreground">
-								{i18n.getMessage("msg_chars", isRTL)} •{" "}
+								{i18n.getMessage("msg_chars", isLocalized)} •{" "}
 								{conversationAnalysis.avgWordsPerMessage.toFixed(0)}{" "}
-								{i18n.getMessage("msg_words_avg", isRTL)}
+								{i18n.getMessage("msg_words_avg", isLocalized)}
 							</p>
 						</CardContent>
 					</Card>
@@ -334,19 +334,19 @@ export function MessageAnalysis({
 					<Card className="h-full">
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm font-medium">
-								{i18n.getMessage("msg_avg_response_time", isRTL)}
+								{i18n.getMessage("msg_avg_response_time", isLocalized)}
 							</CardTitle>
 							<Clock className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
 						<CardContent>
 							<div className="text-2xl font-bold">
 								{conversationAnalysis.responseTimeStats.avg.toFixed(1)}
-								{i18n.getMessage("msg_minutes", isRTL)}
+								{i18n.getMessage("msg_minutes", isLocalized)}
 							</div>
 							<p className="text-xs text-muted-foreground">
-								{i18n.getMessage("msg_median", isRTL)}{" "}
+								{i18n.getMessage("msg_median", isLocalized)}{" "}
 								{conversationAnalysis.responseTimeStats.median.toFixed(1)}
-								{i18n.getMessage("msg_minutes", isRTL)}
+								{i18n.getMessage("msg_minutes", isLocalized)}
 							</p>
 						</CardContent>
 					</Card>
@@ -361,7 +361,7 @@ export function MessageAnalysis({
 					<Card className="h-full">
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm font-medium">
-								{i18n.getMessage("msg_messages_per_customer", isRTL)}
+								{i18n.getMessage("msg_messages_per_customer", isLocalized)}
 							</CardTitle>
 							<Users className="h-4 w-4 text-muted-foreground" />
 						</CardHeader>
@@ -370,7 +370,10 @@ export function MessageAnalysis({
 								{conversationAnalysis.avgMessagesPerCustomer.toFixed(1)}
 							</div>
 							<p className="text-xs text-muted-foreground">
-								{i18n.getMessage("msg_average_conversation_length", isRTL)}
+								{i18n.getMessage(
+									"msg_average_conversation_length",
+									isLocalized,
+								)}
 							</p>
 						</CardContent>
 					</Card>
@@ -389,10 +392,10 @@ export function MessageAnalysis({
 							<div>
 								<CardTitle className="flex items-center gap-2">
 									<MessageSquare className="h-5 w-5 text-chart-1" />
-									{i18n.getMessage("msg_volume_heatmap", isRTL)}
+									{i18n.getMessage("msg_volume_heatmap", isLocalized)}
 								</CardTitle>
 								<p className="text-sm text-muted-foreground mt-1">
-									{i18n.getMessage("msg_activity_patterns", isRTL)}
+									{i18n.getMessage("msg_activity_patterns", isLocalized)}
 								</p>
 							</div>
 							<div className="text-right">
@@ -400,7 +403,7 @@ export function MessageAnalysis({
 									{maxCount}
 								</div>
 								<p className="text-xs text-muted-foreground">
-									{i18n.getMessage("msg_peak_messages", isRTL)}
+									{i18n.getMessage("msg_peak_messages", isLocalized)}
 								</p>
 							</div>
 						</div>
@@ -409,7 +412,7 @@ export function MessageAnalysis({
 						<div className="space-y-4">
 							{/* Enhanced Header with time indicators */}
 							<div className="flex items-center mb-3">
-								<div className="w-16 flex-shrink-0"></div>
+								<div className="w-16 flex-shrink-0" />
 								<div className="flex flex-1 relative">
 									{hours.map((hour) => (
 										<div
@@ -420,17 +423,17 @@ export function MessageAnalysis({
 											{/* Time period indicators */}
 											{hour === 6 && (
 												<div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-3 font-medium">
-													{i18n.getMessage("msg_morning", isRTL)}
+													{i18n.getMessage("msg_morning", isLocalized)}
 												</div>
 											)}
 											{hour === 12 && (
 												<div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-2 font-medium">
-													{i18n.getMessage("msg_afternoon", isRTL)}
+													{i18n.getMessage("msg_afternoon", isLocalized)}
 												</div>
 											)}
 											{hour === 18 && (
 												<div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-4 font-medium">
-													{i18n.getMessage("msg_evening", isRTL)}
+													{i18n.getMessage("msg_evening", isLocalized)}
 												</div>
 											)}
 										</div>
@@ -454,7 +457,7 @@ export function MessageAnalysis({
 													<div
 														key={`${day}-${hour}`}
 														className={`relative flex-1 aspect-square ${getIntensity(count)} min-w-[24px] min-h-[24px] rounded border-2`}
-														title={`${translateDayName(day)} ${hour.toString().padStart(2, "0")}:00\n${count} ${i18n.getMessage("msg_messages", isRTL)}\n${getIntensityLabel(count)} ${i18n.getMessage("msg_activity", isRTL)}`}
+														title={`${translateDayName(day)} ${hour.toString().padStart(2, "0")}:00\n${count} ${i18n.getMessage("msg_messages", isLocalized)}\n${getIntensityLabel(count)} ${i18n.getMessage("msg_activity", isLocalized)}`}
 													>
 														{count > 0 && (
 															<div className="absolute inset-0 flex items-center justify-center">
@@ -464,7 +467,7 @@ export function MessageAnalysis({
 															</div>
 														)}
 														{count === maxCount && (
-															<div className="absolute -top-1 -right-1 w-3 h-3 bg-chart-3 rounded-full border-2 border-background shadow-sm"></div>
+															<div className="absolute -top-1 -right-1 w-3 h-3 bg-chart-3 rounded-full border-2 border-background shadow-sm" />
 														)}
 													</div>
 												);
@@ -478,16 +481,16 @@ export function MessageAnalysis({
 							<div className="mt-6 space-y-4">
 								<div className="flex items-center justify-between">
 									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<span>{i18n.getMessage("msg_less", isRTL)}</span>
+										<span>{i18n.getMessage("msg_less", isLocalized)}</span>
 									</div>
 									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										<span>{i18n.getMessage("msg_more", isRTL)}</span>
+										<span>{i18n.getMessage("msg_more", isLocalized)}</span>
 									</div>
 								</div>
 
 								<div className="relative">
 									<div className="h-4 rounded-full overflow-hidden border border-border/50 shadow-inner">
-										<div className="h-full bg-gradient-to-r from-muted/20 via-chart-1/30 via-chart-1/60 to-chart-1"></div>
+										<div className="h-full bg-gradient-to-r from-muted/20 via-chart-1/30 via-chart-1/60 to-chart-1" />
 									</div>
 									<div className="flex justify-between mt-2 text-xs text-muted-foreground">
 										<span>0</span>
@@ -502,7 +505,7 @@ export function MessageAnalysis({
 								<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
 									<div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
 										<div className="text-xs text-muted-foreground">
-											{i18n.getMessage("msg_peak_hour", isRTL)}
+											{i18n.getMessage("msg_peak_hour", isLocalized)}
 										</div>
 										<div className="text-sm font-semibold text-chart-1">
 											{peakHourLabel}
@@ -511,7 +514,7 @@ export function MessageAnalysis({
 
 									<div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
 										<div className="text-xs text-muted-foreground">
-											{i18n.getMessage("msg_busiest_day", isRTL)}
+											{i18n.getMessage("msg_busiest_day", isLocalized)}
 										</div>
 										<div className="text-sm font-semibold text-chart-2">
 											{busiestDayShortLabel}
@@ -520,7 +523,7 @@ export function MessageAnalysis({
 
 									<div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
 										<div className="text-xs text-muted-foreground">
-											{i18n.getMessage("msg_total_messages", isRTL)}
+											{i18n.getMessage("msg_total_messages", isLocalized)}
 										</div>
 										<div className="text-sm font-semibold text-chart-3">
 											{messageHeatmap
@@ -531,7 +534,7 @@ export function MessageAnalysis({
 
 									<div className="bg-accent/10 rounded-lg p-3 border border-accent/20">
 										<div className="text-xs text-muted-foreground">
-											{i18n.getMessage("msg_avg_per_hour", isRTL)}
+											{i18n.getMessage("msg_avg_per_hour", isLocalized)}
 										</div>
 										<div className="text-sm font-semibold text-chart-4">
 											{averageMessagesPerHourLabel}
@@ -555,18 +558,18 @@ export function MessageAnalysis({
 					<Card className="h-full">
 						<CardHeader>
 							<CardTitle>
-								{i18n.getMessage("msg_most_active_customers", isRTL)}{" "}
+								{i18n.getMessage("msg_most_active_customers", isLocalized)}{" "}
 								{`(${maxCustomers})`}
 							</CardTitle>
 							<div className="flex items-center justify-between">
 								<div className="flex items-center space-x-2">
 									<Badge>
-										{i18n.getMessage("msg_page", isRTL)} {currentPage + 1}{" "}
-										{i18n.getMessage("msg_of", isRTL)} {totalPages}
+										{i18n.getMessage("msg_page", isLocalized)} {currentPage + 1}{" "}
+										{i18n.getMessage("msg_of", isLocalized)} {totalPages}
 									</Badge>
 									<Badge>
 										{limitedCustomers.length}{" "}
-										{i18n.getMessage("msg_total", isRTL)}
+										{i18n.getMessage("msg_total", isLocalized)}
 									</Badge>
 								</div>
 
@@ -713,15 +716,22 @@ export function MessageAnalysis({
 														<HoverCardContent className="w-[300px] p-0">
 															<CustomerStatsCard
 																selectedConversationId={customer.wa_id}
-																conversations={conversations}
-																reservations={reservations}
-																isRTL={isRTL}
+																conversations={
+																	conversations as unknown as import("@/types/calendar").Conversations
+																}
+																reservations={
+																	reservations as unknown as Record<
+																		string,
+																		import("@/types/calendar").Reservation[]
+																	>
+																}
+																isLocalized={isLocalized}
 																isHoverCard={true}
 															/>
 														</HoverCardContent>
 													</HoverCard>
 													<p className="text-xs text-muted-foreground">
-														{i18n.getMessage("msg_last", isRTL)}{" "}
+														{i18n.getMessage("msg_last", isLocalized)}{" "}
 														{new Date(
 															customer.lastActivity,
 														).toLocaleDateString()}
@@ -732,11 +742,11 @@ export function MessageAnalysis({
 												<div className="flex items-center space-x-2">
 													<Badge className="text-xs">
 														{customer.messageCount}{" "}
-														{i18n.getMessage("msg_msgs", isRTL)}
+														{i18n.getMessage("msg_msgs", isLocalized)}
 													</Badge>
 													<Badge className="text-xs">
 														{customer.reservationCount}{" "}
-														{i18n.getMessage("msg_bookings", isRTL)}
+														{i18n.getMessage("msg_bookings", isLocalized)}
 													</Badge>
 												</div>
 												<Progress
@@ -768,10 +778,10 @@ export function MessageAnalysis({
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<MessageSquare className="h-5 w-5 text-chart-1" />
-								{i18n.getMessage("msg_most_common_words", isRTL)}
+								{i18n.getMessage("msg_most_common_words", isLocalized)}
 							</CardTitle>
 							<CardDescription>
-								{isRTL
+								{isLocalized
 									? "الكلمات الأكثر شيوعاً في المحادثات"
 									: "Most frequently used words in conversations"}
 							</CardDescription>
@@ -804,7 +814,7 @@ export function MessageAnalysis({
 												dataKey="customerCount"
 												stackId="a"
 												fill="#3b82f6"
-												name={i18n.getMessage("msg_customers", isRTL)}
+												name={i18n.getMessage("msg_customers", isLocalized)}
 												stroke="#3b82f6"
 												strokeWidth={1}
 											/>
@@ -812,7 +822,7 @@ export function MessageAnalysis({
 												dataKey="assistantCount"
 												stackId="a"
 												fill="#ef4444"
-												name={i18n.getMessage("msg_assistant", isRTL)}
+												name={i18n.getMessage("msg_assistant", isLocalized)}
 												stroke="#ef4444"
 												strokeWidth={1}
 											/>
@@ -821,7 +831,7 @@ export function MessageAnalysis({
 									</ResponsiveContainer>
 								) : (
 									<div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-										{i18n.getMessage("chart_no_data", isRTL)}
+										{i18n.getMessage("chart_no_data", isLocalized)}
 									</div>
 								)}
 							</div>

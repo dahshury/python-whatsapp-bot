@@ -8,7 +8,6 @@ import TimeKeeper from "react-timekeeper";
 import { useClickOutsideIgnore } from "./hooks/useClickOutsideIgnore";
 import { useTimekeeperEditor } from "./hooks/useTimekeeperEditor";
 import type {
-	TimeKeeperData,
 	TimekeeperCell,
 	TimekeeperCellProps,
 } from "./models/TimekeeperCellTypes";
@@ -36,25 +35,11 @@ const ClockIcon = () => (
 	</svg>
 );
 
-// Narrow unknown to TimeKeeperData without using any
-function isTimeKeeperData(val: unknown): val is TimeKeeperData {
-	if (val === null || typeof val !== "object") return false;
-	const v = val as Record<string, unknown>;
-	const isOptionalString = (x: unknown) =>
-		x === undefined || typeof x === "string";
-	return (
-		isOptionalString(v.formatted12) &&
-		isOptionalString(v.formatted24) &&
-		isOptionalString(v.time)
-	);
-}
-
 // TimeKeeper Renderer Component
 const TimeKeeperRenderer = ({
 	timeRestrictionService,
 	memoizedTimeValue,
 	staticTimeKeeperKey,
-	handleTimeChange,
 	handleDoneClick,
 	data,
 	timekeeperError,
@@ -63,7 +48,6 @@ const TimeKeeperRenderer = ({
 	timeRestrictionService?: unknown;
 	memoizedTimeValue?: string;
 	staticTimeKeeperKey?: string;
-	handleTimeChange?: (data: unknown) => void;
 	handleDoneClick: () => void;
 	data?: unknown;
 	timekeeperError?: string;
@@ -130,7 +114,7 @@ const TimeKeeperRenderer = ({
 			<TimeKeeper
 				key={staticTimeKeeperKey}
 				time={validatedTime}
-				onChange={handleTimeChange}
+				onChange={() => {}} // No-op since we handle time changes via done button
 				hour24Mode={validatedHour24Mode}
 				switchToMinuteOnHourSelect={true}
 				closeOnMinuteSelect={false}
@@ -147,7 +131,7 @@ const TimeKeeperRenderer = ({
 					</button>
 				)}
 				coarseMinutes={120}
-				disabledTimeRange={disabledTimeRange}
+				disabledTimeRange={disabledTimeRange || null}
 			/>
 		);
 	} catch (error) {
@@ -208,7 +192,6 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 				timeRestrictionService,
 				handleIconClick,
 				handleDoneClick,
-				handleTimeChange,
 				handleInputChange,
 				handleBlur,
 				handleKeyDown,
@@ -223,15 +206,6 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 				) => void,
 				value: props.value as unknown as TimekeeperCellProps,
 			});
-
-			// Create wrapper functions to handle type mismatches
-			const handleTimeChangeWrapper = (timeData: unknown) => {
-				if (isTimeKeeperData(timeData)) {
-					handleTimeChange(timeData);
-				}
-			};
-
-			const timekeeperErrorValue = timekeeperError || undefined;
 
 			// Use click outside ignore hook
 			useClickOutsideIgnore({
@@ -297,10 +271,9 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 									timeRestrictionService={timeRestrictionService}
 									memoizedTimeValue={memoizedTimeValue}
 									staticTimeKeeperKey={staticTimeKeeperKey}
-									handleTimeChange={handleTimeChangeWrapper}
 									handleDoneClick={handleDoneClick}
 									data={data}
-									timekeeperError={timekeeperErrorValue}
+									{...(timekeeperError && { timekeeperError: timekeeperError })}
 									setTimekeeperError={(e?: string) =>
 										setTimekeeperError(e ?? null)
 									}
@@ -318,12 +291,14 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 			const date = new Date(1970, 0, 1);
 			if (TIME_REGEX_24.test(val)) {
 				const [hours, minutes] = val.split(":").map(Number);
-				date.setHours(hours, minutes, 0, 0);
+				if (hours !== undefined && minutes !== undefined) {
+					date.setHours(hours, minutes, 0, 0);
+				}
 			} else {
 				const match = val.match(TIME_REGEX_12);
-				if (match) {
-					let hours = parseInt(match[1], 10);
-					const minutes = parseInt(match[2], 10);
+				if (match?.[1] && match[2] && match[3]) {
+					let hours = Number.parseInt(match[1], 10);
+					const minutes = Number.parseInt(match[2], 10);
 					const isPM = match[3].toLowerCase() === "pm";
 					if (hours === 12 && !isPM) hours = 0;
 					else if (hours !== 12 && isPM) hours += 12;

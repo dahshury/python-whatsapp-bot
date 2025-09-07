@@ -25,7 +25,7 @@ export class DataTableOperationsService {
 
 	constructor(
 		calendarApi: CalendarApi,
-		private readonly isRTL: boolean,
+		private readonly isLocalized: boolean,
 		private readonly refreshCustomerData?: () => Promise<void>,
 	) {
 		// Initialize core services
@@ -43,7 +43,7 @@ export class DataTableOperationsService {
 		this.cancelService = new ReservationCancelService(
 			this.calendarIntegration,
 			localEchoManager,
-			isRTL,
+			this.isLocalized,
 		);
 
 		this.modifyService = new ReservationModifyService(
@@ -51,14 +51,13 @@ export class DataTableOperationsService {
 			webSocketService,
 			formattingService,
 			localEchoManager,
-			isRTL,
+			this.isLocalized,
 		);
 
 		this.createService = new ReservationCreateService(
-			this.calendarIntegration,
 			formattingService,
 			localEchoManager,
-			isRTL,
+			this.isLocalized,
 		);
 	}
 

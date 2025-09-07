@@ -42,7 +42,7 @@ const validateNameField = (
 
 	// At least two words
 	if (words.length < 2) {
-		if (words.length === 1 && words[0].length >= 2) {
+		if (words.length === 1 && words[0] && words[0].length >= 2) {
 			words.push("Doe"); // add placeholder last name
 		} else {
 			return {
@@ -447,7 +447,8 @@ export function useGridData(
 
 					if (!validation.isValid) {
 						cellWithValidation.isMissingValue = true;
-						cellWithValidation.validationError = validation.errorMessage;
+						cellWithValidation.validationError =
+							validation.errorMessage || "Validation error";
 					} else {
 						cellWithValidation.isMissingValue = false;
 						if (
@@ -497,7 +498,7 @@ export function useGridData(
 					).isMissingValue = true;
 					(
 						cell as { isMissingValue?: boolean; validationError?: string }
-					).validationError = validation.errorMessage;
+					).validationError = validation.errorMessage || "Validation error";
 				} else {
 					(cell as { isMissingValue?: boolean }).isMissingValue = false;
 					if (validation.correctedValue && validation.correctedValue !== data) {

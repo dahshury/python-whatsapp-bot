@@ -60,13 +60,16 @@ export function alignAndSortEventsForCalendar(
 		const orderedKeys = Array.from(groups.keys()).sort((a, b) => {
 			const [da, ta] = a.split("_");
 			const [db, tb] = b.split("_");
-			if (da !== db) return da.localeCompare(db);
-			return to24h(ta).localeCompare(to24h(tb));
+			const dateA = da || "";
+			const dateB = db || "";
+			if (dateA !== dateB) return dateA.localeCompare(dateB);
+			return to24h(ta || "00:00").localeCompare(to24h(tb || "00:00"));
 		});
 
 		for (const key of orderedKeys) {
 			const [dateStr, baseTime] = key.split("_");
 			const slotEvents = groups.get(key) || [];
+			const baseTimeStr = String(baseTime || "00:00");
 			// Sort by type then title for deterministic order
 			slotEvents.sort((a, b) => {
 				const t1 = Number(
@@ -86,7 +89,7 @@ export function alignAndSortEventsForCalendar(
 			const minutesPerReservation = slotEvents.length >= 6 ? 15 : 20;
 			const gapMinutes = 1;
 			let offset = 0;
-			const base = to24h(baseTime);
+			const base = to24h(baseTimeStr);
 			for (const ev of slotEvents) {
 				const startTime = addMinutesToClock(base, Math.floor(offset));
 				const endTime = addMinutesToClock(
@@ -129,17 +132,18 @@ function toSlotBase(
 ): string {
 	try {
 		const baseTime = to24h(String(timeStr || "00:00"));
-		const [hh, mm] = baseTime.split(":").map((v) => parseInt(v, 10));
-		const minutes =
-			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
+		const timeParts = baseTime.split(":");
+		const hh = timeParts[0] ? parseInt(timeParts[0], 10) : 0;
+		const mm = timeParts[1] ? parseInt(timeParts[1], 10) : 0;
+		const minutes = (Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
 		const { slotMinTime } = getSlotTimes(day, freeRoam, "");
-		const [sH, sM] = String(slotMinTime || "00:00:00")
+		const slotTimeParts = String(slotMinTime || "00:00:00")
 			.slice(0, 5)
-			.split(":")
-			.map((v) => parseInt(v || "0", 10));
-		const minMinutes =
-			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
+			.split(":");
+		const sH = slotTimeParts[0] ? parseInt(slotTimeParts[0], 10) : 0;
+		const sM = slotTimeParts[1] ? parseInt(slotTimeParts[1], 10) : 0;
+		const minMinutes = (Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
 		const rel = Math.max(0, minutes - minMinutes);
 		const slotIndex = Math.floor(rel / duration);
@@ -155,11 +159,10 @@ function toSlotBase(
 // Add minutes to an HH:MM clock string and return HH:MM:SS (no timezone)
 function addMinutesToClock(baseTime: string, minutesToAdd: number): string {
 	try {
-		const [h, m] = baseTime.split(":").map((v) => parseInt(v || "0", 10));
-		let total =
-			(Number.isFinite(h) ? h : 0) * 60 +
-			(Number.isFinite(m) ? m : 0) +
-			minutesToAdd;
+		const addTimeParts = baseTime.split(":");
+		const h = addTimeParts[0] ? parseInt(addTimeParts[0], 10) : 0;
+		const m = addTimeParts[1] ? parseInt(addTimeParts[1], 10) : 0;
+		let total = (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0) + minutesToAdd;
 		if (total < 0) total = 0;
 		if (total > 24 * 60 - 1) total = 24 * 60 - 1;
 		const hh = String(Math.floor(total / 60)).padStart(2, "0");
@@ -183,30 +186,64 @@ export function filterEventsForDataTable(
 export function transformEventsForDataTable(
 	events: CalendarEventFull[],
 ): EditorEvent[] {
-	return events.map((e) => ({
-		id: e.id,
-		title: e.title,
-		start: e.start,
-		end: e.end,
-		type: e.extendedProps?.cancelled ? "cancellation" : "reservation",
-		extendedProps: {
+	return events.map((e) => {
+		const customerName = (e as { extendedProps?: { customerName?: string } })
+			.extendedProps?.customerName;
+		const phone = (e as { extendedProps?: { phone?: string } }).extendedProps?.phone;
+		const waId =
+			(e as { extendedProps?: { waId?: string; wa_id?: string } })
+				.extendedProps?.waId ||
+			(e as { extendedProps?: { waId?: string; wa_id?: string } })
+				.extendedProps?.wa_id;
+		const status = (e as { extendedProps?: { status?: string } }).extendedProps
+			?.status;
+
+		const extendedProps: {
+			type: number;
+			cancelled: boolean;
+			reservationId?: number;
+			customerName?: string;
+			phone?: string;
+			waId?: string;
+			status?: string;
+		} = {
 			type: e.extendedProps?.type ?? 0,
 			cancelled: e.extendedProps?.cancelled ?? false,
-			reservationId: (() => {
-				const rid: unknown = e.extendedProps?.reservationId as unknown;
-				const n = typeof rid === "string" ? Number(rid) : (rid as number);
-				return Number.isFinite(n) ? (n as number) : undefined;
-			})(),
-			customerName: (e as { extendedProps?: { customerName?: string } })
-				.extendedProps?.customerName,
-			phone: (e as { extendedProps?: { phone?: string } }).extendedProps?.phone,
-			waId:
-				(e as { extendedProps?: { waId?: string; wa_id?: string } })
-					.extendedProps?.waId ||
-				(e as { extendedProps?: { waId?: string; wa_id?: string } })
-					.extendedProps?.wa_id,
-			status: (e as { extendedProps?: { status?: string } }).extendedProps
-				?.status,
-		},
-	}));
+		};
+
+		const reservationId = (() => {
+			const rid: unknown = e.extendedProps?.reservationId as unknown;
+			const n = typeof rid === "string" ? Number(rid) : (rid as number);
+			return Number.isFinite(n) ? (n as number) : undefined;
+		})();
+
+		if (reservationId !== undefined) {
+			extendedProps.reservationId = reservationId;
+		}
+
+		if (customerName) {
+			extendedProps.customerName = customerName;
+		}
+
+		if (phone) {
+			extendedProps.phone = phone;
+		}
+
+		if (waId) {
+			extendedProps.waId = waId;
+		}
+
+		if (status) {
+			extendedProps.status = status;
+		}
+
+		return {
+			id: e.id,
+			title: e.title,
+			start: e.start,
+			end: e.end,
+			type: e.extendedProps?.cancelled ? "cancellation" : "reservation",
+			extendedProps,
+		};
+	});
 }

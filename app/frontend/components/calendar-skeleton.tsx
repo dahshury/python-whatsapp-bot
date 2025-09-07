@@ -86,5 +86,3 @@ export function CalendarSkeleton({
 		</BlurFade>
 	);
 }
-
-export default CalendarSkeleton;

@@ -139,13 +139,6 @@ export class EditingState {
 	}
 
 	toJson(columns: BaseColumnProps[]): string {
-		console.log("🏗️ EditingState.toJson called with columns:", columns.length);
-		console.log("🏗️ Current state:", {
-			editedCellsSize: this.editedCells.size,
-			addedRowsLength: this.addedRows.length,
-			deletedRowsLength: this.deletedRows.length,
-		});
-
 		const columnsByIndex = new Map<number, BaseColumnProps>();
 		columns.forEach((column) => {
 			columnsByIndex.set(column.indexNumber, column);
@@ -165,11 +158,23 @@ export class EditingState {
 		// row position -> column name -> edited value
 		this.editedCells.forEach((row: Map<number, GridCell>, rowIndex: number) => {
 			const editedRow: Record<string, unknown> = {};
+			let hasOriginalData = false;
+
 			row.forEach((cell: GridCell, colIndex: number) => {
 				const column = columnsByIndex.get(colIndex);
 				if (column) {
 					const cellValue = this.getCellValue(cell, column);
 					const originalValue = this.getOriginalCellValue(rowIndex, colIndex);
+
+					// Check if this cell originally had meaningful data
+					// Treat phone country code prefixes as empty (they're just defaults)
+					const isPhonePrefix =
+						typeof originalValue === "string" &&
+						/^\+\d{1,4}\s*$/.test(originalValue.trim());
+
+					if (originalValue != null && originalValue !== "" && !isPhonePrefix) {
+						hasOriginalData = true;
+					}
 
 					// Only include if value is different from original
 					const isDifferent = !this.areValuesEqual(cellValue, originalValue);
@@ -184,76 +189,77 @@ export class EditingState {
 					}
 				}
 			});
+
 			// Only add the row if it has at least one edited cell
 			if (Object.keys(editedRow).length > 0) {
-				currentState.edited_rows[rowIndex] = editedRow;
+				// If the row originally had no data, treat it as an addition instead of edit
+				if (!hasOriginalData) {
+					// For moved rows, we need ALL cell values, not just changed ones
+					const completeRow: Record<string, unknown> = {};
+					// Iterate over ALL columns, not just edited cells
+					columnsByIndex.forEach((column, colIndex) => {
+						// Get current cell value (either edited or original)
+						const currentCell = row.get(colIndex);
+						let cellValue: unknown;
+
+						if (currentCell) {
+							// Use edited cell value
+							cellValue = this.getCellValue(currentCell, column);
+						} else {
+							// Use original cell value
+							cellValue = this.getOriginalCellValue(rowIndex, colIndex);
+						}
+
+						// Include ALL cell values for moved rows, even if they match defaults
+						if (notNullOrUndefined(cellValue)) {
+							completeRow[column.id || column.name || `col_${colIndex}`] =
+								cellValue;
+						}
+					});
+
+					console.log(
+						`🔄 Complete row data for moved row ${rowIndex}:`,
+						completeRow,
+					);
+					currentState.added_rows.push(completeRow);
+				} else {
+					currentState.edited_rows[rowIndex] = editedRow;
+				}
 			}
 		});
 
 		// Loop through all added rows and transform into the format that
 		// we use for the JSON-compatible widget state:
 		// List of column name -> edited value
-		this.addedRows.forEach(
-			(row: Map<number, GridCell>, addedRowIndex: number) => {
-				console.log(
-					`🏗️ Processing added row ${addedRowIndex}, has ${row.size} cells`,
-				);
+		this.addedRows.forEach((row: Map<number, GridCell>) => {
+			const addedRow: Record<string, unknown> = {};
+			// This flag is used to check if the row is incomplete
+			// (i.e. missing required values) and should therefore not be included in
+			// the current state version.
+			let isIncomplete = false;
 
-				const addedRow: Record<string, unknown> = {};
-				// This flag is used to check if the row is incomplete
-				// (i.e. missing required values) and should therefore not be included in
-				// the current state version.
-				let isIncomplete = false;
-				const debugInfo: Record<string, unknown> = {};
+			row.forEach((cell: GridCell, colIndex: number) => {
+				const column = columnsByIndex.get(colIndex);
+				if (column) {
+					const cellValue = this.getCellValue(cell, column);
+					const colDef = this.columnDefinitions.get(colIndex);
+					const isMissing = isMissingValueCell(cell);
 
-				row.forEach((cell: GridCell, colIndex: number) => {
-					const column = columnsByIndex.get(colIndex);
-					if (column) {
-						const cellValue = this.getCellValue(cell, column);
-						const colDef = this.columnDefinitions.get(colIndex);
-						const isMissing = isMissingValueCell(cell);
-
-						debugInfo[column.name || column.id || colIndex] = {
-							cellValue,
-							isMissing,
-							isRequired: colDef?.isRequired,
-							isEditable: colDef?.isEditable,
-						};
-
-						if (
-							colDef?.isRequired &&
-							colDef?.isEditable !== false &&
-							isMissing
-						) {
-							// If the cell is missing a required value, the row is incomplete
-							console.log(
-								`🚨 Row ${addedRowIndex} marked incomplete due to missing required field: ${column.name || column.id}`,
-							);
-							isIncomplete = true;
-						}
-
-						if (notNullOrUndefined(cellValue) && cellValue !== "") {
-							addedRow[getColumnName(column)] = cellValue;
-						}
+					if (colDef?.isRequired && colDef?.isEditable !== false && isMissing) {
+						// If the cell is missing a required value, the row is incomplete
+						isIncomplete = true;
 					}
-				});
 
-				console.log(`🏗️ Added row ${addedRowIndex} debug:`, debugInfo);
-				console.log(`🏗️ Added row ${addedRowIndex} result:`, {
-					addedRow,
-					isIncomplete,
-				});
-
-				if (!isIncomplete) {
-					currentState.added_rows.push(addedRow);
-					console.log(`✅ Added row ${addedRowIndex} included in changes`);
-				} else {
-					console.log(
-						`❌ Added row ${addedRowIndex} excluded due to incomplete data`,
-					);
+					if (notNullOrUndefined(cellValue) && cellValue !== "") {
+						addedRow[getColumnName(column)] = cellValue;
+					}
 				}
-			},
-		);
+			});
+
+			if (!isIncomplete) {
+				currentState.added_rows.push(addedRow);
+			}
+		});
 
 		// The deleted rows don't need to be transformed
 		currentState.deleted_rows = this.deletedRows;
@@ -345,7 +351,10 @@ export class EditingState {
 	setCell(col: number, row: number, cell: GridCell): void {
 		if (this.isAddedRow(row)) {
 			const addedRowIndex = row - this.numRows;
-			if (addedRowIndex >= this.addedRows.length) {
+			if (
+				addedRowIndex >= this.addedRows.length ||
+				!this.addedRows[addedRowIndex]
+			) {
 				return;
 			}
 			this.addedRows[addedRowIndex].set(col, cell);
@@ -424,7 +433,8 @@ export class EditingState {
 
 		let originalIndex = row;
 		for (let i = 0; i < this.deletedRows.length; i++) {
-			if (this.deletedRows[i] > originalIndex) {
+			const deletedRow = this.deletedRows[i];
+			if (deletedRow !== undefined && deletedRow > originalIndex) {
 				break;
 			}
 			originalIndex += 1;
@@ -507,17 +517,24 @@ export class EditingState {
 				const colDef = this.columnDefinitions.get(colIndex);
 
 				if (column && colDef) {
-					// First check if the cell itself has the isMissingValue flag
-					if (
-						(cell as GridCell & { isMissingValue?: boolean }).isMissingValue ===
-						true
-					) {
+					// Check if the cell has validation error information
+					const cellWithValidation = cell as GridCell & {
+						isMissingValue?: boolean;
+						validationError?: string | undefined;
+					};
+
+					if (cellWithValidation.isMissingValue === true) {
+						// Use specific validation error message if available, otherwise use generic required message
+						const errorMessage =
+							cellWithValidation.validationError ||
+							messages.validation.required(
+								column.title || column.name || "Field",
+							);
+
 						errors.push({
 							row: rowIndex,
 							col: colIndex,
-							message: messages.validation.required(
-								column.title || column.name || "Field",
-							),
+							message: errorMessage,
 						});
 						return; // Skip further validation for this cell
 					}
@@ -571,17 +588,24 @@ export class EditingState {
 					const colDef = this.columnDefinitions.get(colIndex);
 
 					if (column && colDef) {
-						// First check if the cell itself has the isMissingValue flag
-						if (
-							(cell as GridCell & { isMissingValue?: boolean })
-								.isMissingValue === true
-						) {
+						// Check if the cell has validation error information
+						const cellWithValidation = cell as GridCell & {
+							isMissingValue?: boolean;
+							validationError?: string | undefined;
+						};
+
+						if (cellWithValidation.isMissingValue === true) {
+							// Use specific validation error message if available, otherwise use generic required message
+							const errorMessage =
+								cellWithValidation.validationError ||
+								messages.validation.required(
+									column.title || column.name || "Field",
+								);
+
 							errors.push({
 								row: rowIndex,
 								col: colIndex,
-								message: messages.validation.required(
-									column.title || column.name || "Field",
-								),
+								message: errorMessage,
 							});
 							return; // Skip further validation for this cell
 						}
@@ -806,136 +830,20 @@ export class EditingState {
 		return value1 === value2;
 	}
 
-	// Backward compatibility method for when column definitions are not set
-	private createCell(value: unknown, column: BaseColumnProps): GridCell | null {
-		// First try to use column definition if available
-		const colDef = this.columnDefinitions.get(column.indexNumber);
-		if (colDef) {
-			return this.createCellFromDefinition(value, colDef);
-		}
-
-		// Fallback to name/id inference for backward compatibility
-		const lowerId = column.id?.toLowerCase() || "";
-		const lowerName = column.name?.toLowerCase() || "";
-
-		// DATE
-		if (lowerId.includes("date") || lowerName.includes("date")) {
-			const dateObj = value ? new Date(value as string | number | Date) : null;
-			const displayDate =
-				dateObj && !Number.isNaN(dateObj.getTime())
-					? dateObj.toLocaleDateString("en-GB")
-					: "";
-			return {
-				kind: GridCellKind.Custom,
-				data: {
-					kind: "tempus-date-cell",
-					format: "date",
-					date: dateObj,
-					displayDate,
-					isDarkTheme: this.isDarkTheme,
-				},
-				copyData: displayDate,
-				allowOverlay: true,
-			};
-		}
-
-		// TIME
-		if (lowerId.includes("time") || lowerName.includes("time")) {
-			const dateObj = value ? new Date(value as string | number | Date) : null;
-			const displayTime =
-				dateObj && !Number.isNaN(dateObj.getTime())
-					? dateObj.toLocaleTimeString("en-US", {
-							hour: "2-digit",
-							minute: "2-digit",
-							hour12: true,
-						})
-					: "";
-			return {
-				kind: GridCellKind.Custom,
-				data: {
-					kind: "tempus-date-cell",
-					format: "time",
-					date: dateObj,
-					displayDate: displayTime,
-					isDarkTheme: this.isDarkTheme,
-				},
-				copyData: displayTime,
-				allowOverlay: true,
-			};
-		}
-
-		// NUMBER
+	/**
+	 * Update the base (original) row count to match the underlying data source
+	 * Call this after persisting changes so newly-added rows become base rows
+	 */
+	setBaseRowCount(newCount: number): void {
 		if (
-			lowerId.includes("number") ||
-			lowerId.includes("amount") ||
-			lowerName.includes("number") ||
-			lowerName.includes("amount")
+			typeof newCount !== "number" ||
+			Number.isNaN(newCount) ||
+			newCount < 0
 		) {
-			const numValue =
-				value !== null && value !== undefined ? Number(value) : 0;
-			return {
-				kind: GridCellKind.Number,
-				data: numValue,
-				displayData: numValue.toString(),
-				allowOverlay: true,
-			};
+			return;
 		}
-
-		// BOOLEAN
-		if (lowerId.includes("boolean") || lowerName.includes("boolean")) {
-			return {
-				kind: GridCellKind.Boolean,
-				data: Boolean(value),
-				allowOverlay: false,
-			};
-		}
-
-		// DROPDOWN
-		if (
-			lowerId.includes("status") ||
-			lowerId.includes("dropdown") ||
-			lowerId.includes("select") ||
-			lowerName.includes("status") ||
-			lowerName.includes("dropdown") ||
-			lowerName.includes("select")
-		) {
-			const dropdownValue = value?.toString() || "";
-			return {
-				kind: GridCellKind.Custom,
-				data: {
-					kind: "dropdown-cell",
-					value: dropdownValue,
-					allowedValues: ["Option A", "Option B", "Option C"], // Default options
-				},
-				copyData: dropdownValue,
-				allowOverlay: true,
-			};
-		}
-
-		// EMAIL
-		if (
-			lowerId.includes("email") ||
-			lowerId.includes("mail") ||
-			lowerName.includes("email") ||
-			lowerName.includes("mail")
-		) {
-			const emailValue = value?.toString() || "";
-			return {
-				kind: GridCellKind.Text,
-				data: emailValue,
-				displayData: emailValue,
-				allowOverlay: true,
-				contentAlign: "left",
-			};
-		}
-
-		// TEXT fallback
-		const stringValue = typeof value === "string" ? value : String(value || "");
-		return {
-			kind: GridCellKind.Text,
-			data: stringValue,
-			displayData: stringValue,
-			allowOverlay: true,
-		};
+		this.numRows = newCount;
+		// Notify listeners so grids recompute added/base row boundaries
+		this.triggerOnChange();
 	}
 }

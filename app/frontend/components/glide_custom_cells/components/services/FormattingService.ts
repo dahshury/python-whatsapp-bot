@@ -51,7 +51,7 @@ export const FormattingService = {
 };
 
 function formatNumber(value: number | string, format: string): string {
-	const num = typeof value === "string" ? parseFloat(value) : value;
+	const num = typeof value === "string" ? Number.parseFloat(value) : value;
 	if (Number.isNaN(num)) return String(value);
 
 	switch (format) {
@@ -114,7 +114,9 @@ function formatDate(value: string | Date, format: string): string {
 			});
 		case "automatic":
 			// ISO format: 2025-06-23
-			return date.toISOString().split("T")[0];
+			return (
+				date.toISOString().split("T")[0] || date.toLocaleDateString("en-GB")
+			);
 		case "distance":
 			return formatRelativeTime(date);
 		default:
@@ -163,11 +165,10 @@ function parseAndFormatTimeString(time: string, format?: string): string {
 
 			if (format === "automatic") {
 				return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-			} else {
-				const ampm = hours >= 12 ? "PM" : "AM";
-				const hour12 = hours % 12 || 12;
-				return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
 			}
+			const ampm = hours >= 12 ? "PM" : "AM";
+			const hour12 = hours % 12 || 12;
+			return `${hour12}:${minutes.toString().padStart(2, "0")} ${ampm}`;
 		}
 	}
 
@@ -177,34 +178,32 @@ function parseAndFormatTimeString(time: string, format?: string): string {
 	// Handle AM/PM format
 	if (normalizedTime.includes("AM") || normalizedTime.includes("PM")) {
 		const match = normalizedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-		if (match) {
+		if (match?.[1] && match[2] && match[3]) {
 			const [, hourStr, minutes, ampm] = match;
-			const hour = parseInt(hourStr, 10);
+			const hour = Number.parseInt(hourStr, 10);
 
 			if (format === "automatic") {
 				let hour24 = hour;
 				if (ampm.toUpperCase() === "PM" && hour !== 12) hour24 += 12;
 				if (ampm.toUpperCase() === "AM" && hour === 12) hour24 = 0;
 				return `${hour24.toString().padStart(2, "0")}:${minutes}`;
-			} else {
-				return `${hour}:${minutes} ${ampm.toUpperCase()}`;
 			}
+			return `${hour}:${minutes} ${ampm.toUpperCase()}`;
 		}
 	}
 
 	// Handle 24h format
 	const timeMatch = normalizedTime.match(/^(\d{1,2}):(\d{2})$/);
-	if (timeMatch) {
+	if (timeMatch?.[1] && timeMatch[2]) {
 		const [, hourStr, minutes] = timeMatch;
-		const hour = parseInt(hourStr, 10);
+		const hour = Number.parseInt(hourStr, 10);
 
 		if (format === "automatic") {
 			return `${hour.toString().padStart(2, "0")}:${minutes}`;
-		} else {
-			const ampm = hour >= 12 ? "PM" : "AM";
-			const hour12 = hour % 12 || 12;
-			return `${hour12}:${minutes} ${ampm}`;
 		}
+		const ampm = hour >= 12 ? "PM" : "AM";
+		const hour12 = hour % 12 || 12;
+		return `${hour12}:${minutes} ${ampm}`;
 	}
 
 	return time;
@@ -222,9 +221,9 @@ export function parseFormattedTime(formattedTime: string): {
 
 	if (formattedTime) {
 		const timeMatch = formattedTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
-		if (timeMatch) {
-			hours = parseInt(timeMatch[1], 10);
-			minutes = parseInt(timeMatch[2], 10);
+		if (timeMatch?.[1] && timeMatch[2]) {
+			hours = Number.parseInt(timeMatch[1], 10);
+			minutes = Number.parseInt(timeMatch[2], 10);
 
 			if (timeMatch[3]) {
 				const isPM = timeMatch[3].toUpperCase() === "PM";

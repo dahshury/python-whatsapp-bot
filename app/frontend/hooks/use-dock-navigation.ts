@@ -57,7 +57,6 @@ export function useDockNavigation({
 	} = useCalendarToolbar({
 		calendarRef: isCalendarPage && calendarRef ? calendarRef : null,
 		currentView: currentCalendarView,
-		onViewChange: onCalendarViewChange || (() => {}),
 	});
 
 	const handlePrev = React.useCallback(() => {

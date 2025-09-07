@@ -12,11 +12,10 @@ import { CalendarEventContextMenu } from "./calendar-event-context-menu";
 import { CalendarHoverCardPortal } from "./calendar-hover-card-portal";
 
 interface CalendarMainContentProps {
-	calendarRef: React.RefObject<CalendarCoreRef>;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	processedEvents: CalendarEvent[];
 	currentView: string;
 	currentDate: Date;
-	isRTL?: boolean;
 	isLocalized?: boolean;
 	freeRoam: boolean;
 	slotTimes: {
@@ -86,7 +85,6 @@ export function CalendarMainContent({
 	processedEvents,
 	currentView,
 	currentDate,
-	isRTL,
 	isLocalized,
 	freeRoam,
 	slotTimes,
@@ -112,7 +110,7 @@ export function CalendarMainContent({
 	isHydrated,
 	setCurrentDate,
 }: CalendarMainContentProps) {
-	const _isRTL = (isRTL ?? isLocalized === true) === true;
+	const _isLocalized = isLocalized ?? false;
 	return (
 		<>
 			<CalendarCore
@@ -120,14 +118,40 @@ export function CalendarMainContent({
 				events={processedEvents}
 				currentView={currentView}
 				currentDate={currentDate}
-				isRTL={_isRTL}
+				isLocalized={_isLocalized}
 				freeRoam={freeRoam}
 				slotTimes={slotTimes}
 				slotTimesKey={slotTimesKey}
 				calendarHeight={calendarHeight}
 				isVacationDate={isVacationDate}
-				onDateClick={callbacks.dateClick}
-				onSelect={callbacks.select}
+				{...(callbacks.dateClick
+					? {
+							onDateClick: (info: {
+								date: Date;
+								dateStr: string;
+								allDay: boolean;
+							}) =>
+								callbacks.dateClick?.({
+									...info,
+									view: { type: currentView },
+								}),
+						}
+					: {})}
+				{...(callbacks.select
+					? {
+							onSelect: (info: {
+								start: Date;
+								end: Date;
+								startStr: string;
+								endStr: string;
+								allDay: boolean;
+							}) =>
+								callbacks.select?.({
+									...info,
+									view: { type: currentView },
+								}),
+						}
+					: {})}
 				onEventClick={(info) => {
 					const waId =
 						(
@@ -165,7 +189,7 @@ export function CalendarMainContent({
 
 						if (info.view.type === "multiMonthYear") {
 							requestAnimationFrame(() => {
-								calendarRef.current?.updateSize();
+								calendarRef?.current?.updateSize();
 							});
 						}
 					}
@@ -217,7 +241,7 @@ export function CalendarMainContent({
 						isDragging={dragHandlers.isDragging}
 						conversations={conversations}
 						reservations={reservations}
-						isRTL={_isRTL}
+						isLocalized={_isLocalized}
 						onMouseEnter={hoverCard.onHoverCardMouseEnter}
 						onMouseLeave={hoverCard.onHoverCardMouseLeave}
 					/>

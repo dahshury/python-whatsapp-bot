@@ -45,7 +45,8 @@ export class DropdownColumnType implements IColumnType {
 		const validation = this.validateValue(selectedValue, column);
 		if (!validation.isValid) {
 			(cell as { isMissingValue?: boolean }).isMissingValue = true;
-			(cell as { validationError?: string }).validationError = validation.error;
+			(cell as { validationError?: string }).validationError =
+				validation.error || "";
 		}
 
 		return cell;

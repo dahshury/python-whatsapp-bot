@@ -15,7 +15,6 @@ export async function POST(request: Request) {
 		}
 
 		// Call the Python backend endpoint directly - id is the WhatsApp ID
-		// Match working Streamlit implementation: NO max_reservations for modifications
 		const backendResponse = await callPythonBackend(
 			`/reservations/${id}/modify`,
 			{

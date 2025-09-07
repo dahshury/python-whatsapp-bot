@@ -53,7 +53,7 @@ export class DateTimeColumnType implements IColumnType {
 			).isMissingValue = true;
 			(
 				cell as { isMissingValue?: boolean; validationError?: string }
-			).validationError = validation.error;
+			).validationError = validation.error || "";
 		}
 
 		return cell;

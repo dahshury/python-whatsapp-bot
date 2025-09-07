@@ -15,14 +15,14 @@ async function fetchJson(path: string, init?: RequestInit): Promise<Json> {
 	}
 }
 
-export function getMessage(key: string, isRTL?: boolean): string {
+export function getMessage(key: string, isLocalized?: boolean): string {
 	const ar: Record<string, string> = {
 		system_error_try_later: "خطأ بالنظام، حاول لاحقًا",
 	};
 	const en: Record<string, string> = {
 		system_error_try_later: "System error, please try again later",
 	};
-	const dict = isRTL ? ar : en;
+	const dict = isLocalized ? ar : en;
 	return dict[key] ?? key;
 }
 
@@ -102,7 +102,7 @@ export async function undoModifyReservation(input: {
 export async function cancelReservation(input: {
 	id: string; // wa_id
 	date: string; // YYYY-MM-DD
-	isRTL?: boolean;
+	isLocalized?: boolean;
 }): Promise<Json> {
 	return await fetchJson("/api/cancel-reservation", {
 		method: "POST",

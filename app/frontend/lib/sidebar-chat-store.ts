@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create } from "zustand"; // ESM import
 
 interface SidebarChatState {
 	// Basic sidebar open state (legacy)
@@ -29,7 +29,7 @@ interface SidebarChatState {
 	setConversation: (id?: string | null) => void; // alias
 }
 
-export const useSidebarChatStore = create<SidebarChatState>((set) => ({
+const useSidebarChatStore = create<SidebarChatState>((set) => ({
 	// Defaults
 	isOpen: false,
 	isChatSidebarOpen: false,
@@ -65,5 +65,7 @@ export const useSidebarChatStore = create<SidebarChatState>((set) => ({
 			selectedConversationId: id,
 			isLoadingConversation: true,
 		}),
-	setConversation: (id) => set({ selectedConversationId: id ?? null }),
+		setConversation: (id) => set({ selectedConversationId: id ?? null }),
 }));
+
+export { useSidebarChatStore };

@@ -46,7 +46,7 @@ export function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(value, min), max);
 }
 
-export function formatBytes(bytes: number, decimals: number = 2): string {
+export function formatBytes(bytes: number, decimals = 2): string {
 	if (bytes === 0) return "0 Bytes";
 
 	const k = 1024;
@@ -55,7 +55,7 @@ export function formatBytes(bytes: number, decimals: number = 2): string {
 
 	const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-	return `${parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
+	return `${Number.parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
 }
 
 export function deepClone<T>(obj: T): T {
@@ -107,8 +107,11 @@ export function moveArrayItem<T>(
 	toIndex: number,
 ): T[] {
 	const result = [...array];
-	const [removed] = result.splice(fromIndex, 1);
-	result.splice(toIndex, 0, removed);
+	const removedItems = result.splice(fromIndex, 1);
+	const removed = removedItems[0];
+	if (removed !== undefined) {
+		result.splice(toIndex, 0, removed);
+	}
 	return result;
 }
 

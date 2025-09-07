@@ -8,14 +8,13 @@ export function useDataTableDataSource(
 	selectedDateRange: { start: string; end: string } | null,
 	slotDurationHours: number,
 	freeRoam: boolean,
-	isRTL: boolean,
 	open: boolean,
 	isLocalized?: boolean,
 ) {
 	const gridRowToEventMapRef = useRef<Map<number, CalendarEvent>>(new Map());
 	const mapper = useMemo(() => createDataSourceMapper<CalendarEvent>(), []);
 
-	const _isRTL = (isRTL ?? isLocalized === true) === true;
+	const _isLocalized = isLocalized ?? false;
 
 	const previousEventsRef = useRef<CalendarEvent[]>([]);
 	const previousConfigRef = useRef<string>("");
@@ -26,7 +25,7 @@ export function useDataTableDataSource(
 			currentSelectedDateRange: { start: string; end: string } | null,
 		) => {
 			const columns = getDataTableColumns(
-				_isRTL,
+				_isLocalized,
 				currentSelectedDateRange,
 				freeRoam,
 			);
@@ -54,22 +53,21 @@ export function useDataTableDataSource(
 							rangeEnd.setHours(rangeEnd.getHours() + slotDurationHours);
 						}
 						return eventStart >= rangeStart && eventStart < rangeEnd;
-					} else {
-						const rangeStartDay = new Date(currentSelectedDateRange.start);
-						rangeStartDay.setHours(0, 0, 0, 0);
-						let rangeEndDay: Date;
-						if (
-							currentSelectedDateRange.end &&
-							currentSelectedDateRange.end !== currentSelectedDateRange.start
-						) {
-							rangeEndDay = new Date(currentSelectedDateRange.end);
-							rangeEndDay.setHours(23, 59, 59, 999);
-						} else {
-							rangeEndDay = new Date(rangeStartDay);
-							rangeEndDay.setHours(23, 59, 59, 999);
-						}
-						return eventStart >= rangeStartDay && eventStart <= rangeEndDay;
 					}
+					const rangeStartDay = new Date(currentSelectedDateRange.start);
+					rangeStartDay.setHours(0, 0, 0, 0);
+					let rangeEndDay: Date;
+					if (
+						currentSelectedDateRange.end &&
+						currentSelectedDateRange.end !== currentSelectedDateRange.start
+					) {
+						rangeEndDay = new Date(currentSelectedDateRange.end);
+						rangeEndDay.setHours(23, 59, 59, 999);
+					} else {
+						rangeEndDay = new Date(rangeStartDay);
+						rangeEndDay.setHours(23, 59, 59, 999);
+					}
+					return eventStart >= rangeStartDay && eventStart <= rangeEndDay;
 				},
 				sort: (a: CalendarEvent, b: CalendarEvent) => {
 					const dateA = new Date(a.start);
@@ -103,7 +101,7 @@ export function useDataTableDataSource(
 							return phoneNumber;
 						case "type": {
 							const type = event.extendedProps?.type || 0;
-							return _isRTL
+							return _isLocalized
 								? type === 0
 									? "كشف"
 									: "مراجعة"
@@ -137,7 +135,7 @@ export function useDataTableDataSource(
 
 			return newDataSource;
 		},
-		[mapper, _isRTL, freeRoam, slotDurationHours],
+		[mapper, _isLocalized, freeRoam, slotDurationHours],
 	);
 
 	const [dataSource, setDataSource] = useState<
@@ -149,7 +147,7 @@ export function useDataTableDataSource(
 			selectedDateRange,
 			slotDurationHours,
 			freeRoam,
-			isRTL: _isRTL,
+			isLocalized: _isLocalized,
 			eventsLength: events.length,
 		});
 
@@ -167,7 +165,7 @@ export function useDataTableDataSource(
 		selectedDateRange,
 		slotDurationHours,
 		freeRoam,
-		_isRTL,
+		_isLocalized,
 		open,
 		buildDataSource,
 	]);

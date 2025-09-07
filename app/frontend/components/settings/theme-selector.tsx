@@ -1,11 +1,15 @@
 "use client";
 
+import {
+	ThemeSwitcher as SpacemanThemeSwitcher,
+	ThemeAnimationType,
+	useSpacemanTheme,
+} from "@space-man/react-theme-animation";
 import { Palette } from "lucide-react";
+import { useTheme as useNextThemes } from "next-themes";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import ThemeToggleButton from "@/components/ui/theme-toggle-button";
 import { type Theme, useSettings } from "@/lib/settings-context";
-// import { useTheme } from "next-themes";
 import { toastService } from "@/lib/toast-service";
 import { getThemeName, THEME_OPTIONS } from "./theme-data";
 
@@ -15,10 +19,12 @@ interface ThemeSelectorProps {
 
 export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 	const { theme: appTheme, setTheme: setAppTheme } = useSettings();
-
-	// Dark mode toggle is handled by ThemeToggleButton component
+	const { setColorTheme } = useSpacemanTheme();
+	const { resolvedTheme, setTheme: setNextTheme } = useNextThemes();
 
 	const handleAppThemeChange = (value: string) => {
+		// Animate via Spaceman and also update our Settings immediately
+		setColorTheme(value as Theme);
 		setAppTheme(value as Theme);
 		const themeName = getThemeName(value);
 		toastService.success(
@@ -38,7 +44,16 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 					</span>
 				</div>
 				<div className="flex items-center gap-1.5">
-					<ThemeToggleButton variant="circle" start="center" />
+					<SpacemanThemeSwitcher
+						animationType={ThemeAnimationType.CIRCLE}
+						duration={600}
+						className="h-9 [&>button]:h-8 [&>button]:w-8 [&>button]:p-0 [&>button>svg]:h-4 [&>button>svg]:w-4"
+						themes={["light", "dark", "system"]}
+						currentTheme={
+							(resolvedTheme as "light" | "dark" | "system") || "system"
+						}
+						onThemeChange={(t) => setNextTheme(t)}
+					/>
 				</div>
 			</div>
 
@@ -68,9 +83,11 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 										style={{
 											backgroundColor: themeOption.colors.primary,
 											...(themeOption.borderStyle &&
-												themeOption.borderStyle !== "0px" && {
-													border: themeOption.borderStyle,
-												}),
+											themeOption.borderStyle !== "0px"
+												? {
+														border: themeOption.borderStyle,
+													}
+												: {}),
 										}}
 									/>
 									<div
@@ -78,9 +95,11 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 										style={{
 											backgroundColor: themeOption.colors.secondary,
 											...(themeOption.borderStyle &&
-												themeOption.borderStyle !== "0px" && {
-													border: themeOption.borderStyle,
-												}),
+											themeOption.borderStyle !== "0px"
+												? {
+														border: themeOption.borderStyle,
+													}
+												: {}),
 										}}
 									/>
 								</div>

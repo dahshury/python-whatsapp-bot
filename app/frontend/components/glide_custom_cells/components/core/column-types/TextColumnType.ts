@@ -52,7 +52,7 @@ export class TextColumnType implements IColumnType {
 			).isMissingValue = true;
 			(
 				cell as { isMissingValue?: boolean; validationError?: string }
-			).validationError = validation.error;
+			).validationError = validation.error || "";
 		}
 
 		return cell;
@@ -96,7 +96,10 @@ export class TextColumnType implements IColumnType {
 		if (isNameColumn) {
 			const nameValidation = this.validateNameWithDetails(text);
 			if (!nameValidation.isValid) {
-				return { isValid: false, error: nameValidation.errorMessage };
+				return {
+					isValid: false,
+					error: nameValidation.errorMessage || "Name validation failed",
+				};
 			}
 		}
 
@@ -210,20 +213,39 @@ export class TextColumnType implements IColumnType {
 			};
 		}
 
-		let trimmed = text.trim();
+		const trimmed = text.trim();
 
-		// Remove any numerical characters and coerce the name
+		// 1. Check for digits FIRST - most specific validation rule
 		if (/\d/.test(trimmed)) {
-			trimmed = trimmed.replace(/\d/g, "");
+			return {
+				isValid: false,
+				errorMessage: messages.validation.nameInvalidCharacters(),
+			};
 		}
 
-		// Clean up extra spaces and normalize separators
-		trimmed = trimmed.replace(/\s+/g, " ").trim();
+		// 2. Check for other invalid characters (anything that's not letters, spaces, or hyphens)
+		if (!/^[\p{L}\s-]+$/u.test(trimmed)) {
+			return {
+				isValid: false,
+				errorMessage: messages.validation.nameInvalidCharacters(),
+			};
+		}
+
+		// Clean up extra spaces and normalize separators for word analysis
+		const normalized = trimmed.replace(/\s+/g, " ").trim();
+
+		// 2.1. Enforce maximum total length for name (50 characters)
+		if (normalized.length > 50) {
+			return {
+				isValid: false,
+				errorMessage: messages.validation.nameTooLong(),
+			};
+		}
 
 		// Split into words (supports spaces and hyphens for compound names)
-		const words = trimmed.split(/[\s-]+/).filter((word) => word.length > 0);
+		const words = normalized.split(/[\s-]+/).filter((word) => word.length > 0);
 
-		// Must have at least 2 words
+		// 3. Check word count - must have at least 2 words
 		if (words.length < 2) {
 			return {
 				isValid: false,
@@ -231,23 +253,24 @@ export class TextColumnType implements IColumnType {
 			};
 		}
 
-		// Check for invalid characters first
-		const hasInvalidCharacters = words.some(
-			(word) => !/^[\p{L}-]+$/u.test(word),
-		);
-		if (hasInvalidCharacters) {
-			return {
-				isValid: false,
-				errorMessage: messages.validation.nameInvalidCharacters(),
-			};
-		}
-
-		// Each word must be at least 2 characters
+		// 4. Check individual word length - each word must be at least 2 characters
 		const shortWords = words.filter((word) => word.length < 2);
 		if (shortWords.length > 0) {
 			return {
 				isValid: false,
 				errorMessage: messages.validation.nameWordsTooShort(),
+			};
+		}
+
+		// 5. Double-check for any remaining invalid characters in individual words
+		// (This catches edge cases where regex might miss something)
+		const hasInvalidWordsCharacters = words.some(
+			(word) => !/^[\p{L}-]+$/u.test(word),
+		);
+		if (hasInvalidWordsCharacters) {
+			return {
+				isValid: false,
+				errorMessage: messages.validation.nameInvalidCharacters(),
 			};
 		}
 

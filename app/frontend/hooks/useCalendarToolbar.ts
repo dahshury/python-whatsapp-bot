@@ -5,9 +5,8 @@ import type { CalendarCoreRef } from "@/components/calendar-core";
 import { count } from "@/lib/dev-profiler";
 
 interface UseCalendarToolbarProps {
-	calendarRef: React.RefObject<CalendarCoreRef> | null;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	currentView: string;
-	onViewChange: (view: string) => void;
 }
 
 interface UseCalendarToolbarReturn {
@@ -42,7 +41,6 @@ const getTitleFromAPI = (api: CalendarApi): string => {
 export function useCalendarToolbar({
 	calendarRef,
 	currentView,
-	onViewChange,
 }: UseCalendarToolbarProps): UseCalendarToolbarReturn {
 	const [title, setTitle] = useState(""); // empty until API supplies real title (spinner shows)
 	const [activeView, setActiveView] = useState(currentView);
@@ -65,7 +63,7 @@ export function useCalendarToolbar({
 		count("updateButtonStates");
 
 		// Guard: if API not ready yet, release the lock so future attempts can proceed
-		if (!calendarRef || !calendarRef.current?.getApi) {
+		if (!calendarRef?.current?.getApi) {
 			isUpdatingRef.current = false;
 			return;
 		}
@@ -76,13 +74,6 @@ export function useCalendarToolbar({
 
 			// Use FullCalendar's native title computation
 			const viewTitle = getTitleFromAPI(calendarApi);
-			console.log("🔄 [TOOLBAR] Title update:", {
-				newTitle: viewTitle,
-				viewType: calendarApi.view?.type,
-				hasView: !!calendarApi.view,
-				currentStart: calendarApi.view?.currentStart,
-				currentEnd: calendarApi.view?.currentEnd,
-			});
 			setTitle((prev) => (prev === viewTitle ? prev : viewTitle));
 
 			// Update active view from public API
@@ -244,7 +235,6 @@ export function useCalendarToolbar({
 
 					// Define event handlers - these mirror FullCalendar's internal events that trigger updateData()
 					const handleDatesSet = () => {
-						console.log("🔄 [TOOLBAR] datesSet event fired - updating title");
 						updateButtonStates();
 					};
 					const handleEventsSet = () => updateButtonStates();
@@ -295,7 +285,7 @@ export function useCalendarToolbar({
 		};
 	}, [calendarRef, updateButtonStates]);
 
-	// Update button states when isRTL changes to ensure title is re-rendered with new locale
+	// Update button states when isLocalized changes to ensure title is re-rendered with new locale
 	useEffect(() => {
 		// Small delay to ensure calendar has updated its locale
 		const timer = setTimeout(() => {

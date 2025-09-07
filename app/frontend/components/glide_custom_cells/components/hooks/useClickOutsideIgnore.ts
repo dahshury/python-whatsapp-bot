@@ -2,9 +2,9 @@ import * as React from "react";
 
 interface UseClickOutsideIgnoreProps {
 	showPicker: boolean;
-	wrapperRef: React.RefObject<HTMLDivElement>;
-	iconButtonRef: React.RefObject<HTMLButtonElement>;
-	portalRef: React.RefObject<HTMLDivElement>;
+	wrapperRef: React.RefObject<HTMLDivElement | null>;
+	iconButtonRef: React.RefObject<HTMLButtonElement | null>;
+	portalRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export const useClickOutsideIgnore = ({
@@ -186,9 +186,9 @@ export const useClickOutsideIgnore = ({
 				(
 					portalRef.current as {
 						_glideOutsidePatch?: boolean;
-						_glideOutsideObserver?: MutationObserver;
+						_glideOutsideObserver?: MutationObserver | null;
 					}
-				)._glideOutsideObserver = undefined;
+				)._glideOutsideObserver = null;
 			}
 
 			if (wrapperRef.current) {
@@ -207,9 +207,9 @@ export const useClickOutsideIgnore = ({
 				(
 					wrapperRef.current as {
 						_glideOutsidePatch?: boolean;
-						_glideOutsideObserver?: MutationObserver;
+						_glideOutsideObserver?: MutationObserver | null;
 					}
-				)._glideOutsideObserver = undefined;
+				)._glideOutsideObserver = null;
 			}
 
 			if (iconButtonRef.current) {
@@ -228,9 +228,9 @@ export const useClickOutsideIgnore = ({
 				(
 					iconButtonRef.current as {
 						_glideOutsidePatch?: boolean;
-						_glideOutsideObserver?: MutationObserver;
+						_glideOutsideObserver?: MutationObserver | null;
 					}
-				)._glideOutsideObserver = undefined;
+				)._glideOutsideObserver = null;
 			}
 		};
 	}, [showPicker, portalRef, wrapperRef, iconButtonRef]);

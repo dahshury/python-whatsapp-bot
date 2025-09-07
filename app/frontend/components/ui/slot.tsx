@@ -16,8 +16,7 @@ function composeRefs<T>(
 				ref(node);
 			} else {
 				try {
-					// @ts-expect-error: writeable .current
-					ref.current = node;
+					(ref as React.MutableRefObject<T>).current = node;
 				} catch {
 					// ignore
 				}
@@ -41,5 +40,3 @@ export const Slot = React.forwardRef<HTMLElement, SlotProps>((props, ref) => {
 	return null;
 });
 Slot.displayName = "Slot";
-
-export default Slot;

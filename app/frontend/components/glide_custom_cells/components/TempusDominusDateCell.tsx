@@ -113,10 +113,10 @@ const parseDisplayToDate = (
 		if (format === "date") {
 			// Expect dd/MM/yyyy
 			const m = s.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})$/);
-			if (!m) return undefined;
-			const day = parseInt(m[1], 10);
-			const month = parseInt(m[2], 10) - 1;
-			let year = parseInt(m[3], 10);
+			if (!m || !m[1] || !m[2] || !m[3]) return undefined;
+			const day = Number.parseInt(m[1], 10);
+			const month = Number.parseInt(m[2], 10) - 1;
+			let year = Number.parseInt(m[3], 10);
 			if (year < 100) year += 2000;
 			const d = new Date(year, month, day);
 			return Number.isNaN(d.getTime()) ? undefined : d;
@@ -124,9 +124,9 @@ const parseDisplayToDate = (
 		if (format === "time") {
 			// Support HH:mm or hh:mm AM/PM
 			const m = s.match(/^(\d{1,2}):(\d{2})(?:\s*([AaPp][Mm]))?$/);
-			if (!m) return undefined;
-			let hours = parseInt(m[1], 10);
-			const minutes = parseInt(m[2], 10);
+			if (!m || !m[1] || !m[2]) return undefined;
+			let hours = Number.parseInt(m[1], 10);
+			const minutes = Number.parseInt(m[2], 10);
 			const ampm = m[3]?.toLowerCase();
 			if (ampm) {
 				if (ampm === "pm" && hours < 12) hours += 12;
@@ -146,13 +146,14 @@ const parseDisplayToDate = (
 		const m = s.match(
 			/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})\s+(\d{1,2}):(\d{2})\s*([AaPp][Mm])$/,
 		);
-		if (!m) return undefined;
-		const day = parseInt(m[1], 10);
-		const month = parseInt(m[2], 10) - 1;
-		let year = parseInt(m[3], 10);
+		if (!m || !m[1] || !m[2] || !m[3] || !m[4] || !m[5] || !m[6])
+			return undefined;
+		const day = Number.parseInt(m[1], 10);
+		const month = Number.parseInt(m[2], 10) - 1;
+		let year = Number.parseInt(m[3], 10);
 		if (year < 100) year += 2000;
-		let hours = parseInt(m[4], 10);
-		const minutes = parseInt(m[5], 10);
+		let hours = Number.parseInt(m[4], 10);
+		const minutes = Number.parseInt(m[5], 10);
 		const ampm = m[6].toLowerCase();
 		if (ampm === "pm" && hours < 12) hours += 12;
 		if (ampm === "am" && hours === 12) hours = 0;
@@ -329,19 +330,23 @@ const renderer: CustomRenderer<TempusDateCell> = {
 									clear: false,
 									close: false,
 								},
-								placement: "bottom" as "bottom",
+								placement: "bottom" as const,
 								keepOpen: true,
 							},
 							restrictions: {
-								minDate: tempusRestrictions.minDate
-									? new DateTime(tempusRestrictions.minDate)
-									: undefined,
-								maxDate: tempusRestrictions.maxDate
-									? new DateTime(tempusRestrictions.maxDate)
-									: undefined,
+								...(tempusRestrictions.minDate && {
+									minDate: new DateTime(tempusRestrictions.minDate),
+								}),
+								...(tempusRestrictions.maxDate && {
+									maxDate: new DateTime(tempusRestrictions.maxDate),
+								}),
 								disabledDates: disabledDateTimes,
-								daysOfWeekDisabled: tempusRestrictions.daysOfWeekDisabled,
-								enabledHours: tempusRestrictions.enabledHours,
+								...(tempusRestrictions.daysOfWeekDisabled && {
+									daysOfWeekDisabled: tempusRestrictions.daysOfWeekDisabled,
+								}),
+								...(tempusRestrictions.enabledHours && {
+									enabledHours: tempusRestrictions.enabledHours,
+								}),
 							},
 							localization: {
 								locale: "en-GB",
@@ -632,9 +637,10 @@ const renderer: CustomRenderer<TempusDateCell> = {
 									// Ensure the visible input reflects the chosen value immediately
 									setInputFromDate(jsDate);
 								} else if ((e as { isClear?: boolean })?.isClear) {
+									const { date: _, ...dataWithoutDate } = data;
 									const cleared = {
 										...props.value,
-										data: { ...data, date: undefined, displayDate: "" },
+										data: { ...dataWithoutDate, displayDate: "" },
 									} as typeof props.value;
 									props.onChange(cleared);
 									if (inputRef.current) inputRef.current.value = "";
@@ -667,20 +673,22 @@ const renderer: CustomRenderer<TempusDateCell> = {
 									selectedDates.length > 0
 								) {
 									const selectedDateTime = selectedDates[0];
-									const jsDate = new Date(selectedDateTime.valueOf());
+									if (selectedDateTime) {
+										const jsDate = new Date(selectedDateTime.valueOf());
 
-									const newCell = {
-										...props.value,
-										data: {
-											...data,
-											date: jsDate,
-											displayDate: formatDisplayDate(jsDate, data.format),
-										},
-									} as typeof props.value;
-									props.onChange(newCell);
-									// Sync the visible input with the chosen date
-									setInputFromDate(jsDate);
-									onFinishedEditing?.(newCell);
+										const newCell = {
+											...props.value,
+											data: {
+												...data,
+												date: jsDate,
+												displayDate: formatDisplayDate(jsDate, data.format),
+											},
+										} as typeof props.value;
+										props.onChange(newCell);
+										// Sync the visible input with the chosen date
+										setInputFromDate(jsDate);
+										onFinishedEditing?.(newCell);
+									}
 								}
 							} catch (error) {
 								console.warn("Failed to handle date picker hide:", error);
@@ -690,9 +698,9 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						};
 
 						// Subscribe to events
-						let showSubscription: { unsubscribe: () => void } | undefined,
-							changeSubscription: { unsubscribe: () => void } | undefined,
-							hideSubscription: { unsubscribe: () => void } | undefined;
+						let showSubscription: { unsubscribe: () => void } | undefined;
+						let changeSubscription: { unsubscribe: () => void } | undefined;
+						let hideSubscription: { unsubscribe: () => void } | undefined;
 
 						type TempusDominusInstance = {
 							subscribe?: (
@@ -793,9 +801,15 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							_inputHandler?: (event: Event) => void;
 							_widgetObserver?: MutationObserver;
 						};
-						instanceWithProps._showSubscription = showSubscription;
-						instanceWithProps._changeSubscription = changeSubscription;
-						instanceWithProps._hideSubscription = hideSubscription;
+						if (showSubscription) {
+							instanceWithProps._showSubscription = showSubscription;
+						}
+						if (changeSubscription) {
+							instanceWithProps._changeSubscription = changeSubscription;
+						}
+						if (hideSubscription) {
+							instanceWithProps._hideSubscription = hideSubscription;
+						}
 						instanceWithProps._inputHandler = handleInputChange;
 						instanceWithProps._widgetObserver = widgetObserver;
 
@@ -978,6 +992,9 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						if (parts.length === 3) {
 							const [day, month, year] = parts;
 							if (
+								day !== undefined &&
+								month !== undefined &&
+								year !== undefined &&
 								!Number.isNaN(day) &&
 								!Number.isNaN(month) &&
 								!Number.isNaN(year)
@@ -1195,11 +1212,14 @@ const renderer: CustomRenderer<TempusDateCell> = {
 			}
 		};
 
-		return {
-			...d,
-			date: parsedDate,
-			displayDate: parsedDate ? formatDisplayDate(parsedDate, d.format) : "",
-		};
+		if (parsedDate) {
+			return {
+				...d,
+				date: parsedDate,
+				displayDate: formatDisplayDate(parsedDate, d.format),
+			};
+		}
+		return undefined;
 	},
 };
 

@@ -46,6 +46,13 @@ export function useLongPressRepeat(
 	const start = React.useCallback(
 		(target: Element, pointerId?: number) => {
 			if (disabledRef.current) return;
+			// Avoid duplicate starts if already scheduled/running
+			if (
+				holdTimeoutRef.current !== null ||
+				repeatIntervalRef.current !== null
+			) {
+				return;
+			}
 			if (typeof pointerId === "number") {
 				try {
 					target.setPointerCapture(pointerId);
@@ -83,9 +90,10 @@ export function useLongPressRepeat(
 	const handlers = React.useMemo(
 		() => ({
 			onPointerDown: (e: React.PointerEvent) => {
-				// Only respond to primary button/touch/pen
-				if (e.button !== 0) return;
+				// Only respond to primary mouse button; allow touch/pen
+				if (e.pointerType === "mouse" && e.button !== 0) return;
 				if (disabledRef.current) return;
+				e.preventDefault();
 				start(e.currentTarget, e.pointerId);
 			},
 			onPointerUp: (e: React.PointerEvent) => {
@@ -96,6 +104,32 @@ export function useLongPressRepeat(
 			},
 			onPointerCancel: (e: React.PointerEvent) => {
 				stop(e.currentTarget, e.pointerId);
+			},
+			onMouseDown: (e: React.MouseEvent) => {
+				if (e.button !== 0) return;
+				if (disabledRef.current) return;
+				e.preventDefault();
+				start(e.currentTarget as Element);
+			},
+			onMouseUp: (e: React.MouseEvent) => {
+				stop(e.currentTarget as Element);
+			},
+			onMouseLeave: (e: React.MouseEvent) => {
+				stop(e.currentTarget as Element);
+			},
+			onTouchStart: (e: React.TouchEvent) => {
+				if (disabledRef.current) return;
+				e.preventDefault();
+				start(e.currentTarget as Element);
+			},
+			onTouchEnd: (e: React.TouchEvent) => {
+				stop(e.currentTarget as Element);
+			},
+			onTouchCancel: (e: React.TouchEvent) => {
+				stop(e.currentTarget as Element);
+			},
+			onContextMenu: (e: React.MouseEvent) => {
+				e.preventDefault();
 			},
 			onBlur: () => {
 				stop();

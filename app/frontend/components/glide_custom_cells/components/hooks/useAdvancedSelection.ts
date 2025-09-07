@@ -24,36 +24,33 @@ export function useAdvancedSelection() {
 		150,
 	);
 
-	const selectRow = useCallback(
-		(rowIndex: number, multiSelect: boolean = false) => {
-			setSelectionState((prev) => {
-				if (!multiSelect) {
-					const newSelection = new Set([rowIndex]);
-					return {
-						...prev,
-						selectedRows: newSelection,
-						anchorRow: rowIndex,
-						isMultiSelectMode: false,
-					};
-				}
-
-				const newSelectedRows = new Set(prev.selectedRows);
-				if (newSelectedRows.has(rowIndex)) {
-					newSelectedRows.delete(rowIndex);
-				} else {
-					newSelectedRows.add(rowIndex);
-				}
-
+	const selectRow = useCallback((rowIndex: number, multiSelect = false) => {
+		setSelectionState((prev) => {
+			if (!multiSelect) {
+				const newSelection = new Set([rowIndex]);
 				return {
 					...prev,
-					selectedRows: newSelectedRows,
-					anchorRow: prev.anchorRow ?? rowIndex,
-					isMultiSelectMode: true,
+					selectedRows: newSelection,
+					anchorRow: rowIndex,
+					isMultiSelectMode: false,
 				};
-			});
-		},
-		[],
-	);
+			}
+
+			const newSelectedRows = new Set(prev.selectedRows);
+			if (newSelectedRows.has(rowIndex)) {
+				newSelectedRows.delete(rowIndex);
+			} else {
+				newSelectedRows.add(rowIndex);
+			}
+
+			return {
+				...prev,
+				selectedRows: newSelectedRows,
+				anchorRow: prev.anchorRow ?? rowIndex,
+				isMultiSelectMode: true,
+			};
+		});
+	}, []);
 
 	const selectRowRange = useCallback((startRow: number, endRow: number) => {
 		setSelectionState((prev) => {
@@ -74,36 +71,33 @@ export function useAdvancedSelection() {
 		});
 	}, []);
 
-	const selectColumn = useCallback(
-		(columnId: string, multiSelect: boolean = false) => {
-			setSelectionState((prev) => {
-				if (!multiSelect) {
-					const newSelection = new Set([columnId]);
-					return {
-						...prev,
-						selectedColumns: newSelection,
-						anchorColumn: columnId,
-						isMultiSelectMode: false,
-					};
-				}
-
-				const newSelectedColumns = new Set(prev.selectedColumns);
-				if (newSelectedColumns.has(columnId)) {
-					newSelectedColumns.delete(columnId);
-				} else {
-					newSelectedColumns.add(columnId);
-				}
-
+	const selectColumn = useCallback((columnId: string, multiSelect = false) => {
+		setSelectionState((prev) => {
+			if (!multiSelect) {
+				const newSelection = new Set([columnId]);
 				return {
 					...prev,
-					selectedColumns: newSelectedColumns,
-					anchorColumn: prev.anchorColumn ?? columnId,
-					isMultiSelectMode: true,
+					selectedColumns: newSelection,
+					anchorColumn: columnId,
+					isMultiSelectMode: false,
 				};
-			});
-		},
-		[],
-	);
+			}
+
+			const newSelectedColumns = new Set(prev.selectedColumns);
+			if (newSelectedColumns.has(columnId)) {
+				newSelectedColumns.delete(columnId);
+			} else {
+				newSelectedColumns.add(columnId);
+			}
+
+			return {
+				...prev,
+				selectedColumns: newSelectedColumns,
+				anchorColumn: prev.anchorColumn ?? columnId,
+				isMultiSelectMode: true,
+			};
+		});
+	}, []);
 
 	const clearSelection = useCallback(() => {
 		setSelectionState({

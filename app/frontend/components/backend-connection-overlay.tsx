@@ -22,7 +22,7 @@ export function BackendConnectionOverlay({
 	onRetry,
 	isRetrying = false,
 }: BackendConnectionOverlayProps) {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const [copied, setCopied] = useState(false);
 
 	const copyToClipboard = useCallback(async () => {
@@ -44,17 +44,23 @@ export function BackendConnectionOverlay({
 					</div>
 					<div className="space-y-2">
 						<CardTitle className="text-lg font-semibold text-foreground">
-							{i18n.getMessage("backend_connection_error_title", isRTL)}
+							{i18n.getMessage("backend_connection_error_title", isLocalized)}
 						</CardTitle>
 						<CardDescription className="text-sm text-muted-foreground">
-							{i18n.getMessage("backend_connection_error_description", isRTL)}
+							{i18n.getMessage(
+								"backend_connection_error_description",
+								isLocalized,
+							)}
 						</CardDescription>
 					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="bg-muted/50 p-4 rounded-lg border border-border">
 						<p className="text-sm font-medium text-foreground mb-2">
-							{i18n.getMessage("backend_connection_error_instructions", isRTL)}
+							{i18n.getMessage(
+								"backend_connection_error_instructions",
+								isLocalized,
+							)}
 						</p>
 						<div className="flex items-center gap-2 bg-background border border-border rounded-md p-2">
 							<code className="text-sm font-mono text-foreground flex-1">
@@ -74,7 +80,7 @@ export function BackendConnectionOverlay({
 					<div className="flex items-center gap-2 text-sm text-muted-foreground">
 						<AlertTriangle className="w-4 h-4" />
 						<span>
-							{isRTL
+							{isLocalized
 								? "تأكد من أن الخادم يعمل على http://localhost:8000"
 								: "Ensure the server is running on http://localhost:8000"}
 						</span>
@@ -89,12 +95,12 @@ export function BackendConnectionOverlay({
 						{isRetrying ? (
 							<>
 								<RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-								{i18n.getMessage("backend_connection_checking", isRTL)}
+								{i18n.getMessage("backend_connection_checking", isLocalized)}
 							</>
 						) : (
 							<>
 								<RefreshCw className="w-4 h-4 mr-2" />
-								{i18n.getMessage("backend_connection_error_retry", isRTL)}
+								{i18n.getMessage("backend_connection_error_retry", isLocalized)}
 							</>
 						)}
 					</Button>

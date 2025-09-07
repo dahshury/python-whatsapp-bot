@@ -9,7 +9,7 @@ interface UseResizeObserverOptions {
 
 export function useResizeObserver<T extends HTMLElement>(
 	options: UseResizeObserverOptions = {},
-): [React.RefObject<T>, GridDimensions | null] {
+): [React.RefObject<T | null>, GridDimensions | null] {
 	const { disabled = false, debounceDelay = 100 } = options;
 	const elementRef = useRef<T>(null);
 	const [dimensions, setDimensions] = useState<GridDimensions | null>(null);

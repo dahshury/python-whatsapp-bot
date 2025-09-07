@@ -4,7 +4,13 @@ import type { DataEditorRef } from "@glideapps/glide-data-grid";
 import { Save, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
@@ -12,8 +18,8 @@ import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
 import { useDataTableValidation } from "@/hooks/useDataTableValidation";
 
 import { formatDateRangeWithHijri } from "@/lib/hijri-utils";
-import { Z_INDEX } from "@/lib/z-index";
 import { useSettings } from "@/lib/settings-context";
+import { Z_INDEX } from "@/lib/z-index";
 // formatDateTimeOptions removed - using inline options instead
 import type {
 	CalendarEvent as DataTableCalendarEvent,
@@ -21,6 +27,7 @@ import type {
 } from "@/types/data-table-editor";
 
 import { UnsavedChangesDialog } from "./data-table-editor/UnsavedChangesDialog";
+import { ValidationErrorsPopover } from "./data-table-editor/ValidationErrorsPopover";
 import { FullscreenProvider } from "./glide_custom_cells/components/contexts/FullscreenContext";
 import type { DataProvider } from "./glide_custom_cells/components/core/services/DataProvider";
 
@@ -30,13 +37,35 @@ const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), {
 	ssr: false,
 });
 
+// Deep comparison for validation errors to prevent unnecessary state updates
+function areValidationErrorsEqual(
+	a: Array<{ row: number; col: number; message: string; fieldName?: string }>,
+	b: Array<{ row: number; col: number; message: string; fieldName?: string }>,
+): boolean {
+	if (a.length !== b.length) return false;
+	for (let i = 0; i < a.length; i++) {
+		const errA = a[i];
+		const errB = b[i];
+		if (
+			!errA ||
+			!errB ||
+			errA.row !== errB.row ||
+			errA.col !== errB.col ||
+			errA.message !== errB.message ||
+			errA.fieldName !== errB.fieldName
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
 export function DataTableEditor(props: DataTableEditorProps) {
 	const {
 		open,
 		onOpenChange,
 		events,
 		selectedDateRange,
-		isRTL,
 		isLocalized,
 		slotDurationHours,
 		onSave: _onSave,
@@ -63,10 +92,10 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	const { theme: _styleTheme } = useSettings();
 	const isDarkMode = appTheme === "dark";
 
-	const _isRTL = (isRTL ?? isLocalized === true) === true;
+	const _isLocalized = isLocalized ?? false;
 
 	const dataProviderRef = useRef<DataProvider | null>(null);
-	const dataEditorRef = useRef<DataEditorRef>(null);
+	const dataEditorRef = useRef<DataEditorRef | null>(null);
 	// Removed themeKey to prevent forced Grid remounts that cause flicker
 
 	// Maintain a local, merge-friendly events source while editing to avoid losing draft rows/cells
@@ -112,18 +141,46 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		selectedDateRange,
 		slotDurationHours,
 		freeRoam,
-		isRTL || _isRTL,
-		isLocalized ?? false,
 		open,
+		isLocalized ?? false,
 	);
 
 	const { validateAllCells, checkEditingState, hasUnsavedChanges } =
-		useDataTableValidation(dataProviderRef, _isRTL);
+		useDataTableValidation(dataProviderRef);
+
+	const [validationErrors, setValidationErrors] = useState<
+		Array<{ row: number; col: number; message: string; fieldName?: string }>
+	>([]);
+
+	// Ref to track previous validation errors for comparison
+	const previousValidationErrors = useRef<
+		Array<{ row: number; col: number; message: string; fieldName?: string }>
+	>([]);
+
+	// Stable validation error setter that only updates if errors actually changed
+	const setValidationErrorsIfChanged = useCallback(
+		(
+			newErrors: Array<{
+				row: number;
+				col: number;
+				message: string;
+				fieldName?: string;
+			}>,
+		) => {
+			if (
+				!areValidationErrorsEqual(previousValidationErrors.current, newErrors)
+			) {
+				previousValidationErrors.current = newErrors;
+				setValidationErrors(newErrors);
+			}
+		},
+		[],
+	);
 
 	const { isSaving, handleSaveChanges: performSave } = useDataTableSaveHandler({
 		...(calendarRef ? { calendarRef } : {}),
-		isRTL: _isRTL,
-		slotDurationHours,
+		isLocalized: _isLocalized,
+		slotDurationHours: slotDurationHours || 1,
 		freeRoam,
 		gridRowToEventMapRef,
 		dataProviderRef,
@@ -153,7 +210,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			: null;
 		const hasTimeInfo = selectedDateRange.start.includes("T");
 
-		if (_isRTL) {
+		if (_isLocalized) {
 			let computedEnd: Date | undefined;
 			if (
 				hasTimeInfo &&
@@ -228,47 +285,24 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					dayOptions,
 				);
 				return `${startDayName}, ${startDateStr} ${startTimeStr} - ${endDayName}, ${endDateStr} ${endTimeStr}`;
-			} else {
-				return `${startDayName}, ${startDateStr} ${startTimeStr} - ${endTimeStr}`;
 			}
-		} else {
-			// Format without time (date only) with day name
-			const dayOptions: Intl.DateTimeFormatOptions = {
-				weekday: "long",
-			};
-			const startDayName = startDate.toLocaleDateString(undefined, dayOptions);
-
-			if (endDate && startDate.toDateString() !== endDate.toDateString()) {
-				const endDayName = endDate.toLocaleDateString(undefined, dayOptions);
-				return `${startDayName}, ${startDate.toLocaleDateString()} - ${endDayName}, ${endDate.toLocaleDateString()}`;
-			} else {
-				return `${startDayName}, ${startDate.toLocaleDateString()}`;
-			}
+			return `${startDayName}, ${startDateStr} ${startTimeStr} - ${endTimeStr}`;
 		}
+		// Format without time (date only) with day name
+		const dayOptions: Intl.DateTimeFormatOptions = {
+			weekday: "long",
+		};
+		const startDayName = startDate.toLocaleDateString(undefined, dayOptions);
+
+		if (endDate && startDate.toDateString() !== endDate.toDateString()) {
+			const endDayName = endDate.toLocaleDateString(undefined, dayOptions);
+			return `${startDayName}, ${startDate.toLocaleDateString()} - ${endDayName}, ${endDate.toLocaleDateString()}`;
+		}
+		return `${startDayName}, ${startDate.toLocaleDateString()}`;
 	};
 
 	const handleCheckEditingState = useCallback(() => {
 		const state = checkEditingState();
-
-		// Debug logging
-		console.log("🔍 DataTableEditor: checkEditingState result:", {
-			hasChanges: state.hasChanges,
-			isValid: state.isValid,
-			canSave: state.hasChanges && state.isValid,
-		});
-
-		// Additional debugging for editing state
-		if (dataProviderRef.current) {
-			const editingState = dataProviderRef.current.getEditingState();
-			const memoryUsage = editingState.getMemoryUsage();
-			const hasChanges = editingState.hasChanges();
-
-			console.log("🔍 EditingState details:", {
-				memoryUsage,
-				hasChanges,
-				hasUnsavedChanges: hasUnsavedChanges(),
-			});
-		}
 
 		let canEnable = state.hasChanges && state.isValid;
 
@@ -347,7 +381,107 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		}
 
 		setCanSave(canEnable);
-	}, [checkEditingState, hasUnsavedChanges, gridRowToEventMapRef?.current]);
+
+		// Also refresh validation errors immediately so UI updates as rules are fixed/violated
+		try {
+			const result = validateAllCells();
+			setValidationErrorsIfChanged(result.errors || []);
+		} catch {}
+	}, [
+		checkEditingState,
+		gridRowToEventMapRef?.current,
+		setValidationErrorsIfChanged,
+		validateAllCells,
+	]);
+
+	// Stable debounced validation check function
+	const createDebouncedValidationCheck = useMemo(() => {
+		return () => {
+			let timeoutId: NodeJS.Timeout | null = null;
+
+			return () => {
+				if (timeoutId) clearTimeout(timeoutId);
+				timeoutId = setTimeout(() => {
+					handleCheckEditingState();
+					try {
+						const result = validateAllCells();
+						const provider = dataProviderRef.current as
+							| (DataProvider & {
+									getColumnDefinition?: (c: number) => {
+										id?: string;
+										name?: string;
+										title?: string;
+									};
+									getCell?: (c: number, r: number) => unknown;
+							  })
+							| null;
+						const mapped = (result.errors || [])
+							.map((err) => {
+								let fieldName = (err as { fieldName?: string })?.fieldName;
+								if (!fieldName && provider?.getColumnDefinition) {
+									try {
+										const def = provider.getColumnDefinition(err.col) as
+											| {
+													id?: string;
+													name?: string;
+													title?: string;
+											  }
+											| undefined;
+										fieldName = def?.id || def?.name || def?.title;
+									} catch {}
+								}
+								return { ...err, fieldName };
+							})
+							.filter((err) => {
+								const fn = String(err.fieldName || "").toLowerCase();
+								if (fn !== "scheduled_time") return true;
+								try {
+									const cell = provider?.getCell?.(err.col, err.row) as
+										| {
+												data?: {
+													kind?: string;
+													date?: unknown;
+												};
+										  }
+										| undefined;
+									const hasDate = Boolean(
+										cell &&
+											(
+												cell as {
+													data?: {
+														kind?: string;
+														date?: unknown;
+													};
+												}
+											).data?.kind === "tempus-date-cell" &&
+											(
+												cell as {
+													data?: {
+														kind?: string;
+														date?: unknown;
+													};
+												}
+											).data?.date,
+									);
+									return !hasDate;
+								} catch {
+									return true;
+								}
+							});
+						setValidationErrorsIfChanged(
+							mapped as Array<{
+								row: number;
+								col: number;
+								message: string;
+								fieldName?: string;
+							}>,
+						);
+					} catch {}
+					timeoutId = null;
+				}, 100); // Debounce by 100ms
+			};
+		};
+	}, [handleCheckEditingState, validateAllCells, setValidationErrorsIfChanged]);
 
 	useEffect(() => {
 		if (open) {
@@ -366,12 +500,15 @@ export function DataTableEditor(props: DataTableEditorProps) {
 				clearTimeout(t);
 				document.body.classList.remove("has-dialog-backdrop");
 			};
-		} else {
-			setShowSpinner(false);
-			setCanSave(false);
-			// Remove body class when dialog is closed
-			document.body.classList.remove("has-dialog-backdrop");
 		}
+		setShowSpinner(false);
+		setCanSave(false);
+		// Clear validation errors when dialog is closed to prevent stale state
+		setValidationErrors([]);
+		previousValidationErrors.current = [];
+		// Remove body class when dialog is closed
+		document.body.classList.remove("has-dialog-backdrop");
+		return undefined;
 	}, [open]);
 
 	useEffect(() => {
@@ -483,33 +620,15 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	}, [events, open, gridRowToEventMapRef?.current]);
 
 	const handleSaveChanges = useCallback(async () => {
-		console.log("💾 DataTableEditor: Save button clicked!");
-
-		// Debug the current state before saving
-		if (dataProviderRef.current) {
-			const editingState = dataProviderRef.current.getEditingState();
-			const memoryUsage = editingState.getMemoryUsage();
-			const hasChanges = editingState.hasChanges();
-
-			console.log("💾 Pre-save EditingState:", {
-				memoryUsage,
-				hasChanges,
-				canSave,
-				isSaving,
-			});
-
-			// Check validation
-			const validation = validateAllCells();
-			console.log("💾 Validation result:", validation);
-		}
+		// Check validation
+		validateAllCells();
 
 		const success = await performSave();
-		console.log("💾 Save result:", { success });
 
 		if (success) {
 			setCanSave(false);
 		}
-	}, [performSave, canSave, isSaving, validateAllCells]);
+	}, [performSave, validateAllCells]);
 
 	const handleCloseAttempt = useCallback(
 		(closeAction: () => void) => {
@@ -582,15 +701,16 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
 						<div className="flex flex-col space-y-1.5">
 							<h2
-								className={`text-xl font-semibold leading-none tracking-tight py-2 ${_isRTL ? "text-right" : "text-left"}`}
+								className={`text-xl font-semibold leading-none tracking-tight py-2 ${_isLocalized ? "text-right" : "text-left"}`}
 							>
-								{_isRTL ? "محرر البيانات" : "Data Editor"} - {formatDateRange()}
+								{_isLocalized ? "محرر البيانات" : "Data Editor"} -{" "}
+								{formatDateRange()}
 							</h2>
 							<p
 								id={`data-editor-description-${typeof window !== "undefined" ? "client" : "ssr"}`}
 								className="sr-only"
 							>
-								{_isRTL
+								{_isLocalized
 									? "محرر لإدارة الحجوزات وبيانات العملاء"
 									: "Editor for managing reservations and customer data"}
 							</p>
@@ -629,16 +749,34 @@ export function DataTableEditor(props: DataTableEditorProps) {
 											theme={gridTheme}
 											isDarkMode={isDarkMode}
 											dataSource={dataSource}
-											dataEditorRef={dataEditorRef}
+											dataEditorRef={
+												dataEditorRef as React.RefObject<DataEditorRef>
+											}
+											validationErrors={validationErrors}
 											onReady={() => setIsGridReady(true)}
 											onDataProviderReady={(provider: unknown) => {
 												const dataProvider = provider as DataProvider;
 												dataProviderRef.current = dataProvider;
 
 												const editingState = dataProvider.getEditingState();
-												const unsubscribe = editingState.onChange(() => {
-													handleCheckEditingState();
-												});
+
+												// Use the stable debounced validation check function
+												const debouncedCheck = createDebouncedValidationCheck();
+
+												const unsubscribe =
+													editingState.onChange(debouncedCheck);
+
+												// Live validation updates whenever a cell value is loaded/changed
+												try {
+													dataProvider.setOnCellDataLoaded?.(
+														(_c: number, _r: number) => {
+															try {
+																const v = validateAllCells();
+																setValidationErrorsIfChanged(v.errors || []);
+															} catch {}
+														},
+													);
+												} catch {}
 
 												(
 													dataProviderRef.current as DataProvider & {
@@ -655,24 +793,34 @@ export function DataTableEditor(props: DataTableEditorProps) {
 						</div>
 					</div>
 
-					<div className="px-4 py-1.5 border-t flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
-						<Button
-							onClick={handleSaveChanges}
-							className="gap-2"
-							disabled={!canSave || isSaving}
-						>
-							{isSaving ? (
-								<>
-									<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-									{_isRTL ? "جاري الحفظ..." : "Saving..."}
-								</>
-							) : (
-								<>
-									<Save className="h-4 w-4" />
-									{_isRTL ? "حفظ التغييرات" : "Save Changes"}
-								</>
+					<div className="px-4 py-1.5 border-t flex flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2 gap-2">
+						<div className="flex items-center gap-2 relative ms-auto">
+							<Button
+								onClick={handleSaveChanges}
+								className="gap-2"
+								disabled={!canSave || isSaving}
+							>
+								{isSaving ? (
+									<>
+										<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+										{_isLocalized ? "جاري الحفظ..." : "Saving..."}
+									</>
+								) : (
+									<>
+										<Save className="h-4 w-4" />
+										{_isLocalized ? "حفظ التغييرات" : "Save Changes"}
+									</>
+								)}
+							</Button>
+							{validationErrors?.length > 0 && (
+								<div className="absolute -top-1 -left-1">
+									<ValidationErrorsPopover
+										errors={validationErrors}
+										triggerClassName=""
+									/>
+								</div>
 							)}
-						</Button>
+						</div>
 					</div>
 				</div>
 			)}
@@ -680,7 +828,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			<UnsavedChangesDialog
 				open={showUnsavedChangesDialog}
 				onOpenChange={setShowUnsavedChangesDialog}
-				isRTL={_isRTL}
+				isLocalized={_isLocalized}
 				onDiscard={handleDiscardChanges}
 				onSaveAndClose={handleSaveAndClose}
 				isSaving={isSaving}

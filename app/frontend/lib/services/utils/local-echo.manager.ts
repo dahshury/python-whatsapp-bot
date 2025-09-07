@@ -1,4 +1,4 @@
-export class LocalEchoManager {
+class LocalEchoManager {
 	/**
 	 * Mark an operation as local to suppress WebSocket echo notifications
 	 */
@@ -58,3 +58,5 @@ export class LocalEchoManager {
 		}
 	}
 }
+
+export { LocalEchoManager };

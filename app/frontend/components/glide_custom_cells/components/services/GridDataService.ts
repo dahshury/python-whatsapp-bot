@@ -65,7 +65,7 @@ export class GridDataService {
 		const numParse = (v: unknown) => {
 			if (typeof v === "string" && /^[\d\s+()-]+$/.test(v)) {
 				const digits = digitOnly(v);
-				return digits.length ? Number(digits) : NaN;
+				return digits.length ? Number(digits) : Number.NaN;
 			}
 			return Number(v);
 		};

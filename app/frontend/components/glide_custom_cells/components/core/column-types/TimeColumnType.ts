@@ -73,7 +73,7 @@ export class TimeColumnType implements IColumnType {
 			).isMissingValue = true;
 			(
 				cell as { isMissingValue?: boolean; validationError?: string }
-			).validationError = validation.error;
+			).validationError = validation.error || "";
 		}
 
 		return cell;
@@ -136,11 +136,10 @@ export class TimeColumnType implements IColumnType {
 
 		if (use24Hour) {
 			return `${hours.toString().padStart(2, "0")}:${minutesStr}`;
-		} else {
-			const isPM = hours >= 12;
-			const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-			return `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 		}
+		const isPM = hours >= 12;
+		const displayHours = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+		return `${displayHours}:${minutesStr}${isPM ? "pm" : "am"}`;
 	}
 
 	parseValue(input: unknown, _column: IColumnDefinition): unknown {
@@ -185,20 +184,20 @@ export class TimeColumnType implements IColumnType {
 
 		// Try 24-hour format first
 		const match24 = value.match(timeRegex24);
-		if (match24) {
-			date.setHours(parseInt(match24[1], 10));
-			date.setMinutes(parseInt(match24[2], 10));
+		if (match24?.[1] && match24[2]) {
+			date.setHours(Number.parseInt(match24[1], 10));
+			date.setMinutes(Number.parseInt(match24[2], 10));
 			if (match24[4]) {
-				date.setSeconds(parseInt(match24[4], 10));
+				date.setSeconds(Number.parseInt(match24[4], 10));
 			}
 			return date;
 		}
 
 		// Try 12-hour format
 		const match12 = value.match(timeRegex12);
-		if (match12) {
-			let hours = parseInt(match12[1], 10);
-			const minutes = parseInt(match12[2], 10);
+		if (match12?.[1] && match12[2] && match12[3]) {
+			let hours = Number.parseInt(match12[1], 10);
+			const minutes = Number.parseInt(match12[2], 10);
 			const isPM = match12[3].toLowerCase() === "pm";
 
 			if (hours === 12 && !isPM) {

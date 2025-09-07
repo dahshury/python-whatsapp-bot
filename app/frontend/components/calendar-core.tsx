@@ -51,7 +51,7 @@ export interface CalendarCoreProps {
 	// State props
 	currentView: string;
 	currentDate: Date;
-	isRTL: boolean;
+	isLocalized: boolean;
 	freeRoam: boolean;
 	slotTimes: {
 		slotMinTime: string;
@@ -166,7 +166,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			events,
 			currentView,
 			currentDate,
-			isRTL,
+			isLocalized,
 			freeRoam,
 			slotTimes,
 			slotTimesKey: _slotTimesKey,
@@ -326,6 +326,18 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			[],
 		);
 
+		// Conditionally apply constraints only for timeGrid views (avoid undefined props)
+		const constraintsProp = useMemo(() => {
+			const enabled =
+				!freeRoam && (currentView || "").toLowerCase().includes("timegrid");
+			return enabled
+				? ({
+						eventConstraint: "businessHours" as const,
+						selectConstraint: "businessHours" as const,
+					} as const)
+				: ({} as const);
+		}, [freeRoam, currentView]);
+
 		// Day cell class names (vacation styling now handled by background events)
 		const getDayCellClassNames = useCallback(
 			(arg: { date: Date }) => {
@@ -346,9 +358,12 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				const isPastDate = cellDate < new Date();
 
 				// Add vacation-day class for cells inside any vacation period
-				const vacationClass = isVacationDate?.(cellDateStr)
-					? "vacation-day"
-					: "";
+				const vacationClass =
+					isVacationDate && cellDateStr
+						? isVacationDate(cellDateStr)
+							? "vacation-day"
+							: ""
+						: "";
 
 				// Disable hover for past dates when not in free roam
 				if (!freeRoam && isPastDate) {
@@ -473,7 +488,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 							id: String(event.id),
 							title: String(event.title || ""),
 							start: safeStart,
-							end: event.end ?? undefined,
+							...(event.end ? { end: event.end } : {}),
 							extendedProps: { ...(event.extendedProps || {}) },
 						},
 						el,
@@ -543,14 +558,9 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			}
 		}, [slotTimes]);
 
-		// Update calendar size when container changes
+		// Update calendar size when container changes (attach once)
 		useLayoutEffect(() => {
 			if (!calendarRef.current || !containerRef.current) return;
-
-			// Debug timezone information - ONLY log once per mount, not on every re-render
-			console.log(
-				`🕐 Calendar mounted - View: ${props.currentView}, Date: ${props.currentDate?.toISOString()}`,
-			);
 
 			// Initial sizing - defer and guard to avoid race conditions
 			try {
@@ -564,15 +574,13 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				}
 			} catch {}
 
-			// Only observe container resize for views other than multiMonthYear
+			// Observe container resize (simple and stable across view changes)
 			const observers: ResizeObserver[] = [];
-			if (props.currentView !== "multiMonthYear") {
-				const resizeObserver = new ResizeObserver(() => {
-					onUpdateSize?.();
-				});
-				resizeObserver.observe(containerRef.current);
-				observers.push(resizeObserver);
-			}
+			const resizeObserver = new ResizeObserver(() => {
+				onUpdateSize?.();
+			});
+			resizeObserver.observe(containerRef.current);
+			observers.push(resizeObserver);
 
 			// Always listen to window resize
 			const handleWindowResize = () => {
@@ -586,43 +594,15 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				}
 				window.removeEventListener("resize", handleWindowResize);
 			};
-		}, [props.currentView, onUpdateSize, props.currentDate?.toISOString]);
+		}, [onUpdateSize]);
 
-		// Callback to determine if an event is allowed to be dragged or resized
-		const _handleEventAllow = useCallback(
-			(
-				dropInfo: { start?: Date; startStr?: string },
-				_draggedEvent: EventApi,
-			) => {
-				// Block drops into the past across all views (unless in free roam)
-				try {
-					if (!freeRoam) {
-						const targetStart: Date | undefined =
-							dropInfo?.start ||
-							(dropInfo.startStr ? new Date(dropInfo.startStr) : undefined);
-						if (targetStart) {
-							const today = new Date();
-							today.setHours(0, 0, 0, 0);
-							const targetDay = new Date(targetStart);
-							targetDay.setHours(0, 0, 0, 0);
-							if (targetDay < today) return false;
-						}
-					}
-				} catch {}
+		// (removed) _handleEventAllow was unused; relying on other constraints
 
-				// Delegate to external override if provided
-				// eventAllow removed to align with core types and avoid overload mismatch
-				// Allow UI to perform the drop; backend will validate and we will revert on failure
-				return true;
-			},
-			[freeRoam],
-		);
-
-		// Track in-flight and queued changes per event for fluid UX
-		const _processingEvents = useRef(new Set<string>());
-		const _queuedTargets = useRef(
-			new Map<string, { startStr: string; endStr?: string }>(),
-		);
+		// Track in-flight and queued changes per event for fluid UX (reserved for future use)
+		// const _processingEvents = useRef(new Set<string>());
+		// const _queuedTargets = useRef(
+		// 	new Map<string, { startStr: string; endStr?: string }>(),
+		// );
 
 		// Enhanced event change handler with coalescing to keep UI fluid under rapid moves
 		const handleEventChangeWithProcessing = useCallback(
@@ -699,16 +679,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					// Business hours and constraints
 					businessHours={businessHours}
 					// Only enforce constraints in timeGrid views so month/week drags are not blocked
-					eventConstraint={
-						!freeRoam && (currentView || "").toLowerCase().includes("timegrid")
-							? "businessHours"
-							: undefined
-					}
-					selectConstraint={
-						!freeRoam && (currentView || "").toLowerCase().includes("timegrid")
-							? "businessHours"
-							: undefined
-					}
+					{...constraintsProp}
 					selectAllow={handleSelectAllow}
 					hiddenDays={freeRoam ? [] : [5]} // Hide Friday unless in free roam
 					// Valid range for navigation
@@ -719,7 +690,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					slotMinTime={slotTimes.slotMinTime}
 					slotMaxTime={slotTimes.slotMaxTime}
 					// Localization and Timezone (critical - matches Python implementation)
-					locale={isRTL ? arLocale : "en"}
+					locale={isLocalized ? arLocale : "en"}
 					direction={"ltr"}
 					timeZone={TIMEZONE} // ✅ Critical: Set timezone like Python calendar_view.py
 					firstDay={6} // Saturday as first day
@@ -761,15 +732,15 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					dayHeaderClassNames={getDayHeaderClassNames}
 					viewClassNames="bg-card rounded-lg shadow-sm"
 					// Event callbacks - use enhanced handler for eventChange
-					dateClick={onDateClick}
-					select={onSelect}
-					eventClick={onEventClick}
+					{...(onDateClick ? { dateClick: onDateClick } : {})}
+					{...(onSelect ? { select: onSelect } : {})}
+					{...(onEventClick ? { eventClick: onEventClick } : {})}
 					eventChange={handleEventChangeWithProcessing}
 					viewDidMount={handleViewDidMount}
 					eventDidMount={handleEventDidMount}
 					datesSet={handleDatesSet}
-					eventMouseEnter={onEventMouseEnter}
-					eventMouseLeave={onEventMouseLeave}
+					{...(onEventMouseEnter ? { eventMouseEnter: onEventMouseEnter } : {})}
+					{...(onEventMouseLeave ? { eventMouseLeave: onEventMouseLeave } : {})}
 					eventDragStart={(info) => {
 						try {
 							(
@@ -785,7 +756,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 									id: String(e.id),
 									title: String(e.title || ""),
 									start: safeStart,
-									end: e.end ?? undefined,
+									...(e.end ? { end: e.end } : {}),
 									extendedProps: { ...(e.extendedProps || {}) },
 								},
 								el: info.el as HTMLElement,
@@ -808,7 +779,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 									id: String(e.id),
 									title: String(e.title || ""),
 									start: safeStart,
-									end: e.end ?? undefined,
+									...(e.end ? { end: e.end } : {}),
 									extendedProps: { ...(e.extendedProps || {}) },
 								},
 								el: info.el as HTMLElement,
@@ -825,9 +796,23 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					}}
 					slotLabelInterval={{ hours: 1 }}
 					// Drag and drop options
-					droppable={droppable}
-					eventReceive={onEventReceive}
-					eventLeave={onEventLeave}
+					droppable={Boolean(droppable)}
+					{...(onEventReceive
+						? {
+								eventReceive: (info: unknown) =>
+									onEventReceive(
+										info as { event: EventApi; draggedEl: HTMLElement },
+									),
+							}
+						: {})}
+					{...(onEventLeave
+						? {
+								eventLeave: (info: unknown) =>
+									onEventLeave(
+										info as { event?: EventApi; draggedEl: HTMLElement },
+									),
+							}
+						: {})}
 				/>
 			</div>
 		);

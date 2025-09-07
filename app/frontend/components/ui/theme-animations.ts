@@ -21,6 +21,8 @@ const getPositionCoords = (position: AnimationStart) => {
 			return { cx: "0", cy: "40" };
 		case "bottom-right":
 			return { cx: "40", cy: "40" };
+		default:
+			return { cx: "20", cy: "20" }; // fallback to center
 	}
 };
 
@@ -54,6 +56,8 @@ const getTransformOrigin = (start: AnimationStart) => {
 			return "bottom left";
 		case "bottom-right":
 			return "bottom right";
+		default:
+			return "center";
 	}
 };
 

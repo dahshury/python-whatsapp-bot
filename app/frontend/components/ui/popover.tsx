@@ -27,8 +27,8 @@ const PopoverContent = React.forwardRef<
 			portal = true,
 			...props
 		}: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
-			className?: string;
-			portal?: boolean;
+			className?: string | undefined;
+			portal?: boolean | undefined;
 		},
 		ref: React.Ref<HTMLDivElement>,
 	) => {

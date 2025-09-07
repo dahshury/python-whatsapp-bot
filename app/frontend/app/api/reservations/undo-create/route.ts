@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/lib/backend";
+
+interface UndoCreateResponse {
+	success: boolean;
+	message?: string;
+	data?: unknown;
+}
 // import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path as needed
 
 export async function POST(request: Request) {
@@ -19,27 +25,28 @@ export async function POST(request: Request) {
 			`API CALL (Python Backend): undo_reserve_time_slot for ID: ${reservationId}, lang_ar: ${ar || false}`,
 		);
 
-		const pythonResponse = await callPythonBackend("/undo-reserve", {
-			method: "POST",
-			body: JSON.stringify({
-				reservation_id: reservationId,
-				ar: ar || false,
-			}),
-		});
+		const pythonResponse = await callPythonBackend<UndoCreateResponse>(
+			"/undo-reserve",
+			{
+				method: "POST",
+				body: JSON.stringify({
+					reservation_id: reservationId,
+					ar: ar || false,
+				}),
+			},
+		);
 
 		if (pythonResponse.success) {
 			return NextResponse.json(pythonResponse);
-		} else {
-			// Use the message from the Python service if available
-			return NextResponse.json(
-				{
-					success: false,
-					message:
-						pythonResponse.message || "Undo operation failed in backend.",
-				},
-				{ status: 500 },
-			);
 		}
+		// Use the message from the Python service if available
+		return NextResponse.json(
+			{
+				success: false,
+				message: pythonResponse.message || "Undo operation failed in backend.",
+			},
+			{ status: 500 },
+		);
 	} catch (error: unknown) {
 		console.error("Error in /api/reservations/undo-create API:", error);
 		const errorMessage =

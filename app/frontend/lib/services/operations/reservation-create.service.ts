@@ -1,8 +1,8 @@
 /* eslint-disable */
 import { reserveTimeSlot } from "@/lib/api";
 import { toastService } from "@/lib/toast-service";
+import { i18n } from "@/lib/i18n";
 import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
-import type { CalendarIntegrationService } from "../calendar/calendar-integration.service";
 import type {
 	ApiResponse,
 	CalendarEvent,
@@ -15,9 +15,9 @@ import type { LocalEchoManager } from "../utils/local-echo.manager";
 
 export class ReservationCreateService {
 	constructor(
-		private readonly calendarIntegration: CalendarIntegrationService,
 		private readonly formattingService: FormattingService,
 		private readonly localEchoManager: LocalEchoManager,
+		private readonly isLocalized: boolean,
 	) {}
 
 	async processAdditions(
@@ -52,8 +52,8 @@ export class ReservationCreateService {
 					date: creationData.dStr,
 					time: slotTime,
 					type: Number(creationData.type),
-					ar: this.isRTL,
-				})) as ApiResponse;
+					ar: this.isLocalized,
+				})) as unknown as ApiResponse;
 
 				if (!resp?.success) {
 					throw new Error(this.extractErrorMessage(resp, creationData));
@@ -154,8 +154,8 @@ export class ReservationCreateService {
 
 	private showValidationError(missing: string[]): void {
 		toastService.error(
-			this.isRTL ? "حقول مطلوبة مفقودة" : "Missing required fields",
-			(this.isRTL ? "يرجى إكمال: " : "Please fill: ") + missing.join(", "),
+			this.isLocalized ? "حقول مطلوبة مفقودة" : "Missing required fields",
+			(this.isLocalized ? "يرجى إكمال: " : "Please fill: ") + missing.join(", "),
 			3000,
 		);
 	}
@@ -164,47 +164,42 @@ export class ReservationCreateService {
 		resp: ApiResponse,
 		data: ReturnType<typeof this.prepareCreationData>,
 	): string {
-		const reason =
+		const rawReason =
 			(typeof resp?.message === "string" && resp.message) ||
 			(typeof resp?.error === "string" && resp.error) ||
 			(typeof resp?.detail === "string" && resp.detail) ||
 			(resp && typeof resp === "object" ? JSON.stringify(resp) : "") ||
 			"Unknown";
 
+		const reason = this.localizeReason(rawReason);
+
 		return [
-			this.isRTL ? "فشل إنشاء الحجز" : "Failed to create reservation",
+			this.isLocalized ? "فشل إنشاء الحجز" : "Failed to create reservation",
 			`${data.name || data.waId} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
-			reason ? (this.isRTL ? `السبب: ${reason}` : `reason: ${reason}`) : "",
+			reason ? (this.isLocalized ? `السبب: ${reason}` : `reason: ${reason}`) : "",
 		]
 			.filter(Boolean)
 			.join("\n");
 	}
 
-	private createEventObject(
-		resp: ApiResponse,
-		data: ReturnType<typeof this.prepareCreationData>,
-	): CalendarEvent {
-		const startIso = `${data.dStr}T${data.tStr}:00`;
-		const eventId = String(
-			resp?.id ||
-				resp?.reservationId ||
-				`${data.waId}-${data.dStr}-${data.tStr}`,
-		);
-
-		return {
-			id: eventId,
-			title: data.name || data.waId,
-			start: startIso,
-			end: startIso,
-			extendedProps: {
-				type: Number(data.type),
-				cancelled: false,
-				waId: data.waId,
-				wa_id: data.waId,
-				reservationId: Number(resp?.id || resp?.reservationId) || undefined,
-			},
-		};
+	private localizeReason(msg: string): string {
+		try {
+			const text = String(msg || "");
+			const lower = text.toLowerCase();
+			// Map common backend messages to localized i18n keys
+			if (
+				lower.includes("not available") ||
+				lower.includes("fully booked") ||
+				lower.includes("no available slots")
+			) {
+				return i18n.getMessage("slot_fully_booked", this.isLocalized === true);
+			}
+			return text;
+		} catch {
+			return String(msg || "");
+		}
 	}
+
 
 	private markLocalEchoForCreation(
 		resp: ApiResponse,
@@ -223,12 +218,12 @@ export class ReservationCreateService {
 		error: Error,
 		data: ReturnType<typeof this.prepareCreationData>,
 	): void {
-		const base = this.isRTL ? "فشل الإنشاء" : "Create Failed";
-		const msg = error?.message || String(error) || "";
+		const base = this.isLocalized ? "فشل الإنشاء" : "Create Failed";
+		const msg = this.localizeReason(error?.message || String(error) || "");
 		const desc = [
-			this.isRTL ? "معلومات الطلب" : "Request",
+			this.isLocalized ? "معلومات الطلب" : "Request",
 			`${data.name || data.waId} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
-			msg && (this.isRTL ? `السبب: ${msg}` : `reason: ${msg}`),
+			msg && (this.isLocalized ? `السبب: ${msg}` : `reason: ${msg}`),
 		]
 			.filter(Boolean)
 			.join("\n");

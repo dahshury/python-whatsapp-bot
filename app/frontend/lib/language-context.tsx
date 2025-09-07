@@ -4,7 +4,6 @@ import * as React from "react";
 export interface LanguageState {
 	locale: string;
 	isLocalized: boolean;
-	isRTL: boolean;
 	setLocale: (locale: string) => void;
 	setUseLocalizedText: (useLocalized: boolean) => void;
 }
@@ -18,7 +17,6 @@ export const LanguageProvider: React.FC<React.PropsWithChildren> = ({
 }) => {
 	const [locale, setLocale] = React.useState<string>("en");
 	const isLocalized = locale !== "en";
-	const isRTL = locale.startsWith("ar") || locale === "fa";
 
 	React.useEffect(() => {
 		if (typeof window === "undefined") return;
@@ -27,9 +25,9 @@ export const LanguageProvider: React.FC<React.PropsWithChildren> = ({
 			setLocale(stored);
 			return;
 		}
-		// Backward compatibility: migrate old isRTL flag to locale
-		const legacyIsRTL = localStorage.getItem("isRTL");
-		if (legacyIsRTL === "true") {
+		// Backward compatibility: migrate old isLocalized flag to locale
+		const legacyIsLocalized = localStorage.getItem("isLocalized");
+		if (legacyIsLocalized === "true") {
 			setLocale("ar");
 		}
 	}, []);
@@ -52,8 +50,8 @@ export const LanguageProvider: React.FC<React.PropsWithChildren> = ({
 	}, []);
 
 	const value = React.useMemo<LanguageState>(
-		() => ({ locale, isLocalized, isRTL, setLocale, setUseLocalizedText }),
-		[locale, isLocalized, isRTL, setUseLocalizedText],
+		() => ({ locale, isLocalized, setLocale, setUseLocalizedText }),
+		[locale, isLocalized, setUseLocalizedText],
 	);
 	return (
 		<LanguageContext.Provider value={value}>

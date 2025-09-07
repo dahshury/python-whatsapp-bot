@@ -1,18 +1,18 @@
 "use client";
 
-import React from "react";
 import {
 	endOfMonth,
 	endOfYear,
+	format,
 	startOfMonth,
 	startOfYear,
 	subDays,
 	subMonths,
 	subYears,
 } from "date-fns";
-import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import React from "react";
 import type { DateRange } from "react-day-picker";
-
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -21,7 +21,6 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CalendarIcon } from "lucide-react";
 
 interface DateRangeWithPresetsProps {
 	className?: string;
@@ -209,5 +208,3 @@ export function DateRangeWithPresets({
 		</div>
 	);
 }
-
-export default DateRangeWithPresets;

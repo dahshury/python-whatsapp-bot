@@ -10,6 +10,7 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { useLanguage } from "@/lib/language-context";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
 
 interface NotificationsButtonProps {
@@ -33,14 +34,21 @@ function Dot({ className = "" }: { className?: string }) {
 	);
 }
 
+type NotificationItem = {
+	id: string;
+	text: string;
+	timestamp: number;
+	unread: boolean;
+	type?: string;
+	data?: Record<string, unknown>;
+};
+
 export function NotificationsButton({
 	className,
 	notificationCount: _notificationCount = 0,
 }: NotificationsButtonProps) {
-	const { isRTL } = useLanguage();
-	const [items, setItems] = React.useState<
-		Array<{ id: string; text: string; timestamp: number; unread: boolean }>
-	>([]);
+	const { isLocalized } = useLanguage();
+	const [items, setItems] = React.useState<NotificationItem[]>([]);
 	const [open, setOpen] = React.useState(false);
 
 	const unreadCount = React.useMemo(
@@ -52,16 +60,17 @@ export function NotificationsButton({
 		(ts: number) => {
 			const now = Date.now();
 			const diffSec = Math.max(1, Math.floor((now - ts) / 1000));
-			if (diffSec < 60) return isRTL ? "قبل ثوانٍ" : "just now";
+			if (diffSec < 60) return isLocalized ? "قبل ثوانٍ" : "just now";
 			const diffMin = Math.floor(diffSec / 60);
 			if (diffMin < 60)
-				return isRTL ? `${diffMin} دقيقة` : `${diffMin} min ago`;
+				return isLocalized ? `${diffMin} دقيقة` : `${diffMin} min ago`;
 			const diffHr = Math.floor(diffMin / 60);
-			if (diffHr < 24) return isRTL ? `${diffHr} ساعة` : `${diffHr} h ago`;
+			if (diffHr < 24)
+				return isLocalized ? `${diffHr} ساعة` : `${diffHr} h ago`;
 			const diffDay = Math.floor(diffHr / 24);
-			return isRTL ? `${diffDay} يوم` : `${diffDay} d ago`;
+			return isLocalized ? `${diffDay} يوم` : `${diffDay} d ago`;
 		},
-		[isRTL],
+		[isLocalized],
 	);
 
 	React.useEffect(() => {
@@ -84,24 +93,26 @@ export function NotificationsButton({
 			const text = (() => {
 				if (type === "reservation_created")
 					return `${
-						isRTL ? "تم إنشاء حجز" : "Reservation created"
+						isLocalized ? "تم إنشاء حجز" : "Reservation created"
 					}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${
 						data.time_slot ?? ""
 					}`;
 				if (type === "reservation_updated" || type === "reservation_reinstated")
 					return `${
-						isRTL ? "تم تعديل الحجز" : "Reservation modified"
+						isLocalized ? "تم تعديل الحجز" : "Reservation modified"
 					}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${
 						data.time_slot ?? ""
 					}`;
 				if (type === "reservation_cancelled")
 					return `${
-						isRTL ? "تم إلغاء الحجز" : "Reservation cancelled"
+						isLocalized ? "تم إلغاء الحجز" : "Reservation cancelled"
 					}: ${data.wa_id}`;
 				if (type === "conversation_new_message")
-					return `${isRTL ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
+					return `${isLocalized ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
 				if (type === "vacation_period_updated")
-					return isRTL ? "تم تحديث فترات الإجازة" : "Vacation periods updated";
+					return isLocalized
+						? "تم تحديث فترات الإجازة"
+						: "Vacation periods updated";
 				return String(type);
 			})();
 			const uniqueId = `${timestamp}:${compositeKey}`;
@@ -109,7 +120,14 @@ export function NotificationsButton({
 				if (prev.some((i) => i.id === uniqueId)) return prev;
 				const shouldMarkUnread = !open; // mirror previous behavior: don't increment when open
 				return [
-					{ id: uniqueId, text, timestamp, unread: shouldMarkUnread },
+					{
+						id: uniqueId,
+						text,
+						timestamp,
+						unread: shouldMarkUnread,
+						type: String(type),
+						data: data as Record<string, unknown>,
+					},
 					...prev,
 				].slice(0, 100);
 			});
@@ -117,17 +135,71 @@ export function NotificationsButton({
 		window.addEventListener("notification:add", handler as EventListener);
 		return () =>
 			window.removeEventListener("notification:add", handler as EventListener);
-	}, [isRTL, open]);
+	}, [isLocalized, open]);
 
 	const handleMarkAllAsRead = React.useCallback(() => {
 		setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
 	}, []);
 
-	const handleNotificationClick = React.useCallback((id: string) => {
-		setItems((prev) =>
-			prev.map((n) => (n.id === id ? { ...n, unread: false } : n)),
-		);
-	}, []);
+	const handleNotificationClick = React.useCallback(
+		(notification: NotificationItem) => {
+			// Mark as read
+			setItems((prev) =>
+				prev.map((n) =>
+					n.id === notification.id ? { ...n, unread: false } : n,
+				),
+			);
+
+			// If this is a conversation message, open the chat and scroll to it
+			try {
+				if (
+					notification.type === "conversation_new_message" &&
+					notification.data
+				) {
+					const data = notification.data as {
+						wa_id?: string;
+						waId?: string;
+						date?: string;
+						time?: string;
+						message?: string;
+						role?: string;
+					};
+					const waId = String(data.wa_id || data.waId || "");
+					if (waId) {
+						// Request opening the conversation via the centralized store
+						useSidebarChatStore.getState().openConversation(waId);
+						// Stash target globally in case the event is fired before listeners attach
+						try {
+							(
+								globalThis as unknown as { __chatScrollTarget?: unknown }
+							).__chatScrollTarget = {
+								waId,
+								date: data.date,
+								time: data.time,
+								message: data.message,
+							};
+						} catch {}
+						// Ask the chat to scroll to this message once ready
+						try {
+							const evt = new CustomEvent("chat:scrollToMessage", {
+								detail: {
+									wa_id: waId,
+									date: data.date,
+									time: data.time,
+									message: data.message,
+								},
+							});
+							window.dispatchEvent(evt);
+						} catch {}
+					}
+				}
+			} catch {}
+
+			// Close popover
+			setOpen(false);
+		},
+		[],
+	);
 
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
@@ -136,7 +208,7 @@ export function NotificationsButton({
 					size="icon"
 					variant="outline"
 					className={cn("relative", className)}
-					aria-label={isRTL ? "الإشعارات" : "Notifications"}
+					aria-label={isLocalized ? "الإشعارات" : "Notifications"}
 				>
 					<Bell className="h-4 w-4" />
 					{unreadCount > 0 && (
@@ -154,7 +226,7 @@ export function NotificationsButton({
 			>
 				<div className="flex items-baseline justify-between gap-4 px-3 py-2">
 					<div className="text-sm font-semibold">
-						{isRTL ? "الإشعارات" : "Notifications"}
+						{isLocalized ? "الإشعارات" : "Notifications"}
 					</div>
 					{unreadCount > 0 && (
 						<button
@@ -162,7 +234,7 @@ export function NotificationsButton({
 							className="text-xs font-medium hover:underline"
 							onClick={handleMarkAllAsRead}
 						>
-							{isRTL ? "وضع الكل كمقروء" : "Mark all as read"}
+							{isLocalized ? "وضع الكل كمقروء" : "Mark all as read"}
 						</button>
 					)}
 				</div>
@@ -177,7 +249,7 @@ export function NotificationsButton({
 								<button
 									type="button"
 									className="text-foreground/80 text-left after:absolute after:inset-0"
-									onClick={() => handleNotificationClick(notification.id)}
+									onClick={() => handleNotificationClick(notification)}
 								>
 									<span className="text-foreground font-medium">
 										{notification.text}
@@ -190,7 +262,7 @@ export function NotificationsButton({
 							{notification.unread && (
 								<div className="absolute end-0 self-center">
 									<span className="sr-only">
-										{isRTL ? "غير مقروء" : "Unread"}
+										{isLocalized ? "غير مقروء" : "Unread"}
 									</span>
 									<Dot />
 								</div>
@@ -200,7 +272,7 @@ export function NotificationsButton({
 				))}
 				{items.length === 0 && (
 					<div className="px-3 py-6 text-center text-xs text-muted-foreground">
-						{isRTL ? "لا توجد إشعارات" : "No notifications"}
+						{isLocalized ? "لا توجد إشعارات" : "No notifications"}
 					</div>
 				)}
 			</PopoverContent>

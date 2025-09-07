@@ -24,7 +24,7 @@ type WordItem = { text: string; value: number };
 
 interface WordCloudProps {
 	words: WordItem[];
-	isRTL: boolean;
+	isLocalized: boolean;
 	className?: string;
 }
 
@@ -46,7 +46,11 @@ class SafeBoundary extends React.Component<
 	}
 }
 
-export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
+export function WordCloudChart({
+	words,
+	isLocalized,
+	className,
+}: WordCloudProps) {
 	const options = useMemo(() => {
 		const computed = getComputedStyle(document.documentElement);
 		const fg = `hsl(${computed.getPropertyValue("--foreground")})`;
@@ -57,7 +61,7 @@ export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
 		const c5 = `hsl(${computed.getPropertyValue("--chart-5")})`;
 		return {
 			colors: [c1, c2, c3, c4, c5, fg],
-			fontFamily: isRTL
+			fontFamily: isLocalized
 				? "IBM Plex Sans Arabic, system-ui, sans-serif"
 				: "Inter, system-ui, sans-serif",
 			fontSizes: [14, 56] as [number, number],
@@ -65,14 +69,14 @@ export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
 			fontWeight: "bold" as const,
 			padding: 1,
 			rotations: 2,
-			rotationAngles: isRTL
+			rotationAngles: isLocalized
 				? ([0, 0] as [number, number])
 				: ([0, 0] as [number, number]),
 			scale: "sqrt" as const,
 			spiral: "rectangular" as const,
 			transitionDuration: 500,
 		};
-	}, [isRTL]);
+	}, [isLocalized]);
 
 	const callbacks = useMemo(
 		() => ({
@@ -108,12 +112,16 @@ export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
 
 	const noData = (
 		<div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-			{i18n.getMessage("chart_no_data", isRTL)}
+			{i18n.getMessage("chart_no_data", isLocalized)}
 		</div>
 	);
 
 	return (
-		<div className={className} dir={isRTL ? "rtl" : "ltr"} ref={containerRef}>
+		<div
+			className={className}
+			dir={isLocalized ? "rtl" : "ltr"}
+			ref={containerRef}
+		>
 			{ReactWordcloud ? (
 				sizedWords.length > 0 && canRender ? (
 					<SafeBoundary fallback={noData}>
@@ -128,7 +136,7 @@ export function WordCloudChart({ words, isRTL, className }: WordCloudProps) {
 				)
 			) : (
 				<div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
-					{i18n.getMessage("chart_loading", isRTL)}
+					{i18n.getMessage("chart_loading", isLocalized)}
 				</div>
 			)}
 		</div>

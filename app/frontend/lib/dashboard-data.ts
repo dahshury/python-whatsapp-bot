@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { DashboardData } from "@/types/dashboard";
+import type { Reservation, ConversationMessage } from "@/types/calendar";
 
 interface ReservationItem {
 	date?: string;
@@ -105,7 +106,7 @@ export function useDashboardDataFrom(state: {
 						withinRange(parseMessageDate(m)),
 					),
 				],
-			) as [string, ConversationMessage[]][];
+			) as unknown as [string, ConversationMessage[]][];
 
 			const totalReservations = reservationEntriesFiltered.reduce(
 				(sum, [, items]) => sum + (Array.isArray(items) ? items.length : 0),

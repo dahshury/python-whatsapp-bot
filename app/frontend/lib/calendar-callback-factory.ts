@@ -4,7 +4,7 @@ interface EditorOptions {
 }
 
 export interface CallbackFactoryInput {
-	isRTL: boolean;
+	isLocalized: boolean;
 	currentView: string;
 	isVacationDate: (d: string) => boolean;
 	openEditor: (opts?: EditorOptions) => void;

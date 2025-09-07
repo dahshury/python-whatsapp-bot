@@ -22,7 +22,7 @@ import {
 } from "@/lib/websocket-data-provider";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const { setOpenMobile, setOpen, open, openMobile } = useSidebar();
 
 	// Use unified data provider
@@ -40,7 +40,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		setLoadingConversation,
 		selectedConversationId,
 		activeTab,
-		isChatSidebarOpen,
 		_hasHydrated,
 		setSelectedConversation,
 		setActiveTab,
@@ -181,14 +180,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	// Auto-open sidebar when switching to chat tab or when hydrated with chat tab active
 	useEffect(() => {
 		if (isInitialized) {
-			// Debug logging
-			console.log("App sidebar state after initialization:", {
-				activeTab,
-				selectedConversationId,
-				isChatSidebarOpen,
-				_hasHydrated,
-			});
-
 			if (activeTab === "chat") {
 				// Set the chat sidebar as open
 				setOpenState(true);
@@ -197,14 +188,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				setOpenState(false);
 			}
 		}
-	}, [
-		activeTab,
-		isInitialized,
-		setOpenState,
-		selectedConversationId,
-		isChatSidebarOpen,
-		_hasHydrated,
-	]);
+	}, [activeTab, isInitialized, setOpenState]);
 
 	// Listen for chat open requests from calendar
 	useEffect(() => {
@@ -255,7 +239,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				<div className="flex items-center gap-2 mb-4">
 					<Calendar className="h-6 w-6" />
 					<span className="font-semibold">
-						{isRTL ? "مدير الحجوزات" : "Reservation Manager"}
+						{isLocalized ? "مدير الحجوزات" : "Reservation Manager"}
 					</span>
 				</div>
 
@@ -271,7 +255,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						}`}
 					>
 						<Calendar className="h-3.5 w-3.5" />
-						{isRTL ? "التقويم" : "Calendar"}
+						{isLocalized ? "التقويم" : "Calendar"}
 					</button>
 					<button
 						type="button"
@@ -283,7 +267,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						}`}
 					>
 						<MessageSquare className="h-3.5 w-3.5" />
-						{isRTL ? "الدردشة" : "Chat"}
+						{isLocalized ? "الدردشة" : "Chat"}
 					</button>
 				</div>
 			</SidebarHeader>
@@ -295,7 +279,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						<SidebarGroup className="p-4">
 							<SidebarGroupLabel className="flex items-center gap-2">
 								<Clock className="h-4 w-4" />
-								{isRTL ? "مواقيت الصلاة" : "Prayer Times"}
+								{isLocalized ? "مواقيت الصلاة" : "Prayer Times"}
 							</SidebarGroupLabel>
 							<SidebarGroupContent>
 								<PrayerTimesWidget />

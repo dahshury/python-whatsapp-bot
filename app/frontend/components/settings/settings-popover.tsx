@@ -35,8 +35,7 @@ export function SettingsPopover({
 	onCalendarViewChange,
 	isCalendarPage = true,
 }: SettingsPopoverProps) {
-	const { recordingState } = useVacation();
-	const _isRecording = recordingState.periodIndex !== null;
+	useVacation();
 
 	return (
 		<DockIcon>
@@ -45,8 +44,6 @@ export function SettingsPopover({
 					<TooltipTrigger asChild>
 						<PopoverTrigger asChild>
 							<StablePopoverButton
-								variant="ghost"
-								size="icon"
 								className="size-9 rounded-full"
 								aria-label={isLocalized ? "الإعدادات" : "Settings"}
 							>
@@ -65,11 +62,11 @@ export function SettingsPopover({
 				>
 					<SettingsTabs
 						isLocalized={isLocalized}
-						activeTab={activeTab}
-						onTabChange={onTabChange}
-						currentCalendarView={currentCalendarView}
-						activeView={activeView}
-						onCalendarViewChange={onCalendarViewChange}
+						activeTab={activeTab ?? "view"}
+						onTabChange={onTabChange ?? (() => {})}
+						currentCalendarView={currentCalendarView ?? "multiMonthYear"}
+						activeView={activeView ?? currentCalendarView ?? "multiMonthYear"}
+						onCalendarViewChange={onCalendarViewChange ?? (() => {})}
 						isCalendarPage={isCalendarPage}
 					/>
 				</PopoverContent>

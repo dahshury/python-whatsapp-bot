@@ -22,7 +22,7 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 	} = options;
 
 	const getTextWidth = useCallback(
-		(text: string, font: string = "14px Arial"): number => {
+		(text: string, font = "14px Arial"): number => {
 			if (!canvasRef.current) {
 				canvasRef.current = document.createElement("canvas");
 				contextRef.current = canvasRef.current.getContext("2d");
@@ -42,8 +42,8 @@ export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
 		(
 			column: BaseColumnProps,
 			data: unknown[],
-			headerFont: string = "14px Arial",
-			cellFont: string = "14px Arial",
+			headerFont = "14px Arial",
+			cellFont = "14px Arial",
 		): number => {
 			// Calculate header width
 			const headerWidth = getTextWidth(column.name, headerFont) + headerPadding;

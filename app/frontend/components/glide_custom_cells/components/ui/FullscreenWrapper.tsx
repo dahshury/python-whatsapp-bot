@@ -64,6 +64,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 				setPortalContainer(null);
 			};
 		}
+		return undefined;
 	}, [isFullscreen, mounted]);
 
 	if (!isFullscreen) {
@@ -158,5 +159,6 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 		return createPortal(fullscreenContent, portalContainer);
 	}
 
-	return null;
+	// Fallback: render children normally if portal is not ready
+	return <>{children}</>;
 };

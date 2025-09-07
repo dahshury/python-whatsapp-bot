@@ -11,22 +11,23 @@ const formatPhoneForDisplay = (phoneNumber: string): string => {
 	if (!phoneNumber) return "";
 
 	// Ensure it starts with +
+	let formattedNumber = phoneNumber;
 	if (!phoneNumber.startsWith("+")) {
-		phoneNumber = `+${phoneNumber}`;
+		formattedNumber = `+${phoneNumber}`;
 	}
 
 	try {
-		const parsed = parsePhoneNumber(phoneNumber);
+		const parsed = parsePhoneNumber(formattedNumber);
 		if (parsed) {
 			// Return formatted international number
 			return parsed.formatInternational();
 		}
 	} catch {
 		// Return as-is if parsing fails
-		return phoneNumber;
+		return formattedNumber;
 	}
 
-	return phoneNumber;
+	return formattedNumber;
 };
 
 interface PhoneCellEditorProps {

@@ -22,21 +22,18 @@ import { cn } from "@/lib/utils";
 import type { CalendarCoreRef } from "./calendar-core";
 
 interface CalendarToolbarProps {
-	calendarRef: React.RefObject<CalendarCoreRef>;
+	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	currentView: string;
 	freeRoam?: boolean;
 	className?: string;
-	onViewChange?: (view: string) => void;
 }
 
 export function CalendarToolbar({
 	calendarRef,
 	currentView,
-	freeRoam = false,
 	className,
-	onViewChange,
 }: CalendarToolbarProps) {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 
 	// Use the custom hook for all calendar logic
@@ -49,10 +46,8 @@ export function CalendarToolbar({
 		handleNext,
 		handleToday,
 	} = useCalendarToolbar({
-		calendarRef,
+		calendarRef: calendarRef || null,
 		currentView,
-		freeRoam,
-		...(onViewChange && { onViewChange }),
 	});
 
 	// Define navigation buttons with proper arrow directions for RTL
@@ -68,7 +63,7 @@ export function CalendarToolbar({
 						className="h-16 w-16"
 					>
 						{/* In RTL, use right arrow for previous (pointing outward) */}
-						{isRTL ? (
+						{isLocalized ? (
 							<ChevronRight className="h-8 w-8" />
 						) : (
 							<ChevronLeft className="h-8 w-8" />
@@ -76,7 +71,7 @@ export function CalendarToolbar({
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isRTL ? "السابق" : "Previous"}</p>
+					<p>{isLocalized ? "السابق" : "Previous"}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
@@ -94,7 +89,7 @@ export function CalendarToolbar({
 						className="h-16 w-16"
 					>
 						{/* In RTL, use left arrow for next (pointing outward) */}
-						{isRTL ? (
+						{isLocalized ? (
 							<ChevronLeft className="h-8 w-8" />
 						) : (
 							<ChevronRight className="h-8 w-8" />
@@ -102,7 +97,7 @@ export function CalendarToolbar({
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isRTL ? "التالي" : "Next"}</p>
+					<p>{isLocalized ? "التالي" : "Next"}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
@@ -113,7 +108,7 @@ export function CalendarToolbar({
 			{/* Navigation controls with date in the middle */}
 			<div className="flex items-center">
 				{/* Left side navigation button (Previous in LTR, Next in RTL) */}
-				{isRTL ? nextButton : prevButton}
+				{isLocalized ? nextButton : prevButton}
 
 				{/* Date text as clickable button to go to today */}
 				<TooltipProvider>
@@ -137,7 +132,7 @@ export function CalendarToolbar({
 								<CalendarDays
 									className={cn(
 										"h-7 w-7 absolute transition-all duration-200",
-										isRTL ? "right-2" : "left-2",
+										isLocalized ? "right-2" : "left-2",
 										isHoveringDate && !isTodayDisabled
 											? "opacity-100 scale-100"
 											: "opacity-0 scale-75",
@@ -150,7 +145,7 @@ export function CalendarToolbar({
 										"transition-all duration-200",
 										isHoveringDate &&
 											!isTodayDisabled &&
-											(isRTL ? "pr-10" : "pl-10"),
+											(isLocalized ? "pr-10" : "pl-10"),
 									)}
 								>
 									{title}
@@ -172,7 +167,7 @@ export function CalendarToolbar({
 										className={cn(
 											"absolute top-1 h-3 w-3 rounded-full",
 											"bg-primary animate-pulse",
-											isRTL ? "left-1" : "right-1",
+											isLocalized ? "left-1" : "right-1",
 										)}
 									/>
 								)}
@@ -181,7 +176,7 @@ export function CalendarToolbar({
 						<TooltipContent>
 							<p className="flex items-center gap-1.5">
 								{isTodayDisabled ? (
-									isRTL ? (
+									isLocalized ? (
 										"أنت بالفعل في اليوم الحالي"
 									) : (
 										"Already showing today"
@@ -189,7 +184,7 @@ export function CalendarToolbar({
 								) : (
 									<>
 										<CalendarDays className="h-3.5 w-3.5" />
-										{isRTL ? "الذهاب إلى اليوم" : "Go to today"}
+										{isLocalized ? "الذهاب إلى اليوم" : "Go to today"}
 									</>
 								)}
 							</p>
@@ -198,16 +193,28 @@ export function CalendarToolbar({
 				</TooltipProvider>
 
 				{/* Right side navigation button (Next in LTR, Previous in RTL) */}
-				{isRTL ? prevButton : nextButton}
+				{isLocalized ? prevButton : nextButton}
 			</div>
 		</div>
 	);
 }
 
 // Export view options for use in settings
-export const getCalendarViewOptions = (isRTL: boolean) => [
-	{ value: "multiMonthYear", label: isRTL ? "السنة" : "Year", icon: Grid3X3 },
-	{ value: "dayGridMonth", label: isRTL ? "الشهر" : "Month", icon: Calendar },
-	{ value: "timeGridWeek", label: isRTL ? "الأسبوع" : "Week", icon: Calendar },
-	{ value: "listMonth", label: isRTL ? "قائمة" : "List", icon: List },
+export const getCalendarViewOptions = (isLocalized: boolean) => [
+	{
+		value: "multiMonthYear",
+		label: isLocalized ? "السنة" : "Year",
+		icon: Grid3X3,
+	},
+	{
+		value: "dayGridMonth",
+		label: isLocalized ? "الشهر" : "Month",
+		icon: Calendar,
+	},
+	{
+		value: "timeGridWeek",
+		label: isLocalized ? "الأسبوع" : "Week",
+		icon: Calendar,
+	},
+	{ value: "listMonth", label: isLocalized ? "قائمة" : "List", icon: List },
 ];

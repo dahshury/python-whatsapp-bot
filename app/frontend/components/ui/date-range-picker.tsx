@@ -70,8 +70,8 @@ export function DatePickerWithRange({
 					<Calendar
 						initialFocus
 						mode="range"
-						defaultMonth={date?.from}
-						selected={date}
+						{...(date?.from ? { defaultMonth: date.from } : {})}
+						{...(date ? { selected: date } : {})}
 						onSelect={handleSelect}
 						numberOfMonths={2}
 						disabled={(date) => date > today}

@@ -34,7 +34,7 @@ export function CalendarEventContextMenu({
 	onViewDetails,
 	onOpenConversation,
 }: CalendarEventContextMenuProps) {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -80,7 +80,7 @@ export function CalendarEventContextMenu({
 
 	const formatEventTime = (dateStr: string) => {
 		const date = new Date(dateStr);
-		return date.toLocaleTimeString(isRTL ? "ar-SA" : "en-US", {
+		return date.toLocaleTimeString(isLocalized ? "ar-SA" : "en-US", {
 			hour: "numeric",
 			minute: "2-digit",
 			hour12: true,
@@ -89,7 +89,7 @@ export function CalendarEventContextMenu({
 
 	const formatEventDate = (dateStr: string) => {
 		const date = new Date(dateStr);
-		return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+		return date.toLocaleDateString(isLocalized ? "ar-SA" : "en-US", {
 			weekday: "short",
 			month: "short",
 			day: "numeric",
@@ -153,7 +153,7 @@ export function CalendarEventContextMenu({
 						}}
 					>
 						<Eye className="h-4 w-4" />
-						{isRTL ? "عرض التفاصيل" : "View Details"}
+						{isLocalized ? "عرض التفاصيل" : "View Details"}
 					</div>
 
 					{/* Edit Reservation - Only if editable and not past */}
@@ -175,7 +175,7 @@ export function CalendarEventContextMenu({
 							}}
 						>
 							<Edit className="h-4 w-4" />
-							{isRTL ? "تعديل الحجز" : "Edit Reservation"}
+							{isLocalized ? "تعديل الحجز" : "Edit Reservation"}
 						</div>
 					)}
 
@@ -200,7 +200,7 @@ export function CalendarEventContextMenu({
 								}}
 							>
 								<CalendarX className="h-4 w-4" />
-								{isRTL ? "إلغاء الحجز" : "Cancel Reservation"}
+								{isLocalized ? "إلغاء الحجز" : "Cancel Reservation"}
 							</div>
 						</>
 					)}
@@ -211,7 +211,7 @@ export function CalendarEventContextMenu({
 							<div className="-mx-1 my-1 h-px bg-border" />
 							<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
 								<CalendarX className="h-4 w-4" />
-								{isRTL ? "محجوز ملغي" : "Cancelled Reservation"}
+								{isLocalized ? "محجوز ملغي" : "Cancelled Reservation"}
 							</div>
 						</>
 					)}
@@ -222,7 +222,7 @@ export function CalendarEventContextMenu({
 							<div className="-mx-1 my-1 h-px bg-border" />
 							<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
 								<Clock className="h-4 w-4" />
-								{isRTL ? "حجز سابق" : "Past Reservation"}
+								{isLocalized ? "حجز سابق" : "Past Reservation"}
 							</div>
 						</>
 					)}
@@ -249,7 +249,7 @@ export function CalendarEventContextMenu({
 						}}
 					>
 						<MessageCircle className="h-4 w-4" />
-						{isRTL ? "فتح المحادثة" : "Open Conversation"}
+						{isLocalized ? "فتح المحادثة" : "Open Conversation"}
 					</div>
 
 					<div
@@ -269,7 +269,7 @@ export function CalendarEventContextMenu({
 						}}
 					>
 						<User className="h-4 w-4" />
-						{isRTL ? "عرض تفاصيل العميل" : "View Customer Details"}
+						{isLocalized ? "عرض تفاصيل العميل" : "View Customer Details"}
 					</div>
 				</>
 			)}

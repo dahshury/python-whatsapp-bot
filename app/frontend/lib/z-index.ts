@@ -1,4 +1,4 @@
-export const Z_INDEX = {
+const Z_INDEX = {
 	// ========================================
 	// BASE & LOW-LEVEL LAYERS (0-100)
 	// ========================================
@@ -69,8 +69,8 @@ export const Z_INDEX = {
 	CONFIRMATION_OVERLAY_CONTENT: 9100,
 	GRID_FULLSCREEN_BACKDROP: 8000,
 	GRID_FULLSCREEN_CONTENT: 8100,
-	// Global toast notifications (Sonner)
-	TOASTER: 2200,
+	// Global toast notifications (Sonner) - keep above dialog/backdrops
+	TOASTER: 11000,
 
 	// ========================================
 	// DIALOG OVERLAYS - HIGHEST UI LAYER (3000)
@@ -96,4 +96,5 @@ export const Z_INDEX = {
 	EMERGENCY_OVERLAY: 50000, // For absolute critical overlays
 } as const;
 
+export { Z_INDEX };
 export type ZIndexKeys = keyof typeof Z_INDEX;

@@ -1061,15 +1061,15 @@ export const useDashboardData = () => {
 						return null;
 					}
 					const date = new Date(y, m - 1, 1);
-					const isRTLFlag = (() => {
+					const isLocalizedFlag = (() => {
 						if (typeof window === "undefined") return false;
 						try {
-							return localStorage.getItem("isRTL") === "true";
+							return localStorage.getItem("isLocalized") === "true";
 						} catch {
 							return false;
 						}
 					})();
-					const month = date.toLocaleString(isRTLFlag ? "ar" : "en", {
+					const month = date.toLocaleString(isLocalizedFlag ? "ar" : "en", {
 						month: "short",
 					});
 					return {

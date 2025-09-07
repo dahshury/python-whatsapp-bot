@@ -1,6 +1,6 @@
 import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 
-export class FormattingService {
+class FormattingService {
 	/**
 	 * Convert time to 24-hour format
 	 */
@@ -41,9 +41,11 @@ export class FormattingService {
 				.map((v) => parseInt(v, 10));
 			const duration = Math.max(1, SLOT_DURATION_HOURS);
 			const allowed: number[] = [];
-			const startH = Number.isFinite(minH) ? minH : 0;
-			const endH = Number.isFinite(maxH) ? maxH : 24;
-			for (let h = startH; h < endH; h += duration) allowed.push(h);
+			const startH = Math.max(0, Number.isFinite(minH) ? (minH as number) : 0);
+			const endH = Math.min(24, Number.isFinite(maxH) ? (maxH as number) : 24);
+			for (let h = startH; h < endH; h += duration) {
+				allowed.push(h);
+			}
 
 			// Snap down to the nearest allowed slot start
 			let snapped = allowed[0] ?? hour;
@@ -162,7 +164,7 @@ export class FormattingService {
 			// If already HH:mm, return as-is
 			const asStr = String(value).trim();
 			const m = asStr.match(/^([01]?\d|2\d):([0-5]\d)$/);
-			if (m) return `${m[1].padStart(2, "0")}:${m[2]}`;
+			if (m && m[1] && m[2]) return `${m[1].padStart(2, "0")}:${m[2]}`;
 
 			const d = value instanceof Date ? value : new Date(asStr);
 			if (Number.isNaN(d.getTime())) return null;
@@ -180,3 +182,5 @@ export class FormattingService {
 		}
 	}
 }
+
+export { FormattingService };

@@ -17,7 +17,7 @@ interface ConversationItem {
 
 export interface ReservationProcessingOptions {
 	freeRoam: boolean;
-	isRTL: boolean;
+	isLocalized: boolean;
 	vacationPeriods: Array<{ start: string | Date; end: string | Date }>;
 }
 
@@ -124,7 +124,7 @@ export function getReservationEventProcessor() {
 						if (cancelled) {
 							eventData.textColor = "#908584";
 						}
-						events.push(eventData);
+						events.push(eventData as unknown as CalendarEvent);
 					} catch {
 						// skip bad rows
 					}

@@ -10,7 +10,7 @@ import type { ConversationAnalysis } from "@/types/dashboard";
 
 interface ResponseTimeAnalysisProps {
 	conversationAnalysis: ConversationAnalysis;
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 interface ResponseTimeMetricProps {
@@ -83,7 +83,7 @@ function ResponseTimeMetric({
 
 export function ResponseTimeAnalysis({
 	conversationAnalysis,
-	isRTL,
+	isLocalized,
 }: ResponseTimeAnalysisProps) {
 	const { responseTimeStats } = conversationAnalysis;
 
@@ -99,28 +99,28 @@ export function ResponseTimeAnalysis({
 
 	const responseTimeMetrics = [
 		{
-			title: i18n.getMessage("response_time_average", isRTL),
+			title: i18n.getMessage("response_time_average", isLocalized),
 			value: responseTimeStats.avg,
-			unit: i18n.getMessage("msg_minutes", isRTL),
+			unit: i18n.getMessage("msg_minutes", isLocalized),
 			icon: <Clock className="h-4 w-4 text-muted-foreground" />,
 			variant: getPerformanceVariant(responseTimeStats.avg),
-			description: i18n.getMessage("response_time_avg_desc", isRTL),
+			description: i18n.getMessage("response_time_avg_desc", isLocalized),
 		},
 		{
-			title: i18n.getMessage("response_time_median", isRTL),
+			title: i18n.getMessage("response_time_median", isLocalized),
 			value: responseTimeStats.median,
-			unit: i18n.getMessage("msg_minutes", isRTL),
+			unit: i18n.getMessage("msg_minutes", isLocalized),
 			icon: <Minus className="h-4 w-4 text-muted-foreground" />,
 			variant: getPerformanceVariant(responseTimeStats.median),
-			description: i18n.getMessage("response_time_median_desc", isRTL),
+			description: i18n.getMessage("response_time_median_desc", isLocalized),
 		},
 		{
-			title: i18n.getMessage("response_time_maximum", isRTL),
+			title: i18n.getMessage("response_time_maximum", isLocalized),
 			value: responseTimeStats.max,
-			unit: i18n.getMessage("msg_minutes", isRTL),
+			unit: i18n.getMessage("msg_minutes", isLocalized),
 			icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
 			variant: getPerformanceVariant(responseTimeStats.max),
-			description: i18n.getMessage("response_time_max_desc", isRTL),
+			description: i18n.getMessage("response_time_max_desc", isLocalized),
 		},
 	];
 
@@ -136,10 +136,10 @@ export function ResponseTimeAnalysis({
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
 				<h2 className="text-xl font-semibold">
-					{i18n.getMessage("response_time_analysis_title", isRTL)}
+					{i18n.getMessage("response_time_analysis_title", isLocalized)}
 				</h2>
 				<Badge variant="outline" className={getScoreColor(performanceScore)}>
-					{i18n.getMessage("response_time_score", isRTL)}:{" "}
+					{i18n.getMessage("response_time_score", isLocalized)}:{" "}
 					{performanceScore.toFixed(0)}%
 				</Badge>
 			</div>
@@ -169,14 +169,14 @@ export function ResponseTimeAnalysis({
 				<CardHeader>
 					<CardTitle className="text-sm flex items-center gap-2">
 						<Timer className="h-4 w-4" />
-						{i18n.getMessage("response_time_performance", isRTL)}
+						{i18n.getMessage("response_time_performance", isLocalized)}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-2">
 						<div className="flex justify-between items-center">
 							<span className="text-sm text-muted-foreground">
-								{i18n.getMessage("response_time_performance_desc", isRTL)}
+								{i18n.getMessage("response_time_performance_desc", isLocalized)}
 							</span>
 							<span
 								className={`text-sm font-semibold ${getScoreColor(performanceScore)}`}
@@ -186,8 +186,8 @@ export function ResponseTimeAnalysis({
 						</div>
 						<Progress value={performanceScore} className="h-2" />
 						<div className="flex justify-between text-xs text-muted-foreground">
-							<span>{i18n.getMessage("response_time_slow", isRTL)}</span>
-							<span>{i18n.getMessage("response_time_fast", isRTL)}</span>
+							<span>{i18n.getMessage("response_time_slow", isLocalized)}</span>
+							<span>{i18n.getMessage("response_time_fast", isLocalized)}</span>
 						</div>
 					</div>
 				</CardContent>

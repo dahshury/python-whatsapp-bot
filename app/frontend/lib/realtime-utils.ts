@@ -22,9 +22,9 @@ export function normalizeTime12To24(
 		if (!t) return fallback || "";
 		const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(t);
 		if (!m) return t;
-		let h = parseInt(m[1], 10);
-		const mm = m[2];
-		const ap = m[3].toUpperCase();
+		let h = parseInt(m[1] || "0", 10);
+		const mm = m[2] || "00";
+		const ap = (m[3] || "").toUpperCase();
 		if (ap === "PM" && h < 12) h += 12;
 		if (ap === "AM" && h === 12) h = 0;
 		return `${String(h).padStart(2, "0")}:${mm}`;

@@ -10,7 +10,7 @@ export function useDebouncedCallback<A extends unknown[]>(
 	delay: number,
 ): UseDebouncedCallbackReturn<A> {
 	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-	const argsRef = useRef<A>();
+	const argsRef = useRef<A | undefined>(undefined);
 
 	const cancel = useCallback((): void => {
 		if (timeoutRef.current) {

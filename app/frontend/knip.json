@@ -1,0 +1,21 @@
+{
+	"$schema": "https://unpkg.com/knip@5/schema.json",
+	"entry": [
+		"app/**/*.{ts,tsx}",
+		"components/**/*.{ts,tsx}",
+		"hooks/**/*.{ts,tsx}",
+		"lib/**/*.{ts,tsx}"
+	],
+	"ignore": [
+		"components/glide_custom_cells/pages/**/*",
+		"node_modules/**/*",
+		"**/.next/**/*",
+		"**/.git/**/*",
+		"components/index.ts",
+		"**/__tests__/**/*",
+		"**/test/**/*",
+		"**/*.test.{ts,tsx,js,jsx}",
+		"**/*.spec.{ts,tsx,js,jsx}"
+	],
+	"ignoreExportsUsedInFile": true
+}

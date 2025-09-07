@@ -22,7 +22,7 @@ import type { DailyData } from "@/types/dashboard";
 
 interface DailyTrendsOverviewProps {
 	dailyTrends: DailyData[];
-	isRTL: boolean;
+	isLocalized: boolean;
 }
 
 // Theme tokens (stable strings so we don't re-read computed styles every render)
@@ -37,7 +37,7 @@ const COLORS = {
 
 export function DailyTrendsOverview({
 	dailyTrends,
-	isRTL,
+	isLocalized,
 }: DailyTrendsOverviewProps) {
 	// Stable instance id for gradient defs
 	const instanceId = React.useMemo(
@@ -53,7 +53,7 @@ export function DailyTrendsOverview({
 		return (dailyTrends || []).map((d) => {
 			const dateObj = new Date(d.date);
 			// Short localized label like Jan 05 / يناير 05
-			const label = dateObj.toLocaleDateString(isRTL ? "ar" : "en", {
+			const label = dateObj.toLocaleDateString(isLocalized ? "ar" : "en", {
 				month: "short",
 				day: "2-digit",
 			});
@@ -64,21 +64,21 @@ export function DailyTrendsOverview({
 				modifications: Number(d.modifications || 0),
 			};
 		});
-	}, [dailyTrends, isRTL]);
+	}, [dailyTrends, isLocalized]);
 
 	const dateRangeLabel = React.useMemo(() => {
 		if (!dailyTrends || dailyTrends.length === 0)
-			return i18n.getMessage("chart_no_data", isRTL);
+			return i18n.getMessage("chart_no_data", isLocalized);
 		const first = new Date(dailyTrends[0]?.date || "");
 		const last = new Date(dailyTrends[dailyTrends.length - 1]?.date || "");
 		const fmt = (d: Date) =>
-			d.toLocaleDateString(isRTL ? "ar" : "en", {
+			d.toLocaleDateString(isLocalized ? "ar" : "en", {
 				month: "short",
 				day: "2-digit",
 				year: "numeric",
 			});
 		return `${fmt(first)} - ${fmt(last)}`;
-	}, [dailyTrends, isRTL]);
+	}, [dailyTrends, isLocalized]);
 
 	const tooltipStyle = React.useMemo(
 		() => ({
@@ -95,10 +95,10 @@ export function DailyTrendsOverview({
 		<Card className="h-full">
 			<CardHeader>
 				<CardTitle>
-					{i18n.getMessage("chart_daily_trends_overview", isRTL)}
+					{i18n.getMessage("chart_daily_trends_overview", isLocalized)}
 				</CardTitle>
 				<CardDescription>
-					{i18n.getMessage("chart_showing_all_data", isRTL)}
+					{i18n.getMessage("chart_showing_all_data", isLocalized)}
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
@@ -160,7 +160,7 @@ export function DailyTrendsOverview({
 								stroke={COLORS.modifications}
 								isAnimationActive={false}
 								stackId="a"
-								name={i18n.getMessage("operation_modifications", isRTL)}
+								name={i18n.getMessage("operation_modifications", isLocalized)}
 							/>
 							<Area
 								dataKey="cancellations"
@@ -170,7 +170,7 @@ export function DailyTrendsOverview({
 								stroke={COLORS.cancellations}
 								isAnimationActive={false}
 								stackId="a"
-								name={i18n.getMessage("kpi_cancellations", isRTL)}
+								name={i18n.getMessage("kpi_cancellations", isLocalized)}
 							/>
 							<Area
 								dataKey="reservations"
@@ -180,7 +180,7 @@ export function DailyTrendsOverview({
 								stroke={COLORS.reservations}
 								isAnimationActive={false}
 								stackId="a"
-								name={i18n.getMessage("dashboard_reservations", isRTL)}
+								name={i18n.getMessage("dashboard_reservations", isLocalized)}
 							/>
 						</AreaChart>
 					</ResponsiveContainer>
@@ -190,7 +190,7 @@ export function DailyTrendsOverview({
 				<div className="flex w-full items-start gap-2 text-sm">
 					<div className="grid gap-1">
 						<div className="leading-none font-medium">
-							{i18n.getMessage("dashboard_trends", isRTL)}
+							{i18n.getMessage("dashboard_trends", isLocalized)}
 						</div>
 						<div className="text-muted-foreground leading-none">
 							{dateRangeLabel}

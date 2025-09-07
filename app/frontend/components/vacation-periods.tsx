@@ -15,7 +15,7 @@ import { useLanguage } from "@/lib/language-context";
 import { useVacation } from "@/lib/vacation-context";
 
 function VacationPeriodsComponent() {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 	const {
 		vacationPeriods,
 		recordingState,
@@ -28,7 +28,7 @@ function VacationPeriodsComponent() {
 	// No loading state in context; render directly
 
 	const formatDate = (date: Date) => {
-		return date.toLocaleDateString(isRTL ? "ar-SA" : "en-US", {
+		return date.toLocaleDateString(isLocalized ? "ar-SA" : "en-US", {
 			year: "numeric",
 			month: "short",
 			day: "numeric",
@@ -53,7 +53,7 @@ function VacationPeriodsComponent() {
 						{isAnyRecording && (
 							<Button variant="secondary" size="sm" onClick={stopRecording}>
 								<Square className="h-3.5 w-3.5 mr-1" />
-								{isRTL ? "إيقاف" : "Stop"}
+								{isLocalized ? "إيقاف" : "Stop"}
 							</Button>
 						)}
 						<Button
@@ -61,7 +61,7 @@ function VacationPeriodsComponent() {
 							size="icon"
 							className="h-8 w-8"
 							onClick={addVacationPeriod}
-							aria-label={isRTL ? "إضافة إجازة" : "Add vacation"}
+							aria-label={isLocalized ? "إضافة إجازة" : "Add vacation"}
 						>
 							<Plus className="h-4 w-4" />
 						</Button>
@@ -72,7 +72,7 @@ function VacationPeriodsComponent() {
 				<div className="text-center py-4 text-muted-foreground">
 					<Plane className="h-6 w-6 mx-auto mb-1 opacity-50" />
 					<p className="text-sm">
-						{isRTL ? "لا توجد فترات إجازة" : "No vacation periods"}
+						{isLocalized ? "لا توجد فترات إجازة" : "No vacation periods"}
 					</p>
 				</div>
 			) : (
@@ -83,7 +83,7 @@ function VacationPeriodsComponent() {
 					>
 						<div className="flex items-center justify-between mb-2">
 							<Badge variant="secondary" className="text-xs">
-								{isRTL ? `فترة ${index + 1}` : `Period ${index + 1}`}
+								{isLocalized ? `فترة ${index + 1}` : `Period ${index + 1}`}
 							</Badge>
 							<div className="flex items-center">
 								<Badge variant="outline" className="text-xs mr-2">
@@ -92,7 +92,7 @@ function VacationPeriodsComponent() {
 										(period.end.getTime() - period.start.getTime()) /
 											(1000 * 60 * 60 * 24),
 									) + 1}{" "}
-									{isRTL ? "أيام" : "days"}
+									{isLocalized ? "أيام" : "days"}
 								</Badge>
 								{/* Add button inline with first period header only on index 0 to save space */}
 								{index === 0 && (
@@ -101,7 +101,7 @@ function VacationPeriodsComponent() {
 										size="icon"
 										className="h-8 w-8 mr-1"
 										onClick={addVacationPeriod}
-										aria-label={isRTL ? "إضافة إجازة" : "Add vacation"}
+										aria-label={isLocalized ? "إضافة إجازة" : "Add vacation"}
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
@@ -111,7 +111,7 @@ function VacationPeriodsComponent() {
 									size="icon"
 									className="h-8 w-8"
 									onClick={() => removeVacationPeriod(index)}
-									aria-label={isRTL ? "حذف الفترة" : "Remove period"}
+									aria-label={isLocalized ? "حذف الفترة" : "Remove period"}
 								>
 									<Trash2 className="h-4 w-4" />
 								</Button>
@@ -125,7 +125,7 @@ function VacationPeriodsComponent() {
 							>
 								<div className="flex-1">
 									<p className="text-xs text-muted-foreground">
-										{isRTL ? "البداية" : "Start"}
+										{isLocalized ? "البداية" : "Start"}
 									</p>
 									<p className="text-sm font-medium">
 										{formatDate(period.start)}
@@ -141,7 +141,7 @@ function VacationPeriodsComponent() {
 										>
 											<Circle className="h-3 w-3 text-red-500" />
 											<span className="text-[10px] opacity-80">
-												{isRTL ? "تسجيل..." : "Rec..."}
+												{isLocalized ? "تسجيل..." : "Rec..."}
 											</span>
 										</Button>
 									) : (
@@ -150,7 +150,7 @@ function VacationPeriodsComponent() {
 											size="icon"
 											className="h-8 w-8"
 											onClick={() => startRecording(index, "start")}
-											aria-label={isRTL ? "بدء التسجيل" : "Record start"}
+											aria-label={isLocalized ? "بدء التسجيل" : "Record start"}
 										>
 											<Circle className="h-4 w-4 text-red-500" />
 										</Button>
@@ -164,7 +164,7 @@ function VacationPeriodsComponent() {
 							>
 								<div className="flex-1">
 									<p className="text-xs text-muted-foreground">
-										{isRTL ? "النهاية" : "End"}
+										{isLocalized ? "النهاية" : "End"}
 									</p>
 									<p className="text-sm font-medium">
 										{formatDate(period.end)}
@@ -180,7 +180,7 @@ function VacationPeriodsComponent() {
 										>
 											<Circle className="h-3 w-3 text-red-500" />
 											<span className="text-[10px] opacity-80">
-												{isRTL ? "تسجيل..." : "Rec..."}
+												{isLocalized ? "تسجيل..." : "Rec..."}
 											</span>
 										</Button>
 									) : (
@@ -189,7 +189,7 @@ function VacationPeriodsComponent() {
 											size="icon"
 											className="h-8 w-8"
 											onClick={() => startRecording(index, "end")}
-											aria-label={isRTL ? "بدء التسجيل" : "Record end"}
+											aria-label={isLocalized ? "بدء التسجيل" : "Record end"}
 										>
 											<Circle className="h-4 w-4 text-red-500" />
 										</Button>

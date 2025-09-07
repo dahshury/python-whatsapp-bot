@@ -1,3 +1,4 @@
+import type { SpriteMap } from "@glideapps/glide-data-grid";
 import {
 	CompactSelection,
 	type DataEditorRef,
@@ -34,7 +35,6 @@ import { FullscreenWrapper } from "./ui/FullscreenWrapper";
 import { GridDataEditor } from "./ui/GridDataEditor";
 import { GridThemeToggle } from "./ui/GridThemeToggle";
 import { GridToolbar } from "./ui/GridToolbar";
-import type { SpriteMap } from "@glideapps/glide-data-grid";
 
 // Column configuration interface (same as in GridDataEditor)
 interface ColumnConfig {
@@ -52,6 +52,7 @@ export default function Grid({
 	onReady,
 	onDataProviderReady,
 	dataEditorRef: externalDataEditorRef,
+	validationErrors,
 }: {
 	showThemeToggle?: boolean;
 	fullWidth?: boolean;
@@ -61,6 +62,12 @@ export default function Grid({
 	onReady?: () => void;
 	onDataProviderReady?: (provider: unknown) => void;
 	dataEditorRef?: React.RefObject<DataEditorRef>;
+	validationErrors?: Array<{
+		row: number;
+		col: number;
+		message: string;
+		fieldName?: string;
+	}>;
 } = {}) {
 	// Initialize the data source - use external if provided, otherwise create default
 	const dataSource = React.useMemo(() => {
@@ -157,6 +164,7 @@ export default function Grid({
 			}, 50);
 			return () => clearTimeout(timer);
 		}
+		return undefined;
 	}, [containerWidth, fullWidth]);
 
 	// Sync legacy grid state with new fullscreen context
@@ -171,8 +179,8 @@ export default function Grid({
 			if (config.pinned) {
 				// columnId format is "col_${index}"
 				const match = columnId.match(/^col_(\d+)$/);
-				if (match) {
-					const index = parseInt(match[1], 10);
+				if (match?.[1]) {
+					const index = Number.parseInt(match[1], 10);
 					pinned.push(index);
 				}
 			}
@@ -319,6 +327,7 @@ export default function Grid({
 			const t = setTimeout(() => refreshCells(cells), 30);
 			return () => clearTimeout(t);
 		} catch {}
+		return undefined;
 	}, [displayColumns.length, filteredRowCount, isDataReady, refreshCells]);
 
 	// Track previous formats to detect changes
@@ -493,11 +502,23 @@ export default function Grid({
 		onItemHovered: onTooltipHover,
 	} = useGridTooltips(
 		(cell) => getCellContent(cell) as unknown,
-		displayColumns.map((dc) => ({
-			isRequired: (dc as { isRequired?: boolean }).isRequired,
-			isEditable: (dc as { isEditable?: boolean }).isEditable,
-			help: (dc as { help?: string }).help,
-		})),
+		displayColumns.map((dc) => {
+			const typedDc = dc as {
+				isRequired?: boolean;
+				isEditable?: boolean;
+				help?: string;
+			};
+			return {
+				...(typedDc.isRequired !== undefined && {
+					isRequired: typedDc.isRequired,
+				}),
+				...(typedDc.isEditable !== undefined && {
+					isEditable: typedDc.isEditable,
+				}),
+				...(typedDc.help !== undefined && { help: typedDc.help }),
+			};
+		}),
+		validationErrors,
 	);
 
 	useGridEvents(gs.setShowSearch);
@@ -561,8 +582,7 @@ export default function Grid({
 			}
 			onTooltipHover({
 				kind: args.kind,
-				location: args.location,
-				bounds: undefined,
+				...(args.location && { location: args.location }),
 			});
 		},
 		[gs, onTooltipHover],
@@ -745,7 +765,6 @@ export default function Grid({
 						onAddRow={async () => {
 							await dataProvider.addRow();
 							gs.setNumRows(dataSource.rowCount);
-							await dataProvider.refresh();
 							// Save state after add row - but only if no external dataSource
 							if (!externalDataSource) {
 								saveState();
@@ -781,11 +800,61 @@ export default function Grid({
 							gridSelection={gs.selection}
 							onRowAppended={() => {
 								(async () => {
-									await dataProvider.addRow();
-									gs.setNumRows(dataSource.rowCount);
-									await dataProvider.refresh();
+									try {
+										// If there is a single empty base row (template), remove it before appending
+										const baseRowCount = dataSource.rowCount;
+										if (baseRowCount === 1) {
+											const colCount = dataProvider.getColumnCount();
+											let isEmpty = true;
+											for (let c = 0; c < colCount; c++) {
+												const cell = getRawCellContent(c, 0);
+												const kind = (cell as { kind?: unknown })
+													.kind as unknown;
+												const data = (cell as { data?: unknown }).data as {
+													kind?: string;
+													value?: unknown;
+													date?: Date;
+													displayDate?: string;
+													time?: Date;
+												};
+												const displayData = (cell as { displayData?: unknown })
+													.displayData;
+												const hasContent =
+													(kind === GridCellKind.Custom &&
+														data &&
+														((data.kind === "phone-cell" &&
+															typeof data.value === "string" &&
+															data.value.trim().length > 0) ||
+															(data.kind === "dropdown-cell" &&
+																Boolean(data.value)) ||
+															(data.kind === "tempus-date-cell" &&
+																Boolean(data.date || data.displayDate)) ||
+															(data.kind === "timekeeper-cell" &&
+																Boolean(data.time)))) ||
+													(kind === GridCellKind.Number &&
+														(cell as { data?: unknown }).data !== null &&
+														(cell as { data?: unknown }).data !== undefined) ||
+													(kind === GridCellKind.Text &&
+														typeof (cell as { data?: unknown }).data ===
+															"string" &&
+														String((cell as { data?: unknown }).data).trim()
+															.length > 0) ||
+													(Boolean(displayData) &&
+														String(displayData as string).trim().length > 0);
+												if (hasContent) {
+													isEmpty = false;
+													break;
+												}
+											}
+											if (isEmpty) {
+												await dataProvider.deleteRow(0);
+											}
+										}
+										await dataProvider.addRow();
+										gs.setNumRows(dataSource.rowCount);
+									} catch {}
 								})();
-								return false;
+								return true;
 							}}
 							onItemHovered={(args: {
 								location: [number, number];
@@ -803,14 +872,14 @@ export default function Grid({
 							}}
 							theme={theme}
 							darkTheme={darkTheme}
-							hoverRow={gs.hoverRow}
+							{...(gs.hoverRow !== undefined && { hoverRow: gs.hoverRow })}
 							dataEditorRef={dataEditorRef}
 							onMouseEnter={() => gs.setIsFocused(true)}
 							onMouseLeave={() => gs.setIsFocused(false)}
-							gridWidth={gridWidth}
+							{...(gridWidth !== undefined && { gridWidth })}
 							fullWidth={fullWidth}
-							containerWidth={containerWidth}
-							containerHeight={undefined} // No height measurement in normal mode
+							{...(containerWidth !== undefined && { containerWidth })}
+							// containerHeight prop omitted when undefined
 							headerIcons={headerIcons}
 							// Column management props - using Streamlit-style configuration
 							columnConfigMapping={columnConfigMapping}

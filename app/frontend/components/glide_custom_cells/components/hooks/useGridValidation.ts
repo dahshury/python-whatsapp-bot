@@ -82,7 +82,7 @@ export function useGridValidation(
 				row: err.row,
 				col: err.col,
 				message: translateMessage(err.message),
-				fieldName: column?.name || column?.id,
+				fieldName: column?.name || column?.id || `Column ${err.col}`,
 			});
 		});
 

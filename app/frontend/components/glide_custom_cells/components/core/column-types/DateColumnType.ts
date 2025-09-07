@@ -51,7 +51,7 @@ export class DateColumnType implements IColumnType {
 			).isMissingValue = true;
 			(
 				cell as { isMissingValue?: boolean; validationError?: string }
-			).validationError = validation.error;
+			).validationError = validation.error || "";
 		}
 
 		return cell;
@@ -155,12 +155,12 @@ export class DateColumnType implements IColumnType {
 		if (Number.isNaN(date.getTime())) return "";
 
 		// Check if we should show Hijri date based on locale/language
-		const isRTL =
+		const isLocalizedFlag =
 			isLocalized === true ||
 			(typeof window !== "undefined" &&
-				localStorage.getItem("isRTL") === "true");
+				localStorage.getItem("isLocalized") === "true");
 
-		if (isRTL && !formatting?.pattern) {
+		if (isLocalizedFlag && !formatting?.pattern) {
 			// Show Hijri date only
 			return formatHijriDate(date);
 		}

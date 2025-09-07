@@ -7,13 +7,12 @@ import { notificationManager } from "@/lib/services/notifications/notification-m
 import { toastService } from "@/lib/toast-service";
 
 export const ToastRouter: React.FC = () => {
-	const { isRTL } = useLanguage();
+	const { isLocalized } = useLanguage();
 
 	React.useEffect(() => {
 		const handleAny = (ev: Event) => {
 			try {
-				const { type, data, __local } = (ev as CustomEvent).detail || {};
-				console.log("🔔 ToastRouter received event:", { type, data, __local });
+				const { type, data } = (ev as CustomEvent).detail || {};
 				if (!type || !data) return;
 				// Show toasts for both local and backend events; unread count is handled elsewhere
 
@@ -26,7 +25,7 @@ export const ToastRouter: React.FC = () => {
 						wa_id: data.wa_id,
 						date: data.date,
 						time: (data.time_slot || "").slice(0, 5),
-						isRTL,
+						isLocalized,
 					});
 				} else if (
 					type === "reservation_updated" ||
@@ -38,7 +37,7 @@ export const ToastRouter: React.FC = () => {
 						wa_id: data.wa_id,
 						date: data.date,
 						time: (data.time_slot || "").slice(0, 5),
-						isRTL,
+						isLocalized,
 					});
 				} else if (type === "reservation_cancelled") {
 					// Use centralized notification manager for WebSocket cancellation echoes
@@ -47,15 +46,15 @@ export const ToastRouter: React.FC = () => {
 						wa_id: data.wa_id,
 						date: data.date,
 						time: (data.time_slot || "").slice(0, 5),
-						isRTL,
+						isLocalized,
 					});
 				} else if (type === "conversation_new_message") {
-					const messageLabel = i18n.getMessage("toast_new_message", isRTL);
+					const messageLabel = i18n.getMessage("toast_new_message", isLocalized);
 					const title = `${messageLabel} • ${data.wa_id}`;
 					toastService.newMessage({
 						title,
 						description: (data.message || "").slice(0, 100),
-						isRTL,
+						isLocalized,
 					});
 				} else if (type === "vacation_period_updated") {
 					// Keep silent or minimal toast
@@ -69,7 +68,7 @@ export const ToastRouter: React.FC = () => {
 				handleAny as EventListener,
 			);
 		};
-	}, [isRTL]);
+	}, [isLocalized]);
 
 	return null;
 };

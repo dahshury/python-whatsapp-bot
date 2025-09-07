@@ -76,6 +76,11 @@ export function useGridUndoManager({
 		isExecutingRef.current = true;
 		const operation = undoStackRef.current[undoStackRef.current.length - 1];
 
+		if (!operation) {
+			isExecutingRef.current = false;
+			return null;
+		}
+
 		try {
 			// Execute the undo operation
 			await operation.execute();
@@ -101,6 +106,11 @@ export function useGridUndoManager({
 
 		isExecutingRef.current = true;
 		const operation = redoStackRef.current[redoStackRef.current.length - 1];
+
+		if (!operation) {
+			isExecutingRef.current = false;
+			return null;
+		}
 
 		try {
 			// Execute the redo operation

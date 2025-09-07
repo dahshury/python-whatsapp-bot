@@ -140,8 +140,8 @@ const nextConfig = {
 	// Transpile Glide Data Grid for compatibility with Next.js
 	transpilePackages: ["@glideapps/glide-data-grid"],
 
-	// Re-enable strict mode for better error catching
-	reactStrictMode: true,
+	// Enable Strict Mode in production only to avoid double-mount in dev
+	reactStrictMode: process.env.NODE_ENV === "production",
 
 	// Use standalone output to minimize runtime image size
 	output: "standalone",

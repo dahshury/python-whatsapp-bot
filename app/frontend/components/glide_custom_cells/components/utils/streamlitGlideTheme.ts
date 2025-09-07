@@ -16,7 +16,7 @@ function getCSSVariable(varName: string): string {
 /**
  * Converts HSL CSS variable to hex color
  */
-function hslToHex(hslVar: string, fallbackColor: string = "#000000"): string {
+function hslToHex(hslVar: string, fallbackColor = "#000000"): string {
 	const hslValue = getCSSVariable(hslVar);
 	if (!hslValue) return fallbackColor;
 
@@ -24,17 +24,17 @@ function hslToHex(hslVar: string, fallbackColor: string = "#000000"): string {
 	const parts = hslValue.split(" ");
 	if (parts.length !== 3) return fallbackColor;
 
-	const h = parseFloat(parts[0]);
-	const s = parseFloat(parts[1]) / 100;
-	const l = parseFloat(parts[2]) / 100;
+	const h = parts[0] ? Number.parseFloat(parts[0]) : 0;
+	const s = parts[1] ? Number.parseFloat(parts[1]) / 100 : 0;
+	const l = parts[2] ? Number.parseFloat(parts[2]) / 100 : 0;
 
 	const c = (1 - Math.abs(2 * l - 1)) * s;
 	const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
 	const m = l - c / 2;
 
-	let r = 0,
-		g = 0,
-		b = 0;
+	let r = 0;
+	let g = 0;
+	let b = 0;
 
 	if (0 <= h && h < 60) {
 		r = c;
@@ -118,34 +118,19 @@ export function createGlideTheme(mode: "light" | "dark"): Partial<Theme> {
 	const defaults = defaultColors[mode];
 
 	// Read current theme colors from CSS variables
-	const _background = isServer
-		? defaults.background
-		: hslToHex("--background", defaults.background);
 	const foreground = isServer
 		? defaults.foreground
 		: hslToHex("--foreground", defaults.foreground);
 	const card = isServer ? defaults.card : hslToHex("--card", defaults.card);
-	const _cardForeground = isServer
-		? defaults.cardForeground
-		: hslToHex("--card-foreground", defaults.cardForeground);
 	const primary = isServer
 		? defaults.primary
 		: hslToHex("--primary", defaults.primary);
 	const primaryForeground = isServer
 		? defaults.primaryForeground
 		: hslToHex("--primary-foreground", defaults.primaryForeground);
-	const _secondary = isServer
-		? defaults.secondary
-		: hslToHex("--secondary", defaults.secondary);
-	const _secondaryForeground = isServer
-		? defaults.secondaryForeground
-		: hslToHex("--secondary-foreground", defaults.secondaryForeground);
 	const accent = isServer
 		? defaults.accent
 		: hslToHex("--accent", defaults.accent);
-	const _accentForeground = isServer
-		? defaults.accentForeground
-		: hslToHex("--accent-foreground", defaults.accentForeground);
 	const muted = isServer ? defaults.muted : hslToHex("--muted", defaults.muted);
 	const mutedForeground = isServer
 		? defaults.mutedForeground
