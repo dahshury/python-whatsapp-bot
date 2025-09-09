@@ -144,12 +144,22 @@ export function DockNavSimple({
 	const { theme: _theme } = useTheme();
 	const [mounted, setMounted] = React.useState(false);
 	const [activeTab, setActiveTab] = React.useState("view");
+	const [settingsOpen, setSettingsOpen] = React.useState(false);
+	const [suppressTooltip, setSuppressTooltip] = React.useState(false);
 
 	const isCalendarPage = pathname === "/";
 
 	React.useEffect(() => {
 		setMounted(true);
 	}, []);
+
+	const handleSettingsOpenChange = (next: boolean) => {
+		setSettingsOpen(next);
+		if (!next) {
+			setSuppressTooltip(true);
+			window.setTimeout(() => setSuppressTooltip(false), 300);
+		}
+	};
 
 	// Reset to view tab if vacation tab is selected but disabled
 	const viewMode = freeRoam
@@ -327,15 +337,16 @@ export function DockNavSimple({
 
 				{/* Settings Popover */}
 				<DockIcon>
-					<Popover>
-						<Tooltip>
+					<Popover open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
+						<Tooltip open={settingsOpen || suppressTooltip ? false : undefined}>
 							<TooltipTrigger asChild>
 								<PopoverTrigger asChild>
 									<StablePopoverButton
-										className="size-9 rounded-full"
+										className="size-9 rounded-full transition-colors duration-300 ease-out"
 										aria-label={isLocalized ? "الإعدادات" : "Settings"}
+										variant={settingsOpen ? "default" : "ghost"}
 									>
-										<Settings className="size-4" />
+										<Settings className={cn("size-4 transform transition-transform duration-300 ease-out", settingsOpen ? "rotate-90" : "rotate-0")} />
 									</StablePopoverButton>
 								</PopoverTrigger>
 							</TooltipTrigger>

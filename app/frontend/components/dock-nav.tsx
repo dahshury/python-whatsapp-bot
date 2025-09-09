@@ -107,13 +107,9 @@ export function DockNav({
 							isTodayDisabled={navigation.isTodayDisabled}
 							onToday={navigation.handleToday}
 							navigationOnly={navigationOnly}
+							visibleEventCount={navigation.visibleEventCount}
 						/>
-						{typeof navigation.visibleEventCount === "number" && (
-							<Badge variant="secondary" className="ml-2">
-								{navigation.visibleEventCount}{" "}
-								{i18n.getMessage("calendar_events", isLocalized)}
-							</Badge>
-						)}
+						{/* Event count shown as overlay badge on the date button */}
 					</>
 				) : !navigation.isCalendarPage ? (
 					<CalendarLink isLocalized={navigation.isLocalized} />
@@ -135,13 +131,9 @@ export function DockNav({
 							isTodayDisabled={navigation.isTodayDisabled}
 							onToday={navigation.handleToday}
 							navigationOnly={navigationOnly}
+							visibleEventCount={navigation.visibleEventCount}
 						/>
-						{typeof navigation.visibleEventCount === "number" && (
-							<Badge variant="outline" className="ml-2">
-								{navigation.visibleEventCount}{" "}
-								{i18n.getMessage("calendar_events", isLocalized)}
-							</Badge>
-						)}
+						{/* Event count shown as overlay badge on the date button */}
 					</>
 				)}
 

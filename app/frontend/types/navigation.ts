@@ -28,6 +28,7 @@ export interface NavigationDateButtonProps {
 	onToday?: () => void;
 	navigationOnly?: boolean;
 	className?: string;
+	visibleEventCount?: number;
 }
 
 export interface NavigationLinksProps {

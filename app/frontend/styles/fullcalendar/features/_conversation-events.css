@@ -12,7 +12,8 @@
 
 /* Enhanced styles for conversation events in free roam mode */
 [data-free-roam="true"] .conversation-event .fc-event-title {
-	color: hsl(var(--background));
+	/* Force white text */
+	color: #fff;
 	font-weight: 600;
 	display: flex;
 	align-items: center;
@@ -25,11 +26,13 @@
 
 /* Dark mode conversation events in free roam */
 .dark [data-free-roam="true"] .conversation-event .fc-event-title {
-	color: hsl(var(--foreground));
+	/* Keep white text in dark mode */
+	color: #fff;
 }
 
 /* Dark mode conversation events - general styling for all views */
 .dark .fc-multimonth .fc-event.conversation-event,
 .dark .fc-daygrid .fc-event.conversation-event {
-	color: hsl(var(--foreground));
+	/* Keep white text in dark mode */
+	color: #fff;
 }

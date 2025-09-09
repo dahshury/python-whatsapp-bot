@@ -103,11 +103,41 @@
 .fc-event.conversation-event:not(.fc-list-event) {
 	background: var(--fc-conversation-bg);
 	border-color: var(--fc-conversation-bg);
-	color: hsl(var(--background));
+	/* Force white text for conversation events */
+	--fc-event-text-color: #fff;
+	color: #fff;
 }
 
 .dark .fc-event.conversation-event:not(.fc-list-event) {
-	color: hsl(var(--foreground));
+	/* Keep white text in dark mode as well */
+	color: #fff;
+}
+
+/* Start-only time by default: hide separator and end time (all views) */
+.fc-event .fc-event-time-sep,
+.fc-event .fc-event-time-end {
+	display: none;
+}
+
+/* Reveal end-time when hovering the event AND modifier is pressed (Alt or Shift) */
+body.alt-pressed .fc-event:hover .fc-event-time-sep,
+body.alt-pressed .fc-event:hover .fc-event-time-end,
+body.shift-pressed .fc-event:hover .fc-event-time-sep,
+body.shift-pressed .fc-event:hover .fc-event-time-end {
+	display: inline;
+}
+
+/* List view: apply the same start-only logic */
+.fc-list-event-time .fc-event-time-sep,
+.fc-list-event-time .fc-event-time-end {
+	display: none;
+}
+
+body.alt-pressed .fc-list-event:hover .fc-list-event-time .fc-event-time-sep,
+body.alt-pressed .fc-list-event:hover .fc-list-event-time .fc-event-time-end,
+body.shift-pressed .fc-list-event:hover .fc-list-event-time .fc-event-time-sep,
+body.shift-pressed .fc-list-event:hover .fc-list-event-time .fc-event-time-end {
+	display: inline;
 }
 
 /* Conversation event title styling */

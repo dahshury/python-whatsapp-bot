@@ -20,30 +20,27 @@ const SettingsContext = React.createContext<SettingsState | undefined>(
 const SettingsProvider: React.FC<React.PropsWithChildren> = ({
 	children,
 }) => {
-	const [theme, setTheme] = React.useState<Theme>("theme-default");
+	const [theme, setTheme] = React.useState<Theme>(() => {
+		if (typeof window !== "undefined") {
+			const storedStyleTheme = localStorage.getItem("styleTheme") as Theme | null;
+			if (storedStyleTheme) return storedStyleTheme;
+			const legacyTheme = localStorage.getItem("theme");
+			if (legacyTheme?.startsWith("theme-")) {
+				try {
+					localStorage.setItem("styleTheme", legacyTheme);
+				} catch {}
+				return legacyTheme as Theme;
+			}
+		}
+		return "theme-default";
+	});
 	const [freeRoam, setFreeRoam] = React.useState<boolean>(false);
 	const [showDualCalendar, setShowDualCalendar] =
 		React.useState<boolean>(false);
 
-	// Load persisted settings on mount
+	// Load persisted non-theme settings on mount
 	React.useEffect(() => {
 		if (typeof window === "undefined") return;
-
-		// New key for style theme
-		const storedStyleTheme = localStorage.getItem("styleTheme") as Theme | null;
-		if (storedStyleTheme) {
-			setTheme(storedStyleTheme);
-		} else {
-			// Backward compatibility: previously saved under "theme" and could contain style theme values
-			const legacyTheme = localStorage.getItem("theme");
-			if (legacyTheme?.startsWith("theme-")) {
-				setTheme(legacyTheme as Theme);
-				try {
-					localStorage.setItem("styleTheme", legacyTheme);
-				} catch {}
-			}
-		}
-
 		const storedFreeRoam = localStorage.getItem("freeRoam");
 		if (storedFreeRoam != null) setFreeRoam(storedFreeRoam === "true");
 		const storedDual = localStorage.getItem("showDualCalendar");

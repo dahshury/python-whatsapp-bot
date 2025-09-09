@@ -5,6 +5,7 @@ from app.config import configure_logging, load_config
 from app.views import router as webhook_router
 from app.scheduler import init_scheduler
 from app.utils.realtime import websocket_router, start_metrics_push_task
+from app.auth.router import router as auth_router
 
 import time
 from fastapi import Request, Response
@@ -84,6 +85,7 @@ def create_app():
 
     # Include HTTP routers
     app.include_router(webhook_router)
+    app.include_router(auth_router)
     # Include WebSocket router
     app.include_router(websocket_router)
 

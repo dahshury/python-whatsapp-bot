@@ -160,7 +160,7 @@ def create_new_database_with_data(customers_data: List[Dict],
         cursor.execute('PRAGMA temp_store = MEMORY;')
         cursor.execute('PRAGMA mmap_size = 268435456;')  # 256MB
         
-        # Create clean schema (matching db.py)
+        # Create clean schema (matching db.py + auth users)
         cursor.executescript("""
             -- Customers table
             CREATE TABLE customers (
@@ -217,6 +217,17 @@ def create_new_database_with_data(customers_data: List[Dict],
             );
             CREATE INDEX idx_vacations_start ON vacation_periods(start_date);
             CREATE INDEX idx_vacations_end ON vacation_periods(end_date);
+
+            -- Users table (FastAPI-Users default UUID-based schema)
+            CREATE TABLE users (
+                id VARCHAR(36) PRIMARY KEY,
+                email VARCHAR(320) NOT NULL UNIQUE,
+                hashed_password VARCHAR(1024) NOT NULL,
+                is_active BOOLEAN NOT NULL DEFAULT 1,
+                is_superuser BOOLEAN NOT NULL DEFAULT 0,
+                is_verified BOOLEAN NOT NULL DEFAULT 0
+            );
+            CREATE UNIQUE INDEX idx_users_email ON users(email);
         """)
         
         print("✅ Clean schema created")
@@ -286,6 +297,10 @@ def create_new_database_with_data(customers_data: List[Dict],
         print(f"  - Customers: {customers_migrated:,}")
         print(f"  - Conversations: {conversations_migrated:,}")
         print(f"  - Reservations: {reservations_migrated:,}")
+        # Users are not migrated from original DB (new feature), but ensure table exists
+        cursor.execute('SELECT COUNT(*) FROM users')
+        users_count = cursor.fetchone()[0]
+        print(f"  - Users: {users_count:,}")
         
     except Exception as e:
         conn.rollback()
@@ -336,6 +351,13 @@ def validate_sqlite_direct(db_path: str) -> bool:
         cursor.execute('SELECT COUNT(*) FROM vacation_periods')
         vacation_periods_count = cursor.fetchone()[0]
         
+        # Users table count (may be zero)
+        try:
+            cursor.execute('SELECT COUNT(*) FROM users')
+            users_count = cursor.fetchone()[0]
+        except Exception:
+            users_count = 0
+        
         print("🔍 SQLite validation results:")
         print(f"  - Database integrity: {integrity}")
         print(f"  - Foreign key violations: {len(violations)}")
@@ -343,6 +365,7 @@ def validate_sqlite_direct(db_path: str) -> bool:
         print(f"  - Conversations: {conversations_count:,}")
         print(f"  - Reservations: {reservations_count:,}")
         print(f"  - Vacation periods: {vacation_periods_count:,}")
+        print(f"  - Users: {users_count:,}")
         
         # Test the problematic JOIN query
         cursor.execute("""
@@ -402,6 +425,13 @@ def validate_sqlalchemy_compatibility(db_path: str) -> bool:
             count_result = session.execute(text("SELECT COUNT(*) FROM reservations"))
             count = count_result.scalar()
             print(f"✅ SQLAlchemy count query: {count:,} reservations")
+
+            # Validate users table presence
+            try:
+                users_count = session.execute(text("SELECT COUNT(*) FROM users")).scalar()
+                print(f"✅ Users table present: {users_count:,} users")
+            except Exception:
+                print("⚠️  Users table missing (auth not initialized)")
             
             return True
             

@@ -14,16 +14,25 @@ from sqlalchemy import (
     func,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, scoped_session, Session
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
 # Define the SQLite database file path
 # Use environment variable if set, otherwise default to current working directory
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.getcwd(), "threads_db.sqlite"))
 
-# SQLAlchemy engine and session factory
+# SQLAlchemy engine and session factory (sync)
 engine = create_engine(
     f"sqlite:///{DB_PATH}", echo=False, future=True, connect_args={"check_same_thread": False}
 )
 SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True))
+
+# Async engine/session for libraries that require AsyncSession (e.g., fastapi-users)
+async_engine = create_async_engine(
+    f"sqlite+aiosqlite:///{DB_PATH}", echo=False, future=True
+)
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine, class_=AsyncSession, autoflush=False, autocommit=False, expire_on_commit=False
+)
 
 # Declarative Base
 Base = declarative_base()
@@ -106,6 +115,12 @@ class VacationPeriodModel(Base):
 
 def init_models() -> None:
     """Create database tables if they do not exist."""
+    # Ensure auth models are imported so metadata includes them
+    try:
+        from app.auth import models as _auth_models  # noqa: F401
+    except Exception:
+        # Auth module may not be present in some environments
+        pass
     Base.metadata.create_all(bind=engine)
 
 
@@ -117,6 +132,17 @@ def get_session() -> Session:
             ...
     """
     return SessionLocal()
+
+
+async def get_async_session() -> AsyncSession:
+    """Yield an AsyncSession for async database operations.
+
+    Usage:
+        async with get_async_session() as session:
+            ...
+    """
+    async with AsyncSessionLocal() as session:
+        yield session
 
 
 # Initialize tables on import to preserve previous behavior

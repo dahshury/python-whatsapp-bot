@@ -110,6 +110,7 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	const [showOffline, setShowOffline] = React.useState<boolean>(false);
 	const [isRetrying, setIsRetrying] = React.useState<boolean>(false);
 	const disconnectedSinceRef = React.useRef<number | null>(null);
+	const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
 	// Show overlay only if disconnected for a sustained period and no cached data
 	React.useEffect(() => {
@@ -150,16 +151,45 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	}, [ws?.isConnected, ws?.reservations, ws?.conversations, ws?.vacations]);
 
 	const handleRetry = React.useCallback(async () => {
-		try {
-			setIsRetrying(true);
-			// Attempt to reconnect websocket without any REST fallback
-			try {
-				ws?.connect?.();
-			} catch {}
-		} finally {
-			setIsRetrying(false);
+		// Prevent parallel retries
+		if (isRetrying) return;
+		setIsRetrying(true);
+		// Clear any previous timeout
+		if (retryTimeoutRef.current) {
+			clearTimeout(retryTimeoutRef.current);
+			retryTimeoutRef.current = null;
 		}
-	}, [ws]);
+		// Kick a reconnect attempt
+		try {
+			ws?.connect?.();
+		} catch {}
+		// Safety timeout to re-enable the button if connection doesn't establish
+		retryTimeoutRef.current = setTimeout(() => {
+			setIsRetrying(false);
+			retryTimeoutRef.current = null;
+		}, 2500);
+	}, [ws, isRetrying]);
+
+	// Stop the spinner as soon as the websocket reports connected
+	React.useEffect(() => {
+		if (isRetrying && ws?.isConnected) {
+			setIsRetrying(false);
+			if (retryTimeoutRef.current) {
+				clearTimeout(retryTimeoutRef.current);
+				retryTimeoutRef.current = null;
+			}
+		}
+	}, [isRetrying, ws?.isConnected]);
+
+	// Cleanup on unmount
+	React.useEffect(() => {
+		return () => {
+			if (retryTimeoutRef.current) {
+				clearTimeout(retryTimeoutRef.current);
+				retryTimeoutRef.current = null;
+			}
+		};
+	}, []);
 
 	// Mirror websocket state into provider state
 	React.useEffect(() => {

@@ -290,6 +290,24 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 					},
 				};
 
+				// Mark this as a local operation so echoed notifications are suppressed
+				try {
+					(globalThis as { __localOps?: Set<string> }).__localOps =
+						(globalThis as { __localOps?: Set<string> }).__localOps ||
+						new Set<string>();
+					const s = (globalThis as { __localOps?: Set<string> }).__localOps as
+						Set<string>;
+					// For vacation updates, echoed event type is 'vacation_period_updated' with no id/date/time
+					// NotificationsButton builds composite key as `${type}::::` when fields are missing
+					const localKey = "vacation_period_updated:::";
+					s.add(localKey);
+					setTimeout(() => {
+						try {
+							s.delete(localKey);
+						} catch {}
+					}, 5000);
+				} catch {}
+
 				const send = () => {
 					try {
 						wsRef.current?.send(JSON.stringify(msg));

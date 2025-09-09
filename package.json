@@ -14,17 +14,9 @@
 		"dev": "pnpm --filter ./app/frontend dev",
 		"build": "pnpm --filter ./app/frontend build",
 		"start": "pnpm --filter ./app/frontend start",
-		"lint": "pnpm --filter ./app/frontend lint",
-		"format": "biome format --write app/frontend",
-		"check": "biome check app/frontend"
+		"lint": "pnpm --filter ./app/frontend lint"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.2.2",
 		"typescript": "^5"
-	},
-	"pnpm": {
-		"overrides": {
-			"@reduxjs/toolkit": "^2.4.0"
-		}
 	}
 }

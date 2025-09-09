@@ -1,11 +1,10 @@
 "use client";
 
 import {
-	ThemeSwitcher as SpacemanThemeSwitcher,
-	ThemeAnimationType,
 	useSpacemanTheme,
 } from "@space-man/react-theme-animation";
-import { Palette } from "lucide-react";
+import { Palette, Sun, Moon, Monitor } from "lucide-react";
+import { MiniToolbar } from "@/components/kokonutui/toolbar";
 import { useTheme as useNextThemes } from "next-themes";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -20,7 +19,7 @@ interface ThemeSelectorProps {
 export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 	const { theme: appTheme, setTheme: setAppTheme } = useSettings();
 	const { setColorTheme } = useSpacemanTheme();
-	const { resolvedTheme, setTheme: setNextTheme } = useNextThemes();
+	const { theme: nextTheme, setTheme: setNextTheme } = useNextThemes();
 
 	const handleAppThemeChange = (value: string) => {
 		// Animate via Spaceman and also update our Settings immediately
@@ -44,15 +43,16 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 					</span>
 				</div>
 				<div className="flex items-center gap-1.5">
-					<SpacemanThemeSwitcher
-						animationType={ThemeAnimationType.CIRCLE}
-						duration={600}
-						className="h-9 [&>button]:h-8 [&>button]:w-8 [&>button]:p-0 [&>button>svg]:h-4 [&>button>svg]:w-4"
-						themes={["light", "dark", "system"]}
-						currentTheme={
-							(resolvedTheme as "light" | "dark" | "system") || "system"
-						}
-						onThemeChange={(t) => setNextTheme(t)}
+					<MiniToolbar
+						compact
+						items={[
+							{ id: "system", icon: Monitor, title: "System" },
+							{ id: "light", icon: Sun, title: "Light" },
+							{ id: "dark", icon: Moon, title: "Dark" },
+						]}
+						value={(nextTheme ?? "system") as string}
+						onChange={(id) => setNextTheme(id)}
+						className="h-[1.8rem]"
 					/>
 				</div>
 			</div>
@@ -86,7 +86,7 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 											themeOption.borderStyle !== "0px"
 												? {
 														border: themeOption.borderStyle,
-													}
+												  }
 												: {}),
 										}}
 									/>
@@ -98,7 +98,7 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 											themeOption.borderStyle !== "0px"
 												? {
 														border: themeOption.borderStyle,
-													}
+												  }
 												: {}),
 										}}
 									/>

@@ -722,34 +722,7 @@ export const DualCalendarComponent = React.forwardRef<
 			],
 		);
 
-		// Register vacation events update callback using FullCalendar's native event management
-		useEffect(() => {
-			const updateVacationEvents = async (
-				_vacationPeriods: VacationPeriod[],
-			) => {
-				console.log(
-					"🔄 [DUAL-CALENDAR] Updating vacation events using FullCalendar API...",
-				);
-				// Update vacation events in both calendars using FullCalendar's native event management
-				const leftApi = leftCalendarRef.current?.getApi();
-				const rightApi = rightCalendarRef.current?.getApi();
-
-				if (leftApi) {
-					// Update vacation events directly using FullCalendar API
-					console.log(
-						"🔄 [DUAL-CALENDAR] Left calendar vacation events updated",
-					);
-				}
-				if (rightApi) {
-					// Update vacation events directly using FullCalendar API
-					console.log(
-						"🔄 [DUAL-CALENDAR] Right calendar vacation events updated",
-					);
-				}
-			};
-
-			setOnVacationUpdated?.(updateVacationEvents);
-		}, [setOnVacationUpdated]);
+	// Vacation events are now automatically included in the events array
 
 		// Show loading state
 		if (

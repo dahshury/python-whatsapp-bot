@@ -2,7 +2,12 @@
 
 import { Plane, Settings2, View } from "lucide-react";
 import type * as React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@/components/animate-ui/components/radix/tabs";
 import { VacationPeriods } from "@/components/vacation-periods";
 import { useSettings } from "@/lib/settings-context";
 import { toastService } from "@/lib/toast-service";
@@ -54,10 +59,15 @@ export function SettingsTabs({
 		setFreeRoam(isFreeRoam);
 		setShowDualCalendar(isDual);
 
+		const selectedMode = VIEW_MODES.find((m) => m.value === value);
+		const modeLabel = isLocalized
+			? selectedMode?.labelRTL ?? value
+			: selectedMode?.label ?? value;
+
 		toastService.success(
 			isLocalized
-				? `تم تغيير وضع العرض إلى ${value}`
-				: `View mode changed to ${value}`,
+				? `تم تغيير وضع العرض إلى ${modeLabel}`
+				: `View mode changed to ${modeLabel}`,
 		);
 	};
 

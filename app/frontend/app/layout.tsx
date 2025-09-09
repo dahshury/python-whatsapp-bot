@@ -95,7 +95,14 @@ export default function RootLayout({
 						crossOrigin="anonymous"
 					/>
 				) : null}
-				{/* Removed missing console suppression script to avoid 404 */}
+				{/* Apply saved style theme class before paint to prevent FOUC */}
+				<script
+					id="style-theme-init"
+					dangerouslySetInnerHTML={{
+						__html:
+							"(function(){try{var t=localStorage.getItem('styleTheme');if(!t)return;var cl=document.documentElement.classList;var toRemove=[];cl.forEach(function(n){if(n.indexOf('theme-')===0)toRemove.push(n)});for(var i=0;i<toRemove.length;i++){cl.remove(toRemove[i])}cl.add(t)}catch(e){}})();",
+					}}
+				/>
 			</head>
 			<body
 				className={`${geist.variable} ${geistMono.variable} font-sans`}

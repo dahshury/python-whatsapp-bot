@@ -10,7 +10,6 @@ import {
 	useTransform,
 } from "motion/react";
 import React, { type PropsWithChildren, useRef } from "react";
-import { GlowingEffect } from "@/components/glowing-effect";
 import { cn } from "@/lib/utils";
 
 export interface DockProps extends VariantProps<typeof dockVariants> {
@@ -94,6 +93,8 @@ export interface DockIconProps
 	className?: string;
 	children?: React.ReactNode;
 	props?: PropsWithChildren;
+	widthScale?: number;
+	paddingPx?: number;
 }
 
 const DockIcon = ({
@@ -103,10 +104,12 @@ const DockIcon = ({
 	mouseX,
 	className,
 	children,
+	widthScale = 1,
+	paddingPx,
 	...props
 }: DockIconProps) => {
 	const ref = useRef<HTMLDivElement>(null);
-	const padding = Math.max(6, size * 0.2);
+	const padding = paddingPx ?? Math.max(6, size * 0.2);
 	const defaultMouseX = useMotionValue(Number.POSITIVE_INFINITY);
 
 	const distanceCalc = useTransform(mouseX ?? defaultMouseX, (val: number) => {
@@ -120,7 +123,20 @@ const DockIcon = ({
 		[size, magnification, size],
 	);
 
+	// Allow rectangular width while keeping height controlled by sizeTransform
+	const widthTransform = useTransform(
+		distanceCalc,
+		[-distance, 0, distance],
+		[size * widthScale, magnification * widthScale, size * widthScale],
+	);
+
 	const scaleSize = useSpring(sizeTransform, {
+		mass: 0.1,
+		stiffness: 150,
+		damping: 12,
+	});
+
+	const scaleWidth = useSpring(widthTransform, {
 		mass: 0.1,
 		stiffness: 150,
 		damping: 12,
@@ -129,23 +145,14 @@ const DockIcon = ({
 	return (
 		<motion.div
 			ref={ref}
-			style={{ width: scaleSize, height: scaleSize, padding }}
+			style={{ width: scaleWidth, height: scaleSize, padding }}
 			className={cn(
-				"flex aspect-square cursor-pointer items-center justify-center rounded-full relative",
+				"flex cursor-pointer items-center justify-center rounded-full relative",
+				widthScale === 1 ? "aspect-square" : "",
 				className,
 			)}
 			{...props}
 		>
-			<GlowingEffect
-				glow={true}
-				disabled={false}
-				variant="default"
-				proximity={50}
-				spread={20}
-				inactiveZone={0.8}
-				borderWidth={2}
-				className="z-10"
-			/>
 			{children}
 		</motion.div>
 	);

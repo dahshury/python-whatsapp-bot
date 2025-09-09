@@ -12,6 +12,7 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface NotificationsButtonProps {
 	className?: string;
@@ -87,9 +88,24 @@ export function NotificationsButton({
 				).__localOps;
 				const isLocal = __local === true || !!localOps?.has(compositeKey);
 				if (isLocal) {
+					// Clear local marker and suppress adding to notifications panel
 					localOps?.delete(compositeKey);
+					return;
 				}
 			} catch {}
+
+			// Suppress assistant-authored chat messages in notifications panel only
+			if (type === "conversation_new_message") {
+				try {
+					const role = String(
+						((data as { role?: string; sender?: string })?.role ||
+							(data as { role?: string; sender?: string })?.sender || "")
+					).toLowerCase();
+					if (role && role !== "user" && role !== "customer") {
+						return;
+					}
+				} catch {}
+			}
 			const text = (() => {
 				if (type === "reservation_created")
 					return `${
@@ -201,6 +217,27 @@ export function NotificationsButton({
 		[],
 	);
 
+	// Animation variants for list items: no position shift, just opacity/blur
+	const listVariants = React.useMemo(
+		() => ({
+			hidden: {
+				transition: { staggerChildren: 0.0 },
+			},
+			shown: {
+				transition: { staggerChildren: 0.015 },
+			},
+		}),
+		[],
+	);
+
+	const itemVariants = React.useMemo(
+		() => ({
+			hidden: { opacity: 0, filter: "blur(6px)" },
+			shown: { opacity: 1, filter: "blur(0px)" },
+		}),
+		[],
+	);
+
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
@@ -223,58 +260,92 @@ export function NotificationsButton({
 				side="bottom"
 				align="end"
 				sideOffset={8}
+				forceMount
 			>
-				<div className="flex items-baseline justify-between gap-4 px-3 py-2">
-					<div className="text-sm font-semibold">
-						{isLocalized ? "الإشعارات" : "Notifications"}
-					</div>
-					{unreadCount > 0 && (
-						<button
-							type="button"
-							className="text-xs font-medium hover:underline"
-							onClick={handleMarkAllAsRead}
+				<AnimatePresence mode="sync">
+					{open && (
+						<motion.div
+							key="notifications-panel"
+							initial={{ opacity: 0, height: 0 }}
+							animate={{ opacity: 1, height: "auto" }}
+							exit={{ opacity: 0, height: 0 }}
+							transition={{ duration: 0.18, ease: [0.45, 0, 0.55, 1] }}
+							style={{ overflow: "hidden", willChange: "height, opacity" }}
 						>
-							{isLocalized ? "وضع الكل كمقروء" : "Mark all as read"}
-						</button>
+							{/* Clip-path reveal of contents from top to bottom with slight blur fade */}
+							<motion.div
+								initial={{ clipPath: "inset(0% 0% 100% 0%)", filter: "blur(8px)", opacity: 0 }}
+								animate={{ clipPath: "inset(0% 0% 0% 0%)", filter: "blur(0px)", opacity: 1 }}
+								exit={{ clipPath: "inset(0% 0% 100% 0%)", filter: "blur(6px)", opacity: 0 }}
+								transition={{ duration: 0.16, ease: [0.45, 0, 0.55, 1] }}
+								style={{ willChange: "clip-path, filter, opacity" }}
+							>
+								<div className="flex items-baseline justify-between gap-4 px-3 py-2">
+									<div className="text-sm font-semibold">
+										{isLocalized ? "الإشعارات" : "Notifications"}
+									</div>
+									{unreadCount > 0 && (
+										<button
+											type="button"
+											className="text-xs font-medium hover:underline"
+											onClick={handleMarkAllAsRead}
+										>
+											{isLocalized ? "وضع الكل كمقروء" : "Mark all as read"}
+										</button>
+									)}
+								</div>
+								<hr className="bg-border -mx-1 my-1 h-px" />
+
+								<motion.div variants={listVariants} initial="hidden" animate="shown">
+									{items.map((notification) => (
+										<motion.div
+											key={notification.id}
+											variants={itemVariants}
+											transition={{ duration: 0.14, ease: [0.45, 0, 0.55, 1] }}
+											className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
+										>
+											<div className="relative flex items-start pe-3">
+												<div className="flex-1 space-y-1">
+													<button
+														type="button"
+														className="text-foreground/80 text-left after:absolute after:inset-0"
+														onClick={() => handleNotificationClick(notification)}
+													>
+														<span className="text-foreground font-medium">
+															{notification.text}
+														</span>
+													</button>
+													<div className="text-muted-foreground text-xs">
+														{formatTimeAgo(notification.timestamp)}
+													</div>
+												</div>
+												{notification.unread && (
+													<div className="absolute end-0 self-center">
+														<span className="sr-only">
+															{isLocalized ? "غير مقروء" : "Unread"}
+														</span>
+														<Dot />
+													</div>
+												)}
+											</div>
+										</motion.div>
+									))}
+								</motion.div>
+
+								{items.length === 0 && (
+									<motion.div
+										initial={{ opacity: 0, filter: "blur(6px)" }}
+										animate={{ opacity: 1, filter: "blur(0px)" }}
+										transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+										className="px-3 py-6 text-center text-xs text-muted-foreground"
+									>
+										{isLocalized ? "لا توجد إشعارات" : "No notifications"}
+									</motion.div>
+								)}
+							</motion.div>
+						</motion.div>
 					)}
-				</div>
-				<hr className="bg-border -mx-1 my-1 h-px" />
-				{items.map((notification) => (
-					<div
-						key={notification.id}
-						className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
-					>
-						<div className="relative flex items-start pe-3">
-							<div className="flex-1 space-y-1">
-								<button
-									type="button"
-									className="text-foreground/80 text-left after:absolute after:inset-0"
-									onClick={() => handleNotificationClick(notification)}
-								>
-									<span className="text-foreground font-medium">
-										{notification.text}
-									</span>
-								</button>
-								<div className="text-muted-foreground text-xs">
-									{formatTimeAgo(notification.timestamp)}
-								</div>
-							</div>
-							{notification.unread && (
-								<div className="absolute end-0 self-center">
-									<span className="sr-only">
-										{isLocalized ? "غير مقروء" : "Unread"}
-									</span>
-									<Dot />
-								</div>
-							)}
-						</div>
-					</div>
-				))}
-				{items.length === 0 && (
-					<div className="px-3 py-6 text-center text-xs text-muted-foreground">
-						{isLocalized ? "لا توجد إشعارات" : "No notifications"}
-					</div>
-				)}
+				</AnimatePresence>
 			</PopoverContent>
 		</Popover>
 	);

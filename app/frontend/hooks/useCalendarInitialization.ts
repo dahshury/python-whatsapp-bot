@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CalendarCoreRef } from "@/components/calendar-core";
-import type { VacationPeriod } from "@/types/calendar";
 
 interface UseCalendarInitializationProps {
 	calculateHeight: () => number | "auto";
 	sidebarOpen?: boolean;
 	refreshData: () => Promise<void>;
-	setOnVacationUpdated?: (
-		callback: (vacationPeriods: VacationPeriod[]) => void,
-	) => void;
 	calendarRef?: React.RefObject<CalendarCoreRef | null>;
 }
 
@@ -16,7 +12,6 @@ export function useCalendarInitialization({
 	calculateHeight,
 	sidebarOpen: _sidebarOpen,
 	refreshData,
-	setOnVacationUpdated,
 	calendarRef,
 }: UseCalendarInitializationProps) {
 	const [calendarHeight, setCalendarHeight] = useState<number | "auto">(800);
@@ -33,24 +28,7 @@ export function useCalendarInitialization({
 		}
 	}, [refreshData]);
 
-	// Register vacation events update callback using FullCalendar's native event management
-	useEffect(() => {
-		const updateVacationEvents = (_vacationPeriods: VacationPeriod[]) => {
-			console.log(
-				"🔄 [CALENDAR-INIT] Updating vacation events using FullCalendar API...",
-			);
-			if (calendarRef?.current) {
-				const api = calendarRef.current.getApi();
-				if (api) {
-					// Update vacation events logic would go here
-					console.log(
-						"🔄 [CALENDAR-INIT] Vacation events updated via FullCalendar API",
-					);
-				}
-			}
-		};
-		setOnVacationUpdated?.(updateVacationEvents);
-	}, [setOnVacationUpdated, calendarRef]);
+	// Vacation events are now managed through the main events array
 
 	// Note: Conversations are already fetched by WebSocketDataProvider on mount
 	// No need to fetch them again here

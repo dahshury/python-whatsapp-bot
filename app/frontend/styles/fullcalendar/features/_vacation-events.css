@@ -30,6 +30,24 @@
 	z-index: var(--z-calendar-day-bg-highlight);
 }
 
+/**
+ * Regular events styled as vacation period overlays
+ * More stable than background events, won't get cleared by refetchEvents
+ */
+.fc-event.vacation-period-event {
+	background-color: hsl(var(--vacation-bg) / var(--vacation-bg-opacity)) !important;
+	border-color: hsl(var(--vacation-bg) / 0.3) !important;
+	color: transparent !important;
+	pointer-events: none;
+	opacity: 0.8;
+	z-index: 1; /* Above day cells but below regular events */
+}
+
+.fc-event.vacation-period-event .fc-event-title,
+.fc-event.vacation-period-event .fc-event-time {
+	display: none; /* Hide all text content */
+}
+
 /* Cross-view compatibility for vacation background events */
 .fc-daygrid .fc-bg-event.vacation-background-event,
 .fc-timegrid .fc-bg-event.vacation-background-event,

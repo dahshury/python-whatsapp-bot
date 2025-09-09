@@ -3,11 +3,14 @@ export interface CalendarEvent {
 	title: string;
 	start: string; // ISO 8601 date-time string
 	end: string; // ISO 8601 date-time string
+	display?: "auto" | "block" | "list-item" | "background" | "inverse-background" | "none";
+	allDay?: boolean;
 	backgroundColor?: string;
 	borderColor?: string;
 	textColor?: string;
 	editable?: boolean;
 	durationEditable?: boolean;
+	overlap?: boolean;
 	className?: string[];
 	extendedProps?: {
 		type: number;

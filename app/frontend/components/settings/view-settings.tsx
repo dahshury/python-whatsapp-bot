@@ -45,10 +45,15 @@ export function ViewSettings({
 		setFreeRoam(isFreeRoam);
 		setShowDualCalendar(isDual);
 
+		const selectedMode = VIEW_MODES.find((m) => m.value === value);
+		const modeLabel = isLocalized
+			? selectedMode?.labelRTL ?? value
+			: selectedMode?.label ?? value;
+
 		toastService.success(
 			isLocalized
-				? `تم تغيير وضع العرض إلى ${value}`
-				: `View mode changed to ${value}`,
+				? `تم تغيير وضع العرض إلى ${modeLabel}`
+				: `View mode changed to ${modeLabel}`,
 		);
 	};
 

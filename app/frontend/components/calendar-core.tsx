@@ -231,9 +231,12 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		// Sanitize events to guard against any with missing/invalid start
 		const sanitizedEvents = useMemo(() => {
 			try {
+				const isDateOnly = (value: string) => /^(\d{4})-(\d{2})-(\d{2})$/.test(value);
 				return (optimizedEvents || []).filter((e: CalendarEvent) => {
 					const s = e?.start;
 					if (!s || typeof s !== "string") return false;
+					// Allow background/allDay events with date-only strings without constructing Date
+					if ((e.display === "background" || e.allDay === true) && isDateOnly(s)) return true;
 					const d = new Date(s);
 					return !Number.isNaN(d.getTime());
 				});
@@ -251,6 +254,21 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				const isDragging =
 					(globalThis as { __isCalendarDragging?: boolean })
 						.__isCalendarDragging === true;
+				
+				console.log("📅 [CALENDAR-CORE] Setting render events:", {
+					sanitizedEventsCount: sanitizedEvents.length,
+					isDragging,
+					vacationEventsInSanitized: sanitizedEvents.filter(e => e.extendedProps?.__vacation).length,
+					backgroundEventsInSanitized: sanitizedEvents.filter(e => e.display === 'background').length,
+					sampleBackgroundEvents: sanitizedEvents.filter(e => e.display === 'background').slice(0, 3).map(e => ({
+						id: e.id,
+						start: e.start,
+						end: e.end,
+						display: e.display,
+						className: e.className
+					}))
+				});
+
 				if (isDragging) {
 					frozenEventsRef.current = sanitizedEvents;
 					setRenderEvents(frozenEventsRef.current);
@@ -446,6 +464,44 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					el.addEventListener("mousedown", onEventMouseDown);
 				}
 
+				// List view: normalize time cell to start-only structure with optional end (Alt+hover reveals)
+				try {
+					if (String(view?.type || "").toLowerCase().includes("list")) {
+						const row = el.closest(".fc-list-event") as HTMLElement | null;
+						const timeCell = row?.querySelector(".fc-list-event-time") as
+							HTMLElement | null;
+						if (timeCell) {
+							const raw = (timeCell.textContent || "").trim();
+							let startText = raw;
+							let endText = "";
+							let sep = "";
+							if (/[–—-]/.test(raw)) {
+								const parts = raw.split(/\s*[–—-]\s*/);
+								startText = (parts[0] || "").trim();
+								endText = (parts[1] || "").trim();
+								sep = endText ? " - " : "";
+							}
+
+							while (timeCell.firstChild) timeCell.removeChild(timeCell.firstChild);
+							const startSpan = document.createElement("span");
+							startSpan.className = "fc-event-time-start";
+							startSpan.textContent = startText;
+							const sepSpan = document.createElement("span");
+							sepSpan.className = "fc-event-time-sep";
+							sepSpan.textContent = sep;
+							const endSpan = document.createElement("span");
+							endSpan.className = "fc-event-time-end";
+							endSpan.textContent = endText;
+							timeCell.appendChild(startSpan);
+							timeCell.appendChild(sepSpan);
+							timeCell.appendChild(endSpan);
+
+							// Also ensure white-space nowrap so spans sit inline
+							timeCell.style.whiteSpace = "nowrap";
+						}
+					}
+				} catch {}
+
 				// Skip context menu for multiMonth view to improve performance
 				if (!isMultiMonth) {
 					// Add context menu functionality
@@ -540,8 +596,8 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					onDatesSet(info);
 				}
 
-				// Only call onNavDate for non-timegrid views to avoid conflicts with dateClick behavior
-				// In timegrid views, dateClick handles the date updates directly
+				// Only notify parent for non-timegrid views to avoid overriding
+				// timeGrid dateClick-driven business hour switching
 				if (onNavDate && !info.view.type.includes("timeGrid")) {
 					onNavDate(info.view.currentStart);
 				}
@@ -635,6 +691,64 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		//   }
 		// }, [currentDate]);
 
+		// Global modifier (Alt/Shift) key handling to toggle end-time visibility
+		useEffect(() => {
+			const refresh = (e?: KeyboardEvent | MouseEvent) => {
+				const hasAlt = !!(e && "altKey" in e && e.altKey);
+				const hasShift = !!(e && "shiftKey" in e && e.shiftKey);
+				if (hasAlt) document.body.classList.add("alt-pressed");
+				else document.body.classList.remove("alt-pressed");
+				if (hasShift) document.body.classList.add("shift-pressed");
+				else document.body.classList.remove("shift-pressed");
+			};
+			const handleKeyDown = (e: KeyboardEvent) => refresh(e);
+			const handleKeyUp = (e: KeyboardEvent) => refresh(e);
+			const handleBlur = () => {
+				document.body.classList.remove("alt-pressed");
+				document.body.classList.remove("shift-pressed");
+			};
+			const handleVisibility = () => {
+				if (document.visibilityState !== "visible") handleBlur();
+			};
+			window.addEventListener("keydown", handleKeyDown);
+			window.addEventListener("keyup", handleKeyUp);
+			window.addEventListener("blur", handleBlur);
+			document.addEventListener("visibilitychange", handleVisibility);
+			return () => {
+				window.removeEventListener("keydown", handleKeyDown);
+				window.removeEventListener("keyup", handleKeyUp);
+				window.removeEventListener("blur", handleBlur);
+				document.removeEventListener("visibilitychange", handleVisibility);
+				document.body.classList.remove("alt-pressed");
+				document.body.classList.remove("shift-pressed");
+			};
+		}, []);
+
+		// Pointer-based modifier detection on the calendar container (robust in Chrome/Windows)
+		useEffect(() => {
+			const container = containerRef.current;
+			if (!container) return;
+			const updateFromMouse = (e: MouseEvent) => {
+				if (e.altKey) document.body.classList.add("alt-pressed");
+				else document.body.classList.remove("alt-pressed");
+				if (e.shiftKey) document.body.classList.add("shift-pressed");
+				else document.body.classList.remove("shift-pressed");
+			};
+			const clear = () => document.body.classList.remove("alt-pressed");
+			container.addEventListener("mousemove", updateFromMouse);
+			container.addEventListener("mouseenter", updateFromMouse);
+			container.addEventListener("mouseleave", () => {
+				clear();
+				document.body.classList.remove("shift-pressed");
+			});
+			return () => {
+				container.removeEventListener("mousemove", updateFromMouse);
+				container.removeEventListener("mouseenter", updateFromMouse);
+				container.removeEventListener("mouseleave", clear);
+				clear();
+			};
+		}, []);
+
 		return (
 			<div
 				ref={containerRef}
@@ -727,6 +841,50 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 							else classes.push("reservation-type-0");
 						}
 						return classes;
+					}}
+					eventContent={(arg) => {
+						// Render start-only time; keep separator and end spans for CSS-controlled reveal
+						// FullCalendar by default renders <div class="fc-event-time">start–end</div>
+						// We replace with structured spans to control visibility via CSS (and Alt key)
+						const { timeText } = arg;
+						// Parse timeText like "11:00 AM - 11:20 AM" or "11:00 AM" (supports hyphen/en dash/em dash)
+						let startText = timeText || "";
+						let endText = "";
+						let sep = "";
+						if (timeText && /[–—-]/.test(timeText)) {
+							const parts = timeText.split(/\s*[–—-]\s*/);
+							startText = (parts[0] || "").trim();
+							endText = (parts[1] || "").trim();
+							sep = endText ? " - " : "";
+						}
+
+						const container = document.createElement("div");
+						container.className = "fc-event-main-frame";
+
+						const timeContainer = document.createElement("div");
+						timeContainer.className = "fc-event-time";
+						const startSpan = document.createElement("span");
+						startSpan.className = "fc-event-time-start";
+						startSpan.textContent = startText;
+						const sepSpan = document.createElement("span");
+						sepSpan.className = "fc-event-time-sep";
+						sepSpan.textContent = sep;
+						const endSpan = document.createElement("span");
+						endSpan.className = "fc-event-time-end";
+						endSpan.textContent = endText;
+						timeContainer.appendChild(startSpan);
+						timeContainer.appendChild(sepSpan);
+						timeContainer.appendChild(endSpan);
+
+						const titleSpan = document.createElement("div");
+						titleSpan.className = "fc-event-title";
+						titleSpan.textContent = arg?.event?.title || "";
+
+						// Order is managed by CSS for reservation vs conversation
+						container.appendChild(titleSpan);
+						container.appendChild(timeContainer);
+
+						return { domNodes: [container] };
 					}}
 					dayCellClassNames={getDayCellClassNames}
 					dayHeaderClassNames={getDayHeaderClassNames}

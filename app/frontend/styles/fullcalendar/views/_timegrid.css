@@ -318,10 +318,7 @@
 	min-height: 18px;
 }
 
-/* Hide time for conversation events */
-.fc-timegrid-event.conversation-event .fc-event-time {
-	display: none;
-}
+/* Conversation events show start time like others; end revealed on Alt-hover (handled globally) */
 
 /* COMPREHENSIVE: Ensure all timegrid event text elements have transparent backgrounds */
 .fc-timegrid-event .fc-event-main,

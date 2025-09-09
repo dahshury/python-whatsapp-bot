@@ -249,11 +249,13 @@
 .fc-daygrid-event.conversation-event {
 	background-color: hsl(var(--chart-4));
 	border-color: hsl(var(--chart-4));
-	color: hsl(var(--background));
+	/* Force white text for conversation events */
+	color: #fff;
 }
 
 .dark .fc-daygrid-event.conversation-event {
-	color: hsl(var(--foreground));
+	/* Keep white text in dark mode as well */
+	color: #fff;
 }
 
 .fc-daygrid-event.conversation-event .fc-event-time {

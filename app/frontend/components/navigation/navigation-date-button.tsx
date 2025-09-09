@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Loader2 } from "lucide-react";
+import { CalendarDays, Loader2, CalendarRange } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { i18n } from "@/lib/i18n";
 import type { NavigationDateButtonProps } from "@/types/navigation";
 
 export const NavigationDateButton = React.memo(function NavigationDateButton({
@@ -19,6 +20,7 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 	onToday,
 	navigationOnly = false,
 	className = "",
+	visibleEventCount,
 }: NavigationDateButtonProps) {
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 
@@ -71,6 +73,34 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 								: "opacity-0 scale-75",
 						)}
 					/>
+					{typeof visibleEventCount === "number" && visibleEventCount > 0 && (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span
+									aria-label="events in view"
+									className={cn(
+										"absolute top-1 right-2",
+										"inline-flex items-center gap-1 h-5 px-1.5",
+										"rounded-theme bg-muted/60 text-foreground/80",
+										"text-[10px] leading-none font-mono tabular-nums",
+										"border border-border/50 shadow-sm",
+									)}
+									onClickCapture={(e) => {
+										e.stopPropagation();
+										e.preventDefault();
+									}}
+								>
+									<CalendarRange className="h-3 w-3 opacity-80" />
+									<span>{visibleEventCount > 99 ? "99+" : visibleEventCount}</span>
+								</span>
+							</TooltipTrigger>
+							<TooltipContent>
+								<p className="text-xs">
+									{visibleEventCount > 99 ? "99+" : visibleEventCount} {i18n.getMessage("calendar_events", isLocalized)}
+								</p>
+							</TooltipContent>
+						</Tooltip>
+					)}
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>

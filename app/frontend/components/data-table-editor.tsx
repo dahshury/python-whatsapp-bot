@@ -32,6 +32,7 @@ import { FullscreenProvider } from "./glide_custom_cells/components/contexts/Ful
 import type { DataProvider } from "./glide_custom_cells/components/core/services/DataProvider";
 
 import { createGlideTheme } from "./glide_custom_cells/components/utils/streamlitGlideTheme";
+import { AnimatePresence, motion } from "framer-motion";
 
 const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), {
 	ssr: false,
@@ -661,43 +662,53 @@ export function DataTableEditor(props: DataTableEditorProps) {
 
 	return (
 		<>
-			{open && (
-				<button
-					className="fixed inset-0 dialog-backdrop bg-black/80 backdrop-blur-sm"
-					style={{ zIndex: Z_INDEX.DIALOG_BACKDROP }}
-					onClick={(e) => {
-						if (e.target === e.currentTarget) {
-							handleCloseAttempt(() => onOpenChange(false));
-						}
-					}}
-					onKeyDown={(e) => {
-						if (e.key === "Escape") {
-							handleCloseAttempt(() => onOpenChange(false));
-						}
-					}}
-					type="button"
-				/>
-			)}
+			<AnimatePresence>
+				{open && (
+					<>
+						<motion.button
+							key="dt-backdrop"
+							className="fixed inset-0 dialog-backdrop bg-black/80 backdrop-blur-sm"
+							style={{ zIndex: Z_INDEX.DIALOG_BACKDROP }}
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.22, ease: "easeInOut" }}
+							onClick={(e) => {
+								if (e.target === e.currentTarget) {
+									handleCloseAttempt(() => onOpenChange(false));
+								}
+							}}
+							onKeyDown={(e) => {
+								if (e.key === "Escape") {
+									handleCloseAttempt(() => onOpenChange(false));
+								}
+							}}
+							type="button"
+						/>
 
-			{open && (
-				<div
-					role="dialog"
-					className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
-					style={{ zIndex: Z_INDEX.DIALOG_CONTENT }}
-					aria-describedby="data-editor-description"
-					onKeyDown={(e) => {
-						if (e.key === "Escape") {
-							const fullscreenPortal = document.getElementById(
-								"grid-fullscreen-portal",
-							);
-							if (fullscreenPortal) {
-								e.preventDefault();
-								return;
-							}
-							handleCloseAttempt(() => onOpenChange(false));
-						}
-					}}
-				>
+						<motion.div
+							key="dt-dialog"
+							role="dialog"
+							className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
+							style={{ zIndex: Z_INDEX.DIALOG_CONTENT }}
+							aria-describedby="data-editor-description"
+							initial={{ opacity: 0, scale: 0.98, y: 8 }}
+							animate={{ opacity: 1, scale: 1, y: 0 }}
+							exit={{ opacity: 0, scale: 0.98, y: -8 }}
+							transition={{ duration: 0.25, ease: "easeInOut" }}
+							onKeyDown={(e) => {
+								if (e.key === "Escape") {
+									const fullscreenPortal = document.getElementById(
+										"grid-fullscreen-portal",
+									);
+									if (fullscreenPortal) {
+										e.preventDefault();
+										return;
+									}
+									handleCloseAttempt(() => onOpenChange(false));
+								}
+							}}
+						>
 					<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
 						<div className="flex flex-col space-y-1.5">
 							<h2
@@ -822,8 +833,10 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							)}
 						</div>
 					</div>
-				</div>
-			)}
+						</motion.div>
+					</>
+				)}
+			</AnimatePresence>
 
 			<UnsavedChangesDialog
 				open={showUnsavedChangesDialog}

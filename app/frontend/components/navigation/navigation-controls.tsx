@@ -48,6 +48,8 @@ export const NavigationControls = React.memo(function NavigationControls({
 	const prevButton = (
 		<DockIcon
 			size={38}
+			widthScale={1.4}
+			paddingPx={0}
 			magnification={48}
 			className="transition-colors"
 			{...prevHoldHandlers}
@@ -59,7 +61,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 						size="icon"
 						onClick={onPrev}
 						disabled={isCalendarPage && isPrevDisabled}
-						className="size-10 rounded-full transition-all duration-200
+						className="h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
 						{...prevHoldHandlers}
@@ -77,6 +79,8 @@ export const NavigationControls = React.memo(function NavigationControls({
 	const nextButton = (
 		<DockIcon
 			size={38}
+			widthScale={1.4}
+			paddingPx={0}
 			magnification={48}
 			className="transition-colors"
 			{...nextHoldHandlers}
@@ -88,7 +92,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 						size="icon"
 						onClick={onNext}
 						disabled={isCalendarPage && isNextDisabled}
-						className="size-10 rounded-full transition-all duration-200
+						className="h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
 						{...nextHoldHandlers}
@@ -104,7 +108,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 	);
 
 	return (
-		<div className={`flex items-center gap-1 ${className}`}>
+		<div className={`flex items-center gap-0.5 ${className}`}>
 			{prevButton}
 			{nextButton}
 		</div>

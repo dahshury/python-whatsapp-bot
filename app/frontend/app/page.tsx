@@ -150,11 +150,37 @@ export default function HomePage() {
 		return out;
 	}, [reservations]);
 
+	// Get vacation events from context
+	const { vacationEvents } = useVacation();
+
 	// Memoize filtered events to avoid triggering FullCalendar eventsSet on every render
 	const filteredEvents = React.useMemo(
 		() => filterEventsForCalendar(eventsState.events, freeRoam),
 		[eventsState.events, freeRoam],
 	);
+
+	// Merge vacation events with main events
+	const allEvents = React.useMemo(() => {
+		const merged = [...filteredEvents, ...vacationEvents];
+		console.log("🔄 [HOMEPAGE] Merging events:", {
+			filteredEventsCount: filteredEvents.length,
+			vacationEventsCount: vacationEvents.length,
+			totalEventsCount: merged.length,
+			vacationEvents: vacationEvents.map(e => ({
+				id: e.id,
+				start: e.start,
+				end: e.end,
+				display: e.display,
+				className: e.className
+			})),
+			sampleMergedEvents: merged.slice(0, 5).map(e => ({
+				id: e.id,
+				start: e.start,
+				display: e.display || 'default'
+			}))
+		});
+		return merged;
+	}, [filteredEvents, vacationEvents]);
 
 	// Stage G: Add simple height management and updateSize wiring
 	const [calendarHeight, setCalendarHeight] = React.useState<number | "auto">(
@@ -211,7 +237,7 @@ export default function HomePage() {
 	// Initialize event handlers now that calendarState exists
 	const { openConversation: openConversationFromStore } = useSidebarChatStore();
 	const eventHandlers = useCalendarEventHandlers({
-		events: eventsState.events,
+		events: allEvents,
 		conversations: {},
 		isLocalized: isLocalized,
 		currentView: calendarState.currentView,
@@ -267,6 +293,8 @@ export default function HomePage() {
 			calendarState.setCurrentDate,
 		],
 	);
+
+	// Vacation events are now automatically included in allEvents array - no manual insertion needed
 
 	const [rightCalendarView, setRightCalendarView] = React.useState(() => {
 		if (typeof window !== "undefined") {
@@ -434,7 +462,7 @@ export default function HomePage() {
 										freeRoam={freeRoam}
 										initialLeftView={calendarState.currentView}
 										initialRightView={rightCalendarView}
-										events={eventsState.events}
+										events={allEvents}
 										loading={eventsState.loading}
 										onRefreshData={handleRefreshWithBlur}
 										onLeftViewChange={calendarState.setCurrentView}
@@ -443,7 +471,7 @@ export default function HomePage() {
 								) : (
 									<CalendarMainContent
 										calendarRef={calendarRef}
-										processedEvents={filteredEvents}
+										processedEvents={allEvents}
 										currentView={calendarState.currentView}
 										currentDate={calendarState.currentDate}
 										isLocalized={isLocalized}
@@ -488,7 +516,7 @@ export default function HomePage() {
 									editorOpen={dataTableEditor.editorOpen}
 									shouldLoadEditor={dataTableEditor.shouldLoadEditor}
 									selectedDateRange={dataTableEditor.selectedDateRange}
-									events={eventsState.events}
+									events={allEvents}
 									freeRoam={freeRoam}
 									calendarRef={calendarRef}
 									isLocalized={isLocalized}

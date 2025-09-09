@@ -16,7 +16,7 @@ import {
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
-} from "@/components/ui/accordion";
+} from "@/components/animate-ui/components/radix/accordion";
 import {
 	Collapsible,
 	CollapsibleContent,

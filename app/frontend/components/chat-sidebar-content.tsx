@@ -27,6 +27,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { ConversationCombobox } from "@/components/conversation-combobox";
 import { ThemedScrollbar } from "@/components/themed-scrollbar";
+import { GridPattern } from "@/components/magicui/grid-pattern";
 import {
 	EmojiPicker,
 	EmojiPickerContent,
@@ -1081,12 +1082,15 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 
 			{/* Messages Area */}
 			<div className="relative flex-1">
-				<div
-					className="absolute inset-0 z-0"
-					style={{
-						background:
-							"radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.25), transparent 70%), hsl(var(--card))",
-					}}
+				{/* Static dashed grid background */}
+				<GridPattern
+					className="absolute inset-0 z-0 text-foreground/11 [mask-image:radial-gradient(75%_60%_at_50%_12%,#000_45%,transparent_100%)]"
+					width={36}
+					height={36}
+					x={-1}
+					y={-1}
+					strokeDasharray={"3 3"}
+					strokeWidth={0.1}
 				/>
 				<ThemedScrollbar
 					className="flex-1 bg-transparent scrollbar-autohide chat-scrollbar relative z-10"

@@ -17,6 +17,14 @@ export const RealtimeEventBus: React.FC = () => {
 				const { type, data } = message?.detail || {};
 				if (!type || !data) return;
 
+				// Suppress notification events for snapshots and ack/nack control messages
+				try {
+					const t = String(type).toLowerCase();
+					if (t === "snapshot") return;
+					if (t.endsWith("_ack") || t.endsWith("_nack")) return;
+					if (t === "ack" || t === "nack") return;
+				} catch {}
+
 				const local = isLocalOperation(type, data);
 				// Dispatch the notification capture event with local hint
 				try {
