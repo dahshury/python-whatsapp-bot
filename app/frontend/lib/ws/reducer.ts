@@ -12,7 +12,6 @@ export function reduceOnMessage(
 	const { type, data, timestamp } = message;
 	const next: WebSocketDataState = {
 		...prev,
-		lastUpdate: timestamp,
 	};
 
 	switch (type) {
@@ -36,6 +35,7 @@ export function reduceOnMessage(
 					[waIdKey]: byCustomer,
 				};
 			}
+			next.lastUpdate = timestamp;
 			return next;
 		}
 
@@ -77,6 +77,7 @@ export function reduceOnMessage(
 				});
 				next.reservations = updated;
 			}
+			next.lastUpdate = timestamp;
 			return next;
 		}
 
@@ -93,6 +94,7 @@ export function reduceOnMessage(
 					[waId]: customerConversations,
 				};
 			}
+			next.lastUpdate = timestamp;
 			return next;
 		}
 
@@ -103,11 +105,13 @@ export function reduceOnMessage(
 			next.vacations = Array.isArray(maybe)
 				? (maybe as VacationSnapshot[])
 				: maybe.periods || [];
+			next.lastUpdate = timestamp;
 			return next;
 		}
 
 		case "metrics_updated": {
 			// No state change here; global metrics are handled by caller
+			// Do not bump lastUpdate to avoid unnecessary calendar refreshes
 			return next;
 		}
 
@@ -120,6 +124,7 @@ export function reduceOnMessage(
 			next.reservations = d.reservations || {};
 			next.conversations = d.conversations || {};
 			next.vacations = d.vacations || [];
+			next.lastUpdate = timestamp;
 			return next;
 		}
 

@@ -36,6 +36,25 @@ interface UseWebSocketDataOptions {
 	};
 }
 
+// Global/shared state to coordinate a single WS connection across subscribers and bundles
+// Store on globalThis to avoid duplicate sockets when modules are bundled separately (StrictMode/HMR/routes)
+const __g = (globalThis as unknown as {
+	__wsLock?: boolean;
+	__wsInstance?: WebSocket | null;
+	__wsConnectTs?: number;
+	__wsSubs?: number;
+	__wsPendingDisconnect?: ReturnType<typeof setTimeout> | null;
+}) || {};
+
+if (typeof globalThis !== "undefined") {
+	if (typeof __g.__wsLock !== "boolean") __g.__wsLock = false;
+	if (typeof __g.__wsInstance === "undefined") __g.__wsInstance = null;
+	if (typeof __g.__wsConnectTs !== "number") __g.__wsConnectTs = 0;
+	if (typeof __g.__wsSubs !== "number") __g.__wsSubs = 0;
+}
+
+let nextInstanceId = 1;
+
 export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	const {
 		autoReconnect = true,
@@ -44,6 +63,20 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		enableNotifications: _enableNotifications = true,
 		filters,
 	} = options;
+
+	// Stable per-mount instance id for debugging
+	const instanceIdRef = useRef<number>(0);
+	if (instanceIdRef.current === 0) instanceIdRef.current = nextInstanceId++;
+	console.log(
+		"🔧 [DEBUG] useWebSocketData hook called, instance:",
+		instanceIdRef.current,
+		"subscribers:",
+		(__g.__wsSubs as number),
+		"global lock:",
+		Boolean(__g.__wsLock),
+		"global instance:",
+		Boolean(__g.__wsInstance),
+	);
 
 	// Cache TTL (keep last good snapshot to avoid UI flicker on refresh)
 	const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
@@ -95,24 +128,123 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 	// Connect to WebSocket - now stable function with auto-reconnect
 	const connect = useCallback(() => {
+		console.log("🔧 [DEBUG] connect() called, checking global lock and instance");
+		
+		// First check if there's already a working or connecting global instance
+		if (
+			__g.__wsInstance &&
+			[WebSocket.OPEN, WebSocket.CONNECTING].includes((__g.__wsInstance as WebSocket).readyState as 0 | 1)
+		) {
+			console.log(
+				"🔧 [DEBUG] Reusing existing global WebSocket instance (state:",
+				(__g.__wsInstance as WebSocket).readyState,
+				")",
+			);
+			const ws = __g.__wsInstance as WebSocket;
+			wsRef.current = ws;
+			// Rebind handlers to this hook instance to avoid stale closures after StrictMode remounts
+			try {
+				ws.onmessage = (event) => {
+					try {
+						const message: WebSocketMessage = JSON.parse(event.data);
+						processMessage(message);
+						if (message.type === "snapshot") {
+							messageQueueRef.current = [];
+						}
+					} catch (error) {
+						console.warn("Error parsing WebSocket message:", error);
+					}
+				};
+				ws.onclose = (event) => {
+					console.log("🔧 [DEBUG] WebSocket onclose event:", event.code, event.reason);
+					setState((prev) => ({ ...prev, isConnected: false }));
+					if (pingIntervalRef.current) {
+						clearInterval(pingIntervalRef.current);
+						pingIntervalRef.current = null;
+					}
+					if (wsRef.current === ws) wsRef.current = null;
+					if (__g.__wsInstance === ws) {
+						console.log("🔧 [DEBUG] Clearing global WebSocket instance");
+						__g.__wsInstance = null;
+					}
+					__g.__wsLock = false;
+					try {
+						setWindowProperty("__wsConnection", null);
+					} catch {}
+					connectingRef.current = false;
+
+					if (
+						autoReconnect &&
+						event.code !== 1000 &&
+						reconnectAttemptsRef.current < maxReconnectAttempts
+					) {
+						reconnectAttemptsRef.current++;
+						const base = reconnectInterval * Math.max(1, reconnectAttemptsRef.current);
+						const delay = Math.min(base, 15000) + Math.floor(Math.random() * 300);
+						if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+						reconnectTimeoutRef.current = setTimeout(() => {
+							connect();
+						}, delay);
+					}
+				};
+				ws.onerror = (error) => {
+					console.error("🔧 [DEBUG] WebSocket error:", error);
+					connectingRef.current = false;
+					__g.__wsLock = false;
+				};
+				// Ensure ping heartbeat exists
+				if (!pingIntervalRef.current) {
+					pingIntervalRef.current = setInterval(() => {
+						try {
+							if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+								wsRef.current.send(JSON.stringify({ type: "ping" }));
+							}
+						} catch {}
+					}, 25000);
+				}
+			} catch {}
+			// If already open, mark connected; if connecting, let onopen flip the flag
+			if ((__g.__wsInstance as WebSocket).readyState === WebSocket.OPEN) {
+				setState((prev) => ({ ...prev, isConnected: true }));
+			}
+			return;
+		}
+		
+		// Prevent multiple simultaneous connection attempts (React StrictMode protection)
+		if (__g.__wsLock) {
+			console.log("🔧 [DEBUG] Global connection lock active, skipping duplicate connection attempt");
+			return;
+		}
+		
 		// Prevent multiple connections
 		if (
 			wsRef.current?.readyState === WebSocket.CONNECTING ||
 			wsRef.current?.readyState === WebSocket.OPEN ||
 			connectingRef.current
 		) {
+			console.log("🔧 [DEBUG] Already connecting/connected, skipping");
 			return;
 		}
+
+		// Set global lock to prevent duplicate connections
+		__g.__wsLock = true;
 
 		connectingRef.current = true;
 		try {
 			const wsUrl = getWebSocketUrl();
+			console.log("🔧 [DEBUG] Creating new WebSocket with URL:", wsUrl);
 			const ws = new WebSocket(wsUrl);
+			// Set the global instance immediately so others reuse this while CONNECTING
+			__g.__wsInstance = ws;
 
 			ws.onopen = () => {
+				console.log(`🔧 [DEBUG] Instance ${instanceIdRef.current}: WebSocket connected successfully, clearing global lock`);
 				setState((prev) => ({ ...prev, isConnected: true }));
 				reconnectAttemptsRef.current = 0;
 				connectingRef.current = false;
+				__g.__wsLock = false; // Clear lock on successful connection
+				__g.__wsInstance = ws; // Set global instance
+				__g.__wsConnectTs = Date.now(); // Record connection time
 				try {
 					setWindowProperty("__wsConnection", wsRef);
 				} catch {}
@@ -161,6 +293,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			};
 
 			ws.onclose = (event) => {
+				console.log("🔧 [DEBUG] WebSocket onclose event:", event.code, event.reason);
 				setState((prev) => ({ ...prev, isConnected: false }));
 				if (pingIntervalRef.current) {
 					clearInterval(pingIntervalRef.current);
@@ -168,6 +301,12 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				}
 				// Only nullify if this is the same instance
 				if (wsRef.current === ws) wsRef.current = null;
+				// Clear global state if this was the global instance
+				if (__g.__wsInstance === ws) {
+					console.log("🔧 [DEBUG] Clearing global WebSocket instance");
+					__g.__wsInstance = null;
+				}
+				__g.__wsLock = false; // Always clear lock on close
 				try {
 					setWindowProperty("__wsConnection", null);
 				} catch {}
@@ -191,15 +330,17 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				}
 			};
 
-			ws.onerror = (_error) => {
-				console.warn("WebSocket manual connection error");
+			ws.onerror = (error) => {
+				console.error("🔧 [DEBUG] WebSocket error:", error);
 				connectingRef.current = false;
+				__g.__wsLock = false; // Clear lock on error
 			};
 
 			wsRef.current = ws;
 		} catch (error) {
-			console.warn("Failed to create manual WebSocket connection:", error);
+			console.error("🔧 [DEBUG] Failed to create WebSocket connection:", error);
 			connectingRef.current = false;
+			__g.__wsLock = false; // Clear lock on exception
 		}
 	}, [
 		getWebSocketUrl,
@@ -212,6 +353,9 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 	// Disconnect WebSocket
 	const disconnect = useCallback(() => {
+		const timeSinceConnection = Date.now() - ((__g.__wsConnectTs as number) || 0);
+		console.log(`🔧 [DEBUG] Instance ${instanceIdRef.current}: disconnect() called, subscribers: ${String(__g.__wsSubs)}, time since connection: ${timeSinceConnection}ms`);
+		
 		if (reconnectTimeoutRef.current) {
 			clearTimeout(reconnectTimeoutRef.current);
 			reconnectTimeoutRef.current = null;
@@ -236,9 +380,16 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			}
 			// Normal close; prevent auto-reconnect handler from scheduling
 			wsRef.current.close(1000, "Manual disconnect");
+			// Clear global instance if this was it
+			if (__g.__wsInstance === wsRef.current) {
+				console.log("🔧 [DEBUG] Clearing global WebSocket instance on disconnect");
+				__g.__wsInstance = null;
+			}
 			wsRef.current = null;
 		}
 
+		// Clear global lock and state
+		__g.__wsLock = false;
 		setState((prev) => ({ ...prev, isConnected: false }));
 	}, []);
 
@@ -329,6 +480,8 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 	// Initialize WebSocket connection immediately (no artificial delay)
 	useEffect(() => {
+		// Track subscribers and ensure a single shared connection
+		__g.__wsSubs = ((__g.__wsSubs as number) || 0) + 1;
 		connect();
 
 		// Request snapshot aggressively for faster load
@@ -357,13 +510,32 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		document.addEventListener("visibilitychange", handleVisibility);
 
 		return () => {
+			console.log(`🔧 [DEBUG] Instance ${instanceIdRef.current}: useEffect cleanup, subscribers before cleanup: ${String(__g.__wsSubs)}`);
+			__g.__wsSubs = Math.max(0, Number(__g.__wsSubs || 0) - 1);
+			
 			if (reconnectTimeoutRef.current) {
 				clearTimeout(reconnectTimeoutRef.current);
 				reconnectTimeoutRef.current = null;
 			}
 			window.removeEventListener("online", handleOnline);
 			document.removeEventListener("visibilitychange", handleVisibility);
-			disconnect();
+			
+			// Only disconnect if no more subscribers remain. Delay slightly to avoid StrictMode double-unmount glitches
+			if (__g.__wsPendingDisconnect) {
+				clearTimeout(__g.__wsPendingDisconnect);
+				__g.__wsPendingDisconnect = null;
+			}
+			if (!__g.__wsSubs) {
+				__g.__wsPendingDisconnect = setTimeout(() => {
+					if (!__g.__wsSubs) {
+						console.log(`🔧 [DEBUG] Instance ${instanceIdRef.current}: No subscribers remain after delay, calling disconnect`);
+						disconnect();
+					}
+					__g.__wsPendingDisconnect = null;
+				}, 500);
+			} else {
+				console.log(`🔧 [DEBUG] Instance ${instanceIdRef.current}: Subscribers remain (${String(__g.__wsSubs)}), skipping disconnect`);
+			}
 		};
 	}, [connect, disconnect]); // Keep stable to avoid reconnect/disconnect loop on state changes
 

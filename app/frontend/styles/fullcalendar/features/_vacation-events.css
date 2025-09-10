@@ -432,6 +432,13 @@
 	background-color: transparent;
 }
 
+/* Ensure full coverage in dayGrid and multiMonth cells by styling the frame */
+.fc-daygrid-day.vacation-day .fc-daygrid-day-frame,
+.fc-multimonth .fc-daygrid-day.vacation-day .fc-daygrid-day-frame {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
 /* Apply pattern to background events used for vacation spans */
 .fc-bg-event.vacation-background-event,
 .vacation-background-event {

@@ -252,53 +252,64 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 		};
 		const addDays = (d: Date, n: number) =>
 			new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+		const normalize = (d: Date) =>
+			new Date(d.getFullYear(), d.getMonth(), d.getDate());
 
 		const events: CalendarEvent[] = [];
 
 		vacationPeriods.forEach((period, index) => {
-			const startStr = toDateOnly(period.start);
-			const endStrExclusive = toDateOnly(addDays(period.end, 1));
+			// Split multi-day spans into per-day background/text events for robust rendering
+			const start = normalize(period.start);
+			const end = normalize(period.end);
+			for (
+				let cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+				cur.getTime() <= end.getTime();
+				cur = addDays(cur, 1)
+			) {
+				const dayStartStr = toDateOnly(cur);
+				const dayEndStr = toDateOnly(addDays(cur, 1));
 
-			// Background span with pattern overlay
-			events.push({
-				id: `vacation-${index}`,
-				title: `${i18n.getMessage("vacation", isLocalized)} ${index + 1}`,
-				start: startStr,
-				end: endStrExclusive, // exclusive end (next day)
-				allDay: true,
-				display: "background",
-				overlap: false,
-				editable: false,
-				className: ["vacation-background-event"],
-				backgroundColor: "#ff6600",
-				borderColor: "#ff6600",
-				textColor: "transparent",
-				extendedProps: {
-					__vacation: true,
-					isVacationPeriod: true,
-					vacationIndex: index,
-					type: 99,
-				},
-			} as CalendarEvent);
+				// Background day overlay
+				events.push({
+					id: `vacation-${index}-${dayStartStr}`,
+					title: `${i18n.getMessage("vacation", isLocalized)} ${index + 1}`,
+					start: dayStartStr,
+					end: dayEndStr, // exclusive end (next day)
+					allDay: true,
+					display: "background",
+					overlap: false,
+					editable: false,
+					className: ["vacation-background-event"],
+					backgroundColor: "#ff6600",
+					borderColor: "#ff6600",
+					textColor: "transparent",
+					extendedProps: {
+						__vacation: true,
+						isVacationPeriod: true,
+						vacationIndex: index,
+						type: 99,
+					},
+				} as CalendarEvent);
 
-			// Overlay text event centered in each day cell
-			events.push({
-				id: `vacation-label-${index}`,
-				title: `${i18n.getMessage("vacation", isLocalized)} ${index + 1}`,
-				start: startStr,
-				end: endStrExclusive,
-				allDay: true,
-				overlap: false,
-				editable: false,
-				className: ["vacation-text-event"],
-				extendedProps: {
-					__vacation: true,
-					isVacationPeriod: true,
-					vacationIndex: index,
-					isVacationText: true,
-					type: 99,
-				},
-			} as CalendarEvent);
+				// Optional: per-day centered text overlay
+				events.push({
+					id: `vacation-label-${index}-${dayStartStr}`,
+					title: `${i18n.getMessage("vacation", isLocalized)} ${index + 1}`,
+					start: dayStartStr,
+					end: dayEndStr,
+					allDay: true,
+					overlap: false,
+					editable: false,
+					className: ["vacation-text-event"],
+					extendedProps: {
+						__vacation: true,
+						isVacationPeriod: true,
+						vacationIndex: index,
+						isVacationText: true,
+						type: 99,
+					},
+				} as CalendarEvent);
+			}
 		});
 
 		return events;

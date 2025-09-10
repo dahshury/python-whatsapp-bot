@@ -24,6 +24,8 @@ class ClientConnection:
     websocket: WebSocket
     update_types: Optional[Set[str]] = None
     entity_ids: Optional[Set[str]] = None
+    tab_id: Optional[str] = None
+    client_host: str = "unknown"
 
     async def send_json(self, payload: Dict[str, Any]) -> None:
         await self.websocket.send_text(json.dumps(payload, ensure_ascii=False))
@@ -42,6 +44,8 @@ class RealtimeManager:
     def __init__(self) -> None:
         # Map websocket id -> ClientConnection
         self._clients: Dict[int, ClientConnection] = {}
+        # Map tab id -> ClientConnection (enforce single connection per browser tab)
+        self._clients_by_tab: Dict[str, ClientConnection] = {}
         self._lock = asyncio.Lock()
         self._metrics_task: Optional[asyncio.Task] = None
         # Recent reservation events to suppress contradictory duplicates
@@ -49,17 +53,47 @@ class RealtimeManager:
         self._recent_reservation_events: Dict[str, Dict[str, Any]] = {}
 
     async def connect(self, websocket: WebSocket) -> ClientConnection:
+        client_host = websocket.client.host if websocket.client else "unknown"
+        tab_id = None
+        try:
+            tab_id = websocket.query_params.get("tab")  # type: ignore[attr-defined]
+        except Exception:
+            tab_id = None
+        logging.info(f"🔗 WebSocket connection attempt from {client_host}")
         await websocket.accept()
-        conn = ClientConnection(websocket=websocket)
+        conn = ClientConnection(websocket=websocket, tab_id=tab_id, client_host=client_host)
         async with self._lock:
+            # Enforce single connection per tab id: drop the previous one if exists
+            if isinstance(tab_id, str) and tab_id:
+                existing = self._clients_by_tab.get(tab_id)
+                if existing and existing.websocket is not websocket:
+                    try:
+                        logging.info(
+                            f"♻️ Replacing existing connection for tab={tab_id} from {existing.client_host}"
+                        )
+                        await existing.websocket.close(code=1000)
+                    except Exception:
+                        pass
+                    # Remove the old from registries
+                    self._clients.pop(id(existing.websocket), None)
+                    self._clients_by_tab.pop(tab_id, None)
+                # Register the new one for this tab id
+                self._clients_by_tab[tab_id] = conn
+            # Always register in clients map
             self._clients[id(websocket)] = conn
-        logging.info("WebSocket client connected. Total=%d", len(self._clients))
+        logging.info(f"✅ WebSocket client connected from {client_host}. Total=%d", len(self._clients))
         return conn
 
     async def disconnect(self, conn: ClientConnection) -> None:
+        client_host = conn.websocket.client.host if conn.websocket.client else "unknown"
         async with self._lock:
             self._clients.pop(id(conn.websocket), None)
-        logging.info("WebSocket client disconnected. Total=%d", len(self._clients))
+            try:
+                if conn.tab_id and self._clients_by_tab.get(conn.tab_id) is conn:
+                    self._clients_by_tab.pop(conn.tab_id, None)
+            except Exception:
+                pass
+        logging.info(f"❌ WebSocket client from {client_host} disconnected. Total=%d", len(self._clients))
 
     async def broadcast(
         self,
@@ -214,6 +248,11 @@ class RealtimeManager:
             async with self._lock:
                 for c in to_drop:
                     self._clients.pop(id(c.websocket), None)
+                    try:
+                        if c.tab_id and self._clients_by_tab.get(c.tab_id) is c:
+                            self._clients_by_tab.pop(c.tab_id, None)
+                    except Exception:
+                        pass
 
     def start_metrics_task(self, app: FastAPI) -> None:
         if self._metrics_task and not self._metrics_task.done():
@@ -275,10 +314,14 @@ websocket_router = APIRouter()
 
 @websocket_router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket) -> None:
+    client_host = websocket.client.host if websocket.client else "unknown"
+    logging.info(f"🚀 WebSocket endpoint called from {client_host}")
     conn = await manager.connect(websocket)
     try:
+        logging.info(f"📡 WebSocket {client_host} entering message loop")
         while True:
             msg = await websocket.receive_text()
+            logging.debug(f"📨 WebSocket {client_host} received: {msg}")
             try:
                 payload = json.loads(msg)
             except Exception:
@@ -536,9 +579,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             else:
                 # Unknown message types ignored
                 await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as e:
+        logging.info(f"🔌 WebSocket {client_host} disconnect: {e}")
         await manager.disconnect(conn)
-    except Exception:
+    except Exception as e:
+        logging.error(f"💥 WebSocket {client_host} error: {e}")
         await manager.disconnect(conn)
 
 

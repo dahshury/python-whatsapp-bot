@@ -36,6 +36,10 @@ function getThemeInitScript(): string {
 	)}.includes(t))return;var cl=document.documentElement.classList;for(var i=cl.length-1;i>=0;i--){var c=cl[i];if(c&&c.indexOf('theme-')===0){cl.remove(c)}}cl.add(t)}catch(e){}})());`;
 }
 
+function getWsBootstrapScript(): string {
+    return `((function(){try{if(typeof window==='undefined')return;var w=window;var KEY='ws_tab_id_v1';var id=null;try{id=w.sessionStorage.getItem(KEY)}catch(_){}if(!id){id=Math.random().toString(36).slice(2)+'-'+Date.now().toString(36);try{w.sessionStorage.setItem(KEY,id)}catch(_){}}if(w.__wsInstance&&((w.__wsInstance.readyState===0)||(w.__wsInstance.readyState===1)))return;var isHttps=w.location.protocol==='https:';var host=w.location.hostname||'localhost';var proto=isHttps?'wss':'ws';var url=proto+'://'+host+':8000/ws?tab='+encodeURIComponent(id);var ws=new WebSocket(url);w.__wsInstance=ws;w.__wsConnectTs=Date.now()}catch(e){}})());`;
+}
+
 // Load Geist font for variable font support
 const geist = localFont({
 	src: "../app/fonts/GeistVF.woff",
@@ -96,22 +100,22 @@ export default function RootLayout({
 					href="https://fonts.gstatic.com"
 					crossOrigin="anonymous"
 				/>
-				{/* Preconnect to backend to speed up initial WebSocket handshake */}
-				{process.env.NEXT_PUBLIC_WEBSOCKET_URL ? (
-					<link
-						rel="preconnect"
-						href={(process.env.NEXT_PUBLIC_WEBSOCKET_URL || "")
-							.replace(/^wss?:/, "https:")
-							.replace(/^ws:/, "http:")}
-						crossOrigin="anonymous"
-					/>
-				) : null}
+				{/* Preconnect to backend to speed up initial WebSocket handshake (localhost only) */}
+				<link rel="preconnect" href="http://localhost:8000" crossOrigin="anonymous" />
 				{/* Apply saved style theme class before paint to prevent FOUC */}
 				<script
 					id="style-theme-init"
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>This is safe as it only applies validated theme classes from localStorage</explanation>
 					dangerouslySetInnerHTML={{
 						__html: getThemeInitScript(),
+					}}
+				/>
+				{/* Bootstrap WebSocket pre-hydration for instant reconnect on hard refresh */}
+				<script
+					id="ws-bootstrap"
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>Pre-hydration bootstrap; script is self-contained and uses same-origin WS URL</explanation>
+					dangerouslySetInnerHTML={{
+						__html: getWsBootstrapScript(),
 					}}
 				/>
 			</head>

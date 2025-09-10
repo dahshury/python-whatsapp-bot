@@ -1,11 +1,12 @@
 function resolveBackendBaseUrl(): string {
-	// Server-side: use Docker network name, fallback to localhost
+	// Server-side (Next.js API): use Docker network name
 	const isServer = typeof window === "undefined";
 	if (isServer) {
 		return "http://backend:8000";
 	}
-	// Browser: always use localhost (works everywhere)
-	return "http://localhost:8000";
+
+	// Browser: use same-origin Next.js API proxy to hide backend URL
+	return "/api";
 }
 
 function joinUrl(base: string, path: string): string {

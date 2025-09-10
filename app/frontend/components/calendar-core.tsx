@@ -372,17 +372,15 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		const getDayCellClassNames = useCallback(
 			(arg: { date: Date }) => {
 				const cellDate = arg.date;
-				// Use local date string comparison to avoid timezone issues
-				const currentDateStr = new Date(
-					currentDate.getTime() - currentDate.getTimezoneOffset() * 60000,
-				)
-					.toISOString()
-					.split("T")[0];
-				const cellDateStr = new Date(
-					cellDate.getTime() - cellDate.getTimezoneOffset() * 60000,
-				)
-					.toISOString()
-					.split("T")[0];
+				// Extract local YYYY-MM-DD to align with vacation checker
+				const toYMD = (d: Date) => {
+					const y = d.getFullYear();
+					const m = String(d.getMonth() + 1).padStart(2, "0");
+					const dd = String(d.getDate()).padStart(2, "0");
+					return `${y}-${m}-${dd}`;
+				};
+				const currentDateStr = toYMD(currentDate);
+				const cellDateStr = toYMD(cellDate);
 
 				// Check if this date is in the past
 				const isPastDate = cellDate < new Date();

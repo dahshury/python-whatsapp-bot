@@ -2,8 +2,10 @@
 import * as React from "react";
 import { BackendConnectionOverlay } from "@/components/backend-connection-overlay";
 import { useWebSocketData } from "@/hooks/useWebSocketData";
+import { callPythonBackend } from "@/lib/backend";
 
 import type { DashboardData, PrometheusMetrics } from "@/types/dashboard";
+import type { VacationSnapshot } from "@/lib/ws/types";
 
 export interface ConversationMessage {
 	id?: string;
@@ -106,13 +108,52 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	// Subscribe to backend websocket for realtime updates (disable internal toasts)
 	const ws = useWebSocketData({ enableNotifications: false });
 
+	// One-time REST fallback to ensure existing vacation periods are visible before WS snapshot
+	React.useEffect(() => {
+		let cancelled = false;
+		const loadInitialVacations = async () => {
+			try {
+				// If we already have cached vacations, skip
+				if (Array.isArray(cached.vacations) && cached.vacations.length > 0) return;
+				// Small delay to allow WS snapshot; if none, fetch via REST
+				await new Promise((r) => setTimeout(r, 350));
+				if (cancelled) return;
+				// If WS already populated vacations, skip
+				try {
+					const wsVacSnapshots = (ws as { vacations?: VacationSnapshot[] })?.vacations || [];
+					if (Array.isArray(wsVacSnapshots) && wsVacSnapshots.length > 0) return;
+				} catch {}
+				const resp = await callPythonBackend<{
+					success?: boolean;
+					data?: Array<{ start: string; end: string; title?: string }>;
+				}>("/vacations");
+				if (cancelled) return;
+				const list = (resp as unknown as { data?: unknown })?.data;
+				if (Array.isArray(list)) {
+					const normalized = list
+						.filter((p: any) => p && p.start && p.end)
+						.map((p: any, idx: number) => ({
+							id: `${String(p.start)}-${String(p.end)}-${idx}`,
+							start: String(p.start),
+							end: String(p.end),
+						})) as Vacation[];
+					setVacations(normalized);
+				}
+			} catch {}
+		};
+		loadInitialVacations();
+		return () => {
+			cancelled = true;
+		};
+	}, [ws]);
+
 	// Offline overlay state
 	const [showOffline, setShowOffline] = React.useState<boolean>(false);
 	const [isRetrying, setIsRetrying] = React.useState<boolean>(false);
 	const disconnectedSinceRef = React.useRef<number | null>(null);
 	const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
-	// Show overlay only if disconnected for a sustained period and no cached data
+	// Show overlay only if truly disconnected for a sustained period and no cached data
 	React.useEffect(() => {
 		const hasAnyData = (() => {
 			try {
@@ -129,7 +170,17 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 			}
 		})();
 
-		if (ws?.isConnected) {
+		const isConnecting = (() => {
+			try {
+				const ref = (globalThis as { __wsConnection?: { current?: WebSocket } })
+					.__wsConnection;
+				return ref?.current?.readyState === WebSocket.CONNECTING;
+			} catch {
+				return false;
+			}
+		})();
+
+		if (ws?.isConnected || isConnecting) {
 			disconnectedSinceRef.current = null;
 			setShowOffline(false);
 			return;
@@ -139,7 +190,7 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 			disconnectedSinceRef.current = Date.now();
 		}
 		const elapsed = Date.now() - (disconnectedSinceRef.current || Date.now());
-		const thresholdMs = hasAnyData ? 6000 : 1500; // be more lenient if user has data
+		const thresholdMs = hasAnyData ? 6000 : 2000; // a bit more lenient to avoid flicker during connect
 		const t = setTimeout(
 			() => {
 				const stillDisconnected = !ws?.isConnected;
@@ -226,7 +277,17 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	}, [ws?.reservations, ws.conversations, ws]);
 
 	React.useEffect(() => {
-		if (ws?.vacations) setVacations(ws.vacations as Vacation[]);
+		if (ws?.vacations) {
+			// Convert VacationSnapshot[] to Vacation[] with generated IDs
+			const normalized = (ws.vacations as VacationSnapshot[])
+				.filter((p) => p && p.start && p.end)
+				.map((p, idx) => ({
+					id: `${String(p.start)}-${String(p.end)}-${idx}`,
+					start: String(p.start),
+					end: String(p.end),
+				})) as Vacation[];
+			setVacations(normalized);
+		}
 		try {
 			if (
 				!hasLoadedRef.current &&
