@@ -1,14 +1,7 @@
 "use client";
 
 import React from "react";
-import {
-	Area,
-	AreaChart,
-	CartesianGrid,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-} from "recharts";
+import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import {
 	Card,
 	CardContent,
@@ -17,6 +10,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import type { ChartConfig } from "@/components/ui/chart";
+import {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import { i18n } from "@/lib/i18n";
 import type { DailyData } from "@/types/dashboard";
 
@@ -80,15 +79,22 @@ export function DailyTrendsOverview({
 		return `${fmt(first)} - ${fmt(last)}`;
 	}, [dailyTrends, isLocalized]);
 
-	const tooltipStyle = React.useMemo(
+	const chartConfig: ChartConfig = React.useMemo(
 		() => ({
-			backgroundColor: COLORS.card,
-			border: `1px solid ${COLORS.border}`,
-			borderRadius: 8,
-			fontSize: 12,
-			color: COLORS.foreground,
+			reservations: {
+				label: i18n.getMessage("dashboard_reservations", isLocalized),
+				color: "hsl(var(--chart-1))",
+			},
+			cancellations: {
+				label: i18n.getMessage("kpi_cancellations", isLocalized),
+				color: "hsl(var(--chart-2))",
+			},
+			modifications: {
+				label: i18n.getMessage("operation_modifications", isLocalized),
+				color: "hsl(var(--chart-3))",
+			},
 		}),
-		[],
+		[isLocalized],
 	);
 
 	return (
@@ -102,89 +108,96 @@ export function DailyTrendsOverview({
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div className="h-[350px]">
-					<ResponsiveContainer width="100%" height="100%">
-						<AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
-							<CartesianGrid vertical={false} stroke={COLORS.border} />
-							<XAxis
-								dataKey="label"
-								tickLine={false}
-								axisLine={false}
-								tickMargin={8}
-								stroke={COLORS.foreground}
-							/>
-							<Tooltip contentStyle={tooltipStyle} cursor={false} />
-							<defs>
-								<linearGradient id={fillResId} x1="0" y1="0" x2="0" y2="1">
-									<stop
-										offset="5%"
-										stopColor={COLORS.reservations}
-										stopOpacity={0.8}
-									/>
-									<stop
-										offset="95%"
-										stopColor={COLORS.reservations}
-										stopOpacity={0.1}
-									/>
-								</linearGradient>
-								<linearGradient id={fillCanId} x1="0" y1="0" x2="0" y2="1">
-									<stop
-										offset="5%"
-										stopColor={COLORS.cancellations}
-										stopOpacity={0.8}
-									/>
-									<stop
-										offset="95%"
-										stopColor={COLORS.cancellations}
-										stopOpacity={0.1}
-									/>
-								</linearGradient>
-								<linearGradient id={fillModId} x1="0" y1="0" x2="0" y2="1">
-									<stop
-										offset="5%"
-										stopColor={COLORS.modifications}
-										stopOpacity={0.8}
-									/>
-									<stop
-										offset="95%"
-										stopColor={COLORS.modifications}
-										stopOpacity={0.1}
-									/>
-								</linearGradient>
-							</defs>
-							<Area
-								dataKey="modifications"
-								type="monotone"
-								fill={`url(#${fillModId})`}
-								fillOpacity={0.4}
-								stroke={COLORS.modifications}
-								isAnimationActive={false}
-								stackId="a"
-								name={i18n.getMessage("operation_modifications", isLocalized)}
-							/>
-							<Area
-								dataKey="cancellations"
-								type="monotone"
-								fill={`url(#${fillCanId})`}
-								fillOpacity={0.4}
-								stroke={COLORS.cancellations}
-								isAnimationActive={false}
-								stackId="a"
-								name={i18n.getMessage("kpi_cancellations", isLocalized)}
-							/>
-							<Area
-								dataKey="reservations"
-								type="monotone"
-								fill={`url(#${fillResId})`}
-								fillOpacity={0.4}
-								stroke={COLORS.reservations}
-								isAnimationActive={false}
-								stackId="a"
-								name={i18n.getMessage("dashboard_reservations", isLocalized)}
-							/>
-						</AreaChart>
-					</ResponsiveContainer>
-				</div>
+				<ChartContainer config={chartConfig} className="h-[350px] w-full">
+					<AreaChart
+						data={chartData}
+						margin={{ top: 16, right: 12, left: 12, bottom: 8 }}
+					>
+						<CartesianGrid vertical={false} strokeDasharray="3 3" />
+						<XAxis
+							dataKey="label"
+							tickLine={false}
+							axisLine={false}
+							tickMargin={8}
+							stroke={COLORS.foreground}
+						/>
+						<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+						<defs>
+							<linearGradient id={fillResId} x1="0" y1="0" x2="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-reservations)"
+									stopOpacity={0.5}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-reservations)"
+									stopOpacity={0.1}
+								/>
+							</linearGradient>
+							<linearGradient id={fillCanId} x1="0" y1="0" x2="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-cancellations)"
+									stopOpacity={0.5}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-cancellations)"
+									stopOpacity={0.1}
+								/>
+							</linearGradient>
+							<linearGradient id={fillModId} x1="0" y1="0" x2="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-modifications)"
+									stopOpacity={0.5}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-modifications)"
+									stopOpacity={0.1}
+								/>
+							</linearGradient>
+						</defs>
+						<Area
+							dataKey="modifications"
+							type="natural"
+							fill={`url(#${fillModId})`}
+							fillOpacity={0.4}
+							stroke="var(--color-modifications)"
+							strokeWidth={0.8}
+							strokeDasharray="3 3"
+							isAnimationActive={false}
+							stackId="a"
+							name={i18n.getMessage("operation_modifications", isLocalized)}
+						/>
+						<Area
+							dataKey="cancellations"
+							type="natural"
+							fill={`url(#${fillCanId})`}
+							fillOpacity={0.4}
+							stroke="var(--color-cancellations)"
+							strokeWidth={0.8}
+							strokeDasharray="3 3"
+							isAnimationActive={false}
+							stackId="a"
+							name={i18n.getMessage("kpi_cancellations", isLocalized)}
+						/>
+						<Area
+							dataKey="reservations"
+							type="natural"
+							fill={`url(#${fillResId})`}
+							fillOpacity={0.4}
+							stroke="var(--color-reservations)"
+							strokeWidth={0.8}
+							strokeDasharray="3 3"
+							isAnimationActive={false}
+							stackId="a"
+							name={i18n.getMessage("dashboard_reservations", isLocalized)}
+						/>
+					</AreaChart>
+				</ChartContainer>
 			</CardContent>
 			<CardFooter>
 				<div className="flex w-full items-start gap-2 text-sm">

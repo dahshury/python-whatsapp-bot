@@ -41,6 +41,8 @@ interface DockNavSimpleProps {
 	leftCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	rightCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	isDualMode?: boolean;
+	settingsOpen?: boolean;
+	onSettingsOpenChange?: (open: boolean) => void;
 }
 
 interface DualCalendarViewSelectorProps {
@@ -137,6 +139,8 @@ export function DockNavSimple({
 	leftCalendarRef,
 	rightCalendarRef,
 	isDualMode: _isDualMode = false,
+	settingsOpen: controlledOpen,
+	onSettingsOpenChange,
 }: DockNavSimpleProps) {
 	const pathname = usePathname();
 	const { isLocalized } = useLanguage();
@@ -144,7 +148,11 @@ export function DockNavSimple({
 	const { theme: _theme } = useTheme();
 	const [mounted, setMounted] = React.useState(false);
 	const [activeTab, setActiveTab] = React.useState("view");
-	const [settingsOpen, setSettingsOpen] = React.useState(false);
+	const [internalOpen, setInternalOpen] = React.useState(false);
+	const isControlled = typeof controlledOpen === "boolean";
+	const settingsOpen = isControlled
+		? (controlledOpen as boolean)
+		: internalOpen;
 	const [suppressTooltip, setSuppressTooltip] = React.useState(false);
 
 	const isCalendarPage = pathname === "/";
@@ -154,7 +162,11 @@ export function DockNavSimple({
 	}, []);
 
 	const handleSettingsOpenChange = (next: boolean) => {
-		setSettingsOpen(next);
+		if (isControlled) {
+			onSettingsOpenChange?.(next);
+		} else {
+			setInternalOpen(next);
+		}
 		if (!next) {
 			setSuppressTooltip(true);
 			window.setTimeout(() => setSuppressTooltip(false), 300);
@@ -338,7 +350,9 @@ export function DockNavSimple({
 				{/* Settings Popover */}
 				<DockIcon>
 					<Popover open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
-						<Tooltip open={settingsOpen || suppressTooltip ? false : undefined}>
+						<Tooltip
+							{...(settingsOpen || suppressTooltip ? { open: false } : {})}
+						>
 							<TooltipTrigger asChild>
 								<PopoverTrigger asChild>
 									<StablePopoverButton
@@ -346,7 +360,12 @@ export function DockNavSimple({
 										aria-label={isLocalized ? "الإعدادات" : "Settings"}
 										variant={settingsOpen ? "default" : "ghost"}
 									>
-										<Settings className={cn("size-4 transform transition-transform duration-300 ease-out", settingsOpen ? "rotate-90" : "rotate-0")} />
+										<Settings
+											className={cn(
+												"size-4 transform transition-transform duration-300 ease-out",
+												settingsOpen ? "rotate-90" : "rotate-0",
+											)}
+										/>
 									</StablePopoverButton>
 								</PopoverTrigger>
 							</TooltipTrigger>

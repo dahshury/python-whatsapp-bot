@@ -1,8 +1,7 @@
 function resolveWebSocketUrl(): string {
-	// Single env drives both HTTP and WS
-	const base = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+	// Browser: always use localhost:8000 for WebSocket (works everywhere)
 	try {
-		const url = new URL(base);
+		const url = new URL("http://localhost:8000");
 		url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
 		url.pathname = "/ws";
 		return url.toString();

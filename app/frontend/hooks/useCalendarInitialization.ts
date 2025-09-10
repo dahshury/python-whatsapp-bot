@@ -12,7 +12,6 @@ export function useCalendarInitialization({
 	calculateHeight,
 	sidebarOpen: _sidebarOpen,
 	refreshData,
-	calendarRef,
 }: UseCalendarInitializationProps) {
 	const [calendarHeight, setCalendarHeight] = useState<number | "auto">(800);
 	const [isRefreshing, setIsRefreshing] = useState(false);

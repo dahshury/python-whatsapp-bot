@@ -73,6 +73,10 @@ export interface ApiResponse {
 	success: boolean;
 	id?: string | number;
 	reservationId?: string | number;
+	data?: {
+		reservation_id?: string | number;
+		[key: string]: unknown;
+	};
 	message?: string;
 	error?: string;
 	detail?: string;

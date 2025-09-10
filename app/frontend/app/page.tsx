@@ -73,6 +73,9 @@ export default function HomePage() {
 	} = useVacation();
 	const isVacationDate = useVacationDateChecker(vacationPeriods);
 
+	// Persist settings popover state across mode switches
+	const [settingsOpen, setSettingsOpen] = React.useState(false);
+
 	// Avoid hydration mismatch: compute dynamic layout only after mount
 	const [mounted, setMounted] = React.useState(false);
 	React.useEffect(() => {
@@ -162,23 +165,6 @@ export default function HomePage() {
 	// Merge vacation events with main events
 	const allEvents = React.useMemo(() => {
 		const merged = [...filteredEvents, ...vacationEvents];
-		console.log("🔄 [HOMEPAGE] Merging events:", {
-			filteredEventsCount: filteredEvents.length,
-			vacationEventsCount: vacationEvents.length,
-			totalEventsCount: merged.length,
-			vacationEvents: vacationEvents.map(e => ({
-				id: e.id,
-				start: e.start,
-				end: e.end,
-				display: e.display,
-				className: e.className
-			})),
-			sampleMergedEvents: merged.slice(0, 5).map(e => ({
-				id: e.id,
-				start: e.start,
-				display: e.display || 'default'
-			}))
-		});
 		return merged;
 	}, [filteredEvents, vacationEvents]);
 
@@ -383,6 +369,8 @@ export default function HomePage() {
 							leftCalendarRef={leftCalendarRef}
 							rightCalendarRef={rightCalendarRef}
 							isDualMode={true}
+							settingsOpen={settingsOpen}
+							onSettingsOpenChange={setSettingsOpen}
 						/>
 						<div className="justify-self-center">
 							<CalendarDock
@@ -401,6 +389,8 @@ export default function HomePage() {
 							calendarRef={calendarRef}
 							currentCalendarView={calendarState.currentView}
 							onCalendarViewChange={calendarState.setCurrentView}
+							settingsOpen={settingsOpen}
+							onSettingsOpenChange={setSettingsOpen}
 						/>
 					</div>
 				)}

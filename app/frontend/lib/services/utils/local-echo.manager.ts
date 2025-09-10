@@ -2,17 +2,17 @@ class LocalEchoManager {
 	/**
 	 * Mark an operation as local to suppress WebSocket echo notifications
 	 */
-	markLocalEcho(key: string, ttlMs = 4000): void {
+	markLocalEcho(key: string, ttlMs = 15000): void {
 		try {
 			const globalScope = globalThis as GlobalThis;
 			globalScope.__localOps = globalScope.__localOps || new Set<string>();
 			globalScope.__localOps.add(key);
-
-			setTimeout(() => {
-				try {
-					globalScope.__localOps?.delete(key);
-				} catch {}
-			}, ttlMs);
+			
+		setTimeout(() => {
+			try {
+				globalScope.__localOps?.delete(key);
+			} catch {}
+		}, ttlMs);
 		} catch {}
 	}
 

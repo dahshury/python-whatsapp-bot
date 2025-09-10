@@ -1,5 +1,6 @@
 /* eslint-disable */
 import { cancelReservation } from "@/lib/api";
+import { generateLocalOpKeys } from "@/lib/realtime-utils";
 import { toastService } from "@/lib/toast-service";
 import type { CalendarIntegrationService } from "../calendar/calendar-integration.service";
 import type {
@@ -8,7 +9,6 @@ import type {
 	OperationResult,
 	SuccessfulOperation,
 } from "../types/data-table-types";
-
 import type { LocalEchoManager } from "../utils/local-echo.manager";
 
 export class ReservationCancelService {
@@ -38,6 +38,19 @@ export class ReservationCancelService {
 			try {
 				// Optimistic UI update
 				this.calendarIntegration.markEventCancelled(eventId);
+
+				// Pre-mark local echo BEFORE calling backend (WebSocket echo may arrive immediately)
+				try {
+					if (date && time) {
+						const preKeys = generateLocalOpKeys("reservation_cancelled", {
+							id: mapped.extendedProps?.reservationId || eventId,
+							wa_id: waId,
+							date,
+							time,
+						});
+						for (const k of preKeys) this.localEchoManager.markLocalEcho(k);
+					}
+				} catch {}
 
 				// Backend cancellation
 				const resp = (await cancelReservation({
@@ -90,7 +103,7 @@ export class ReservationCancelService {
 					try {
 						this.calendarIntegration.reflowSlot(date, baseTime);
 					} catch (e) {
-						console.error(`❌ Error reflowing slot:`, e);
+						console.error("❌ Error reflowing slot:", e);
 					}
 				}
 
@@ -107,8 +120,15 @@ export class ReservationCancelService {
 				// Success notification will come via WebSocket echo - no direct toast needed
 
 				// Mark local echo to suppress WebSocket notifications
-				if (date) {
-					this.markLocalEchoForCancellation(resp, mapped, eventId, date, waId);
+				if (date && time) {
+					this.markLocalEchoForCancellation(
+						resp,
+						mapped,
+						eventId,
+						date,
+						time,
+						waId,
+					);
 				}
 			} catch (e) {
 				hasErrors = true;
@@ -145,22 +165,30 @@ export class ReservationCancelService {
 		mapped: CalendarEvent,
 		eventId: string,
 		date: string,
+		time: string,
 		waId: string,
 	): void {
-		const key1 = `reservation_cancelled:${String(
-			resp?.id || mapped.extendedProps?.reservationId || eventId,
-		)}:${date}:`;
-		const key2 = `reservation_cancelled:${String(waId)}:${date}:`;
+		// Generate all possible key variants that buildLocalOpCandidates would check
+		const keys = generateLocalOpKeys("reservation_cancelled", {
+			id: resp?.id || mapped.extendedProps?.reservationId || eventId,
+			wa_id: waId,
+			date: date,
+			time: time,
+		});
 
-		this.localEchoManager.markLocalEcho(key1);
-		this.localEchoManager.markLocalEcho(key2);
+		// Mark all variants to ensure WebSocket echo is suppressed
+		for (const key of keys) {
+			this.localEchoManager.markLocalEcho(key);
+		}
 	}
 
 	private handleCancellationError(error: Error): void {
 		toastService.error(
 			this.isLocalized ? "فشل الإلغاء" : "Cancel Failed",
 			error?.message ||
-				(this.isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+				(this.isLocalized
+					? "خطأ بالنظام، حاول لاحقًا"
+					: "System error, try later"),
 			3000,
 		);
 	}

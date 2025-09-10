@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
 import { Settings } from "lucide-react";
+import React from "react";
 import { DockIcon } from "@/components/ui/dock";
 import {
 	Popover,
@@ -14,9 +14,9 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import { useVacation } from "@/lib/vacation-context";
 import { SettingsTabs } from "./settings-tabs";
-import { cn } from "@/lib/utils";
 
 interface SettingsPopoverProps {
 	isLocalized?: boolean;
@@ -26,6 +26,8 @@ interface SettingsPopoverProps {
 	activeView?: string;
 	onCalendarViewChange?: (view: string) => void;
 	isCalendarPage?: boolean;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }
 
 export function SettingsPopover({
@@ -36,16 +38,25 @@ export function SettingsPopover({
 	activeView,
 	onCalendarViewChange,
 	isCalendarPage = true,
+	open: controlledOpen,
+	onOpenChange,
 }: SettingsPopoverProps) {
 	const { recordingState, stopRecording } = useVacation();
 
 	// Manage popover and tooltip state to avoid tooltip showing on outside close
-	const [open, setOpen] = React.useState(false);
+	const [internalOpen, setInternalOpen] = React.useState(false);
 	const [suppressTooltip, setSuppressTooltip] = React.useState(false);
+
+	const isControlled = typeof controlledOpen === "boolean";
+	const open = isControlled ? (controlledOpen as boolean) : internalOpen;
 
 	const handleOpenChange = React.useCallback(
 		(next: boolean) => {
-			setOpen(next);
+			if (isControlled) {
+				onOpenChange?.(next);
+			} else {
+				setInternalOpen(next);
+			}
 			if (!next) {
 				// If closing while recording, stop and reset recording
 				try {
@@ -60,7 +71,13 @@ export function SettingsPopover({
 				window.setTimeout(() => setSuppressTooltip(false), 300);
 			}
 		},
-		[recordingState?.periodIndex, recordingState?.field, stopRecording],
+		[
+			isControlled,
+			onOpenChange,
+			recordingState?.periodIndex,
+			recordingState?.field,
+			stopRecording,
+		],
 	);
 
 	// Button animation is tied to open state (rotate 90deg when open)
@@ -70,9 +87,14 @@ export function SettingsPopover({
 			<Popover
 				open={open}
 				onOpenChange={handleOpenChange}
-				modal={!(recordingState?.periodIndex !== null && recordingState?.field !== null)}
+				modal={
+					!(
+						recordingState?.periodIndex !== null &&
+						recordingState?.field !== null
+					)
+				}
 			>
-				<Tooltip open={open || suppressTooltip ? false : undefined}>
+				<Tooltip {...(open || suppressTooltip ? { open: false } : {})}>
 					<TooltipTrigger asChild>
 						<PopoverTrigger asChild>
 							<StablePopoverButton

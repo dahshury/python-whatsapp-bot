@@ -17,12 +17,12 @@ const SettingsContext = React.createContext<SettingsState | undefined>(
 	undefined,
 );
 
-const SettingsProvider: React.FC<React.PropsWithChildren> = ({
-	children,
-}) => {
+const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 	const [theme, setTheme] = React.useState<Theme>(() => {
 		if (typeof window !== "undefined") {
-			const storedStyleTheme = localStorage.getItem("styleTheme") as Theme | null;
+			const storedStyleTheme = localStorage.getItem(
+				"styleTheme",
+			) as Theme | null;
 			if (storedStyleTheme) return storedStyleTheme;
 			const legacyTheme = localStorage.getItem("theme");
 			if (legacyTheme?.startsWith("theme-")) {

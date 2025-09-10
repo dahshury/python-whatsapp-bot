@@ -3,11 +3,6 @@ import path from "node:path";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	env: {
-		// Python backend URL - can be overridden by environment variables
-		PYTHON_BACKEND_URL:
-			process.env.PYTHON_BACKEND_URL ||
-			process.env.BACKEND_URL ||
-			"http://localhost:8000",
 		NEXT_PUBLIC_TIMEZONE:
 			process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
 	},
@@ -56,8 +51,8 @@ const nextConfig = {
 						key: "Content-Security-Policy",
 						value:
 							process.env.NODE_ENV === "development"
-								? "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
-								: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://offline.tawkit.net; connect-src 'self' ws: wss: http: https:;",
+								? "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; font-src 'self' data: blob: https:;"
+								: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com; font-src 'self' data: blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://offline.tawkit.net; connect-src 'self' ws: wss: http: https:;",
 					},
 				],
 			},

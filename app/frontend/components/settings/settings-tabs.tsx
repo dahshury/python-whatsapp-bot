@@ -1,7 +1,7 @@
 "use client";
 
 import { Plane, Settings2, View } from "lucide-react";
-import type * as React from "react";
+import * as React from "react";
 import {
 	Tabs,
 	TabsContent,
@@ -10,11 +10,10 @@ import {
 } from "@/components/animate-ui/components/radix/tabs";
 import { VacationPeriods } from "@/components/vacation-periods";
 import { useSettings } from "@/lib/settings-context";
-import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
-import type { ViewMode } from "@/types/navigation";
 import { GeneralSettings } from "./general-settings";
 import { ThemeSelector } from "./theme-selector";
+import { ViewModeToolbar } from "./view-mode-toolbar";
 import { ViewSettings } from "./view-settings";
 
 interface SettingsTabsProps {
@@ -28,11 +27,7 @@ interface SettingsTabsProps {
 	isCalendarPage?: boolean;
 }
 
-const VIEW_MODES: ViewMode[] = [
-	{ value: "default", label: "Default", labelRTL: "افتراضي" },
-	{ value: "freeRoam", label: "Free", labelRTL: "حر" },
-	{ value: "dual", label: "Dual", labelRTL: "مزدوج" },
-];
+// View mode selection is handled by ViewModeToolbar
 
 export function SettingsTabs({
 	isLocalized = false,
@@ -44,41 +39,26 @@ export function SettingsTabs({
 	customViewSelector,
 	isCalendarPage = true,
 }: SettingsTabsProps) {
-	const { freeRoam, setFreeRoam, showDualCalendar, setShowDualCalendar } =
-		useSettings();
-	const viewMode = freeRoam
-		? "freeRoam"
-		: showDualCalendar
-			? "dual"
-			: "default";
-
-	const handleViewModeChange = (value: ViewMode["value"]) => {
-		const isFreeRoam = value === "freeRoam";
-		const isDual = value === "dual";
-
-		setFreeRoam(isFreeRoam);
-		setShowDualCalendar(isDual);
-
-		const selectedMode = VIEW_MODES.find((m) => m.value === value);
-		const modeLabel = isLocalized
-			? selectedMode?.labelRTL ?? value
-			: selectedMode?.label ?? value;
-
-		toastService.success(
-			isLocalized
-				? `تم تغيير وضع العرض إلى ${modeLabel}`
-				: `View mode changed to ${modeLabel}`,
-		);
-	};
+	useSettings();
+	// View mode change logic lives in ViewModeToolbar
 
 	// Removed auto-switching tabs when not on calendar page to avoid update loops.
 
 	// Determine which tabs to show based on page
 	const showViewTab = isCalendarPage;
-	const showVacationTab = true;
+	const showVacationTab = isCalendarPage;
+
+	// Ensure active tab is valid when some tabs are hidden (e.g., dashboard page)
+	const defaultTab = showViewTab ? "view" : "general";
+	const computedActiveTab = React.useMemo(() => {
+		const allowed = ["general"] as string[];
+		if (showViewTab) allowed.push("view");
+		if (showVacationTab) allowed.push("vacation");
+		return allowed.includes(activeTab) ? activeTab : defaultTab;
+	}, [activeTab, showViewTab, showVacationTab, defaultTab]);
 
 	return (
-		<Tabs value={activeTab} onValueChange={onTabChange ?? (() => {})}>
+		<Tabs value={computedActiveTab} onValueChange={onTabChange ?? (() => {})}>
 			<TabsList
 				className={cn(
 					"grid w-full bg-muted/40 backdrop-blur-sm",
@@ -124,23 +104,7 @@ export function SettingsTabs({
 									</span>
 								</div>
 
-								<div className="flex items-center gap-1 bg-muted rounded-md p-0.5">
-									{VIEW_MODES.map((mode) => (
-										<button
-											key={mode.value}
-											type="button"
-											onClick={() => handleViewModeChange(mode.value)}
-											className={cn(
-												"px-2 py-1 text-xs rounded transition-colors",
-												viewMode === mode.value
-													? "bg-background text-foreground shadow-sm"
-													: "text-muted-foreground hover:text-foreground",
-											)}
-										>
-											{isLocalized ? mode.labelRTL : mode.label}
-										</button>
-									))}
-								</div>
+								<ViewModeToolbar />
 							</div>
 
 							{customViewSelector}
@@ -156,13 +120,15 @@ export function SettingsTabs({
 				</TabsContent>
 			)}
 
-			<TabsContent value="vacation" className="pt-4">
-				<div className="space-y-4">
-					<div className="rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
-						{activeTab === "vacation" && <VacationPeriods />}
+			{showVacationTab && (
+				<TabsContent value="vacation" className="pt-4">
+					<div className="space-y-4">
+						<div className="rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
+							{computedActiveTab === "vacation" && <VacationPeriods />}
+						</div>
 					</div>
-				</div>
-			</TabsContent>
+				</TabsContent>
+			)}
 		</Tabs>
 	);
 }

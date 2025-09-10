@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Loader2, CalendarRange } from "lucide-react";
+import { CalendarDays, CalendarRange, Loader2 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,8 +8,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import { i18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import type { NavigationDateButtonProps } from "@/types/navigation";
 
 export const NavigationDateButton = React.memo(function NavigationDateButton({
@@ -77,7 +77,6 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<span
-									aria-label="events in view"
 									className={cn(
 										"absolute top-1 right-2",
 										"inline-flex items-center gap-1 h-5 px-1.5",
@@ -91,12 +90,15 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 									}}
 								>
 									<CalendarRange className="h-3 w-3 opacity-80" />
-									<span>{visibleEventCount > 99 ? "99+" : visibleEventCount}</span>
+									<span>
+										{visibleEventCount > 99 ? "99+" : visibleEventCount}
+									</span>
 								</span>
 							</TooltipTrigger>
 							<TooltipContent>
 								<p className="text-xs">
-									{visibleEventCount > 99 ? "99+" : visibleEventCount} {i18n.getMessage("calendar_events", isLocalized)}
+									{visibleEventCount > 99 ? "99+" : visibleEventCount}{" "}
+									{i18n.getMessage("calendar_events", isLocalized)}
 								</p>
 							</TooltipContent>
 						</Tooltip>

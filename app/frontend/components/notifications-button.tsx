@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import React from "react";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +10,10 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { callPythonBackend } from "@/lib/backend";
 import { useLanguage } from "@/lib/language-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
-import { AnimatePresence, motion } from "framer-motion";
 
 interface NotificationsButtonProps {
 	className?: string;
@@ -44,6 +45,14 @@ type NotificationItem = {
 	data?: Record<string, unknown>;
 };
 
+type ReservationData = {
+	id?: string;
+	wa_id?: string;
+	customer_name?: string;
+	date?: string;
+	time_slot?: string;
+};
+
 export function NotificationsButton({
 	className,
 	notificationCount: _notificationCount = 0,
@@ -51,6 +60,96 @@ export function NotificationsButton({
 	const { isLocalized } = useLanguage();
 	const [items, setItems] = React.useState<NotificationItem[]>([]);
 	const [open, setOpen] = React.useState(false);
+
+	// Load persisted notifications from backend on mount
+	React.useEffect(() => {
+		let isCancelled = false;
+		(async () => {
+			try {
+				const resp = await callPythonBackend<{
+					success?: boolean;
+					data?: Array<{
+						id: number;
+						type: string;
+						timestamp: string;
+						data: Record<string, unknown>;
+					}>;
+					message?: string;
+				}>("/notifications");
+				const list = Array.isArray(resp?.data) ? resp.data : [];
+				const loaded: NotificationItem[] = list
+					.map((r) => {
+						const tsIso = String(r.timestamp || "");
+						const tsNum = Number(new Date(tsIso).getTime() || Date.now());
+						const d = (r.data || {}) as ReservationData;
+						const compositeKey = `${r.type}:${d?.id ?? d?.wa_id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`;
+						return {
+						id: `${tsNum}:${compositeKey}`,
+						text: (() => {
+							if (r.type === "reservation_created")
+								return `${isLocalized ? "تم إنشاء حجز" : "Reservation created"}: ${
+									d.customer_name || d.wa_id
+								} ${d.date ?? ""} ${d.time_slot ?? ""}`;
+							if (
+								r.type === "reservation_updated" ||
+								r.type === "reservation_reinstated"
+							)
+								return `${isLocalized ? "تم تعديل الحجز" : "Reservation modified"}: ${
+									d.customer_name || d.wa_id
+								} ${d.date ?? ""} ${d.time_slot ?? ""}`;
+							if (r.type === "reservation_cancelled")
+								return `${isLocalized ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${d.wa_id}`;
+							if (r.type === "conversation_new_message")
+								return `${isLocalized ? "رسالة جديدة" : "New message"}: ${d.wa_id}`;
+							if (r.type === "vacation_period_updated")
+								return isLocalized
+									? "تم تحديث فترات الإجازة"
+									: "Vacation periods updated";
+							return String(r.type);
+						})(),
+						timestamp: tsNum,
+						unread: false,
+						type: r.type,
+						data: d,
+					};
+				})
+				.filter((notification) => {
+					// Filter out notifications that match recent local operations
+					try {
+						// Check if this notification matches any recently marked local operations
+						const localOps = (globalThis as { __localOps?: Set<string> }).__localOps;
+						if (!localOps || localOps.size === 0) return true;
+						
+						// Generate possible local operation keys for this notification
+						const d = notification.data;
+						const candidates = [
+							`${notification.type}:${d?.id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`,
+							`${notification.type}:${d?.wa_id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`,
+						];
+						
+						// If any candidate matches a local operation, filter out this notification
+						for (const candidate of candidates) {
+							if (localOps.has(candidate)) {
+								console.log("🔇 [NotificationsButton] Filtered out local operation:", {
+									candidate,
+									notification: notification.text
+								});
+								return false;
+							}
+						}
+						return true;
+					} catch {
+						return true; // If error, show the notification
+					}
+				});
+				loaded.sort((a, b) => b.timestamp - a.timestamp);
+				if (!isCancelled) setItems(loaded.slice(0, 150));
+			} catch {}
+		})();
+		return () => {
+			isCancelled = true;
+		};
+	}, [isLocalized]);
 
 	const unreadCount = React.useMemo(
 		() => items.filter((n) => n.unread).length,
@@ -98,8 +197,9 @@ export function NotificationsButton({
 			if (type === "conversation_new_message") {
 				try {
 					const role = String(
-						((data as { role?: string; sender?: string })?.role ||
-							(data as { role?: string; sender?: string })?.sender || "")
+						(data as { role?: string; sender?: string })?.role ||
+							(data as { role?: string; sender?: string })?.sender ||
+							"",
 					).toLowerCase();
 					if (role && role !== "user" && role !== "customer") {
 						return;
@@ -145,7 +245,7 @@ export function NotificationsButton({
 						data: data as Record<string, unknown>,
 					},
 					...prev,
-				].slice(0, 100);
+				].slice(0, 150);
 			});
 		};
 		window.addEventListener("notification:add", handler as EventListener);
@@ -274,9 +374,21 @@ export function NotificationsButton({
 						>
 							{/* Clip-path reveal of contents from top to bottom with slight blur fade */}
 							<motion.div
-								initial={{ clipPath: "inset(0% 0% 100% 0%)", filter: "blur(8px)", opacity: 0 }}
-								animate={{ clipPath: "inset(0% 0% 0% 0%)", filter: "blur(0px)", opacity: 1 }}
-								exit={{ clipPath: "inset(0% 0% 100% 0%)", filter: "blur(6px)", opacity: 0 }}
+								initial={{
+									clipPath: "inset(0% 0% 100% 0%)",
+									filter: "blur(8px)",
+									opacity: 0,
+								}}
+								animate={{
+									clipPath: "inset(0% 0% 0% 0%)",
+									filter: "blur(0px)",
+									opacity: 1,
+								}}
+								exit={{
+									clipPath: "inset(0% 0% 100% 0%)",
+									filter: "blur(6px)",
+									opacity: 0,
+								}}
 								transition={{ duration: 0.16, ease: [0.45, 0, 0.55, 1] }}
 								style={{ willChange: "clip-path, filter, opacity" }}
 							>
@@ -296,7 +408,11 @@ export function NotificationsButton({
 								</div>
 								<hr className="bg-border -mx-1 my-1 h-px" />
 
-								<motion.div variants={listVariants} initial="hidden" animate="shown">
+								<motion.div
+									variants={listVariants}
+									initial="hidden"
+									animate="shown"
+								>
 									{items.map((notification) => (
 										<motion.div
 											key={notification.id}
@@ -309,7 +425,9 @@ export function NotificationsButton({
 													<button
 														type="button"
 														className="text-foreground/80 text-left after:absolute after:inset-0"
-														onClick={() => handleNotificationClick(notification)}
+														onClick={() =>
+															handleNotificationClick(notification)
+														}
 													>
 														<span className="text-foreground font-medium">
 															{notification.text}

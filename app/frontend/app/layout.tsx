@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
+import { THEME_OPTIONS } from "@/components/settings/theme-data";
 import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
 import { ThemeWrapper } from "@/components/theme-wrapper";
 import { UndoManager } from "@/components/UndoManager";
@@ -24,6 +25,16 @@ import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
 import { Z_INDEX } from "@/lib/z-index";
 
 // import { GlobalSettings } from "@/components/global-settings"
+
+/**
+ * Generates a safe theme initialization script that only allows specific theme classes
+ */
+function getThemeInitScript(): string {
+	const allowedThemes = THEME_OPTIONS.map((t) => t.value);
+	return `((function(){try{var t=localStorage.getItem('styleTheme');if(!t||!${JSON.stringify(
+		allowedThemes,
+	)}.includes(t))return;var cl=document.documentElement.classList;for(var i=cl.length-1;i>=0;i--){var c=cl[i];if(c&&c.indexOf('theme-')===0){cl.remove(c)}}cl.add(t)}catch(e){}})());`;
+}
 
 // Load Geist font for variable font support
 const geist = localFont({
@@ -98,9 +109,9 @@ export default function RootLayout({
 				{/* Apply saved style theme class before paint to prevent FOUC */}
 				<script
 					id="style-theme-init"
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>This is safe as it only applies validated theme classes from localStorage</explanation>
 					dangerouslySetInnerHTML={{
-						__html:
-							"(function(){try{var t=localStorage.getItem('styleTheme');if(!t)return;var cl=document.documentElement.classList;var toRemove=[];cl.forEach(function(n){if(n.indexOf('theme-')===0)toRemove.push(n)});for(var i=0;i<toRemove.length;i++){cl.remove(toRemove[i])}cl.add(t)}catch(e){}})();",
+						__html: getThemeInitScript(),
 					}}
 				/>
 			</head>

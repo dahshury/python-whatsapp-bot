@@ -10,9 +10,7 @@
         "app/**/*.{ts,tsx}",
         "components/**/*.{ts,tsx}",
         "hooks/**/*.{ts,tsx}",
-        "lib/**/*.{ts,tsx}",
-        "tailwind.config.ts",
-        "next.config.mjs"
+        "lib/**/*.{ts,tsx}"
       ],
       "ignore": [
         "components/glide_custom_cells/pages/**",

@@ -19,8 +19,8 @@ export function to24h(time: string): string {
 		// If H:MM AM/PM
 		const ampm = /(AM|PM)$/.test(trimmed);
 		const [hPart, mPartRaw] = trimmed.replace(/\s*(AM|PM)$/, "").split(":");
-		const minute = mPartRaw ? parseInt(mPartRaw, 10) : 0;
-		let hour = parseInt(hPart || "0", 10);
+		const minute = mPartRaw ? Number.parseInt(mPartRaw, 10) : 0;
+		let hour = Number.parseInt(hPart || "0", 10);
 		if (ampm) {
 			const isPM = /PM$/.test(trimmed);
 			if (isPM && hour < 12) hour += 12;

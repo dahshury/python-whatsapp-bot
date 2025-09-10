@@ -27,7 +27,7 @@ class FormattingService {
 		try {
 			const normalized = this.to24h(hhmm);
 			const [hStr, _m] = normalized.split(":");
-			const hour = parseInt(hStr || "0", 10);
+			const hour = Number.parseInt(hStr || "0", 10);
 			if (!Number.isFinite(hour)) return normalized;
 
 			// Build allowed slot starts based on business hours and SLOT_DURATION_HOURS
@@ -35,10 +35,10 @@ class FormattingService {
 			const { slotMinTime, slotMaxTime } = getSlotTimes(date, false, "");
 			const [minH] = String(slotMinTime || "00:00:00")
 				.split(":")
-				.map((v) => parseInt(v, 10));
+				.map((v) => Number.parseInt(v, 10));
 			const [maxH] = String(slotMaxTime || "24:00:00")
 				.split(":")
-				.map((v) => parseInt(v, 10));
+				.map((v) => Number.parseInt(v, 10));
 			const duration = Math.max(1, SLOT_DURATION_HOURS);
 			const allowed: number[] = [];
 			const startH = Math.max(0, Number.isFinite(minH) ? (minH as number) : 0);
@@ -132,7 +132,7 @@ class FormattingService {
 			// 12h
 			const m2 = str.match(/^(0?\d|1[0-2]):([0-5]\d)\s*(am|pm)$/i);
 			if (m2?.[1] && m2[2] && m2[3]) {
-				let hours = parseInt(m2[1], 10);
+				let hours = Number.parseInt(m2[1], 10);
 				const minutes = m2[2];
 				const isPM = m2[3].toLowerCase() === "pm";
 				if (hours === 12 && !isPM) hours = 0;
@@ -164,7 +164,7 @@ class FormattingService {
 			// If already HH:mm, return as-is
 			const asStr = String(value).trim();
 			const m = asStr.match(/^([01]?\d|2\d):([0-5]\d)$/);
-			if (m && m[1] && m[2]) return `${m[1].padStart(2, "0")}:${m[2]}`;
+			if (m?.[1] && m[2]) return `${m[1].padStart(2, "0")}:${m[2]}`;
 
 			const d = value instanceof Date ? value : new Date(asStr);
 			if (Number.isNaN(d.getTime())) return null;

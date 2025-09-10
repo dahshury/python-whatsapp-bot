@@ -26,7 +26,7 @@ function to12HourFormat(time?: string): string {
 		const trimmed = String(time).trim();
 		const m = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
 		if (!m) return trimmed;
-		let hour = parseInt(m[1] || "0", 10);
+		const hour = Number.parseInt(m[1] || "0", 10);
 		const minutes = m[2];
 		const ampm = hour >= 12 ? "PM" : "AM";
 		const hour12 = hour % 12 === 0 ? 12 : hour % 12;
@@ -205,19 +205,21 @@ export const toastService = {
 		const { loading, success, error, duration } = messages;
 
 		// Ensure functions return valid React nodes
-		const successHandler = typeof success === 'function'
-			? (value: T) => {
-				const result = success(value);
-				return result === undefined ? '' : result;
-			}
-			: success;
+		const successHandler =
+			typeof success === "function"
+				? (value: T) => {
+						const result = success(value);
+						return result === undefined ? "" : result;
+					}
+				: success;
 
-		const errorHandler = typeof error === 'function'
-			? (errorValue: unknown) => {
-				const result = error(errorValue);
-				return result === undefined ? '' : result;
-			}
-			: error;
+		const errorHandler =
+			typeof error === "function"
+				? (errorValue: unknown) => {
+						const result = error(errorValue);
+						return result === undefined ? "" : result;
+					}
+				: error;
 
 		return sonner.promise(promise, {
 			loading,

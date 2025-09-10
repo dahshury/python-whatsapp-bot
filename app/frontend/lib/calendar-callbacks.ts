@@ -148,17 +148,18 @@ export function createCalendarCallbacks(
 				let startStr: string =
 					info?.dateStr || `${dateOnly}T${targetSlotTimes.slotMinTime}`;
 				try {
-					const timePart = startStr.split("T")[1] || targetSlotTimes.slotMinTime;
+					const timePart =
+						startStr.split("T")[1] || targetSlotTimes.slotMinTime;
 					const timeParts = timePart
 						.split(":")
-						.map((v) => parseInt(v || "0", 10));
+						.map((v) => Number.parseInt(v || "0", 10));
 					const [hh = 0, mm = 0, _ss = 0] = timeParts;
 					const [minH = 0, minM = 0] = targetSlotTimes.slotMinTime
 						.split(":")
-						.map((v) => parseInt(v || "0", 10));
+						.map((v) => Number.parseInt(v || "0", 10));
 					const [maxH = 24, maxM = 0] = targetSlotTimes.slotMaxTime
 						.split(":")
-						.map((v) => parseInt(v || "0", 10));
+						.map((v) => Number.parseInt(v || "0", 10));
 					const currentMin = hh * 60 + mm;
 					const allowedMin = minH * 60 + minM;
 					const allowedMax = maxH * 60 + maxM;

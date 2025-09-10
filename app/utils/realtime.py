@@ -162,6 +162,53 @@ class RealtimeManager:
 
         logging.info(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
 
+        # Persist qualifying notification events and prune to last 150
+        try:
+            # Only persist types that are shown in notifications panel
+            notif_types = {
+                "reservation_created",
+                "reservation_updated",
+                "reservation_reinstated",
+                "reservation_cancelled",
+                "conversation_new_message",
+                "vacation_period_updated",
+            }
+            if event_type in notif_types:
+                import json as _json
+                from app.db import get_session, NotificationEventModel
+                # Use payload timestamp for consistency
+                ts_iso = payload.get("timestamp") or _utc_iso_now()
+                with get_session() as session:
+                    session.add(
+                        NotificationEventModel(
+                            event_type=event_type,
+                            ts_iso=str(ts_iso),
+                            data=_json.dumps(data, ensure_ascii=False),
+                        )
+                    )
+                    session.commit()
+                    # Prune to last 150 rows by created_at DESC
+                    try:
+                        # SQLite compatible pruning using subquery by id ordering
+                        # Keep the latest 150 ids and delete the rest
+                        keep_ids = [
+                            r[0]
+                            for r in session.execute(
+                                "SELECT id FROM notification_events ORDER BY id DESC LIMIT 150"
+                            ).all()
+                        ]
+                        if keep_ids:
+                            session.execute(
+                                "DELETE FROM notification_events WHERE id NOT IN (%s)" % (
+                                    ",".join(str(i) for i in keep_ids)
+                                )
+                            )
+                            session.commit()
+                    except Exception:
+                        pass
+        except Exception as e:
+            logging.debug(f"notification persist failed: {e}")
+
         # Clean up failed connections
         if to_drop:
             async with self._lock:

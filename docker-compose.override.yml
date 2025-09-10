@@ -1,0 +1,18 @@
+# Local overrides for development/testing
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    # Remove rclone mount on local machines
+    volumes:
+      - ./threads_db.sqlite:/app/data/threads_db.sqlite
+      - ./.env:/app/.env
+
+  frontend:
+    build:
+      context: app/frontend
+      dockerfile: Dockerfile
+    environment:
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+

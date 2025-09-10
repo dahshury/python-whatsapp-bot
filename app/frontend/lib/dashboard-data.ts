@@ -1,6 +1,6 @@
 import * as React from "react";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 import type { DashboardData } from "@/types/dashboard";
-import type { Reservation, ConversationMessage } from "@/types/calendar";
 
 interface ReservationItem {
 	date?: string;

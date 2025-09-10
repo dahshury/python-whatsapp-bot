@@ -1,4 +1,6 @@
 /* eslint-disable */
+
+import { generateLocalOpKeys } from "@/lib/realtime-utils";
 import { toastService } from "@/lib/toast-service";
 import type { CalendarIntegrationService } from "../calendar/calendar-integration.service";
 import type {
@@ -63,6 +65,19 @@ class ReservationModifyService {
 					modificationData.dateStrNew,
 					modificationData.timeStrNew,
 				);
+
+				// Pre-mark local echo BEFORE calling backend (WebSocket echo may arrive immediately)
+				try {
+					const preKeys = generateLocalOpKeys("reservation_updated", {
+						id:
+							original.extendedProps?.reservationId ||
+							modificationData.evId,
+						wa_id: modificationData.waId,
+						date: modificationData.dateStrNew,
+						time: slotTime,
+					});
+					for (const k of preKeys) this.localEchoManager.markLocalEcho(k);
+				} catch {}
 				const reservationId = original.extendedProps?.reservationId;
 				const modifyParams: {
 					date: string;
@@ -80,7 +95,7 @@ class ReservationModifyService {
 				};
 
 				// Only add reservationId if it's defined
-				if (typeof reservationId === 'number') {
+				if (typeof reservationId === "number") {
 					modifyParams.reservationId = reservationId;
 				}
 
@@ -120,7 +135,7 @@ class ReservationModifyService {
 				};
 
 				// Only add reservationId if it's defined
-				if (typeof original.extendedProps?.reservationId === 'number') {
+				if (typeof original.extendedProps?.reservationId === "number") {
 					extendedProps.reservationId = original.extendedProps.reservationId;
 				}
 
@@ -274,22 +289,30 @@ class ReservationModifyService {
 		modificationData: ReturnType<typeof this.prepareModificationData>,
 		original: CalendarEvent,
 	): void {
-		const key1 = `reservation_updated:${String(
-			resp?.id ||
+		// Generate all possible key variants that buildLocalOpCandidates would check
+		const keys = generateLocalOpKeys("reservation_updated", {
+			id:
+				resp?.id ||
 				original.extendedProps?.reservationId ||
 				modificationData.evId,
-		)}:${modificationData.dateStrNew}:${modificationData.timeStrNew}`;
-		const key2 = `reservation_updated:${String(modificationData.waId)}:${modificationData.dateStrNew}:${modificationData.timeStrNew}`;
+			wa_id: modificationData.waId,
+			date: modificationData.dateStrNew,
+			time: modificationData.timeStrNew,
+		});
 
-		this.localEchoManager.markLocalEcho(key1);
-		this.localEchoManager.markLocalEcho(key2);
+		// Mark all variants to ensure WebSocket echo is suppressed
+		for (const key of keys) {
+			this.localEchoManager.markLocalEcho(key);
+		}
 	}
 
 	private handleModificationError(error: Error): void {
 		toastService.error(
 			this.isLocalized ? "فشل التعديل" : "Update Failed",
 			error?.message ||
-				(this.isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+				(this.isLocalized
+					? "خطأ بالنظام، حاول لاحقًا"
+					: "System error, try later"),
 			3000,
 		);
 	}

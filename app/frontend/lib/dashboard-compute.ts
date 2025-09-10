@@ -1,5 +1,5 @@
-import type { DashboardData } from "@/types/dashboard";
 import type { ConversationMessage, Reservation } from "@/types/calendar";
+import type { DashboardData } from "@/types/dashboard";
 
 interface ReservationItem {
 	date?: string;
@@ -359,7 +359,8 @@ export function computeDashboardData(
 				(Array.isArray(items)
 					? items.filter(
 							(r) =>
-								(r as unknown as Reservation & { cancelled?: boolean }).cancelled === true,
+								(r as unknown as Reservation & { cancelled?: boolean })
+									.cancelled === true,
 						).length
 					: 0),
 			0,
@@ -370,7 +371,8 @@ export function computeDashboardData(
 				(Array.isArray(items)
 					? items.filter(
 							(r) =>
-								(r as unknown as Reservation & { cancelled?: boolean }).cancelled === true,
+								(r as unknown as Reservation & { cancelled?: boolean })
+									.cancelled === true,
 						).length
 					: 0),
 			0,
@@ -444,8 +446,10 @@ export function computeDashboardData(
 					typeof prom.process_memory_bytes === "number"
 						? prom.process_memory_bytes
 						: 0,
-				reservations_requested_total: prom.reservations_requested_total as number,
-				reservations_successful_total: prom.reservations_successful_total as number,
+				reservations_requested_total:
+					prom.reservations_requested_total as number,
+				reservations_successful_total:
+					prom.reservations_successful_total as number,
 				reservations_failed_total: prom.reservations_failed_total as number,
 				reservations_cancellation_requested_total:
 					prom.reservations_cancellation_requested_total as number,

@@ -63,8 +63,7 @@ export function getSlotTimes(date: Date, freeRoam: boolean, _view: string) {
 	const day = date.getDay(); // 0=Sun..6=Sat
 	if (day >= 0 && day <= 4)
 		return { slotMinTime: "11:00:00", slotMaxTime: "17:00:00" };
-	if (day === 6)
-		return { slotMinTime: "16:00:00", slotMaxTime: "21:00:00" };
+	if (day === 6) return { slotMinTime: "16:00:00", slotMaxTime: "21:00:00" };
 	// Friday hidden elsewhere
 	return { slotMinTime: "11:00:00", slotMaxTime: "17:00:00" };
 }
@@ -181,7 +180,8 @@ function subtractRamadanFromNormal(
 			: toUTCDate("2031-12-31");
 		let cursor = new Date(windowStart);
 		for (const iv of merged) {
-			const s = iv.start.getTime() < windowStart.getTime() ? windowStart : iv.start;
+			const s =
+				iv.start.getTime() < windowStart.getTime() ? windowStart : iv.start;
 			const e = iv.end.getTime() > windowEnd.getTime() ? windowEnd : iv.end;
 			if (cursor.getTime() < s.getTime()) {
 				const prev = addDaysUTC(s, -1);
@@ -262,9 +262,16 @@ function islamicToJDN(year: number, month: number, day: number): number {
 }
 
 // JDN to Islamic (civil)
-function jdnToIslamic(jd: number): { year: number; month: number; day: number } {
+function jdnToIslamic(jd: number): {
+	year: number;
+	month: number;
+	day: number;
+} {
 	const year = Math.floor((30 * (jd - 1948439) + 10646) / 10631);
-	const month = Math.min(12, Math.ceil((jd - islamicToJDN(year, 1, 1)) / 29.5) + 1);
+	const month = Math.min(
+		12,
+		Math.ceil((jd - islamicToJDN(year, 1, 1)) / 29.5) + 1,
+	);
 	const day = jd - islamicToJDN(year, month, 1) + 1;
 	return { year, month, day };
 }

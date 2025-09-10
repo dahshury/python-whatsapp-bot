@@ -1,16 +1,15 @@
 "use client";
 
-import {
-	useSpacemanTheme,
-} from "@space-man/react-theme-animation";
-import { Palette, Sun, Moon, Monitor } from "lucide-react";
-import { MiniToolbar } from "@/components/kokonutui/toolbar";
+import { useSpacemanTheme } from "@space-man/react-theme-animation";
+import { Monitor, Moon, Palette, Sun } from "lucide-react";
 import { useTheme as useNextThemes } from "next-themes";
+import { MiniToolbar } from "@/components/kokonutui/toolbar";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { i18n } from "@/lib/i18n";
 import { type Theme, useSettings } from "@/lib/settings-context";
 import { toastService } from "@/lib/toast-service";
-import { getThemeName, THEME_OPTIONS } from "./theme-data";
+import { getThemeNameLocalized, THEME_OPTIONS } from "./theme-data";
 
 interface ThemeSelectorProps {
 	isLocalized?: boolean;
@@ -22,10 +21,30 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 	const { theme: nextTheme, setTheme: setNextTheme } = useNextThemes();
 
 	const handleAppThemeChange = (value: string) => {
+		// Store current light/dark mode before changing style theme
+		const currentMode = nextTheme;
+
+		// If user explicitly chose light, force it immediately to lock next-themes state
+		if (currentMode === "light") {
+			setNextTheme("light");
+		}
+
 		// Animate via Spaceman and also update our Settings immediately
 		setColorTheme(value as Theme);
 		setAppTheme(value as Theme);
-		const themeName = getThemeName(value);
+
+		// Explicitly restore the light/dark mode after style theme change
+		if (currentMode && currentMode !== "system") {
+			// Re-assert via raf to win over any late class toggles
+			requestAnimationFrame(() => {
+				setNextTheme(currentMode);
+				requestAnimationFrame(() => {
+					setNextTheme(currentMode);
+				});
+			});
+		}
+
+		const themeName = getThemeNameLocalized(value, isLocalized);
 		toastService.success(
 			isLocalized
 				? `تم تغيير المظهر إلى ${themeName}`
@@ -46,9 +65,21 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 					<MiniToolbar
 						compact
 						items={[
-							{ id: "system", icon: Monitor, title: "System" },
-							{ id: "light", icon: Sun, title: "Light" },
-							{ id: "dark", icon: Moon, title: "Dark" },
+							{
+								id: "system",
+								icon: Monitor,
+								title: i18n.getMessage("theme_mode_system", isLocalized),
+							},
+							{
+								id: "light",
+								icon: Sun,
+								title: i18n.getMessage("theme_mode_light", isLocalized),
+							},
+							{
+								id: "dark",
+								icon: Moon,
+								title: i18n.getMessage("theme_mode_dark", isLocalized),
+							},
 						]}
 						value={(nextTheme ?? "system") as string}
 						onChange={(id) => setNextTheme(id)}
@@ -86,7 +117,7 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 											themeOption.borderStyle !== "0px"
 												? {
 														border: themeOption.borderStyle,
-												  }
+													}
 												: {}),
 										}}
 									/>
@@ -98,7 +129,7 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 											themeOption.borderStyle !== "0px"
 												? {
 														border: themeOption.borderStyle,
-												  }
+													}
 												: {}),
 										}}
 									/>

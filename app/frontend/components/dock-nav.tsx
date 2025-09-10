@@ -10,12 +10,10 @@ import {
 	NavigationLinks,
 } from "@/components/navigation";
 import { SettingsPopover } from "@/components/settings";
-import { Badge } from "@/components/ui/badge";
 import { Dock } from "@/components/ui/dock";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useCtrlViewSwitch } from "@/hooks/use-ctrl-view-switch";
 import { useDockNavigation } from "@/hooks/use-dock-navigation";
-import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
 import type {
@@ -30,6 +28,8 @@ export function DockNav({
 	onCalendarViewChange,
 	navigationOnly = false,
 	variant: _variant = "default",
+	settingsOpen: controlledOpen,
+	onSettingsOpenChange,
 }: DockNavProps) {
 	const nav = useDockNavigation({
 		calendarRef: (calendarRef ||
@@ -38,6 +38,13 @@ export function DockNav({
 		onCalendarViewChange: onCalendarViewChange || (() => {}),
 	}) as ExtendedNavigationContextValue;
 	const { isLocalized } = useLanguage();
+
+	// All hooks must be called before any early returns
+	const [internalOpen, setInternalOpen] = React.useState(false);
+	const isControlled = typeof controlledOpen === "boolean";
+	const settingsOpen = isControlled
+		? (controlledOpen as boolean)
+		: internalOpen;
 
 	// Bind Ctrl+ArrowUp/Down to change calendar view using existing handler
 	// Compute next/prev view values from activeView
@@ -152,6 +159,12 @@ export function DockNav({
 							activeView={navigation.activeView}
 							onCalendarViewChange={nav.handlers.handleCalendarViewChange}
 							isCalendarPage={navigation.isCalendarPage}
+							open={settingsOpen}
+							onOpenChange={
+								isControlled
+									? onSettingsOpenChange || (() => {})
+									: setInternalOpen
+							}
 						/>
 					</>
 				)}

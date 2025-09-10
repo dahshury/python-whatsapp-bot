@@ -95,7 +95,7 @@ export function CalendarDock({
 		isSidebarOpen: open || openMobile,
 	});
 
-	// Define navigation buttons with proper arrow directions for RTL
+	// Define navigation buttons: left is always Previous, right is always Next
 	const prevButton = (
 		<DockIcon {...prevHoldHandlers}>
 			<Tooltip>
@@ -108,12 +108,7 @@ export function CalendarDock({
 						className="size-9 rounded-full transition-all duration-200"
 						{...prevHoldHandlers}
 					>
-						{/* In RTL, use right arrow for previous (pointing outward) */}
-						{isLocalized ? (
-							<ChevronRight className="size-4" />
-						) : (
-							<ChevronLeft className="size-4" />
-						)}
+						<ChevronLeft className="size-4" />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
@@ -135,12 +130,7 @@ export function CalendarDock({
 						className="size-9 rounded-full transition-all duration-200"
 						{...nextHoldHandlers}
 					>
-						{/* In RTL, use left arrow for next (pointing outward) */}
-						{isLocalized ? (
-							<ChevronLeft className="size-4" />
-						) : (
-							<ChevronRight className="size-4" />
-						)}
+						<ChevronRight className="size-4" />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
@@ -154,8 +144,8 @@ export function CalendarDock({
 		<TooltipProvider>
 			<Dock direction="middle" className={cn("h-auto min-h-[44px]", className)}>
 				{/* Calendar Navigation Controls */}
-				{/* Left side navigation button (Previous in LTR, Next in RTL) */}
-				{isLocalized ? nextButton : prevButton}
+				{/* Left side navigation button: always Previous */}
+				{prevButton}
 
 				{/* Date text as clickable button to go to today */}
 				<Tooltip>
@@ -231,8 +221,8 @@ export function CalendarDock({
 					</TooltipContent>
 				</Tooltip>
 
-				{/* Right side navigation button (Next in LTR, Previous in RTL) */}
-				{isLocalized ? prevButton : nextButton}
+				{/* Right side navigation button: always Next */}
+				{nextButton}
 			</Dock>
 		</TooltipProvider>
 	);

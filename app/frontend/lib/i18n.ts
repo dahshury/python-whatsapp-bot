@@ -96,6 +96,8 @@ const en = {
 	msg_total: "Total",
 	msg_previous: "Previous",
 	msg_next: "Next",
+	// Vacation label
+	vacation: "Vacation",
 	// Phone combobox
 	phone_country_search_placeholder: "Search countries...",
 	phone_no_country_found: "No country found.",
@@ -103,6 +105,21 @@ const en = {
 	phone_no_phone_found: "No phone number found.",
 	phone_add_number_label: 'Add "{value}" as new phone number',
 	phone_select_placeholder: "Select a phone number",
+	// Column/format menus
+	cm_sort_asc: "Sort ascending",
+	cm_sort_desc: "Sort descending",
+	cm_pin_column: "Pin column",
+	cm_unpin_column: "Unpin column",
+	cm_hide_column: "Hide column",
+	cm_autosize_column: "Autosize column",
+	cm_format: "Format",
+	cm_format_automatic: "Automatic",
+	cm_format_localized: "Localized",
+	cm_format_percentage: "Percentage",
+	cm_format_scientific: "Scientific",
+	cm_format_accounting: "Accounting",
+	cm_format_distance: "Distance",
+	cm_format_calendar: "Calendar",
 };
 
 const ar = {
@@ -150,6 +167,8 @@ const ar = {
 	dashboard_seven_days: "7 أيام",
 	dashboard_thirty_days: "30 يومًا",
 	dashboard_export: "تصدير",
+	// Vacation label
+	vacation: "إجازة",
 };
 
 // Extend English keys for charts, messages, operations, insights
@@ -330,6 +349,31 @@ Object.assign(en, {
 	field_name: "Name",
 });
 
+// Column/format menus localization
+Object.assign(en, {
+	cm_sort_asc: "Sort ascending",
+	cm_sort_desc: "Sort descending",
+	cm_pin_column: "Pin column",
+	cm_unpin_column: "Unpin column",
+	cm_hide_column: "Hide column",
+	cm_autosize_column: "Autosize column",
+	cm_format: "Format",
+	cm_format_automatic: "Automatic",
+	cm_format_localized: "Localized",
+	cm_format_percentage: "Percentage",
+	cm_format_scientific: "Scientific",
+	cm_format_accounting: "Accounting",
+	cm_format_distance: "Distance",
+	cm_format_calendar: "Calendar",
+});
+
+// Theme mode labels
+Object.assign(en, {
+	theme_mode_system: "System",
+	theme_mode_light: "Light",
+	theme_mode_dark: "Dark",
+});
+
 // Extend Arabic with additional dashboard and analysis keys
 Object.assign(ar, {
 	chart_all_data: "كل البيانات",
@@ -505,6 +549,31 @@ Object.assign(ar, {
 	field_name: "الاسم",
 });
 
+// Column/format menus localization
+Object.assign(ar, {
+	cm_sort_asc: "ترتيب تصاعدي",
+	cm_sort_desc: "ترتيب تنازلي",
+	cm_pin_column: "تثبيت العمود",
+	cm_unpin_column: "إلغاء تثبيت العمود",
+	cm_hide_column: "إخفاء العمود",
+	cm_autosize_column: "تحجيم تلقائي",
+	cm_format: "تنسيق",
+	cm_format_automatic: "تلقائي",
+	cm_format_localized: "محلي",
+	cm_format_percentage: "نسبة مئوية",
+	cm_format_scientific: "علمي",
+	cm_format_accounting: "محاسبي",
+	cm_format_distance: "المسافة",
+	cm_format_calendar: "التقويم",
+});
+
+// Theme mode labels
+Object.assign(ar, {
+	theme_mode_system: "النظام",
+	theme_mode_light: "فاتح",
+	theme_mode_dark: "داكن",
+});
+
 const isLocalized = () => {
 	if (typeof window === "undefined") return false;
 	try {
@@ -531,28 +600,42 @@ export const messages = {
 		invalidPhone: () =>
 			isLocalized() ? "رقم هاتف غير صالح" : "Invalid phone number",
 		phoneFormatNotRecognized: () =>
-			isLocalized() ? "تنسيق رقم الهاتف غير معروف" : "Phone format not recognized",
+			isLocalized()
+				? "تنسيق رقم الهاتف غير معروف"
+				: "Phone format not recognized",
 		phoneHasInvalidCountryCode: () =>
 			isLocalized() ? "رمز الدولة غير صالح" : "Invalid country code",
 		phoneContainsInvalidCharacters: () =>
-			isLocalized() ? "رقم الهاتف يحتوي على أحرف غير صالحة" : "Phone number contains invalid characters",
+			isLocalized()
+				? "رقم الهاتف يحتوي على أحرف غير صالحة"
+				: "Phone number contains invalid characters",
 		phoneIsTooShort: () =>
 			isLocalized() ? "رقم الهاتف قصير جداً" : "Phone number is too short",
 		phoneIsTooLong: () =>
 			isLocalized() ? "رقم الهاتف طويل جداً" : "Phone number is too long",
 		phoneHasInvalidLengthForCountry: () =>
-			isLocalized() ? "طول رقم الهاتف غير صالح لهذه الدولة" : "Phone number length is invalid for this country",
+			isLocalized()
+				? "طول رقم الهاتف غير صالح لهذه الدولة"
+				: "Phone number length is invalid for this country",
 		phoneInvalidFormat: () =>
-			isLocalized() ? "تنسيق رقم الهاتف غير صالح" : "Invalid phone number format",
+			isLocalized()
+				? "تنسيق رقم الهاتف غير صالح"
+				: "Invalid phone number format",
 		phoneMayHaveInvalidAreaCode: () =>
-			isLocalized() ? "قد يحتوي على رمز منطقة غير صالح" : "May have invalid area code",
+			isLocalized()
+				? "قد يحتوي على رمز منطقة غير صالح"
+				: "May have invalid area code",
 		phoneFormatIsInvalid: () =>
-			isLocalized() ? "تنسيق رقم الهاتف غير صحيح" : "Phone number format is invalid",
+			isLocalized()
+				? "تنسيق رقم الهاتف غير صحيح"
+				: "Phone number format is invalid",
 		invalidName: () => (isLocalized() ? "اسم غير صالح" : "Invalid name"),
 		// Name-specific messages
 		nameRequired: () => (isLocalized() ? "الاسم مطلوب" : "Name is required"),
 		nameTooShort: () =>
-			isLocalized() ? "يجب أن يتكون الاسم من كلمتين على الأقل" : "At least two words",
+			isLocalized()
+				? "يجب أن يتكون الاسم من كلمتين على الأقل"
+				: "At least two words",
 		nameInvalidCharacters: () =>
 			isLocalized()
 				? "الاسم يحتوي على أحرف غير صالحة"
@@ -561,8 +644,7 @@ export const messages = {
 			isLocalized()
 				? "كل كلمة يجب أن تحتوي على حرفين على الأقل"
 				: "Each word must be at least 2 characters",
-		nameTooLong: () =>
-			isLocalized() ? "الاسم طويل جداً" : "Name is too long",
+		nameTooLong: () => (isLocalized() ? "الاسم طويل جداً" : "Name is too long"),
 	},
 	grid: {
 		none: () => (isLocalized() ? "لا يوجد" : "None"),

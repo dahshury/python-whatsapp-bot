@@ -18,7 +18,7 @@ export interface CalendarEvent {
 	};
 }
 
-export interface ReservationData {
+interface ReservationData {
 	id?: number;
 	date: string;
 	time: string;

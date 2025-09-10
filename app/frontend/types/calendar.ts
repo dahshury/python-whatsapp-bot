@@ -3,7 +3,13 @@ export interface CalendarEvent {
 	title: string;
 	start: string; // ISO 8601 date-time string
 	end: string; // ISO 8601 date-time string
-	display?: "auto" | "block" | "list-item" | "background" | "inverse-background" | "none";
+	display?:
+		| "auto"
+		| "block"
+		| "list-item"
+		| "background"
+		| "inverse-background"
+		| "none";
 	allDay?: boolean;
 	backgroundColor?: string;
 	borderColor?: string;
@@ -53,12 +59,4 @@ export interface ConversationMessage {
 // Conversation data structure - Record of wa_id to array of messages
 export interface Conversations {
 	[wa_id: string]: ConversationMessage[];
-}
-
-// Vacation period data structure
-export interface VacationPeriod {
-	start: Date;
-	end: Date;
-	title?: string;
-	duration?: number;
 }

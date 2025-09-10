@@ -4,22 +4,25 @@
 ![alt text](media/Screenshot%202025-03-14%20014221.png)
 ![alt text](media/Screenshot%202025-03-14%20014527.png)
 
-A powerful WhatsApp bot built using FastAPI, integrated with multiple AI providers (OpenAI, Anthropic, and Google Gemini) for generating intelligent responses to customer inquiries. The application includes a comprehensive Streamlit frontend for managing reservations and includes a fully containerized setup with Docker for easy deployment.
+A powerful WhatsApp bot built using FastAPI, integrated with multiple AI providers (OpenAI, Anthropic, and Google Gemini) for generating intelligent responses to customer inquiries. The application includes a modern Next.js frontend for managing reservations and includes a fully containerized setup with Docker for easy deployment.
 
-The bot allows users to make, modify, and cancel reservations via WhatsApp, while the front-end Streamlit application provides a graphical interface for managing reservations, analyzing conversation data, and visualizing business metrics.
+The bot allows users to make, modify, and cancel reservations via WhatsApp, while the front-end Next.js application provides a graphical interface for managing reservations, analyzing conversation data, and visualizing business metrics.
 
 For the original repository and setup tutorial (Flask version), please refer to [this GitHub repository](https://github.com/daveebbelaar/python-whatsapp-bot).
 
 ## Features
 
 - **Multi-Provider AI Integration**: Flexibility to use OpenAI, Anthropic Claude, or Google Gemini for message generation
+- **Modern Frontend**: Next.js 14 application with TypeScript and Tailwind CSS for responsive UI
 - **Docker Containerization**: Complete Docker setup for both development and production environments
 - **Monitoring & Metrics**: Prometheus integration with alerting capabilities and Discord notifications
 - **Advanced Analytics**: Comprehensive statistics dashboard for business insights
 - **Automated Scheduling**: Built-in job scheduler for reminders and database backups
 - **Internationalization**: Multi-language support with i18n capabilities
 - **High Performance**: Optimized with uvloop for maximum throughput
-- **Secure Authentication**: Streamlit authenticator for frontend access control
+- **Secure Authentication**: JWT-based authentication system for frontend access control
+- **Domain-Driven Architecture**: Clean architecture with domain services for better maintainability
+- **Comprehensive Testing**: Unit tests and integration tests for robust code quality
 - **Production-Ready**: Support for production deployment with robust error handling and logging
 
 ## Prerequisites
@@ -27,42 +30,82 @@ For the original repository and setup tutorial (Flask version), please refer to 
 - A Meta developer account. If you don't have one, [create a Meta developer account here](https://developers.facebook.com/).
 - A business app. If you don't have one, [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/).
 - Docker and Docker Compose (for containerized deployment)
+- Node.js 18+ and pnpm (for frontend development)
+- Python 3.9+ (for backend development)
 - API keys for your chosen AI provider(s): OpenAI, Anthropic, and/or Google Gemini
 
 ## Project Structure
 
 ```plaintext
 ├── .github/                  # GitHub workflows and CI configurations
-├── .streamlit/               # Streamlit configuration files
 ├── app/                      # Main application code
-│   ├── decorators/           # Decorator functions for security, safety, and metrics
-│   ├── frontend/             # Streamlit frontend components with statistics dashboard
-│   ├── services/             # Business logic modules for multiple AI providers
-│   │   ├── anthropic_service.py  # Anthropic Claude integration
-│   │   ├── gemini_service.py     # Google Gemini integration
-│   │   ├── openai_service.py     # OpenAI integration
-│   │   ├── llm_service.py        # Abstract LLM service interface
+│   ├── auth/                 # Authentication module with JWT handling
+│   │   ├── deps.py          # FastAPI dependencies for authentication
+│   │   ├── models.py        # Authentication models
+│   │   ├── router.py        # Authentication routes
+│   │   └── schemas.py       # Pydantic schemas for auth
+│   ├── decorators/          # Decorator functions for security, safety, and metrics
+│   ├── frontend/            # Next.js frontend application
+│   │   ├── app/             # Next.js app directory structure
+│   │   │   ├── api/         # API routes for Next.js
+│   │   │   ├── dashboard/   # Dashboard pages
+│   │   │   ├── fonts/       # Custom fonts
+│   │   │   ├── globals.css  # Global CSS styles
+│   │   │   └── layout.tsx   # Root layout component
+│   │   ├── components/      # React components organized by feature
+│   │   │   ├── animate-ui/  # Animation components
+│   │   │   ├── dashboard/   # Dashboard-specific components
+│   │   │   ├── glide_custom_cells/ # Custom table components
+│   │   │   ├── ui/          # Reusable UI components (shadcn/ui)
+│   │   │   ├── hooks/       # Custom React hooks
+│   │   │   ├── lib/         # Utility libraries and configurations
+│   │   │   ├── types/       # TypeScript type definitions
+│   │   │   └── styles/      # CSS and styling files
+│   │   ├── public/          # Static assets
+│   │   ├── next.config.mjs  # Next.js configuration
+│   │   ├── package.json     # Frontend dependencies
+│   │   ├── tailwind.config.ts # Tailwind CSS configuration
+│   │   └── tsconfig.json    # TypeScript configuration
+│   ├── services/            # Business logic modules with domain-driven design
+│   │   ├── domain/          # Domain layer with business logic
+│   │   │   ├── conversation/ # Conversation management
+│   │   │   ├── customer/    # Customer management
+│   │   │   ├── notification/ # Notification services
+│   │   │   ├── reservation/ # Reservation management
+│   │   │   └── shared/      # Shared domain utilities
+│   │   ├── anthropic_service.py # Anthropic Claude integration
+│   │   ├── gemini_service.py    # Google Gemini integration
+│   │   ├── openai_service.py    # OpenAI integration
+│   │   ├── llm_service.py       # Abstract LLM service interface
 │   │   └── assistant_functions.py # Core business logic for reservations
-│   ├── utils/                # Utility functions for services and API interactions
-│   ├── config.py             # Configuration settings loaded from environment variables
-│   ├── db.py                 # Database connection and schema definitions using SQLite
-│   ├── i18n.py               # Internationalization support
-│   ├── metrics.py            # Prometheus metrics definitions
-│   ├── scheduler.py          # Background job scheduler for automated tasks
-│   └── views.py              # FastAPI route definitions
-├── prometheus/               # Prometheus configuration files
-│   ├── prometheus.yml        # Main Prometheus configuration
-│   ├── alert_rules.yml       # Alert rules definitions
-│   └── alertmanager.yml      # Alert manager configuration
-├── scripts/                  # Utility scripts (deploy, backups, reminders)
-├── docker-compose.yml        # Development Docker Compose configuration
-├── docker-compose.prod.yml   # Production Docker Compose configuration
-├── Dockerfile.backend        # Dockerfile for FastAPI backend
-├── Dockerfile.frontend       # Dockerfile for Streamlit frontend
-├── requirements-backend.in   # Backend dependencies
-├── requirements-frontend.in  # Frontend dependencies
-├── run.py                    # Entry point to run the FastAPI application
-└── README.md                 # Project documentation
+│   ├── utils/               # Utility functions for services and API interactions
+│   ├── config.py            # Configuration settings loaded from environment variables
+│   ├── db.py                # Database connection and schema definitions using SQLite
+│   ├── i18n.py              # Internationalization support
+│   ├── metrics.py           # Prometheus metrics definitions
+│   ├── scheduler.py         # Background job scheduler for automated tasks
+│   └── views.py             # FastAPI route definitions
+├── prometheus/              # Prometheus monitoring stack
+│   ├── prometheus.yml       # Main Prometheus configuration
+│   ├── alert_rules.yml      # Alert rules definitions
+│   └── alertmanager.yml     # Alert manager configuration
+├── scripts/                 # Utility scripts (deploy, backups, reminders)
+├── tests/                   # Test suite
+│   ├── unit/                # Unit tests for individual components
+│   └── integration/         # Integration tests
+├── docker-compose.yml       # Development Docker Compose configuration
+├── docker-compose.prod.yml  # Production Docker Compose configuration
+├── docker-compose.override.yml # Development overrides
+├── Dockerfile.backend       # Dockerfile for FastAPI backend
+├── pyproject.toml           # Python project configuration with dependencies
+├── biome.json               # Code formatting and linting configuration
+├── knip.json               # Unused dependency checker configuration
+├── pnpm-workspace.yaml      # pnpm workspace configuration
+├── package.json            # Root package.json for monorepo management
+├── pnpm-lock.yaml          # pnpm lock file
+├── threads_db.sqlite       # SQLite database file
+├── run.py                  # Entry point to run the FastAPI application
+└── README.md               # Project documentation
 ```
 
 ## Overall Operation
@@ -96,7 +139,7 @@ The application operates as follows:
 
 1. **Frontend Dashboard**:
 
-   - The Streamlit application provides multiple views:
+   - The Next.js application provides multiple views:
      - Calendar view for reservation management
      - Conversation history browser
      - Statistics dashboard with business analytics
@@ -106,6 +149,34 @@ The application operates as follows:
 
    - Background scheduler runs daily to send appointment reminders via WhatsApp.
    - Regular database backups are performed and can be uploaded to remote storage.
+
+## Architecture Overview
+
+### Domain-Driven Design
+
+The application follows Domain-Driven Design (DDD) principles with clear separation of concerns:
+
+- **Domain Layer** (`app/services/domain/`): Contains business logic organized by domain entities
+
+  - `conversation/`: Handles WhatsApp conversation management
+  - `customer/`: Manages customer data and profiles
+  - `reservation/`: Core reservation business logic
+  - `notification/`: Handles various notification types
+  - `shared/`: Common domain utilities and base classes
+
+- **Service Layer**: AI providers and external integrations
+
+- **Infrastructure Layer**: Database, authentication, and external APIs
+
+- **Presentation Layer**: Next.js frontend with modern React patterns
+
+### Testing Strategy
+
+The project includes comprehensive testing:
+
+- **Unit Tests** (`tests/unit/`): Test individual components and functions
+- **Integration Tests** (`tests/`): Test component interactions and API endpoints
+- **Frontend Tests**: Component and integration tests for React components
 
 ## Setup and Installation
 
@@ -165,14 +236,20 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ### Manual Setup (Alternative)
 
-1. **Install Dependencies**
+1. **Install Backend Dependencies**
 
 ```bash
 pip install -r requirements-backend.in
-pip install -r requirements-frontend.in
 ```
 
-2. **Run the FastAPI Application**
+2. **Install Frontend Dependencies**
+
+```bash
+cd app/frontend
+pnpm install
+```
+
+3. **Run the FastAPI Application**
 
 ```bash
 python run.py
@@ -180,13 +257,50 @@ python run.py
 
 Runs on `http://0.0.0.0:8000` by default.
 
-3. **Run the Streamlit Frontend**
+4. **Run the Next.js Frontend**
 
 ```bash
-streamlit run app/frontend/dashboard.py
+cd app/frontend
+pnpm run dev
 ```
 
-Access at `http://localhost:8501` (default Streamlit port).
+Access at `http://localhost:3000` (default Next.js port).
+
+### Development Scripts
+
+The project includes various development scripts:
+
+**Backend:**
+
+```bash
+python run.py                    # Start FastAPI server
+python -m pytest tests/          # Run backend tests
+```
+
+**Frontend:**
+
+```bash
+cd app/frontend
+pnpm run dev                    # Start development server
+pnpm run build                  # Build for production
+pnpm run lint                   # Run ESLint
+pnpm run type-check             # Run TypeScript type checking
+```
+
+**Docker:**
+
+```bash
+docker-compose up               # Start all services
+docker-compose -f docker-compose.prod.yml up -d  # Start production stack
+```
+
+**Code Quality:**
+
+```bash
+biome check .                   # Check code formatting and linting
+biome format .                  # Format code
+knip                            # Check for unused dependencies
+```
 
 ## Webhook Configuration
 

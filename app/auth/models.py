@@ -1,10 +1,6 @@
 from __future__ import annotations
 
-import uuid
-from typing import Any
 
-from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 

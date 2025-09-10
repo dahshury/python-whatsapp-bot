@@ -30,7 +30,7 @@ import { useGridTooltips } from "./hooks/useGridTooltips";
 import { useModularGridData } from "./hooks/useModularGridData";
 import { useUndoRedo } from "./hooks/useUndoRedo";
 import { ColumnMenu } from "./menus/ColumnMenu";
-import Tooltip from "./Tooltip";
+import TooltipFloat from "./Tooltip";
 import { FullscreenWrapper } from "./ui/FullscreenWrapper";
 import { GridDataEditor } from "./ui/GridDataEditor";
 import { GridThemeToggle } from "./ui/GridThemeToggle";
@@ -172,17 +172,15 @@ export default function Grid({
 		gs.setIsFullscreen(isFullscreen);
 	}, [isFullscreen, gs.setIsFullscreen]);
 
-	// Extract pinned columns from configuration mapping
+	// Extract pinned columns from configuration mapping (legacy numeric keys only)
 	const pinnedColumns = React.useMemo(() => {
 		const pinned: number[] = [];
-		columnConfigMapping.forEach((config, columnId) => {
-			if (config.pinned) {
-				// columnId format is "col_${index}"
-				const match = columnId.match(/^col_(\d+)$/);
-				if (match?.[1]) {
-					const index = Number.parseInt(match[1], 10);
-					pinned.push(index);
-				}
+		columnConfigMapping.forEach((config, key) => {
+			if (!config?.pinned) return;
+			const match = key.match(/^col_(\d+)$/);
+			if (match?.[1]) {
+				const index = Number.parseInt(match[1], 10);
+				pinned.push(index);
 			}
 		});
 		return pinned;
@@ -496,6 +494,20 @@ export default function Grid({
 		gs.hiddenColumns,
 	);
 
+	const getBoundsForCell = React.useCallback(
+		(col: number, row: number) => {
+			if (!dataEditorRef.current) return undefined;
+			const api = dataEditorRef.current as unknown as {
+				getBounds?: (
+					c: number,
+					r: number,
+				) => { x: number; y: number; width: number; height: number };
+			};
+			return api.getBounds ? api.getBounds(col, row) : undefined;
+		},
+		[dataEditorRef],
+	);
+
 	const {
 		tooltip,
 		clearTooltip: _clearTooltip,
@@ -519,6 +531,7 @@ export default function Grid({
 			};
 		}),
 		validationErrors,
+		getBoundsForCell,
 	);
 
 	useGridEvents(gs.setShowSearch);
@@ -569,7 +582,11 @@ export default function Grid({
 	]);
 
 	const handleItemHovered = React.useCallback(
-		(args: { kind: "header" | "cell"; location?: [number, number] }) => {
+		(args: {
+			kind: "header" | "cell";
+			location?: [number, number];
+			bounds?: { x: number; y: number; width: number; height: number };
+		}) => {
 			if (args.kind !== "cell") {
 				// Clear row hovering state if the event indicates that
 				// the mouse is not hovering a cell
@@ -580,47 +597,56 @@ export default function Grid({
 				const [, r] = loc;
 				gs.setHoverRow(r >= 0 ? r : undefined);
 			}
+			// Prefer bounds from event; fallback to computing via ref (both are screen-space)
+			let bounds = args.bounds;
+			try {
+				const loc = args.location;
+				if (!bounds && loc && dataEditorRef.current) {
+					const api = dataEditorRef.current as unknown as {
+						getBounds?: (
+							col: number,
+							row: number,
+						) => { x: number; y: number; width: number; height: number };
+					};
+					bounds = api.getBounds ? api.getBounds(loc[0], loc[1]) : undefined;
+				}
+			} catch {}
 			onTooltipHover({
 				kind: args.kind,
 				...(args.location && { location: args.location }),
+				...(bounds && { bounds }),
 			});
 		},
-		[gs, onTooltipHover],
+		[gs, onTooltipHover, dataEditorRef],
 	);
 
 	const handleHeaderMenuClick = React.useCallback(
 		(
-			colIdx: number,
+			column: GridColumn,
 			bounds: { x: number; y: number; width: number; height: number },
 		) => {
-			const column = displayColumns[colIdx] as GridColumn;
-			if (column) {
-				// The bounds from glide-data-grid are already viewport coordinates when using onHeaderMenuClick
-				// Position menu so its right edge aligns with the column header's right edge
-				const menuWidth = 220; // Same as MENU_WIDTH in ColumnMenu
-				columnMenu.openMenu(
-					{
-						id: (column as { id?: string }).id,
-						name: (column as { id?: string }).id,
-						title: (column as { title?: string }).title,
-						width: (column as { width?: number }).width ?? 150,
-						isEditable: Boolean(
-							(column as { isEditable?: boolean }).isEditable,
-						),
-						isHidden: Boolean((column as { isHidden?: boolean }).isHidden),
-						isPinned: false,
-						isRequired: Boolean(
-							(column as { isRequired?: boolean }).isRequired,
-						),
-						isIndex: false,
-						indexNumber: 0,
-					} as import("./core/types").BaseColumnProps,
-					bounds.x + bounds.width - menuWidth,
-					bounds.y + bounds.height,
-				);
-			}
+			if (!column) return;
+			// The bounds from glide-data-grid are already viewport coordinates when using onHeaderMenuClick
+			// Position menu so its right edge aligns with the column header's right edge
+			const menuWidth = 220; // Same as MENU_WIDTH in ColumnMenu
+			columnMenu.openMenu(
+				{
+					id: (column as { id?: string }).id,
+					name: (column as { id?: string }).id,
+					title: (column as { title?: string }).title,
+					width: (column as { width?: number }).width ?? 150,
+					isEditable: Boolean((column as { isEditable?: boolean }).isEditable),
+					isHidden: Boolean((column as { isHidden?: boolean }).isHidden),
+					isPinned: false,
+					isRequired: Boolean((column as { isRequired?: boolean }).isRequired),
+					isIndex: false,
+					indexNumber: 0,
+				} as import("./core/types").BaseColumnProps,
+				bounds.x + bounds.width - menuWidth,
+				bounds.y + bounds.height,
+			);
 		},
-		[displayColumns, columnMenu],
+		[columnMenu],
 	);
 
 	const { handleAutosize, handlePin, handleUnpin } = useColumnOperations({
@@ -824,7 +850,7 @@ export default function Grid({
 														data &&
 														((data.kind === "phone-cell" &&
 															typeof data.value === "string" &&
-															data.value.trim().length > 0) ||
+															String(data.value).trim().length > 0) ||
 															(data.kind === "dropdown-cell" &&
 																Boolean(data.value)) ||
 															(data.kind === "tempus-date-cell" &&
@@ -859,8 +885,18 @@ export default function Grid({
 							onItemHovered={(args: {
 								location: [number, number];
 								item: Item;
+								bounds?: {
+									x: number;
+									y: number;
+									width: number;
+									height: number;
+								};
 							}) =>
-								handleItemHovered({ kind: "cell", location: args.location })
+								handleItemHovered({
+									kind: "cell",
+									location: args.location,
+									...(args.bounds && { bounds: args.bounds }),
+								})
 							}
 							onHeaderMenuClick={handleHeaderMenuClick}
 							searchValue={gs.searchValue}
@@ -893,12 +929,17 @@ export default function Grid({
 					</div>
 				</div>
 
-				<Tooltip
-					content={tooltip?.content || ""}
-					x={tooltip?.left || 0}
-					y={tooltip?.top || 0}
-					visible={!!tooltip}
-				/>
+				{/* Floating tooltip above grid with Shadcn look (2s delayed by hook) */}
+				{tooltip?.content && (
+					<TooltipFloat
+						content={tooltip.content}
+						x={tooltip.left || 0}
+						y={tooltip.top || 0}
+						visible={true}
+						{...(tooltip.fieldLabel && { fieldLabel: tooltip.fieldLabel })}
+						{...(tooltip.message && { message: tooltip.message })}
+					/>
+				)}
 
 				{columnMenu.menuState.isOpen && columnMenu.menuState.column && (
 					<ColumnMenu
@@ -911,7 +952,21 @@ export default function Grid({
 						onHide={handleHide}
 						onAutosize={handleAutosize}
 						onChangeFormat={columnMenu.changeFormat}
-						isPinned={columnMenu.getPinnedSide(columnMenu.menuState.column.id)}
+						isPinned={(() => {
+							const colId = columnMenu.menuState.column.id;
+							const byId = columnConfigMapping.get(colId)?.pinned === true;
+							if (byId) return "left";
+							// Fallback: legacy index-based key if present
+							const displayIdx = displayColumns.findIndex(
+								(c) => c.id === colId,
+							);
+							const legacyKey =
+								displayIdx >= 0 ? `col_${displayIdx}` : undefined;
+							return legacyKey &&
+								columnConfigMapping.get(legacyKey)?.pinned === true
+								? "left"
+								: false;
+						})()}
 						sortDirection={
 							sortState?.columnId === columnMenu.menuState.column.id
 								? sortState.direction

@@ -139,7 +139,7 @@ class WaId(BaseModel):
         try:
             phone_number = phonenumbers.parse(f'+{self.value}', None)
             return phonenumbers.region_code_for_number(phone_number)
-        except:
+        except (NumberParseException, Exception):
             return None
 
 
@@ -171,5 +171,5 @@ def validate_wa_id(phone_input: str) -> bool:
     try:
         WaId.from_any_format(phone_input)
         return True
-    except:
+    except (PydanticCustomError, Exception):
         return False

@@ -31,10 +31,8 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application source (respects .dockerignore in this directory)
 COPY . .
 
-# Build-time configuration (single public URL)
-ARG NEXT_PUBLIC_BACKEND_URL=http://host.docker.internal:8000
+# Build-time configuration
 ARG NEXT_PUBLIC_TIMEZONE=Asia/Riyadh
-ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
 ENV NEXT_PUBLIC_TIMEZONE=${NEXT_PUBLIC_TIMEZONE}
 
 # Build Next.js app (without turbo for stability)
@@ -47,8 +45,8 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
-ARG NEXT_PUBLIC_BACKEND_URL
-ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+# Runtime env for server-side calls (container-to-container)
+ENV PYTHON_BACKEND_URL=http://backend:8000
 
 # Copy standalone output (minimal runtime)
 COPY --from=builder /app/.next/standalone ./

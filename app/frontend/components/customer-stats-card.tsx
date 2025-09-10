@@ -2,15 +2,15 @@
 
 import { Calendar, Clock, MessageCircle, User } from "lucide-react";
 import React from "react";
-import { CustomerReservationsGrid } from "@/components/customer-reservations-grid";
-import { InlineCopyBtn } from "@/components/inline-copy-btn";
-import { MagicCard } from "@/components/magicui/magic-card";
 import {
 	Accordion,
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/animate-ui/components/radix/accordion";
+import { CustomerReservationsGrid } from "@/components/customer-reservations-grid";
+import { InlineCopyBtn } from "@/components/inline-copy-btn";
+import { MagicCard } from "@/components/magicui/magic-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";

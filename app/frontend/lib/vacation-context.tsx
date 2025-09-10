@@ -1,5 +1,7 @@
 "use client";
 import * as React from "react";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
 import { useVacationsData, type Vacation } from "@/lib/websocket-data-provider";
 import type { CalendarEvent } from "@/types/calendar";
 
@@ -54,37 +56,17 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 			const now = Date.now();
 			const suppressUntil = suppressSyncUntilRef.current;
 			const isSuppressed = now < suppressUntil;
-			
-			console.log("🔄 [VACATION-CONTEXT] Websocket vacation sync effect", {
-				vacationsCount: Array.isArray(vacations) ? vacations.length : 'not-array',
-				vacations: Array.isArray(vacations) ? vacations : 'not-array',
-				isSuppressed,
-				suppressUntil,
-				now,
-				timeDiff: suppressUntil - now
-			});
-			
+
 			// Guard against overwriting local optimistic updates immediately after user changes
-			if (isSuppressed) {
-				console.log("⏳ [VACATION-CONTEXT] Websocket sync suppressed for", suppressUntil - now, "ms");
-				return;
-			}
-			
+			if (isSuppressed) return;
+
 			if (Array.isArray(vacations)) {
 				const periods = vacations.map((p: Vacation) => ({
 					start: new Date(p.start),
 					end: new Date(p.end),
 				}));
-				
-				console.log("🔄 [VACATION-CONTEXT] Updating vacation periods from websocket", {
-					periodsCount: periods.length,
-					periods: periods.map(p => ({ 
-						start: p.start.toISOString().split('T')[0], 
-						end: p.end.toISOString().split('T')[0] 
-					})),
-			});
-			
-			setVacationPeriods(periods);
+
+				setVacationPeriods(periods);
 			}
 		} catch (error) {
 			console.error("❌ [VACATION-CONTEXT] Error in websocket sync:", error);
@@ -93,7 +75,8 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 
 	const addVacationPeriod = React.useCallback(() => {
 		// Utilities for date normalization and search
-		const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+		const normalize = (d: Date) =>
+			new Date(d.getFullYear(), d.getMonth(), d.getDate());
 		const isInPeriod = (d: Date, p: { start: Date; end: Date }) => {
 			const dd = normalize(d).getTime();
 			const s = normalize(p.start).getTime();
@@ -111,7 +94,11 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 						if (endN.getTime() > maxEnd.getTime()) maxEnd = endN;
 					}
 				}
-				candidate = new Date(maxEnd.getFullYear(), maxEnd.getMonth(), maxEnd.getDate() + 1);
+				candidate = new Date(
+					maxEnd.getFullYear(),
+					maxEnd.getMonth(),
+					maxEnd.getDate() + 1,
+				);
 			}
 			return candidate;
 		};
@@ -132,19 +119,19 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 
 	const removeVacationPeriod = React.useCallback(
 		(index: number) => {
-		setVacationPeriods((prev) => {
-			const next = prev.filter((_, i) => i !== index);
-			
-			// Immediately update calendar with removed vacation period
-			
-			try {
-				sendVacationUpdate?.({
-					periods: next.map((p) => ({ start: p.start, end: p.end })),
-				});
-			} catch {}
-			suppressSyncUntilRef.current = Date.now() + 2500;
-			return next;
-		});
+			setVacationPeriods((prev) => {
+				const next = prev.filter((_, i) => i !== index);
+
+				// Immediately update calendar with removed vacation period
+
+				try {
+					sendVacationUpdate?.({
+						periods: next.map((p) => ({ start: p.start, end: p.end })),
+					});
+				} catch {}
+				suppressSyncUntilRef.current = Date.now() + 2500;
+				return next;
+			});
 		},
 		[sendVacationUpdate],
 	);
@@ -174,10 +161,16 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 				if (idx == null || field == null || idx < 0 || idx >= prev.length)
 					return prev;
 
-				const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-				const dayAfter = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-				const dayBefore = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
-				const overlaps = (a: { start: Date; end: Date }, b: { start: Date; end: Date }) => {
+				const normalize = (d: Date) =>
+					new Date(d.getFullYear(), d.getMonth(), d.getDate());
+				const dayAfter = (d: Date) =>
+					new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+				const dayBefore = (d: Date) =>
+					new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
+				const overlaps = (
+					a: { start: Date; end: Date },
+					b: { start: Date; end: Date },
+				) => {
 					const s1 = normalize(a.start).getTime();
 					const e1 = normalize(a.end).getTime();
 					const s2 = normalize(b.start).getTime();
@@ -191,10 +184,12 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 
 				if (field === "start") {
 					current.start = chosen;
-					if (current.end && current.end < current.start) current.end = new Date(current.start);
+					if (current.end && current.end < current.start)
+						current.end = new Date(current.start);
 				} else {
 					current.end = chosen;
-					if (current.start && current.start > current.end) current.start = new Date(current.end);
+					if (current.start && current.start > current.end)
+						current.start = new Date(current.end);
 				}
 
 				// Resolve overlaps deterministically by clamping the edited edge
@@ -206,21 +201,22 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 					for (let k = 0; k < next.length; k++) {
 						if (k === idx) continue;
 						const other = next[k];
-						if (!overlaps(current, other)) continue;
+						if (!other || !overlaps(current, other)) continue;
 
 						if (field === "start") {
 							// Move start to the day after the overlapping other's end
 							current.start = dayAfter(other.end);
-							if (current.end < current.start) current.end = new Date(current.start);
-							changed = true;
-							break;
-						} else {
-							// Move end to the day before the overlapping other's start
-							current.end = dayBefore(other.start);
-							if (current.end < current.start) current.start = new Date(current.end);
+							if (current.end < current.start)
+								current.end = new Date(current.start);
 							changed = true;
 							break;
 						}
+						// Move end to the day before the overlapping other's start
+						current.end = dayBefore(other.start);
+						if (current.end < current.start)
+							current.start = new Date(current.end);
+						changed = true;
+						break;
 					}
 				}
 
@@ -236,51 +232,77 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 			});
 
 			// Stop recording after capturing the date (defer to allow outside-click prevention)
-			setTimeout(() => setRecordingState({ periodIndex: null, field: null }), 0);
+			setTimeout(
+				() => setRecordingState({ periodIndex: null, field: null }),
+				0,
+			);
 		},
 		[recordingState.periodIndex, recordingState.field, sendVacationUpdate],
 	);
+
+	const { isLocalized } = useLanguage();
 
 	// Convert vacation periods to calendar events
 	const vacationEvents = React.useMemo(() => {
 		const toDateOnly = (d: Date) => {
 			const yyyy = d.getFullYear();
-			const mm = String(d.getMonth() + 1).padStart(2, '0');
-			const dd = String(d.getDate()).padStart(2, '0');
+			const mm = String(d.getMonth() + 1).padStart(2, "0");
+			const dd = String(d.getDate()).padStart(2, "0");
 			return `${yyyy}-${mm}-${dd}`;
 		};
-		const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+		const addDays = (d: Date, n: number) =>
+			new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
-		const events = vacationPeriods.map((period, index) => ({
-			id: `vacation-${index}`,
-			title: `Vacation ${index + 1}`,
-			// FullCalendar prefers date-only strings for allDay/background spans
-			start: toDateOnly(period.start),
-			end: toDateOnly(addDays(period.end, 1)), // exclusive end (next day)
-			allDay: true,
-			display: "background" as const,
-			overlap: false,
-			editable: false,
-			className: ["vacation-background-event"],
-			backgroundColor: "#ff6600",
-			borderColor: "#ff6600",
-			textColor: "transparent",
-			extendedProps: {
-				__vacation: true,
-				isVacationPeriod: true,
-				vacationIndex: index,
-				type: 99,
-			},
-		} as CalendarEvent));
+		const events: CalendarEvent[] = [];
 
-		console.log("🏖️ [VACATION-CONTEXT] Generated vacation events:", {
-			periodsCount: vacationPeriods.length,
-			eventsCount: events.length,
-			events: events.map(e => ({ id: e.id, start: e.start, end: e.end, display: e.display, allDay: e.allDay }))
+		vacationPeriods.forEach((period, index) => {
+			const startStr = toDateOnly(period.start);
+			const endStrExclusive = toDateOnly(addDays(period.end, 1));
+
+			// Background span with pattern overlay
+			events.push({
+				id: `vacation-${index}`,
+				title: `${i18n.getMessage("vacation", isLocalized)} ${index + 1}`,
+				start: startStr,
+				end: endStrExclusive, // exclusive end (next day)
+				allDay: true,
+				display: "background",
+				overlap: false,
+				editable: false,
+				className: ["vacation-background-event"],
+				backgroundColor: "#ff6600",
+				borderColor: "#ff6600",
+				textColor: "transparent",
+				extendedProps: {
+					__vacation: true,
+					isVacationPeriod: true,
+					vacationIndex: index,
+					type: 99,
+				},
+			} as CalendarEvent);
+
+			// Overlay text event centered in each day cell
+			events.push({
+				id: `vacation-label-${index}`,
+				title: `${i18n.getMessage("vacation", isLocalized)} ${index + 1}`,
+				start: startStr,
+				end: endStrExclusive,
+				allDay: true,
+				overlap: false,
+				editable: false,
+				className: ["vacation-text-event"],
+				extendedProps: {
+					__vacation: true,
+					isVacationPeriod: true,
+					vacationIndex: index,
+					isVacationText: true,
+					type: 99,
+				},
+			} as CalendarEvent);
 		});
 
 		return events;
-	}, [vacationPeriods]);
+	}, [vacationPeriods, isLocalized]);
 
 	return (
 		<VacationContext.Provider

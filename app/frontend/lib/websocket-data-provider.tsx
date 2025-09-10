@@ -1385,9 +1385,9 @@ export const useDashboardData = () => {
 					{ stage: "Cancelled", count: 0 },
 				],
 				customerSegments: (() => {
-					let new1 = 0,
-						returning2to5 = 0,
-						loyal6 = 0;
+					let new1 = 0;
+					let returning2to5 = 0;
+					let loyal6 = 0;
 					filteredReservationEntries.forEach(([, items]) => {
 						const len = Array.isArray(items) ? items.length : 0;
 						if (len <= 1) new1 += 1;

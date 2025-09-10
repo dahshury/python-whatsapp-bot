@@ -8,6 +8,8 @@ export interface DockNavProps {
 	onCalendarViewChange?: (view: string) => void;
 	navigationOnly?: boolean;
 	variant?: "default" | "left" | "right";
+	settingsOpen?: boolean;
+	onSettingsOpenChange?: (open: boolean) => void;
 }
 
 export interface NavigationControlsProps {
@@ -43,13 +45,13 @@ export interface ViewMode {
 	labelRTL: string;
 }
 
-export interface NavigationState {
+interface NavigationState {
 	mounted: boolean;
 	isHoveringDate: boolean;
 	activeTab: string;
 }
 
-export interface NavigationContextValue {
+interface NavigationContextValue {
 	state: NavigationState;
 	handlers: {
 		setIsHoveringDate: (value: boolean) => void;

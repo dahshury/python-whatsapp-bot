@@ -231,12 +231,17 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		// Sanitize events to guard against any with missing/invalid start
 		const sanitizedEvents = useMemo(() => {
 			try {
-				const isDateOnly = (value: string) => /^(\d{4})-(\d{2})-(\d{2})$/.test(value);
+				const isDateOnly = (value: string) =>
+					/^(\d{4})-(\d{2})-(\d{2})$/.test(value);
 				return (optimizedEvents || []).filter((e: CalendarEvent) => {
 					const s = e?.start;
 					if (!s || typeof s !== "string") return false;
 					// Allow background/allDay events with date-only strings without constructing Date
-					if ((e.display === "background" || e.allDay === true) && isDateOnly(s)) return true;
+					if (
+						(e.display === "background" || e.allDay === true) &&
+						isDateOnly(s)
+					)
+						return true;
 					const d = new Date(s);
 					return !Number.isNaN(d.getTime());
 				});
@@ -254,19 +259,26 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				const isDragging =
 					(globalThis as { __isCalendarDragging?: boolean })
 						.__isCalendarDragging === true;
-				
+
 				console.log("📅 [CALENDAR-CORE] Setting render events:", {
 					sanitizedEventsCount: sanitizedEvents.length,
 					isDragging,
-					vacationEventsInSanitized: sanitizedEvents.filter(e => e.extendedProps?.__vacation).length,
-					backgroundEventsInSanitized: sanitizedEvents.filter(e => e.display === 'background').length,
-					sampleBackgroundEvents: sanitizedEvents.filter(e => e.display === 'background').slice(0, 3).map(e => ({
-						id: e.id,
-						start: e.start,
-						end: e.end,
-						display: e.display,
-						className: e.className
-					}))
+					vacationEventsInSanitized: sanitizedEvents.filter(
+						(e) => e.extendedProps?.__vacation,
+					).length,
+					backgroundEventsInSanitized: sanitizedEvents.filter(
+						(e) => e.display === "background",
+					).length,
+					sampleBackgroundEvents: sanitizedEvents
+						.filter((e) => e.display === "background")
+						.slice(0, 3)
+						.map((e) => ({
+							id: e.id,
+							start: e.start,
+							end: e.end,
+							display: e.display,
+							className: e.className,
+						})),
 				});
 
 				if (isDragging) {
@@ -466,10 +478,15 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 				// List view: normalize time cell to start-only structure with optional end (Alt+hover reveals)
 				try {
-					if (String(view?.type || "").toLowerCase().includes("list")) {
+					if (
+						String(view?.type || "")
+							.toLowerCase()
+							.includes("list")
+					) {
 						const row = el.closest(".fc-list-event") as HTMLElement | null;
-						const timeCell = row?.querySelector(".fc-list-event-time") as
-							HTMLElement | null;
+						const timeCell = row?.querySelector(
+							".fc-list-event-time",
+						) as HTMLElement | null;
 						if (timeCell) {
 							const raw = (timeCell.textContent || "").trim();
 							let startText = raw;
@@ -482,7 +499,8 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 								sep = endText ? " - " : "";
 							}
 
-							while (timeCell.firstChild) timeCell.removeChild(timeCell.firstChild);
+							while (timeCell.firstChild)
+								timeCell.removeChild(timeCell.firstChild);
 							const startSpan = document.createElement("span");
 							startSpan.className = "fc-event-time-start";
 							startSpan.textContent = startText;
@@ -832,6 +850,11 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 						const event = arg?.event;
 						const classes = ["text-xs"] as string[];
 						const type = event?.extendedProps?.type;
+						// Skip reservation/conversation classes for vacation text overlays
+						if (event?.classNames?.includes("vacation-text-event")) {
+							classes.push("vacation-text-event");
+							return classes;
+						}
 						if (type === 2) {
 							classes.push("conversation-event");
 						} else {
@@ -843,6 +866,23 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 						return classes;
 					}}
 					eventContent={(arg) => {
+						// If this is a vacation text overlay, render large centered title only
+						if (arg?.event?.classNames?.includes("vacation-text-event")) {
+							const wrapper = document.createElement("div");
+							wrapper.style.position = "absolute";
+							wrapper.style.inset = "0";
+							wrapper.style.display = "flex";
+							wrapper.style.alignItems = "center";
+							wrapper.style.justifyContent = "center";
+							wrapper.style.pointerEvents = "none";
+							const title = document.createElement("div");
+							title.textContent = arg?.event?.title || "";
+							title.style.fontWeight = "800";
+							title.style.fontSize = "18px";
+							title.style.letterSpacing = "0.3px";
+							wrapper.appendChild(title);
+							return { domNodes: [wrapper] };
+						}
 						// Render start-only time; keep separator and end spans for CSS-controlled reveal
 						// FullCalendar by default renders <div class="fc-event-time">start–end</div>
 						// We replace with structured spans to control visibility via CSS (and Alt key)

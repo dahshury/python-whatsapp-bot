@@ -10,10 +10,8 @@ import os
 import sqlite3
 import shutil
 import time
-import psutil
 from datetime import datetime
 from typing import List, Dict, Tuple
-from pathlib import Path
 
 def check_database_in_use(db_path: str) -> bool:
     """Check if the database is currently being used by any process."""
@@ -39,7 +37,7 @@ def wait_for_database_release(db_path: str, max_wait_seconds: int = 30) -> bool:
     
     while time.time() - start_time < max_wait_seconds:
         if not check_database_in_use(db_path):
-            print(f"✅ Database is now available")
+            print("✅ Database is now available")
             return True
         time.sleep(1)
         print(".", end="", flush=True)
@@ -518,7 +516,7 @@ def _checkpoint_and_vacuum(db_path: str) -> bool:
         try:
             if 'conn' in locals():
                 conn.close()
-        except:
+        except Exception:
             pass
 
 def _remove_sidecar_files(db_path: str):

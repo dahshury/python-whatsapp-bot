@@ -132,14 +132,19 @@ export const useColumnOperations = ({
 			);
 			if (displayColIndex < 0) return;
 
-			const configId = `col_${displayColIndex}`;
+			const configKey = columnId ?? `col_${displayColIndex}`;
 			const newMapping = new Map(columnConfigMapping);
 			const existingConfig =
-				(newMapping.get(configId) as Record<string, unknown>) || {};
-			newMapping.set(configId, {
+				(newMapping.get(configKey) as Record<string, unknown>) || {};
+			newMapping.set(configKey, {
 				...existingConfig,
 				pinned: true,
 			});
+			// Clean up legacy index-based key if different
+			const legacyKey = `col_${displayColIndex}`;
+			if (legacyKey !== configKey && newMapping.has(legacyKey)) {
+				newMapping.delete(legacyKey);
+			}
 			setColumnConfigMapping(newMapping);
 			clearSelection(true, false);
 		},
@@ -158,14 +163,18 @@ export const useColumnOperations = ({
 			);
 			if (displayColIndex < 0) return;
 
-			const configId = `col_${displayColIndex}`;
+			const configKey = columnId ?? `col_${displayColIndex}`;
 			const newMapping = new Map(columnConfigMapping);
 			const existingConfig =
-				(newMapping.get(configId) as Record<string, unknown>) || {};
-			newMapping.set(configId, {
+				(newMapping.get(configKey) as Record<string, unknown>) || {};
+			newMapping.set(configKey, {
 				...existingConfig,
 				pinned: false,
 			});
+			const legacyKey = `col_${displayColIndex}`;
+			if (legacyKey !== configKey && newMapping.has(legacyKey)) {
+				newMapping.delete(legacyKey);
+			}
 			setColumnConfigMapping(newMapping);
 			clearSelection(true, false);
 		},

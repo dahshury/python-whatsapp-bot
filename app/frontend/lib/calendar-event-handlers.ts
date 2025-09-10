@@ -25,15 +25,17 @@ export interface FullCalendarEventChangeInfo {
 		endStr?: string;
 		extendedProps?: Record<string, unknown>;
 	};
-	oldEvent?: {
-		id: string;
-		title: string;
-		start: Date;
-		end?: Date | undefined;
-		startStr?: string;
-		endStr?: string;
-		extendedProps?: Record<string, unknown>;
-	} | undefined;
+	oldEvent?:
+		| {
+				id: string;
+				title: string;
+				start: Date;
+				end?: Date | undefined;
+				startStr?: string;
+				endStr?: string;
+				extendedProps?: Record<string, unknown>;
+		  }
+		| undefined;
 	revert?: (() => void) | undefined;
 }
 
@@ -242,7 +244,13 @@ function waitForWSConfirmation(args: {
 	timeoutMs?: number;
 	isLocalized?: boolean;
 }): Promise<{ success: boolean; message?: string }> {
-	const { reservationId, waId, date, timeoutMs = 10000, isLocalized = false } = args;
+	const {
+		reservationId,
+		waId,
+		date,
+		timeoutMs = 10000,
+		isLocalized = false,
+	} = args;
 	return new Promise((resolve) => {
 		let resolved = false;
 		const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
@@ -529,7 +537,9 @@ export async function handleEventChange(args: {
 				waId: String(waId),
 				date: String(newDate || ""),
 				time: newTime,
-				...(typeof args.isLocalized === "boolean" ? { isLocalized: args.isLocalized } : {}),
+				...(typeof args.isLocalized === "boolean"
+					? { isLocalized: args.isLocalized }
+					: {}),
 			}),
 		]);
 
@@ -538,13 +548,19 @@ export async function handleEventChange(args: {
 
 		// Diagnostics: log snapshots for source and target slots around the move
 		try {
-			const api = typeof args.getCalendarApi === "function" ? args.getCalendarApi() : undefined;
+			const api =
+				typeof args.getCalendarApi === "function"
+					? args.getCalendarApi()
+					: undefined;
 			const prevStartStr: string | undefined = args?.info?.oldEvent?.startStr;
 			const prevDate = prevStartStr ? prevStartStr.split("T")[0] : undefined;
 			const prevRawTime = prevStartStr
 				? (prevStartStr.split("T")[1] || "00:00").slice(0, 5)
 				: undefined;
-			const prevBase = prevDate && prevRawTime ? normalizeToSlotBase(prevDate, prevRawTime) : undefined;
+			const prevBase =
+				prevDate && prevRawTime
+					? normalizeToSlotBase(prevDate, prevRawTime)
+					: undefined;
 			const targetDate = String(newDate || "");
 			const targetBase = newTime;
 
@@ -572,12 +588,19 @@ export async function handleEventChange(args: {
 						}
 					});
 					return inSlot.map((e) => {
-						const slotTime = (e as { extendedProps?: { slotTime?: string } })?.extendedProps?.slotTime;
+						const slotTime = (e as { extendedProps?: { slotTime?: string } })
+							?.extendedProps?.slotTime;
 						const startStr = (e as { startStr?: string }).startStr;
 						const startDate = (e as { start?: Date }).start;
-						const start = startStr || (startDate ? startDate.toISOString() : undefined);
+						const start =
+							startStr || (startDate ? startDate.toISOString() : undefined);
 
-						const result: { id: string; title: string; slotTime?: string; start?: string } = {
+						const result: {
+							id: string;
+							title: string;
+							slotTime?: string;
+							start?: string;
+						} = {
 							id: String((e as { id?: string }).id || ""),
 							title: String((e as { title?: string }).title || ""),
 						};
@@ -597,12 +620,36 @@ export async function handleEventChange(args: {
 				}
 			};
 
-			const fromBefore = prevDate && prevBase ? collectSlotSnapshot(api, prevDate, prevBase) : [];
-			const toBefore = targetDate && targetBase ? collectSlotSnapshot(api, targetDate, targetBase) : [];
+			const fromBefore =
+				prevDate && prevBase
+					? collectSlotSnapshot(api, prevDate, prevBase)
+					: [];
+			const toBefore =
+				targetDate && targetBase
+					? collectSlotSnapshot(api, targetDate, targetBase)
+					: [];
 			console.groupCollapsed("🧭 DND Slot Snapshot (before)");
-			console.log("move", { id: event.id, from: { prevDate, prevBase }, to: { targetDate, targetBase } });
-			console.table(fromBefore.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
-			console.table(toBefore.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
+			console.log("move", {
+				id: event.id,
+				from: { prevDate, prevBase },
+				to: { targetDate, targetBase },
+			});
+			console.table(
+				fromBefore.map((e) => ({
+					id: e.id,
+					title: e.title,
+					slotTime: e.slotTime,
+					start: e.start,
+				})),
+			);
+			console.table(
+				toBefore.map((e) => ({
+					id: e.id,
+					title: e.title,
+					slotTime: e.slotTime,
+					start: e.start,
+				})),
+			);
 			console.groupEnd();
 		} catch {}
 
@@ -620,7 +667,8 @@ export async function handleEventChange(args: {
 				// Backend already sends translated messages when ar=true is passed
 				// Use i18n fallback only if no message is provided
 				const message =
-					resp?.message || i18n.getMessage("slot_fully_booked", args.isLocalized);
+					resp?.message ||
+					i18n.getMessage("slot_fully_booked", args.isLocalized);
 				console.log("🔔 Showing error notification:", {
 					title,
 					waId,
@@ -654,42 +702,57 @@ export async function handleEventChange(args: {
 
 			// Normalize UI event to slot base and strictly reflow previous and target slots
 			try {
-				const api = typeof args.getCalendarApi === "function" ? args.getCalendarApi() : undefined;
-				if (api && api.getEventById) {
+				const api =
+					typeof args.getCalendarApi === "function"
+						? args.getCalendarApi()
+						: undefined;
+				if (api?.getEventById) {
 					const evObj = api.getEventById(String(event.id));
 					if (evObj) {
 						try {
-							const depth = ((globalThis as { __suppressEventChangeDepth?: number })
-								.__suppressEventChangeDepth || 0) + 1;
-							(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth = depth;
-							const baseStart = new Date(`${String(newDate || "")}T${newTime}:00`);
+							const depth =
+								((globalThis as { __suppressEventChangeDepth?: number })
+									.__suppressEventChangeDepth || 0) + 1;
+							(
+								globalThis as { __suppressEventChangeDepth?: number }
+							).__suppressEventChangeDepth = depth;
+							const baseStart = new Date(
+								`${String(newDate || "")}T${newTime}:00`,
+							);
 							const baseEnd = new Date(baseStart.getTime() + 20 * 60000);
-							(evObj as unknown as { setDates?: (s: Date, e: Date) => void })?.setDates?.(baseStart, baseEnd);
+							(
+								evObj as unknown as { setDates?: (s: Date, e: Date) => void }
+							)?.setDates?.(baseStart, baseEnd);
 							try {
-								(evObj as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
-									"slotDate",
-									String(newDate || ""),
-								);
+								(
+									evObj as unknown as {
+										setExtendedProp?: (k: string, v: unknown) => void;
+									}
+								)?.setExtendedProp?.("slotDate", String(newDate || ""));
 							} catch {}
 							try {
-								(evObj as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
-									"slotTime",
-									newTime,
-								);
+								(
+									evObj as unknown as {
+										setExtendedProp?: (k: string, v: unknown) => void;
+									}
+								)?.setExtendedProp?.("slotTime", newTime);
 							} catch {}
 							try {
-								(evObj as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
-									"cancelled",
-									false,
-								);
+								(
+									evObj as unknown as {
+										setExtendedProp?: (k: string, v: unknown) => void;
+									}
+								)?.setExtendedProp?.("cancelled", false);
 							} catch {}
 							setTimeout(() => {
 								try {
-									const d = (globalThis as { __suppressEventChangeDepth?: number })
-										.__suppressEventChangeDepth;
+									const d = (
+										globalThis as { __suppressEventChangeDepth?: number }
+									).__suppressEventChangeDepth;
 									if (typeof d === "number" && d > 0)
-										(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth =
-											d - 1;
+										(
+											globalThis as { __suppressEventChangeDepth?: number }
+										).__suppressEventChangeDepth = d - 1;
 								} catch {}
 							}, 0);
 						} catch {}
@@ -709,17 +772,21 @@ export async function handleEventChange(args: {
 											if (ext.cancelled === true) return false;
 											const t = Number(ext.type ?? 0);
 											if (t === 2) return false;
-											return ext.slotDate === dateStr && ext.slotTime === baseTime;
+											return (
+												ext.slotDate === dateStr && ext.slotTime === baseTime
+											);
 										} catch {
 											return false;
 										}
 									})
 									.sort((a, b) => {
 										const ta = Number(
-											((a as { extendedProps?: { type?: unknown } }).extendedProps || {}).type ?? 0,
+											(a as { extendedProps?: { type?: unknown } })
+												.extendedProps?.type ?? 0,
 										);
 										const tb = Number(
-											((b as { extendedProps?: { type?: unknown } }).extendedProps || {}).type ?? 0,
+											(b as { extendedProps?: { type?: unknown } })
+												.extendedProps?.type ?? 0,
 										);
 										if (ta !== tb) return ta - tb;
 										const na = String((a as { title?: string }).title || "");
@@ -727,73 +794,107 @@ export async function handleEventChange(args: {
 										return na.localeCompare(nb);
 									});
 
-							const minutesPerReservation = inSlot.length >= 6 ? 15 : 20;
-							const gapMinutes = 1;
-							for (let i = 0; i < inSlot.length; i++) {
-								const ev = inSlot[i];
-								const offset = i * (minutesPerReservation + gapMinutes);
-								const timeParts = baseTime.split(":");
-								const h = timeParts[0] ? parseInt(timeParts[0], 10) : 0;
-								const m = timeParts[1] ? parseInt(timeParts[1], 10) : 0;
-								const base = new Date(`${dateStr}T00:00:00`);
-								const start = new Date(base);
-								start.setHours((Number.isFinite(h) ? h : 0), (Number.isFinite(m) ? m : 0), 0, 0);
-								start.setMinutes(start.getMinutes() + offset);
-								const end = new Date(start.getTime() + minutesPerReservation * 60000);
-								try {
-									const depth2 = ((globalThis as { __suppressEventChangeDepth?: number })
-										.__suppressEventChangeDepth || 0) + 1;
-									(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth =
-										depth2;
-									(ev as unknown as { setDates?: (s: Date, e: Date) => void })?.setDates?.(start, end);
+								const minutesPerReservation = inSlot.length >= 6 ? 15 : 20;
+								const gapMinutes = 1;
+								for (let i = 0; i < inSlot.length; i++) {
+									const ev = inSlot[i];
+									const offset = i * (minutesPerReservation + gapMinutes);
+									const timeParts = baseTime.split(":");
+									const h = timeParts[0]
+										? Number.parseInt(timeParts[0], 10)
+										: 0;
+									const m = timeParts[1]
+										? Number.parseInt(timeParts[1], 10)
+										: 0;
+									const base = new Date(`${dateStr}T00:00:00`);
+									const start = new Date(base);
+									start.setHours(
+										Number.isFinite(h) ? h : 0,
+										Number.isFinite(m) ? m : 0,
+										0,
+										0,
+									);
+									start.setMinutes(start.getMinutes() + offset);
+									const end = new Date(
+										start.getTime() + minutesPerReservation * 60000,
+									);
 									try {
-										(ev as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
-											"slotDate",
-											dateStr,
-										);
+										const depth2 =
+											((globalThis as { __suppressEventChangeDepth?: number })
+												.__suppressEventChangeDepth || 0) + 1;
+										(
+											globalThis as { __suppressEventChangeDepth?: number }
+										).__suppressEventChangeDepth = depth2;
+										(
+											ev as unknown as { setDates?: (s: Date, e: Date) => void }
+										)?.setDates?.(start, end);
+										try {
+											(
+												ev as unknown as {
+													setExtendedProp?: (k: string, v: unknown) => void;
+												}
+											)?.setExtendedProp?.("slotDate", dateStr);
+										} catch {}
+										try {
+											(
+												ev as unknown as {
+													setExtendedProp?: (k: string, v: unknown) => void;
+												}
+											)?.setExtendedProp?.("slotTime", baseTime);
+										} catch {}
 									} catch {}
-									try {
-										(ev as unknown as { setExtendedProp?: (k: string, v: unknown) => void })?.setExtendedProp?.(
-											"slotTime",
-											baseTime,
-										);
-									} catch {}
-								} catch {}
-								setTimeout(() => {
-									try {
-										const d2 = (globalThis as { __suppressEventChangeDepth?: number })
-											.__suppressEventChangeDepth;
-										if (typeof d2 === "number" && d2 > 0)
-											(globalThis as { __suppressEventChangeDepth?: number }).__suppressEventChangeDepth =
-												d2 - 1;
-									} catch {}
-								}, 0);
-							}
-						} catch {}
-					};
+									setTimeout(() => {
+										try {
+											const d2 = (
+												globalThis as { __suppressEventChangeDepth?: number }
+											).__suppressEventChangeDepth;
+											if (typeof d2 === "number" && d2 > 0)
+												(
+													globalThis as { __suppressEventChangeDepth?: number }
+												).__suppressEventChangeDepth = d2 - 1;
+										} catch {}
+									}, 0);
+								}
+							} catch {}
+						};
 
-					const prevStartStr: string | undefined = args?.info?.oldEvent?.startStr;
-					const prevDate = prevStartStr ? prevStartStr.split("T")[0] : undefined;
-					const prevRawTime = prevStartStr
-						? (prevStartStr.split("T")[1] || "00:00").slice(0, 5)
-						: undefined;
-					const prevBase = prevDate && prevRawTime ? normalizeToSlotBase(prevDate, prevRawTime) : undefined;
+						const prevStartStr: string | undefined =
+							args?.info?.oldEvent?.startStr;
+						const prevDate = prevStartStr
+							? prevStartStr.split("T")[0]
+							: undefined;
+						const prevRawTime = prevStartStr
+							? (prevStartStr.split("T")[1] || "00:00").slice(0, 5)
+							: undefined;
+						const prevBase =
+							prevDate && prevRawTime
+								? normalizeToSlotBase(prevDate, prevRawTime)
+								: undefined;
 
-					if (prevDate && prevBase) reflowSlotStrict(prevDate, prevBase);
-					if (newDate && newTime) reflowSlotStrict(String(newDate), newTime);
+						if (prevDate && prevBase) reflowSlotStrict(prevDate, prevBase);
+						if (newDate && newTime) reflowSlotStrict(String(newDate), newTime);
+					}
 				}
-			}
-		} catch {}
+			} catch {}
 
 			// After success: log snapshots again so we can spot mismatches
 			try {
-				const api = typeof args.getCalendarApi === "function" ? args.getCalendarApi() : undefined;
-				const prevStartStr2: string | undefined = args?.info?.oldEvent?.startStr;
-				const prevDate2 = prevStartStr2 ? prevStartStr2.split("T")[0] : undefined;
+				const api =
+					typeof args.getCalendarApi === "function"
+						? args.getCalendarApi()
+						: undefined;
+				const prevStartStr2: string | undefined =
+					args?.info?.oldEvent?.startStr;
+				const prevDate2 = prevStartStr2
+					? prevStartStr2.split("T")[0]
+					: undefined;
 				const prevRawTime2 = prevStartStr2
 					? (prevStartStr2.split("T")[1] || "00:00").slice(0, 5)
 					: undefined;
-				const prevBase2 = prevDate2 && prevRawTime2 ? normalizeToSlotBase(prevDate2, prevRawTime2) : undefined;
+				const prevBase2 =
+					prevDate2 && prevRawTime2
+						? normalizeToSlotBase(prevDate2, prevRawTime2)
+						: undefined;
 				const targetDate2 = String(newDate || "");
 				const targetBase2 = newTime;
 
@@ -801,7 +902,12 @@ export async function handleEventChange(args: {
 					api2: FullCalendarApi | undefined,
 					dateStr: string,
 					baseTime: string,
-				): { id: string; title: string; slotTime?: string; start?: string }[] => {
+				): {
+					id: string;
+					title: string;
+					slotTime?: string;
+					start?: string;
+				}[] => {
 					try {
 						const events = api2?.getEvents?.() || [];
 						const inSlot = events.filter((e) => {
@@ -821,12 +927,19 @@ export async function handleEventChange(args: {
 							}
 						});
 						return inSlot.map((e) => {
-							const slotTime = (e as { extendedProps?: { slotTime?: string } })?.extendedProps?.slotTime;
+							const slotTime = (e as { extendedProps?: { slotTime?: string } })
+								?.extendedProps?.slotTime;
 							const startStr = (e as { startStr?: string }).startStr;
 							const startDate = (e as { start?: Date }).start;
-							const start = startStr || (startDate ? startDate.toISOString() : undefined);
+							const start =
+								startStr || (startDate ? startDate.toISOString() : undefined);
 
-							const result: { id: string; title: string; slotTime?: string; start?: string } = {
+							const result: {
+								id: string;
+								title: string;
+								slotTime?: string;
+								start?: string;
+							} = {
 								id: String((e as { id?: string }).id || ""),
 								title: String((e as { title?: string }).title || ""),
 							};
@@ -846,11 +959,31 @@ export async function handleEventChange(args: {
 					}
 				};
 
-				const fromAfter = prevDate2 && prevBase2 ? collectSlotSnapshot2(api, prevDate2, prevBase2) : [];
-				const toAfter = targetDate2 && targetBase2 ? collectSlotSnapshot2(api, targetDate2, targetBase2) : [];
+				const fromAfter =
+					prevDate2 && prevBase2
+						? collectSlotSnapshot2(api, prevDate2, prevBase2)
+						: [];
+				const toAfter =
+					targetDate2 && targetBase2
+						? collectSlotSnapshot2(api, targetDate2, targetBase2)
+						: [];
 				console.groupCollapsed("🧭 DND Slot Snapshot (after)");
-				console.table(fromAfter.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
-				console.table(toAfter.map((e) => ({ id: e.id, title: e.title, slotTime: e.slotTime, start: e.start })));
+				console.table(
+					fromAfter.map((e) => ({
+						id: e.id,
+						title: e.title,
+						slotTime: e.slotTime,
+						start: e.start,
+					})),
+				);
+				console.table(
+					toAfter.map((e) => ({
+						id: e.id,
+						title: e.title,
+						slotTime: e.slotTime,
+						start: e.start,
+					})),
+				);
 				console.groupEnd();
 			} catch {}
 		}
@@ -900,7 +1033,8 @@ export async function handleCancelReservation(args: {
 	getCalendarApi?: () => FullCalendarApi;
 	onEventCancelled?: (eventId: string) => void;
 }): Promise<void> {
-	const { eventId, events, isLocalized, getCalendarApi, onEventCancelled } = args;
+	const { eventId, events, isLocalized, getCalendarApi, onEventCancelled } =
+		args;
 	// Resolve from state first, then FullCalendar for freshest extendedProps (tolerate number/string ids)
 	const stateEv = events.find((e) => String(e.id) === String(eventId));
 	let api: FullCalendarApi | null = null;
@@ -926,7 +1060,9 @@ export async function handleCancelReservation(args: {
 	if (!waId || !date) {
 		toastService.error(
 			isLocalized ? "فشل الإلغاء" : "Cancel Failed",
-			isLocalized ? "بيانات غير كاملة (الهاتف/التاريخ)" : "Missing waId/date to cancel",
+			isLocalized
+				? "بيانات غير كاملة (الهاتف/التاريخ)"
+				: "Missing waId/date to cancel",
 			3000,
 		);
 		return;
@@ -953,7 +1089,8 @@ export async function handleCancelReservation(args: {
 			const message = resp?.message ?? "";
 			toastService.error(
 				isLocalized ? "فشل الإلغاء" : "Cancel Failed",
-				message || (isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
+				message ||
+					(isLocalized ? "خطأ بالنظام، حاول لاحقًا" : "System error, try later"),
 				3000,
 			);
 			try {
@@ -1043,16 +1180,16 @@ function normalizeToSlotBase(dateStr: string, timeStr: string): string {
 	try {
 		const baseTime = to24h(String(timeStr || "00:00"));
 		const baseParts = baseTime.split(":");
-		const hh = parseInt(String(baseParts[0] ?? "0"), 10);
-		const mm = parseInt(String(baseParts[1] ?? "0"), 10);
+		const hh = Number.parseInt(String(baseParts[0] ?? "0"), 10);
+		const mm = Number.parseInt(String(baseParts[1] ?? "0"), 10);
 		const minutes =
 			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
 		const res = getSlotTimes(day, false, "") || { slotMinTime: "00:00:00" };
 		const slotMin = String(res.slotMinTime || "00:00:00").slice(0, 5);
 		const parts = slotMin.split(":");
-		const sH = parseInt(String(parts[0] ?? "0"), 10);
-		const sM = parseInt(String(parts[1] ?? "0"), 10);
+		const sH = Number.parseInt(String(parts[0] ?? "0"), 10);
+		const sM = Number.parseInt(String(parts[1] ?? "0"), 10);
 		const minMinutes =
 			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);

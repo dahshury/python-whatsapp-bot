@@ -44,9 +44,13 @@ interface GridDataEditorProps {
 	onGridSelectionChange: (selection: GridSelection) => void;
 	gridSelection: GridSelection;
 	onRowAppended: () => void;
-	onItemHovered: (args: { location: [number, number]; item: Item }) => void;
+	onItemHovered: (args: {
+		location: [number, number];
+		item: Item;
+		bounds?: { x: number; y: number; width: number; height: number };
+	}) => void;
 	onHeaderMenuClick: (
-		colIdx: number,
+		column: GridColumn,
 		bounds: { x: number; y: number; width: number; height: number },
 	) => void;
 	searchValue: string;
@@ -87,9 +91,12 @@ const useColumnPinning = (
 	// Calculate if pinned columns width is too large (similar to Streamlit's logic)
 	const isPinnedColumnsWidthTooLarge = useMemo(() => {
 		const pinnedColumnsWidth = columns
-			.filter((_col, idx) => {
-				const columnId = `col_${idx}`;
-				return columnConfigMapping.get(columnId)?.pinned === true;
+			.filter((col, idx) => {
+				const id = (col as { id?: string }).id ?? `col_${idx}`;
+				return (
+					columnConfigMapping.get(id)?.pinned === true ||
+					columnConfigMapping.get(`col_${idx}`)?.pinned === true
+				);
 			})
 			.reduce(
 				(acc, col) =>
@@ -104,38 +111,49 @@ const useColumnPinning = (
 	const freezeColumns = useMemo(() => {
 		if (isPinnedColumnsWidthTooLarge) return 0;
 
-		return columns.filter((_col, idx) => {
-			const columnId = `col_${idx}`;
-			return columnConfigMapping.get(columnId)?.pinned === true;
+		return columns.filter((col, idx) => {
+			const id = (col as { id?: string }).id ?? `col_${idx}`;
+			return (
+				columnConfigMapping.get(id)?.pinned === true ||
+				columnConfigMapping.get(`col_${idx}`)?.pinned === true
+			);
 		}).length;
 	}, [columns, columnConfigMapping, isPinnedColumnsWidthTooLarge]);
 
 	const pinColumn = useCallback(
 		(columnIndex: number) => {
-			const columnId = `col_${columnIndex}`;
+			const col = columns[columnIndex];
+			const id = (col as { id?: string }).id ?? `col_${columnIndex}`;
 			const newMapping = new Map(columnConfigMapping);
-			newMapping.set(columnId, {
-				...newMapping.get(columnId),
+			newMapping.set(id, {
+				...(newMapping.get(id) as object | undefined),
 				pinned: true,
 			});
+			if (newMapping.has(`col_${columnIndex}`) && `col_${columnIndex}` !== id) {
+				newMapping.delete(`col_${columnIndex}`);
+			}
 			setColumnConfigMapping(newMapping);
 			clearSelection(true, false);
 		},
-		[columnConfigMapping, setColumnConfigMapping, clearSelection],
+		[columns, columnConfigMapping, setColumnConfigMapping, clearSelection],
 	);
 
 	const unpinColumn = useCallback(
 		(columnIndex: number) => {
-			const columnId = `col_${columnIndex}`;
+			const col = columns[columnIndex];
+			const id = (col as { id?: string }).id ?? `col_${columnIndex}`;
 			const newMapping = new Map(columnConfigMapping);
-			newMapping.set(columnId, {
-				...newMapping.get(columnId),
+			newMapping.set(id, {
+				...(newMapping.get(id) as object | undefined),
 				pinned: false,
 			});
+			if (newMapping.has(`col_${columnIndex}`) && `col_${columnIndex}` !== id) {
+				newMapping.delete(`col_${columnIndex}`);
+			}
 			setColumnConfigMapping(newMapping);
 			clearSelection(true, false);
 		},
-		[columnConfigMapping, setColumnConfigMapping, clearSelection],
+		[columns, columnConfigMapping, setColumnConfigMapping, clearSelection],
 	);
 
 	return {
@@ -305,9 +323,16 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 			if (onItemHovered && (args as { kind: string }).kind === "cell") {
 				const g =
 					args as unknown as import("@glideapps/glide-data-grid").GridMouseCellEventArgs;
+				const bounds = (
+					g as unknown as {
+						bounds?: { x: number; y: number; width: number; height: number };
+					}
+				).bounds;
+
 				onItemHovered({
 					location: g.location as [number, number],
 					item: g.location,
+					...(bounds && { bounds }),
 				});
 			}
 		},
@@ -402,8 +427,10 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 		const unpinnedColumns: GridColumn[] = [];
 
 		displayColumns.forEach((column, index) => {
-			const columnId = `col_${index}`;
-			const isPinned = effectiveColumnConfig.get(columnId)?.pinned === true;
+			const id = (column as { id?: string }).id ?? `col_${index}`;
+			const isPinned =
+				effectiveColumnConfig.get(id)?.pinned === true ||
+				effectiveColumnConfig.get(`col_${index}`)?.pinned === true;
 
 			if (isPinned) {
 				pinnedColumns.push(column);
@@ -644,7 +671,12 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					onSearchValueChange={onSearchValueChange}
 					showSearch={showSearch}
 					onSearchClose={onSearchClose}
-					onHeaderMenuClick={onHeaderMenuClick}
+					onHeaderMenuClick={(colIdx, bounds) => {
+						const col = orderedColumns[colIdx];
+						if (col) {
+							onHeaderMenuClick?.(col, bounds);
+						}
+					}}
 					ref={dataEditorRef}
 					rowHeight={rowHeight}
 					headerHeight={headerHeight}

@@ -21,7 +21,7 @@ export function getDataTableColumns(
 			const { slotMinTime } = getSlotTimes(base, !!freeRoam, "");
 			const [h, m] = String(slotMinTime || "11:00:00")
 				.split(":")
-				.map((v) => parseInt(v, 10));
+				.map((v) => Number.parseInt(v, 10));
 			const hh = String(Number.isFinite(h) ? h : 11).padStart(2, "0");
 			const mm = String(Number.isFinite(m) ? m : 0).padStart(2, "0");
 			return `${startStr}T${hh}:${mm}`;

@@ -48,6 +48,8 @@ def create_app():
         "http://127.0.0.1:3831", # React dev server IP-based origin
         "http://localhost:16532", # Common React dev server port
         "http://127.0.0.1:16532", # Common React dev server IP-based origin
+        "http://localhost:3000", # Next.js dev/production port
+        "http://127.0.0.1:3000", # Next.js dev/production port (IP-based)
         "null",  # Allow requests from file:/// URLs (for local testing)
         # Add any other origins your frontend might be served from, e.g., a deployed URL
     ]

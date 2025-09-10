@@ -42,6 +42,8 @@ interface ToolbarButtonProps {
 	onMouseLeave?: () => void;
 }
 
+const ICON_SIZE = 12; // reduced ~40%
+
 const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 	onClick,
 	icon,
@@ -58,21 +60,24 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 				? "var(--gdg-toolbar-hover-bg, rgba(0, 0, 0, 0.1))"
 				: "transparent",
 		border: "none",
-		padding: "3px",
+		padding: "2px",
 		cursor: disabled ? "not-allowed" : "pointer",
 		color:
 			isHovered && !disabled
 				? "var(--gdg-toolbar-hover-icon, #000)"
 				: "var(--gdg-toolbar-icon, #666)",
-		borderRadius: "3px",
-		transition: "all 150ms ease",
+		borderRadius: "2px",
+		transition: "all 120ms ease",
 		transform: isHovered && !disabled ? "scale(1.05)" : "scale(1)",
 		display: "flex",
 		alignItems: "center",
 		justifyContent: "center",
 		opacity: disabled ? 0.4 : 1,
+		width: `${ICON_SIZE + 4}px`,
+		height: `${ICON_SIZE + 4}px`,
 	};
 
+	// enforce icon size by wrapping in a span
 	return (
 		<button
 			type="button"
@@ -84,7 +89,15 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
 			onMouseEnter={onMouseEnter}
 			onMouseLeave={onMouseLeave}
 		>
-			{React.cloneElement(icon as React.ReactElement, {})}
+			<span
+				style={{ width: ICON_SIZE, height: ICON_SIZE, display: "inline-flex" }}
+			>
+				{React.isValidElement(icon)
+					? React.cloneElement(icon, {
+							size: ICON_SIZE,
+						} as React.SVGProps<SVGSVGElement>)
+					: icon}
+			</span>
 		</button>
 	);
 };
@@ -117,7 +130,7 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 		justifyContent: "flex-end",
 		alignItems: "flex-start",
 		padding: "0",
-		minHeight: "22px",
+		minHeight: "14px",
 		width: "100%",
 		opacity: shouldShow ? 1 : 0,
 		visibility: shouldShow ? "visible" : "hidden",
@@ -130,22 +143,22 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "flex-end",
-		padding: "3px 4px",
-		margin: "4px 6px 0 0",
+		padding: "2px 3px",
+		margin: "2px 4px 0 0",
 		background: "var(--gdg-toolbar-bg, rgba(255, 255, 255, 0.95))",
-		backdropFilter: "blur(8px)",
+		backdropFilter: "blur(6px)",
 		border: "1px solid var(--gdg-toolbar-border, rgba(0, 0, 0, 0.1))",
-		borderRadius: "4px",
-		boxShadow: "0 2px 6px rgba(0, 0, 0, 0.15)",
+		borderRadius: "3px",
+		boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)",
 		gap: "1px",
 		width: "fit-content",
-		transform: shouldShow ? "scale(1)" : "scale(0.95)",
+		transform: shouldShow ? "scale(1)" : "scale(0.96)",
 		transition: "transform 200ms ease-in-out",
 	};
 
 	const separatorStyle: React.CSSProperties = {
 		width: "1px",
-		height: "10px",
+		height: "8px",
 		background: "var(--gdg-toolbar-border, rgba(0, 0, 0, 0.2))",
 		margin: "0 2px",
 	};

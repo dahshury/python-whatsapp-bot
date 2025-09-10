@@ -1,11 +1,14 @@
 "use client";
 
-import type { DialogProps } from "@/components/animate-ui/components/radix/dialog";
 import { Command as CommandPrimitive } from "cmdk";
 import { Search } from "lucide-react";
 import * as React from "react";
+import type { DialogProps } from "@/components/animate-ui/components/radix/dialog";
 
-import { Dialog, DialogContent } from "@/components/animate-ui/components/radix/dialog";
+import {
+	Dialog,
+	DialogContent,
+} from "@/components/animate-ui/components/radix/dialog";
 import { cn } from "@/lib/utils";
 
 const Command = React.forwardRef<

@@ -65,7 +65,7 @@ const useSidebarChatStore = create<SidebarChatState>((set) => ({
 			selectedConversationId: id,
 			isLoadingConversation: true,
 		}),
-		setConversation: (id) => set({ selectedConversationId: id ?? null }),
+	setConversation: (id) => set({ selectedConversationId: id ?? null }),
 }));
 
 export { useSidebarChatStore };

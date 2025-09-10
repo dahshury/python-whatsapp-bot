@@ -15,6 +15,7 @@ from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WH
 import datetime
 from zoneinfo import ZoneInfo
 from app.i18n import get_message
+import json
 
 router = APIRouter()
 security = HTTPBasic()
@@ -495,3 +496,35 @@ async def api_undo_modify_reservation(payload: dict = Body(...)):
         reservation_id_to_modify=payload.get("reservation_id_to_modify")
     )
     return JSONResponse(content=resp)
+
+
+@router.get("/notifications")
+async def api_get_notifications(limit: int = 150):
+    """Return the most recent notification events (default 150)."""
+    try:
+        from app.db import get_session, NotificationEventModel
+        limit = max(1, min(int(limit), 150))
+        with get_session() as session:
+            rows = (
+                session.query(NotificationEventModel)
+                .order_by(NotificationEventModel.id.desc())
+                .limit(limit)
+                .all()
+            )
+            events = []
+            for r in rows:
+                try:
+                    events.append(
+                        {
+                            "id": r.id,
+                            "type": r.event_type,
+                            "timestamp": r.ts_iso,
+                            "data": json.loads(r.data) if isinstance(r.data, str) else r.data,
+                        }
+                    )
+                except Exception:
+                    continue
+        return JSONResponse(content={"success": True, "data": events})
+    except Exception as e:
+        logging.error(f"Error loading notifications: {e}")
+        return JSONResponse(content={"success": False, "message": "failed_to_load"}, status_code=500)

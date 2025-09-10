@@ -178,19 +178,21 @@ export class CalendarIntegrationService {
 			const baseTime = (() => {
 				try {
 					const inputTime = fmt.to24h(String(timeSlotRaw || "00:00"));
-					const [hh, mm] = inputTime.split(":").map((v) => parseInt(v, 10));
+					const [hh, mm] = inputTime
+						.split(":")
+						.map((v) => Number.parseInt(v, 10));
 					const minutes =
-						(Number.isFinite(hh ?? 0) ? hh ?? 0 : 0) * 60 +
-						(Number.isFinite(mm ?? 0) ? mm ?? 0 : 0);
+						(Number.isFinite(hh ?? 0) ? (hh ?? 0) : 0) * 60 +
+						(Number.isFinite(mm ?? 0) ? (mm ?? 0) : 0);
 					const day = new Date(`${dateStr}T00:00:00`);
 					const { slotMinTime } = getSlotTimes(day, false, "");
 					const [sH, sM] = String(slotMinTime || "00:00:00")
 						.slice(0, 5)
 						.split(":")
-						.map((v) => parseInt(v, 10));
+						.map((v) => Number.parseInt(v, 10));
 					const minMinutes =
-						(Number.isFinite(sH ?? 0) ? sH ?? 0 : 0) * 60 +
-						(Number.isFinite(sM ?? 0) ? sM ?? 0 : 0);
+						(Number.isFinite(sH ?? 0) ? (sH ?? 0) : 0) * 60 +
+						(Number.isFinite(sM ?? 0) ? (sM ?? 0) : 0);
 					const duration = 2 * 60; // 2 hours = 120 minutes
 					const rel = Math.max(0, minutes - minMinutes);
 					const slotIndex = Math.floor(rel / duration);
@@ -216,7 +218,7 @@ export class CalendarIntegrationService {
 
 			// Define slot start for layout (no longer used for filtering)
 			const slotStart = new Date(`${dateStr}T${baseTime}:00`);
-			console.log(`[CAL] reflowSlot() slotStart:`, {
+			console.log("[CAL] reflowSlot() slotStart:", {
 				slotStart: slotStart.toISOString(),
 				localTime: slotStart.toString(),
 			});
@@ -281,10 +283,10 @@ export class CalendarIntegrationService {
 				minutesToAdd: number,
 			): string => {
 				try {
-					const [h, m] = hhmm.split(":").map((v) => parseInt(v, 10));
+					const [h, m] = hhmm.split(":").map((v) => Number.parseInt(v, 10));
 					const total =
-						(Number.isFinite(h ?? 0) ? h ?? 0 : 0) * 60 +
-						(Number.isFinite(m ?? 0) ? m ?? 0 : 0) +
+						(Number.isFinite(h ?? 0) ? (h ?? 0) : 0) * 60 +
+						(Number.isFinite(m ?? 0) ? (m ?? 0) : 0) +
 						Math.max(0, Math.floor(minutesToAdd));
 					const hh = Math.floor(total / 60);
 					const mm = total % 60;

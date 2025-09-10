@@ -1,6 +1,7 @@
 "use client";
 
 import type { DataEditorRef } from "@glideapps/glide-data-grid";
+import { AnimatePresence, motion } from "framer-motion";
 import { Save, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
@@ -11,12 +12,10 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-
 import { Button } from "@/components/ui/button";
 import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
 import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
 import { useDataTableValidation } from "@/hooks/useDataTableValidation";
-
 import { formatDateRangeWithHijri } from "@/lib/hijri-utils";
 import { useSettings } from "@/lib/settings-context";
 import { Z_INDEX } from "@/lib/z-index";
@@ -25,14 +24,11 @@ import type {
 	CalendarEvent as DataTableCalendarEvent,
 	DataTableEditorProps,
 } from "@/types/data-table-editor";
-
 import { UnsavedChangesDialog } from "./data-table-editor/UnsavedChangesDialog";
 import { ValidationErrorsPopover } from "./data-table-editor/ValidationErrorsPopover";
 import { FullscreenProvider } from "./glide_custom_cells/components/contexts/FullscreenContext";
 import type { DataProvider } from "./glide_custom_cells/components/core/services/DataProvider";
-
 import { createGlideTheme } from "./glide_custom_cells/components/utils/streamlitGlideTheme";
-import { AnimatePresence, motion } from "framer-motion";
 
 const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), {
 	ssr: false,
@@ -709,130 +705,133 @@ export function DataTableEditor(props: DataTableEditorProps) {
 								}
 							}}
 						>
-					<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
-						<div className="flex flex-col space-y-1.5">
-							<h2
-								className={`text-xl font-semibold leading-none tracking-tight py-2 ${_isLocalized ? "text-right" : "text-left"}`}
-							>
-								{_isLocalized ? "محرر البيانات" : "Data Editor"} -{" "}
-								{formatDateRange()}
-							</h2>
-							<p
-								id={`data-editor-description-${typeof window !== "undefined" ? "client" : "ssr"}`}
-								className="sr-only"
-							>
-								{_isLocalized
-									? "محرر لإدارة الحجوزات وبيانات العملاء"
-									: "Editor for managing reservations and customer data"}
-							</p>
-						</div>
-						<button
-							type="button"
-							className="flex-shrink-0 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-							onClick={() => handleCloseAttempt(() => onOpenChange(false))}
-						>
-							<X className="h-4 w-4" />
-							<span className="sr-only">Close</span>
-						</button>
-					</div>
-
-					<div className="overflow-visible w-full flex-1 min-h-0">
-						<div className="overflow-visible relative w-full h-full">
-							{!isGridReady && (
-								<div className="absolute inset-0 z-10 bg-background flex items-center justify-center">
-									{showSpinner && (
-										<div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
-									)}
+							<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
+								<div className="flex flex-col space-y-1.5">
+									<h2
+										className={`text-xl font-semibold leading-none tracking-tight py-2 ${_isLocalized ? "text-right" : "text-left"}`}
+									>
+										{_isLocalized ? "محرر البيانات" : "Data Editor"} -{" "}
+										{formatDateRange()}
+									</h2>
+									<p
+										id={`data-editor-description-${typeof window !== "undefined" ? "client" : "ssr"}`}
+										className="sr-only"
+									>
+										{_isLocalized
+											? "محرر لإدارة الحجوزات وبيانات العملاء"
+											: "Editor for managing reservations and customer data"}
+									</p>
 								</div>
-							)}
-							<div
-								style={{
-									opacity: isGridReady ? 1 : 0,
-									transition: "opacity 120ms ease-out",
-									pointerEvents: isGridReady ? "auto" : "none",
-								}}
-							>
-								<FullscreenProvider>
-									{Grid && (
-										<Grid
-											showThemeToggle={false}
-											fullWidth={true}
-											theme={gridTheme}
-											isDarkMode={isDarkMode}
-											dataSource={dataSource}
-											dataEditorRef={
-												dataEditorRef as React.RefObject<DataEditorRef>
-											}
-											validationErrors={validationErrors}
-											onReady={() => setIsGridReady(true)}
-											onDataProviderReady={(provider: unknown) => {
-												const dataProvider = provider as DataProvider;
-												dataProviderRef.current = dataProvider;
-
-												const editingState = dataProvider.getEditingState();
-
-												// Use the stable debounced validation check function
-												const debouncedCheck = createDebouncedValidationCheck();
-
-												const unsubscribe =
-													editingState.onChange(debouncedCheck);
-
-												// Live validation updates whenever a cell value is loaded/changed
-												try {
-													dataProvider.setOnCellDataLoaded?.(
-														(_c: number, _r: number) => {
-															try {
-																const v = validateAllCells();
-																setValidationErrorsIfChanged(v.errors || []);
-															} catch {}
-														},
-													);
-												} catch {}
-
-												(
-													dataProviderRef.current as DataProvider & {
-														unsubscribe?: () => void;
-													}
-												).unsubscribe = unsubscribe;
-
-												handleCheckEditingState();
-											}}
-										/>
-									)}
-								</FullscreenProvider>
+								<button
+									type="button"
+									className="flex-shrink-0 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+									onClick={() => handleCloseAttempt(() => onOpenChange(false))}
+								>
+									<X className="h-4 w-4" />
+									<span className="sr-only">Close</span>
+								</button>
 							</div>
-						</div>
-					</div>
 
-					<div className="px-4 py-1.5 border-t flex flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2 gap-2">
-						<div className="flex items-center gap-2 relative ms-auto">
-							<Button
-								onClick={handleSaveChanges}
-								className="gap-2"
-								disabled={!canSave || isSaving}
-							>
-								{isSaving ? (
-									<>
-										<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-										{_isLocalized ? "جاري الحفظ..." : "Saving..."}
-									</>
-								) : (
-									<>
-										<Save className="h-4 w-4" />
-										{_isLocalized ? "حفظ التغييرات" : "Save Changes"}
-									</>
-								)}
-							</Button>
-							{validationErrors?.length > 0 && (
-								<div className="absolute -top-1 -left-1">
-									<ValidationErrorsPopover
-										errors={validationErrors}
-										triggerClassName=""
-									/>
+							<div className="overflow-visible w-full flex-1 min-h-0">
+								<div className="overflow-visible relative w-full h-full">
+									{!isGridReady && (
+										<div className="absolute inset-0 z-10 bg-background flex items-center justify-center">
+											{showSpinner && (
+												<div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
+											)}
+										</div>
+									)}
+									<div
+										style={{
+											opacity: isGridReady ? 1 : 0,
+											transition: "opacity 120ms ease-out",
+											pointerEvents: isGridReady ? "auto" : "none",
+										}}
+									>
+										<FullscreenProvider>
+											{Grid && (
+												<Grid
+													showThemeToggle={false}
+													fullWidth={true}
+													theme={gridTheme}
+													isDarkMode={isDarkMode}
+													dataSource={dataSource}
+													dataEditorRef={
+														dataEditorRef as React.RefObject<DataEditorRef>
+													}
+													validationErrors={validationErrors}
+													onReady={() => setIsGridReady(true)}
+													onDataProviderReady={(provider: unknown) => {
+														const dataProvider = provider as DataProvider;
+														dataProviderRef.current = dataProvider;
+
+														const editingState = dataProvider.getEditingState();
+
+														// Use the stable debounced validation check function
+														const debouncedCheck =
+															createDebouncedValidationCheck();
+
+														const unsubscribe =
+															editingState.onChange(debouncedCheck);
+
+														// Live validation updates whenever a cell value is loaded/changed
+														try {
+															dataProvider.setOnCellDataLoaded?.(
+																(_c: number, _r: number) => {
+																	try {
+																		const v = validateAllCells();
+																		setValidationErrorsIfChanged(
+																			v.errors || [],
+																		);
+																	} catch {}
+																},
+															);
+														} catch {}
+
+														(
+															dataProviderRef.current as DataProvider & {
+																unsubscribe?: () => void;
+															}
+														).unsubscribe = unsubscribe;
+
+														handleCheckEditingState();
+													}}
+												/>
+											)}
+										</FullscreenProvider>
+									</div>
 								</div>
-							)}
-						</div>
-					</div>
+							</div>
+
+							<div className="px-4 py-1.5 border-t flex flex-col-reverse sm:flex-row sm:justify-between sm:space-x-2 gap-2">
+								<div className="flex items-center gap-2 relative ms-auto">
+									<Button
+										onClick={handleSaveChanges}
+										className="gap-2"
+										disabled={!canSave || isSaving}
+									>
+										{isSaving ? (
+											<>
+												<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+												{_isLocalized ? "جاري الحفظ..." : "Saving..."}
+											</>
+										) : (
+											<>
+												<Save className="h-4 w-4" />
+												{_isLocalized ? "حفظ التغييرات" : "Save Changes"}
+											</>
+										)}
+									</Button>
+									{validationErrors?.length > 0 && (
+										<div className="absolute -top-1 -left-1">
+											<ValidationErrorsPopover
+												errors={validationErrors}
+												triggerClassName=""
+											/>
+										</div>
+									)}
+								</div>
+							</div>
 						</motion.div>
 					</>
 				)}

@@ -68,7 +68,7 @@ export const THEME_OPTIONS: ThemeOption[] = [
 	{
 		value: "theme-soft-pop",
 		name: "Soft Pop",
-		nameRTL: "سॉफت بوب",
+		nameRTL: "بوب ارتس",
 		colors: {
 			primary: "#5a64f0",
 			secondary: "#1fbba6",
@@ -126,4 +126,13 @@ export const THEME_OPTIONS: ThemeOption[] = [
 export const getThemeName = (value: string): string => {
 	const theme = THEME_OPTIONS.find((t) => t.value === value);
 	return theme?.name || "Unknown Theme";
+};
+
+export const getThemeNameLocalized = (
+	value: string,
+	isLocalized: boolean,
+): string => {
+	const theme = THEME_OPTIONS.find((t) => t.value === value);
+	if (!theme) return isLocalized ? "سمة غير معروفة" : "Unknown Theme";
+	return isLocalized ? theme.nameRTL || theme.name : theme.name;
 };

@@ -295,8 +295,8 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 					(globalThis as { __localOps?: Set<string> }).__localOps =
 						(globalThis as { __localOps?: Set<string> }).__localOps ||
 						new Set<string>();
-					const s = (globalThis as { __localOps?: Set<string> }).__localOps as
-						Set<string>;
+					const s = (globalThis as { __localOps?: Set<string> })
+						.__localOps as Set<string>;
 					// For vacation updates, echoed event type is 'vacation_period_updated' with no id/date/time
 					// NotificationsButton builds composite key as `${type}::::` when fields are missing
 					const localKey = "vacation_period_updated:::";

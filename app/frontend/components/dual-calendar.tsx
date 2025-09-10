@@ -58,7 +58,7 @@ import { handleEventChange as handleEventChangeService } from "@/lib/calendar-ev
 import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { useLanguage } from "@/lib/language-context";
 import { useVacation } from "@/lib/vacation-context";
-import type { CalendarEvent, VacationPeriod } from "@/types/calendar";
+import type { CalendarEvent } from "@/types/calendar";
 // Components
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
 import { CalendarSkeleton } from "./calendar-skeleton";
@@ -108,7 +108,6 @@ export const DualCalendarComponent = React.forwardRef<
 		const {
 			handleDateClick: handleVacationDateClick,
 			recordingState,
-			setOnVacationUpdated,
 			vacationPeriods,
 		} = useVacation();
 		const { state: _sidebarState, open: _sidebarOpen } = useSidebar();
@@ -722,7 +721,7 @@ export const DualCalendarComponent = React.forwardRef<
 			],
 		);
 
-	// Vacation events are now automatically included in the events array
+		// Vacation events are now automatically included in the events array
 
 		// Show loading state
 		if (

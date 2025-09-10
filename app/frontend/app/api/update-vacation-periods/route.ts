@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
 
 		// Update the backend with the new vacation periods
 		const response = await fetch(
-			`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/update-vacation-periods`,
+			"http://backend:8000/update-vacation-periods",
 			{
 				method: "POST",
 				headers: {

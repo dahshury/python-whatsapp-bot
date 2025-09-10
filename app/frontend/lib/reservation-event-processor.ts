@@ -204,8 +204,8 @@ export function getReservationEventProcessor() {
 function addMinutesToClock(baseTime: string, minutesToAdd: number): string {
 	try {
 		const parts = baseTime.split(":");
-		const h = parts[0] ? parseInt(parts[0], 10) : 0;
-		const m = parts[1] ? parseInt(parts[1], 10) : 0;
+		const h = parts[0] ? Number.parseInt(parts[0], 10) : 0;
+		const m = parts[1] ? Number.parseInt(parts[1], 10) : 0;
 		let total =
 			(Number.isFinite(h) ? h : 0) * 60 +
 			(Number.isFinite(m) ? m : 0) +
@@ -230,8 +230,8 @@ function toSlotBase(
 	try {
 		const baseTime = to24h(String(timeStr || "00:00"));
 		const timeParts = baseTime.split(":");
-		const hh = timeParts[0] ? parseInt(timeParts[0], 10) : 0;
-		const mm = timeParts[1] ? parseInt(timeParts[1], 10) : 0;
+		const hh = timeParts[0] ? Number.parseInt(timeParts[0], 10) : 0;
+		const mm = timeParts[1] ? Number.parseInt(timeParts[1], 10) : 0;
 		const minutes =
 			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
@@ -239,8 +239,8 @@ function toSlotBase(
 		const slotParts = String(slotMinTime || "00:00:00")
 			.slice(0, 5)
 			.split(":");
-		const sH = slotParts[0] ? parseInt(slotParts[0], 10) : 0;
-		const sM = slotParts[1] ? parseInt(slotParts[1], 10) : 0;
+		const sH = slotParts[0] ? Number.parseInt(slotParts[0], 10) : 0;
+		const sM = slotParts[1] ? Number.parseInt(slotParts[1], 10) : 0;
 		const minMinutes =
 			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);

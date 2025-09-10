@@ -11,6 +11,13 @@ import {
 import type { GridColumn } from "@glideapps/glide-data-grid";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import {
+	Popover,
+	PopoverAnchor,
+	PopoverContent,
+} from "@/components/ui/popover";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
 import { Z_INDEX } from "@/lib/z-index";
 import { useGridPortal } from "../contexts/GridPortalContext";
 import type { BaseColumnProps } from "../core/types";
@@ -47,14 +54,9 @@ export function ColumnMenu({
 }: ColumnMenuProps) {
 	const [formatMenuOpen, setFormatMenuOpen] = useState(false);
 	const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-	const [mounted, setMounted] = useState(false);
 	const portalContainer = useGridPortal();
 	const menuId = React.useId();
-
-	useEffect(() => {
-		setMounted(true);
-		return () => setMounted(false);
-	}, []);
+	const { isLocalized } = useLanguage();
 
 	useEffect(() => {
 		const handleOutsideClick = (event: MouseEvent) => {
@@ -76,14 +78,8 @@ export function ColumnMenu({
 			}
 		};
 
-		const preventScroll = (e: WheelEvent | TouchEvent) => {
-			e.preventDefault();
-		};
-
 		document.addEventListener("mousedown", handleOutsideClick);
 		document.addEventListener("keydown", handleEscape);
-		document.addEventListener("wheel", preventScroll, { passive: false });
-		document.addEventListener("touchmove", preventScroll, { passive: false });
 
 		return () => {
 			if (closeTimeoutRef.current) {
@@ -91,8 +87,6 @@ export function ColumnMenu({
 			}
 			document.removeEventListener("mousedown", handleOutsideClick);
 			document.removeEventListener("keydown", handleEscape);
-			document.removeEventListener("wheel", preventScroll);
-			document.removeEventListener("touchmove", preventScroll);
 		};
 	}, [onClose, menuId]);
 
@@ -162,7 +156,7 @@ export function ColumnMenu({
 	};
 
 	/* ---------- adaptive positioning ---------- */
-	const MENU_WIDTH = 220;
+	const MENU_WIDTH = 160;
 	const SUBMENU_WIDTH = 200;
 	const viewportW = typeof window !== "undefined" ? window.innerWidth : 0;
 
@@ -191,157 +185,159 @@ export function ColumnMenu({
 	const hoverBg = isDarkTheme ? "#3a3a3a" : "#f0f0f0";
 	const textColor = isDarkTheme ? "#f1f1f1" : "#333";
 
-	const menuContent = (
-		<div
-			id={menuId}
-			className="column-menu click-outside-ignore"
-			style={{
-				position: "absolute",
-				top: adjustedY,
-				left: adjustedMenuLeft,
-				backgroundColor: bgColor,
-				border: `0.5px solid ${isDarkTheme ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
-				borderRadius: "6px",
-				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-				minWidth: "200px",
-				zIndex: Z_INDEX.GRID_OVERLAY_EDITOR,
-				padding: "4px 0",
-				animation: "menuSlideIn 150ms ease-out",
-				transformOrigin: "top left",
-			}}
-			role="menu"
-			onClick={(e) => {
-				// Prevent click events from bubbling up to parent popover
-				e.preventDefault();
-				e.stopPropagation();
-			}}
-			onKeyDown={(e) => {
-				// Handle keyboard navigation
-				if (e.key === "Escape") {
-					e.preventDefault();
-					e.stopPropagation();
-				}
-			}}
-		>
-			{onSort && (
-				<>
-					<MenuItem
-						icon={<ArrowUpward size={16} />}
-						label="Sort ascending"
-						onClick={() => handleSort("asc")}
-						active={sortDirection === "asc"}
-						hoverBg={hoverBg}
-						textColor={textColor}
-					/>
-					<MenuItem
-						icon={<ArrowDownward size={16} />}
-						label="Sort descending"
-						onClick={() => handleSort("desc")}
-						active={sortDirection === "desc"}
-						hoverBg={hoverBg}
-						textColor={textColor}
-					/>
-					<MenuDivider color={borderColor} />
-				</>
-			)}
+	const containerStyles: React.CSSProperties = {
+		position: "absolute",
+		left: adjustedMenuLeft,
+		top: adjustedY,
+	};
 
-			{onChangeFormat &&
-				((column as GridColumn & { dataType?: string }).dataType === "number" ||
-					(column as GridColumn & { dataType?: string }).dataType === "date" ||
-					(column as GridColumn & { dataType?: string }).dataType ===
-						"time") && (
+	const contentStyles: React.CSSProperties = {
+		backgroundColor: bgColor,
+		border: `0.5px solid ${isDarkTheme ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
+		borderRadius: 4,
+		boxShadow: "0 2px 5px rgba(0,0,0,0.12)",
+		minWidth: 160,
+		zIndex: Z_INDEX.GRID_OVERLAY_EDITOR,
+		padding: 3,
+	};
+
+	const MenuWrapper = (
+		<div id={menuId} className="click-outside-ignore" style={containerStyles}>
+			<Popover open onOpenChange={(o) => !o && onClose()}>
+				{/* Anchor at wrapper origin so popover can position reliably */}
+				<PopoverAnchor
+					style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
+				/>
+				<PopoverContent
+					align="start"
+					sideOffset={0}
+					className="column-menu click-outside-ignore"
+					style={contentStyles}
+				>
 					<div
-						role="menuitem"
-						tabIndex={0}
-						onMouseEnter={handleFormatMenuEnter}
-						onMouseLeave={handleFormatMenuLeave}
+						role="menu"
+						onMouseDown={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+						onClick={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+						}}
+						onKeyDown={(e) => {
+							// Handle keyboard navigation for menu items
+							if (e.key === "Escape") {
+								// Close menu on Escape
+								e.preventDefault();
+								e.stopPropagation();
+								// The popover should handle closing
+							}
+							// Let individual menu items handle Enter/Space
+						}}
+						tabIndex={-1} // Focus should be on menu items, not the container
 					>
-						<MenuItem
-							icon={<FormatListNumbered size={16} />}
-							label="Format"
-							hasSubmenu
-							active={formatMenuOpen}
-							hoverBg={hoverBg}
-							textColor={textColor}
-						/>
-						{formatMenuOpen && (
+						{onSort && (
 							<>
-								{/* invisible bridge to allow mouse movement without gap */}
-								<div
-									role="presentation"
-									aria-hidden="true"
-									onMouseEnter={handleFormatMenuEnter}
-									onMouseLeave={handleFormatMenuLeave}
-									style={{
-										position: "absolute",
-										top: adjustedY + (onSort ? 73 : 4),
-										left: leftOverflow
-											? adjustedMenuLeft - SUBMENU_WIDTH - 4
-											: adjustedMenuLeft + MENU_WIDTH - 8,
-										width: leftOverflow ? SUBMENU_WIDTH + 4 : 8,
-										height: 32, // Height of menu item
-										zIndex: Z_INDEX.DROPDOWN,
-									}}
+								<MenuItem
+									icon={<ArrowUpward size={14} />}
+									label={i18n.getMessage("cm_sort_asc", isLocalized)}
+									onClick={() => handleSort("asc")}
+									active={sortDirection === "asc"}
+									hoverBg={hoverBg}
+									textColor={textColor}
 								/>
-								<FormattingMenu
-									column={column}
-									position={{
-										x: submenuLeft,
-										y: adjustedY + (onSort ? 73 : 4),
-									}}
-									onFormatChange={handleFormatChange}
-									onClose={() => setFormatMenuOpen(false)}
-									isDarkTheme={isDarkTheme}
-									parentTimeoutRef={closeTimeoutRef}
+								<MenuItem
+									icon={<ArrowDownward size={14} />}
+									label={i18n.getMessage("cm_sort_desc", isLocalized)}
+									onClick={() => handleSort("desc")}
+									active={sortDirection === "desc"}
+									hoverBg={hoverBg}
+									textColor={textColor}
 								/>
+								<MenuDivider color={borderColor} />
 							</>
 						)}
+
+						{onChangeFormat &&
+							((column as GridColumn & { dataType?: string }).dataType ===
+								"number" ||
+								(column as GridColumn & { dataType?: string }).dataType ===
+									"date" ||
+								(column as GridColumn & { dataType?: string }).dataType ===
+									"time") && (
+								<div
+									role="menuitem"
+									tabIndex={0}
+									onMouseEnter={handleFormatMenuEnter}
+									onMouseLeave={handleFormatMenuLeave}
+								>
+									<MenuItem
+										icon={<FormatListNumbered size={14} />}
+										label={i18n.getMessage("cm_format", isLocalized)}
+										hasSubmenu
+										active={formatMenuOpen}
+										hoverBg={hoverBg}
+										textColor={textColor}
+									/>
+									{formatMenuOpen && (
+										<FormattingMenu
+											column={column}
+											position={{ x: submenuLeft, y: adjustedY + 60 }}
+											onFormatChange={handleFormatChange}
+											onClose={() => setFormatMenuOpen(false)}
+											isDarkTheme={isDarkTheme}
+											parentTimeoutRef={closeTimeoutRef}
+										/>
+									)}
+								</div>
+							)}
+
+						{onAutosize && (
+							<MenuItem
+								onClick={handleAutosize}
+								icon={<UnfoldMore size={14} />}
+								label={i18n.getMessage("cm_autosize_column", isLocalized)}
+								hoverBg={hoverBg}
+								textColor={textColor}
+							/>
+						)}
+
+						{isPinned ? (
+							<MenuItem
+								icon={<Close size={14} />}
+								label={i18n.getMessage("cm_unpin_column", isLocalized)}
+								onClick={handleUnpin}
+								hoverBg={hoverBg}
+								textColor={textColor}
+							/>
+						) : (
+							<MenuItem
+								icon={<PushPin size={14} />}
+								label={i18n.getMessage("cm_pin_column", isLocalized)}
+								onClick={() => handlePin("left")}
+								hoverBg={hoverBg}
+								textColor={textColor}
+							/>
+						)}
+
+						{onHide && (
+							<MenuItem
+								icon={<VisibilityOff size={14} />}
+								label={i18n.getMessage("cm_hide_column", isLocalized)}
+								onClick={handleHide}
+								hoverBg={hoverBg}
+								textColor={textColor}
+							/>
+						)}
 					</div>
-				)}
-
-			{onAutosize && (
-				<MenuItem
-					icon={<UnfoldMore size={16} />}
-					label="Autosize column"
-					onClick={handleAutosize}
-					hoverBg={hoverBg}
-					textColor={textColor}
-				/>
-			)}
-
-			{isPinned ? (
-				<MenuItem
-					icon={<Close size={16} />}
-					label="Unpin column"
-					onClick={handleUnpin}
-					hoverBg={hoverBg}
-					textColor={textColor}
-				/>
-			) : (
-				<MenuItem
-					icon={<PushPin size={16} />}
-					label="Pin column"
-					onClick={() => handlePin("left")}
-					hoverBg={hoverBg}
-					textColor={textColor}
-				/>
-			)}
-
-			{onHide && (
-				<MenuItem
-					icon={<VisibilityOff size={16} />}
-					label="Hide column"
-					onClick={handleHide}
-					hoverBg={hoverBg}
-					textColor={textColor}
-				/>
-			)}
+				</PopoverContent>
+			</Popover>
 		</div>
 	);
 
-	if (!mounted || !portalContainer) return null;
+	if (!portalContainer) return null;
 
-	return ReactDOM.createPortal(menuContent, portalContainer);
+	return ReactDOM.createPortal(MenuWrapper, portalContainer);
 }
 
 interface MenuItemProps {
@@ -366,6 +362,11 @@ function MenuItem({
 	return (
 		<div
 			className={`menu-item ${active ? "active" : ""}`}
+			onMouseDown={(e) => {
+				// Prevent global mousedown outside handlers
+				e.preventDefault();
+				e.stopPropagation();
+			}}
 			onClick={(e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -383,12 +384,12 @@ function MenuItem({
 			style={{
 				display: "flex",
 				alignItems: "center",
-				gap: "8px",
-				padding: "8px 12px",
+				gap: "6px",
+				padding: "6px 10px",
 				cursor: "pointer",
 				backgroundColor: active ? hoverBg : "transparent",
 				color: textColor,
-				fontSize: "14px",
+				fontSize: "12px",
 				justifyContent: hasSubmenu ? "space-between" : "flex-start",
 			}}
 			onMouseEnter={(e) => {
@@ -400,11 +401,11 @@ function MenuItem({
 				}
 			}}
 		>
-			<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+			<div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
 				{icon}
 				{label}
 			</div>
-			{hasSubmenu && <ChevronRight size={16} />}
+			{hasSubmenu && <ChevronRight size={14} />}
 		</div>
 	);
 }

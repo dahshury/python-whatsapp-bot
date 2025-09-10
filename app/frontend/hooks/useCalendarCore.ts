@@ -44,7 +44,6 @@ export function useCalendarCore({
 	const {
 		handleDateClick: handleVacationDateClick,
 		recordingState,
-		setOnVacationUpdated,
 		vacationPeriods,
 	} = useVacation();
 	const { state: _sidebarState, open: sidebarOpen } = useSidebar();
@@ -98,7 +97,6 @@ export function useCalendarCore({
 		calculateHeight,
 		sidebarOpen,
 		refreshData: eventsState.refreshData,
-		...(setOnVacationUpdated ? { setOnVacationUpdated } : {}),
 		calendarRef,
 	});
 

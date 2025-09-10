@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
 	Bar,
 	BarChart,
@@ -30,6 +30,12 @@ const FunnelComp = Funnel as unknown as React.ComponentType<
 >;
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { ChartConfig } from "@/components/ui/chart";
+import {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/components/ui/chart";
 import { i18n } from "@/lib/i18n";
 import type {
 	CustomerSegment,
@@ -115,6 +121,11 @@ function TrendChartsComponent({
 	variant = "full",
 }: TrendChartsProps) {
 	const themeColors = useThemeColors();
+	const [activeIndexType, setActiveIndexType] = useState<number | null>(null);
+	const [activeIndexSlots, setActiveIndexSlots] = useState<number | null>(null);
+	const [activeIndexWeekly, setActiveIndexWeekly] = useState<number | null>(
+		null,
+	);
 
 	const chartColors = [
 		themeColors.primary,
@@ -345,6 +356,91 @@ function TrendChartsComponent({
 		};
 	});
 
+	// Build rounded pie chart config/data for customer segments using shadcn chart helpers
+	const toVarKey = useCallback(
+		(value: string) =>
+			value
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, "-")
+				.replace(/^-+|-+$/g, ""),
+		[],
+	);
+
+	const segmentItems = useMemo(
+		() =>
+			transformedCustomerSegments.map((entry) => {
+				const key = toVarKey(entry.segment);
+				return {
+					key,
+					name: key,
+					segment: entry.segment,
+					count: entry.count,
+					fill: `var(--color-${key})`,
+				};
+			}),
+		[transformedCustomerSegments, toVarKey],
+	);
+
+	const segmentChartConfig: ChartConfig = useMemo(() => {
+		const colorVars = [
+			"hsl(var(--chart-1))",
+			"hsl(var(--chart-2))",
+			"hsl(var(--chart-3))",
+			"hsl(var(--chart-4))",
+			"hsl(var(--chart-5))",
+		];
+		const config: ChartConfig = {};
+		segmentItems.forEach((item, index) => {
+			const color = colorVars[index % colorVars.length];
+			if (color) {
+				config[item.key] = {
+					label: item.segment,
+					color,
+				};
+			}
+		});
+		return config;
+	}, [segmentItems]);
+
+	// Bar chart configs for shadcn chart helpers
+	const typeDistChartConfig: ChartConfig = useMemo(
+		() => ({
+			current: {
+				label: i18n.getMessage("period_current", isLocalized),
+				color: "hsl(var(--chart-1))",
+			},
+			previous: {
+				label: i18n.getMessage("period_previous", isLocalized),
+				color: "hsl(var(--chart-2))",
+			},
+		}),
+		[isLocalized],
+	);
+
+	const timeSlotsChartConfig: ChartConfig = useMemo(
+		() => ({
+			count: {
+				label: i18n.getMessage("dashboard_reservations", isLocalized),
+				color: "hsl(var(--chart-1))",
+			},
+		}),
+		[isLocalized],
+	);
+
+	const weeklyActivityChartConfig: ChartConfig = useMemo(
+		() => ({
+			reservations: {
+				label: i18n.getMessage("dashboard_reservations", isLocalized),
+				color: "hsl(var(--chart-1))",
+			},
+			cancellations: {
+				label: i18n.getMessage("kpi_cancellations", isLocalized),
+				color: "hsl(var(--chart-2))",
+			},
+		}),
+		[isLocalized],
+	);
+
 	// Compact variant to reduce rendering cost in overview
 	if (variant === "compact") {
 		return (
@@ -426,38 +522,81 @@ function TrendChartsComponent({
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="h-[350px]">
-							<ResponsiveContainer width="100%" height="100%">
-								<BarChart data={typeDistributionWithPrev}>
-									<CartesianGrid
-										strokeDasharray="3 3"
-										stroke={themeColors.border}
-									/>
-									<XAxisComp
-										dataKey="label"
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<YAxisComp
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<Tooltip contentStyle={tooltipStyle} />
-									<Bar
-										dataKey="current"
-										name={i18n.getMessage("period_current", isLocalized)}
-										fill={themeColors.primary}
-										isAnimationActive={false}
-									/>
-									<Bar
-										dataKey="previous"
-										name={i18n.getMessage("period_previous", isLocalized)}
-										fill={themeColors.secondary}
-										isAnimationActive={false}
-									/>
-								</BarChart>
-							</ResponsiveContainer>
-						</div>
+						<ChartContainer
+							config={typeDistChartConfig}
+							className="h-[350px] w-full"
+						>
+							<BarChart
+								accessibilityLayer
+								data={typeDistributionWithPrev}
+								onMouseLeave={() => setActiveIndexType(null)}
+							>
+								<rect
+									x="0"
+									y="0"
+									width="100%"
+									height="85%"
+									fill="url(#pattern-type-dist)"
+								/>
+								<defs>
+									<pattern
+										id="pattern-type-dist"
+										x="0"
+										y="0"
+										width="10"
+										height="10"
+										patternUnits="userSpaceOnUse"
+									>
+										<circle
+											className="dark:text-muted/40 text-muted"
+											cx="2"
+											cy="2"
+											r="1"
+											fill="currentColor"
+										/>
+									</pattern>
+								</defs>
+								<CartesianGrid strokeDasharray="3 3" />
+								<XAxisComp dataKey="label" tick={{ fontSize: 12 }} />
+								<YAxisComp tick={{ fontSize: 12 }} />
+								<ChartTooltip
+									cursor={false}
+									content={<ChartTooltipContent indicator="dashed" />}
+								/>
+								<Bar dataKey="current" radius={4} fill="var(--color-current)">
+									{typeDistributionWithPrev.map((item, index) => (
+										<Cell
+											key={`type-current-${item.label}`}
+											className="duration-200"
+											fillOpacity={
+												activeIndexType === null
+													? 1
+													: activeIndexType === index
+														? 1
+														: 0.3
+											}
+											onMouseEnter={() => setActiveIndexType(index)}
+										/>
+									))}
+								</Bar>
+								<Bar dataKey="previous" radius={4} fill="var(--color-previous)">
+									{typeDistributionWithPrev.map((item, index) => (
+										<Cell
+											key={`type-prev-${item.label}`}
+											className="duration-200"
+											fillOpacity={
+												activeIndexType === null
+													? 1
+													: activeIndexType === index
+														? 1
+														: 0.3
+											}
+											onMouseEnter={() => setActiveIndexType(index)}
+										/>
+									))}
+								</Bar>
+							</BarChart>
+						</ChartContainer>
 					</CardContent>
 				</Card>
 			</motion.div>
@@ -471,39 +610,71 @@ function TrendChartsComponent({
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="h-[350px]">
-							<ResponsiveContainer width="100%" height="100%">
-								<BarChart data={transformedTimeSlots}>
-									<CartesianGrid
-										strokeDasharray="3 3"
-										stroke={themeColors.border}
-									/>
-									<XAxisComp
-										dataKey="time"
-										tick={{ fontSize: 11, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-										angle={-45}
-										textAnchor="end"
-										height={60}
-									/>
-									<YAxisComp
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<Tooltip contentStyle={tooltipStyle} />
-									<Bar
-										dataKey="count"
-										fill={themeColors.primary}
-										radius={[4, 4, 0, 0]}
-										name={i18n.getMessage(
-											"dashboard_reservations",
-											isLocalized,
-										)}
-										isAnimationActive={false}
-									/>
-								</BarChart>
-							</ResponsiveContainer>
-						</div>
+						<ChartContainer
+							config={timeSlotsChartConfig}
+							className="h-[350px] w-full"
+						>
+							<BarChart
+								data={transformedTimeSlots}
+								onMouseLeave={() => setActiveIndexSlots(null)}
+							>
+								<rect
+									x="0"
+									y="0"
+									width="100%"
+									height="85%"
+									fill="url(#pattern-time-slots)"
+								/>
+								<defs>
+									<pattern
+										id="pattern-time-slots"
+										x="0"
+										y="0"
+										width="10"
+										height="10"
+										patternUnits="userSpaceOnUse"
+									>
+										<circle
+											className="dark:text-muted/40 text-muted"
+											cx="2"
+											cy="2"
+											r="1"
+											fill="currentColor"
+										/>
+									</pattern>
+								</defs>
+								<CartesianGrid strokeDasharray="3 3" />
+								<XAxisComp
+									dataKey="time"
+									tick={{ fontSize: 11 }}
+									angle={-45}
+									textAnchor="end"
+									height={60}
+								/>
+								<YAxisComp tick={{ fontSize: 12 }} />
+								<ChartTooltip content={<ChartTooltipContent />} />
+								<Bar
+									dataKey="count"
+									radius={[4, 4, 0, 0]}
+									fill="var(--color-count)"
+								>
+									{transformedTimeSlots.map((item, index) => (
+										<Cell
+											key={`slot-${item.slot}-${item.time}`}
+											className="duration-200"
+											fillOpacity={
+												activeIndexSlots === null
+													? 1
+													: activeIndexSlots === index
+														? 1
+														: 0.3
+											}
+											onMouseEnter={() => setActiveIndexSlots(index)}
+										/>
+									))}
+								</Bar>
+							</BarChart>
+						</ChartContainer>
 					</CardContent>
 				</Card>
 			</motion.div>
@@ -517,43 +688,89 @@ function TrendChartsComponent({
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="h-[350px]">
-							<ResponsiveContainer width="100%" height="100%">
-								<BarChart data={transformedDayOfWeekData}>
-									<CartesianGrid
-										strokeDasharray="3 3"
-										stroke={themeColors.border}
-									/>
-									<XAxisComp
-										dataKey="day"
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<YAxisComp
-										tick={{ fontSize: 12, fill: themeColors.foreground }}
-										stroke={themeColors.foreground}
-									/>
-									<Tooltip contentStyle={tooltipStyle} />
-									<Bar
-										dataKey="reservations"
-										fill={themeColors.primary}
-										radius={[4, 4, 0, 0]}
-										name={i18n.getMessage(
-											"dashboard_reservations",
-											isLocalized,
-										)}
-										isAnimationActive={false}
-									/>
-									<Bar
-										dataKey="cancellations"
-										fill={themeColors.secondary}
-										radius={[4, 4, 0, 0]}
-										name={i18n.getMessage("kpi_cancellations", isLocalized)}
-										isAnimationActive={false}
-									/>
-								</BarChart>
-							</ResponsiveContainer>
-						</div>
+						<ChartContainer
+							config={weeklyActivityChartConfig}
+							className="h-[350px] w-full"
+						>
+							<BarChart
+								accessibilityLayer
+								data={transformedDayOfWeekData}
+								onMouseLeave={() => setActiveIndexWeekly(null)}
+							>
+								<rect
+									x="0"
+									y="0"
+									width="100%"
+									height="85%"
+									fill="url(#pattern-weekly)"
+								/>
+								<defs>
+									<pattern
+										id="pattern-weekly"
+										x="0"
+										y="0"
+										width="10"
+										height="10"
+										patternUnits="userSpaceOnUse"
+									>
+										<circle
+											className="dark:text-muted/40 text-muted"
+											cx="2"
+											cy="2"
+											r="1"
+											fill="currentColor"
+										/>
+									</pattern>
+								</defs>
+								<CartesianGrid strokeDasharray="3 3" />
+								<XAxisComp dataKey="day" tick={{ fontSize: 12 }} />
+								<YAxisComp tick={{ fontSize: 12 }} />
+								<ChartTooltip
+									cursor={false}
+									content={<ChartTooltipContent indicator="dashed" />}
+								/>
+								<Bar
+									dataKey="reservations"
+									radius={4}
+									fill="var(--color-reservations)"
+								>
+									{transformedDayOfWeekData.map((item, index) => (
+										<Cell
+											key={`week-res-${item.day}`}
+											className="duration-200"
+											fillOpacity={
+												activeIndexWeekly === null
+													? 1
+													: activeIndexWeekly === index
+														? 1
+														: 0.3
+											}
+											onMouseEnter={() => setActiveIndexWeekly(index)}
+										/>
+									))}
+								</Bar>
+								<Bar
+									dataKey="cancellations"
+									radius={4}
+									fill="var(--color-cancellations)"
+								>
+									{transformedDayOfWeekData.map((item, index) => (
+										<Cell
+											key={`week-can-${item.day}`}
+											className="duration-200"
+											fillOpacity={
+												activeIndexWeekly === null
+													? 1
+													: activeIndexWeekly === index
+														? 1
+														: 0.3
+											}
+											onMouseEnter={() => setActiveIndexWeekly(index)}
+										/>
+									))}
+								</Bar>
+							</BarChart>
+						</ChartContainer>
 					</CardContent>
 				</Card>
 			</motion.div>
@@ -610,30 +827,33 @@ function TrendChartsComponent({
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="h-[350px]">
-							<ResponsiveContainer width="100%" height="100%">
-								<PieChart>
-									<Pie
-										data={transformedCustomerSegments}
-										cx="50%"
-										cy="50%"
-										outerRadius={100}
-										fill={themeColors.primary}
+						<ChartContainer
+							config={segmentChartConfig}
+							className="[&_.recharts-text]:fill-background mx-auto max-h-[300px] w-full"
+						>
+							<PieChart>
+								<ChartTooltip
+									content={<ChartTooltipContent nameKey="name" hideLabel />}
+								/>
+								<Pie
+									data={segmentItems}
+									innerRadius={30}
+									dataKey="count"
+									radius={10}
+									cornerRadius={8}
+									paddingAngle={4}
+								>
+									<LabelList
 										dataKey="count"
-										label={false}
-									>
-										{/* Chart cells use index as key since data order is stable */}
-										{transformedCustomerSegments.map((entry, index) => (
-											<Cell
-												key={`segment-cell-${entry.segment}`}
-												fill={chartColors[index % chartColors.length]}
-											/>
-										))}
-									</Pie>
-									<Tooltip contentStyle={tooltipStyle} />
-								</PieChart>
-							</ResponsiveContainer>
-						</div>
+										stroke="none"
+										fontSize={12}
+										fontWeight={500}
+										fill="currentColor"
+										formatter={(value: number) => value.toString()}
+									/>
+								</Pie>
+							</PieChart>
+						</ChartContainer>
 					</CardContent>
 				</Card>
 			</motion.div>

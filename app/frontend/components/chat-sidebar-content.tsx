@@ -26,8 +26,8 @@ import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import { ConversationCombobox } from "@/components/conversation-combobox";
-import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import { GridPattern } from "@/components/magicui/grid-pattern";
+import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import {
 	EmojiPicker,
 	EmojiPickerContent,
@@ -245,24 +245,28 @@ const BasicChatInput: React.FC<{
 		};
 	}, [editor]);
 
-	// Check if conversation is inactive (last message > 24 hours ago)
+	// Check if conversation is inactive (last USER message > 24 hours ago)
 	const isInactive = React.useMemo(() => {
 		if (!messages.length) return true; // No messages = inactive
 
-		const lastMessage = messages[messages.length - 1];
-		if (!lastMessage || !lastMessage.date || !lastMessage.time) return false;
-
 		try {
+			const lastUserMessage = [...messages]
+				.reverse()
+				.find((m) => m && m.role === "user");
+			if (!lastUserMessage || !lastUserMessage.date || !lastUserMessage.time) {
+				return true; // No user message to anchor the 24h window
+			}
+
 			const lastMessageDateTime = new Date(
-				`${lastMessage.date}T${lastMessage.time}`,
+				`${lastUserMessage.date}T${lastUserMessage.time}`,
 			);
 			const now = new Date();
 			const hoursDiff =
 				(now.getTime() - lastMessageDateTime.getTime()) / (1000 * 60 * 60);
 			return hoursDiff > 24;
 		} catch (error) {
-			console.warn("Error parsing message timestamp:", error);
-			return false;
+			console.warn("Error parsing user message timestamp:", error);
+			return true;
 		}
 	}, [messages]);
 

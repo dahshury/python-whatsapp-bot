@@ -4,6 +4,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import type * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { Z_INDEX } from "@/lib/z-index";
 
 function TooltipProvider({
 	delayDuration = 0,
@@ -53,6 +54,7 @@ function TooltipContent({
 					className,
 				)}
 				{...props}
+				style={{ zIndex: Z_INDEX.DIALOG_CONTENT + 1 }}
 			>
 				{children}
 				{showArrow && (

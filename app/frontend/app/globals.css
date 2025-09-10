@@ -75,3 +75,12 @@ body {
 .fc-event.processing .fc-event-time {
 	user-select: none;
 }
+
+@layer base {
+  * {
+    @apply border-border;
+	}
+  body {
+    @apply bg-background text-foreground;
+	}
+}

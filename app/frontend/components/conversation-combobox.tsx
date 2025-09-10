@@ -14,6 +14,7 @@ import {
 	type PhoneOption,
 } from "@/components/ui/phone-combobox";
 import { useCustomerData } from "@/lib/customer-data-context";
+import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import type { Conversations, Reservation } from "@/types/calendar";
 
@@ -264,9 +265,10 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 								<PhoneCombobox
 									value={effectiveSelectedId || ""}
 									onChange={handleConversationSelect}
-									placeholder={
-										isLocalized ? "اختر محادثة..." : "Select conversation..."
-									}
+									placeholder={i18n.getMessage(
+										"chat_select_conversation",
+										isLocalized,
+									)}
 									phoneOptions={phoneOptions}
 									uncontrolled={false}
 									showCountrySelector={false}
@@ -274,6 +276,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 									size="sm"
 									className="w-full"
 									shrinkTextToFit={true}
+									preferPlaceholderWhenEmpty={true}
 									onMouseEnter={handleMouseEnter}
 									onMouseLeave={handleMouseLeave}
 								/>

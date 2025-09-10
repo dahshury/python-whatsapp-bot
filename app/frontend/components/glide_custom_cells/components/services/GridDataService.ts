@@ -28,6 +28,9 @@ export class GridDataService {
 					return data.value ?? "";
 				case "tempus-date-cell":
 					return data.date ?? null;
+				case "phone-cell":
+					// Sort by the underlying phone value
+					return data.value ?? "";
 				default:
 					return (
 						(cell as { displayData?: unknown }).displayData ??
@@ -45,6 +48,14 @@ export class GridDataService {
 	}
 
 	private extractSearchableText(cell: GridCell): string {
+		if (cell.kind === GridCellKind.Custom) {
+			const data = (cell as { data?: unknown }).data as
+				| { kind?: string; value?: unknown; date?: Date }
+				| undefined;
+			if (data?.kind === "phone-cell") {
+				return String(data.value ?? "").toLowerCase();
+			}
+		}
 		const disp = (cell as { displayData?: unknown }).displayData;
 		const data = (cell as { data?: unknown }).data;
 		return String(disp ?? data ?? "").toLowerCase();

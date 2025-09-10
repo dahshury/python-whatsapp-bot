@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
     create_engine,
     func,
+    text,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, scoped_session, Session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -111,6 +112,23 @@ class VacationPeriodModel(Base):
         CheckConstraint("end_date IS NULL OR start_date <= end_date", name="ck_vacation_start_before_end"),
         Index("idx_vacations_start", "start_date"),
         Index("idx_vacations_end", "end_date"),
+    )
+
+
+class NotificationEventModel(Base):
+    __tablename__ = "notification_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_type = Column(String, nullable=False, index=True)
+    # ISO 8601 UTC timestamp string (matches websocket broadcast timestamp)
+    ts_iso = Column(String, nullable=False, index=True)
+    # Raw payload as JSON string (so frontend can reconstruct message-specific text)
+    data = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=text('CURRENT_TIMESTAMP'))
+
+    __table_args__ = (
+        Index("idx_notification_events_type_ts", "event_type", "ts_iso"),
+        Index("idx_notification_events_created_at", "created_at"),
     )
 
 def init_models() -> None:

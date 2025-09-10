@@ -12,6 +12,16 @@
 	}
 }
 
+/* Opacity-only tooltip animation to avoid position jumps */
+@keyframes tooltipFadeOnly {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 /* Menu animations */
 @keyframes menuSlideIn {
 	from {

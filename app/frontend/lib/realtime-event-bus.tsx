@@ -26,10 +26,21 @@ export const RealtimeEventBus: React.FC = () => {
 				} catch {}
 
 				const local = isLocalOperation(type, data);
+
+				// Prefer server-provided timestamp for dedupe with persisted history
+				let tsNum = Date.now();
+				try {
+					const tsIso = (message?.detail as unknown as { timestamp?: string })
+						?.timestamp;
+					if (tsIso) {
+						const parsed = Date.parse(String(tsIso));
+						if (!Number.isNaN(parsed)) tsNum = parsed;
+					}
+				} catch {}
 				// Dispatch the notification capture event with local hint
 				try {
 					const notif = new CustomEvent("notification:add", {
-						detail: { type, data, ts: Date.now(), __local: local },
+						detail: { type, data, ts: tsNum, __local: local },
 					});
 					window.dispatchEvent(notif);
 				} catch {}

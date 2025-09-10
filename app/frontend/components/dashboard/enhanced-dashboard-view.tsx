@@ -5,13 +5,17 @@ import { motion } from "framer-motion";
 import { Download } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import type { DateRange } from "react-day-picker";
+import {
+	Tabs,
+	TabsList,
+	TabsTrigger,
+} from "@/components/animate-ui/components/radix/tabs";
 import { TransitionPanel } from "@/components/motion-primitives/transition-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangeWithPresets } from "@/components/ui/date-range-with-presets";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/animate-ui/components/radix/tabs";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { useDashboardData } from "@/lib/websocket-data-provider";

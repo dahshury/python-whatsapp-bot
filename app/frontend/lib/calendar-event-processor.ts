@@ -133,17 +133,19 @@ function toSlotBase(
 	try {
 		const baseTime = to24h(String(timeStr || "00:00"));
 		const timeParts = baseTime.split(":");
-		const hh = timeParts[0] ? parseInt(timeParts[0], 10) : 0;
-		const mm = timeParts[1] ? parseInt(timeParts[1], 10) : 0;
-		const minutes = (Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
+		const hh = timeParts[0] ? Number.parseInt(timeParts[0], 10) : 0;
+		const mm = timeParts[1] ? Number.parseInt(timeParts[1], 10) : 0;
+		const minutes =
+			(Number.isFinite(hh) ? hh : 0) * 60 + (Number.isFinite(mm) ? mm : 0);
 		const day = new Date(`${dateStr}T00:00:00`);
 		const { slotMinTime } = getSlotTimes(day, freeRoam, "");
 		const slotTimeParts = String(slotMinTime || "00:00:00")
 			.slice(0, 5)
 			.split(":");
-		const sH = slotTimeParts[0] ? parseInt(slotTimeParts[0], 10) : 0;
-		const sM = slotTimeParts[1] ? parseInt(slotTimeParts[1], 10) : 0;
-		const minMinutes = (Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
+		const sH = slotTimeParts[0] ? Number.parseInt(slotTimeParts[0], 10) : 0;
+		const sM = slotTimeParts[1] ? Number.parseInt(slotTimeParts[1], 10) : 0;
+		const minMinutes =
+			(Number.isFinite(sH) ? sH : 0) * 60 + (Number.isFinite(sM) ? sM : 0);
 		const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
 		const rel = Math.max(0, minutes - minMinutes);
 		const slotIndex = Math.floor(rel / duration);
@@ -160,9 +162,12 @@ function toSlotBase(
 function addMinutesToClock(baseTime: string, minutesToAdd: number): string {
 	try {
 		const addTimeParts = baseTime.split(":");
-		const h = addTimeParts[0] ? parseInt(addTimeParts[0], 10) : 0;
-		const m = addTimeParts[1] ? parseInt(addTimeParts[1], 10) : 0;
-		let total = (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0) + minutesToAdd;
+		const h = addTimeParts[0] ? Number.parseInt(addTimeParts[0], 10) : 0;
+		const m = addTimeParts[1] ? Number.parseInt(addTimeParts[1], 10) : 0;
+		let total =
+			(Number.isFinite(h) ? h : 0) * 60 +
+			(Number.isFinite(m) ? m : 0) +
+			minutesToAdd;
 		if (total < 0) total = 0;
 		if (total > 24 * 60 - 1) total = 24 * 60 - 1;
 		const hh = String(Math.floor(total / 60)).padStart(2, "0");
@@ -189,12 +194,13 @@ export function transformEventsForDataTable(
 	return events.map((e) => {
 		const customerName = (e as { extendedProps?: { customerName?: string } })
 			.extendedProps?.customerName;
-		const phone = (e as { extendedProps?: { phone?: string } }).extendedProps?.phone;
+		const phone = (e as { extendedProps?: { phone?: string } }).extendedProps
+			?.phone;
 		const waId =
-			(e as { extendedProps?: { waId?: string; wa_id?: string } })
-				.extendedProps?.waId ||
-			(e as { extendedProps?: { waId?: string; wa_id?: string } })
-				.extendedProps?.wa_id;
+			(e as { extendedProps?: { waId?: string; wa_id?: string } }).extendedProps
+				?.waId ||
+			(e as { extendedProps?: { waId?: string; wa_id?: string } }).extendedProps
+				?.wa_id;
 		const status = (e as { extendedProps?: { status?: string } }).extendedProps
 			?.status;
 

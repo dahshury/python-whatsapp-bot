@@ -49,7 +49,10 @@ export const ToastRouter: React.FC = () => {
 						isLocalized,
 					});
 				} else if (type === "conversation_new_message") {
-					const messageLabel = i18n.getMessage("toast_new_message", isLocalized);
+					const messageLabel = i18n.getMessage(
+						"toast_new_message",
+						isLocalized,
+					);
 					const title = `${messageLabel} • ${data.wa_id}`;
 					toastService.newMessage({
 						title,

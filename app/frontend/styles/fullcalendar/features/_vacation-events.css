@@ -353,3 +353,182 @@
 	background: hsl(var(--destructive) / 0.3);
 	background-image: none;
 }
+
+/* =================================================================
+   VACATION PATTERN BACKGROUND
+   ================================================================= */
+
+/* Define reusable zigzag pattern (light and dark variants) */
+:root {
+	--vacation-pattern: repeating-linear-gradient(
+			0deg,
+			transparent,
+			transparent 15px,
+			rgba(75, 85, 99, 0.15) 15px,
+			rgba(75, 85, 99, 0.15) 16px
+		),
+		repeating-linear-gradient(
+			90deg,
+			transparent,
+			transparent 25px,
+			rgba(107, 114, 128, 0.12) 25px,
+			rgba(107, 114, 128, 0.12) 26px
+		),
+		repeating-linear-gradient(
+			60deg,
+			transparent,
+			transparent 30px,
+			rgba(55, 65, 81, 0.10) 30px,
+			rgba(55, 65, 81, 0.10) 31px
+		),
+		repeating-linear-gradient(
+			150deg,
+			transparent,
+			transparent 28px,
+			rgba(31, 41, 55, 0.08) 28px,
+			rgba(31, 41, 55, 0.08) 29px
+		);
+}
+
+.dark {
+	--vacation-pattern: repeating-linear-gradient(
+			0deg,
+			transparent,
+			transparent 15px,
+			rgba(255, 255, 255, 0.20) 15px,
+			rgba(255, 255, 255, 0.20) 16px
+		),
+		repeating-linear-gradient(
+			90deg,
+			transparent,
+			transparent 25px,
+			rgba(255, 255, 255, 0.18) 25px,
+			rgba(255, 255, 255, 0.18) 26px
+		),
+		repeating-linear-gradient(
+			60deg,
+			transparent,
+			transparent 30px,
+			rgba(255, 255, 255, 0.15) 30px,
+			rgba(255, 255, 255, 0.15) 31px
+		),
+		repeating-linear-gradient(
+			150deg,
+			transparent,
+			transparent 28px,
+			rgba(255, 255, 255, 0.12) 28px,
+			rgba(255, 255, 255, 0.12) 29px
+		);
+}
+
+/* Apply pattern to vacation day cells */
+.fc-day.vacation-day {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
+.fc-day.vacation-day:hover {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
+/* Apply pattern to background events used for vacation spans */
+.fc-bg-event.vacation-background-event,
+.vacation-background-event {
+	background-image: var(--vacation-pattern);
+	background-color: transparent !important;
+	border-color: transparent !important;
+}
+
+.fc-daygrid .fc-bg-event.vacation-background-event,
+.fc-timegrid .fc-bg-event.vacation-background-event,
+.fc-multimonth .fc-bg-event.vacation-background-event,
+.fc-list .fc-bg-event.vacation-background-event {
+	background-image: var(--vacation-pattern);
+	background-color: transparent !important;
+}
+
+.fc-multimonth .fc-daygrid-day .fc-bg-event.vacation-background-event {
+	background-image: var(--vacation-pattern);
+	background-color: transparent !important;
+	opacity: 1;
+}
+
+/* Ensure 'today' on vacation also shows the pattern */
+.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+.fc-daygrid-day-frame {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
+.fc-multimonth .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
+.dark .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
+.dark
+	.fc-multimonth
+	.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+	.fc-daygrid-day-frame {
+	background-image: var(--vacation-pattern);
+	background-color: transparent;
+}
+
+/* =================================================================
+   VACATION TEXT EVENTS - CENTERED LABEL OVERLAY
+   ================================================================= */
+
+/* Make the text overlay fill the entire day cell and be non-interactive */
+.fc-event.vacation-text-event {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: var(--z-calendar-day-bg-highlight);
+	pointer-events: none;
+	background: transparent !important;
+	border: none !important;
+	padding: 0 !important;
+	margin: 0 !important;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: hsl(var(--foreground));
+}
+
+/* Ensure positioning context exists in multimonth and daygrid cells */
+.fc-multimonth .fc-daygrid-day,
+.fc-daygrid .fc-daygrid-day {
+	position: relative;
+}
+
+/* Hide default sub-elements to avoid top-left titles */
+.fc-event.vacation-text-event .fc-event-title,
+.fc-event.vacation-text-event .fc-event-time,
+.fc-event.vacation-text-event .fc-event-time-start,
+.fc-event.vacation-text-event .fc-event-time-sep,
+.fc-event.vacation-text-event .fc-event-time-end,
+.fc-event.vacation-text-event .fc-event-title-container {
+	display: none !important;
+}
+
+/* Typography for overlay text */
+.fc-event.vacation-text-event .fc-event-main,
+.fc-event.vacation-text-event .fc-event-main-frame {
+	font-weight: 800;
+	font-size: 18px;
+	letter-spacing: 0.3px;
+	text-align: center;
+}
+
+.dark .fc-event.vacation-text-event {
+	color: hsl(var(--foreground));
+}

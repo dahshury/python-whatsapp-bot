@@ -11,8 +11,11 @@ import {
 	Percent,
 	TrendingUp,
 } from "lucide-react";
-import React, { useCallback, useEffect, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
 import { useGridPortal } from "../contexts/GridPortalContext";
 
 interface FormatOption {
@@ -24,28 +27,28 @@ interface FormatOption {
 const NUMBER_FORMATS: FormatOption[] = [
 	{
 		format: "",
-		label: "Automatic",
-		icon: <Hash className="w-4 h-4" />,
+		label: i18n.getMessage("cm_format_automatic", false),
+		icon: <Hash className="w-3.5 h-3.5" />,
 	},
 	{
 		format: "localized",
-		label: "Localized",
-		icon: <FileText className="w-4 h-4" />,
+		label: i18n.getMessage("cm_format_localized", false),
+		icon: <FileText className="w-3.5 h-3.5" />,
 	},
 	{
 		format: "percentage",
-		label: "Percentage",
-		icon: <Percent className="w-4 h-4" />,
+		label: i18n.getMessage("cm_format_percentage", false),
+		icon: <Percent className="w-3.5 h-3.5" />,
 	},
 	{
 		format: "scientific",
-		label: "Scientific",
-		icon: <Calculator className="w-4 h-4" />,
+		label: i18n.getMessage("cm_format_scientific", false),
+		icon: <Calculator className="w-3.5 h-3.5" />,
 	},
 	{
 		format: "accounting",
-		label: "Accounting",
-		icon: <BarChart3 className="w-4 h-4" />,
+		label: i18n.getMessage("cm_format_accounting", false),
+		icon: <BarChart3 className="w-3.5 h-3.5" />,
 	},
 ];
 
@@ -55,52 +58,52 @@ const COLUMN_KIND_FORMAT_MAPPING: Record<string, FormatOption[]> = {
 	datetime: [
 		{
 			format: "",
-			label: "Automatic",
-			icon: <Clock className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_automatic", false),
+			icon: <Clock className="w-3.5 h-3.5" />,
 		},
 		{
 			format: "localized",
-			label: "Localized",
-			icon: <FileText className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_localized", false),
+			icon: <FileText className="w-3.5 h-3.5" />,
 		},
 		{
 			format: "distance",
-			label: "Distance",
-			icon: <TrendingUp className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_distance", false),
+			icon: <TrendingUp className="w-3.5 h-3.5" />,
 		},
 		{
 			format: "calendar",
-			label: "Calendar",
-			icon: <Calendar className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_calendar", false),
+			icon: <Calendar className="w-3.5 h-3.5" />,
 		},
 	],
 	date: [
 		{
 			format: "",
-			label: "Automatic",
-			icon: <Clock className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_automatic", false),
+			icon: <Clock className="w-3.5 h-3.5" />,
 		},
 		{
 			format: "localized",
-			label: "Localized",
-			icon: <FileText className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_localized", false),
+			icon: <FileText className="w-3.5 h-3.5" />,
 		},
 		{
 			format: "distance",
-			label: "Distance",
-			icon: <TrendingUp className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_distance", false),
+			icon: <TrendingUp className="w-3.5 h-3.5" />,
 		},
 	],
 	time: [
 		{
 			format: "",
-			label: "Automatic",
-			icon: <Clock className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_automatic", false),
+			icon: <Clock className="w-3.5 h-3.5" />,
 		},
 		{
 			format: "localized",
-			label: "Localized",
-			icon: <FileText className="w-4 h-4" />,
+			label: i18n.getMessage("cm_format_localized", false),
+			icon: <FileText className="w-3.5 h-3.5" />,
 		},
 	],
 };
@@ -122,10 +125,11 @@ export function FormattingMenu({
 	isDarkTheme = false,
 	parentTimeoutRef,
 }: FormattingMenuProps) {
+	const { isLocalized } = useLanguage();
 	const formats = getFormatsForColumn(column);
 	const [mounted, setMounted] = useState(false);
 	const portalContainer = useGridPortal();
-	const menuId = React.useId();
+	const menuId = "formatting-menu";
 
 	useEffect(() => {
 		setMounted(true);
@@ -154,7 +158,7 @@ export function FormattingMenu({
 			document.removeEventListener("mousedown", handleOutsideClick);
 			document.removeEventListener("keydown", handleEscape);
 		};
-	}, [onClose, menuId]);
+	}, [onClose]);
 
 	const handleFormatSelect = useCallback(
 		(format: string) => {
@@ -176,7 +180,11 @@ export function FormattingMenu({
 	};
 
 	const handleMouseLeave = () => {
-		onClose();
+		if (parentTimeoutRef) {
+			try {
+				parentTimeoutRef.current = setTimeout(() => onClose(), 150);
+			} catch {}
+		}
 	};
 
 	if (formats.length === 0) {
@@ -190,6 +198,11 @@ export function FormattingMenu({
 			className="formatting-menu click-outside-ignore"
 			onMouseEnter={handleMouseEnter}
 			onMouseLeave={handleMouseLeave}
+			onMouseDown={(e) => {
+				// Prevent mousedown from triggering global outside handlers
+				e.preventDefault();
+				e.stopPropagation();
+			}}
 			onClick={(e) => {
 				// Prevent click events from bubbling up to parent popover
 				e.preventDefault();
@@ -208,13 +221,13 @@ export function FormattingMenu({
 				left: position.x,
 				backgroundColor: bgColor,
 				border: `0.5px solid ${isDarkTheme ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
-				borderRadius: "6px",
-				boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+				borderRadius: "4px",
+				boxShadow: "0 2px 5px rgba(0, 0, 0, 0.12)",
 				backdropFilter: "blur(8px)",
-				minWidth: "180px",
-				maxWidth: "240px",
-				zIndex: 300, // Grid menu level
-				padding: "4px 0",
+				minWidth: "144px",
+				maxWidth: "192px",
+				zIndex: 300,
+				padding: "3px 0",
 				animation: "submenuSlideIn 150ms ease-out",
 				transformOrigin: position.x < 500 ? "top left" : "top right",
 			}}
@@ -223,7 +236,9 @@ export function FormattingMenu({
 				<FormatMenuItem
 					key={formatOption.format}
 					icon={formatOption.icon}
-					label={formatOption.label}
+					label={getFormatLabel(formatOption.format, (key) =>
+						i18n.getMessage(key, isLocalized),
+					)}
 					onClick={() => handleFormatSelect(formatOption.format)}
 					hoverBg={hoverBg}
 					textColor={textColor}
@@ -256,6 +271,10 @@ function FormatMenuItem({
 		<div
 			role="menuitem"
 			className="format-menu-item"
+			onMouseDown={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+			}}
 			onClick={(e) => {
 				e.preventDefault();
 				e.stopPropagation();
@@ -272,14 +291,14 @@ function FormatMenuItem({
 			style={{
 				display: "flex",
 				alignItems: "center",
-				gap: "8px",
-				padding: "8px 12px",
+				gap: "6px",
+				padding: "6px 10px",
 				cursor: "pointer",
 				backgroundColor: "transparent",
 				color: textColor,
-				fontSize: "14px",
+				fontSize: "12px",
 				borderRadius: "4px",
-				margin: "0 4px",
+				margin: "0 3px",
 				transition: "background-color 150ms ease",
 			}}
 			onMouseEnter={(e) => {
@@ -298,6 +317,27 @@ function FormatMenuItem({
 function getFormatsForColumn(column: GridColumn): FormatOption[] {
 	const columnKind = determineColumnKind(column);
 	return COLUMN_KIND_FORMAT_MAPPING[columnKind] || [];
+}
+
+function getFormatLabel(format: string, t: (key: string) => string): string {
+	switch (format) {
+		case "":
+			return t("cm_format_automatic");
+		case "localized":
+			return t("cm_format_localized");
+		case "percentage":
+			return t("cm_format_percentage");
+		case "scientific":
+			return t("cm_format_scientific");
+		case "accounting":
+			return t("cm_format_accounting");
+		case "distance":
+			return t("cm_format_distance");
+		case "calendar":
+			return t("cm_format_calendar");
+		default:
+			return format;
+	}
 }
 
 function determineColumnKind(column: GridColumn): string {

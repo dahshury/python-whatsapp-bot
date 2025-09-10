@@ -195,6 +195,11 @@ interface PhoneComboboxProps {
 	 * instead of growing the component width. Default is false.
 	 */
 	shrinkTextToFit?: boolean;
+	/**
+	 * When true and there is no selected value, prefer showing the placeholder
+	 * instead of a default +<countryCode> ... preview.
+	 */
+	preferPlaceholderWhenEmpty?: boolean;
 }
 
 const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
@@ -213,6 +218,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 	onMouseEnter,
 	onMouseLeave,
 	shrinkTextToFit = false,
+	preferPlaceholderWhenEmpty = false,
 }) => {
 	const { isLocalized } = useLanguage();
 	const [selectedPhone, setSelectedPhone] = React.useState<string>(value || "");
@@ -657,7 +663,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		const needed = textEl.scrollWidth;
 		if (available > 0 && needed > available) {
 			const raw = available / needed;
-			const clamped = Math.max(0.75, Math.min(1, raw));
+			const clamped = Math.max(0.6, Math.min(1, raw));
 			setTextScale(clamped);
 		} else {
 			setTextScale(1);
@@ -685,6 +691,13 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		ro.observe(container);
 		return () => ro.disconnect();
 	}, [recomputeScale, shrinkTextToFit]);
+
+	// Recompute scale when the displayed content or popover state changes
+	React.useEffect(() => {
+		if (!shrinkTextToFit) return;
+		const id = setTimeout(() => recomputeScale(), 0);
+		return () => clearTimeout(id);
+	}, [shrinkTextToFit, recomputeScale]);
 
 	// Prevent hydration mismatch and show loading state
 	if (!mounted) {
@@ -865,9 +878,11 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 									) : (
 										<span className="block w-full text-left" dir="ltr">
 											{selectedPhone ||
-												(country
-													? `+${getCountryCallingCode(country) || ""} ...`
-													: placeholder)}
+												(preferPlaceholderWhenEmpty
+													? placeholder
+													: country
+														? `+${getCountryCallingCode(country) || ""} ...`
+														: placeholder)}
 										</span>
 									)}
 								</div>

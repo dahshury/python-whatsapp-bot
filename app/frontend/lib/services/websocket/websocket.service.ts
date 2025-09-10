@@ -49,12 +49,14 @@ class WebSocketService {
 						if (!resolved) {
 							resolved = true;
 							window.removeEventListener("realtime", handler as EventListener);
+							clearTimeout(timeoutId);
 							resolve({ success: true, message: String(d.message || "") });
 						}
 					} else if (t === "modify_reservation_nack") {
 						if (!resolved) {
 							resolved = true;
 							window.removeEventListener("realtime", handler as EventListener);
+							clearTimeout(timeoutId);
 							const errorMessage =
 								detail?.error || d.message || "Operation failed";
 							resolve({ success: false, message: String(errorMessage) });
@@ -72,6 +74,7 @@ class WebSocketService {
 						if (!resolved) {
 							resolved = true;
 							window.removeEventListener("realtime", handler as EventListener);
+							clearTimeout(timeoutId);
 							resolve({ success: true });
 						}
 					}
@@ -91,13 +94,6 @@ class WebSocketService {
 
 			try {
 				window.addEventListener("realtime", handler as EventListener);
-
-				// Clean up timeout when resolved
-				const originalResolve = resolve;
-				resolve = (result) => {
-					clearTimeout(timeoutId);
-					originalResolve(result);
-				};
 			} catch {
 				clearTimeout(timeoutId);
 				resolve({
@@ -139,7 +135,7 @@ class WebSocketService {
 		if (wsSuccess) {
 			// Wait for backend confirmation
 			const confirmation = await this.waitForWSConfirmation({
-				reservationId: updates.reservationId || '',
+				reservationId: updates.reservationId || "",
 				waId,
 				date: updates.date,
 				time: updates.time,

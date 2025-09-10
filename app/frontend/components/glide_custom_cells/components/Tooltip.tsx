@@ -1,3 +1,4 @@
+import { CircleAlert } from "lucide-react";
 import type React from "react";
 import { createPortal } from "react-dom";
 import { Z_INDEX } from "@/lib/z-index";
@@ -7,78 +8,56 @@ interface TooltipProps {
 	x: number;
 	y: number;
 	visible: boolean;
+	fieldLabel?: string;
+	message?: string;
 }
 
-const Tooltip: React.FC<TooltipProps> = ({ content, x, y, visible }) => {
+const Tooltip: React.FC<TooltipProps> = ({
+	content,
+	x,
+	y,
+	visible,
+	fieldLabel,
+	message,
+}) => {
 	if (!visible || !content) return null;
-
-	// Get theme colors from CSS variables
-	const isDarkMode = document.documentElement.classList.contains("dark");
-
-	// Adjust position to prevent tooltip from going off-screen
-	const adjustedX = Math.min(x - 50, window.innerWidth - 200); // Center the tooltip
-	const adjustedY = Math.max(y - 35, 10); // Position above the cell
 
 	return createPortal(
 		<div
 			style={{
 				position: "fixed",
-				left: adjustedX,
-				top: adjustedY,
+				left: x,
+				top: y,
 				pointerEvents: "none",
-				zIndex: Z_INDEX.TOOLTIP,
-				maxWidth: "200px",
-				wordWrap: "break-word",
-				animation: "tooltipFadeIn 150ms ease-out",
+				zIndex: Z_INDEX.GRID_TOOLTIP,
 			}}
 			className="gdg-tooltip"
 		>
 			<div
+				className="relative max-w-[260px] rounded-md border bg-popover px-3 py-3 text-xs text-popover-foreground shadow-md"
 				style={{
-					backgroundColor: isDarkMode
-						? "hsl(var(--popover))"
-						: "hsl(var(--popover))",
-					color: "hsl(var(--popover-foreground))",
-					border: "1px solid hsl(var(--border))",
-					borderRadius: "var(--radius)",
-					padding: "6px 10px",
-					fontSize: "12px",
-					fontFamily: "var(--font-sans)",
-					boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
-					backdropFilter: "blur(8px)",
+					transform: "translate(-50%, calc(-100% - 8px))",
+					transformOrigin: "50% 100%",
+					animation: "tooltipFadeOnly 150ms ease-out",
 				}}
 			>
-				{content}
+				<div className="flex gap-3">
+					<CircleAlert
+						className="mt-0.5 shrink-0 opacity-70"
+						size={16}
+						aria-hidden="true"
+					/>
+					<div className="space-y-1">
+						{fieldLabel && (
+							<p className="text-[13px] font-medium">{fieldLabel}</p>
+						)}
+						<p className="text-muted-foreground text-xs">
+							{message ?? content}
+						</p>
+					</div>
+				</div>
+				<div className="absolute left-1/2 top-full -translate-x-1/2 -mt-1 h-2 w-2 rotate-45 border-l border-t bg-popover" />
 			</div>
-			{/* Arrow pointing down */}
-			<div
-				style={{
-					position: "absolute",
-					bottom: "-5px",
-					left: "50%",
-					transform: "translateX(-50%)",
-					width: 0,
-					height: 0,
-					borderLeft: "5px solid transparent",
-					borderRight: "5px solid transparent",
-					borderTop: "5px solid hsl(var(--border))",
-				}}
-			/>
-			<div
-				style={{
-					position: "absolute",
-					bottom: "-4px",
-					left: "50%",
-					transform: "translateX(-50%)",
-					width: 0,
-					height: 0,
-					borderLeft: "5px solid transparent",
-					borderRight: "5px solid transparent",
-					borderTop: isDarkMode
-						? "5px solid hsl(var(--popover))"
-						: "5px solid hsl(var(--popover))",
-				}}
-			/>
 		</div>,
 		document.body,
 	);

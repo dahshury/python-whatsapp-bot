@@ -3,15 +3,7 @@
 import { motion } from "framer-motion";
 import { Clock, MessageSquare, TrendingUp, Users } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import {
-	Bar,
-	BarChart,
-	CartesianGrid,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis as XAxisComp,
-	YAxis as YAxisComp,
-} from "recharts";
+import { Bar, BarChart, XAxis as XAxisComp } from "recharts";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +14,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import type { ChartConfig } from "@/components/ui/chart";
+import { ChartContainer } from "@/components/ui/chart";
 import {
 	HoverCard,
 	HoverCardContent,
@@ -58,57 +52,77 @@ interface MessageAnalysisProps {
 	isLocalized: boolean;
 }
 
-type WordTooltipProps = {
-	active?: boolean;
-	payload?: Array<{ dataKey?: string; value?: number }>;
-	label?: string | number;
-};
+// Monochrome custom bar shape for Most Common Words chart
+interface WordCustomBarProps {
+	fill?: string;
+	x?: number;
+	y?: number;
+	width?: number;
+	height?: number;
+	index?: number;
+	activeIndex?: number | null;
+	value?: number | string;
+	setActiveIndex?: (index: number | null) => void;
+}
 
-function WordTooltip({ active, payload, label }: WordTooltipProps) {
-	if (active && Array.isArray(payload) && payload.length > 0) {
-		const customerCount = Number(
-			payload.find((p) => p && p.dataKey === "customerCount")?.value ?? 0,
-		);
-		const assistantCount = Number(
-			payload.find((p) => p && p.dataKey === "assistantCount")?.value ?? 0,
-		);
-		const total = Number(customerCount) + Number(assistantCount);
-
-		return (
-			<div className="bg-background/95 border border-border rounded-lg shadow-md p-3 backdrop-blur-sm">
-				<p className="font-semibold text-foreground mb-2">
-					&quot;{String(label ?? "")}&quot;
-				</p>
-				<div className="space-y-1 text-sm">
-					<div className="flex items-center justify-between gap-4">
-						<div className="flex items-center gap-2">
-							<div className="w-3 h-3 rounded-sm bg-chart-1" />
-							<span className="text-muted-foreground">
-								{i18n.getMessage("msg_customers", false)}:
-							</span>
-						</div>
-						<span className="font-medium text-chart-1">{customerCount}</span>
-					</div>
-					<div className="flex items-center justify-between gap-4">
-						<div className="flex items-center gap-2">
-							<div className="w-3 h-3 rounded-sm bg-chart-2" />
-							<span className="text-muted-foreground">
-								{i18n.getMessage("msg_assistant", false)}:
-							</span>
-						</div>
-						<span className="font-medium text-chart-2">{assistantCount}</span>
-					</div>
-					<div className="border-t border-border/50 pt-1 mt-2">
-						<div className="flex items-center justify-between gap-4">
-							<span className="text-muted-foreground">Total:</span>
-							<span className="font-semibold text-foreground">{total}</span>
-						</div>
-					</div>
-				</div>
-			</div>
-		);
-	}
-	return null;
+function WordCustomBar(props: WordCustomBarProps) {
+	const {
+		fill,
+		x,
+		y,
+		width,
+		height,
+		index,
+		activeIndex,
+		value,
+		setActiveIndex,
+	} = props;
+	const xPos = Number(x || 0);
+	const realWidth = Number(width || 0);
+	const isActive = index === activeIndex;
+	const collapsedWidth = 2;
+	const barX = isActive ? xPos : xPos + (realWidth - collapsedWidth) / 2;
+	const textX = xPos + realWidth / 2;
+	return (
+		// biome-ignore lint/a11y/useSemanticElements: SVG g elements use role="button" for accessibility
+		<g
+			role="button"
+			tabIndex={0}
+			onMouseEnter={() => setActiveIndex?.(index ?? null)}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					setActiveIndex?.(index ?? null);
+				}
+			}}
+			aria-label={`Word bar ${index !== undefined ? index + 1 : 0}, value: ${value}`}
+		>
+			<motion.rect
+				y={y}
+				initial={{ width: collapsedWidth, x: barX }}
+				animate={{ width: isActive ? realWidth : collapsedWidth, x: barX }}
+				transition={{ duration: isActive ? 0.5 : 1, type: "spring" }}
+				height={height}
+				fill={fill}
+			/>
+			{isActive && (
+				<motion.text
+					key={index}
+					initial={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+					animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+					exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+					transition={{ duration: 0.1 }}
+					x={textX}
+					y={Number(y) - 5}
+					textAnchor="middle"
+					fill={fill}
+					className="font-mono text-xs"
+				>
+					{value}
+				</motion.text>
+			)}
+		</g>
+	);
 }
 
 export function MessageAnalysis({
@@ -119,6 +133,7 @@ export function MessageAnalysis({
 	isLocalized,
 }: MessageAnalysisProps) {
 	const [currentPage, setCurrentPage] = useState(0);
+	const [wordActiveIndex, setWordActiveIndex] = useState<number | null>(null);
 	const customersPerPage = 10;
 	const maxCustomers = 100;
 
@@ -777,64 +792,48 @@ export function MessageAnalysis({
 					<Card>
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
-								<MessageSquare className="h-5 w-5 text-chart-1" />
+								<MessageSquare className="h-5 w-5 text-muted-foreground" />
 								{i18n.getMessage("msg_most_common_words", isLocalized)}
 							</CardTitle>
 							<CardDescription>
-								{isLocalized
-									? "الكلمات الأكثر شيوعاً في المحادثات"
-									: "Most frequently used words in conversations"}
+								{i18n.getMessage("msg_most_common_words", isLocalized)}
 							</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<div className="h-[400px] relative border border-border/20 bg-background/50 rounded-md">
-								{enhancedWordFrequency.length > 0 ? (
-									<ResponsiveContainer width="100%" height="100%">
-										<BarChart
-											data={enhancedWordFrequency}
-											layout="horizontal"
-											margin={{ top: 20, right: 30, left: 80, bottom: 5 }}
-										>
-											<CartesianGrid
-												strokeDasharray="3 3"
-												stroke="hsl(var(--border))"
+							<ChartContainer
+								config={
+									{
+										desktop: { label: "Desktop", color: "hsl(var(--chart-1))" },
+									} as unknown as ChartConfig
+								}
+								className="h-[400px] w-full"
+							>
+								<BarChart
+									data={enhancedWordFrequency.map((w) => ({
+										month: w.word,
+										desktop: w.totalCount,
+									}))}
+									onMouseLeave={() => setWordActiveIndex(null)}
+								>
+									<XAxisComp
+										dataKey="month"
+										tickLine={false}
+										tickMargin={10}
+										axisLine={false}
+										tickFormatter={(value) => String(value).slice(0, 6)}
+									/>
+									<Bar
+										dataKey="desktop"
+										fill="var(--color-desktop)"
+										shape={
+											<WordCustomBar
+												setActiveIndex={setWordActiveIndex}
+												activeIndex={wordActiveIndex}
 											/>
-											<XAxisComp
-												type="number"
-												domain={[0, "dataMax"]}
-												tickFormatter={(value: number) => value.toString()}
-											/>
-											<YAxisComp
-												type="category"
-												dataKey="word"
-												tick={{ fontSize: 12 }}
-												width={70}
-											/>
-											<Bar
-												dataKey="customerCount"
-												stackId="a"
-												fill="#3b82f6"
-												name={i18n.getMessage("msg_customers", isLocalized)}
-												stroke="#3b82f6"
-												strokeWidth={1}
-											/>
-											<Bar
-												dataKey="assistantCount"
-												stackId="a"
-												fill="#ef4444"
-												name={i18n.getMessage("msg_assistant", isLocalized)}
-												stroke="#ef4444"
-												strokeWidth={1}
-											/>
-											<Tooltip content={<WordTooltip />} />
-										</BarChart>
-									</ResponsiveContainer>
-								) : (
-									<div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
-										{i18n.getMessage("chart_no_data", isLocalized)}
-									</div>
-								)}
-							</div>
+										}
+									/>
+								</BarChart>
+							</ChartContainer>
 						</CardContent>
 					</Card>
 				</motion.div>

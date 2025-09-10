@@ -148,7 +148,7 @@ export interface DashboardData {
 	customerSegments: CustomerSegment[];
 }
 
-export interface DateRange {
+interface DateRange {
 	from: Date;
 	to: Date;
 }

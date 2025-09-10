@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 
-const BACKEND_URL =
-	process.env.PYTHON_BACKEND_URL ||
-	process.env.BACKEND_URL ||
-	"http://localhost:8000";
+const BACKEND_URL = "http://backend:8000";
 
 // Very small Prometheus text parser for a known subset of metrics
 function parsePrometheusText(text: string): Record<string, number> {

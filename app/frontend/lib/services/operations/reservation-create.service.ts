@@ -1,7 +1,8 @@
 /* eslint-disable */
 import { reserveTimeSlot } from "@/lib/api";
-import { toastService } from "@/lib/toast-service";
 import { i18n } from "@/lib/i18n";
+import { generateLocalOpKeys } from "@/lib/realtime-utils";
+import { toastService } from "@/lib/toast-service";
 import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 import type {
 	ApiResponse,
@@ -45,6 +46,12 @@ export class ReservationCreateService {
 					creationData.tStr,
 				);
 
+				// Mark local echo BEFORE API call (WebSocket arrives immediately)
+				this.markLocalEchoForCreationPreApi({
+					...creationData,
+					tStr: slotTime,
+				});
+
 				// Backend creation
 				const resp = (await reserveTimeSlot({
 					id: creationData.waId,
@@ -67,12 +74,6 @@ export class ReservationCreateService {
 						date: creationData.dStr,
 						time: slotTime,
 					},
-				});
-
-				// Mark local echo (suppress duplicate WS-driven UI side effects)
-				this.markLocalEchoForCreation(resp, {
-					...creationData,
-					tStr: slotTime,
 				});
 			} catch (e) {
 				hasErrors = true;
@@ -155,7 +156,8 @@ export class ReservationCreateService {
 	private showValidationError(missing: string[]): void {
 		toastService.error(
 			this.isLocalized ? "حقول مطلوبة مفقودة" : "Missing required fields",
-			(this.isLocalized ? "يرجى إكمال: " : "Please fill: ") + missing.join(", "),
+			(this.isLocalized ? "يرجى إكمال: " : "Please fill: ") +
+				missing.join(", "),
 			3000,
 		);
 	}
@@ -176,7 +178,11 @@ export class ReservationCreateService {
 		return [
 			this.isLocalized ? "فشل إنشاء الحجز" : "Failed to create reservation",
 			`${data.name || data.waId} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
-			reason ? (this.isLocalized ? `السبب: ${reason}` : `reason: ${reason}`) : "",
+			reason
+				? this.isLocalized
+					? `السبب: ${reason}`
+					: `reason: ${reason}`
+				: "",
 		]
 			.filter(Boolean)
 			.join("\n");
@@ -200,19 +206,26 @@ export class ReservationCreateService {
 		}
 	}
 
-
-	private markLocalEchoForCreation(
-		resp: ApiResponse,
+	private markLocalEchoForCreationPreApi(
 		data: ReturnType<typeof this.prepareCreationData>,
 	): void {
-		const key1 = `reservation_created:${String(
-			resp?.id || resp?.reservationId || "",
-		)}:${data.dStr}:${data.tStr}`;
-		const key2 = `reservation_created:${String(data.waId)}:${data.dStr}:${data.tStr}`;
+		// Mark local echo BEFORE API call using wa_id pattern
+		// WebSocket arrives immediately so we can't wait for reservation ID
+		const keys = generateLocalOpKeys("reservation_created", {
+			id: "", // Will be empty, but we'll use wa_id instead
+			wa_id: data.waId,
+			date: data.dStr,
+			time: data.tStr,
+		});
 
-		this.localEchoManager.markLocalEcho(key1);
-		this.localEchoManager.markLocalEcho(key2);
+		// Keys marked before API call to prevent WebSocket echo notifications
+
+		// Mark all variants to ensure WebSocket echo is suppressed
+		for (const key of keys) {
+			this.localEchoManager.markLocalEcho(key);
+		}
 	}
+
 
 	private handleCreationError(
 		error: Error,
