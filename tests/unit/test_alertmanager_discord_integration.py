@@ -7,7 +7,7 @@ from prometheus_client import Counter, REGISTRY
 class TestAlertmanagerDiscordIntegration(unittest.TestCase):
     def setUp(self):
         # URL of the Discord adapter (Alertmanager webhook receiver)
-        self.url = os.getenv('DISCORD_ADAPTER_URL', 'http://localhost:9094')
+        self.url = 'http://localhost:9094'
         # Sample Alertmanager webhook payload
         self.payload = {
             "version": "4",

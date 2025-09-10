@@ -14,5 +14,4 @@ services:
       context: app/frontend
       dockerfile: Dockerfile
     environment:
-      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
 

@@ -14,7 +14,6 @@ services:
       - prometheus
     environment:
       - ENV=${ENVIRONMENT:-development}
-      - BACKEND_URL=http://backend:8000
     volumes:
       - ${MOUNT_BACKEND:-./app:/app/app}
       - ./run.py:/app/run.py
