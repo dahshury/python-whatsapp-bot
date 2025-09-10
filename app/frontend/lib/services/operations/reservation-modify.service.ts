@@ -69,9 +69,7 @@ class ReservationModifyService {
 				// Pre-mark local echo BEFORE calling backend (WebSocket echo may arrive immediately)
 				try {
 					const preKeys = generateLocalOpKeys("reservation_updated", {
-						id:
-							original.extendedProps?.reservationId ||
-							modificationData.evId,
+						id: original.extendedProps?.reservationId || modificationData.evId,
 						wa_id: modificationData.waId,
 						date: modificationData.dateStrNew,
 						time: slotTime,

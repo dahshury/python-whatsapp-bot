@@ -157,6 +157,12 @@
 	cursor: not-allowed;
 	transition: none;
 }
+/* Disable day header nav link clicks on vacation days */
+.fc-col-header-cell.vacation-day-header a,
+.fc-timegrid-axis-frame.vacation-day-header a {
+	pointer-events: none;
+	cursor: default;
+}
 
 .dark .fc-day.vacation-day:hover {
 	background-color: hsl(var(--destructive) / 0.2);
@@ -189,16 +195,15 @@
  * Provides consistent appearance across daygrid and multimonth views
  */
 
-/* Make vacation days non-interactive */
-.fc-multimonth .fc-daygrid-day.vacation-day,
-.fc-daygrid .fc-daygrid-day.vacation-day {
+/* Make vacation day number (nav link) non-interactive, but allow event clicks */
+.fc-multimonth .fc-daygrid-day.vacation-day a.fc-daygrid-day-number,
+.fc-daygrid .fc-daygrid-day.vacation-day a.fc-daygrid-day-number {
 	pointer-events: none;
 }
 
-/* Vacation day events should still be visible but not interactive */
+/* Vacation day events remain clickable (for opening conversations) */
 .fc-multimonth .fc-daygrid-day.vacation-day .fc-event,
 .fc-daygrid .fc-daygrid-day.vacation-day .fc-event {
-	pointer-events: none;
 	opacity: 0.7;
 	position: relative;
 	z-index: var(--z-fc-multimonth-variant-primary);
@@ -239,9 +244,8 @@
    WEEK VIEW VACATION STYLING (timeGridWeek)
    ================================================================= */
 
-/* Make vacation columns non-interactive in week view */
+/* Show not-allowed cursor in vacation columns in week view (keep event clicks working) */
 .fc-timeGridWeek-view .fc-timegrid-col.vacation-day {
-	pointer-events: none;
 	cursor: not-allowed;
 }
 

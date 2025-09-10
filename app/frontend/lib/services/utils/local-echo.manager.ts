@@ -7,12 +7,12 @@ class LocalEchoManager {
 			const globalScope = globalThis as GlobalThis;
 			globalScope.__localOps = globalScope.__localOps || new Set<string>();
 			globalScope.__localOps.add(key);
-			
-		setTimeout(() => {
-			try {
-				globalScope.__localOps?.delete(key);
-			} catch {}
-		}, ttlMs);
+
+			setTimeout(() => {
+				try {
+					globalScope.__localOps?.delete(key);
+				} catch {}
+			}, ttlMs);
 		} catch {}
 	}
 

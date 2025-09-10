@@ -61,9 +61,35 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 			if (isSuppressed) return;
 
 			if (Array.isArray(vacations)) {
+				// Parse backend-provided dates as DATE-ONLY to avoid timezone shifts
+				// that could exclude the selected end day in some locales.
+				const parseDateOnly = (value: string): Date => {
+					try {
+						const s = String(value || "");
+						const dateOnly = s.includes("T") ? s.slice(0, 10) : s;
+						const parts = dateOnly.split("-");
+						const y = Number.parseInt(parts[0] || "", 10);
+						const m = Number.parseInt(parts[1] || "", 10);
+						const d = Number.parseInt(parts[2] || "", 10);
+						if (
+							Number.isFinite(y) &&
+							Number.isFinite(m) &&
+							Number.isFinite(d)
+						) {
+							return new Date(y, m - 1, d);
+						}
+						// Fallback: construct then normalize to local date-only
+						const tmp = new Date(value);
+						return new Date(tmp.getFullYear(), tmp.getMonth(), tmp.getDate());
+					} catch {
+						const tmp = new Date(value);
+						return new Date(tmp.getFullYear(), tmp.getMonth(), tmp.getDate());
+					}
+				};
+
 				const periods = vacations.map((p: Vacation) => ({
-					start: new Date(p.start),
-					end: new Date(p.end),
+					start: parseDateOnly(p.start),
+					end: parseDateOnly(p.end),
 				}));
 
 				setVacationPeriods(periods);
@@ -262,7 +288,11 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({
 			const start = normalize(period.start);
 			const end = normalize(period.end);
 			for (
-				let cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+				let cur = new Date(
+					start.getFullYear(),
+					start.getMonth(),
+					start.getDate(),
+				);
 				cur.getTime() <= end.getTime();
 				cur = addDays(cur, 1)
 			) {

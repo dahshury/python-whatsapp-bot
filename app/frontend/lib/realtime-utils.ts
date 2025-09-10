@@ -118,7 +118,7 @@ export function buildLocalOpCandidates(
 	const time12 = String(data?.time_slot ?? "");
 	const time24 = normalizeTime12To24(time12, String(data?.time ?? ""));
 	const cands = new Set<string>();
-	
+
 	// For conversation messages, use simpler key pattern since we know the format
 	if (type === "conversation_new_message") {
 		// Conversation messages always have time in 24-hour format
@@ -139,11 +139,11 @@ export function buildLocalOpCandidates(
 		cands.add(`${type}:${waPart}:${datePart}:${time12}`);
 		cands.add(`${type}:${waPart}:${datePart}:${time24}`);
 	}
-	
+
 	const candidatesArray = Array.from(cands);
-	
+
 	// Reserved for debugging when needed
-	
+
 	return candidatesArray;
 }
 
@@ -153,9 +153,9 @@ export function isLocalOperation(type: string, data: LocalOpData): boolean {
 		(globalThis as { __localOps?: Set<string> }).__localOps =
 			(globalThis as { __localOps?: Set<string> }).__localOps ||
 			new Set<string>();
-		
+
 		const localOps = (globalThis as { __localOps?: Set<string> }).__localOps;
-		
+
 		for (const k of candidates) {
 			if (localOps?.has(k)) {
 				return true;

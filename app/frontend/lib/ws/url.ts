@@ -23,7 +23,9 @@ function resolveWebSocketUrl(): string {
 			const wsProto = isHttps ? "wss" : "ws";
 			const tab = getOrCreateTabId();
 			const wsUrl = `${wsProto}://${host}:8000/ws?tab=${encodeURIComponent(tab)}`;
-			console.log(`🔧 [DEBUG] Resolved WebSocket URL: ${wsUrl} (hostname: ${host}, protocol: ${window.location.protocol})`);
+			console.log(
+				`🔧 [DEBUG] Resolved WebSocket URL: ${wsUrl} (hostname: ${host}, protocol: ${window.location.protocol})`,
+			);
 			return wsUrl;
 		}
 	} catch (e) {
@@ -31,7 +33,9 @@ function resolveWebSocketUrl(): string {
 	}
 
 	// Fallback - should not reach here in normal operation
-	console.warn("🔧 [DEBUG] Using fallback WebSocket URL - window not available");
+	console.warn(
+		"🔧 [DEBUG] Using fallback WebSocket URL - window not available",
+	);
 	return "ws://localhost:8000/ws";
 }
 

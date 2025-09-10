@@ -1,52 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = "http://backend:8000";
+import { callPythonBackend } from "@/lib/backend";
 
 export async function GET(_request: NextRequest) {
 	try {
-		// Call Python backend to get vacation periods
-		const response = await fetch(`${BACKEND_URL}/vacations`, {
-			method: "GET",
-			headers: {
-				"Content-Type": "application/json",
-			},
-		});
-
-		if (!response.ok) {
-			console.error(
-				"Backend vacation periods API failed:",
-				response.status,
-				response.statusText,
-			);
-
-			// If backend doesn't have vacations endpoint (404), return empty array
-			if (response.status === 404) {
-				console.warn(
-					"Vacations endpoint not found on backend, returning empty array",
-				);
-				return NextResponse.json({
-					success: true,
-					data: [],
-					message: "Vacations endpoint not available on backend",
-				});
-			}
-
-			return NextResponse.json(
-				{
-					success: false,
-					message: `Backend API failed: ${response.statusText}`,
-					data: [],
-				},
-				{ status: response.status },
-			);
+		// Call Python backend (helper tries backend:8000 then localhost:8000)
+		const resp = await callPythonBackend<{ success?: boolean; data?: unknown }>(
+			"/vacations",
+		);
+		if (resp && typeof resp === "object" && "data" in resp) {
+			return NextResponse.json({
+				success: true,
+				data: (resp as { success?: boolean; data?: unknown }).data ?? [],
+			});
 		}
-
-		const vacationPeriods = await response.json();
-
-		return NextResponse.json({
-			success: true,
-			data: vacationPeriods,
-		});
+		return NextResponse.json({ success: true, data: resp ?? [] });
 	} catch (error) {
 		console.error("Error fetching vacation periods:", error);
 

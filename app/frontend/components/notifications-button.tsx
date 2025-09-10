@@ -14,6 +14,7 @@ import { callPythonBackend } from "@/lib/backend";
 import { useLanguage } from "@/lib/language-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
+import { useReservationsData } from "@/lib/websocket-data-provider";
 
 interface NotificationsButtonProps {
 	className?: string;
@@ -58,14 +59,46 @@ export function NotificationsButton({
 	notificationCount: _notificationCount = 0,
 }: NotificationsButtonProps) {
 	const { isLocalized } = useLanguage();
+	const { reservations } = useReservationsData();
 	const [items, setItems] = React.useState<NotificationItem[]>([]);
 	const [open, setOpen] = React.useState(false);
 
-	// Load persisted notifications from backend on mount
+	const resolveCustomerName = React.useCallback(
+		(waId?: string, fallbackName?: string): string | undefined => {
+			try {
+				if (fallbackName && String(fallbackName).trim())
+					return String(fallbackName);
+				const id = String(waId || "");
+				if (!id) return undefined;
+				const list =
+					(
+						reservations as
+							| Record<string, Array<{ customer_name?: string }>>
+							| undefined
+					)?.[id] || [];
+				for (const r of list) {
+					if (r?.customer_name) return String(r.customer_name);
+				}
+			} catch {}
+			return undefined;
+		},
+		[reservations],
+	);
+
+	// Load persisted notifications from backend once per tab on mount
 	React.useEffect(() => {
 		let isCancelled = false;
 		(async () => {
 			try {
+				const KEY = "notifications_loaded_v1";
+				try {
+					if (
+						typeof window !== "undefined" &&
+						sessionStorage.getItem(KEY) === "true"
+					) {
+						return; // already loaded this tab session
+					}
+				} catch {}
 				const resp = await callPythonBackend<{
 					success?: boolean;
 					data?: Array<{
@@ -84,72 +117,82 @@ export function NotificationsButton({
 						const d = (r.data || {}) as ReservationData;
 						const compositeKey = `${r.type}:${d?.id ?? d?.wa_id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`;
 						return {
-						id: `${tsNum}:${compositeKey}`,
-						text: (() => {
-							if (r.type === "reservation_created")
-								return `${isLocalized ? "تم إنشاء حجز" : "Reservation created"}: ${
-									d.customer_name || d.wa_id
-								} ${d.date ?? ""} ${d.time_slot ?? ""}`;
-							if (
-								r.type === "reservation_updated" ||
-								r.type === "reservation_reinstated"
-							)
-								return `${isLocalized ? "تم تعديل الحجز" : "Reservation modified"}: ${
-									d.customer_name || d.wa_id
-								} ${d.date ?? ""} ${d.time_slot ?? ""}`;
-							if (r.type === "reservation_cancelled")
-								return `${isLocalized ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${d.wa_id}`;
-							if (r.type === "conversation_new_message")
-								return `${isLocalized ? "رسالة جديدة" : "New message"}: ${d.wa_id}`;
-							if (r.type === "vacation_period_updated")
-								return isLocalized
-									? "تم تحديث فترات الإجازة"
-									: "Vacation periods updated";
-							return String(r.type);
-						})(),
-						timestamp: tsNum,
-						unread: false,
-						type: r.type,
-						data: d,
-					};
-				})
-				.filter((notification) => {
-					// Filter out notifications that match recent local operations
-					try {
-						// Check if this notification matches any recently marked local operations
-						const localOps = (globalThis as { __localOps?: Set<string> }).__localOps;
-						if (!localOps || localOps.size === 0) return true;
-						
-						// Generate possible local operation keys for this notification
-						const d = notification.data;
-						const candidates = [
-							`${notification.type}:${d?.id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`,
-							`${notification.type}:${d?.wa_id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`,
-						];
-						
-						// If any candidate matches a local operation, filter out this notification
-						for (const candidate of candidates) {
-							if (localOps.has(candidate)) {
-								console.log("🔇 [NotificationsButton] Filtered out local operation:", {
-									candidate,
-									notification: notification.text
-								});
-								return false;
+							id: `${tsNum}:${compositeKey}`,
+							text: (() => {
+								if (r.type === "reservation_created")
+									return `${isLocalized ? "تم إنشاء حجز" : "Reservation created"}: ${
+										resolveCustomerName(d.wa_id, d.customer_name) || d.wa_id
+									} ${d.date ?? ""} ${d.time_slot ?? ""}`;
+								if (
+									r.type === "reservation_updated" ||
+									r.type === "reservation_reinstated"
+								)
+									return `${isLocalized ? "تم تعديل الحجز" : "Reservation modified"}: ${
+										resolveCustomerName(d.wa_id, d.customer_name) || d.wa_id
+									} ${d.date ?? ""} ${d.time_slot ?? ""}`;
+								if (r.type === "reservation_cancelled")
+									return `${isLocalized ? "تم إلغاء الحجز" : "Reservation cancelled"}: ${d.wa_id}`;
+								if (r.type === "conversation_new_message")
+									return `${isLocalized ? "رسالة جديدة" : "New message"}: ${
+										resolveCustomerName(d.wa_id, d.customer_name) || d.wa_id
+									}`;
+								if (r.type === "vacation_period_updated")
+									return isLocalized
+										? "تم تحديث فترات الإجازة"
+										: "Vacation periods updated";
+								return String(r.type);
+							})(),
+							timestamp: tsNum,
+							unread: false,
+							type: r.type,
+							data: d,
+						};
+					})
+					.filter((notification) => {
+						// Filter out notifications that match recent local operations
+						try {
+							// Check if this notification matches any recently marked local operations
+							const localOps = (globalThis as { __localOps?: Set<string> })
+								.__localOps;
+							if (!localOps || localOps.size === 0) return true;
+
+							// Generate possible local operation keys for this notification
+							const d = notification.data;
+							const candidates = [
+								`${notification.type}:${d?.id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`,
+								`${notification.type}:${d?.wa_id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`,
+							];
+
+							// If any candidate matches a local operation, filter out this notification
+							for (const candidate of candidates) {
+								if (localOps.has(candidate)) {
+									console.log(
+										"🔇 [NotificationsButton] Filtered out local operation:",
+										{
+											candidate,
+											notification: notification.text,
+										},
+									);
+									return false;
+								}
 							}
+							return true;
+						} catch {
+							return true; // If error, show the notification
 						}
-						return true;
-					} catch {
-						return true; // If error, show the notification
-					}
-				});
+					});
 				loaded.sort((a, b) => b.timestamp - a.timestamp);
 				if (!isCancelled) setItems(loaded.slice(0, 150));
+				try {
+					if (typeof window !== "undefined")
+						sessionStorage.setItem(KEY, "true");
+				} catch {}
 			} catch {}
 		})();
 		return () => {
 			isCancelled = true;
 		};
-	}, [isLocalized]);
+	}, [isLocalized, resolveCustomerName]);
 
 	const unreadCount = React.useMemo(
 		() => items.filter((n) => n.unread).length,
@@ -210,13 +253,13 @@ export function NotificationsButton({
 				if (type === "reservation_created")
 					return `${
 						isLocalized ? "تم إنشاء حجز" : "Reservation created"
-					}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${
+					}: ${resolveCustomerName(data.wa_id, data.customer_name) || data.wa_id} ${data.date ?? ""} ${
 						data.time_slot ?? ""
 					}`;
 				if (type === "reservation_updated" || type === "reservation_reinstated")
 					return `${
 						isLocalized ? "تم تعديل الحجز" : "Reservation modified"
-					}: ${data.customer_name || data.wa_id} ${data.date ?? ""} ${
+					}: ${resolveCustomerName(data.wa_id, data.customer_name) || data.wa_id} ${data.date ?? ""} ${
 						data.time_slot ?? ""
 					}`;
 				if (type === "reservation_cancelled")
@@ -224,7 +267,9 @@ export function NotificationsButton({
 						isLocalized ? "تم إلغاء الحجز" : "Reservation cancelled"
 					}: ${data.wa_id}`;
 				if (type === "conversation_new_message")
-					return `${isLocalized ? "رسالة جديدة" : "New message"}: ${data.wa_id}`;
+					return `${isLocalized ? "رسالة جديدة" : "New message"}: ${
+						resolveCustomerName(data.wa_id, data.customer_name) || data.wa_id
+					}`;
 				if (type === "vacation_period_updated")
 					return isLocalized
 						? "تم تحديث فترات الإجازة"
@@ -251,7 +296,7 @@ export function NotificationsButton({
 		window.addEventListener("notification:add", handler as EventListener);
 		return () =>
 			window.removeEventListener("notification:add", handler as EventListener);
-	}, [isLocalized, open]);
+	}, [isLocalized, open, resolveCustomerName]);
 
 	const handleMarkAllAsRead = React.useCallback(() => {
 		setItems((prev) => prev.map((n) => ({ ...n, unread: false })));

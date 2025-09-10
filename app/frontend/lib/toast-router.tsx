@@ -5,9 +5,33 @@ import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { notificationManager } from "@/lib/services/notifications/notification-manager.service";
 import { toastService } from "@/lib/toast-service";
+import { useReservationsData } from "@/lib/websocket-data-provider";
 
 export const ToastRouter: React.FC = () => {
 	const { isLocalized } = useLanguage();
+	const { reservations } = useReservationsData();
+
+	const resolveCustomerName = React.useCallback(
+		(waId?: string, fallbackName?: string): string | undefined => {
+			try {
+				if (fallbackName && String(fallbackName).trim())
+					return String(fallbackName);
+				const id = String(waId || "");
+				if (!id) return undefined;
+				const list =
+					(
+						reservations as
+							| Record<string, Array<{ customer_name?: string }>>
+							| undefined
+					)?.[id] || [];
+				for (const r of list) {
+					if (r?.customer_name) return String(r.customer_name);
+				}
+			} catch {}
+			return undefined;
+		},
+		[reservations],
+	);
 
 	React.useEffect(() => {
 		const handleAny = (ev: Event) => {
@@ -53,7 +77,13 @@ export const ToastRouter: React.FC = () => {
 						"toast_new_message",
 						isLocalized,
 					);
-					const title = `${messageLabel} • ${data.wa_id}`;
+					const waId = String((data as { wa_id?: string })?.wa_id || "");
+					const name = resolveCustomerName(
+						waId,
+						(data as { customer_name?: string })?.customer_name,
+					);
+					const who = name || waId;
+					const title = `${messageLabel} • ${who}`;
 					toastService.newMessage({
 						title,
 						description: (data.message || "").slice(0, 100),
@@ -71,7 +101,7 @@ export const ToastRouter: React.FC = () => {
 				handleAny as EventListener,
 			);
 		};
-	}, [isLocalized]);
+	}, [isLocalized, resolveCustomerName]);
 
 	return null;
 };

@@ -185,7 +185,6 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			onEventDragStop,
 			onViewChange: _onViewChange,
 			onContextMenu,
-			onUpdateSize,
 			onEventMouseDown,
 			onNavDate,
 			droppable,
@@ -260,26 +259,28 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					(globalThis as { __isCalendarDragging?: boolean })
 						.__isCalendarDragging === true;
 
-				console.log("📅 [CALENDAR-CORE] Setting render events:", {
-					sanitizedEventsCount: sanitizedEvents.length,
-					isDragging,
-					vacationEventsInSanitized: sanitizedEvents.filter(
-						(e) => e.extendedProps?.__vacation,
-					).length,
-					backgroundEventsInSanitized: sanitizedEvents.filter(
-						(e) => e.display === "background",
-					).length,
-					sampleBackgroundEvents: sanitizedEvents
-						.filter((e) => e.display === "background")
-						.slice(0, 3)
-						.map((e) => ({
-							id: e.id,
-							start: e.start,
-							end: e.end,
-							display: e.display,
-							className: e.className,
-						})),
-				});
+				if (process.env.NODE_ENV !== "production") {
+					console.log("📅 [CALENDAR-CORE] Setting render events:", {
+						sanitizedEventsCount: sanitizedEvents.length,
+						isDragging,
+						vacationEventsInSanitized: sanitizedEvents.filter(
+							(e) => e.extendedProps?.__vacation,
+						).length,
+						backgroundEventsInSanitized: sanitizedEvents.filter(
+							(e) => e.display === "background",
+						).length,
+						sampleBackgroundEvents: sanitizedEvents
+							.filter((e) => e.display === "background")
+							.slice(0, 3)
+							.map((e) => ({
+								id: e.id,
+								start: e.start,
+								end: e.end,
+								display: e.display,
+								className: e.className,
+							})),
+					});
+				}
 
 				if (isDragging) {
 					frozenEventsRef.current = sanitizedEvents;
@@ -407,12 +408,23 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			[currentDate, freeRoam, isVacationDate],
 		);
 
-		// Day header class names (vacation styling now handled by background events)
-		const getDayHeaderClassNames = useCallback((_arg: unknown) => {
-			// Note: Vacation styling is now handled by FullCalendar background events
-			// No need to check isVacationDate here
-			return "";
-		}, []);
+		// Day header class names - mark vacation headers to disable nav link clicks via CSS
+		const getDayHeaderClassNames = useCallback(
+			(arg: { date?: Date }) => {
+				try {
+					const d = arg?.date;
+					if (!d || !isVacationDate) return "";
+					const y = d.getFullYear();
+					const m = String(d.getMonth() + 1).padStart(2, "0");
+					const dd = String(d.getDate()).padStart(2, "0");
+					const ymd = `${y}-${m}-${dd}`;
+					return isVacationDate(ymd) ? "vacation-day-header" : "";
+				} catch {
+					return "";
+				}
+			},
+			[isVacationDate],
+		);
 
 		// Prevent selecting ranges that include vacation days
 		const handleSelectAllow = useCallback(
@@ -433,6 +445,35 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 						const dateOnly = `${yyyy}-${mm}-${dd}`;
 						if (isVacationDate?.(dateOnly)) return false;
 						cur.setDate(cur.getDate() + 1);
+					}
+				} catch {}
+				return true;
+			},
+			[isVacationDate],
+		);
+
+		// Block dragging into or within vacation days; allow event clicks
+		const handleEventAllow = useCallback(
+			(info: { start?: Date; end?: Date }) => {
+				try {
+					if (!isVacationDate) return true;
+					const start = info?.start ? new Date(info.start) : null;
+					const end = info?.end ? new Date(info.end) : null;
+					if (!start) return true;
+					const cursor = new Date(start);
+					// FullCalendar may provide end exclusive; iterate until before end
+					while (true) {
+						const y = cursor.getFullYear();
+						const m = String(cursor.getMonth() + 1).padStart(2, "0");
+						const d = String(cursor.getDate()).padStart(2, "0");
+						const ymd = `${y}-${m}-${d}`;
+						if (isVacationDate(ymd)) return false;
+						if (!end) break;
+						// Stop when we reach the day before end (end is exclusive)
+						const next = new Date(cursor);
+						next.setDate(next.getDate() + 1);
+						if (next >= end) break;
+						cursor.setDate(cursor.getDate() + 1);
 					}
 				} catch {}
 				return true;
@@ -580,9 +621,10 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 				// Single updateSize call after a short delay for view stabilization
 				setTimeout(() => {
-					if (onUpdateSize) {
-						onUpdateSize();
-					}
+					try {
+						const api = calendarRef.current?.getApi?.();
+						api?.updateSize?.();
+					} catch {}
 				}, delay);
 
 				// Call original handler if provided
@@ -593,7 +635,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					});
 				}
 			},
-			[onUpdateSize, onViewDidMount],
+			[onViewDidMount],
 		);
 
 		// Handle dates set
@@ -602,9 +644,10 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				count("fc:datesSet");
 				// Single updateSize call after a short delay
 				setTimeout(() => {
-					if (onUpdateSize) {
-						onUpdateSize();
-					}
+					try {
+						const api = calendarRef.current?.getApi?.();
+						api?.updateSize?.();
+					} catch {}
 				}, 250);
 
 				// Call original handler if provided
@@ -618,16 +661,38 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					onNavDate(info.view.currentStart);
 				}
 			},
-			[onUpdateSize, onDatesSet, onNavDate],
+			[onDatesSet, onNavDate],
 		);
 
 		// Update slot times via FullCalendar API instead of remounting
 		useEffect(() => {
 			const api = calendarRef.current?.getApi();
-			if (api) {
-				api.setOption("slotMinTime", slotTimes.slotMinTime);
-				api.setOption("slotMaxTime", slotTimes.slotMaxTime);
-			}
+			if (!api) return;
+			try {
+				// Batch option updates to avoid double layout/reflow
+				// FullCalendar's CalendarApi supports batchRendering
+				const run = () => {
+					api.setOption("slotMinTime", slotTimes.slotMinTime);
+					api.setOption("slotMaxTime", slotTimes.slotMaxTime);
+				};
+				if (
+					typeof (
+						api as unknown as { batchRendering?: (cb: () => void) => void }
+					).batchRendering === "function"
+				) {
+					(
+						api as unknown as { batchRendering: (cb: () => void) => void }
+					).batchRendering(run);
+				} else {
+					run();
+				}
+				// Nudge size after slot change in next frame
+				requestAnimationFrame(() => {
+					try {
+						api.updateSize?.();
+					} catch {}
+				});
+			} catch {}
 		}, [slotTimes]);
 
 		// Update calendar size when container changes (attach once)
@@ -648,15 +713,27 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 			// Observe container resize (simple and stable across view changes)
 			const observers: ResizeObserver[] = [];
+			let resizeScheduled = false;
+			const scheduleUpdateSize = () => {
+				if (resizeScheduled) return;
+				resizeScheduled = true;
+				requestAnimationFrame(() => {
+					try {
+						const api = calendarRef.current?.getApi?.();
+						api?.updateSize?.();
+					} catch {}
+					resizeScheduled = false;
+				});
+			};
 			const resizeObserver = new ResizeObserver(() => {
-				onUpdateSize?.();
+				scheduleUpdateSize();
 			});
 			resizeObserver.observe(containerRef.current);
 			observers.push(resizeObserver);
 
 			// Always listen to window resize
 			const handleWindowResize = () => {
-				onUpdateSize?.();
+				scheduleUpdateSize();
 			};
 			window.addEventListener("resize", handleWindowResize);
 
@@ -666,7 +743,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				}
 				window.removeEventListener("resize", handleWindowResize);
 			};
-		}, [onUpdateSize]);
+		}, []);
 
 		// (removed) _handleEventAllow was unused; relying on other constraints
 
@@ -842,9 +919,17 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 						hour12: true,
 					}}
 					// Interaction control
-					// eventAllow intentionally omitted; rely on validRange/selectAllow/businessHours
+					// Block drag/resizes in vacation periods while allowing event clicks
+					{...(isVacationDate
+						? {
+								// FullCalendar's type expects (dropInfo, draggedEvent) but for resizes it passes (resizeInfo)
+								// We only care about the new start/end range to validate against vacations
+								eventAllow: (dropInfo: { start?: Date; end?: Date }) =>
+									handleEventAllow(dropInfo),
+							}
+						: {})}
 					// Styling
-					eventClassNames={(arg: EventContentArg) => {
+					eventClassNames={useCallback((arg: EventContentArg) => {
 						const event = arg?.event;
 						const classes = ["text-xs"] as string[];
 						const type = event?.extendedProps?.type;
@@ -862,8 +947,8 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 							else classes.push("reservation-type-0");
 						}
 						return classes;
-					}}
-					eventContent={(arg) => {
+					}, [])}
+					eventContent={useCallback((arg: EventContentArg) => {
 						// If this is a vacation text overlay, render large centered title only
 						if (arg?.event?.classNames?.includes("vacation-text-event")) {
 							const wrapper = document.createElement("div");
@@ -923,7 +1008,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 						container.appendChild(timeContainer);
 
 						return { domNodes: [container] };
-					}}
+					}, [])}
 					dayCellClassNames={getDayCellClassNames}
 					dayHeaderClassNames={getDayHeaderClassNames}
 					viewClassNames="bg-card rounded-lg shadow-sm"

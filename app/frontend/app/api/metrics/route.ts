@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 
-const BACKEND_URL = "http://backend:8000";
-
 // Very small Prometheus text parser for a known subset of metrics
 function parsePrometheusText(text: string): Record<string, number> {
 	const lines = text.split(/\r?\n/);
@@ -39,20 +37,32 @@ function parsePrometheusText(text: string): Record<string, number> {
 
 export async function GET() {
 	try {
-		const res = await fetch(`${BACKEND_URL}/metrics`, {
-			method: "GET",
-			headers: { Accept: "text/plain" },
-			cache: "no-store",
-		});
-		if (!res.ok) {
-			return NextResponse.json(
-				{ success: false, message: `Backend metrics error: ${res.status}` },
-				{ status: res.status },
-			);
+		const candidates = ["http://backend:8000", "http://localhost:8000"];
+		let lastError: unknown;
+		for (const base of candidates) {
+			try {
+				const res = await fetch(`${base}/metrics`, {
+					method: "GET",
+					headers: { Accept: "text/plain" },
+					cache: "no-store",
+				});
+				if (!res.ok) continue;
+				const text = await res.text();
+				const data = parsePrometheusText(text);
+				return NextResponse.json({ success: true, data });
+			} catch (err) {
+				lastError = err;
+			}
 		}
-		const text = await res.text();
-		const data = parsePrometheusText(text);
-		return NextResponse.json({ success: true, data });
+		return NextResponse.json(
+			{
+				success: false,
+				message:
+					(lastError as Error | undefined)?.message || "Metrics fetch failed",
+				data: {},
+			},
+			{ status: 500 },
+		);
 	} catch (error) {
 		return NextResponse.json(
 			{ success: false, message: (error as Error).message, data: {} },

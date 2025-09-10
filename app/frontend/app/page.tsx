@@ -195,6 +195,15 @@ export default function HomePage() {
 		return () => window.removeEventListener("resize", onResize);
 	}, []);
 
+	// Stable updateSize handler to avoid re-creating ResizeObservers downstream
+	const handleCalendarUpdateSize = React.useCallback(() => {
+		try {
+			const api = calendarRef.current?.getApi?.();
+			if (api && (api as { view?: unknown }).view)
+				calendarRef.current?.updateSize?.();
+		} catch {}
+	}, []);
+
 	// Stage J: Enable real hover card + drag handlers (others stay inert)
 	const closeHoverCardRef = React.useRef<(() => void) | null>(null);
 	const dragHandlers = useCalendarDragHandlers({
@@ -488,13 +497,7 @@ export default function HomePage() {
 										handleViewDetails={() => {}}
 										setCurrentView={calendarState.setCurrentView}
 										setCalendarHeight={setCalendarHeight}
-										handleUpdateSize={() => {
-											try {
-												const api = calendarRef.current?.getApi?.();
-												if (api && (api as { view?: unknown }).view)
-													calendarRef.current?.updateSize?.();
-											} catch {}
-										}}
+										handleUpdateSize={handleCalendarUpdateSize}
 										onViewChange={calendarState.setCurrentView}
 										isHydrated={true}
 										setCurrentDate={calendarState.setCurrentDate}

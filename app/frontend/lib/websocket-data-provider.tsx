@@ -3,9 +3,8 @@ import * as React from "react";
 import { BackendConnectionOverlay } from "@/components/backend-connection-overlay";
 import { useWebSocketData } from "@/hooks/useWebSocketData";
 import { callPythonBackend } from "@/lib/backend";
-
-import type { DashboardData, PrometheusMetrics } from "@/types/dashboard";
 import type { VacationSnapshot } from "@/lib/ws/types";
+import type { DashboardData, PrometheusMetrics } from "@/types/dashboard";
 
 export interface ConversationMessage {
 	id?: string;
@@ -111,17 +110,29 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	// One-time REST fallback to ensure existing vacation periods are visible before WS snapshot
 	React.useEffect(() => {
 		let cancelled = false;
+		const LOAD_KEY = "vacations_rest_loaded_v1";
+		const hasRunRef = { current: false } as { current: boolean };
+		try {
+			hasRunRef.current =
+				(typeof window !== "undefined" &&
+					(sessionStorage.getItem(LOAD_KEY) === "true" ||
+						(Array.isArray(cached.vacations) &&
+							cached.vacations.length > 0))) ||
+				false;
+		} catch {}
+
 		const loadInitialVacations = async () => {
 			try {
-				// If we already have cached vacations, skip
-				if (Array.isArray(cached.vacations) && cached.vacations.length > 0) return;
+				if (hasRunRef.current) return;
 				// Small delay to allow WS snapshot; if none, fetch via REST
 				await new Promise((r) => setTimeout(r, 350));
 				if (cancelled) return;
 				// If WS already populated vacations, skip
 				try {
-					const wsVacSnapshots = (ws as { vacations?: VacationSnapshot[] })?.vacations || [];
-					if (Array.isArray(wsVacSnapshots) && wsVacSnapshots.length > 0) return;
+					const wsVacSnapshots =
+						(ws as { vacations?: VacationSnapshot[] })?.vacations || [];
+					if (Array.isArray(wsVacSnapshots) && wsVacSnapshots.length > 0)
+						return;
 				} catch {}
 				const resp = await callPythonBackend<{
 					success?: boolean;
@@ -131,21 +142,28 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 				const list = (resp as unknown as { data?: unknown })?.data;
 				if (Array.isArray(list)) {
 					const normalized = list
-						.filter((p: any) => p && p.start && p.end)
-						.map((p: any, idx: number) => ({
+						.filter(
+							(p: { start?: unknown; end?: unknown }) => p?.start && p.end,
+						)
+						.map((p: { start: unknown; end: unknown }, idx: number) => ({
 							id: `${String(p.start)}-${String(p.end)}-${idx}`,
 							start: String(p.start),
 							end: String(p.end),
 						})) as Vacation[];
 					setVacations(normalized);
 				}
+				try {
+					if (typeof window !== "undefined")
+						sessionStorage.setItem(LOAD_KEY, "true");
+				} catch {}
+				hasRunRef.current = true;
 			} catch {}
 		};
 		loadInitialVacations();
 		return () => {
 			cancelled = true;
 		};
-	}, [ws]);
+	}, [ws, cached.vacations]);
 
 	// Offline overlay state
 	const [showOffline, setShowOffline] = React.useState<boolean>(false);
@@ -280,7 +298,7 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 		if (ws?.vacations) {
 			// Convert VacationSnapshot[] to Vacation[] with generated IDs
 			const normalized = (ws.vacations as VacationSnapshot[])
-				.filter((p) => p && p.start && p.end)
+				.filter((p) => p?.start && p.end)
 				.map((p, idx) => ({
 					id: `${String(p.start)}-${String(p.end)}-${idx}`,
 					start: String(p.start),

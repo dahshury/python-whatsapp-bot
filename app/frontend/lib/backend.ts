@@ -1,12 +1,12 @@
-function resolveBackendBaseUrl(): string {
-	// Server-side (Next.js API): use Docker network name
+function resolveBackendBaseUrlCandidates(): string[] {
+	// Server-side (Next.js API): try Docker service first, then localhost
 	const isServer = typeof window === "undefined";
 	if (isServer) {
-		return "http://backend:8000";
+		return ["http://backend:8000", "http://localhost:8000"];
 	}
 
 	// Browser: use same-origin Next.js API proxy to hide backend URL
-	return "/api";
+	return ["/api"];
 }
 
 function joinUrl(base: string, path: string): string {
@@ -19,28 +19,40 @@ export async function callPythonBackend<T = unknown>(
 	path: string,
 	init?: RequestInit,
 ): Promise<T> {
-	const baseUrl = resolveBackendBaseUrl();
-	const url = joinUrl(baseUrl, path);
+	const bases = resolveBackendBaseUrlCandidates();
+	let lastError: unknown;
 
-	const res = await fetch(url, {
-		method: init?.method || "GET",
-		headers: {
-			"Content-Type": "application/json",
-			...(init?.headers as Record<string, string>),
-		},
-		body: (init?.body ?? null) as BodyInit | null,
-		cache: "no-store",
-	});
+	for (const baseUrl of bases) {
+		const url = joinUrl(baseUrl, path);
+		try {
+			const res = await fetch(url, {
+				method: init?.method || "GET",
+				headers: {
+					"Content-Type": "application/json",
+					...(init?.headers as Record<string, string>),
+				},
+				body: (init?.body ?? null) as BodyInit | null,
+				cache: "no-store",
+			});
 
-	const contentType = res.headers.get("content-type") || "";
-	if (!contentType.includes("application/json")) {
-		return {
-			success: res.ok,
-			status: res.status,
-			message: await res.text(),
-		} as unknown as T;
+			const contentType = res.headers.get("content-type") || "";
+			if (!contentType.includes("application/json")) {
+				return {
+					success: res.ok,
+					status: res.status,
+					message: await res.text(),
+				} as unknown as T;
+			}
+
+			const data = (await res.json().catch(() => ({}))) as T;
+			return data;
+		} catch (error) {
+			lastError = error;
+			// Try the next candidate host
+		}
 	}
 
-	const data = (await res.json().catch(() => ({}))) as T;
-	return data;
+	throw lastError instanceof Error
+		? lastError
+		: new Error("Backend request failed for all candidates");
 }

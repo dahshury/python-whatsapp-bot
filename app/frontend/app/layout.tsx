@@ -37,7 +37,7 @@ function getThemeInitScript(): string {
 }
 
 function getWsBootstrapScript(): string {
-    return `((function(){try{if(typeof window==='undefined')return;var w=window;var KEY='ws_tab_id_v1';var id=null;try{id=w.sessionStorage.getItem(KEY)}catch(_){}if(!id){id=Math.random().toString(36).slice(2)+'-'+Date.now().toString(36);try{w.sessionStorage.setItem(KEY,id)}catch(_){}}if(w.__wsInstance&&((w.__wsInstance.readyState===0)||(w.__wsInstance.readyState===1)))return;var isHttps=w.location.protocol==='https:';var host=w.location.hostname||'localhost';var proto=isHttps?'wss':'ws';var url=proto+'://'+host+':8000/ws?tab='+encodeURIComponent(id);var ws=new WebSocket(url);w.__wsInstance=ws;w.__wsConnectTs=Date.now()}catch(e){}})());`;
+	return `((function(){try{if(typeof window==='undefined')return;var w=window;var KEY='ws_tab_id_v1';var id=null;try{id=w.sessionStorage.getItem(KEY)}catch(_){}if(!id){id=Math.random().toString(36).slice(2)+'-'+Date.now().toString(36);try{w.sessionStorage.setItem(KEY,id)}catch(_){}}if(w.__wsInstance&&((w.__wsInstance.readyState===0)||(w.__wsInstance.readyState===1)))return;var isHttps=w.location.protocol==='https:';var host=w.location.hostname||'localhost';var proto=isHttps?'wss':'ws';var url=proto+'://'+host+':8000/ws?tab='+encodeURIComponent(id);var ws=new WebSocket(url);w.__wsInstance=ws;w.__wsConnectTs=Date.now()}catch(e){}})());`;
 }
 
 // Load Geist font for variable font support
@@ -101,7 +101,11 @@ export default function RootLayout({
 					crossOrigin="anonymous"
 				/>
 				{/* Preconnect to backend to speed up initial WebSocket handshake (localhost only) */}
-				<link rel="preconnect" href="http://localhost:8000" crossOrigin="anonymous" />
+				<link
+					rel="preconnect"
+					href="http://localhost:8000"
+					crossOrigin="anonymous"
+				/>
 				{/* Apply saved style theme class before paint to prevent FOUC */}
 				<script
 					id="style-theme-init"
