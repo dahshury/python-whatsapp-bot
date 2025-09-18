@@ -1,9 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { Clock, MessageSquare, TrendingUp, Users } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { Bar, BarChart, XAxis as XAxisComp } from "recharts";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +32,12 @@ import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { Clock, MessageSquare, TrendingUp, Users } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Bar, BarChart, XAxis as XAxisComp } from "recharts";
 
+import type { Conversations, Reservation } from "@/types/calendar";
 import type {
 	ConversationAnalysis,
 	CustomerActivity,
@@ -732,12 +733,12 @@ export function MessageAnalysis({
 															<CustomerStatsCard
 																selectedConversationId={customer.wa_id}
 																conversations={
-																	conversations as unknown as import("@/types/calendar").Conversations
+																	conversations as unknown as Conversations
 																}
 																reservations={
 																	reservations as unknown as Record<
 																		string,
-																		import("@/types/calendar").Reservation[]
+																		Reservation[]
 																	>
 																}
 																isLocalized={isLocalized}

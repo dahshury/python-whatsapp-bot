@@ -1,9 +1,9 @@
 // Using custom portal-based dialog for proper centering on viewport
 
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Z_INDEX } from "@/lib/z-index";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface UnsavedChangesDialogProps {
 	open: boolean;
@@ -72,10 +72,9 @@ export function UnsavedChangesDialog({
 					pointerEvents: "auto",
 				}}
 			>
-				<div
+				<dialog
 					className="bg-background border shadow-lg rounded-lg p-6 w-full max-w-md mx-auto animate-in fade-in-0 zoom-in-95 duration-200"
-					role="dialog"
-					aria-modal="true"
+					open
 					aria-labelledby="unsaved-changes-title"
 					onClick={(e) => e.stopPropagation()}
 					onKeyDown={(e) => {
@@ -126,7 +125,7 @@ export function UnsavedChangesDialog({
 							</div>
 						</div>
 					</div>
-				</div>
+				</dialog>
 			</div>
 		</>
 	);

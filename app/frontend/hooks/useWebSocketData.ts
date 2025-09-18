@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadCachedState, persistState } from "@/lib/ws/cache";
 import { reduceOnMessage } from "@/lib/ws/reducer";
 import type {
@@ -7,6 +6,10 @@ import type {
 	WebSocketMessage,
 } from "@/lib/ws/types";
 import { resolveWebSocketUrl } from "@/lib/ws/url";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+// Toggle verbose WebSocket error logging via env flag (default: off)
+const WS_DEBUG = process.env.NEXT_PUBLIC_WS_DEBUG === "true";
 
 // Extend globalThis to include custom properties
 declare global {
@@ -200,7 +203,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 					}
 				};
 				ws.onerror = (error) => {
-					console.error("🔧 [DEBUG] WebSocket error:", error);
+					if (WS_DEBUG) console.debug("🔧 [DEBUG] WebSocket error:", error);
 					connectingRef.current = false;
 					__g.__wsLock = false;
 				};
@@ -354,14 +357,18 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			};
 
 			ws.onerror = (error) => {
-				console.error("🔧 [DEBUG] WebSocket error:", error);
+				if (WS_DEBUG) console.debug("🔧 [DEBUG] WebSocket error:", error);
 				connectingRef.current = false;
 				__g.__wsLock = false; // Clear lock on error
 			};
 
 			wsRef.current = ws;
 		} catch (error) {
-			console.error("🔧 [DEBUG] Failed to create WebSocket connection:", error);
+			if (WS_DEBUG)
+				console.debug(
+					"🔧 [DEBUG] Failed to create WebSocket connection:",
+					error,
+				);
 			connectingRef.current = false;
 			__g.__wsLock = false; // Clear lock on exception
 		}

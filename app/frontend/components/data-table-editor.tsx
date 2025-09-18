@@ -1,17 +1,5 @@
 "use client";
 
-import type { DataEditorRef } from "@glideapps/glide-data-grid";
-import { AnimatePresence, motion } from "framer-motion";
-import { Save, X } from "lucide-react";
-import dynamic from "next/dynamic";
-import { useTheme } from "next-themes";
-import React, {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
 import { Button } from "@/components/ui/button";
 import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
 import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
@@ -24,6 +12,18 @@ import type {
 	CalendarEvent as DataTableCalendarEvent,
 	DataTableEditorProps,
 } from "@/types/data-table-editor";
+import type { DataEditorRef } from "@glideapps/glide-data-grid";
+import { AnimatePresence, motion } from "framer-motion";
+import { Save, X } from "lucide-react";
+import { useTheme } from "next-themes";
+import dynamic from "next/dynamic";
+import React, {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { UnsavedChangesDialog } from "./data-table-editor/UnsavedChangesDialog";
 import { ValidationErrorsPopover } from "./data-table-editor/ValidationErrorsPopover";
 import { FullscreenProvider } from "./glide_custom_cells/components/contexts/FullscreenContext";
@@ -572,31 +572,31 @@ export function DataTableEditor(props: DataTableEditorProps) {
 
 			// Build quick lookup of previous events by key
 			const prevMap = new Map<string, DataTableCalendarEvent>();
-			(previousEventsRef.current || []).forEach((ev) => {
+			for (const ev of previousEventsRef.current || []) {
 				const k = getReservationKeyRef.current(ev);
 				if (k) prevMap.set(k, ev);
-			});
+			}
 
 			// Merge: follow new ordering, but preserve blocked keys' prior versions
 			const merged: DataTableCalendarEvent[] = [];
-			(events || []).forEach((ev) => {
+			for (const ev of events || []) {
 				const k = getReservationKeyRef.current(ev);
 				if (k && blockedKeys.has(k)) {
 					merged.push(prevMap.get(k) ?? ev);
 				} else {
 					merged.push(ev);
 				}
-			});
+			}
 
 			// If a blocked event was deleted on server, keep it locally until edits are resolved
-			prevMap.forEach((oldEv, k) => {
+			for (const [k, oldEv] of prevMap.entries()) {
 				if (blockedKeys.has(k)) {
 					const stillExists = (events || []).some(
 						(ev) => getReservationKeyRef.current(ev) === k,
 					);
 					if (!stillExists) merged.push(oldEv);
 				}
-			});
+			}
 
 			// Dedupe by stable reservationId; fall back to getEventKey if missing
 			const seen = new Set<string>();
@@ -682,9 +682,8 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							type="button"
 						/>
 
-						<motion.div
+						<motion.dialog
 							key="dt-dialog"
-							role="dialog"
 							className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
 							style={{ zIndex: Z_INDEX.DIALOG_CONTENT }}
 							aria-describedby="data-editor-description"
@@ -704,6 +703,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 									handleCloseAttempt(() => onOpenChange(false));
 								}
 							}}
+							open
 						>
 							<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
 								<div className="flex flex-col space-y-1.5">
@@ -832,7 +832,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 									)}
 								</div>
 							</div>
-						</motion.div>
+						</motion.dialog>
 					</>
 				)}
 			</AnimatePresence>

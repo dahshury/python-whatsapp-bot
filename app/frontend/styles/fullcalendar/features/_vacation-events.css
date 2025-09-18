@@ -392,6 +392,18 @@
 			rgba(31, 41, 55, 0.08) 28px,
 			rgba(31, 41, 55, 0.08) 29px
 		);
+
+	/* High-density micro pattern for tiny legend swatches */
+	--vacation-pattern-legend: repeating-linear-gradient(
+		45deg,
+		rgba(75, 85, 99, 0.35) 0 1px,
+		transparent 1px 2px
+	),
+	repeating-linear-gradient(
+		-45deg,
+		rgba(75, 85, 99, 0.25) 0 1px,
+		transparent 1px 2px
+	);
 }
 
 .dark {
@@ -423,6 +435,18 @@
 			rgba(255, 255, 255, 0.12) 28px,
 			rgba(255, 255, 255, 0.12) 29px
 		);
+
+	/* Dark-mode micro pattern for tiny legend swatches */
+	--vacation-pattern-legend: repeating-linear-gradient(
+		45deg,
+		rgba(255, 255, 255, 0.60) 0 1px,
+		transparent 1px 2px
+	),
+	repeating-linear-gradient(
+		-45deg,
+		rgba(255, 255, 255, 0.45) 0 1px,
+		transparent 1px 2px
+	);
 }
 
 /* Apply pattern to vacation day cells */

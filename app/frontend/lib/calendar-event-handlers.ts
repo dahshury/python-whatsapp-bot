@@ -437,10 +437,15 @@ export async function handleEventChange(args: {
 		const slotBaseTime = normalizeToSlotBase(newDate || "", rawTime);
 		const newTime = slotBaseTime;
 		const type = event.extendedProps?.type ?? 0;
-		const reservationId: number | undefined = (event.extendedProps
+		// Prefer explicit reservationId; fallback to numeric event.id when available
+		let reservationId: number | undefined = (event.extendedProps
 			?.reservationId || event.extendedProps?.reservation_id) as
 			| number
 			| undefined;
+		if (reservationId == null) {
+			const maybeNum = Number(event.id);
+			if (Number.isFinite(maybeNum)) reservationId = maybeNum as number;
+		}
 		const title = event.title;
 
 		console.log("🔍 Extracted data:", {
@@ -743,6 +748,22 @@ export async function handleEventChange(args: {
 										setExtendedProp?: (k: string, v: unknown) => void;
 									}
 								)?.setExtendedProp?.("cancelled", false);
+							} catch {}
+							// Ensure reservationId stays on the event for future drags
+							try {
+								const rid =
+									reservationId != null
+										? reservationId
+										: (() => {
+												const n = Number(event.id);
+												return Number.isFinite(n) ? (n as number) : undefined;
+											})();
+								if (rid != null)
+									(
+										evObj as unknown as {
+											setExtendedProp?: (k: string, v: unknown) => void;
+										}
+									)?.setExtendedProp?.("reservationId", rid);
 							} catch {}
 							setTimeout(() => {
 								try {

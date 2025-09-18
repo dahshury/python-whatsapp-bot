@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "workspaces": {
     ".": {
-      "entry": ["run.py", "app/**/*.py", "scripts/**/*.py", "tests/**/*.py"],
+      "entry": ["run.py", "app/**/*.py", "scripts/**/*.py"],
       "ignore": [".venv/**", "**/node_modules/**", "**/pnpm-lock.yaml", "**/.git/**"]
     },
     "app/frontend": {
@@ -17,7 +17,9 @@
         "node_modules/**",
         "**/.next/**",
         "**/.git/**",
-        "components/index.ts"
+        "components/index.ts",
+        "../scripts/ci/biome-staged.mjs",
+        "../scripts/ci/md-staged.mjs"
       ]
     }
   },
@@ -28,6 +30,11 @@
     "**/pnpm-lock.yaml",
     "components/glide_custom_cells/media/**",
     "**/*.pyc",
-    "**/__pycache__/**"
+    "**/__pycache__/**",
+    "scripts/ci/biome-staged.mjs",
+    "scripts/ci/md-staged.mjs"
+  ],
+  "ignoreDependencies": [
+    "critters"
   ]
 }

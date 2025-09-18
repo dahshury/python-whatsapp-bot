@@ -154,6 +154,28 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
     wa_id = payload.get("wa_id")
     text = payload.get("text")
     response = await send_whatsapp_message(wa_id, text)
+
+    # On success, persist the message using append_message (which also broadcasts)
+    try:
+        ok = False
+        if isinstance(response, tuple):
+            ok = False
+        elif response is None:
+            ok = False
+        else:
+            status = getattr(response, "status_code", 500)
+            ok = int(status) < 400
+        if ok:
+            try:
+                now_local = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
+                date_str = now_local.strftime("%Y-%m-%d")
+                time_str = now_local.strftime("%H:%M")
+                append_message(wa_id, "secretary", text, date_str, time_str)
+            except Exception as persist_err:
+                logging.error(f"append_message failed after HTTP send: {persist_err}")
+    except Exception:
+        pass
+
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
     return JSONResponse(content=response.json())

@@ -8,6 +8,15 @@
 
 "use client";
 
+import {
+	SLOT_DURATION_HOURS,
+	TIMEZONE,
+	getBusinessHours,
+	getValidRange,
+} from "@/lib/calendar-config";
+import { count } from "@/lib/dev-profiler";
+import { cn } from "@/lib/utils";
+import type { CalendarEvent } from "@/types/calendar";
 import type {
 	CalendarApi,
 	DatesSetArg,
@@ -34,15 +43,6 @@ import {
 	useRef,
 	useState,
 } from "react";
-import {
-	getBusinessHours,
-	getValidRange,
-	SLOT_DURATION_HOURS,
-	TIMEZONE,
-} from "@/lib/calendar-config";
-import { count } from "@/lib/dev-profiler";
-import { cn } from "@/lib/utils";
-import type { CalendarEvent } from "@/types/calendar";
 
 export interface CalendarCoreProps {
 	// Data props
@@ -694,6 +694,21 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				});
 			} catch {}
 		}, [slotTimes]);
+
+		// Ensure month view can navigate to the past when freeRoam is enabled (and always clear for multiMonth)
+		useEffect(() => {
+			const api = calendarRef.current?.getApi?.();
+			if (!api) return;
+			try {
+				const lower = (currentView || "").toLowerCase();
+				const isMultiMonth = lower === "multimonthyear";
+				if (freeRoam || isMultiMonth) {
+					api.setOption("validRange", undefined);
+				} else {
+					api.setOption("validRange", getValidRange(false));
+				}
+			} catch {}
+		}, [freeRoam, currentView]);
 
 		// Update calendar size when container changes (attach once)
 		useLayoutEffect(() => {

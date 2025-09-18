@@ -21,7 +21,7 @@ export function getBusinessHours(freeRoam: boolean): BusinessHoursRule[] {
 	if (freeRoam) return [];
 	// Business hours:
 	// - Sun-Thu: 11:00-17:00
-	// - Sat: 16:00-21:00 (evening only)
+	// - Sat: 16:00-22:00 (evening only)
 	// - Fri: closed (handled via hiddenDays)
 	// - Ramadan (if configured via env): 10:00-16:00
 	const ramadanRules = getRamadanBusinessHours();
@@ -35,11 +35,11 @@ export function getBusinessHours(freeRoam: boolean): BusinessHoursRule[] {
 				startRecur: "2022-01-01",
 				endRecur: "2031-12-31",
 			},
-			// Saturday(6): 16:00-21:00
+			// Saturday(6): 16:00-22:00
 			{
 				daysOfWeek: [6],
 				startTime: "16:00",
-				endTime: "21:00",
+				endTime: "22:00",
 				startRecur: "2022-01-01",
 				endRecur: "2031-12-31",
 			},
@@ -63,7 +63,7 @@ export function getSlotTimes(date: Date, freeRoam: boolean, _view: string) {
 	const day = date.getDay(); // 0=Sun..6=Sat
 	if (day >= 0 && day <= 4)
 		return { slotMinTime: "11:00:00", slotMaxTime: "17:00:00" };
-	if (day === 6) return { slotMinTime: "16:00:00", slotMaxTime: "21:00:00" };
+	if (day === 6) return { slotMinTime: "16:00:00", slotMaxTime: "22:00:00" };
 	// Friday hidden elsewhere
 	return { slotMinTime: "11:00:00", slotMaxTime: "17:00:00" };
 }

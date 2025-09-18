@@ -45,11 +45,11 @@ export class TimeRestrictionService {
 		switch (this.dayOfWeek) {
 			case 6: {
 				// Saturday
-				// Enable ONLY 16:00-20:59 (4 PM to 8:59 PM) - includes 8 PM itself
-				// Disable everything else including 9 PM to 11 PM (21:00-23:00)
-				const isEnabled = hour >= 16 && hour <= 20;
+				// Enable ONLY 16:00-21:59 (4 PM to 9:59 PM) - includes 9 PM itself
+				// Disable everything else including 10 PM to 11 PM (22:00-23:00)
+				const isEnabled = hour >= 16 && hour <= 21;
 				console.log(
-					`Saturday validation: hour ${hour} -> ${isEnabled ? "ENABLED" : "DISABLED"} (16-20 enabled, so 8PM is enabled but 9PM+ disabled)`,
+					`Saturday validation: hour ${hour} -> ${isEnabled ? "ENABLED" : "DISABLED"} (16-21 enabled, so 9PM is enabled but 10PM+ disabled)`,
 				);
 				return isEnabled;
 			}
@@ -108,9 +108,9 @@ export class TimeRestrictionService {
 			}
 		} else {
 			switch (this.dayOfWeek) {
-				case 6: // Saturday: 16:00-20:59 enabled
-					// Edge hours: 16 (first) and 20 (last) - only :00 minutes
-					if (hour === 16 || hour === 20) {
+				case 6: // Saturday: 16:00-21:59 enabled
+					// Edge hours: 16 (first) and 21 (last) - only :00 minutes
+					if (hour === 16 || hour === 21) {
 						const isValidMinute = minute === 0;
 						console.log(
 							`Saturday edge hour ${hour}: minute ${minute} -> ${isValidMinute ? "ENABLED" : "DISABLED"} (only :00 allowed)`,

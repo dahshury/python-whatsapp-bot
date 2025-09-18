@@ -32,7 +32,7 @@ interface ReducerState {
 	isApplyingUndo: boolean;
 	isApplyingRedo: boolean;
 
-	operation?: Batch;
+	operation: Batch | undefined;
 }
 
 const initialState: ReducerState = {
@@ -42,6 +42,7 @@ const initialState: ReducerState = {
 	canRedo: false,
 	isApplyingUndo: false,
 	isApplyingRedo: false,
+	operation: undefined,
 };
 
 type Action = UndoRedoAction | EditAction;
@@ -66,7 +67,7 @@ function reducer(state: ReducerState, action: Action) {
 				if (operation) {
 					newState.operation = operation;
 				} else {
-					delete newState.operation;
+					newState.operation = undefined;
 				}
 				newState.canUndo = newState.undoHistory.length > 0;
 				newState.isApplyingUndo = true;
@@ -82,7 +83,7 @@ function reducer(state: ReducerState, action: Action) {
 				if (operation) {
 					newState.operation = operation;
 				} else {
-					delete newState.operation;
+					newState.operation = undefined;
 				}
 				newState.canRedo = newState.redoHistory.length > 0;
 				newState.isApplyingRedo = true;
@@ -92,7 +93,7 @@ function reducer(state: ReducerState, action: Action) {
 			return state;
 
 		case "operationApplied":
-			delete newState.operation;
+			newState.operation = undefined;
 			newState.isApplyingRedo = false;
 			newState.isApplyingUndo = false;
 

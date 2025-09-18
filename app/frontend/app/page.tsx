@@ -6,19 +6,25 @@ interface WebSocketMessage {
 	role?: string;
 	text?: string;
 	message?: string;
+	// Optionally present when reducer already normalized messages
+	date?: string;
+	time?: string;
 }
 
 // Interface for websocket reservation objects
 interface WebSocketReservation {
 	start?: string;
+	date?: string;
+	time_slot?: string;
+	time?: string;
+	wa_id?: string;
+	id?: string | number;
 	customer_name?: string;
 	title?: string;
 	type?: number;
 	cancelled?: boolean;
 }
 
-import dynamic from "next/dynamic";
-import React from "react";
 import { AnimatedSidebarTrigger } from "@/components/animated-sidebar-trigger";
 import { CalendarContainer } from "@/components/calendar-container";
 import type { CalendarCoreRef } from "@/components/calendar-core";
@@ -39,7 +45,7 @@ import { useCalendarHoverCard } from "@/hooks/useCalendarHoverCard";
 import { useCalendarState } from "@/hooks/useCalendarState";
 import { useVacationDateChecker } from "@/hooks/useVacationDateChecker";
 import { createCalendarCallbacks } from "@/lib/calendar-callbacks";
-import { getTimezone, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
+import { SLOT_DURATION_HOURS, getTimezone } from "@/lib/calendar-config";
 import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { mark } from "@/lib/dev-profiler";
 import { useLanguage } from "@/lib/language-context";
@@ -50,6 +56,8 @@ import {
 	useConversationsData,
 	useReservationsData,
 } from "@/lib/websocket-data-provider";
+import dynamic from "next/dynamic";
+import React from "react";
 
 // FullCalendar component is loaded dynamically in DualCalendarComponent when needed
 
@@ -104,52 +112,74 @@ export default function HomePage() {
 			string,
 			import("@/types/calendar").ConversationMessage[]
 		> = {};
-		Object.entries(conversations || {}).forEach(([waId, msgs]) => {
+		for (const [waId, msgs] of Object.entries(conversations || {})) {
 			out[waId] = (Array.isArray(msgs) ? msgs : []).map(
 				(m: WebSocketMessage) => {
 					const ts = m?.ts ? new Date(m.ts) : null;
 					const iso =
 						ts && !Number.isNaN(ts.getTime()) ? ts.toISOString() : undefined;
+					const fallbackDate = typeof m?.date === "string" ? m.date : "";
+					const rawTime = typeof m?.time === "string" ? m.time : "";
+					const fallbackTime =
+						rawTime && rawTime.length === 5 ? `${rawTime}:00` : rawTime;
 					return {
 						role: m?.role || "user",
 						message: String(m?.text || m?.message || ""),
-						time: iso ? iso.slice(11, 19) : "00:00:00",
-						date: iso
-							? iso.slice(0, 10)
-							: new Date().toISOString().slice(0, 10),
+						time: iso ? iso.slice(11, 19) : fallbackTime || "",
+						date: iso ? iso.slice(0, 10) : fallbackDate || "",
 					};
 				},
 			);
-		});
+		}
 		return out;
 	}, [conversations]);
 
 	const mappedReservations = React.useMemo(() => {
 		const out: Record<string, import("@/types/calendar").Reservation[]> = {};
-		Object.entries(reservations || {}).forEach(([waId, items]) => {
-			out[waId] = (Array.isArray(items) ? items : []).map(
-				(r: WebSocketReservation) => {
-					const startStr = String(r?.start || "");
-					const d = startStr ? new Date(startStr) : null;
-					const date =
-						d && !Number.isNaN(d.getTime())
-							? d.toISOString().slice(0, 10)
-							: new Date().toISOString().slice(0, 10);
-					const time =
-						d && !Number.isNaN(d.getTime())
-							? d.toISOString().slice(11, 16)
-							: "00:00";
-					return {
+		for (const [waId, items] of Object.entries(reservations || {})) {
+			const mapped = (Array.isArray(items) ? items : [])
+				.map((r: WebSocketReservation) => {
+					// Prefer explicit date/time fields if provided by backend/state
+					let date = String((r as { date?: string }).date || "");
+					let timeSlot = String(
+						(r as { time_slot?: string }).time_slot ||
+							(r as { time?: string }).time ||
+							"",
+					);
+
+					// If missing, attempt to derive from ISO start timestamp
+					if ((!date || !timeSlot) && r?.start) {
+						const d = new Date(String(r.start));
+						if (!Number.isNaN(d.getTime())) {
+							if (!date) date = d.toISOString().slice(0, 10);
+							if (!timeSlot) timeSlot = d.toISOString().slice(11, 16);
+						}
+					}
+
+					// Preserve DB reservation id for reliable drag/drop targeting and updates
+					const computedId =
+						typeof (r as { id?: unknown }).id === "number"
+							? ((r as { id?: number }).id as number)
+							: (() => {
+									const n = Number((r as { id?: unknown }).id);
+									return Number.isFinite(n) ? (n as number) : undefined;
+								})();
+
+					const result = {
 						customer_id: waId,
 						date,
-						time_slot: time,
+						time_slot: timeSlot,
 						customer_name: String(r?.customer_name || r?.title || waId),
 						type: typeof r?.type === "number" ? (r.type as number) : 0,
-						cancelled: r?.cancelled === true,
-					};
-				},
-			);
-		});
+						...(computedId !== undefined ? { id: computedId } : {}),
+						...(r?.cancelled === true ? { cancelled: true } : {}),
+					} as import("@/types/calendar").Reservation;
+					return result;
+				})
+				// Optional: filter out entries that still lack a date to avoid misleading defaults
+				.filter((r) => Boolean(r.date));
+			out[waId] = mapped as import("@/types/calendar").Reservation[];
+		}
 		return out;
 	}, [reservations]);
 

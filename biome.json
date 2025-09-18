@@ -7,13 +7,15 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": [
-			"app/frontend/**",
-			"!app/frontend/.next",
-			"!app/frontend/node_modules",
-			"!**/node_modules",
-			"!**/.venv",
-			"!**/*.css"
+		"include": [
+			"app/frontend/**"
+		],
+		"ignore": [
+			"app/frontend/.next/**",
+			"app/frontend/node_modules/**",
+			"**/node_modules/**",
+			"**/.venv/**",
+			"**/*.css"
 		]
 	},
 	"formatter": {
@@ -53,12 +55,7 @@
 			"quoteStyle": "double"
 		}
 	},
-	"assist": {
-		"enabled": true,
-		"actions": {
-			"source": {
-				"organizeImports": "on"
-			}
-		}
+	"organizeImports": {
+		"enabled": true
 	}
 }

@@ -982,7 +982,7 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
                 2: [11, 17],  # Wednesday: 11 AM to 5 PM
                 3: [11, 17],  # Thursday: 11 AM to 5 PM
                 4: None,      # Friday: Non-working day
-                5: [16, 21],  # Saturday: 4 PM to 9 PM
+                5: [16, 22],  # Saturday: 4 PM to 10 PM
                 6: [11, 17]   # Sunday: 11 AM to 5 PM
             }
         

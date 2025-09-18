@@ -8,18 +8,6 @@
 
 "use client";
 
-import {
-	ArrowLeftRight,
-	ChevronDownIcon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	ChevronUpIcon,
-	CircleIcon,
-	Info,
-	Keyboard,
-	MoveUpRight,
-	PlayCircle,
-} from "lucide-react";
 import HeroVideoDialog from "@/components/magicui/hero-video-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,6 +24,18 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
 import { useVacation } from "@/lib/vacation-context";
+import {
+	ArrowLeftRight,
+	ChevronDownIcon,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	ChevronUpIcon,
+	CircleIcon,
+	Info,
+	Keyboard,
+	MoveUpRight,
+	PlayCircle,
+} from "lucide-react";
 
 interface CalendarLegendProps {
 	freeRoam?: boolean;
@@ -70,7 +70,7 @@ export function CalendarLegend({
 		},
 		{
 			key: "vacation",
-			color: "hsl(var(--vacation-bg) / var(--vacation-bg-opacity))", // Orange - Vacation (match actual event opacity)
+			color: "transparent", // Use transparent; actual swatch uses pattern via background-image
 			label: isLocalized ? "إجازة" : "Vacation",
 			showAlways: false, // Only show when vacation periods exist
 			showWhenVacationExists: true,
@@ -102,8 +102,18 @@ export function CalendarLegend({
 						{filteredItems.slice(0, 4).map((item, _index) => (
 							<div
 								key={item.key}
-								className="w-1.5 h-1.5 rounded-full shadow-sm"
-								style={{ backgroundColor: item.color }}
+								className={cn(
+									"w-1.5 h-1.5 rounded-full shadow-sm",
+									item.key === "vacation" && "ring-1 ring-border/50",
+								)}
+								style={
+									item.key === "vacation"
+										? {
+												backgroundImage: "var(--vacation-pattern-legend)",
+												backgroundColor: "transparent",
+											}
+										: { backgroundColor: item.color }
+								}
 							/>
 						))}
 					</div>
@@ -124,8 +134,18 @@ export function CalendarLegend({
 						{filteredItems.map((item) => (
 							<div key={item.key} className="flex items-center gap-2">
 								<div
-									className="w-3 h-3 rounded-sm flex-shrink-0 shadow-sm"
-									style={{ backgroundColor: item.color }}
+									className={cn(
+										"w-3 h-3 rounded-sm flex-shrink-0 shadow-sm",
+										item.key === "vacation" && "ring-[0.5px] ring-border/60",
+									)}
+									style={
+										item.key === "vacation"
+											? {
+													backgroundImage: "var(--vacation-pattern-legend)",
+													backgroundColor: "transparent",
+												}
+											: { backgroundColor: item.color }
+									}
 								/>
 								<span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
 									{item.label}

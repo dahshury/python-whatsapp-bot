@@ -1,7 +1,7 @@
 import {
 	type CustomRenderer,
-	drawTextCell,
 	GridCellKind,
+	drawTextCell,
 } from "@glideapps/glide-data-grid";
 import * as ReactDOM from "react-dom";
 import TimeKeeper from "react-timekeeper";
@@ -100,7 +100,7 @@ const TimeKeeperRenderer = ({
 			const dayOfWeek = timekeeperData.selectedDate?.getDay();
 			if (dayOfWeek === 6) {
 				console.log(
-					"Using time restrictions for Saturday - 4PM-8PM enabled, 9PM+ disabled",
+					"Using time restrictions for Saturday - 4PM-9PM enabled, 10PM+ disabled",
 				);
 			} else if (dayOfWeek === 0) {
 				console.log("Using time restrictions for Sunday - 11AM-3PM enabled");

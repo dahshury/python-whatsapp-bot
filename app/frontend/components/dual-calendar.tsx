@@ -8,6 +8,13 @@
 
 "use client";
 
+import type { DateClickInfo } from "@/lib/calendar-callbacks";
+// Import types from calendar handlers
+import type {
+	CalendarEventData,
+	FullCalendarEvent,
+	FullCalendarEventChangeInfo,
+} from "@/lib/calendar-event-handlers";
 import type {
 	DateSelectArg,
 	EventApi,
@@ -20,13 +27,6 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import type { DateClickInfo } from "@/lib/calendar-callbacks";
-// Import types from calendar handlers
-import type {
-	CalendarEventData,
-	FullCalendarEvent,
-	FullCalendarEventChangeInfo,
-} from "@/lib/calendar-event-handlers";
 
 // Match the FullCalendarApi interface from calendar-event-handlers.ts
 interface FullCalendarApi {
@@ -50,8 +50,8 @@ import { useCalendarState } from "@/hooks/useCalendarState";
 // Services and utilities
 import {
 	type CalendarCallbackHandlers,
-	createCalendarCallbacks,
 	type VacationDateChecker,
+	createCalendarCallbacks,
 } from "@/lib/calendar-callbacks";
 import { getTimezone } from "@/lib/calendar-config";
 import { handleEventChange as handleEventChangeService } from "@/lib/calendar-event-handlers";
@@ -59,6 +59,7 @@ import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { useLanguage } from "@/lib/language-context";
 import { useVacation } from "@/lib/vacation-context";
 import type { CalendarEvent } from "@/types/calendar";
+import type { CalendarApi as FC_CalendarApi } from "@fullcalendar/core";
 // Components
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
 import { CalendarSkeleton } from "./calendar-skeleton";
@@ -605,8 +606,7 @@ export const DualCalendarComponent = React.forwardRef<
 						...info,
 						view: {
 							type: leftCalendarState.currentView,
-							calendar:
-								null as unknown as import("@fullcalendar/core").CalendarApi,
+							calendar: null as unknown as FC_CalendarApi,
 							title: leftCalendarState.currentView,
 							activeStart: new Date(),
 							activeEnd: new Date(),
@@ -650,8 +650,7 @@ export const DualCalendarComponent = React.forwardRef<
 						...info,
 						view: {
 							type: rightCalendarState.currentView,
-							calendar:
-								null as unknown as import("@fullcalendar/core").CalendarApi,
+							calendar: null as unknown as FC_CalendarApi,
 							title: rightCalendarState.currentView,
 							activeStart: new Date(),
 							activeEnd: new Date(),

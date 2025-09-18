@@ -189,11 +189,11 @@ git clone https://github.com/your-repo/ai-whatsapp-bot.git
 cd ai-whatsapp-bot
 ```
 
-2. **Configure Environment Variables**
+1. **Configure Environment Variables**
 
 Create a `.env` file based on `.env.example` and update the necessary variables:
 
-```
+```env
 # AI Provider API Keys
 OPENAI_API_KEY=your_openai_key
 ANTHROPIC_API_KEY=your_anthropic_key
@@ -220,7 +220,7 @@ SYSTEM_PROMPT=your_system_prompt
 DISCORD_WEBHOOK_URL=your_discord_webhook_url
 ```
 
-3. **Start the Application with Docker Compose**
+1. **Start the Application with Docker Compose**
 
 For development:
 
@@ -242,14 +242,14 @@ docker-compose -f docker-compose.prod.yml up -d
 pip install -r requirements-backend.in
 ```
 
-2. **Install Frontend Dependencies**
+1. **Install Frontend Dependencies**
 
 ```bash
 cd app/frontend
 pnpm install
 ```
 
-3. **Run the FastAPI Application**
+1. **Run the FastAPI Application**
 
 ```bash
 python run.py
@@ -257,7 +257,7 @@ python run.py
 
 Runs on `http://0.0.0.0:8000` by default.
 
-4. **Run the Next.js Frontend**
+1. **Run the Next.js Frontend**
 
 ```bash
 cd app/frontend
@@ -316,8 +316,8 @@ Then configure your webhook URL as: `https://your-ngrok-url.ngrok.io/webhook`
 
 The application includes a complete monitoring stack:
 
-1. **Prometheus**: Collects metrics at http://localhost:9090
-1. **AlertManager**: Manages alert notifications at http://localhost:9093
+1. **Prometheus**: Collects metrics at <http://localhost:9090>
+1. **AlertManager**: Manages alert notifications at <http://localhost:9093>
 1. **Discord Alerts**: Sends formatted alert notifications to Discord
 
 ## Contributing

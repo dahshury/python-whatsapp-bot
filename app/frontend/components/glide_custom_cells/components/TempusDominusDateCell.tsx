@@ -1,8 +1,8 @@
 import {
 	type CustomCell,
 	type CustomRenderer,
-	drawTextCell,
 	GridCellKind,
+	drawTextCell,
 } from "@glideapps/glide-data-grid";
 import * as React from "react";
 import {
@@ -390,11 +390,11 @@ const renderer: CustomRenderer<TempusDateCell> = {
 							const widgets = document.querySelectorAll(
 								'.tempus-dominus-widget, [class*="tempus-dominus"]',
 							);
-							widgets.forEach((widget) => {
+							for (const widget of Array.from(widgets)) {
 								if (widget.parentElement !== document.body) {
 									document.body.appendChild(widget);
 								}
-							});
+							}
 						}, 0);
 
 						// Set initial value (plugin and input) from data.date or parsed display
@@ -425,9 +425,9 @@ const renderer: CustomRenderer<TempusDateCell> = {
 						const markWidgetSafe = (w: HTMLElement) => {
 							if (!w.classList.contains("click-outside-ignore")) {
 								w.classList.add("click-outside-ignore");
-								w.querySelectorAll("*").forEach((el) => {
+								for (const el of Array.from(w.querySelectorAll("*"))) {
 									(el as HTMLElement).classList.add("click-outside-ignore");
-								});
+								}
 							}
 
 							// Continuously ensure any new children are marked so overlay's click-outside logic ignores them.
@@ -436,7 +436,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 									if (!node.classList.contains("click-outside-ignore")) {
 										node.classList.add("click-outside-ignore");
 									}
-									node.querySelectorAll("*").forEach((el) => {
+									for (const el of Array.from(node.querySelectorAll("*"))) {
 										if (
 											!(el as HTMLElement).classList.contains(
 												"click-outside-ignore",
@@ -444,7 +444,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 										) {
 											(el as HTMLElement).classList.add("click-outside-ignore");
 										}
-									});
+									}
 								};
 
 								// Initial pass
@@ -452,13 +452,13 @@ const renderer: CustomRenderer<TempusDateCell> = {
 
 								// Observe for dynamically created descendants (e.g., time-arrow buttons)
 								const mo = new MutationObserver((muts) => {
-									muts.forEach((mut) => {
-										mut.addedNodes.forEach((node) => {
+									for (const mut of muts) {
+										for (const node of Array.from(mut.addedNodes)) {
 											if (node instanceof HTMLElement) {
 												ensureIgnored(node);
 											}
-										});
-									});
+										}
+									}
 								});
 								mo.observe(w, { childList: true, subtree: true });
 
@@ -598,7 +598,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 									'.tempus-dominus-widget, [class*="tempus-dominus"]',
 								);
 								let movedWidget = false;
-								widgets.forEach((widget) => {
+								for (const widget of Array.from(widgets)) {
 									if (
 										widget.parentElement !== document.body &&
 										window.getComputedStyle(widget).display !== "none"
@@ -606,7 +606,7 @@ const renderer: CustomRenderer<TempusDateCell> = {
 										document.body.appendChild(widget);
 										movedWidget = true;
 									}
-								});
+								}
 
 								if (movedWidget) {
 									requestAnimationFrame(() => {

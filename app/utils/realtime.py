@@ -485,45 +485,61 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     data = payload.get("data") or {}
                     wa_id = data.get("wa_id")
                     message = data.get("message")
-                    
+
                     if not wa_id or not message:
                         await conn.send_json({
-                            "type": "send_message_nack", 
+                            "type": "send_message_nack",
                             "timestamp": _utc_iso_now(),
-                            "error": "Missing required fields: wa_id, message"
+                            "error": "Missing required fields: wa_id, message",
                         })
                         continue
-                    
-                    # Import and call the message sending function
+
+                    # Import and call the message sending function (await the async call)
                     from app.utils.whatsapp_utils import send_whatsapp_message
-                    success = send_whatsapp_message(wa_id, message)
-                    
-                    if success:
+
+                    resp = await send_whatsapp_message(wa_id, message)
+
+                    # Determine success based on response type/status
+                    ok = False
+                    try:
+                        if isinstance(resp, tuple):
+                            ok = False
+                        elif resp is None:
+                            ok = False
+                        else:
+                            status = getattr(resp, "status_code", 500)
+                            ok = int(status) < 400
+                    except Exception:
+                        ok = False
+
+                    if ok:
+                        # Persist to DB and broadcast via append_message (which handles broadcast)
+                        try:
+                            from app.utils.service_utils import append_message
+                            now_local = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
+                            date_str = now_local.strftime("%Y-%m-%d")
+                            time_str = now_local.strftime("%H:%M")
+                            append_message(wa_id, "secretary", message, date_str, time_str)
+                        except Exception as persist_err:
+                            logging.error(f"append_message failed after WS send: {persist_err}")
+
                         await conn.send_json({
-                            "type": "send_message_ack", 
-                            "timestamp": _utc_iso_now()
+                            "type": "send_message_ack",
+                            "timestamp": _utc_iso_now(),
                         })
-                        # Broadcast the new message event
-                        await manager.broadcast("conversation_new_message", {
-                            "wa_id": wa_id,
-                            "message": message,
-                            "role": "admin",
-                            "date": _utc_iso_now()[:10],  # YYYY-MM-DD
-                            "time": _utc_iso_now()[11:16]  # HH:MM
-                        }, affected_entities=[wa_id])
                     else:
                         await conn.send_json({
-                            "type": "send_message_nack", 
+                            "type": "send_message_nack",
                             "timestamp": _utc_iso_now(),
-                            "error": "Failed to send message"
+                            "error": "Failed to send message",
                         })
-                        
+
                 except Exception as e:
                     logging.error(f"Send message websocket error: {e}")
                     await conn.send_json({
-                        "type": "send_message_nack", 
+                        "type": "send_message_nack",
                         "timestamp": _utc_iso_now(),
-                        "error": "Server error during message sending"
+                        "error": "Server error during message sending",
                     })
                     
             elif msg_type == "vacation_update":

@@ -1,8 +1,5 @@
 "use client";
 
-import { Calendar, Clock, MessageSquare } from "lucide-react";
-import type React from "react";
-import { useCallback, useEffect, useMemo } from "react";
 import { ChatSidebarContent } from "@/components/chat-sidebar-content";
 import { PrayerTimesWidget } from "@/components/prayer-times-widget";
 import {
@@ -20,6 +17,9 @@ import {
 	useConversationsData,
 	useReservationsData,
 } from "@/lib/websocket-data-provider";
+import { Calendar, Clock, MessageSquare } from "lucide-react";
+import type React from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const { isLocalized } = useLanguage();
@@ -79,17 +79,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		const customerMap = new Map();
 
 		// Add customers from conversations
-		Object.keys(conversations).forEach((waId) => {
+		for (const waId of Object.keys(conversations)) {
 			if (!customerMap.has(waId)) {
 				customerMap.set(waId, {
 					phone: waId,
 					formattedPhone: waId.startsWith("+") ? waId : `+${waId}`,
 				});
 			}
-		});
+		}
 
 		// Add customer names from reservations
-		Object.entries(reservations).forEach(([waId, customerReservations]) => {
+		for (const [waId, customerReservations] of Object.entries(reservations)) {
 			if (
 				Array.isArray(customerReservations) &&
 				customerReservations.length > 0
@@ -110,7 +110,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					}
 				}
 			}
-		});
+		}
 
 		return Array.from(customerMap.values());
 	}, [conversations, reservations]);

@@ -1,3 +1,5 @@
+import { useCustomerData } from "@/lib/customer-data-context";
+import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 import type { SpriteMap } from "@glideapps/glide-data-grid";
 import {
 	CompactSelection,
@@ -10,8 +12,7 @@ import {
 	type Theme,
 } from "@glideapps/glide-data-grid";
 import React from "react";
-import { useCustomerData } from "@/lib/customer-data-context";
-import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
+import TooltipFloat from "./Tooltip";
 import { useFullscreen } from "./contexts/FullscreenContext";
 import { GridPortalProvider } from "./contexts/GridPortalContext";
 import { InMemoryDataSource } from "./core/data-sources/InMemoryDataSource";
@@ -30,7 +31,6 @@ import { useGridTooltips } from "./hooks/useGridTooltips";
 import { useModularGridData } from "./hooks/useModularGridData";
 import { useUndoRedo } from "./hooks/useUndoRedo";
 import { ColumnMenu } from "./menus/ColumnMenu";
-import TooltipFloat from "./Tooltip";
 import { FullscreenWrapper } from "./ui/FullscreenWrapper";
 import { GridDataEditor } from "./ui/GridDataEditor";
 import { GridThemeToggle } from "./ui/GridThemeToggle";
@@ -175,14 +175,14 @@ export default function Grid({
 	// Extract pinned columns from configuration mapping (legacy numeric keys only)
 	const pinnedColumns = React.useMemo(() => {
 		const pinned: number[] = [];
-		columnConfigMapping.forEach((config, key) => {
-			if (!config?.pinned) return;
+		for (const [key, config] of columnConfigMapping.entries()) {
+			if (!config?.pinned) continue;
 			const match = key.match(/^col_(\d+)$/);
 			if (match?.[1]) {
 				const index = Number.parseInt(match[1], 10);
 				pinned.push(index);
 			}
-		});
+		}
 		return pinned;
 	}, [columnConfigMapping]);
 
@@ -337,7 +337,8 @@ export default function Grid({
 			const cellsToRefresh: { cell: [number, number] }[] = [];
 
 			// Find columns that had format changes
-			displayColumns.forEach((col, idx) => {
+			for (let idx = 0; idx < displayColumns.length; idx++) {
+				const col = displayColumns[idx];
 				const columnId = (col as { id?: string }).id ?? `col_${idx}`;
 				const currentFormat = (
 					columnMenu.columnFormats as Record<string, string | undefined>
@@ -350,7 +351,7 @@ export default function Grid({
 						cellsToRefresh.push({ cell: [idx, row] });
 					}
 				}
-			});
+			}
 
 			if (cellsToRefresh.length > 0) {
 				refreshCells(cellsToRefresh);
@@ -555,12 +556,12 @@ export default function Grid({
 
 	const deleteRows = React.useCallback(async () => {
 		const rowsToDelete = new Set<number>();
-		gs.selection.rows.toArray().forEach((r) => {
+		for (const r of gs.selection.rows.toArray()) {
 			const actualRow = filteredRows[r];
 			if (actualRow !== undefined) {
 				rowsToDelete.add(actualRow);
 			}
-		});
+		}
 
 		for (const row of rowsToDelete) {
 			await dataProvider.deleteRow(row);

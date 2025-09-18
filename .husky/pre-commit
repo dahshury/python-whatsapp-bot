@@ -1,0 +1,24 @@
+set -e
+
+# Helpers to run steps and show output on failure
+run_step() {
+	step_name="$1"
+	shift
+	echo "[pre-commit] $step_name..."
+	"$@" || {
+		echo "[pre-commit] $step_name failed ($?)." >&2
+		exit 1
+	}
+}
+
+run_step "Running Biome (strict) on staged files" node scripts/ci/biome-staged.mjs
+
+run_step "Running TypeScript typecheck" pnpm -C app/frontend exec tsc --noEmit --pretty
+
+run_step "Running Knip (unused files/exports check)" pnpm dlx knip
+
+run_step "Linting/formatting staged Markdown" node scripts/ci/md-staged.mjs
+
+echo "[pre-commit] All checks passed."
+
+

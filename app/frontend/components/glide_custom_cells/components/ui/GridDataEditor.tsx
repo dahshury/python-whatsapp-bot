@@ -1,4 +1,8 @@
 import type { GridMouseEventArgs, SpriteMap } from "@glideapps/glide-data-grid";
+import type {
+	GridCell as GDGGridCell,
+	GridMouseCellEventArgs as GDGGridMouseCellEventArgs,
+} from "@glideapps/glide-data-grid";
 import DataEditor, {
 	type DataEditorRef,
 	type DrawCellCallback,
@@ -14,10 +18,10 @@ import { DropdownCell as DropdownRenderer } from "@glideapps/glide-data-grid-cel
 import { Resizable, type Size as ResizableSize } from "re-resizable";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useFullscreen } from "../contexts/FullscreenContext";
 import PhoneCellRenderer from "../PhoneCellRenderer";
 import TempusDateCellRenderer from "../TempusDominusDateCell";
 import TimekeeperCellRenderer from "../TimekeeperCell";
+import { useFullscreen } from "../contexts/FullscreenContext";
 import { drawAttentionIndicator } from "../utils/cellDrawHelpers";
 import { messages } from "../utils/i18n";
 
@@ -321,8 +325,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	const handleItemHovered = useCallback(
 		(args: GridMouseEventArgs) => {
 			if (onItemHovered && (args as { kind: string }).kind === "cell") {
-				const g =
-					args as unknown as import("@glideapps/glide-data-grid").GridMouseCellEventArgs;
+				const g = args as unknown as GDGGridMouseCellEventArgs;
 				const bounds = (
 					g as unknown as {
 						bounds?: { x: number; y: number; width: number; height: number };
@@ -411,12 +414,13 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	useEffect(() => {
 		if (onAutosize) {
 			// Replace the parent's autosize with our implementation
-			(window as Window & { gridAutosize?: () => void }).gridAutosize = () =>
+			(window as unknown as { gridAutosize?: () => void }).gridAutosize = () =>
 				handleAutosize(0);
 		}
 		return () => {
-			if ((window as Window & { gridAutosize?: () => void }).gridAutosize) {
-				delete (window as Window & { gridAutosize?: () => void }).gridAutosize;
+			const w = window as unknown as { gridAutosize?: () => void };
+			if (w.gridAutosize) {
+				w.gridAutosize = () => {};
 			}
 		};
 	}, [onAutosize, handleAutosize]);
@@ -638,9 +642,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 			>
 				<DataEditor
 					getCellContent={(cell) =>
-						getCellContent(
-							cell,
-						) as unknown as import("@glideapps/glide-data-grid").GridCell
+						getCellContent(cell) as unknown as GDGGridCell
 					}
 					columns={orderedColumns} // Use reordered columns with pinned columns first
 					rows={filteredRowCount}

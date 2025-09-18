@@ -1,8 +1,8 @@
 "use client";
 
+import { useSettings } from "@/lib/settings-context";
 import { useTheme as useNextThemes } from "next-themes";
 import { useEffect, useLayoutEffect } from "react";
-import { useSettings } from "@/lib/settings-context";
 
 export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 	const { theme } = useSettings();
@@ -10,11 +10,11 @@ export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 
 	useLayoutEffect(() => {
 		// Remove all theme classes
-		document.documentElement.classList.forEach((className) => {
+		for (const className of Array.from(document.documentElement.classList)) {
 			if (className.startsWith("theme-")) {
 				document.documentElement.classList.remove(className);
 			}
-		});
+		}
 
 		// Add the selected theme class
 		if (theme) {

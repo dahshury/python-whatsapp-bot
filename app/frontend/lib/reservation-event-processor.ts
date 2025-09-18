@@ -118,7 +118,19 @@ export function getReservationEventProcessor() {
 								cancelled,
 								waId,
 								slotDate: baseDate,
-								slotTime: baseTime,
+							slotTime: baseTime,
+							// Preserve DB reservation id for drag/drop operations
+							...(typeof (r as { id?: unknown }).id !== "undefined"
+								? {
+									reservationId:
+										typeof (r as { id?: unknown }).id === "number"
+											? ((r as { id?: number }).id as number)
+											: (() => {
+												const n = Number((r as { id?: unknown }).id);
+												return Number.isFinite(n) ? (n as number) : undefined;
+											})(),
+								}
+								: {}),
 							},
 						};
 						if (cancelled) {
