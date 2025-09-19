@@ -12,13 +12,13 @@ ssl_context.load_verify_locations(certifi.where())
 # Add sane timeouts and connection pooling to avoid hangs and reduce latency
 sync_client = httpx.Client(
     verify=ssl_context,
-    timeout=httpx.Timeout(connect=10.0, read=60.0, write=30.0),
+    timeout=httpx.Timeout(60.0, connect=10.0, read=60.0, write=30.0),
     limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
 )
 
 # Asynchronous client for async calls (e.g., WhatsApp API)
 async_client = httpx.AsyncClient(
-    timeout=30.0,  # Increased from 10.0 to 30.0 seconds
+    timeout=httpx.Timeout(30.0, connect=10.0, read=30.0, write=30.0),
     limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
     verify=ssl_context
 )
@@ -44,7 +44,7 @@ async def ensure_client_healthy():
                 
             # Recreate the client with the same parameters
             async_client = httpx.AsyncClient(
-                timeout=30.0,
+                timeout=httpx.Timeout(30.0, connect=10.0, read=30.0, write=30.0),
                 limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
                 verify=ssl_context
             )
