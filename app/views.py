@@ -7,7 +7,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from app.config import config
 from app.decorators.security import verify_signature
 from app.services.llm_service import get_llm_service
-from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template, test_whatsapp_api_config
+from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp_message as process_whatsapp_message_util, send_whatsapp_message, send_whatsapp_location, send_whatsapp_template, test_whatsapp_api_config, mark_message_as_read
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, format_enhanced_vacation_message
 from app.utils.realtime import enqueue_broadcast
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, undo_cancel_reservation, undo_reserve_time_slot
@@ -95,6 +95,15 @@ async def webhook_post(
     
     # Process message in background if it's a valid WhatsApp message
     if is_valid_whatsapp_message(body):
+        # Best-effort mark incoming message as read ASAP (does not block)
+        try:
+            msg = body["entry"][0]["changes"][0]["value"]["messages"][0]
+            msg_id = msg.get("id")
+            if msg_id:
+                # Fire-and-forget: schedule without awaiting so webhook responds quickly
+                background_tasks.add_task(mark_message_as_read, msg_id)
+        except Exception:
+            pass
         # Try to acquire semaphore without blocking the response
         if task_semaphore.locked() and task_semaphore._value == 0:
             # Log current semaphore status

@@ -15,6 +15,37 @@ from app.metrics import WHATSAPP_MESSAGE_FAILURES
 _recent_message_ids_queue: deque[str] = deque(maxlen=1000)
 _recent_message_ids_set = set()
 
+async def send_typing_indicator(message_id: str, indicator_type: str = "text", mark_read: bool = True):
+    """
+    Send a typing indicator for a received WhatsApp message (optionally marking it as read).
+
+    The indicator auto-dismisses when a reply is sent or after ~25 seconds.
+
+    Args:
+        message_id: Incoming WhatsApp message id (messages[0].id from webhook).
+        indicator_type: Indicator content type, e.g. "text".
+        mark_read: Whether to include status=read for the message id.
+
+    Returns:
+        Response or tuple: Response object or error tuple.
+    """
+    try:
+        if not message_id or not isinstance(message_id, str):
+            return {"status": "error", "message": "Invalid message_id"}, 400
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "message_id": message_id,
+            "typing_indicator": {"type": indicator_type},
+        }
+        if mark_read:
+            payload["status"] = "read"
+
+        return await _send_whatsapp_request(payload, "typing indicator")
+    except Exception as e:
+        logging.error(f"Failed to send typing indicator: {e}")
+        return {"status": "error", "message": "Failed to send typing indicator"}, 500
+
 async def send_whatsapp_message(wa_id, text):
     """
     Sends a text message using the WhatsApp API.
@@ -215,6 +246,61 @@ async def _send_whatsapp_request(payload, message_type):
         return {"status": "error", "message": f"Failed to send {message_type}"}, 500
 
 
+async def mark_message_as_read(message_id: str):
+    """
+    Mark a specific WhatsApp message as read.
+
+    Args:
+        message_id (str): The WhatsApp message ID (messages[0].id from webhook).
+
+    Returns:
+        Response or tuple: Response object on success, or (json, status_code) tuple on error.
+    """
+    try:
+        if not message_id or not isinstance(message_id, str):
+            return {"status": "error", "message": "Invalid message_id"}, 400
+
+        # Validate config quickly, reuse same endpoint as sending messages
+        if not config.get('ACCESS_TOKEN') or not config.get('PHONE_NUMBER_ID') or not config.get('VERSION'):
+            return {"status": "error", "message": "Missing WhatsApp API configuration"}, 500
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "status": "read",
+            "message_id": message_id,
+        }
+
+        data = json.dumps(payload)
+        headers = {
+            "Content-type": "application/json",
+            "Authorization": f"Bearer {config['ACCESS_TOKEN']}",
+        }
+        url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
+
+        client = await ensure_client_healthy()
+        response = await client.post(url, content=data, headers=headers)
+
+        if response.status_code >= 400:
+            try:
+                err = response.json()
+                logging.warning(f"WhatsApp mark-as-read failed {response.status_code}: {err}")
+            except Exception:
+                logging.warning(f"WhatsApp mark-as-read failed {response.status_code}: {response.text}")
+            return {"status": "error", "message": f"WhatsApp API error {response.status_code}"}, response.status_code
+
+        log_http_response(response)
+        return response
+
+    except httpx.TimeoutException:
+        logging.error("Timeout while marking message as read")
+        return {"status": "error", "message": "Request timed out"}, 408
+    except (httpx.TransportError, httpx.NetworkError, RuntimeError) as e:
+        logging.error(f"Transport error while marking message as read: {e}")
+        return {"status": "error", "message": "Connection error"}, 500
+    except httpx.RequestError as e:
+        logging.error(f"Request error while marking message as read: {e}")
+        return {"status": "error", "message": "Failed to mark as read"}, 500
+
 async def process_whatsapp_message(body, run_llm_function):
     """
     Processes an incoming WhatsApp message and generates a response using the provided LLM function.
@@ -268,6 +354,13 @@ async def process_whatsapp_message(body, run_llm_function):
             if run_llm_function is None:
                 logging.error("No LLM function provided for processing message")
                 return
+            # Display typing indicator while we prepare the response
+            try:
+                lock = get_lock(wa_id)
+                if not lock.locked():
+                    await send_typing_indicator(message_id)
+            except Exception:
+                pass
                 
             response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
             
