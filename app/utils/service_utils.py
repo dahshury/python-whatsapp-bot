@@ -400,13 +400,25 @@ def retrieve_messages(wa_id):
     try:
         # Ensure a thread record exists
         make_thread(wa_id)
-        # Use centralized conversation retrieval
-        response = get_all_conversations(wa_id=wa_id)
+        # Use centralized conversation retrieval, but limit history for performance
+        try:
+            conv_limit = int(config.get("LLM_CONTEXT_MESSAGES_LIMIT", 30))
+        except Exception:
+            conv_limit = 30
+        response = get_all_conversations(wa_id=wa_id, limit=conv_limit if conv_limit > 0 else 0)
         if not response.get("success", False):
             return []
         data = response.get("data", {})
         # Extract messages list for this user
         messages = data.get(wa_id) or data.get(str(wa_id), [])
+        # Ensure chronological order (ascending) when a limited, descending list is returned
+        try:
+            messages = sorted(
+                messages,
+                key=lambda m: (str(m.get("date", "")), str(m.get("time", "")))
+            )
+        except Exception:
+            pass
         input_chat = []
         for msg in messages:
             input_chat.append({

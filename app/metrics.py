@@ -49,6 +49,11 @@ RETRY_ATTEMPTS = Counter(
     'api_retry_attempts_total', 'Number of retry attempts', ['exception_type']
 )
 
+# Retries exhausted after all attempts
+RETRY_EXHAUSTED = Counter(
+    'api_retry_exhausted_total', 'Number of times retries were exhausted', ['function', 'exception_type']
+)
+
 # Gauge to record the timestamp (seconds since epoch) of the most recent retry per exception type
 RETRY_LAST_TIMESTAMP = Gauge(
     'api_retry_last_timestamp_seconds', 'Unix timestamp of last retry attempt', ['exception_type']

@@ -4,7 +4,7 @@ import openai
 import logging
 from anthropic import AnthropicError, RateLimitError, APIStatusError, APIError, APIConnectionError
 from openai import APITimeoutError
-from app.metrics import RETRY_ATTEMPTS, RETRY_LAST_TIMESTAMP
+from app.metrics import RETRY_ATTEMPTS, RETRY_LAST_TIMESTAMP, RETRY_EXHAUSTED
 import time
 import functools
 import traceback
@@ -52,6 +52,15 @@ def retry_decorator(func):
             logging.error("=============== RETRY FAILURE DETAILS ===============")
             logging.error(traceback.format_exc())
             logging.error("====================================================")
+            # Increment metric for exhausted retries with function and exception type labels
+            try:
+                exception_name = type(e).__name__
+            except Exception:
+                exception_name = "Unknown"
+            try:
+                RETRY_EXHAUSTED.labels(function=func.__name__, exception_type=exception_name).inc()
+            except Exception:
+                pass
             # Re-raise the exception so it can be handled by the caller
             raise
             

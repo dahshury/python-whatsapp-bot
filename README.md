@@ -113,32 +113,26 @@ For the original repository and setup tutorial (Flask version), please refer to 
 The application operates as follows:
 
 1. **Webhook Handling**:
-
    - The FastAPI application listens for incoming webhooks from WhatsApp at the `/webhook` endpoint.
    - Incoming requests are verified using signature verification to ensure authenticity.
 
 1. **Message Processing**:
-
    - When a message is received, it is processed by the appropriate LLM service (OpenAI, Anthropic, or Gemini).
    - The application uses a configurable LLM provider to generate intelligent responses based on message content.
 
 1. **Database Interactions**:
-
    - The application uses SQLite to store conversation history, reservation details, and thread information.
    - Multiple tables track different aspects of the business operations.
 
 1. **Reservation Management**:
-
    - Users can interact with the bot via WhatsApp to make, modify, or cancel reservations.
    - Assistant functions handle these operations with natural language understanding.
 
 1. **Monitoring and Metrics**:
-
    - Prometheus collects and stores metrics on system performance and business operations.
    - Alerts are configured for critical conditions and sent to a Discord channel.
 
 1. **Frontend Dashboard**:
-
    - The Next.js application provides multiple views:
      - Calendar view for reservation management
      - Conversation history browser
@@ -146,7 +140,6 @@ The application operates as follows:
      - WhatsApp message sending interface
 
 1. **Automated Tasks**:
-
    - Background scheduler runs daily to send appointment reminders via WhatsApp.
    - Regular database backups are performed and can be uploaded to remote storage.
 
@@ -157,7 +150,6 @@ The application operates as follows:
 The application follows Domain-Driven Design (DDD) principles with clear separation of concerns:
 
 - **Domain Layer** (`app/services/domain/`): Contains business logic organized by domain entities
-
   - `conversation/`: Handles WhatsApp conversation management
   - `customer/`: Manages customer data and profiles
   - `reservation/`: Core reservation business logic

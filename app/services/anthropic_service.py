@@ -11,6 +11,7 @@ import datetime
 from zoneinfo import ZoneInfo
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.metrics import LLM_API_ERRORS, LLM_RETRY_ATTEMPTS, LLM_TOOL_EXECUTION_ERRORS, LLM_EMPTY_RESPONSES
+import httpx
 
 ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY")
 
@@ -51,6 +52,21 @@ def map_anthropic_error(e):
     else:
         # Unknown error
         return "unknown"
+
+
+def _is_retryable_anthropic_exception(e: Exception) -> bool:
+    """Return True if the exception is considered retryable by our retry policy."""
+    retryable_types = (
+        AnthropicError,
+        APITimeoutError,
+        APIConnectionError,
+        RateLimitError,
+        BadRequestError,  # sometimes used for transient content-length issues; tenacity also checks AnthropicError
+        httpx.ConnectError,
+        httpx.ReadTimeout,
+        httpx.HTTPError,
+    )
+    return isinstance(e, retryable_types)
 
 @retry_decorator
 def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None, stream=False, timezone=None):
@@ -260,10 +276,13 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     except Exception as e:
         # Handle and log API errors
         error_type = map_anthropic_error(e)
+        if error_type == "unknown":
+            error_type = f"unknown::{type(e).__name__}"
         logging.error("======================================================")
         logging.error(f"CLAUDE API ERROR for wa_id={wa_id}: {e} (type: {error_type})")
         logging.error("This error will trigger the retry mechanism")
         logging.error("======================================================")
         LLM_API_ERRORS.labels(provider="anthropic", error_type=error_type).inc()
-        LLM_RETRY_ATTEMPTS.labels(provider="anthropic", error_type=error_type).inc()
+        if _is_retryable_anthropic_exception(e):
+            LLM_RETRY_ATTEMPTS.labels(provider="anthropic", error_type=error_type).inc()
         raise  # Re-raise for retry

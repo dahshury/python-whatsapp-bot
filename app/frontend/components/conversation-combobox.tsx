@@ -1,7 +1,5 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +15,8 @@ import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import type { Conversations, Reservation } from "@/types/calendar";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface ConversationComboboxProps {
 	conversations: Conversations;
@@ -249,10 +249,13 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 				<Button
 					variant="outline"
 					size="sm"
-					onClick={handleNext}
-					disabled={conversationOptions.length === 0 || currentIndex === 0}
+					onClick={handlePrevious}
+					disabled={
+						conversationOptions.length === 0 ||
+						currentIndex === conversationOptions.length - 1
+					}
 					className="h-8 w-8 p-0 flex-shrink-0"
-					title={isLocalized ? "الأحدث" : "More Recent"}
+					title={isLocalized ? "الأقدم" : "Older"}
 				>
 					<ChevronLeft className="h-4 w-4" />
 				</Button>
@@ -332,13 +335,10 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 				<Button
 					variant="outline"
 					size="sm"
-					onClick={handlePrevious}
-					disabled={
-						conversationOptions.length === 0 ||
-						currentIndex === conversationOptions.length - 1
-					}
+					onClick={handleNext}
+					disabled={conversationOptions.length === 0 || currentIndex === 0}
 					className="h-8 w-8 p-0 flex-shrink-0"
-					title={isLocalized ? "الأقدم" : "Older"}
+					title={isLocalized ? "الأحدث" : "More Recent"}
 				>
 					<ChevronRight className="h-4 w-4" />
 				</Button>

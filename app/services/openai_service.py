@@ -3,8 +3,9 @@ import asyncio
 import json
 import inspect
 from app.config import config
+import httpx
 from openai import OpenAI
-from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, BadRequestError
+from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, BadRequestError, APITimeoutError
 from app.utils import parse_unix_timestamp
 from app.utils.service_utils import retrieve_messages
 from app.decorators.safety import retry_decorator
@@ -29,11 +30,16 @@ FUNCTION_DEFINITIONS = [
     for t in TOOL_DEFINITIONS
 ]
     
-logging.getLogger("openai").setLevel(logging.DEBUG)
+# Control OpenAI SDK log verbosity via config (default WARNING)
+_openai_log_level_name = str(config.get("OPENAI_LOG_LEVEL", "WARNING")).upper()
+_openai_log_level = getattr(logging, _openai_log_level_name, logging.WARNING)
+logging.getLogger("openai").setLevel(_openai_log_level)
 
 def map_openai_error(e):
     """Map OpenAI exceptions to standardized error types"""
-    if isinstance(e, RateLimitError):
+    if isinstance(e, APITimeoutError):
+        return "timeout"
+    elif isinstance(e, RateLimitError):
         return "rate_limit"
     elif isinstance(e, AuthenticationError):
         return "authentication"
@@ -51,7 +57,38 @@ def map_openai_error(e):
     elif isinstance(e, TimeoutError):
         return "timeout"
     else:
+        # Fallback heuristic mapping based on error message text
+        try:
+            error_msg = str(e).lower()
+        except Exception:
+            error_msg = ""
+        if any(s in error_msg for s in ["timeout", "timed out", "deadline"]):
+            return "timeout"
+        if any(s in error_msg for s in ["quota", "rate", "limit", "too many requests"]):
+            return "rate_limit"
+        if any(s in error_msg for s in ["token", "context", "content too long", "length", "too long", "over limit"]):
+            return "context_length"
+        if any(s in error_msg for s in ["auth", "unauthorized", "forbidden", "invalid api key", "key"]):
+            return "authentication"
+        if any(s in error_msg for s in ["connect", "network", "dns", "reset by peer", "broken pipe", "unreachable", "connection"]):
+            return "network"
+        if any(s in error_msg for s in ["5xx", "server", "internal server error", "service unavailable", "bad gateway"]):
+            return "server"
         return "unknown"
+
+
+def _is_retryable_openai_exception(e: Exception) -> bool:
+    """Return True if the exception is considered retryable by our retry policy."""
+    retryable_types = (
+        APIError,
+        APIConnectionError,
+        RateLimitError,
+        APITimeoutError,
+        httpx.ConnectError,
+        httpx.ReadTimeout,
+        httpx.HTTPError,
+    )
+    return isinstance(e, retryable_types)
 
 def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reasoning_effort="high", reasoning_summary="auto", text_format="text", store=True, verbosity="low"):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp.
@@ -199,10 +236,15 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
         )
     except Exception as e:
         error_type = map_openai_error(e)
+        if error_type == "unknown":
+            error_type = f"unknown::{type(e).__name__}"
         logging.error(f"OpenAI API ERROR for wa_id={wa_id}: {e} (type: {error_type})", exc_info=True)
         LLM_API_ERRORS.labels(provider="openai", error_type=error_type).inc()
-        LLM_RETRY_ATTEMPTS.labels(provider="openai", error_type=error_type).inc()
-        return "", "", ""
+        # Only mark retry attempt when the exception is retry-eligible
+        if _is_retryable_openai_exception(e):
+            LLM_RETRY_ATTEMPTS.labels(provider="openai", error_type=error_type).inc()
+        # Re-raise so the retry mechanism can handle it properly
+        raise
         
     if new_message:
         logging.info(f"OpenAI runner produced message: {new_message[:50]}...")

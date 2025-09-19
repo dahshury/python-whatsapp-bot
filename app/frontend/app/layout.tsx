@@ -3,14 +3,13 @@ import localFont from "next/font/local";
 import type React from "react";
 import "./globals.css";
 import "@glideapps/glide-data-grid/dist/index.css";
-import { Toaster } from "sonner";
+import { UndoManager } from "@/components/UndoManager";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
 import { THEME_OPTIONS } from "@/components/settings/theme-data";
-import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
 import { ThemeWrapper } from "@/components/theme-wrapper";
-import { UndoManager } from "@/components/UndoManager";
+import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { BackendConnectionProvider } from "@/lib/backend-connection-provider";
@@ -23,6 +22,7 @@ import { UnifiedDataProvider } from "@/lib/unified-data-provider";
 import { VacationProvider } from "@/lib/vacation-context";
 import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
 import { Z_INDEX } from "@/lib/z-index";
+import { Toaster } from "sonner";
 
 // import { GlobalSettings } from "@/components/global-settings"
 
@@ -75,7 +75,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-	width: "device-width",
+	width: 1280,
 	initialScale: 1,
 	themeColor: "#2563eb",
 };

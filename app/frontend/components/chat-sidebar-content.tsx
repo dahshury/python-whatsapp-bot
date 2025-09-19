@@ -1,5 +1,27 @@
 "use client";
 
+import { ConversationCombobox } from "@/components/conversation-combobox";
+import { GridPattern } from "@/components/magicui/grid-pattern";
+import { ThemedScrollbar } from "@/components/themed-scrollbar";
+import {
+	EmojiPicker,
+	EmojiPickerContent,
+	EmojiPickerFooter,
+	EmojiPickerSearch,
+} from "@/components/ui/emoji-picker";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+// Replaced Textarea with TipTap's EditorContent for live formatting
+import { useCustomerData } from "@/lib/customer-data-context";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
+import { toastService } from "@/lib/toast-service";
+import { cn } from "@/lib/utils";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 import { markInputRule } from "@tiptap/core";
 import Bold from "@tiptap/extension-bold";
 import Code from "@tiptap/extension-code";
@@ -25,28 +47,6 @@ import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
-import { ConversationCombobox } from "@/components/conversation-combobox";
-import { GridPattern } from "@/components/magicui/grid-pattern";
-import { ThemedScrollbar } from "@/components/themed-scrollbar";
-import {
-	EmojiPicker,
-	EmojiPickerContent,
-	EmojiPickerFooter,
-	EmojiPickerSearch,
-} from "@/components/ui/emoji-picker";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-// Replaced Textarea with TipTap's EditorContent for live formatting
-import { useCustomerData } from "@/lib/customer-data-context";
-import { i18n } from "@/lib/i18n";
-import { useLanguage } from "@/lib/language-context";
-import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
-import { toastService } from "@/lib/toast-service";
-import { cn } from "@/lib/utils";
-import type { ConversationMessage, Reservation } from "@/types/calendar";
 
 interface ChatSidebarContentProps {
 	selectedConversationId: string | null;
@@ -609,8 +609,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 							"avatar-neon",
 						)}
 					>
-						{isUser ? (
+						{message.role === "user" ? (
 							<User className="h-3.5 w-3.5" />
+						) : message.role === "secretary" ? (
+							<MessageSquare className="h-3.5 w-3.5" />
 						) : (
 							<Bot className="h-3.5 w-3.5" />
 						)}
@@ -974,24 +976,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 				}
 			}
 
-			// Append message locally
-			const newMessage: ConversationMessage = {
-				role: "admin",
-				message: messageText,
-				date: currentDate,
-				time: currentTime,
-			};
-
-			setAdditionalMessages((prev) => ({
-				...prev,
-				[selectedConversationId]: [
-					...(prev[selectedConversationId] || []),
-					newMessage,
-				],
-			}));
-
-			// Show success toast
-			toastService.success(i18n.getMessage("chat_message_sent", isLocalized));
+			// Do not append locally; rely on backend broadcast to update conversations
 		} catch (error) {
 			console.error("Error sending message:", error);
 			const errorMessage = `${i18n.getMessage("chat_message_failed", isLocalized)}: ${error instanceof Error ? error.message : "Unknown error"}`;

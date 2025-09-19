@@ -2,6 +2,7 @@
 # pip install google-genai zoneinfo
 
 import logging
+import functools
 import json
 import inspect
 import asyncio
@@ -13,7 +14,7 @@ from app.utils import retrieve_messages
 from app.decorators import retry_decorator
 from google import genai
 from google.genai import types
-from google.api_core.exceptions import InvalidArgument, ResourceExhausted, NotFound, PermissionDenied, GoogleAPIError
+from google.api_core.exceptions import InvalidArgument, ResourceExhausted, NotFound, PermissionDenied, GoogleAPIError, DeadlineExceeded
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.metrics import FUNCTION_ERRORS, LLM_API_ERRORS, LLM_TOOL_EXECUTION_ERRORS, LLM_RETRY_ATTEMPTS, LLM_EMPTY_RESPONSES
 
@@ -48,7 +49,7 @@ def map_gemini_error(e):
     elif isinstance(e, GoogleAPIError):
         # General Google API error
         return "server"
-    elif isinstance(e, TimeoutError):
+    elif isinstance(e, (TimeoutError, DeadlineExceeded)):
         return "timeout"
     else:
         # Network or unknown error
@@ -57,7 +58,14 @@ def map_gemini_error(e):
             return "network"
         return "unknown"
 
+
+def _is_retryable_gemini_exception(e: Exception) -> bool:
+    """Return True if the exception is considered retryable by our retry policy."""
+    # Mark retries only for network/server/quota and timeouts
+    return isinstance(e, (GoogleAPIError, ResourceExhausted, DeadlineExceeded, TimeoutError))
+
 # Create function declarations dynamically from assistant_functions
+@functools.lru_cache(maxsize=1)
 def create_function_declarations():
     declarations = []
     
@@ -429,7 +437,10 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
             
     except Exception as e:
         error_type = map_gemini_error(e)
+        if error_type == "unknown":
+            error_type = f"unknown::{type(e).__name__}"
         logging.error(f"GEMINI API ERROR for wa_id={wa_id}: {e} (type: {error_type})", exc_info=True)
         LLM_API_ERRORS.labels(provider="gemini", error_type=error_type).inc()
-        LLM_RETRY_ATTEMPTS.labels(provider="gemini", error_type=error_type).inc()
+        if _is_retryable_gemini_exception(e):
+            LLM_RETRY_ATTEMPTS.labels(provider="gemini", error_type=error_type).inc()
         raise  # Re-raise for retry handling

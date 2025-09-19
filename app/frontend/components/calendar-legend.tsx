@@ -10,6 +10,7 @@
 
 import HeroVideoDialog from "@/components/magicui/hero-video-dialog";
 import { Button } from "@/components/ui/button";
+import { HeroPill } from "@/components/ui/hero-pill";
 import {
 	HoverCard,
 	HoverCardContent,
@@ -132,25 +133,30 @@ export function CalendarLegend({
 					</div>
 					<div className="flex flex-col gap-1.5">
 						{filteredItems.map((item) => (
-							<div key={item.key} className="flex items-center gap-2">
-								<div
-									className={cn(
-										"w-3 h-3 rounded-sm flex-shrink-0 shadow-sm",
-										item.key === "vacation" && "ring-[0.5px] ring-border/60",
-									)}
-									style={
-										item.key === "vacation"
-											? {
-													backgroundImage: "var(--vacation-pattern-legend)",
-													backgroundColor: "transparent",
-												}
-											: { backgroundColor: item.color }
-									}
-								/>
-								<span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-									{item.label}
-								</span>
-							</div>
+							<HeroPill
+								key={item.key}
+								animate
+								icon={
+									<span className="flex items-center">
+										<span
+											className={cn(
+												"w-2 h-2 rounded-full shadow-sm",
+												item.key === "vacation" && "ring-1 ring-border/60",
+											)}
+											style={
+												item.key === "vacation"
+													? {
+															backgroundImage: "var(--vacation-pattern-legend)",
+															backgroundColor: "transparent",
+														}
+													: { backgroundColor: item.color }
+											}
+										/>
+									</span>
+								}
+								text={item.label}
+								className="mb-1"
+							/>
 						))}
 					</div>
 
@@ -267,22 +273,22 @@ export function CalendarLegend({
 							</div>
 						</TooltipProvider>
 						<div className="mt-2 flex flex-col gap-1.5">
-							<div className="flex items-center gap-2 text-xs text-muted-foreground">
-								<ArrowLeftRight className="h-3 w-3" />
-								<span>
-									{isLocalized
+							<HeroPill
+								icon={<ArrowLeftRight className="h-3 w-3" />}
+								text={
+									isLocalized
 										? "السهمين يمين/يسار: تنقل التاريخ (اضغط واستمر للتكرار)"
-										: "Arrow Left/Right: Navigate date (hold to repeat)"}
-								</span>
-							</div>
-							<div className="flex items-center gap-2 text-xs text-muted-foreground">
-								<MoveUpRight className="h-3 w-3 -rotate-45" />
-								<span>
-									{isLocalized
+										: "Arrow Left/Right: Navigate date (hold to repeat)"
+								}
+							/>
+							<HeroPill
+								icon={<MoveUpRight className="h-3 w-3 -rotate-45" />}
+								text={
+									isLocalized
 										? "Ctrl + سهم للأعلى/للأسفل: تغيير العرض"
-										: "Ctrl + Arrow Up/Down: Change view"}
-								</span>
-							</div>
+										: "Ctrl + Arrow Up/Down: Change view"
+								}
+							/>
 						</div>
 					</div>
 

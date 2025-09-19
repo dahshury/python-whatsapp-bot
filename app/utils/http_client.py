@@ -9,7 +9,12 @@ ssl_context = ssl.create_default_context()
 ssl_context.load_verify_locations(certifi.where())
 
 # Synchronous client for blocking calls (e.g., OpenAI)
-sync_client = httpx.Client(verify=ssl_context)
+# Add sane timeouts and connection pooling to avoid hangs and reduce latency
+sync_client = httpx.Client(
+    verify=ssl_context,
+    timeout=httpx.Timeout(connect=10.0, read=60.0, write=30.0),
+    limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
+)
 
 # Asynchronous client for async calls (e.g., WhatsApp API)
 async_client = httpx.AsyncClient(

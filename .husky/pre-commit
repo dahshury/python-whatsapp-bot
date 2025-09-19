@@ -19,6 +19,8 @@ run_step "Running Knip (unused files/exports check)" pnpm dlx knip
 
 run_step "Linting/formatting staged Markdown" node scripts/ci/md-staged.mjs
 
+run_step "Running Ruff (Python lint with fixes)" ruff check --fix --unsafe-fixes
+
 echo "[pre-commit] All checks passed."
 
 
