@@ -18,6 +18,7 @@
 
 /* Theme inline configuration - must be loaded after all theme definitions */
 @import "../styles/themes/theme-inline.css";
+@import "../styles/excalidraw-theme.css";
 
 /* Global Error Suppression for React Timekeeper Issues */
 @layer base {

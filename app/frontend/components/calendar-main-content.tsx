@@ -227,6 +227,13 @@ export function CalendarMainContent({
 				}}
 				onViewDetails={handleViewDetails}
 				onOpenConversation={handleOpenConversation}
+				onOpenDocument={(waId) => {
+					try {
+						if (typeof window !== "undefined") {
+							window.location.href = `/documents?waId=${encodeURIComponent(waId)}`;
+						}
+					} catch {}
+				}}
 			/>
 
 			{/* Hover Card for Events */}

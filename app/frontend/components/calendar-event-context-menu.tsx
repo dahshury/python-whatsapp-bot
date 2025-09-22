@@ -6,11 +6,13 @@ import {
 	Clock,
 	Edit,
 	Eye,
+	FileText,
 	MessageCircle,
 	User,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { Z_INDEX } from "@/lib/z-index";
 import type { CalendarEvent } from "@/types/calendar";
@@ -23,6 +25,7 @@ interface CalendarEventContextMenuProps {
 	onEditReservation?: (eventId: string) => void;
 	onViewDetails?: (eventId: string) => void;
 	onOpenConversation?: (eventId: string) => void;
+	onOpenDocument?: (waId: string) => void;
 }
 
 export function CalendarEventContextMenu({
@@ -33,6 +36,7 @@ export function CalendarEventContextMenu({
 	onEditReservation,
 	onViewDetails,
 	onOpenConversation,
+	onOpenDocument,
 }: CalendarEventContextMenuProps) {
 	const { isLocalized } = useLanguage();
 	const [mounted, setMounted] = useState(false);
@@ -178,6 +182,67 @@ export function CalendarEventContextMenu({
 							{isLocalized ? "تعديل الحجز" : "Edit Reservation"}
 						</div>
 					)}
+
+					{/* Open Customer Document */}
+					<div
+						className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
+						onClick={() => {
+							try {
+								const wa = String(
+									(
+										event as {
+											extendedProps?: { waId?: string; wa_id?: string };
+										}
+									).extendedProps?.waId ||
+										(
+											event as {
+												extendedProps?: { waId?: string; wa_id?: string };
+											}
+										).extendedProps?.wa_id ||
+										event.id ||
+										"",
+								);
+								if (onOpenDocument) {
+									onOpenDocument(wa);
+								} else if (typeof window !== "undefined") {
+									window.location.href = `/documents?waId=${encodeURIComponent(wa)}`;
+								}
+							} catch {}
+							onClose();
+						}}
+						role="menuitem"
+						tabIndex={0}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") {
+								e.preventDefault();
+								try {
+									const wa = String(
+										(
+											event as {
+												extendedProps?: { waId?: string; wa_id?: string };
+											}
+										).extendedProps?.waId ||
+											(
+												event as {
+													extendedProps?: { waId?: string; wa_id?: string };
+												}
+											).extendedProps?.wa_id ||
+											event.id ||
+											"",
+									);
+									if (onOpenDocument) {
+										onOpenDocument(wa);
+									} else if (typeof window !== "undefined") {
+										window.location.href = `/documents?waId=${encodeURIComponent(wa)}`;
+									}
+								} catch {}
+								onClose();
+							}
+						}}
+					>
+						<FileText className="h-4 w-4" />
+						{i18n.getMessage("open_customer_document", isLocalized)}
+					</div>
 
 					{/* Cancel Reservation - Only if not already cancelled and not past */}
 					{!isCancelled && !isPast && (

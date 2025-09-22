@@ -226,6 +226,15 @@ def create_new_database_with_data(customers_data: List[Dict],
                 is_verified BOOLEAN NOT NULL DEFAULT 0
             );
             CREATE UNIQUE INDEX idx_users_email ON users(email);
+
+            -- Customer Documents table for Excalidraw scenes
+            CREATE TABLE customer_documents (
+                wa_id TEXT PRIMARY KEY,
+                document_json TEXT NOT NULL DEFAULT '{}',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX idx_customer_documents_wa_id ON customer_documents(wa_id);
         """)
         
         print("✅ Clean schema created")
@@ -348,6 +357,12 @@ def validate_sqlite_direct(db_path: str) -> bool:
         
         cursor.execute('SELECT COUNT(*) FROM vacation_periods')
         vacation_periods_count = cursor.fetchone()[0]
+        # Customer documents count
+        try:
+            cursor.execute('SELECT COUNT(*) FROM customer_documents')
+            documents_count = cursor.fetchone()[0]
+        except Exception:
+            documents_count = 0
         
         # Users table count (may be zero)
         try:
@@ -364,6 +379,7 @@ def validate_sqlite_direct(db_path: str) -> bool:
         print(f"  - Reservations: {reservations_count:,}")
         print(f"  - Vacation periods: {vacation_periods_count:,}")
         print(f"  - Users: {users_count:,}")
+        print(f"  - Customer documents: {documents_count:,}")
         
         # Test the problematic JOIN query
         cursor.execute("""
@@ -430,6 +446,13 @@ def validate_sqlalchemy_compatibility(db_path: str) -> bool:
                 print(f"✅ Users table present: {users_count:,} users")
             except Exception:
                 print("⚠️  Users table missing (auth not initialized)")
+
+            # Validate customer_documents table presence
+            try:
+                docs_count = session.execute(text("SELECT COUNT(*) FROM customer_documents")).scalar()
+                print(f"✅ Customer documents table present: {docs_count:,} documents")
+            except Exception:
+                print("⚠️  Customer documents table missing")
             
             return True
             

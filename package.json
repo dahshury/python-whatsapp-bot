@@ -17,6 +17,7 @@
 		"lint": "pnpm --filter ./app/frontend lint"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^2.2.4",
 		"typescript": "^5"
 	}
 }

@@ -5,7 +5,6 @@ import * as React from "react";
 import { getCalendarViewOptions } from "@/components/calendar-toolbar";
 import { Button } from "@/components/ui/button";
 import { Dock, DockIcon } from "@/components/ui/dock";
-import { useSidebar } from "@/components/ui/sidebar";
 import {
 	Tooltip,
 	TooltipContent,
@@ -34,7 +33,6 @@ export function CalendarDock({
 	isLocalized = false,
 }: CalendarDockProps) {
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
-	const { open, openMobile } = useSidebar();
 
 	// Create a stable ref if none provided
 	const fallbackRef = React.useRef<CalendarCoreRef | null>(null);
@@ -74,6 +72,8 @@ export function CalendarDock({
 				const currentIndex = opts.findIndex((o) => o.value === currentView);
 				const nextIndex = (currentIndex - 1 + opts.length) % opts.length;
 				const view = opts[nextIndex]?.value || "multiMonthYear";
+				// Prevent view switching in simple dock when using list-only contexts
+				if (currentView === "listMonth") return;
 				const api = effectiveCalendarRef.current?.getApi?.();
 				api?.changeView?.(view);
 			} catch {}
@@ -84,6 +84,8 @@ export function CalendarDock({
 				const currentIndex = opts.findIndex((o) => o.value === currentView);
 				const nextIndex = (currentIndex + 1) % opts.length;
 				const view = opts[nextIndex]?.value || "multiMonthYear";
+				// Prevent view switching in simple dock when using list-only contexts
+				if (currentView === "listMonth") return;
 				const api = effectiveCalendarRef.current?.getApi?.();
 				api?.changeView?.(view);
 			} catch {}
@@ -92,7 +94,8 @@ export function CalendarDock({
 		disabledRight: isNextDisabled,
 		startDelayMs: 2000,
 		intervalMs: 333,
-		isSidebarOpen: open || openMobile,
+		// Disable repeat navigation for mini dock in sidebar to avoid loops
+		isSidebarOpen: true,
 	});
 
 	// Define navigation buttons: left is always Previous, right is always Next

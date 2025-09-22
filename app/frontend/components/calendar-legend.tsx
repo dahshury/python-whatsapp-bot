@@ -8,6 +8,18 @@
 
 "use client";
 
+import {
+	ArrowLeftRight,
+	ChevronDownIcon,
+	ChevronLeftIcon,
+	ChevronRightIcon,
+	ChevronUpIcon,
+	CircleIcon,
+	Info,
+	Keyboard,
+	MoveUpRight,
+	PlayCircle,
+} from "lucide-react";
 import HeroVideoDialog from "@/components/magicui/hero-video-dialog";
 import { Button } from "@/components/ui/button";
 import { HeroPill } from "@/components/ui/hero-pill";
@@ -25,18 +37,6 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
 import { useVacation } from "@/lib/vacation-context";
-import {
-	ArrowLeftRight,
-	ChevronDownIcon,
-	ChevronLeftIcon,
-	ChevronRightIcon,
-	ChevronUpIcon,
-	CircleIcon,
-	Info,
-	Keyboard,
-	MoveUpRight,
-	PlayCircle,
-} from "lucide-react";
 
 interface CalendarLegendProps {
 	freeRoam?: boolean;
@@ -49,6 +49,20 @@ export function CalendarLegend({
 }: CalendarLegendProps) {
 	const { isLocalized } = useLanguage();
 	const { vacationPeriods } = useVacation();
+
+	// Only consider upcoming vacations (start strictly after today)
+	const hasUpcomingVacations = (() => {
+		try {
+			const normalize = (d: Date) =>
+				new Date(d.getFullYear(), d.getMonth(), d.getDate());
+			const today = normalize(new Date());
+			return (vacationPeriods || []).some(
+				(p) => normalize(p.start).getTime() > today.getTime(),
+			);
+		} catch {
+			return false;
+		}
+	})();
 
 	const legendItems = [
 		{
@@ -82,7 +96,7 @@ export function CalendarLegend({
 		(item) =>
 			item.showAlways ||
 			(freeRoam && item.key === "conversation") ||
-			(item.showWhenVacationExists && vacationPeriods.length > 0),
+			(item.showWhenVacationExists && hasUpcomingVacations),
 	);
 
 	return (

@@ -1,7 +1,8 @@
-import type { GridMouseEventArgs, SpriteMap } from "@glideapps/glide-data-grid";
 import type {
 	GridCell as GDGGridCell,
 	GridMouseCellEventArgs as GDGGridMouseCellEventArgs,
+	GridMouseEventArgs,
+	SpriteMap,
 } from "@glideapps/glide-data-grid";
 import DataEditor, {
 	type DataEditorRef,
@@ -18,10 +19,10 @@ import { DropdownCell as DropdownRenderer } from "@glideapps/glide-data-grid-cel
 import { Resizable, type Size as ResizableSize } from "re-resizable";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFullscreen } from "../contexts/FullscreenContext";
 import PhoneCellRenderer from "../PhoneCellRenderer";
 import TempusDateCellRenderer from "../TempusDominusDateCell";
 import TimekeeperCellRenderer from "../TimekeeperCell";
-import { useFullscreen } from "../contexts/FullscreenContext";
 import { drawAttentionIndicator } from "../utils/cellDrawHelpers";
 import { messages } from "../utils/i18n";
 
@@ -47,7 +48,7 @@ interface GridDataEditorProps {
 	onCellEdited: (cell: Item, newVal: unknown) => void;
 	onGridSelectionChange: (selection: GridSelection) => void;
 	gridSelection: GridSelection;
-	onRowAppended: () => void;
+	onRowAppended?: () => void;
 	onItemHovered: (args: {
 		location: [number, number];
 		item: Item;
@@ -81,6 +82,33 @@ interface GridDataEditorProps {
 	onAutosize?: (columnIndex: number) => void;
 	// Custom header icons
 	headerIcons?: SpriteMap;
+	// Compact sizing controls
+	rowHeightOverride?: number;
+	headerHeightOverride?: number;
+	showAppendRowPlaceholder?: boolean;
+	rowMarkers?:
+		| "checkbox"
+		| "number"
+		| "clickable-number"
+		| "checkbox-visible"
+		| "both"
+		| "none"
+		| "selection"
+		| {
+				kind:
+					| "checkbox"
+					| "number"
+					| "clickable-number"
+					| "checkbox-visible"
+					| "both"
+					| "none"
+					| "selection";
+				checkboxStyle?: "circle" | "square";
+				startIndex?: number;
+				width?: number;
+				theme?: Partial<Theme>;
+		  };
+	disableTrailingRow?: boolean;
 }
 
 // Hook for managing column pinning (similar to Streamlit's useColumnPinning)
@@ -210,9 +238,12 @@ const useGridSizer = (
 	isFullscreen?: boolean,
 	gridWidth?: number,
 	fullWidth?: boolean,
+	rowHeightOverride?: number,
+	headerHeightOverride?: number,
+	showAppendRowPlaceholder = true,
 ) => {
-	const rowHeight = 33;
-	const headerHeight = 35;
+	const rowHeight = rowHeightOverride ?? 33;
+	const headerHeight = headerHeightOverride ?? 35;
 	const borderWidth = 2;
 	const minTableWidth = 300;
 	const minTableHeight = headerHeight + rowHeight + 2 * borderWidth;
@@ -222,7 +253,7 @@ const useGridSizer = (
 		(sum, col) => sum + ((col as { width?: number }).width || 150),
 		60,
 	);
-	const totalRows = filteredRowCount + 1;
+	const totalRows = filteredRowCount + (showAppendRowPlaceholder ? 1 : 0);
 	const contentHeight = headerHeight + totalRows * rowHeight + 2 * borderWidth;
 
 	let maxHeight = Math.max(contentHeight, minTableHeight);
@@ -305,6 +336,11 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	onColumnResize,
 	onAutosize,
 	headerIcons,
+	rowHeightOverride,
+	headerHeightOverride,
+	showAppendRowPlaceholder = true,
+	rowMarkers,
+	disableTrailingRow,
 }) => {
 	const {
 		isFullscreen,
@@ -359,6 +395,9 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 		isFullscreen,
 		gridWidth,
 		fullWidth,
+		rowHeightOverride,
+		headerHeightOverride,
+		showAppendRowPlaceholder,
 	);
 
 	// Internal column config state (if not provided externally)
@@ -661,11 +700,37 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					gridSelection={gridSelection}
 					onGridSelectionChange={onGridSelectionChange}
 					freezeColumns={freezeColumns} // Use calculated freeze columns count
-					onRowAppended={onRowAppended}
+					{...(onRowAppended ? { onRowAppended } : {})}
 					onColumnMoved={onColumnMoved} // Use Streamlit-style column reordering
 					onCellEdited={onCellEdited}
 					onItemHovered={handleItemHovered}
-					rowMarkers="both"
+					{...(rowMarkers !== undefined
+						? {
+								rowMarkers:
+									rowMarkers === "selection"
+										? "checkbox"
+										: (rowMarkers as
+												| "checkbox"
+												| "number"
+												| "clickable-number"
+												| "checkbox-visible"
+												| "both"
+												| "none"
+												| {
+														kind:
+															| "checkbox"
+															| "number"
+															| "clickable-number"
+															| "checkbox-visible"
+															| "both"
+															| "none";
+														checkboxStyle?: "circle" | "square";
+														startIndex?: number;
+														width?: number;
+														theme?: Partial<Theme>;
+												  }),
+							}
+						: {})}
 					rowSelect="multi"
 					rowSelectionMode="multi"
 					columnSelect="none"
@@ -684,10 +749,9 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					headerHeight={headerHeight}
 					getCellsForSelection={true}
 					fillHandle={true}
-					trailingRowOptions={{
-						sticky: false,
-						tint: true,
-					}}
+					{...(!disableTrailingRow
+						? { trailingRowOptions: { sticky: false, tint: true } }
+						: {})}
 					{...(onColumnResize && { onColumnResize })}
 					editOnType={false}
 					keybindings={{

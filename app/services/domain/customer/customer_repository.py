@@ -22,7 +22,11 @@ class CustomerRepository:
         with get_session() as session:
             db_customer = session.get(CustomerModel, wa_id)
             if db_customer:
-                return Customer(wa_id=db_customer.wa_id, customer_name=db_customer.customer_name)
+                return Customer(
+                    wa_id=db_customer.wa_id,
+                    customer_name=db_customer.customer_name,
+                    age=getattr(db_customer, "age", None),
+                )
             return None
     
     def save(self, customer: Customer) -> bool:
@@ -39,9 +43,20 @@ class CustomerRepository:
             with get_session() as session:
                 existing = session.get(CustomerModel, customer.wa_id)
                 if existing is None:
-                    session.add(CustomerModel(wa_id=customer.wa_id, customer_name=customer.customer_name))
+                    session.add(
+                        CustomerModel(
+                            wa_id=customer.wa_id,
+                            customer_name=customer.customer_name,
+                            age=customer.age,
+                        )
+                    )
                 else:
                     existing.customer_name = customer.customer_name
+                    # Age column may not exist in older DBs; guard with getattr
+                    try:
+                        setattr(existing, "age", customer.age)
+                    except Exception:
+                        pass
                 session.commit()
                 return True
         except Exception:

@@ -25,6 +25,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { createFuseIndex, fuzzySearchItems } from "@/lib/fuzzy";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { cn } from "@/lib/utils";
@@ -313,6 +314,30 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		}
 	}, [phoneOptions]);
 
+	// Create a fuzzy index for name/label/number display matching (language-agnostic)
+	const fuse = React.useMemo(() => {
+		try {
+			return createFuseIndex(indexedOptions, {
+				keys: [
+					{ name: "__searchName", weight: 0.7 },
+					{ name: "__searchLabel", weight: 0.25 },
+					{ name: "displayNumber", weight: 0.05 },
+				],
+				threshold: 0.45,
+				ignoreLocation: true,
+				minMatchCharLength: 1,
+				includeScore: true,
+				shouldSort: true,
+			});
+		} catch {
+			// Fallback: a tiny wrapper that simulates Fuse API if construction fails
+			return createFuseIndex(indexedOptions, {
+				keys: ["__searchName", "__searchLabel", "displayNumber"],
+				threshold: 0.45,
+			});
+		}
+	}, [indexedOptions]);
+
 	// Debounce search input to avoid filtering on each keystroke
 	const [debouncedPhoneSearch, setDebouncedPhoneSearch] = React.useState("");
 	React.useEffect(() => {
@@ -362,9 +387,10 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 
 	// Do not auto-change country based on the typed phone value after initialization
 
-	// Update filtered phones when search changes (uses memoized index)
+	// Update filtered phones when search changes (fuzzy + numeric union)
 	React.useEffect(() => {
-		const search = debouncedPhoneSearch.toLowerCase().trim();
+		const raw = debouncedPhoneSearch.trim();
+		const search = raw.toLowerCase();
 		if (!search) {
 			setFilteredPhones(indexedOptions);
 			return;
@@ -373,16 +399,49 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		let normalizedSearch = convertZeroZeroToPlus(search);
 		normalizedSearch = normalizedSearch.replace(/[\s\-+]/g, "");
 
-		const filtered = indexedOptions.filter((option) => {
+		const isNumbery =
+			/[0-9]/.test(search) || raw.startsWith("+") || raw.startsWith("00");
+
+		const numberMatches = indexedOptions.filter((option) => {
 			const matchesNumber =
 				(option.number || "").toLowerCase().includes(search) ||
+				(option.displayNumber || "").toLowerCase().includes(search) ||
 				option.__normalizedNumber.includes(normalizedSearch);
-			const matchesName = option.__searchName.includes(search);
-			const matchesLabel = option.__searchLabel.includes(search);
-			return Boolean(matchesNumber || matchesName || matchesLabel);
+			return matchesNumber;
 		});
-		setFilteredPhones(filtered);
-	}, [debouncedPhoneSearch, indexedOptions]);
+
+		let fuzzyMatches: IndexedPhoneOption[] = [];
+		try {
+			fuzzyMatches = fuzzySearchItems<IndexedPhoneOption>(fuse, search);
+		} catch {
+			fuzzyMatches = [];
+		}
+
+		const seen = new Set<string>();
+		const pushUnique = (
+			list: IndexedPhoneOption[],
+			acc: IndexedPhoneOption[],
+		) => {
+			for (const item of list) {
+				const key = item.number;
+				if (!seen.has(key)) {
+					seen.add(key);
+					acc.push(item);
+				}
+			}
+		};
+
+		const merged: IndexedPhoneOption[] = [];
+		if (isNumbery) {
+			pushUnique(numberMatches, merged);
+			pushUnique(fuzzyMatches, merged);
+		} else {
+			pushUnique(fuzzyMatches, merged);
+			pushUnique(numberMatches, merged);
+		}
+
+		setFilteredPhones(merged);
+	}, [debouncedPhoneSearch, indexedOptions, fuse]);
 
 	// Do not infer country while typing; keep the selected flag as the source of truth.
 

@@ -1,5 +1,7 @@
 import logging
 import asyncio
+import base64
+import gzip
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Body
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -16,6 +18,9 @@ import datetime
 from zoneinfo import ZoneInfo
 from app.i18n import get_message
 import json
+from typing import Any
+from app.services.domain.customer.customer_service import CustomerService
+
 
 router = APIRouter()
 security = HTTPBasic()
@@ -226,6 +231,101 @@ async def api_test_whatsapp_config():
         "details": details
     })
 
+# === Customer Documents Endpoints ===
+
+def _maybe_decompress_document(raw: str) -> str:
+    try:
+        if isinstance(raw, str) and raw.startswith("gz:"):
+            b = base64.b64decode(raw[3:])
+            return gzip.decompress(b).decode("utf-8")
+    except Exception:
+        pass
+    return raw if isinstance(raw, str) else json.dumps(raw or {})
+
+@router.get("/documents/{wa_id}")
+async def api_get_customer_document(wa_id: str, request: Request):
+    """Fetch Excalidraw document JSON for a customer.
+
+    If none exists, return success with no persisted record and let the frontend apply its default template.
+    """
+    try:
+        from app.db import get_session, CustomerDocumentModel
+        with get_session() as session:
+            doc = session.get(CustomerDocumentModel, wa_id)
+            if doc is None:
+                return JSONResponse(content={
+                    "success": True,
+                    "wa_id": wa_id,
+                    "document": None,
+                })
+            try:
+                raw = doc.document_json if isinstance(doc.document_json, str) else json.dumps(doc.document_json or {})
+                raw = _maybe_decompress_document(raw)
+                parsed: Any = json.loads(raw)
+            except Exception:
+                parsed = {}
+            headers = {}
+            try:
+                if hasattr(doc, "updated_at") and doc.updated_at:
+                    headers["Last-Modified"] = doc.updated_at.isoformat()
+            except Exception:
+                pass
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "wa_id": wa_id,
+                    "document": parsed,
+                    "updated_at": (doc.updated_at.isoformat() if hasattr(doc, "updated_at") and doc.updated_at else None),
+                },
+                headers=headers,
+            )
+    except Exception as e:
+        logging.error(f"Error fetching customer document for {wa_id}: {e}")
+        return JSONResponse(content={"success": False, "message": "failed_to_load"}, status_code=500)
+
+
+@router.put("/documents/{wa_id}")
+async def api_put_customer_document(wa_id: str, payload: dict = Body(...)):
+    """Create or update Excalidraw document JSON for a customer.
+
+    Accepts either { document: <json> } or a raw Excalidraw scene object as body.
+    """
+    try:
+        from app.db import get_session, CustomerDocumentModel
+        document_obj: Any
+        if isinstance(payload, dict) and "document" in payload:
+            document_obj = payload.get("document")
+        else:
+            document_obj = payload
+
+        # Ensure serializable JSON string and compress large payloads for faster IO
+        try:
+            document_str = json.dumps(document_obj or {})
+        except Exception:
+            return JSONResponse(content={"success": False, "message": "invalid_document"}, status_code=400)
+        try:
+            if len(document_str) >= 16_384:  # 16KB threshold
+                gz = gzip.compress(document_str.encode("utf-8"), compresslevel=6)
+                b64 = base64.b64encode(gz).decode("ascii")
+                document_str = "gz:" + b64
+        except Exception:
+            # Fallback to plain JSON on compression failure
+            pass
+
+        with get_session() as session:
+            existing = session.get(CustomerDocumentModel, wa_id)
+            if existing is None:
+                existing = CustomerDocumentModel(wa_id=wa_id, document_json=document_str)
+                session.add(existing)
+            else:
+                existing.document_json = document_str
+            session.commit()
+
+        return JSONResponse(content={"success": True})
+    except Exception as e:
+        logging.error(f"Error saving customer document for {wa_id}: {e}")
+        return JSONResponse(content={"success": False, "message": "failed_to_save"}, status_code=500)
+
 @router.get("/conversations")
 async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):
     conversations = get_all_conversations(recent=recent, limit=limit)
@@ -298,6 +398,60 @@ async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
         reservation_id_to_cancel=payload.get("reservation_id_to_cancel")
     )
     return JSONResponse(content=resp)
+
+# === Customers endpoints (name/age management) ===
+@router.get("/customers/{wa_id}")
+async def api_get_customer(wa_id: str):
+    try:
+        from app.db import get_session, CustomerModel
+        with get_session() as session:
+            row = session.get(CustomerModel, wa_id)
+            if not row:
+                return JSONResponse(content={"success": True, "data": None})
+            return JSONResponse(
+                content={
+                    "success": True,
+                    "data": {
+                        "wa_id": row.wa_id,
+                        "name": getattr(row, "customer_name", None),
+                        "age": getattr(row, "age", None),
+                    },
+                }
+            )
+    except Exception as e:
+        logging.error(f"Error fetching customer {wa_id}: {e}")
+        return JSONResponse(content={"success": False, "message": "failed_to_load"}, status_code=500)
+
+
+@router.put("/customers/{wa_id}")
+async def api_put_customer(wa_id: str, payload: dict = Body(...)):
+    try:
+        # Update name and/or age using domain service
+        service = CustomerService()
+        name = payload.get("name")
+        age = payload.get("age")
+
+        result_name = None
+        result_age = None
+        # Ensure customer exists (create if missing) before applying updates
+        try:
+            service.get_or_create_customer(wa_id, customer_name=name)
+        except Exception:
+            pass
+        if name is not None:
+            result_name = service.update_customer_name(wa_id, name, ar=bool(payload.get("ar", False)))
+            if not result_name.get("success"):
+                return JSONResponse(content=result_name, status_code=400)
+        if age is not None or "age" in payload:
+            # allow explicit null to clear age
+            result_age = service.update_customer_age(wa_id, age if age is not None else None, ar=bool(payload.get("ar", False)))
+            if not result_age.get("success"):
+                return JSONResponse(content=result_age, status_code=400)
+
+        return JSONResponse(content={"success": True, "name": (result_name or {}).get("data"), "age": (result_age or {}).get("data")})
+    except Exception as e:
+        logging.error(f"Error saving customer {wa_id}: {e}")
+        return JSONResponse(content={"success": False, "message": "failed_to_save"}, status_code=500)
 
 # Modify reservation endpoint
 @router.post("/reservations/{wa_id}/modify")
@@ -530,11 +684,11 @@ async def api_undo_modify_reservation(payload: dict = Body(...)):
 
 
 @router.get("/notifications")
-async def api_get_notifications(limit: int = 150):
-    """Return the most recent notification events (default 150)."""
+async def api_get_notifications(limit: int = 2000):
+    """Return the most recent notification events (default 2000)."""
     try:
         from app.db import get_session, NotificationEventModel
-        limit = max(1, min(int(limit), 150))
+        limit = max(1, min(int(limit), 2000))
         with get_session() as session:
             rows = (
                 session.query(NotificationEventModel)

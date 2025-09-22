@@ -185,6 +185,18 @@ function VacationPeriodsComponent() {
 		stopRecording,
 	} = useVacation();
 
+	// Show only upcoming vacations (start date strictly after today)
+	const upcoming = React.useMemo(() => {
+		const normalize = (d: Date) =>
+			new Date(d.getFullYear(), d.getMonth(), d.getDate());
+		const today = normalize(new Date());
+		return (vacationPeriods || [])
+			.map((p, i) => ({ period: p, originalIndex: i }))
+			.filter(
+				({ period }) => normalize(period.start).getTime() > today.getTime(),
+			);
+	}, [vacationPeriods]);
+
 	const formatDate = React.useCallback(
 		(date: Date) =>
 			date.toLocaleDateString(isLocalized ? "ar-SA" : "en-US", {
@@ -214,7 +226,7 @@ function VacationPeriodsComponent() {
 	return (
 		<div className="space-y-2">
 			{/* Top-right controls when no periods exist */}
-			{vacationPeriods.length === 0 && (
+			{upcoming.length === 0 && (
 				<div className="flex items-center justify-end">
 					<div className="flex items-center gap-2">
 						{recordingState.periodIndex !== null && (
@@ -234,7 +246,7 @@ function VacationPeriodsComponent() {
 					</div>
 				</div>
 			)}
-			{vacationPeriods.length === 0 ? (
+			{upcoming.length === 0 ? (
 				<div className="text-center py-4 text-muted-foreground">
 					<Plane className="h-6 w-6 mx-auto mb-1 opacity-50" />
 					<p className="text-sm">
@@ -242,7 +254,7 @@ function VacationPeriodsComponent() {
 					</p>
 				</div>
 			) : (
-				vacationPeriods.map((period, index) => {
+				upcoming.map(({ period, originalIndex }, index) => {
 					const startText = formatDate(period.start);
 					const endText = formatDate(period.end);
 					const daysCount =
@@ -257,13 +269,13 @@ function VacationPeriodsComponent() {
 							startText={startText}
 							endText={endText}
 							isLocalized={isLocalized ?? false}
-							isRecordingStart={isRecordingStart(index)}
-							isRecordingEnd={isRecordingEnd(index)}
+							isRecordingStart={isRecordingStart(originalIndex)}
+							isRecordingEnd={isRecordingEnd(originalIndex)}
 							daysCount={daysCount}
-							onStartRecord={() => startRecording(index, "start")}
-							onEndRecord={() => startRecording(index, "end")}
+							onStartRecord={() => startRecording(originalIndex, "start")}
+							onEndRecord={() => startRecording(originalIndex, "end")}
 							onStopRecord={stopRecording}
-							onRemove={() => removeVacationPeriod(index)}
+							onRemove={() => removeVacationPeriod(originalIndex)}
 							onAdd={onAdd}
 						/>
 					);

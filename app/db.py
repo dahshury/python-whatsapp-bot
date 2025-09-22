@@ -13,13 +13,41 @@ from sqlalchemy import (
     create_engine,
     func,
     text,
+    event,
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker, scoped_session, Session
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 
-# Define the SQLite database file path
-# Use environment variable if set, otherwise default to current working directory
-DB_PATH = os.environ.get("DB_PATH", os.path.join(os.getcwd(), "threads_db.sqlite"))
+def _resolve_db_path() -> str:
+    """Resolve a stable, hardcoded SQLite path with sane fallbacks.
+
+    Priority:
+    1) /app/data/threads_db.sqlite (inside container with mounted volume)
+    2) ./data/threads_db.sqlite (when running from project root without container)
+    3) ./threads_db.sqlite (last resort in current working directory)
+    """
+    # Prefer container data volume
+    container_data_dir = "/app/data"
+    if os.path.isdir(container_data_dir):
+        return os.path.join(container_data_dir, "threads_db.sqlite")
+
+    # Prefer local data directory when running outside container
+    local_data_dir = os.path.join(os.getcwd(), "data")
+    try:
+        if not os.path.isdir(local_data_dir):
+            # Do not create eagerly; just fallback when missing
+            pass
+        else:
+            return os.path.join(local_data_dir, "threads_db.sqlite")
+    except Exception:
+        pass
+
+    # Fallback: current working directory
+    return os.path.join(os.getcwd(), "threads_db.sqlite")
+
+
+# Hardcode DB location (do not rely on .env). Still allow ENV override if explicitly set.
+DB_PATH = os.environ.get("DB_PATH") or _resolve_db_path()
 
 # SQLAlchemy engine and session factory (sync)
 engine = create_engine(
@@ -37,6 +65,40 @@ AsyncSessionLocal = sessionmaker(
 
 # Declarative Base
 Base = declarative_base()
+@event.listens_for(engine, "connect")
+def _set_sqlite_pragmas(dbapi_connection, _connection_record):  # noqa: ANN001
+    """Ensure stable SQLite journaling and sync settings on each connection."""
+    try:
+        cursor = dbapi_connection.cursor()
+        # WAL for durability across restarts with concurrent readers
+        cursor.execute("PRAGMA journal_mode=WAL;")
+        # Balance safety/perf; NORMAL is fine for WAL
+        cursor.execute("PRAGMA synchronous=NORMAL;")
+        # Limit WAL growth between checkpoints
+        cursor.execute("PRAGMA wal_autocheckpoint=1000;")
+        cursor.close()
+    except Exception:
+        # Best-effort; ignore PRAGMA failures
+        try:
+            cursor.close()
+        except Exception:
+            pass
+
+
+def checkpoint_wal(truncate: bool = True) -> bool:
+    """Perform a WAL checkpoint to merge WAL into the main DB file.
+
+    When truncate=True, issue TRUNCATE to clear WAL size on disk.
+    Return True on success, False otherwise.
+    """
+    try:
+        with engine.begin() as conn:
+            mode = "TRUNCATE" if truncate else "FULL"
+            conn.exec_driver_sql(f"PRAGMA wal_checkpoint({mode});")
+        return True
+    except Exception:
+        return False
+
 
 
 class CustomerModel(Base):
@@ -44,6 +106,8 @@ class CustomerModel(Base):
 
     wa_id = Column(String, primary_key=True)
     customer_name = Column(String, nullable=True)
+    # Optional age field; keep nullable to avoid forcing data for all existing customers
+    age = Column(Integer, nullable=True)
 
     __table_args__ = (
         Index("idx_customers_wa_id", "wa_id"),
@@ -131,6 +195,25 @@ class NotificationEventModel(Base):
         Index("idx_notification_events_created_at", "created_at"),
     )
 
+
+class CustomerDocumentModel(Base):
+    __tablename__ = "customer_documents"
+
+    # Use wa_id as the primary key to store a single document per customer
+    wa_id = Column(String, ForeignKey("customers.wa_id"), primary_key=True, index=True)
+    # Excalidraw JSON is stored as TEXT
+    document_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, server_default=func.current_timestamp())
+    updated_at = Column(
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
+    customer = relationship("CustomerModel", backref="document", uselist=False)
+
+    __table_args__ = (
+        Index("idx_customer_documents_wa_id", "wa_id"),
+    )
+
 def init_models() -> None:
     """Create database tables if they do not exist."""
     # Ensure auth models are imported so metadata includes them
@@ -140,6 +223,19 @@ def init_models() -> None:
         # Auth module may not be present in some environments
         pass
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight migration: ensure 'age' column exists on 'customers'
+    try:
+        with engine.begin() as conn:
+            # Check existing columns
+            result = conn.exec_driver_sql("PRAGMA table_info(customers);")
+            cols = [row[1] for row in result.fetchall()]  # row[1] is column name
+            if "age" not in cols:
+                # Add nullable column for age
+                conn.exec_driver_sql("ALTER TABLE customers ADD COLUMN age INTEGER NULL;")
+    except Exception:
+        # Best-effort migration; ignore if fails in read-only contexts
+        pass
 
 
 def get_session() -> Session:

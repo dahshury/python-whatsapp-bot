@@ -5,19 +5,30 @@ import { useWebSocketData } from "@/hooks/useWebSocketData";
 import { callPythonBackend } from "@/lib/backend";
 import type { VacationSnapshot } from "@/lib/ws/types";
 import type { DashboardData, PrometheusMetrics } from "@/types/dashboard";
+import type {
+    ConversationMessage as CalendarConversationMessage,
+    Reservation as CalendarReservation,
+} from "@/types/calendar";
 
-export interface ConversationMessage {
-	id?: string;
-	text?: string;
-	ts?: string;
-}
-export interface Reservation {
-	id: string;
-	title: string;
-	start: string;
-	end?: string;
-	customer_name?: string;
-}
+// Unify message/reservation shapes to be compatible with calendar types while
+// allowing optional fields that may appear in websocket payloads or REST fallbacks.
+export type ConversationMessage = CalendarConversationMessage & {
+    ts?: string;
+    text?: string;
+    datetime?: string;
+    sender?: string;
+    author?: string;
+};
+export type Reservation = CalendarReservation & {
+    start?: string;
+    end?: string;
+    updated_at?: string;
+    modified_at?: string;
+    last_modified?: string;
+    modified_on?: string;
+    update_ts?: string;
+    title?: string;
+};
 export interface Vacation {
 	id: string;
 	start: string;
@@ -87,14 +98,14 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	const [conversations, setConversations] = React.useState<
 		Record<string, ConversationMessage[]>
 	>(cached.conversations);
-	const [reservations, setReservations] = React.useState<
-		Record<string, Reservation[]>
-	>(cached.reservations);
+    const [reservations, setReservations] = React.useState<
+        Record<string, Reservation[]>
+    >(cached.reservations);
 	const [vacations, setVacations] = React.useState<Vacation[]>(
 		cached.vacations,
 	);
-	const [prometheusMetrics, setPrometheusMetrics] =
-		React.useState<PrometheusMetrics>({});
+    const [prometheusMetrics, setPrometheusMetrics] =
+        React.useState<PrometheusMetrics>({});
 	const [isLoading, _setIsLoading] = React.useState<boolean>(false);
 	const [error, _setError] = React.useState<string | null>(null);
 	const hasLoadedRef = React.useRef<boolean>(false);
@@ -279,10 +290,10 @@ export const WebSocketDataProvider: React.FC<React.PropsWithChildren> = ({
 	}, [ws?.conversations, ws.reservations, ws]);
 
 	React.useEffect(() => {
-		if (ws?.reservations)
-			setReservations(
-				ws.reservations as unknown as Record<string, Reservation[]>,
-			);
+        if (ws?.reservations)
+            setReservations(
+                (ws.reservations as unknown) as Record<string, Reservation[]>,
+            );
 		try {
 			if (
 				!hasLoadedRef.current &&

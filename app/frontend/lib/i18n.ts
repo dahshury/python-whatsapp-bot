@@ -120,6 +120,15 @@ const en = {
 	cm_format_accounting: "Accounting",
 	cm_format_distance: "Distance",
 	cm_format_calendar: "Calendar",
+	// Documents
+	documents_select_customer: "Select customer",
+	documents: "Documents",
+	open_customer_document: "Open Customer Document",
+	save: "Save",
+	loading: "Loading...",
+	saving: "Saving...",
+	saved: "Saved",
+	unsaved_changes: "Unsaved changes",
 };
 
 const ar = {
@@ -169,6 +178,15 @@ const ar = {
 	dashboard_export: "تصدير",
 	// Vacation label
 	vacation: "إجازة",
+	// Documents
+	documents_select_customer: "اختر العميل",
+	documents: "المستندات",
+	open_customer_document: "فتح مستند العميل",
+	save: "حفظ",
+	loading: "جارٍ التحميل...",
+	saving: "جارٍ الحفظ...",
+	saved: "تم الحفظ",
+	unsaved_changes: "تغييرات غير محفوظة",
 };
 
 // Extend English keys for charts, messages, operations, insights
@@ -347,6 +365,7 @@ Object.assign(en, {
 	field_phone: "Phone",
 	field_type: "Type",
 	field_name: "Name",
+	field_age: "Age",
 });
 
 // Column/format menus localization
@@ -547,6 +566,7 @@ Object.assign(ar, {
 	field_phone: "الهاتف",
 	field_type: "النوع",
 	field_name: "الاسم",
+	field_age: "العمر",
 });
 
 // Column/format menus localization

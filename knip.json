@@ -35,6 +35,7 @@
     "scripts/ci/md-staged.mjs"
   ],
   "ignoreDependencies": [
-    "critters"
+    "critters",
+    "@biomejs/biome"
   ]
 }

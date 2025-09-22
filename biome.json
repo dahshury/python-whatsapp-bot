@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.0.6/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
 	"vcs": {
 		"enabled": true,
 		"clientKind": "git",
@@ -7,16 +7,10 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"include": [
+		"includes": [
 			"app/frontend/**"
 		],
-		"ignore": [
-			"app/frontend/.next/**",
-			"app/frontend/node_modules/**",
-			"**/node_modules/**",
-			"**/.venv/**",
-			"**/*.css"
-		]
+		"maxSize": 1048576
 	},
 	"formatter": {
 		"enabled": true,
@@ -54,8 +48,5 @@
 		"formatter": {
 			"quoteStyle": "double"
 		}
-	},
-	"organizeImports": {
-		"enabled": true
 	}
 }

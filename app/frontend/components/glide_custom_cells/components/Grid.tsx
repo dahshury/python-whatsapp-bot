@@ -1,5 +1,3 @@
-import { useCustomerData } from "@/lib/customer-data-context";
-import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 import type { SpriteMap } from "@glideapps/glide-data-grid";
 import {
 	CompactSelection,
@@ -12,9 +10,14 @@ import {
 	type Theme,
 } from "@glideapps/glide-data-grid";
 import React from "react";
-import TooltipFloat from "./Tooltip";
+import ReactDOM from "react-dom";
+import { useCustomerData } from "@/lib/customer-data-context";
+import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 import { useFullscreen } from "./contexts/FullscreenContext";
-import { GridPortalProvider } from "./contexts/GridPortalContext";
+import {
+	GridPortalProvider,
+	useGridPortal,
+} from "./contexts/GridPortalContext";
 import { InMemoryDataSource } from "./core/data-sources/InMemoryDataSource";
 import type { IDataSource } from "./core/interfaces/IDataSource";
 import { useColumnMenu } from "./hooks/useColumnMenu";
@@ -31,6 +34,7 @@ import { useGridTooltips } from "./hooks/useGridTooltips";
 import { useModularGridData } from "./hooks/useModularGridData";
 import { useUndoRedo } from "./hooks/useUndoRedo";
 import { ColumnMenu } from "./menus/ColumnMenu";
+import TooltipFloat from "./Tooltip";
 import { FullscreenWrapper } from "./ui/FullscreenWrapper";
 import { GridDataEditor } from "./ui/GridDataEditor";
 import { GridThemeToggle } from "./ui/GridThemeToggle";
@@ -53,6 +57,17 @@ export default function Grid({
 	onDataProviderReady,
 	dataEditorRef: externalDataEditorRef,
 	validationErrors,
+	onAppendRow,
+	hideToolbar,
+	hideHeaders,
+	className,
+	loading,
+	rowHeight,
+	headerHeight,
+	hideAppendRowPlaceholder,
+	rowMarkers,
+	disableTrailingRow,
+	onAddRowOverride,
 }: {
 	showThemeToggle?: boolean;
 	fullWidth?: boolean;
@@ -61,13 +76,24 @@ export default function Grid({
 	dataSource?: IDataSource;
 	onReady?: () => void;
 	onDataProviderReady?: (provider: unknown) => void;
-	dataEditorRef?: React.RefObject<DataEditorRef>;
+	dataEditorRef?: React.RefObject<DataEditorRef | null>;
 	validationErrors?: Array<{
 		row: number;
 		col: number;
 		message: string;
 		fieldName?: string;
 	}>;
+	onAppendRow?: () => void;
+	hideToolbar?: boolean;
+	hideHeaders?: boolean;
+	className?: string;
+	loading?: boolean;
+	rowHeight?: number;
+	headerHeight?: number;
+	hideAppendRowPlaceholder?: boolean;
+	rowMarkers?: "none" | "both" | "number" | "checkbox" | "selection";
+	disableTrailingRow?: boolean;
+	onAddRowOverride?: () => void;
 } = {}) {
 	// Initialize the data source - use external if provided, otherwise create default
 	const dataSource = React.useMemo(() => {
@@ -106,66 +132,71 @@ export default function Grid({
 	const [isInitializing, setIsInitializing] = React.useState(true);
 	const [isDataReady, setIsDataReady] = React.useState(false);
 
-	// Container width measurement
+	// Container width measurement (throttled, non-remounting)
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const [containerWidth, setContainerWidth] = React.useState<
 		number | undefined
 	>(undefined);
+	const lastWidthRef = React.useRef<number | undefined>(undefined);
+	const rafIdRef = React.useRef<number | null>(null);
+	const lastUpdateTsRef = React.useRef<number>(0);
 
-	// Use ResizeObserver to track container width
 	React.useEffect(() => {
-		if (!containerRef.current) return;
+		const el = containerRef.current;
+		if (!el) return;
+
+		const MIN_DELTA = 2; // px
+		const MIN_MS = 50; // throttle interval
 
 		const observer = new ResizeObserver((entries) => {
 			for (const entry of entries) {
-				const width = entry.contentRect.width;
-				if (width > 0) {
+				let width = entry.contentRect.width;
+				if (!Number.isFinite(width) || width <= 0) continue;
+				width = Math.round(width);
+				const prev = lastWidthRef.current ?? -1;
+				if (Math.abs(width - prev) < MIN_DELTA) continue;
+				const update = () => {
+					lastWidthRef.current = width;
 					setContainerWidth(width);
+				};
+				const now = performance.now();
+				if (now - lastUpdateTsRef.current >= MIN_MS) {
+					lastUpdateTsRef.current = now;
+					update();
+				} else {
+					if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+					rafIdRef.current = requestAnimationFrame(() => {
+						lastUpdateTsRef.current = performance.now();
+						update();
+					});
 				}
 			}
 		});
 
-		// Initial measurement after a small delay to ensure dialog is rendered
-		const initialMeasure = () => {
-			if (containerRef.current) {
-				// Use offsetWidth which includes border but not margin
-				const width = containerRef.current.offsetWidth;
-				if (width > 0) {
-					setContainerWidth(width);
-				}
+		observer.observe(el);
+
+		// Initial measure
+		try {
+			const w = Math.round(el.offsetWidth || 0);
+			if (w > 0) {
+				lastWidthRef.current = w;
+				setContainerWidth(w);
 			}
-		};
-
-		// Measure immediately and after multiple delays to ensure we catch dialog rendering
-		initialMeasure();
-		const timer1 = setTimeout(initialMeasure, 100);
-		const timer2 = setTimeout(initialMeasure, 300);
-		const timer3 = setTimeout(initialMeasure, 500);
-
-		observer.observe(containerRef.current);
+		} catch {}
 
 		return () => {
-			clearTimeout(timer1);
-			clearTimeout(timer2);
-			clearTimeout(timer3);
+			if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
 			observer.disconnect();
 		};
-	}, []); // Keep fullWidth dependency for consistency
+	}, []);
 
 	// Reset toolbar hover state when fullscreen changes
 	React.useEffect(() => {}, []);
 
-	// Force re-render when container width changes in fullWidth mode
+	// Avoid remounting on width changes; DataEditor handles resize smoothly
 	React.useEffect(() => {
-		if (fullWidth && containerWidth && containerWidth > 0) {
-			// Force a small delay to ensure the grid properly resizes
-			const timer = setTimeout(() => {
-				setGridKey((prev) => prev + 1);
-			}, 50);
-			return () => clearTimeout(timer);
-		}
-		return undefined;
-	}, [containerWidth, fullWidth]);
+		// no-op
+	}, []);
 
 	// Sync legacy grid state with new fullscreen context
 	React.useEffect(() => {
@@ -311,6 +342,19 @@ export default function Grid({
 		[dataEditorRef.current?.updateCells],
 	);
 
+	// Calculate absolute top-right position for toolbar overlay
+	const overlayPosition = React.useMemo(() => {
+		try {
+			const el = containerRef.current;
+			if (!el) return null;
+			const rect = el.getBoundingClientRect();
+			// Position to the top-right corner of the grid container with a small offset
+			return { top: rect.top + 4, left: rect.right - 4 };
+		} catch {
+			return null;
+		}
+	}, []);
+
 	// Force a redraw of all visible cells when display geometry changes
 	// to ensure migrated editing state is reflected immediately (avoids "None" until hover)
 	React.useEffect(() => {
@@ -372,6 +416,21 @@ export default function Grid({
 
 	const getCellContent = React.useCallback(
 		(cell: Item) => {
+			// While externally loading, return LoadingCell skeletons
+			if (loading) {
+				const [col] = cell;
+				const approxWidth =
+					(displayColumns[col] as { width?: number }).width ?? 150;
+				return {
+					kind: GridCellKind.Loading,
+					skeletonWidth: Math.round(
+						Math.max(60, Math.min(220, approxWidth * 0.65)),
+					),
+					skeletonHeight: 14,
+					skeletonWidthVariability: 40,
+				} as GridCell;
+			}
+
 			const baseCell = baseGetCellContent(filteredRows)(cell);
 			const [col] = cell;
 			const column = displayColumns[col] as { sticky?: boolean };
@@ -409,7 +468,14 @@ export default function Grid({
 
 			return baseCell;
 		},
-		[filteredRows, baseGetCellContent, displayColumns, theme, darkTheme],
+		[
+			filteredRows,
+			baseGetCellContent,
+			displayColumns,
+			theme,
+			darkTheme,
+			loading,
+		],
 	);
 
 	const onCellEdited = React.useCallback(
@@ -727,26 +793,27 @@ export default function Grid({
 		};
 	}, []);
 
-	// Don't render until data is ready
-	if (!isDataReady || columnsState.length === 0) {
-		// If onReady is provided, don't show loading spinner - the parent will handle loading state
-		if (onReady) {
-			return null;
-		}
+	// Always call hooks before any conditional logic
+	const globalPortalContainer = useGridPortal();
 
+	// Don't render skeleton only when truly not ready the first time (no spinner here)
+	if (!isDataReady || columnsState.length === 0) {
+		if (onReady) return null;
 		return (
 			<FullscreenWrapper theme={theme} darkTheme={darkTheme}>
 				<div
 					className={`glide-grid-container ${theme === darkTheme ? "glide-grid-container-dark" : "glide-grid-container-light"}`}
 				>
-					<div className="flex flex-col items-center gap-4">
-						<div
-							className={`glide-loading-spinner ${theme === darkTheme ? "glide-loading-spinner-dark" : "glide-loading-spinner-light"}`}
-						/>
-						<div
-							className={`glide-loading-text ${theme === darkTheme ? "glide-loading-text-dark" : "glide-loading-text-light"}`}
-						>
-							Loading grid...
+					{/* Skeleton rows - dimmer */}
+					<div className="w-full opacity-30">
+						<div className="h-8 bg-muted/50 mb-2 rounded" />
+						<div className="space-y-2">
+							{Array.from({ length: 5 }).map((_, i) => (
+								<div
+									key={`sk-${String(i)}`}
+									className="h-6 bg-muted/40 rounded"
+								/>
+							))}
 						</div>
 					</div>
 				</div>
@@ -758,56 +825,77 @@ export default function Grid({
 		<FullscreenWrapper theme={theme} darkTheme={darkTheme}>
 			<GridPortalProvider>
 				<div
-					className={`glide-grid-wrapper ${isFullscreen ? "glide-grid-wrapper-fullscreen" : "glide-grid-wrapper-centered"}`}
+					className={`glide-grid-wrapper ${isFullscreen ? "glide-grid-wrapper-fullscreen" : "glide-grid-wrapper-centered"} ${className || ""}`}
 				>
-					{!isFullscreen && showThemeToggle && !isUsingExternalTheme && (
-						<GridThemeToggle
-							currentTheme={theme}
-							lightTheme={lightTheme}
-							darkTheme={darkTheme}
-							iconColor={actualIconColor}
-							filteredRowCount={filteredRowCount}
-							onThemeChange={(newTheme) => {
-								setTheme(newTheme);
-								// Force grid to refetch all cells by toggling search
-								const currentSearch = gs.searchValue;
-								gs.setSearchValue(`${currentSearch} `);
-								requestAnimationFrame(() => {
-									gs.setSearchValue(currentSearch);
-								});
-							}}
-						/>
-					)}
+					{!hideToolbar &&
+						!isFullscreen &&
+						showThemeToggle &&
+						!isUsingExternalTheme && (
+							<GridThemeToggle
+								currentTheme={theme}
+								lightTheme={lightTheme}
+								darkTheme={darkTheme}
+								iconColor={actualIconColor}
+								filteredRowCount={filteredRowCount}
+								onThemeChange={(newTheme) => {
+									setTheme(newTheme);
+									// Force grid to refetch all cells by toggling search
+									const currentSearch = gs.searchValue;
+									gs.setSearchValue(`${currentSearch} `);
+									requestAnimationFrame(() => {
+										gs.setSearchValue(currentSearch);
+									});
+								}}
+							/>
+						)}
 
-					<GridToolbar
-						isFocused={gs.isFocused || isFullscreen}
-						hasSelection={actions.hasSelection}
-						canUndo={canUndo}
-						canRedo={canRedo}
-						hasHiddenColumns={columns.length > displayColumns.length}
-						onClearSelection={clearSelection}
-						onDeleteRows={deleteRows}
-						onUndo={undo}
-						onRedo={redo}
-						onAddRow={async () => {
-							await dataProvider.addRow();
-							gs.setNumRows(dataSource.rowCount);
-							// Save state after add row - but only if no external dataSource
-							if (!externalDataSource) {
-								saveState();
-							}
-						}}
-						onToggleColumnVisibility={actions.handleToggleColumnVisibility}
-						onDownloadCsv={actions.handleDownloadCsv}
-						onToggleSearch={() => gs.setShowSearch((v) => !v)}
-						onToggleFullscreen={toggleFullscreen}
-					/>
+					{!hideToolbar &&
+						globalPortalContainer &&
+						ReactDOM.createPortal(
+							<GridToolbar
+								isFocused={gs.isFocused || isFullscreen}
+								hasSelection={actions.hasSelection}
+								canUndo={canUndo}
+								canRedo={canRedo}
+								hasHiddenColumns={columns.length > displayColumns.length}
+								onClearSelection={clearSelection}
+								onDeleteRows={deleteRows}
+								onUndo={undo}
+								onRedo={redo}
+								onAddRow={
+									onAddRowOverride ||
+									(async () => {
+										await dataProvider.addRow();
+										gs.setNumRows(dataSource.rowCount);
+										if (!externalDataSource) {
+											saveState();
+										}
+									})
+								}
+								onToggleColumnVisibility={actions.handleToggleColumnVisibility}
+								onDownloadCsv={actions.handleDownloadCsv}
+								onToggleSearch={() => gs.setShowSearch((v) => !v)}
+								onToggleFullscreen={toggleFullscreen}
+								overlay={true}
+								overlayPosition={overlayPosition}
+							/>,
+							globalPortalContainer,
+						)}
 
 					<div
 						ref={containerRef}
 						className={`glide-grid-inner ${fullWidth || isFullscreen ? "glide-grid-inner-full" : "glide-grid-inner-fit"}`}
 						data-fullwidth={fullWidth}
 						data-container-width={containerWidth}
+						style={{
+							willChange: fullWidth
+								? containerWidth
+									? "width"
+									: "auto"
+								: undefined,
+							margin: 0,
+							padding: 0,
+						}}
 					>
 						<GridDataEditor
 							key={gridKey}
@@ -825,64 +913,80 @@ export default function Grid({
 							}
 							onGridSelectionChange={onGridSelectionChange}
 							gridSelection={gs.selection}
-							onRowAppended={() => {
-								(async () => {
-									try {
-										// If there is a single empty base row (template), remove it before appending
-										const baseRowCount = dataSource.rowCount;
-										if (baseRowCount === 1) {
-											const colCount = dataProvider.getColumnCount();
-											let isEmpty = true;
-											for (let c = 0; c < colCount; c++) {
-												const cell = getRawCellContent(c, 0);
-												const kind = (cell as { kind?: unknown })
-													.kind as unknown;
-												const data = (cell as { data?: unknown }).data as {
-													kind?: string;
-													value?: unknown;
-													date?: Date;
-													displayDate?: string;
-													time?: Date;
-												};
-												const displayData = (cell as { displayData?: unknown })
-													.displayData;
-												const hasContent =
-													(kind === GridCellKind.Custom &&
-														data &&
-														((data.kind === "phone-cell" &&
-															typeof data.value === "string" &&
-															String(data.value).trim().length > 0) ||
-															(data.kind === "dropdown-cell" &&
-																Boolean(data.value)) ||
-															(data.kind === "tempus-date-cell" &&
-																Boolean(data.date || data.displayDate)) ||
-															(data.kind === "timekeeper-cell" &&
-																Boolean(data.time)))) ||
-													(kind === GridCellKind.Number &&
-														(cell as { data?: unknown }).data !== null &&
-														(cell as { data?: unknown }).data !== undefined) ||
-													(kind === GridCellKind.Text &&
-														typeof (cell as { data?: unknown }).data ===
-															"string" &&
-														String((cell as { data?: unknown }).data).trim()
-															.length > 0) ||
-													(Boolean(displayData) &&
-														String(displayData as string).trim().length > 0);
-												if (hasContent) {
-													isEmpty = false;
-													break;
+							{...(!disableTrailingRow
+								? {
+										onRowAppended: () => {
+											// Allow consumers to override append behavior (e.g., clear existing row)
+											try {
+												if (typeof onAppendRow === "function") {
+													onAppendRow();
+													return true;
 												}
-											}
-											if (isEmpty) {
-												await dataProvider.deleteRow(0);
-											}
-										}
-										await dataProvider.addRow();
-										gs.setNumRows(dataSource.rowCount);
-									} catch {}
-								})();
-								return true;
-							}}
+											} catch {}
+											(async () => {
+												try {
+													// If there is a single empty base row (template), remove it before appending
+													const baseRowCount = dataSource.rowCount;
+													if (baseRowCount === 1) {
+														const colCount = dataProvider.getColumnCount();
+														let isEmpty = true;
+														for (let c = 0; c < colCount; c++) {
+															const cell = getRawCellContent(c, 0);
+															const kind = (cell as { kind?: unknown })
+																.kind as unknown;
+															const data = (cell as { data?: unknown })
+																.data as {
+																kind?: string;
+																value?: unknown;
+																date?: Date;
+																displayDate?: string;
+																time?: Date;
+															};
+															const displayData = (
+																cell as { displayData?: unknown }
+															).displayData;
+															const hasContent =
+																(kind === GridCellKind.Custom &&
+																	data &&
+																	((data.kind === "phone-cell" &&
+																		typeof data.value === "string" &&
+																		String(data.value).trim().length > 0) ||
+																		(data.kind === "dropdown-cell" &&
+																			Boolean(data.value)) ||
+																		(data.kind === "tempus-date-cell" &&
+																			Boolean(data.date || data.displayDate)) ||
+																		(data.kind === "timekeeper-cell" &&
+																			Boolean(data.time)))) ||
+																(kind === GridCellKind.Number &&
+																	(cell as { data?: unknown }).data !== null &&
+																	(cell as { data?: unknown }).data !==
+																		undefined) ||
+																(kind === GridCellKind.Text &&
+																	typeof (cell as { data?: unknown }).data ===
+																		"string" &&
+																	String(
+																		(cell as { data?: unknown }).data,
+																	).trim().length > 0) ||
+																(Boolean(displayData) &&
+																	String(displayData as string).trim().length >
+																		0);
+															if (hasContent) {
+																isEmpty = false;
+																break;
+															}
+														}
+														if (isEmpty) {
+															await dataProvider.deleteRow(0);
+														}
+													}
+													await dataProvider.addRow();
+													gs.setNumRows(dataSource.rowCount);
+												} catch {}
+											})();
+											return true;
+										},
+									}
+								: {})}
 							onItemHovered={(args: {
 								location: [number, number];
 								item: Item;
@@ -918,6 +1022,16 @@ export default function Grid({
 							{...(containerWidth !== undefined && { containerWidth })}
 							// containerHeight prop omitted when undefined
 							headerIcons={headerIcons}
+							{...(hideHeaders ? { headerHeight: 0 as unknown as number } : {})}
+							{...(typeof rowHeight === "number"
+								? { rowHeightOverride: rowHeight }
+								: {})}
+							{...(typeof headerHeight === "number"
+								? { headerHeightOverride: headerHeight }
+								: {})}
+							showAppendRowPlaceholder={!hideAppendRowPlaceholder}
+							{...(rowMarkers ? { rowMarkers } : {})}
+							{...(disableTrailingRow ? { disableTrailingRow: true } : {})}
 							// Column management props - using Streamlit-style configuration
 							columnConfigMapping={columnConfigMapping}
 							onColumnConfigChange={(mapping) =>

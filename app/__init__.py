@@ -26,13 +26,23 @@ def create_app():
     async def lifespan(app: FastAPI):
         pid = os.getpid()
         logging.info(f"startup: initializing database tables in pid {pid}")
-        from app.db import init_models
+        from app.db import init_models, checkpoint_wal
         init_models()
+        # Best-effort WAL checkpoint at startup to merge any dangling WAL from previous run
+        try:
+            checkpoint_wal(truncate=True)
+        except Exception:
+            pass
         logging.info(f"startup: initializing scheduler in pid {pid}")
         init_scheduler(app)
         yield
-        # Shutdown: close HTTP clients
+        # Shutdown: checkpoint WAL and close HTTP clients
         logging.info("shutdown: closing HTTP clients")
+        try:
+            from app.db import checkpoint_wal as _checkpoint
+            _checkpoint(truncate=True)
+        except Exception:
+            pass
         from app.utils.http_client import async_client, sync_client
         await async_client.aclose()
         sync_client.close()

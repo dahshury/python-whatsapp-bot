@@ -112,6 +112,23 @@ jobs:
               # Move to project directory
               cd /home/ubuntu/python-whatsapp-bot
 
+              # Ensure persistent data directory exists and migrate existing DB files into it once
+              mkdir -p data
+              # If main DB exists at project root and not yet in data/, move it (preserves inode & checksum)
+              if [ -f threads_db.sqlite ] && [ ! -f data/threads_db.sqlite ]; then
+                echo "Migrating threads_db.sqlite into ./data/"
+                mv threads_db.sqlite data/threads_db.sqlite
+              fi
+              # If WAL/SHM sidecars exist at project root and not yet in data/, move them too
+              if [ -f threads_db.sqlite-wal ] && [ ! -f data/threads_db.sqlite-wal ]; then
+                echo "Migrating WAL file into ./data/"
+                mv threads_db.sqlite-wal data/threads_db.sqlite-wal
+              fi
+              if [ -f threads_db.sqlite-shm ] && [ ! -f data/threads_db.sqlite-shm ]; then
+                echo "Migrating SHM file into ./data/"
+                mv threads_db.sqlite-shm data/threads_db.sqlite-shm
+              fi
+
               # Fix permissions if needed (use sudo)
               if [ ! -w prometheus ]; then
                 echo "Fixing prometheus directory permissions..."
@@ -122,9 +139,17 @@ jobs:
               if [ ! -f .env ]; then
                 echo "WARNING: .env not found"
               fi
-              # Warn if threads_db.sqlite doesn't exist
-              if [ ! -f threads_db.sqlite ]; then
-                echo "WARNING: threads_db.sqlite not found"
+              # Warn if database doesn't exist in data directory
+              if [ ! -f data/threads_db.sqlite ]; then
+                echo "WARNING: data/threads_db.sqlite not found"
+              fi
+
+              # Defensive: checkpoint WAL on host copy if present before pulling/starting
+              if command -v sqlite3 >/dev/null 2>&1; then
+                if [ -f data/threads_db.sqlite ]; then
+                  echo "Host pre-checkpoint WAL (TRUNCATE)..."
+                  sqlite3 data/threads_db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);' || true
+                fi
               fi
 
               # First, clean up space BEFORE pulling new images
@@ -151,6 +176,11 @@ jobs:
               # Now safe to stop running containers
               if [ -n "$running_containers" ]; then
                 echo "Stopping running containers..."
+                # Before stopping, if backend is running with a mounted DB, checkpoint WAL to avoid data loss
+                if docker ps --format '{{.Names}}' | grep -q '^reservation_backend$'; then
+                  echo "Checkpointing SQLite WAL inside running backend..."
+                  docker exec reservation_backend /bin/sh -c "sqlite3 /app/data/threads_db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);' || true"
+                fi
                 docker stop $running_containers
               fi
               

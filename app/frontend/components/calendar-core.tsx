@@ -8,15 +8,6 @@
 
 "use client";
 
-import {
-	SLOT_DURATION_HOURS,
-	TIMEZONE,
-	getBusinessHours,
-	getValidRange,
-} from "@/lib/calendar-config";
-import { count } from "@/lib/dev-profiler";
-import { cn } from "@/lib/utils";
-import type { CalendarEvent } from "@/types/calendar";
 import type {
 	CalendarApi,
 	DatesSetArg,
@@ -43,6 +34,15 @@ import {
 	useRef,
 	useState,
 } from "react";
+import {
+	getBusinessHours,
+	getValidRange,
+	SLOT_DURATION_HOURS,
+	TIMEZONE,
+} from "@/lib/calendar-config";
+import { count } from "@/lib/dev-profiler";
+import { cn } from "@/lib/utils";
+import type { CalendarEvent } from "@/types/calendar";
 
 export interface CalendarCoreProps {
 	// Data props
@@ -58,7 +58,9 @@ export interface CalendarCoreProps {
 		slotMaxTime: string;
 	};
 	slotTimesKey: number;
-	calendarHeight: number | "auto";
+	calendarHeight: number | "auto" | "parent";
+	// Optional: allow past navigation by disabling validRange
+	overrideValidRange?: boolean;
 
 	// Vacation checker
 	isVacationDate?: (dateStr: string) => boolean;
@@ -323,9 +325,10 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		 */
 		const globalValidRangeFunction = useMemo(() => {
 			if (freeRoam) return undefined;
+			if (props.overrideValidRange) return undefined;
 			// Default to today onward
 			return getValidRange(freeRoam);
-		}, [freeRoam]);
+		}, [freeRoam, props.overrideValidRange]);
 
 		// Prepare validRange prop for FullCalendar
 		// Disable validRange specifically for multiMonthYear to avoid plugin issues
@@ -527,34 +530,85 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 							".fc-list-event-time",
 						) as HTMLElement | null;
 						if (timeCell) {
-							const raw = (timeCell.textContent || "").trim();
-							let startText = raw;
-							let endText = "";
-							let sep = "";
-							if (/[–—-]/.test(raw)) {
-								const parts = raw.split(/\s*[–—-]\s*/);
-								startText = (parts[0] || "").trim();
-								endText = (parts[1] || "").trim();
-								sep = endText ? " - " : "";
+							// Helper to remove any stray raw text nodes (e.g., "11:00am - 11:20am")
+							const cleanupTextNodes = (cell: HTMLElement) => {
+								try {
+									for (const node of Array.from(cell.childNodes)) {
+										if (node.nodeType === 3) {
+											const text = (node.textContent || "").trim();
+											if (text) cell.removeChild(node);
+										}
+									}
+								} catch {}
+							};
+
+							// Build structured time spans from the raw text (once)
+							const normalize = (cell: HTMLElement) => {
+								try {
+									let raw = (cell.getAttribute("data-raw-time") || "").trim();
+									if (!raw) raw = (cell.textContent || "").trim();
+									let startText = raw;
+									let endText = "";
+									let sep = "";
+									if (/[–—-]/.test(raw)) {
+										const parts = raw.split(/\s*[–—-]\s*/);
+										startText = (parts[0] || "").trim();
+										endText = (parts[1] || "").trim();
+										sep = endText ? " - " : "";
+									}
+
+									while (cell.firstChild) cell.removeChild(cell.firstChild);
+									const startSpan = document.createElement("span");
+									startSpan.className = "fc-event-time-start";
+									startSpan.textContent = startText;
+									const sepSpan = document.createElement("span");
+									sepSpan.className = "fc-event-time-sep";
+									sepSpan.textContent = sep;
+									const endSpan = document.createElement("span");
+									endSpan.className = "fc-event-time-end";
+									endSpan.textContent = endText;
+									cell.appendChild(startSpan);
+									cell.appendChild(sepSpan);
+									cell.appendChild(endSpan);
+
+									cell.style.whiteSpace = "nowrap";
+									cell.setAttribute("data-structured", "true");
+									cell.setAttribute("data-raw-time", raw);
+									cleanupTextNodes(cell);
+								} catch {}
+							};
+
+							// Normalize and schedule robust cleanups to remove any late-added text
+							normalize(timeCell);
+							queueMicrotask(() => cleanupTextNodes(timeCell));
+							requestAnimationFrame(() => cleanupTextNodes(timeCell));
+							// Attach a persistent observer to strip any future raw text
+							if (!timeCell.hasAttribute("data-watch-text")) {
+								const observer = new MutationObserver(() =>
+									cleanupTextNodes(timeCell),
+								);
+								observer.observe(timeCell, {
+									childList: true,
+									characterData: true,
+									subtree: false,
+									attributes: false,
+								});
+								try {
+									(
+										timeCell as unknown as { __fcObserver?: MutationObserver }
+									).__fcObserver = observer;
+								} catch {}
+								timeCell.setAttribute("data-watch-text", "1");
 							}
 
-							while (timeCell.firstChild)
-								timeCell.removeChild(timeCell.firstChild);
-							const startSpan = document.createElement("span");
-							startSpan.className = "fc-event-time-start";
-							startSpan.textContent = startText;
-							const sepSpan = document.createElement("span");
-							sepSpan.className = "fc-event-time-sep";
-							sepSpan.textContent = sep;
-							const endSpan = document.createElement("span");
-							endSpan.className = "fc-event-time-end";
-							endSpan.textContent = endText;
-							timeCell.appendChild(startSpan);
-							timeCell.appendChild(sepSpan);
-							timeCell.appendChild(endSpan);
-
-							// Also ensure white-space nowrap so spans sit inline
-							timeCell.style.whiteSpace = "nowrap";
+							// As a belt-and-braces, re-clean on hover interactions
+							if (row && !row.hasAttribute("data-hover-cleanup")) {
+								const reclean = () => cleanupTextNodes(timeCell);
+								row.addEventListener("mouseenter", reclean);
+								row.addEventListener("mousemove", reclean);
+								row.addEventListener("mouseleave", reclean);
+								row.setAttribute("data-hover-cleanup", "1");
+							}
 						}
 					}
 				} catch {}
@@ -860,7 +914,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		return (
 			<div
 				ref={containerRef}
-				className={`w-full ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[600px]"} ${getCalendarClassNames(currentView)}`}
+				className={`w-full h-full ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[600px]"} ${getCalendarClassNames(currentView)}`}
 				data-free-roam={freeRoam}
 			>
 				<FullCalendar

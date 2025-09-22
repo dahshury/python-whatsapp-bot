@@ -8,8 +8,10 @@ services:
     ports:
       - '8000:8000'
     volumes:
-      - ./threads_db.sqlite:/app/data/threads_db.sqlite
+      - ./data:/app/data
       - ./.env:/app/.env
+    environment:
+      - DB_PATH=/app/data/threads_db.sqlite
       - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     depends_on:
       - prometheus

@@ -29,6 +29,8 @@ interface GridToolbarProps {
 	onToggleSearch: () => void;
 	onToggleFullscreen: () => void;
 	onClose?: () => void;
+	overlay?: boolean;
+	overlayPosition?: { top: number; left: number } | null;
 }
 
 interface ToolbarButtonProps {
@@ -118,6 +120,8 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 	onToggleSearch,
 	onToggleFullscreen,
 	onClose,
+	overlay = false,
+	overlayPosition,
 }) => {
 	const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
 	const [isToolbarHovered, setIsToolbarHovered] = React.useState(false);
@@ -125,18 +129,30 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 	// Show toolbar if focused OR if hovering over the toolbar itself
 	const shouldShow = isFocused || isToolbarHovered;
 
-	const containerStyle: React.CSSProperties = {
-		display: "flex",
-		justifyContent: "flex-end",
-		alignItems: "flex-start",
-		padding: "0",
-		minHeight: "14px",
-		width: "100%",
-		opacity: shouldShow ? 1 : 0,
-		visibility: shouldShow ? "visible" : "hidden",
-		transition: "opacity 200ms ease-in-out, visibility 200ms ease-in-out",
-		pointerEvents: shouldShow ? "auto" : "none",
-	};
+	const containerStyle: React.CSSProperties = overlay
+		? {
+				position: "fixed",
+				top: overlayPosition?.top ?? 0,
+				left: overlayPosition?.left ?? 0,
+				transform: "translate(-100%, 0)",
+				zIndex: "var(--z-grid-overlay)",
+				opacity: shouldShow ? 1 : 0,
+				visibility: shouldShow ? "visible" : "hidden",
+				transition: "opacity 200ms ease-in-out, visibility 200ms ease-in-out",
+				pointerEvents: shouldShow ? "auto" : "none",
+			}
+		: {
+				display: "flex",
+				justifyContent: "flex-end",
+				alignItems: "flex-start",
+				padding: "0",
+				minHeight: "14px",
+				width: "100%",
+				opacity: shouldShow ? 1 : 0,
+				visibility: shouldShow ? "visible" : "hidden",
+				transition: "opacity 200ms ease-in-out, visibility 200ms ease-in-out",
+				pointerEvents: shouldShow ? "auto" : "none",
+			};
 
 	const toolbarStyle: React.CSSProperties = {
 		display: "flex",

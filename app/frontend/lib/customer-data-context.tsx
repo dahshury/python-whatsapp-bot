@@ -11,16 +11,7 @@ export interface CustomerDataState {
 		string,
 		Array<{ id?: string; text?: string; ts?: string }>
 	>;
-	reservations: Record<
-		string,
-		Array<{
-			id: string;
-			title: string;
-			start: string;
-			end?: string;
-			customer_name?: string;
-		}>
-	>;
+    reservations: Record<string, Array<{ id?: string | number; title?: string; start?: string; end?: string; customer_name?: string }>>;
 	loading: boolean;
 	refresh: () => Promise<void>;
 }

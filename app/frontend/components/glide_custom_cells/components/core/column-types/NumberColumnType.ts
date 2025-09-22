@@ -22,20 +22,27 @@ export class NumberColumnType implements IColumnType {
 		_isDarkTheme: boolean,
 		_rowContext?: unknown,
 	): GridCell {
-		const numValue = this.parseValue(String(value || 0), column);
+		// Preserve empty state for undefined/null/empty-string instead of coercing to 0
+		let numValue: number | null;
+		if (value === null || value === undefined || value === "") {
+			numValue = null;
+		} else if (typeof value === "number") {
+			numValue = Number.isFinite(value) ? value : null;
+		} else {
+			const parsed = this.parseValue(String(value), column);
+			numValue = Number.isNaN(parsed) ? null : parsed;
+		}
 		const displayValue = this.formatValue(numValue, column.formatting);
 
 		const cell: GridCell = {
 			kind: GridCellKind.Number,
-			data: numValue,
+			// Avoid null to satisfy GridCell typing; undefined means empty
+			data: (numValue === null ? undefined : numValue) as number | undefined,
 			displayData: displayValue,
 			allowOverlay: true,
 		};
 
-		if (
-			column.isRequired &&
-			(numValue === null || numValue === undefined || Number.isNaN(numValue))
-		) {
+		if (column.isRequired && (numValue === null || numValue === undefined)) {
 			(cell as { isMissingValue?: boolean }).isMissingValue = true;
 		}
 
@@ -43,13 +50,20 @@ export class NumberColumnType implements IColumnType {
 	}
 
 	getCellValue(cell: GridCell): unknown {
-		return (cell as { data?: unknown }).data || 0;
+		const v = (cell as { data?: unknown }).data;
+		return v === undefined ? null : v;
 	}
 
 	validateValue(
 		value: unknown,
 		column: IColumnDefinition,
 	): { isValid: boolean; error?: string } {
+		if (value === null || value === undefined || value === "") {
+			// Missing value
+			return column.isRequired
+				? { isValid: false, error: "" }
+				: { isValid: true };
+		}
 		const num = Number(value);
 
 		if (Number.isNaN(num)) {
@@ -88,7 +102,8 @@ export class NumberColumnType implements IColumnType {
 	}
 
 	formatValue(value: unknown, formatting?: IColumnFormatting): string {
-		if (value === null || value === undefined || Number.isNaN(value)) return "";
+		if (value === null || value === undefined || Number.isNaN(value as number))
+			return "";
 
 		const format = formatting?.type || "number";
 		const locale =
@@ -142,13 +157,14 @@ export class NumberColumnType implements IColumnType {
 	}
 
 	parseValue(input: string, _column: IColumnDefinition): number {
-		const cleaned = input.replace(/[^\d.-]/g, "");
+		const cleaned = input.replace(/[^\d.-]/g, "").trim();
+		if (cleaned === "") return Number.NaN;
 		const num = Number(cleaned);
-		return Number.isNaN(num) ? 0 : num;
+		return num;
 	}
 
 	getDefaultValue(column: IColumnDefinition): unknown {
-		return column.defaultValue ?? 0;
+		return column.defaultValue ?? null;
 	}
 
 	canEdit(column: IColumnDefinition): boolean {

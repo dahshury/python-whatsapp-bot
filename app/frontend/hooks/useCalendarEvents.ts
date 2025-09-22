@@ -125,13 +125,23 @@ export function useCalendarEvents(
 					Object.fromEntries(
 						Object.entries(reservations).map(([key, reservationList]) => [
 							key,
-							reservationList.map((reservation) => ({
-								date: (reservation as { date?: string }).date,
-								time_slot: (reservation as { time_slot?: string }).time_slot,
-								customer_name: (reservation as { customer_name?: string })
-									.customer_name,
-								...reservation,
-							})),
+							reservationList.map((reservation) => {
+								const base: Record<string, unknown> = {
+									...(reservation as unknown as Record<string, unknown>),
+								};
+								// Prevent duplicate keys in object literal by deleting before override
+								delete (base as { date?: unknown }).date;
+								delete (base as { time_slot?: unknown }).time_slot;
+								delete (base as { customer_name?: unknown }).customer_name;
+								return {
+									...base,
+									date: (reservation as { date?: string }).date as string,
+									time_slot: (reservation as { time_slot?: string })
+										.time_slot as string,
+									customer_name: (reservation as { customer_name?: string })
+										.customer_name,
+								};
+							}),
 						]),
 					) as Record<
 						string,

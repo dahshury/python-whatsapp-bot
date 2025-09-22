@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { Bell } from "lucide-react";
 import React from "react";
+import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +55,38 @@ type ReservationData = {
 	time_slot?: string;
 };
 
+// Helper to extract waId from notification data that may use different key shapes
+function getWaId(data?: Record<string, unknown>): string {
+	try {
+		const d = (data || {}) as { wa_id?: unknown; waId?: unknown };
+		const val = (d.wa_id ?? d.waId) as unknown;
+		return typeof val === "string" ? val : String(val ?? "");
+	} catch {
+		return "";
+	}
+}
+
+// Deterministic hue from string for colorful badges
+function hashToHue(input: string): number {
+	let hash = 0;
+	for (let i = 0; i < input.length; i++) {
+		hash = (hash * 31 + input.charCodeAt(i)) | 0;
+	}
+	return ((hash >>> 0) % 360) as number;
+}
+
+type GroupEntry = {
+	kind: "group";
+	waId: string;
+	customerName: string;
+	latest: NotificationItem;
+	unreadCount: number;
+	totalCount: number;
+};
+
+type ItemEntry = { kind: "item"; item: NotificationItem };
+type RenderEntry = GroupEntry | ItemEntry;
+
 export function NotificationsButton({
 	className,
 	notificationCount: _notificationCount = 0,
@@ -85,20 +118,11 @@ export function NotificationsButton({
 		[reservations],
 	);
 
-	// Load persisted notifications from backend once per tab on mount
+	// Load persisted notifications from backend on mount (no sessionStorage gate)
 	React.useEffect(() => {
 		let isCancelled = false;
 		(async () => {
 			try {
-				const KEY = "notifications_loaded_v1";
-				try {
-					if (
-						typeof window !== "undefined" &&
-						sessionStorage.getItem(KEY) === "true"
-					) {
-						return; // already loaded this tab session
-					}
-				} catch {}
 				const resp = await callPythonBackend<{
 					success?: boolean;
 					data?: Array<{
@@ -108,7 +132,7 @@ export function NotificationsButton({
 						data: Record<string, unknown>;
 					}>;
 					message?: string;
-				}>("/notifications");
+				}>("/notifications?limit=2000");
 				const list = Array.isArray(resp?.data) ? resp.data : [];
 				const loaded: NotificationItem[] = list
 					.map((r) => {
@@ -182,11 +206,7 @@ export function NotificationsButton({
 						}
 					});
 				loaded.sort((a, b) => b.timestamp - a.timestamp);
-				if (!isCancelled) setItems(loaded.slice(0, 150));
-				try {
-					if (typeof window !== "undefined")
-						sessionStorage.setItem(KEY, "true");
-				} catch {}
+				if (!isCancelled) setItems(loaded.slice(0, 2000));
 			} catch {}
 		})();
 		return () => {
@@ -194,10 +214,87 @@ export function NotificationsButton({
 		};
 	}, [isLocalized, resolveCustomerName]);
 
-	const unreadCount = React.useMemo(
-		() => items.filter((n) => n.unread).length,
-		[items],
-	);
+	// Compute grouped message entries and overall unread count treating each message group as 1
+	const { computedUnreadCount, renderEntries } = React.useMemo(() => {
+		const groups = new Map<
+			string,
+			{
+				items: NotificationItem[];
+				latest: NotificationItem;
+				customerName: string;
+			}
+		>();
+		const nonMessages: NotificationItem[] = [];
+
+		for (const it of items) {
+			if (it.type === "conversation_new_message") {
+				const waId = getWaId(it.data);
+				if (!waId) continue;
+				const existing = groups.get(waId);
+				if (!existing) {
+					groups.set(waId, {
+						items: [it],
+						latest: it,
+						customerName:
+							resolveCustomerName(
+								(it.data as ReservationData | undefined)?.wa_id,
+								(it.data as ReservationData | undefined)?.customer_name,
+							) || waId,
+					});
+				} else {
+					existing.items.push(it);
+					if (it.timestamp > existing.latest.timestamp) existing.latest = it;
+				}
+			} else {
+				nonMessages.push(it);
+			}
+		}
+
+		// Build group entries
+		const groupEntries: GroupEntry[] = Array.from(groups.entries()).map(
+			([waId, g]) => {
+				const unreadCount = g.items.reduce(
+					(acc, n) => acc + (n.unread ? 1 : 0),
+					0,
+				);
+				return {
+					kind: "group",
+					waId,
+					customerName: g.customerName,
+					latest: g.latest,
+					unreadCount,
+					totalCount: g.items.length,
+				} as GroupEntry;
+			},
+		);
+
+		// Compute unread: each non-message unread counts individually, each group with any unread counts as 1
+		const nonMsgUnread = nonMessages.reduce(
+			(acc, n) => acc + (n.unread ? 1 : 0),
+			0,
+		);
+		const groupUnread = groupEntries.reduce(
+			(acc, g) => acc + (g.unreadCount > 0 ? 1 : 0),
+			0,
+		);
+		const computedUnreadCount = nonMsgUnread + groupUnread;
+
+		// Combine into render list and sort by timestamp desc
+		const renderEntries: RenderEntry[] = [
+			...nonMessages.map((item) => ({ kind: "item", item }) as ItemEntry),
+			...groupEntries,
+		];
+		renderEntries.sort((a, b) => {
+			const ta = a.kind === "item" ? a.item.timestamp : a.latest.timestamp;
+			const tb = b.kind === "item" ? b.item.timestamp : b.latest.timestamp;
+			return tb - ta;
+		});
+
+		return {
+			computedUnreadCount,
+			renderEntries,
+		} as const;
+	}, [items, resolveCustomerName]);
 
 	const formatTimeAgo = React.useCallback(
 		(ts: number) => {
@@ -290,7 +387,7 @@ export function NotificationsButton({
 						data: data as Record<string, unknown>,
 					},
 					...prev,
-				].slice(0, 150);
+				].slice(0, 2000);
 			});
 		};
 		window.addEventListener("notification:add", handler as EventListener);
@@ -362,6 +459,22 @@ export function NotificationsButton({
 		[],
 	);
 
+	const handleGroupClick = React.useCallback((waId: string) => {
+		// Mark all messages for this waId as read
+		setItems((prev) =>
+			prev.map((n) =>
+				n.type === "conversation_new_message" && getWaId(n.data) === waId
+					? { ...n, unread: false }
+					: n,
+			),
+		);
+		// Open conversation and close popover
+		try {
+			if (waId) useSidebarChatStore.getState().openConversation(waId);
+		} catch {}
+		setOpen(false);
+	}, []);
+
 	// Animation variants for list items: no position shift, just opacity/blur
 	const listVariants = React.useMemo(
 		() => ({
@@ -393,9 +506,9 @@ export function NotificationsButton({
 					aria-label={isLocalized ? "الإشعارات" : "Notifications"}
 				>
 					<Bell className="h-4 w-4" />
-					{unreadCount > 0 && (
+					{computedUnreadCount > 0 && (
 						<Badge className="absolute -top-2 left-full min-w-5 -translate-x-1/2 px-1">
-							{unreadCount > 99 ? "99+" : unreadCount}
+							{computedUnreadCount > 99 ? "99+" : computedUnreadCount}
 						</Badge>
 					)}
 				</Button>
@@ -441,7 +554,7 @@ export function NotificationsButton({
 									<div className="text-sm font-semibold">
 										{isLocalized ? "الإشعارات" : "Notifications"}
 									</div>
-									{unreadCount > 0 && (
+									{computedUnreadCount > 0 && (
 										<button
 											type="button"
 											className="text-xs font-medium hover:underline"
@@ -453,47 +566,124 @@ export function NotificationsButton({
 								</div>
 								<hr className="bg-border -mx-1 my-1 h-px" />
 
-								<motion.div
-									variants={listVariants}
-									initial="hidden"
-									animate="shown"
+								{/* Scrollable list area with themed scrollbar; header remains static */}
+								<ThemedScrollbar
+									className="max-h-[min(60vh,420px)]"
+									noScrollX={true}
+									removeTracksWhenNotUsed={true}
 								>
-									{items.map((notification) => (
-										<motion.div
-											key={notification.id}
-											variants={itemVariants}
-											transition={{ duration: 0.14, ease: [0.45, 0, 0.55, 1] }}
-											className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
-										>
-											<div className="relative flex items-start pe-3">
-												<div className="flex-1 space-y-1">
-													<button
-														type="button"
-														className="text-foreground/80 text-left after:absolute after:inset-0"
-														onClick={() =>
-															handleNotificationClick(notification)
-														}
+									<motion.div
+										variants={listVariants}
+										initial="hidden"
+										animate="shown"
+									>
+										{renderEntries.map((entry) => {
+											if (entry.kind === "item") {
+												const notification = entry.item;
+												return (
+													<motion.div
+														key={notification.id}
+														variants={itemVariants}
+														transition={{
+															duration: 0.14,
+															ease: [0.45, 0, 0.55, 1],
+														}}
+														className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
 													>
-														<span className="text-foreground font-medium">
-															{notification.text}
-														</span>
-													</button>
-													<div className="text-muted-foreground text-xs">
-														{formatTimeAgo(notification.timestamp)}
+														<div className="relative flex items-start pe-3">
+															<div className="flex-1 space-y-1">
+																<button
+																	type="button"
+																	className="text-foreground/80 text-left after:absolute after:inset-0"
+																	onClick={() =>
+																		handleNotificationClick(notification)
+																	}
+																>
+																	<span className="text-foreground font-medium">
+																		{notification.text}
+																	</span>
+																</button>
+																<div className="text-muted-foreground text-xs">
+																	{formatTimeAgo(notification.timestamp)}
+																</div>
+															</div>
+															{notification.unread && (
+																<div className="absolute end-0 self-center">
+																	<span className="sr-only">
+																		{isLocalized ? "غير مقروء" : "Unread"}
+																	</span>
+																	<Dot />
+																</div>
+															)}
+														</div>
+													</motion.div>
+												);
+											}
+
+											// Grouped chat message entry
+											const group = entry;
+											const label = isLocalized ? "رسالة جديدة" : "New message";
+											const hue = hashToHue(group.waId);
+											const start = `hsl(${hue} 85% 45%)`;
+											const end = `hsl(${(hue + 35) % 360} 85% 55%)`;
+											const badgeStyle: React.CSSProperties = {
+												backgroundImage: `linear-gradient(135deg, ${start}, ${end})`,
+												color: "#fff",
+												borderColor: "transparent",
+											};
+											const countToShow =
+												group.unreadCount > 0
+													? group.unreadCount
+													: group.totalCount;
+
+											return (
+												<motion.div
+													key={`group:${group.waId}`}
+													variants={itemVariants}
+													transition={{
+														duration: 0.14,
+														ease: [0.45, 0, 0.55, 1],
+													}}
+													className="hover:bg-accent rounded-md px-3 py-2 text-sm transition-colors"
+												>
+													<div className="relative flex items-start pe-12">
+														<div className="flex-1 space-y-1">
+															<button
+																type="button"
+																className="text-foreground/80 text-left after:absolute after:inset-0"
+																onClick={() => handleGroupClick(group.waId)}
+															>
+																<span className="text-foreground font-medium">
+																	{label}: {group.customerName}
+																</span>
+															</button>
+															<div className="text-muted-foreground text-xs">
+																{formatTimeAgo(group.latest.timestamp)}
+															</div>
+														</div>
+														<div className="absolute end-0 top-1/2 -translate-y-1/2 flex items-center gap-1">
+															{group.unreadCount > 0 && (
+																<>
+																	<span className="sr-only">
+																		{isLocalized ? "غير مقروء" : "Unread"}
+																	</span>
+																	<Dot />
+																</>
+															)}
+															<Badge
+																variant="outline"
+																className="min-w-6 px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm border"
+																style={badgeStyle}
+															>
+																{countToShow > 99 ? "99+" : countToShow}
+															</Badge>
+														</div>
 													</div>
-												</div>
-												{notification.unread && (
-													<div className="absolute end-0 self-center">
-														<span className="sr-only">
-															{isLocalized ? "غير مقروء" : "Unread"}
-														</span>
-														<Dot />
-													</div>
-												)}
-											</div>
-										</motion.div>
-									))}
-								</motion.div>
+												</motion.div>
+											);
+										})}
+									</motion.div>
+								</ThemedScrollbar>
 
 								{items.length === 0 && (
 									<motion.div

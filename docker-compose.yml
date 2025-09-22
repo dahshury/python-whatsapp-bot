@@ -14,13 +14,13 @@ services:
       - prometheus
     environment:
       - ENV=${ENVIRONMENT:-development}
+      - DB_PATH=/app/data/threads_db.sqlite
     volumes:
       - ${MOUNT_BACKEND:-./app:/app/app}
       - ./run.py:/app/run.py
-      - ./threads_db.sqlite:/app/data/threads_db.sqlite
+      - ./data:/app/data
       - ./.env:/app/.env
       - ./scripts:/app/scripts
-      - ./backups:/app/backups
       - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     restart: on-failure
     logging:
@@ -30,17 +30,16 @@ services:
         max-file: "3"
     command: >
       sh -c "mkdir -p /app/data &&
+             # If a legacy DB exists in working dir, migrate it into the mounted volume once
+             if [ -f /app/threads_db.sqlite ] && [ ! -f /app/data/threads_db.sqlite ]; then
+               echo 'Migrating legacy DB to data volume...';
+               mv /app/threads_db.sqlite /app/data/threads_db.sqlite || cp /app/threads_db.sqlite /app/data/threads_db.sqlite;
+             fi;
+             # Ensure WAL is checkpointed if present before starting
              if [ -f /app/data/threads_db.sqlite ]; then
-               echo 'Database already exists in data volume'
-             elif [ -f /app/threads_db.sqlite ]; then
-               echo 'Copying database from project root to volume...'
-               cp /app/threads_db.sqlite /app/data/
-             elif [ -f threads_db.sqlite ]; then
-               echo 'Copying database from working directory to volume...'
-               cp threads_db.sqlite /app/data/
-             else
-               echo 'WARNING: No database found in any location!'
-             fi &&
+               echo 'Checkpointing WAL (TRUNCATE) before startup...';
+               sqlite3 /app/data/threads_db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);' || true;
+             fi;
              uvicorn run:app --host 0.0.0.0 --port 8000"
   frontend:
     build:

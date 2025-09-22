@@ -97,26 +97,13 @@ export function DockNav({
 				className={cn("mt-4 h-auto min-h-[44px]", className)}
 			>
 				{navigationOnly ? (
+					// Minimal: show Calendar link + other pages (Dashboard, Documents), no prev/next or date
 					<>
-						<NavigationControls
+						<CalendarLink isLocalized={navigation.isLocalized} />
+						<NavigationLinks
 							isLocalized={navigation.isLocalized}
-							isCalendarPage={navigation.isCalendarPage}
-							isPrevDisabled={navigation.isPrevDisabled}
-							isNextDisabled={navigation.isNextDisabled}
-							onPrev={navigation.handlePrev}
-							onNext={navigation.handleNext}
+							isActive={nav.computed.isActive}
 						/>
-
-						<NavigationDateButton
-							title={navigation.title}
-							isLocalized={navigation.isLocalized}
-							isCalendarPage={navigation.isCalendarPage}
-							isTodayDisabled={navigation.isTodayDisabled}
-							onToday={navigation.handleToday}
-							navigationOnly={navigationOnly}
-							visibleEventCount={navigation.visibleEventCount}
-						/>
-						{/* Event count shown as overlay badge on the date button */}
 					</>
 				) : !navigation.isCalendarPage ? (
 					<CalendarLink isLocalized={navigation.isLocalized} />
@@ -167,6 +154,25 @@ export function DockNav({
 							}
 						/>
 					</>
+				)}
+
+				{/* When navigationOnly, still show Settings to match requirement */}
+				{navigationOnly && (
+					<SettingsPopover
+						isLocalized={navigation.isLocalized}
+						activeTab={nav.state.activeTab}
+						onTabChange={nav.handlers.setActiveTab}
+						currentCalendarView={currentCalendarView}
+						activeView={navigation.activeView}
+						onCalendarViewChange={nav.handlers.handleCalendarViewChange}
+						isCalendarPage={navigation.isCalendarPage}
+						open={settingsOpen}
+						onOpenChange={
+							isControlled
+								? onSettingsOpenChange || (() => {})
+								: setInternalOpen
+						}
+					/>
 				)}
 			</Dock>
 		</TooltipProvider>

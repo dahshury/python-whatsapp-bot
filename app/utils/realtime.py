@@ -196,7 +196,7 @@ class RealtimeManager:
 
         logging.info(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
 
-        # Persist qualifying notification events and prune to last 150
+        # Persist qualifying notification events and prune to last 2000
         try:
             # Only persist types that are shown in notifications panel
             notif_types = {
@@ -221,14 +221,14 @@ class RealtimeManager:
                         )
                     )
                     session.commit()
-                    # Prune to last 150 rows by created_at DESC
+                    # Prune to last 2000 rows by created_at DESC
                     try:
                         # SQLite compatible pruning using subquery by id ordering
-                        # Keep the latest 150 ids and delete the rest
+                        # Keep the latest 2000 ids and delete the rest
                         keep_ids = [
                             r[0]
                             for r in session.execute(
-                                "SELECT id FROM notification_events ORDER BY id DESC LIMIT 150"
+                                "SELECT id FROM notification_events ORDER BY id DESC LIMIT 2000"
                             ).all()
                         ]
                         if keep_ids:

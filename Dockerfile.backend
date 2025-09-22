@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip \
     rclone \
     ca-certificates \
+    sqlite3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure the uv-created venv is used at runtime
@@ -46,8 +47,7 @@ ENV PATH="/app/.venv/bin:${PATH}"
 
 # Create required directories
 RUN mkdir -p /root/.config/rclone \
-    && mkdir -p /app/data \
-    && mkdir -p /app/backups
+    && mkdir -p /app/data
 
 # Bring the resolved virtualenv from the builder
 COPY --from=builder /app/.venv /app/.venv

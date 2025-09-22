@@ -99,6 +99,29 @@ class CustomerService(BaseService):
 
         except Exception as e:
             return self._handle_error("update_customer_name", e, ar)
+
+    def update_customer_age(self, wa_id: str, age: Optional[int], ar: bool = False) -> Dict[str, Any]:
+        """Update customer's age. None clears age. Enforce 0-120 bound in model."""
+        try:
+            validation_error = self._validate_wa_id(wa_id, ar)
+            if validation_error:
+                return validation_error
+
+            customer = self.repository.find_by_wa_id(wa_id)
+            if not customer:
+                # Create new customer with only age if not present
+                customer = Customer(wa_id=wa_id)
+            customer.update_age(age if age is None else int(age))
+            ok = self.repository.save(customer)
+            return (
+                format_response(True, message=get_message("customer_age_updated", ar), data={"wa_id": wa_id, "age": customer.age})
+                if ok
+                else format_response(False, message=get_message("customer_age_update_failed", ar))
+            )
+        except ValueError as ve:
+            return format_response(False, message=str(ve))
+        except Exception as e:
+            return self._handle_error("update_customer_age", e, ar)
     
     def get_or_create_customer(self, wa_id: str, customer_name: Optional[str] = None) -> Customer:
         """

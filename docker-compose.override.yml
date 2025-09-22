@@ -6,8 +6,10 @@ services:
       dockerfile: Dockerfile.backend
     # Remove rclone mount on local machines
     volumes:
-      - ./threads_db.sqlite:/app/data/threads_db.sqlite
+      - ./data:/app/data
       - ./.env:/app/.env
+    environment:
+      - DB_PATH=/app/data/threads_db.sqlite
 
   frontend:
     build:
