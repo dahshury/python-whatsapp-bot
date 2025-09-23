@@ -34,7 +34,7 @@ const Tooltip: React.FC<TooltipProps> = ({
 			className="gdg-tooltip"
 		>
 			<div
-				className="relative max-w-[260px] rounded-md border bg-popover px-3 py-3 text-xs text-popover-foreground shadow-md"
+				className="relative max-w-[16.25rem] rounded-md border bg-popover px-3 py-3 text-xs text-popover-foreground shadow-md"
 				style={{
 					transform: "translate(-50%, calc(-100% - 8px))",
 					transformOrigin: "50% 100%",
@@ -49,7 +49,7 @@ const Tooltip: React.FC<TooltipProps> = ({
 					/>
 					<div className="space-y-1">
 						{fieldLabel && (
-							<p className="text-[13px] font-medium">{fieldLabel}</p>
+							<p className="text-[0.8125rem] font-medium">{fieldLabel}</p>
 						)}
 						<p className="text-muted-foreground text-xs">
 							{message ?? content}

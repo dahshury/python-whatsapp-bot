@@ -9,11 +9,11 @@
 }
 
 .rounded-theme-xl {
-	border-radius: calc(var(--radius) + 4px);
+	border-radius: calc(var(--radius) + 0.25rem);
 }
 
 .rounded-theme-2xl {
-	border-radius: calc(var(--radius) + 8px);
+	border-radius: calc(var(--radius) + 0.5rem);
 }
 
 .rounded-theme-none {

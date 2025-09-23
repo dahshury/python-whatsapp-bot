@@ -319,21 +319,20 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		try {
 			return createFuseIndex(indexedOptions, {
 				keys: [
-					{ name: "__searchName", weight: 0.7 },
-					{ name: "__searchLabel", weight: 0.25 },
-					{ name: "displayNumber", weight: 0.05 },
+					{ name: "__searchName", weight: 0.85 },
+					{ name: "__searchLabel", weight: 0.15 },
 				],
-				threshold: 0.45,
+				threshold: 0.28,
 				ignoreLocation: true,
-				minMatchCharLength: 1,
+				minMatchCharLength: 2,
 				includeScore: true,
 				shouldSort: true,
 			});
 		} catch {
 			// Fallback: a tiny wrapper that simulates Fuse API if construction fails
 			return createFuseIndex(indexedOptions, {
-				keys: ["__searchName", "__searchLabel", "displayNumber"],
-				threshold: 0.45,
+				keys: ["__searchName", "__searchLabel"],
+				threshold: 0.28,
 			});
 		}
 	}, [indexedOptions]);
@@ -387,7 +386,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 
 	// Do not auto-change country based on the typed phone value after initialization
 
-	// Update filtered phones when search changes (fuzzy + numeric union)
+	// Update filtered phones when search changes (fuzzy names + numeric prefix only)
 	React.useEffect(() => {
 		const raw = debouncedPhoneSearch.trim();
 		const search = raw.toLowerCase();
@@ -399,22 +398,34 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		let normalizedSearch = convertZeroZeroToPlus(search);
 		normalizedSearch = normalizedSearch.replace(/[\s\-+]/g, "");
 
-		const isNumbery =
-			/[0-9]/.test(search) || raw.startsWith("+") || raw.startsWith("00");
+		const hasLetters = /\p{L}/u.test(search);
+		const lettersOnly = search.replace(/[^\p{L}\s]/gu, "").trim();
+		const isNumericOnly =
+			!hasLetters &&
+			(/[0-9]/.test(search) || raw.startsWith("+") || raw.startsWith("00"));
 
-		const numberMatches = indexedOptions.filter((option) => {
-			const matchesNumber =
-				(option.number || "").toLowerCase().includes(search) ||
-				(option.displayNumber || "").toLowerCase().includes(search) ||
-				option.__normalizedNumber.includes(normalizedSearch);
-			return matchesNumber;
-		});
+		const numberMatches =
+			isNumericOnly && normalizedSearch.length >= 2
+				? indexedOptions.filter((option) => {
+						const normalizedDisplay = String(
+							option.displayNumber || option.number,
+						)
+							.toLowerCase()
+							.replace(/[\s\-+]/g, "");
+						const matchesNumber =
+							option.__normalizedNumber.includes(normalizedSearch) ||
+							normalizedDisplay.includes(normalizedSearch);
+						return matchesNumber;
+					})
+				: [];
 
 		let fuzzyMatches: IndexedPhoneOption[] = [];
-		try {
-			fuzzyMatches = fuzzySearchItems<IndexedPhoneOption>(fuse, search);
-		} catch {
-			fuzzyMatches = [];
+		if (hasLetters && lettersOnly.length > 0) {
+			try {
+				fuzzyMatches = fuzzySearchItems<IndexedPhoneOption>(fuse, lettersOnly);
+			} catch {
+				fuzzyMatches = [];
+			}
 		}
 
 		const seen = new Set<string>();
@@ -432,9 +443,8 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		};
 
 		const merged: IndexedPhoneOption[] = [];
-		if (isNumbery) {
+		if (isNumericOnly) {
 			pushUnique(numberMatches, merged);
-			pushUnique(fuzzyMatches, merged);
 		} else {
 			pushUnique(fuzzyMatches, merged);
 			pushUnique(numberMatches, merged);
@@ -491,6 +501,27 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 			return digits ? `+${digits}` : "+";
 		}
 	}, [debouncedPhoneSearch, country]);
+
+	// Decide whether to show the create-new option even if there are matches
+	const canCreateNew = React.useMemo(() => {
+		if (!allowCreateNew) return false;
+		const raw = debouncedPhoneSearch.trim();
+		if (!raw) return false;
+		const lower = raw.toLowerCase();
+		const hasLetters = /\p{L}/u.test(lower);
+		const isNumericOnly =
+			!hasLetters &&
+			(/[0-9]/.test(lower) || raw.startsWith("+") || raw.startsWith("00"));
+		if (!isNumericOnly) return false;
+		const normalized = convertZeroZeroToPlus(lower).replace(/[\s\-+]/g, "");
+		// Require a sensible minimum length to avoid noise
+		if (normalized.length < 6) return false;
+		// Only offer create if no exact number exists
+		const existsExact = indexedOptions.some(
+			(opt) => opt.__normalizedNumber === normalized,
+		);
+		return !existsExact;
+	}, [allowCreateNew, debouncedPhoneSearch, indexedOptions]);
 
 	// Create a new phone number option
 	const createNewPhoneOption = (phoneNumber: string): PhoneOption => {
@@ -798,7 +829,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 							</Button>
 						</PopoverTrigger>
 						<PopoverContent
-							className={cn("w-[300px] p-0", "click-outside-ignore")}
+							className={cn("w-[18.75rem] p-0", "click-outside-ignore")}
 						>
 							<Command shouldFilter={false}>
 								<CommandInput
@@ -950,7 +981,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 						</Button>
 					</PopoverTrigger>
 					<PopoverContent
-						className={cn("w-[400px] p-0", "click-outside-ignore")}
+						className={cn("w-[25rem] p-0", "click-outside-ignore")}
 					>
 						<Command shouldFilter={false}>
 							<CommandInput
@@ -963,6 +994,14 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 								onKeyDown={(e) => {
 									if (e.key === "Enter") {
 										// Handle create-new when no options are shown
+										if (canCreateNew) {
+											e.preventDefault();
+											e.stopPropagation();
+											handleCreateNewPhone(phoneSearch);
+											return;
+										}
+
+										// Fallback: if there are no matches but input exists and creation allowed
 										if (
 											phoneSearch.trim() &&
 											filteredPhones.length === 0 &&
@@ -995,9 +1034,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 							/>
 							<CommandList>
 								<ThemedScrollbar className="h-72">
-									{filteredPhones.length === 0 &&
-									debouncedPhoneSearch.trim() &&
-									allowCreateNew ? (
+									{canCreateNew && (
 										<div className="p-2">
 											<CommandItem
 												value="create-new"
@@ -1014,64 +1051,59 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 												</span>
 											</CommandItem>
 										</div>
-									) : (
-										<>
-											<CommandEmpty>
-												{i18n.getMessage("phone_no_phone_found", isLocalized)}
-											</CommandEmpty>
-											<CommandGroup>
-												{visiblePhones.map((option) => (
-													<CommandItem
-														key={option.number}
-														value={option.number}
-														onSelect={() =>
-															handlePhoneSelectControlled(option.number)
-														}
-														className="gap-3 py-2.5 px-3"
-														ref={
-															selectedPhone === option.number
-																? selectedPhoneRef
-																: undefined
-														}
-														data-option-number={option.number}
-													>
-														<div className="flex flex-col space-y-2 min-w-0 flex-1">
-															{/* Name row */}
-															<span className="text-sm font-medium text-foreground truncate leading-tight">
-																{option.name ||
-																	option.displayNumber ||
-																	option.number}
-															</span>
-															{/* Phone number row with flag */}
-															<div className="flex items-center gap-1.5">
-																<FlagComponent
-																	country={
-																		(option as unknown as IndexedPhoneOption)
-																			.__country
-																	}
-																	countryName={option.label}
-																	className="opacity-60 scale-75"
-																/>
-																<span className="text-sm text-muted-foreground leading-tight truncate">
-																	{option.displayNumber || option.number}
-																</span>
-															</div>
-														</div>
-														{selectedPhone === option.number && (
-															<CheckCircle2 className="ms-auto size-4 text-primary" />
-														)}
-													</CommandItem>
-												))}
-												{!debouncedPhoneSearch &&
-												filteredPhones.length > VISIBLE_LIMIT_NO_SEARCH ? (
-													<div className="px-3 py-2 text-xs text-muted-foreground">
-														{filteredPhones.length - VISIBLE_LIMIT_NO_SEARCH}{" "}
-														more. Type to search.
-													</div>
-												) : null}
-											</CommandGroup>
-										</>
 									)}
+									<CommandEmpty>
+										{i18n.getMessage("phone_no_phone_found", isLocalized)}
+									</CommandEmpty>
+									<CommandGroup>
+										{visiblePhones.map((option) => (
+											<CommandItem
+												key={option.number}
+												value={option.number}
+												onSelect={() =>
+													handlePhoneSelectControlled(option.number)
+												}
+												className="gap-3 py-2.5 px-3"
+												ref={
+													selectedPhone === option.number
+														? selectedPhoneRef
+														: undefined
+												}
+												data-option-number={option.number}
+											>
+												<div className="flex flex-col space-y-2 min-w-0 flex-1">
+													<span className="text-sm font-medium text-foreground truncate leading-tight">
+														{option.name ||
+															option.displayNumber ||
+															option.number}
+													</span>
+													<div className="flex items-center gap-1.5">
+														<FlagComponent
+															country={
+																(option as unknown as IndexedPhoneOption)
+																	.__country
+															}
+															countryName={option.label}
+															className="opacity-60 scale-75"
+														/>
+														<span className="text-sm text-muted-foreground leading-tight truncate">
+															{option.displayNumber || option.number}
+														</span>
+													</div>
+												</div>
+												{selectedPhone === option.number && (
+													<CheckCircle2 className="ms-auto size-4 text-primary" />
+												)}
+											</CommandItem>
+										))}
+										{!debouncedPhoneSearch &&
+										filteredPhones.length > VISIBLE_LIMIT_NO_SEARCH ? (
+											<div className="px-3 py-2 text-xs text-muted-foreground">
+												{filteredPhones.length - VISIBLE_LIMIT_NO_SEARCH} more.
+												Type to search.
+											</div>
+										) : null}
+									</CommandGroup>
 								</ThemedScrollbar>
 							</CommandList>
 						</Command>

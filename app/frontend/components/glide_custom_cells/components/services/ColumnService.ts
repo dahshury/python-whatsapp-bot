@@ -51,7 +51,7 @@ export class ColumnService {
 
 		if (cell.kind === GridCellKind.Custom) {
 			const customData = (cell as { data?: unknown }).data as
-				| CustomData
+				| (CustomData & { value?: unknown; display?: string })
 				| undefined;
 			if (customData?.kind === "dropdown-cell") {
 				return String((customData as DropdownData).value ?? "");
@@ -59,6 +59,9 @@ export class ColumnService {
 			if (customData?.kind === "tempus-date-cell") {
 				const d = (customData as TempusDateData).date;
 				return d ? String(d.toLocaleDateString("en-GB")) : "";
+			}
+			if (customData?.kind === "age-wheel-cell") {
+				return customData.display ?? String(customData.value ?? "");
 			}
 			const disp = (cell as { displayData?: unknown }).displayData;
 			const data = (cell as { data?: unknown }).data;

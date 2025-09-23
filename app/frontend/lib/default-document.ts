@@ -17,5 +17,8 @@ export const DEFAULT_EXCALIDRAW_SCENE: Record<string, unknown> = {
 	files: {},
 };
 
+// Special sentinel used to address the global default document via /api/documents
+export const DEFAULT_DOCUMENT_WA_ID = "0000000000000";
+
 
 

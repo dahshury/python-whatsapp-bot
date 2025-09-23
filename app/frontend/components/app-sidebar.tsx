@@ -11,7 +11,7 @@ import {
 	Clock,
 	MessageSquare,
 } from "lucide-react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type React from "react";
 import {
 	useCallback,
@@ -23,15 +23,11 @@ import {
 } from "react";
 import { CalendarCore, type CalendarCoreRef } from "@/components/calendar-core";
 import { ChatSidebarContent } from "@/components/chat-sidebar-content";
-import { CustomerStatsCard } from "@/components/customer-stats-card";
+// import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { PrayerTimesWidget } from "@/components/prayer-times-widget";
 import { Button } from "@/components/ui/button";
-import {
-	HoverCard,
-	HoverCardContent,
-	HoverCardTrigger,
-} from "@/components/ui/hover-card";
-import { PhoneCombobox } from "@/components/ui/phone-combobox";
+// Hover card used previously for phone combobox on Documents; no longer used there
+// Phone combobox removed for Documents page; selection now happens in-grid
 import {
 	Sidebar,
 	SidebarContent,
@@ -57,66 +53,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const { isLocalized } = useLanguage();
 	const { setOpenMobile, setOpen, open, openMobile } = useSidebar();
 	const pathname = usePathname();
-	const search = useSearchParams();
+	// const search = useSearchParams();
 	const router = useRouter();
+	const isDashboardPage = pathname?.startsWith("/dashboard") ?? false;
 	const isDocumentsPage = pathname?.startsWith("/documents") ?? false;
-	const { customers: docCustomers } = useCustomerData();
-	const docWaId = search.get("waId") || "";
+	const { customers: _docCustomers } = useCustomerData();
+	// const docWaId = search.get("waId") || ""; // no longer used for sidebar UI
 
 	// Hover card state for Documents page combobox
-	const [docShowHoverCard, setDocShowHoverCard] = useState(false);
-	const [docHoverTimer, setDocHoverTimer] = useState<NodeJS.Timeout | null>(
-		null,
-	);
-	const [docCloseTimer, setDocCloseTimer] = useState<NodeJS.Timeout | null>(
-		null,
-	);
-	const docHoverCardRef = useRef<HTMLDivElement | null>(null);
-
-	const handleDocMouseEnter = useCallback(() => {
-		if (!docWaId) return;
-		if (docCloseTimer) {
-			clearTimeout(docCloseTimer);
-			setDocCloseTimer(null);
-		}
-		if (docHoverTimer) {
-			clearTimeout(docHoverTimer);
-		}
-		const t = setTimeout(() => setDocShowHoverCard(true), 1500);
-		setDocHoverTimer(t);
-	}, [docWaId, docCloseTimer, docHoverTimer]);
-
-	const handleDocMouseLeave = useCallback(
-		(e: React.MouseEvent) => {
-			const relatedTarget = e.relatedTarget as EventTarget | null;
-			const hoverEl = docHoverCardRef.current;
-			if (
-				relatedTarget &&
-				hoverEl &&
-				relatedTarget instanceof Node &&
-				hoverEl.contains(relatedTarget)
-			) {
-				return;
-			}
-			if (docHoverTimer) {
-				clearTimeout(docHoverTimer);
-				setDocHoverTimer(null);
-			}
-			if (docCloseTimer) {
-				clearTimeout(docCloseTimer);
-			}
-			const timer = setTimeout(() => setDocShowHoverCard(false), 100);
-			setDocCloseTimer(timer);
-		},
-		[docHoverTimer, docCloseTimer],
-	);
-
-	useEffect(() => {
-		return () => {
-			if (docHoverTimer) clearTimeout(docHoverTimer);
-			if (docCloseTimer) clearTimeout(docCloseTimer);
-		};
-	}, [docHoverTimer, docCloseTimer]);
+	// Removed old hover combobox logic for Documents sidebar
+	// placeholder state kept to avoid larger refactor; may be removed later
 
 	// Mount guard to avoid hydration mismatches for client-only state
 	const [mounted, setMounted] = useState(false);
@@ -129,11 +75,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		loading: boolean;
 		saving: boolean;
 		isDirty: boolean;
+		errorMessage: string | null;
 	}>({
 		loading: false,
 		saving: false,
 		isDirty: false,
+		errorMessage: null,
 	});
+
+	// Bridge for Documents lock state (read from window when available)
+	const [docLocked, setDocLocked] = useState<boolean>(false);
 	useEffect(() => {
 		if (!mounted) return;
 		const read = () => {
@@ -145,6 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							loading?: boolean;
 							saving?: boolean;
 							isDirty?: boolean;
+							errorMessage?: string | null;
 						};
 					}
 				).__docSaveState;
@@ -152,7 +104,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					loading: !!s?.loading,
 					saving: !!s?.saving,
 					isDirty: !!s?.isDirty,
+					errorMessage: (s?.errorMessage as string | null) ?? null,
 				});
+				try {
+					const lockState = (
+						window as unknown as {
+							__docLockState?: { isLocked?: boolean };
+						}
+					).__docLockState;
+					setDocLocked(!!lockState?.isLocked);
+				} catch {}
 			} catch {}
 		};
 		read();
@@ -250,6 +211,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const handleMiniEventClick = useCallback(
 		(info: { event: { extendedProps?: Record<string, unknown> } }) => {
 			try {
+				// Ask Documents page to save if there are unsaved changes before navigating
+				try {
+					const helper = (
+						window as unknown as {
+							__docSaveHelper?: { saveIfDirty?: () => Promise<void> };
+						}
+					).__docSaveHelper;
+					void helper?.saveIfDirty?.();
+				} catch {}
 				const waIdFromEvent = String(
 					(info?.event?.extendedProps as Record<string, unknown> | undefined)
 						?.waId || "",
@@ -482,15 +452,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	);
 
 	// Documents page: render minimal sidebar with only contact selector
-	if (isDocumentsPage) {
-		const phoneOptions = docCustomers.map((c) => ({
-			number: String(c.phone || ""),
-			name: c.name || "",
-			country: "US",
-			label: c.name || String(c.phone || ""),
-			id: String(c.phone || ""),
-		}));
+	// Dashboard page: hide sidebar entirely
+	if (isDashboardPage) {
+		return null;
+	}
 
+	if (isDocumentsPage) {
 		return (
 			<Sidebar {...props} className="bg-sidebar">
 				<SidebarHeader className="border-b border-sidebar-border p-4 bg-sidebar">
@@ -501,76 +468,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						</span>
 					</div>
 				</SidebarHeader>
-				<SidebarContent className="p-4 bg-sidebar">
-					<HoverCard open={docShowHoverCard}>
-						<HoverCardTrigger asChild>
-							<div className="w-full">
-								<PhoneCombobox
-									value={docWaId}
-									onChange={(v) => {
-										router.push(`/documents?waId=${encodeURIComponent(v)}`);
-									}}
-									placeholder={i18n.getMessage(
-										"documents_select_customer",
-										isLocalized,
-									)}
-									phoneOptions={phoneOptions}
-									uncontrolled={false}
-									showCountrySelector={false}
-									showNameAndPhoneWhenClosed={true}
-									size="sm"
-									className="w-full"
-									shrinkTextToFit={true}
-									preferPlaceholderWhenEmpty
-									onMouseEnter={handleDocMouseEnter}
-									onMouseLeave={handleDocMouseLeave}
-								/>
-							</div>
-						</HoverCardTrigger>
-						{docWaId && (
-							<HoverCardContent
-								ref={docHoverCardRef}
-								className="w-[300px] p-0 z-50"
-								align="center"
-								sideOffset={5}
-								onMouseEnter={() => {
-									if (docCloseTimer) {
-										clearTimeout(docCloseTimer);
-										setDocCloseTimer(null);
-									}
-									if (docHoverTimer) {
-										clearTimeout(docHoverTimer);
-										setDocHoverTimer(null);
-									}
-								}}
-								onMouseLeave={(e: React.MouseEvent) => {
-									const relatedTarget = e.relatedTarget as HTMLElement;
-									if (
-										relatedTarget &&
-										(e.currentTarget as HTMLElement).contains(relatedTarget)
-									) {
-										return;
-									}
-									const timer = setTimeout(() => {
-										setDocShowHoverCard(false);
-									}, 100);
-									setDocCloseTimer(timer);
-								}}
-							>
-								<CustomerStatsCard
-									selectedConversationId={docWaId}
-									conversations={conversations}
-									reservations={reservations}
-									isLocalized={isLocalized}
-									isHoverCard={true}
-								/>
-							</HoverCardContent>
-						)}
-					</HoverCard>
+				<SidebarContent className="px-3 pt-1 pb-3 bg-sidebar">
 					{/* Mini list-view calendar with simple dock navigation */}
-					<div className="mt-3 flex-1 min-h-0 flex flex-col">
+					<div className="mt-0 flex-1 min-h-0 flex flex-col">
 						{/* Minimal navigation: Prev | Title (Today) | Next */}
-						<div className="mb-2 flex items-center justify-between gap-2">
+						<div className="mb-1 flex items-center justify-between gap-2">
 							<Button
 								variant="ghost"
 								size="icon"
@@ -593,12 +495,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									} catch {}
 								}}
 								disabled={miniIsTodayDisabled}
-								className="h-9 w-[200px] rounded-full"
+								className="h-9 w-[12.5rem] rounded-full"
 								aria-label={isLocalized ? "الذهاب إلى اليوم" : "Go to today"}
 							>
 								<CalendarDays className="h-4 w-4 mr-2" />
 								<span
-									className="text-sm font-medium truncate max-w-[150px]"
+									className="text-sm font-medium truncate max-w-[9.375rem]"
 									id={titleId}
 								/>
 							</Button>
@@ -666,7 +568,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							/>
 						</div>
 					</div>
-					{/* Save status row (reads from window vars set by the Documents page) */}
+					{/* Save/lock status row (reads from window vars set by the Documents page) */}
 					<div className="pt-3 border-t border-sidebar-border text-sm text-muted-foreground flex items-center gap-2">
 						{!mounted ? null : docSaveState.loading ? (
 							<>
@@ -677,6 +579,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							<>
 								<CircleDashed className="h-4 w-4 animate-spin" />
 								<span>{i18n.getMessage("saving", isLocalized)}</span>
+							</>
+						) : docSaveState.errorMessage ? (
+							<>
+								<CircleAlert className="h-4 w-4 text-red-500" />
+								<span
+									className="truncate max-w-[12rem]"
+									title={docSaveState.errorMessage}
+								>
+									{docSaveState.errorMessage}
+								</span>
+							</>
+						) : docLocked ? (
+							<>
+								<CircleAlert className="h-4 w-4 text-amber-500" />
+								<span>{i18n.getMessage("locked", isLocalized)}</span>
 							</>
 						) : docSaveState.isDirty ? (
 							<>

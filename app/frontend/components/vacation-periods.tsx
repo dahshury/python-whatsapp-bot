@@ -79,7 +79,7 @@ const VacationPeriodRow = React.memo(
 					>
 						{/* Recording overlay */}
 						{isRecordingStart && (
-							<span className="absolute right-2 top-1 text-[10px] font-medium text-red-600 animate-pulse select-none">
+							<span className="absolute right-2 top-1 text-[0.625rem] font-medium text-red-600 animate-pulse select-none">
 								{isLocalized ? "تسجيل" : "Recording"}
 							</span>
 						)}
@@ -122,7 +122,7 @@ const VacationPeriodRow = React.memo(
 					>
 						{/* Recording overlay */}
 						{isRecordingEnd && (
-							<span className="absolute right-2 top-1 text-[10px] font-medium text-red-600 animate-pulse select-none">
+							<span className="absolute right-2 top-1 text-[0.625rem] font-medium text-red-600 animate-pulse select-none">
 								{isLocalized ? "تسجيل" : "Recording"}
 							</span>
 						)}

@@ -99,7 +99,7 @@ export function ValidationErrorsPopover(props: ValidationErrorsPopoverProps) {
 				<button
 					type="button"
 					className={cn(
-						"inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground shadow outline-none focus-visible:ring-2 focus-visible:ring-ring",
+						"inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1 text-[0.625rem] font-bold leading-none text-destructive-foreground shadow outline-none focus-visible:ring-2 focus-visible:ring-ring",
 						triggerClassName,
 					)}
 					aria-label={title}
@@ -132,7 +132,7 @@ export function ValidationErrorsPopover(props: ValidationErrorsPopoverProps) {
 											className="shrink-0 text-destructive"
 											aria-hidden="true"
 										/>
-										<span className="text-[13px] font-medium">
+										<span className="text-[0.8125rem] font-medium">
 											{rowLabel(row)} ({list.length})
 										</span>
 									</span>
@@ -148,7 +148,7 @@ export function ValidationErrorsPopover(props: ValidationErrorsPopoverProps) {
 												className="border-t py-2 ps-6 pe-3"
 												defaultOpen={false}
 											>
-												<CollapsibleTrigger className="flex w-full gap-2 text-[13px] leading-6 font-semibold [&[data-state=open]>svg]:rotate-180">
+												<CollapsibleTrigger className="flex w-full gap-2 text-[0.8125rem] leading-6 font-semibold [&[data-state=open]>svg]:rotate-180">
 													<ChevronDownIcon
 														size={16}
 														className="mt-0.5 shrink-0 opacity-60 transition-transform duration-200"
@@ -165,7 +165,7 @@ export function ValidationErrorsPopover(props: ValidationErrorsPopoverProps) {
 														</span>
 													</span>
 												</CollapsibleTrigger>
-												<CollapsibleContent className="text-muted-foreground data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down mt-1 overflow-hidden ps-6 text-[12px]">
+												<CollapsibleContent className="text-muted-foreground data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down mt-1 overflow-hidden ps-6 text-[0.75rem]">
 													<p className="leading-5 mb-1">{err.message}</p>
 													{getViolatedRuleHints(err).length > 0 && (
 														<ul className="list-disc ms-4">

@@ -101,11 +101,11 @@ export function OperationMetrics({
 					{Array.from({ length: 3 }).map((_, i) => (
 						<Card key={`operation-skeleton-card-${i + 1}`}>
 							<CardHeader className="space-y-0 pb-2">
-								<Skeleton className="h-4 w-[120px]" />
+								<Skeleton className="h-4 w-[7.5rem]" />
 							</CardHeader>
 							<CardContent>
-								<Skeleton className="h-8 w-[80px]" />
-								<Skeleton className="h-3 w-[100px] mt-2" />
+								<Skeleton className="h-8 w-[5rem]" />
+								<Skeleton className="h-3 w-[6.25rem] mt-2" />
 							</CardContent>
 						</Card>
 					))}

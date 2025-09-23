@@ -199,7 +199,7 @@ export function EnhancedDashboardView() {
 
 	if (error) {
 		return (
-			<div className="min-h-[400px] flex items-center justify-center">
+			<div className="min-h-[25rem] flex items-center justify-center">
 				<Card className="w-full max-w-md">
 					<CardContent className="p-6 text-center">
 						<div className="text-destructive mb-4">
@@ -373,11 +373,11 @@ export function EnhancedDashboardView() {
 						].map((stat) => (
 							<Card key={`stat-skeleton-${stat}`}>
 								<CardHeader className="space-y-0 pb-2">
-									<Skeleton className="h-4 w-[120px]" />
+									<Skeleton className="h-4 w-[7.5rem]" />
 								</CardHeader>
 								<CardContent>
-									<Skeleton className="h-8 w-[80px]" />
-									<Skeleton className="h-3 w-[100px] mt-2" />
+									<Skeleton className="h-8 w-[5rem]" />
+									<Skeleton className="h-3 w-[6.25rem] mt-2" />
 								</CardContent>
 							</Card>
 						))}
@@ -387,10 +387,10 @@ export function EnhancedDashboardView() {
 							(chart) => (
 								<Card key={`chart-skeleton-${chart}`}>
 									<CardHeader>
-										<Skeleton className="h-6 w-[150px]" />
+										<Skeleton className="h-6 w-[9.375rem]" />
 									</CardHeader>
 									<CardContent>
-										<Skeleton className="h-[300px] w-full" />
+										<Skeleton className="h-[18.75rem] w-full" />
 									</CardContent>
 								</Card>
 							),
@@ -406,7 +406,7 @@ export function EnhancedDashboardView() {
 					onValueChange={setActiveTab}
 					className="space-y-6"
 				>
-					<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 lg:max-w-[600px]">
+					<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-2 lg:max-w-[37.5rem]">
 						<TabsTrigger value="overview" className="whitespace-nowrap w-full">
 							{i18n.getMessage("dashboard_overview", isLocalized)}
 						</TabsTrigger>

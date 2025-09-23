@@ -91,7 +91,14 @@ export default function Grid({
 	rowHeight?: number;
 	headerHeight?: number;
 	hideAppendRowPlaceholder?: boolean;
-	rowMarkers?: "none" | "both" | "number" | "checkbox" | "selection";
+	rowMarkers?:
+		| "none"
+		| "both"
+		| "number"
+		| "checkbox"
+		| "checkbox-visible"
+		| "clickable-number"
+		| "selection";
 	disableTrailingRow?: boolean;
 	onAddRowOverride?: () => void;
 } = {}) {
@@ -342,17 +349,40 @@ export default function Grid({
 		[dataEditorRef.current?.updateCells],
 	);
 
-	// Calculate absolute top-right position for toolbar overlay
-	const overlayPosition = React.useMemo(() => {
+	// Track absolute top-right position for toolbar overlay using viewport coords and keep it in sync on scroll/resize/size changes
+	const [overlayPosition, setOverlayPosition] = React.useState<{
+		top: number;
+		left: number;
+	} | null>(null);
+
+	React.useEffect(() => {
+		const compute = () => {
+			try {
+				const el = containerRef.current;
+				if (!el) return;
+				const rect = el.getBoundingClientRect();
+				// Anchor to grid's top-right corner; vertical alignment flush with grid top
+				setOverlayPosition({ top: rect.top, left: rect.right });
+			} catch {}
+		};
+
+		compute();
+
+		const onScroll = () => compute();
+		const onResize = () => compute();
+		window.addEventListener("scroll", onScroll, true);
+		window.addEventListener("resize", onResize);
+		const ro = new ResizeObserver(() => compute());
 		try {
-			const el = containerRef.current;
-			if (!el) return null;
-			const rect = el.getBoundingClientRect();
-			// Position to the top-right corner of the grid container with a small offset
-			return { top: rect.top + 4, left: rect.right - 4 };
-		} catch {
-			return null;
-		}
+			if (containerRef.current) ro.observe(containerRef.current);
+		} catch {}
+		return () => {
+			window.removeEventListener("scroll", onScroll, true);
+			window.removeEventListener("resize", onResize);
+			try {
+				ro.disconnect();
+			} catch {}
+		};
 	}, []);
 
 	// Force a redraw of all visible cells when display geometry changes
@@ -416,11 +446,11 @@ export default function Grid({
 
 	const getCellContent = React.useCallback(
 		(cell: Item) => {
-			// While externally loading, return LoadingCell skeletons
-			if (loading) {
+			// While loading or not yet ready, return LoadingCell skeletons
+			if (loading || !isDataReady || columnsState.length === 0) {
 				const [col] = cell;
 				const approxWidth =
-					(displayColumns[col] as { width?: number }).width ?? 150;
+					(displayColumns[col] as { width?: number } | undefined)?.width ?? 150;
 				return {
 					kind: GridCellKind.Loading,
 					skeletonWidth: Math.round(
@@ -475,6 +505,8 @@ export default function Grid({
 			theme,
 			darkTheme,
 			loading,
+			isDataReady,
+			columnsState.length,
 		],
 	);
 
@@ -796,30 +828,7 @@ export default function Grid({
 	// Always call hooks before any conditional logic
 	const globalPortalContainer = useGridPortal();
 
-	// Don't render skeleton only when truly not ready the first time (no spinner here)
-	if (!isDataReady || columnsState.length === 0) {
-		if (onReady) return null;
-		return (
-			<FullscreenWrapper theme={theme} darkTheme={darkTheme}>
-				<div
-					className={`glide-grid-container ${theme === darkTheme ? "glide-grid-container-dark" : "glide-grid-container-light"}`}
-				>
-					{/* Skeleton rows - dimmer */}
-					<div className="w-full opacity-30">
-						<div className="h-8 bg-muted/50 mb-2 rounded" />
-						<div className="space-y-2">
-							{Array.from({ length: 5 }).map((_, i) => (
-								<div
-									key={`sk-${String(i)}`}
-									className="h-6 bg-muted/40 rounded"
-								/>
-							))}
-						</div>
-					</div>
-				</div>
-			</FullscreenWrapper>
-		);
-	}
+	// Always render the grid; cells will render as LoadingCell while not ready
 
 	return (
 		<FullscreenWrapper theme={theme} darkTheme={darkTheme}>

@@ -409,11 +409,13 @@ select,
 
 /* Force all potentially conflicting elements to lower z-index */
 .animated-sidebar-trigger {
-	z-index: 40 !important; /* Default Tailwind z-40 value */
+	z-index: 10001 !important; /* Above sticky header/backdrop */
+	pointer-events: auto !important;
 }
 
 .calendar-legend-trigger {
-	z-index: 40 !important; /* Same as sidebar trigger */
+	z-index: 10001 !important; /* Above sticky header/backdrop */
+	pointer-events: auto !important;
 }
 
 [data-radix-hover-card-content] {

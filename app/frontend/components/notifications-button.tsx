@@ -672,7 +672,7 @@ export function NotificationsButton({
 															)}
 															<Badge
 																variant="outline"
-																className="min-w-6 px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm border"
+																className="min-w-6 px-2 py-0.5 rounded-full text-[0.625rem] font-semibold shadow-sm border"
 																style={badgeStyle}
 															>
 																{countToShow > 99 ? "99+" : countToShow}

@@ -25,6 +25,13 @@
 	/* This CSS is loaded early to suppress console errors from React Timekeeper */
 }
 
+/* Fluid root sizing and UI density scale */
+:root {
+	/* Bound the base size so 1080p and 4K feel proportionate */
+	font-size: clamp(14px, 0.9vw + 10px, 16px);
+	--ui-scale: 1;
+}
+
 /* Note: Console error suppression is handled via JavaScript in layout.tsx */
 /* biome-ignore lint: Tailwind directives are intentional */
 @tailwind base;
@@ -78,10 +85,12 @@ body {
 }
 
 @layer base {
-  * {
-    @apply border-border;
+	* {
+		/* biome-ignore lint: Tailwind directives are intentional */
+		@apply border-border;
 	}
-  body {
-    @apply bg-background text-foreground;
+	body {
+		/* biome-ignore lint: Tailwind directives are intentional */
+		@apply bg-background text-foreground;
 	}
 }

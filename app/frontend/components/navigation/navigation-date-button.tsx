@@ -24,7 +24,7 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 }: NavigationDateButtonProps) {
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 
-	const width = navigationOnly ? "w-[260px]" : "w-[416px]";
+	const width = navigationOnly ? "w-[16.25rem]" : "w-[26rem]";
 	const textSize = navigationOnly ? "text-lg" : "text-2xl";
 	const loaderSize = navigationOnly ? "h-6 w-6" : "h-8 w-8";
 
@@ -81,7 +81,7 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 										"absolute top-1 right-2",
 										"inline-flex items-center gap-1 h-5 px-1.5",
 										"rounded-theme bg-muted/60 text-foreground/80",
-										"text-[10px] leading-none font-mono tabular-nums",
+										"text-[0.625rem] leading-none font-mono tabular-nums",
 										"border border-border/50 shadow-sm",
 									)}
 									onClickCapture={(e) => {

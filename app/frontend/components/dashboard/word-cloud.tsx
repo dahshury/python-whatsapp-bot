@@ -111,7 +111,7 @@ export function WordCloudChart({
 	}, []);
 
 	const noData = (
-		<div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+		<div className="h-[18.75rem] flex items-center justify-center text-muted-foreground text-sm">
 			{i18n.getMessage("chart_no_data", isLocalized)}
 		</div>
 	);
@@ -135,7 +135,7 @@ export function WordCloudChart({
 					noData
 				)
 			) : (
-				<div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
+				<div className="h-[18.75rem] flex items-center justify-center text-muted-foreground text-sm">
 					{i18n.getMessage("chart_loading", isLocalized)}
 				</div>
 			)}

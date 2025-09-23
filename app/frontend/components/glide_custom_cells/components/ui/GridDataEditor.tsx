@@ -19,6 +19,7 @@ import { DropdownCell as DropdownRenderer } from "@glideapps/glide-data-grid-cel
 import { Resizable, type Size as ResizableSize } from "re-resizable";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AgeWheelCellRenderer from "../AgeWheelCell";
 import { useFullscreen } from "../contexts/FullscreenContext";
 import PhoneCellRenderer from "../PhoneCellRenderer";
 import TempusDateCellRenderer from "../TempusDominusDateCell";
@@ -31,6 +32,7 @@ const customRenderers = [
 	TempusDateCellRenderer,
 	TimekeeperCellRenderer,
 	PhoneCellRenderer,
+	AgeWheelCellRenderer,
 ];
 
 // Column configuration interface (similar to Streamlit's ColumnConfigProps)
@@ -541,6 +543,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 							return !!(data as { time?: Date }).time;
 						if (data?.kind === "dropdown-cell") return !!data.value;
 						if (data?.kind === "phone-cell") return !!data.value;
+						if (data?.kind === "age-wheel-cell") return !!data.value;
 						return false;
 					}
 

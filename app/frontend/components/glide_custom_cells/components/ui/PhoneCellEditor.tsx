@@ -5,6 +5,9 @@ import {
 	type PhoneOption,
 } from "@/components/ui/phone-combobox";
 import { useCustomerData } from "@/lib/customer-data-context";
+import { DEFAULT_DOCUMENT_WA_ID } from "@/lib/default-document";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
 
 // Format phone number for display
 const formatPhoneForDisplay = (phoneNumber: string): string => {
@@ -55,10 +58,11 @@ const PhoneCellEditor: React.FC<PhoneCellEditorProps> = ({
 	}, [value, onChange]);
 	// Get real customer data
 	const { customers, loading } = useCustomerData();
+	const { isLocalized } = useLanguage();
 
 	// Create phone options from real customer data
 	const phoneOptions: PhoneOption[] = React.useMemo(() => {
-		return customers.map((customer) => {
+		const base = customers.map((customer) => {
 			const phoneNumber = customer.phone || customer.id;
 			const formattedPhone = formatPhoneForDisplay(phoneNumber);
 
@@ -79,7 +83,23 @@ const PhoneCellEditor: React.FC<PhoneCellEditorProps> = ({
 				id: customer.id,
 			};
 		});
-	}, [customers]);
+
+		// Only show synthetic Default option on the documents page grid
+		const onDocumentsPage =
+			typeof window !== "undefined" &&
+			String(window?.location?.pathname || "").startsWith("/documents");
+		if (onDocumentsPage) {
+			const defaultOption: PhoneOption = {
+				number: `+${DEFAULT_DOCUMENT_WA_ID}`,
+				name: i18n.getMessage("default_contact", isLocalized),
+				country: "US",
+				label: i18n.getMessage("default_contact", isLocalized),
+				id: DEFAULT_DOCUMENT_WA_ID,
+			};
+			return [defaultOption, ...base];
+		}
+		return base;
+	}, [customers, isLocalized]);
 
 	// Prevent hydration mismatch and show loading state
 	if (loading) {

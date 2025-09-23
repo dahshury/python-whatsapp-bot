@@ -13,8 +13,13 @@ const GridPortalContext = createContext<GridPortalContextType>({
 
 export const useGridPortal = () => {
 	const context = useContext(GridPortalContext);
-	// Prefer dialog overlay portal when present to avoid reparenting issues
+	// Prefer fullscreen overlay portal when present, then dialog overlay portal
 	if (typeof document !== "undefined") {
+		const fullscreenOverlay = document.getElementById(
+			"grid-fullscreen-overlay-portal",
+		);
+		if (fullscreenOverlay) return fullscreenOverlay;
+
 		const dialogOverlay = document.getElementById("dialog-overlay-portal");
 		if (dialogOverlay) return dialogOverlay;
 	}

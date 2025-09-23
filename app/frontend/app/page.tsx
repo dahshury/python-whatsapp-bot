@@ -25,6 +25,8 @@ interface WebSocketReservation {
 	cancelled?: boolean;
 }
 
+import dynamic from "next/dynamic";
+import React from "react";
 import { AnimatedSidebarTrigger } from "@/components/animated-sidebar-trigger";
 import { CalendarContainer } from "@/components/calendar-container";
 import type { CalendarCoreRef } from "@/components/calendar-core";
@@ -45,7 +47,7 @@ import { useCalendarHoverCard } from "@/hooks/useCalendarHoverCard";
 import { useCalendarState } from "@/hooks/useCalendarState";
 import { useVacationDateChecker } from "@/hooks/useVacationDateChecker";
 import { createCalendarCallbacks } from "@/lib/calendar-callbacks";
-import { SLOT_DURATION_HOURS, getTimezone } from "@/lib/calendar-config";
+import { getTimezone, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { mark } from "@/lib/dev-profiler";
 import { useLanguage } from "@/lib/language-context";
@@ -56,8 +58,6 @@ import {
 	useConversationsData,
 	useReservationsData,
 } from "@/lib/websocket-data-provider";
-import dynamic from "next/dynamic";
-import React from "react";
 
 // FullCalendar component is loaded dynamically in DualCalendarComponent when needed
 
@@ -382,10 +382,9 @@ export default function HomePage() {
 
 	return (
 		<SidebarInset>
-			{/* Animated Sidebar Trigger with Legend */}
+			{/* Animated Sidebar Trigger with Legend (fixed, independent of header layout) */}
 			<AnimatedSidebarTrigger freeRoam={freeRoam} />
-
-			<header className="relative flex h-16 shrink-0 items-center border-b px-4">
+			<header className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
 				{showDualCalendar ? (
 					// Dual Calendar Mode Header Layout
 					<div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
@@ -460,7 +459,9 @@ export default function HomePage() {
 				if (!mounted) {
 					return (
 						<div
-							className={"flex flex-1 flex-col gap-4 p-4 h-[calc(100vh-4rem)]"}
+							className={
+								"flex flex-1 flex-col gap-3 px-4 pb-4 pt-1 h-[calc(100vh-4rem)]"
+							}
 						>
 							<CalendarContainer
 								loading={true}
@@ -477,7 +478,7 @@ export default function HomePage() {
 
 				return (
 					<div
-						className={`flex flex-1 flex-col gap-4 p-4 ${wrapperHeightClass}`}
+						className={`flex flex-1 flex-col gap-3 px-4 pb-0 pt-1 ${wrapperHeightClass}`}
 					>
 						<CalendarContainer
 							loading={false}

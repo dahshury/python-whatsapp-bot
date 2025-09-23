@@ -108,7 +108,7 @@ export function DailyTrendsOverview({
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<ChartContainer config={chartConfig} className="h-[350px] w-full">
+				<ChartContainer config={chartConfig} className="h-[21.875rem] w-full">
 					<AreaChart
 						data={chartData}
 						margin={{ top: 16, right: 12, left: 12, bottom: 8 }}

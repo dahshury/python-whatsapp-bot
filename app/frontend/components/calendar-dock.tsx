@@ -145,7 +145,10 @@ export function CalendarDock({
 
 	return (
 		<TooltipProvider>
-			<Dock direction="middle" className={cn("h-auto min-h-[44px]", className)}>
+			<Dock
+				direction="middle"
+				className={cn("h-auto min-h-[2.75rem]", className)}
+			>
 				{/* Calendar Navigation Controls */}
 				{/* Left side navigation button: always Previous */}
 				{prevButton}
@@ -161,7 +164,7 @@ export function CalendarDock({
 							onMouseEnter={() => setIsHoveringDate(true)}
 							onMouseLeave={() => setIsHoveringDate(false)}
 							className={cn(
-								"h-9 w-[200px] rounded-full relative group overflow-hidden",
+								"h-9 w-[12.5rem] rounded-full relative group overflow-hidden",
 								"hover:bg-accent hover:text-accent-foreground",
 								"transition-all duration-200",
 								!isTodayDisabled && "cursor-pointer",

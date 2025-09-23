@@ -1,5 +1,9 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { Clock, MessageSquare, TrendingUp, Users } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Bar, BarChart, XAxis as XAxisComp } from "recharts";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +36,6 @@ import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { Clock, MessageSquare, TrendingUp, Users } from "lucide-react";
-import React, { useEffect, useState } from "react";
-import { Bar, BarChart, XAxis as XAxisComp } from "recharts";
 
 import type { Conversations, Reservation } from "@/types/calendar";
 import type {
@@ -433,22 +433,22 @@ export function MessageAnalysis({
 									{hours.map((hour) => (
 										<div
 											key={hour}
-											className="flex-1 text-center text-muted-foreground text-xs font-medium min-w-[24px] relative"
+											className="flex-1 text-center text-muted-foreground text-xs font-medium min-w-[1.5rem] relative"
 										>
 											{hour.toString().padStart(2, "0")}
 											{/* Time period indicators */}
 											{hour === 6 && (
-												<div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-3 font-medium">
+												<div className="absolute -top-2 left-0 right-0 text-[0.625rem] text-chart-3 font-medium">
 													{i18n.getMessage("msg_morning", isLocalized)}
 												</div>
 											)}
 											{hour === 12 && (
-												<div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-2 font-medium">
+												<div className="absolute -top-2 left-0 right-0 text-[0.625rem] text-chart-2 font-medium">
 													{i18n.getMessage("msg_afternoon", isLocalized)}
 												</div>
 											)}
 											{hour === 18 && (
-												<div className="absolute -top-2 left-0 right-0 text-[10px] text-chart-4 font-medium">
+												<div className="absolute -top-2 left-0 right-0 text-[0.625rem] text-chart-4 font-medium">
 													{i18n.getMessage("msg_evening", isLocalized)}
 												</div>
 											)}
@@ -466,13 +466,13 @@ export function MessageAnalysis({
 												{translateDayName(day).slice(0, 3)}
 											</div>
 										</div>
-										<div className="flex flex-1 gap-[1px]">
+										<div className="flex flex-1 gap-[0.0625rem]">
 											{hours.map((hour) => {
 												const count = getHeatmapValue(day, hour);
 												return (
 													<div
 														key={`${day}-${hour}`}
-														className={`relative flex-1 aspect-square ${getIntensity(count)} min-w-[24px] min-h-[24px] rounded border-2`}
+														className={`relative flex-1 aspect-square ${getIntensity(count)} min-w-[1.5rem] min-h-[1.5rem] rounded border-2`}
 														title={`${translateDayName(day)} ${hour.toString().padStart(2, "0")}:00\n${count} ${i18n.getMessage("msg_messages", isLocalized)}\n${getIntensityLabel(count)} ${i18n.getMessage("msg_activity", isLocalized)}`}
 													>
 														{count > 0 && (
@@ -682,7 +682,7 @@ export function MessageAnalysis({
 							</div>
 						</CardHeader>
 						<CardContent>
-							<div className="space-y-3 max-h-[400px] overflow-y-auto">
+							<div className="space-y-3 max-h-[25rem] overflow-y-auto">
 								{paginatedCustomers.map((customer, index) => {
 									const globalIndex =
 										currentPage * customersPerPage + index + 1;
@@ -715,7 +715,7 @@ export function MessageAnalysis({
 														<HoverCardTrigger asChild>
 															<button
 																type="button"
-																className="text-sm font-medium cursor-pointer truncate max-w-[180px] hover:text-blue-600 bg-transparent border-none p-0 text-left"
+																className="text-sm font-medium cursor-pointer truncate max-w-[11.25rem] hover:text-blue-600 bg-transparent border-none p-0 text-left"
 																onClick={() =>
 																	handleCustomerClick(customer.wa_id)
 																}
@@ -729,7 +729,7 @@ export function MessageAnalysis({
 																{getCustomerName(customer.wa_id)}
 															</button>
 														</HoverCardTrigger>
-														<HoverCardContent className="w-[300px] p-0">
+														<HoverCardContent className="w-[18.75rem] p-0">
 															<CustomerStatsCard
 																selectedConversationId={customer.wa_id}
 																conversations={
@@ -807,7 +807,7 @@ export function MessageAnalysis({
 										desktop: { label: "Desktop", color: "hsl(var(--chart-1))" },
 									} as unknown as ChartConfig
 								}
-								className="h-[400px] w-full"
+								className="h-[25rem] w-full"
 							>
 								<BarChart
 									data={enhancedWordFrequency.map((w) => ({

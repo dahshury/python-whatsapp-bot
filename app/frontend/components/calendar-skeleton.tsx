@@ -37,7 +37,7 @@ export function CalendarSkeleton({
 	// Fallback skeleton for initial loading
 	return (
 		<BlurFade duration={0.4} delay={0.1} direction="down">
-			<div className="w-full h-[800px] bg-card rounded-lg border">
+			<div className="w-full h-[50rem] bg-card rounded-lg border">
 				<div className="p-4">
 					{/* Calendar header skeleton */}
 					<div className="flex items-center justify-between mb-6">

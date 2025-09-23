@@ -233,6 +233,9 @@ async def api_test_whatsapp_config():
 
 # === Customer Documents Endpoints ===
 
+# Sentinel WA ID used by frontend to represent the global default document
+DEFAULT_DOCUMENT_WA_ID = "0000000000000"
+
 def _maybe_decompress_document(raw: str) -> str:
     try:
         if isinstance(raw, str) and raw.startswith("gz:"):
@@ -249,15 +252,49 @@ async def api_get_customer_document(wa_id: str, request: Request):
     If none exists, return success with no persisted record and let the frontend apply its default template.
     """
     try:
-        from app.db import get_session, CustomerDocumentModel
+        from app.db import get_session, CustomerDocumentModel, DefaultDocumentModel, CustomerModel
         with get_session() as session:
+            # Special case: global default document
+            if wa_id == DEFAULT_DOCUMENT_WA_ID:
+                default_row = session.query(DefaultDocumentModel).order_by(DefaultDocumentModel.id.asc()).first()
+                if not default_row:
+                    # Return empty object when default is not yet set
+                    return JSONResponse(content={"success": True, "wa_id": wa_id, "document": {}})
+                try:
+                    raw = default_row.document_json if isinstance(default_row.document_json, str) else json.dumps(default_row.document_json or {})
+                    raw = _maybe_decompress_document(raw)
+                    parsed: Any = json.loads(raw)
+                except Exception:
+                    parsed = {}
+                headers = {}
+                try:
+                    if getattr(default_row, "updated_at", None):
+                        headers["Last-Modified"] = default_row.updated_at.isoformat()
+                except Exception:
+                    pass
+                return JSONResponse(content={"success": True, "wa_id": wa_id, "document": parsed, "updated_at": (default_row.updated_at.isoformat() if getattr(default_row, "updated_at", None) else None)}, headers=headers)
+
+            # Normal customer document
             doc = session.get(CustomerDocumentModel, wa_id)
             if doc is None:
-                return JSONResponse(content={
-                    "success": True,
-                    "wa_id": wa_id,
-                    "document": None,
-                })
+                # If no personal document exists, serve the current default document as a starting template
+                default_row = session.query(DefaultDocumentModel).order_by(DefaultDocumentModel.id.asc()).first()
+                if not default_row:
+                    return JSONResponse(content={"success": True, "wa_id": wa_id, "document": None})
+                try:
+                    raw = default_row.document_json if isinstance(default_row.document_json, str) else json.dumps(default_row.document_json or {})
+                    raw = _maybe_decompress_document(raw)
+                    parsed: Any = json.loads(raw)
+                except Exception:
+                    parsed = {}
+                headers = {}
+                try:
+                    if getattr(default_row, "updated_at", None):
+                        headers["Last-Modified"] = default_row.updated_at.isoformat()
+                except Exception:
+                    pass
+                return JSONResponse(content={"success": True, "wa_id": wa_id, "document": parsed, "updated_at": (default_row.updated_at.isoformat() if getattr(default_row, "updated_at", None) else None)}, headers=headers)
+
             try:
                 raw = doc.document_json if isinstance(doc.document_json, str) else json.dumps(doc.document_json or {})
                 raw = _maybe_decompress_document(raw)
@@ -291,7 +328,7 @@ async def api_put_customer_document(wa_id: str, payload: dict = Body(...)):
     Accepts either { document: <json> } or a raw Excalidraw scene object as body.
     """
     try:
-        from app.db import get_session, CustomerDocumentModel
+        from app.db import get_session, CustomerDocumentModel, DefaultDocumentModel, CustomerModel
         document_obj: Any
         if isinstance(payload, dict) and "document" in payload:
             document_obj = payload.get("document")
@@ -313,13 +350,42 @@ async def api_put_customer_document(wa_id: str, payload: dict = Body(...)):
             pass
 
         with get_session() as session:
-            existing = session.get(CustomerDocumentModel, wa_id)
-            if existing is None:
-                existing = CustomerDocumentModel(wa_id=wa_id, document_json=document_str)
-                session.add(existing)
+            if wa_id == DEFAULT_DOCUMENT_WA_ID:
+                # Upsert global default document
+                default_row = session.query(DefaultDocumentModel).order_by(DefaultDocumentModel.id.asc()).first()
+                if not default_row:
+                    default_row = DefaultDocumentModel(document_json=document_str)
+                    session.add(default_row)
+                else:
+                    default_row.document_json = document_str
+                session.commit()
+
+                # Propagate to all customers who have not set their age (age is NULL)
+                try:
+                    wa_ids = [row.wa_id for row in session.query(CustomerModel).filter(CustomerModel.age.is_(None)).all()]
+                    if wa_ids:
+                        # Update existing documents for these customers
+                        existing_docs = session.query(CustomerDocumentModel).filter(CustomerDocumentModel.wa_id.in_(wa_ids)).all()
+                        existing_set = set()
+                        for d in existing_docs:
+                            d.document_json = document_str
+                            existing_set.add(d.wa_id)
+                        # Create missing document rows
+                        for wid in wa_ids:
+                            if wid not in existing_set:
+                                session.add(CustomerDocumentModel(wa_id=wid, document_json=document_str))
+                        session.commit()
+                except Exception as prop_err:
+                    logging.error(f"Failed to propagate default document: {prop_err}")
             else:
-                existing.document_json = document_str
-            session.commit()
+                # Upsert customer-specific document
+                existing = session.get(CustomerDocumentModel, wa_id)
+                if existing is None:
+                    existing = CustomerDocumentModel(wa_id=wa_id, document_json=document_str)
+                    session.add(existing)
+                else:
+                    existing.document_json = document_str
+                session.commit()
 
         return JSONResponse(content={"success": True})
     except Exception as e:
@@ -404,17 +470,33 @@ async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
 async def api_get_customer(wa_id: str):
     try:
         from app.db import get_session, CustomerModel
+        from datetime import date
         with get_session() as session:
             row = session.get(CustomerModel, wa_id)
             if not row:
                 return JSONResponse(content={"success": True, "data": None})
+            # Compute effective age using recorded date if available
+            age = getattr(row, "age", None)
+            recorded = getattr(row, "age_recorded_at", None)
+            effective_age = None
+            if age is not None:
+                effective_age = age
+                if recorded is not None:
+                    try:
+                        today = date.today()
+                        years = today.year - recorded.year - ( (today.month, today.day) < (recorded.month, recorded.day) )
+                        if years > 0:
+                            effective_age = max(0, age + years)
+                    except Exception:
+                        effective_age = age
             return JSONResponse(
                 content={
                     "success": True,
                     "data": {
                         "wa_id": row.wa_id,
                         "name": getattr(row, "customer_name", None),
-                        "age": getattr(row, "age", None),
+                        "age": effective_age,
+                        "age_recorded_at": recorded.isoformat() if recorded else None,
                     },
                 }
             )

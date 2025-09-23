@@ -24,7 +24,7 @@ export function AnimatedSidebarTrigger({
 				variant="ghost"
 				size="icon"
 				className={cn(
-					"fixed left-4 top-4 z-40 h-7 w-7 transition-all duration-300 ease-in-out animated-sidebar-trigger",
+					"fixed left-4 top-4 h-7 w-7 transition-all duration-300 ease-in-out animated-sidebar-trigger",
 					open
 						? "opacity-0 pointer-events-none scale-95"
 						: "opacity-100 pointer-events-auto scale-100",
@@ -40,7 +40,7 @@ export function AnimatedSidebarTrigger({
 			{/* Trigger when sidebar is open - positioned inside sidebar at header level */}
 			<div
 				className={cn(
-					"fixed top-4 z-40 transition-all duration-300 ease-in-out",
+					"fixed top-4 transition-all duration-300 ease-in-out animated-sidebar-trigger",
 					open
 						? "opacity-100 pointer-events-auto"
 						: "opacity-0 pointer-events-none",
@@ -65,7 +65,7 @@ export function AnimatedSidebarTrigger({
 			{/* Legend always stays outside sidebar, positioned beside closed trigger or outside open sidebar */}
 			<div
 				className={cn(
-					"fixed top-4 z-40 transition-all duration-300 ease-in-out",
+					"fixed top-4 transition-all duration-300 ease-in-out calendar-legend-trigger",
 					isMobile && "md:hidden", // Hide on mobile since sheet handles it
 				)}
 				style={{

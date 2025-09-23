@@ -914,7 +914,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		return (
 			<div
 				ref={containerRef}
-				className={`w-full h-full ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[600px]"} ${getCalendarClassNames(currentView)}`}
+				className={`w-full h-full ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[37.5rem]"} ${getCalendarClassNames(currentView)}`}
 				data-free-roam={freeRoam}
 			>
 				<FullCalendar

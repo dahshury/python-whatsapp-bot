@@ -128,7 +128,9 @@ const en = {
 	loading: "Loading...",
 	saving: "Saving...",
 	saved: "Saved",
+	locked: "Locked",
 	unsaved_changes: "Unsaved changes",
+	default_contact: "Default",
 };
 
 const ar = {
@@ -186,7 +188,9 @@ const ar = {
 	loading: "جارٍ التحميل...",
 	saving: "جارٍ الحفظ...",
 	saved: "تم الحفظ",
+	locked: "مقفل",
 	unsaved_changes: "تغييرات غير محفوظة",
+	default_contact: "افتراضي",
 };
 
 // Extend English keys for charts, messages, operations, insights

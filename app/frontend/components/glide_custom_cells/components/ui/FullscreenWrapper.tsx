@@ -47,6 +47,20 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 			).toString();
 			container.style.pointerEvents = "auto";
 
+			// Provide a child portal above content for grid overlays like toolbar
+			const overlayPortal = document.createElement("div");
+			overlayPortal.id = "grid-fullscreen-overlay-portal";
+			overlayPortal.style.position = "fixed";
+			overlayPortal.style.top = "0";
+			overlayPortal.style.left = "0";
+			overlayPortal.style.width = "0";
+			overlayPortal.style.height = "0";
+			overlayPortal.style.zIndex = (
+				Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) ||
+				Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT)
+			).toString();
+			container.appendChild(overlayPortal);
+
 			// Copy theme classes
 			if (document.documentElement.classList.contains("dark")) {
 				container.classList.add("dark");
@@ -59,7 +73,11 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
 			document.body.classList.add("grid-fullscreen-active");
 
 			return () => {
-				document.body.removeChild(container);
+				try {
+					container.remove();
+				} catch {
+					document.body.removeChild(container);
+				}
 				document.body.classList.remove("grid-fullscreen-active");
 				setPortalContainer(null);
 			};

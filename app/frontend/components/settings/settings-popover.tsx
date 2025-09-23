@@ -118,7 +118,7 @@ export function SettingsPopover({
 
 				<PopoverContent
 					align="center"
-					className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
+					className="w-auto max-w-[31.25rem] bg-background/70 backdrop-blur-md border-border/40"
 					onInteractOutside={(e) => {
 						try {
 							// While actively recording, do not close the popover on any outside interaction

@@ -1,22 +1,10 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
-import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
-import { useDataTableValidation } from "@/hooks/useDataTableValidation";
-import { formatDateRangeWithHijri } from "@/lib/hijri-utils";
-import { useSettings } from "@/lib/settings-context";
-import { Z_INDEX } from "@/lib/z-index";
-// formatDateTimeOptions removed - using inline options instead
-import type {
-	CalendarEvent as DataTableCalendarEvent,
-	DataTableEditorProps,
-} from "@/types/data-table-editor";
 import type { DataEditorRef } from "@glideapps/glide-data-grid";
 import { AnimatePresence, motion } from "framer-motion";
 import { Save, X } from "lucide-react";
-import { useTheme } from "next-themes";
 import dynamic from "next/dynamic";
+import { useTheme } from "next-themes";
 import React, {
 	useCallback,
 	useEffect,
@@ -24,13 +12,25 @@ import React, {
 	useRef,
 	useState,
 } from "react";
+import { Button } from "@/components/ui/button";
+import { useDataTableDataSource } from "@/hooks/useDataTableDataSource";
+import { useDataTableSaveHandler } from "@/hooks/useDataTableSaveHandler";
+import { useDataTableValidation } from "@/hooks/useDataTableValidation";
+import { formatHijriDate } from "@/lib/hijri-utils";
+import { useSettings } from "@/lib/settings-context";
+import { Z_INDEX } from "@/lib/z-index";
+// formatDateTimeOptions removed - using inline options instead
+import type {
+	CalendarEvent as DataTableCalendarEvent,
+	DataTableEditorProps,
+} from "@/types/data-table-editor";
 import { UnsavedChangesDialog } from "./data-table-editor/UnsavedChangesDialog";
 import { ValidationErrorsPopover } from "./data-table-editor/ValidationErrorsPopover";
 import { FullscreenProvider } from "./glide_custom_cells/components/contexts/FullscreenContext";
 import type { DataProvider } from "./glide_custom_cells/components/core/services/DataProvider";
 import { createGlideTheme } from "./glide_custom_cells/components/utils/streamlitGlideTheme";
 
-const Grid = dynamic(() => import("./glide_custom_cells/components/Grid"), {
+const Grid = dynamic(() => import("./grids/CalendarEditorGrid"), {
 	ssr: false,
 });
 
@@ -78,7 +78,6 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	} = props;
 
 	const [isGridReady, setIsGridReady] = useState(false);
-	const [showSpinner, setShowSpinner] = useState(false);
 	const [canSave, setCanSave] = useState(false);
 	const [showUnsavedChangesDialog, setShowUnsavedChangesDialog] =
 		useState(false);
@@ -220,15 +219,17 @@ export function DataTableEditor(props: DataTableEditorProps) {
 				computedEnd = endDate || undefined;
 			}
 
-			// If time info and end date falls on the same calendar day, avoid repeating the date.
-			if (
-				hasTimeInfo &&
+			const dayOptions: Intl.DateTimeFormatOptions = { weekday: "long" };
+			const startDayName = startDate.toLocaleDateString("ar-SA", dayOptions);
+			const isSameCalendarDay =
 				computedEnd &&
 				startDate.getFullYear() === computedEnd.getFullYear() &&
 				startDate.getMonth() === computedEnd.getMonth() &&
-				startDate.getDate() === computedEnd.getDate()
-			) {
-				const dateStr = formatDateRangeWithHijri(startDate, undefined);
+				startDate.getDate() === computedEnd.getDate();
+
+			// If time info and end date falls on the same calendar day, avoid repeating the date.
+			if (hasTimeInfo && computedEnd && isSameCalendarDay) {
+				const dateStr = formatHijriDate(startDate);
 				const startTimeStr = startDate.toLocaleTimeString("ar-SA", {
 					hour: "numeric",
 					minute: "2-digit",
@@ -239,9 +240,15 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					minute: "2-digit",
 					hour12: true,
 				});
-				return `${dateStr} ${startTimeStr} - ${endTimeStr}`;
+				return `${startDayName}, ${dateStr} ${startTimeStr} - ${endTimeStr}`;
 			}
-			return formatDateRangeWithHijri(startDate, computedEnd);
+
+			// Date-only or cross-day range: include day names with Hijri dates
+			if (!computedEnd || isSameCalendarDay) {
+				return `${startDayName}, ${formatHijriDate(startDate)}`;
+			}
+			const endDayName = computedEnd.toLocaleDateString("ar-SA", dayOptions);
+			return `${startDayName}, ${formatHijriDate(startDate)} - ${endDayName}, ${formatHijriDate(computedEnd)}`;
 		}
 
 		// Non-RTL formatting with day name first
@@ -482,9 +489,6 @@ export function DataTableEditor(props: DataTableEditorProps) {
 
 	useEffect(() => {
 		if (open) {
-			// Delay spinner to avoid flashing on very fast readiness
-			setShowSpinner(false);
-			const t = setTimeout(() => setShowSpinner(true), 150);
 			setCanSave(false);
 			if (dataProviderRef.current) {
 				try {
@@ -494,11 +498,9 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			// Add body class for CSS targeting when dialog is open
 			document.body.classList.add("has-dialog-backdrop");
 			return () => {
-				clearTimeout(t);
 				document.body.classList.remove("has-dialog-backdrop");
 			};
 		}
-		setShowSpinner(false);
 		setCanSave(false);
 		// Clear validation errors when dialog is closed to prevent stale state
 		setValidationErrors([]);
@@ -735,19 +737,9 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							<div className="overflow-visible w-full flex-1 min-h-0">
 								<div className="overflow-visible relative w-full h-full">
 									{!isGridReady && (
-										<div className="absolute inset-0 z-10 bg-background flex items-center justify-center">
-											{showSpinner && (
-												<div className="h-8 w-8 animate-spin rounded-full border-2 border-current border-t-transparent" />
-											)}
-										</div>
+										<div className="absolute inset-0 z-10 bg-background/0" />
 									)}
-									<div
-										style={{
-											opacity: isGridReady ? 1 : 0,
-											transition: "opacity 120ms ease-out",
-											pointerEvents: isGridReady ? "auto" : "none",
-										}}
-									>
+									<div>
 										<FullscreenProvider>
 											{Grid && (
 												<Grid
@@ -759,6 +751,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 													dataEditorRef={
 														dataEditorRef as React.RefObject<DataEditorRef>
 													}
+													loading={!isGridReady}
 													validationErrors={validationErrors}
 													onReady={() => setIsGridReady(true)}
 													onDataProviderReady={(provider: unknown) => {

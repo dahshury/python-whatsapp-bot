@@ -4,7 +4,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    # Remove rclone mount on local machines
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env
@@ -15,5 +14,4 @@ services:
     build:
       context: app/frontend
       dockerfile: Dockerfile
-    environment:
 

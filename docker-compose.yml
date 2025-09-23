@@ -21,7 +21,6 @@ services:
       - ./data:/app/data
       - ./.env:/app/.env
       - ./scripts:/app/scripts
-      - /home/ubuntu/.config/rclone/rclone.conf:/root/.config/rclone/rclone.conf
     restart: on-failure
     logging:
       driver: json-file

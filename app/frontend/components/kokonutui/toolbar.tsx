@@ -149,7 +149,7 @@ export function Toolbar({ className }: ToolbarProps) {
 								initial="initial"
 								animate="animate"
 								exit="exit"
-								className="absolute -bottom-1 left-1/2 w-full h-[2px] bg-primary origin-left"
+								className="absolute -bottom-1 left-1/2 w-full h-[0.125rem] bg-primary origin-left"
 							/>
 						</motion.div>
 					)}
@@ -325,7 +325,7 @@ export function MiniToolbar({
 									/>
 								) : null}
 								<div className="space-y-1">
-									<p className="text-[13px] font-medium">
+									<p className="text-[0.8125rem] font-medium">
 										{item.tooltipTitle || item.title || item.id}
 									</p>
 									{item.tooltipDescription ? (

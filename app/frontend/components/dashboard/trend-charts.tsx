@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useId, useMemo, useState } from "react";
 import {
 	Bar,
 	BarChart,
@@ -121,6 +121,9 @@ function TrendChartsComponent({
 	variant = "full",
 }: TrendChartsProps) {
 	const themeColors = useThemeColors();
+	const patternIdType = useId();
+	const patternIdSlots = useId();
+	const patternIdWeekly = useId();
 	const [activeIndexType, setActiveIndexType] = useState<number | null>(null);
 	const [activeIndexSlots, setActiveIndexSlots] = useState<number | null>(null);
 	const [activeIndexWeekly, setActiveIndexWeekly] = useState<number | null>(
@@ -463,7 +466,7 @@ function TrendChartsComponent({
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="h-[350px]">
+							<div className="h-[21.875rem]">
 								<ResponsiveContainer width="100%" height="100%">
 									<BarChart data={typeDistributionWithPrev}>
 										<CartesianGrid
@@ -524,7 +527,7 @@ function TrendChartsComponent({
 					<CardContent>
 						<ChartContainer
 							config={typeDistChartConfig}
-							className="h-[350px] w-full"
+							className="h-[21.875rem] w-full"
 						>
 							<BarChart
 								accessibilityLayer
@@ -536,11 +539,11 @@ function TrendChartsComponent({
 									y="0"
 									width="100%"
 									height="85%"
-									fill="url(#pattern-type-dist)"
+									fill={`url(#${patternIdType})`}
 								/>
 								<defs>
 									<pattern
-										id="pattern-type-dist"
+										id={patternIdType}
 										x="0"
 										y="0"
 										width="10"
@@ -612,7 +615,7 @@ function TrendChartsComponent({
 					<CardContent>
 						<ChartContainer
 							config={timeSlotsChartConfig}
-							className="h-[350px] w-full"
+							className="h-[21.875rem] w-full"
 						>
 							<BarChart
 								data={transformedTimeSlots}
@@ -623,11 +626,11 @@ function TrendChartsComponent({
 									y="0"
 									width="100%"
 									height="85%"
-									fill="url(#pattern-time-slots)"
+									fill={`url(#${patternIdSlots})`}
 								/>
 								<defs>
 									<pattern
-										id="pattern-time-slots"
+										id={patternIdSlots}
 										x="0"
 										y="0"
 										width="10"
@@ -690,7 +693,7 @@ function TrendChartsComponent({
 					<CardContent>
 						<ChartContainer
 							config={weeklyActivityChartConfig}
-							className="h-[350px] w-full"
+							className="h-[21.875rem] w-full"
 						>
 							<BarChart
 								accessibilityLayer
@@ -702,11 +705,11 @@ function TrendChartsComponent({
 									y="0"
 									width="100%"
 									height="85%"
-									fill="url(#pattern-weekly)"
+									fill={`url(#${patternIdWeekly})`}
 								/>
 								<defs>
 									<pattern
-										id="pattern-weekly"
+										id={patternIdWeekly}
 										x="0"
 										y="0"
 										width="10"
@@ -787,7 +790,7 @@ function TrendChartsComponent({
 						</p>
 					</CardHeader>
 					<CardContent>
-						<div className="h-[350px]">
+						<div className="h-[21.875rem]">
 							<ResponsiveContainer width="100%" height="100%">
 								<FunnelChart>
 									<FunnelComp
@@ -829,7 +832,7 @@ function TrendChartsComponent({
 					<CardContent>
 						<ChartContainer
 							config={segmentChartConfig}
-							className="[&_.recharts-text]:fill-background mx-auto max-h-[300px] w-full"
+							className="[&_.recharts-text]:fill-background mx-auto max-h-[18.75rem] w-full"
 						>
 							<PieChart>
 								<ChartTooltip

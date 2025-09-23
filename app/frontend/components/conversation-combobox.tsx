@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { CustomerStatsCard } from "@/components/customer-stats-card";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +17,6 @@ import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import type { Conversations, Reservation } from "@/types/calendar";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
 
 interface ConversationComboboxProps {
 	conversations: Conversations;
@@ -289,7 +289,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 						{effectiveSelectedId && (
 							<HoverCardContent
 								ref={hoverCardRef}
-								className="w-[300px] p-0 z-50"
+								className="w-[18.75rem] p-0 z-50"
 								align="center"
 								sideOffset={5}
 								onMouseEnter={() => {

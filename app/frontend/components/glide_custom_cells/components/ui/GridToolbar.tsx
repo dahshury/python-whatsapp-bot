@@ -126,20 +126,50 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 	const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
 	const [isToolbarHovered, setIsToolbarHovered] = React.useState(false);
 
-	// Show toolbar if focused OR if hovering over the toolbar itself
-	const shouldShow = isFocused || isToolbarHovered;
+	// Show toolbar when grid is focused, toolbar hovered, OR there is a selection
+	const shouldShow = isFocused || isToolbarHovered || hasSelection;
+
+	// Add a slight hide delay to allow the cursor to travel from grid to toolbar
+	const [isShown, setIsShown] = React.useState<boolean>(false);
+	const hideTimerRef = React.useRef<number | null>(null);
+
+	React.useEffect(() => {
+		if (shouldShow) {
+			if (hideTimerRef.current) {
+				window.clearTimeout(hideTimerRef.current);
+				hideTimerRef.current = null;
+			}
+			setIsShown(true);
+			return;
+		}
+		// Delay hiding to create a bridge between grid and toolbar
+		hideTimerRef.current = window.setTimeout(() => {
+			setIsShown(false);
+			hideTimerRef.current = null;
+		}, 250);
+		return () => {
+			if (hideTimerRef.current) {
+				window.clearTimeout(hideTimerRef.current);
+				hideTimerRef.current = null;
+			}
+		};
+	}, [shouldShow]);
 
 	const containerStyle: React.CSSProperties = overlay
 		? {
 				position: "fixed",
 				top: overlayPosition?.top ?? 0,
 				left: overlayPosition?.left ?? 0,
-				transform: "translate(-100%, 0)",
-				zIndex: "var(--z-grid-overlay)",
-				opacity: shouldShow ? 1 : 0,
-				visibility: shouldShow ? "visible" : "hidden",
-				transition: "opacity 200ms ease-in-out, visibility 200ms ease-in-out",
-				pointerEvents: shouldShow ? "auto" : "none",
+				// Align toolbar's right edge with grid's right edge, positioned just above the grid top edge
+				transform: "translate(-100%, -100%)",
+				zIndex: "var(--z-grid-fullscreen)",
+				// Slight left padding with negative margin creates a hover bridge into the grid edge
+				paddingLeft: "8px",
+				marginLeft: "-8px",
+				opacity: isShown ? 1 : 0,
+				visibility: isShown ? "visible" : "hidden",
+				transition: "opacity 350ms ease-in-out, visibility 350ms ease-in-out",
+				pointerEvents: isShown ? "auto" : "none",
 			}
 		: {
 				display: "flex",
@@ -148,10 +178,10 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 				padding: "0",
 				minHeight: "14px",
 				width: "100%",
-				opacity: shouldShow ? 1 : 0,
-				visibility: shouldShow ? "visible" : "hidden",
-				transition: "opacity 200ms ease-in-out, visibility 200ms ease-in-out",
-				pointerEvents: shouldShow ? "auto" : "none",
+				opacity: isShown ? 1 : 0,
+				visibility: isShown ? "visible" : "hidden",
+				transition: "opacity 350ms ease-in-out, visibility 350ms ease-in-out",
+				pointerEvents: isShown ? "auto" : "none",
 			};
 
 	const toolbarStyle: React.CSSProperties = {
@@ -160,7 +190,7 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 		alignItems: "center",
 		justifyContent: "flex-end",
 		padding: "2px 3px",
-		margin: "2px 4px 0 0",
+		margin: overlay ? "0" : "2px 4px 0 0",
 		background: "var(--gdg-toolbar-bg, rgba(255, 255, 255, 0.95))",
 		backdropFilter: "blur(6px)",
 		border: "1px solid var(--gdg-toolbar-border, rgba(0, 0, 0, 0.1))",
@@ -168,7 +198,7 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 		boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)",
 		gap: "1px",
 		width: "fit-content",
-		transform: shouldShow ? "scale(1)" : "scale(0.96)",
+		transform: isShown ? "scale(1)" : "scale(0.96)",
 		transition: "transform 200ms ease-in-out",
 	};
 

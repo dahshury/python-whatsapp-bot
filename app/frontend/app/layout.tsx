@@ -3,13 +3,16 @@ import localFont from "next/font/local";
 import type React from "react";
 import "./globals.css";
 import "@glideapps/glide-data-grid/dist/index.css";
-import { UndoManager } from "@/components/UndoManager";
-import { AppSidebar } from "@/components/app-sidebar";
+import "@ncdai/react-wheel-picker/style.css";
+import { Toaster } from "sonner";
+import { ConditionalAppSidebar } from "@/components/conditional-app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
+import { PortalBootstrap } from "@/components/portal-bootstrap";
 import { THEME_OPTIONS } from "@/components/settings/theme-data";
-import { ThemeWrapper } from "@/components/theme-wrapper";
 import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
+import { ThemeWrapper } from "@/components/theme-wrapper";
+import { UndoManager } from "@/components/UndoManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { BackendConnectionProvider } from "@/lib/backend-connection-provider";
@@ -22,7 +25,6 @@ import { UnifiedDataProvider } from "@/lib/unified-data-provider";
 import { VacationProvider } from "@/lib/vacation-context";
 import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
 import { Z_INDEX } from "@/lib/z-index";
-import { Toaster } from "sonner";
 
 // import { GlobalSettings } from "@/components/global-settings"
 
@@ -108,7 +110,6 @@ export default function RootLayout({
 				/>
 				{/* Apply saved style theme class before paint to prevent FOUC */}
 				<script
-					id="style-theme-init"
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>This is safe as it only applies validated theme classes from localStorage</explanation>
 					dangerouslySetInnerHTML={{
 						__html: getThemeInitScript(),
@@ -116,7 +117,6 @@ export default function RootLayout({
 				/>
 				{/* Bootstrap WebSocket pre-hydration for instant reconnect on hard refresh */}
 				<script
-					id="ws-bootstrap"
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>Pre-hydration bootstrap; script is self-contained and uses same-origin WS URL</explanation>
 					dangerouslySetInnerHTML={{
 						__html: getWsBootstrapScript(),
@@ -147,7 +147,7 @@ export default function RootLayout({
 														<div className="flex flex-col h-screen">
 															<div className="flex flex-1 overflow-hidden">
 																<SidebarProvider>
-																	<AppSidebar />
+																	<ConditionalAppSidebar />
 																	<MainContentWrapper>
 																		{children}
 																	</MainContentWrapper>
@@ -198,21 +198,7 @@ export default function RootLayout({
 						}}
 					/>
 				</ThemeProvider>
-				{/* Required by Glide Data Grid overlay editor */}
-				<div id="portal" />
-				{/* Stable dialog overlay portal container */}
-				<div
-					id="dialog-overlay-portal"
-					style={{
-						position: "fixed",
-						top: 0,
-						left: 0,
-						pointerEvents: "none",
-						zIndex: Z_INDEX.DIALOG_OVERLAY_PORTAL,
-						width: 0,
-						height: 0,
-					}}
-				/>
+				<PortalBootstrap />
 			</body>
 		</html>
 	);

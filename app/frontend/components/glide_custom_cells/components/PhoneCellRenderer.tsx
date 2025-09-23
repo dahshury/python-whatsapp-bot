@@ -68,12 +68,16 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
 				onFinishedEditing(value);
 			};
 
-			// For now, we'll log the customer selection
-			// In a full implementation, this would trigger updates to other cells
+			// Dispatch a global event so the Documents page can react to selections
 			const handleCustomerSelect = (phone: string, customerName: string) => {
-				console.log("Customer selected:", { phone, customerName });
-				// TODO: Trigger update to name field in the same row
-				// This would require access to the grid's data source and row context
+				try {
+					if (typeof window !== "undefined") {
+						const evt = new CustomEvent("documents:customerSelected", {
+							detail: { phone, customerName },
+						});
+						window.dispatchEvent(evt);
+					}
+				} catch {}
 			};
 
 			return React.createElement(PhoneCellEditor, {

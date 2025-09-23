@@ -4,6 +4,7 @@ import {
 	GridCellKind,
 	type Theme,
 } from "@glideapps/glide-data-grid";
+import * as React from "react";
 import type { IColumnType } from "../interfaces/IColumnType";
 import {
 	ColumnDataType,
@@ -22,6 +23,54 @@ export class NumberColumnType implements IColumnType {
 		_isDarkTheme: boolean,
 		_rowContext?: unknown,
 	): GridCell {
+		// If this is the age column and metadata requests wheel editor, emit custom cell
+		try {
+			const isAgeWheel =
+				(column.id === "age" || column.name === "age") &&
+				Boolean(
+					column.metadata &&
+						(column.metadata as { useWheel?: boolean }).useWheel,
+				);
+			if (isAgeWheel) {
+				let parsed: number | null = null;
+				if (typeof value === "number" && Number.isFinite(value)) parsed = value;
+				else if (value !== null && value !== undefined && value !== "") {
+					const n = Number(String(value));
+					parsed = Number.isFinite(n) ? n : null;
+				}
+				const minRule = (column.validationRules || []).find(
+					(r) => r.type === "min",
+				);
+				const maxRule = (column.validationRules || []).find(
+					(r) => r.type === "max",
+				);
+				const min = Number(minRule?.value ?? 10);
+				const max = Number(maxRule?.value ?? 120);
+				const cell: GridCell = {
+					kind: GridCellKind.Custom,
+					data: {
+						kind: "age-wheel-cell",
+						value: parsed,
+						display: parsed == null ? "" : String(parsed),
+						min,
+						max,
+					},
+					copyData: parsed == null ? "" : String(parsed),
+					allowOverlay: true,
+				};
+				// Mark missing when required and no value so grid draws validation indicator and "None"
+				if (column.isRequired && (parsed === null || parsed === undefined)) {
+					(
+						cell as { isMissingValue?: boolean; validationError?: string }
+					).isMissingValue = true;
+					(
+						cell as { isMissingValue?: boolean; validationError?: string }
+					).validationError = "";
+				}
+				return cell;
+			}
+		} catch {}
+
 		// Preserve empty state for undefined/null/empty-string instead of coercing to 0
 		let numValue: number | null;
 		if (value === null || value === undefined || value === "") {
@@ -50,6 +99,19 @@ export class NumberColumnType implements IColumnType {
 	}
 
 	getCellValue(cell: GridCell): unknown {
+		// Support custom age wheel cells by extracting numeric value
+		try {
+			if (
+				cell.kind === GridCellKind.Custom &&
+				(typeof (cell as { data?: unknown }).data === "object" ||
+					typeof (cell as { data?: unknown }).data === "function") &&
+				(cell as { data?: { kind?: string } }).data &&
+				(cell as { data?: { kind?: string } }).data?.kind === "age-wheel-cell"
+			) {
+				const raw = (cell as { data?: { value?: unknown } }).data?.value;
+				return raw === undefined ? null : raw;
+			}
+		} catch {}
 		const v = (cell as { data?: unknown }).data;
 		return v === undefined ? null : v;
 	}
@@ -176,5 +238,73 @@ export class NumberColumnType implements IColumnType {
 		_column: IColumnDefinition,
 	): EditableGridCell {
 		return cell as EditableGridCell;
+	}
+
+	// Provide a simple numeric editor for the custom age wheel cell so edits persist
+	provideEditor() {
+		return {
+			editor: (props: {
+				value: GridCell;
+				onChange: (cell: GridCell) => void;
+				onFinishedEditing: (save: boolean) => void;
+			}) => {
+				const { value, onChange, onFinishedEditing } = props;
+				try {
+					const isAgeWheel =
+						value.kind === GridCellKind.Custom &&
+						(value as { data?: { kind?: string } }).data?.kind ===
+							"age-wheel-cell";
+					if (!isAgeWheel) return null;
+					const data = (
+						value as {
+							data?: { value?: unknown; min?: number; max?: number };
+						}
+					).data as { value?: unknown; min?: number; max?: number };
+					const current =
+						typeof data?.value === "number" && Number.isFinite(data.value)
+							? (data.value as number)
+							: ("" as unknown as number);
+					const min =
+						typeof data?.min === "number" ? (data?.min as number) : 10;
+					const max =
+						typeof data?.max === "number" ? (data?.max as number) : 120;
+					const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+						const num = e.target.value === "" ? null : Number(e.target.value);
+						const newCell: GridCell = {
+							kind: GridCellKind.Custom,
+							data: {
+								kind: "age-wheel-cell",
+								value: num,
+								display: num == null ? "" : String(num),
+								min,
+								max,
+							},
+							copyData: num == null ? "" : String(num),
+							allowOverlay: true,
+						};
+						onChange(newCell);
+					};
+					const finish = () => onFinishedEditing(true);
+					return React.createElement("input", {
+						type: "number",
+						min,
+						max,
+						value: current as unknown as number,
+						onChange: handleChange,
+						onBlur: finish,
+						autoFocus: true,
+						style: {
+							width: "100%",
+							height: "100%",
+							boxSizing: "border-box",
+							padding: "0.25rem",
+							font: "inherit",
+						},
+					});
+				} catch {
+					return null;
+				}
+			},
+		};
 	}
 }

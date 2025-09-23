@@ -1,27 +1,5 @@
 "use client";
 
-import { ConversationCombobox } from "@/components/conversation-combobox";
-import { GridPattern } from "@/components/magicui/grid-pattern";
-import { ThemedScrollbar } from "@/components/themed-scrollbar";
-import {
-	EmojiPicker,
-	EmojiPickerContent,
-	EmojiPickerFooter,
-	EmojiPickerSearch,
-} from "@/components/ui/emoji-picker";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-// Replaced Textarea with TipTap's EditorContent for live formatting
-import { useCustomerData } from "@/lib/customer-data-context";
-import { i18n } from "@/lib/i18n";
-import { useLanguage } from "@/lib/language-context";
-import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
-import { toastService } from "@/lib/toast-service";
-import { cn } from "@/lib/utils";
-import type { ConversationMessage, Reservation } from "@/types/calendar";
 import { markInputRule } from "@tiptap/core";
 import Bold from "@tiptap/extension-bold";
 import Code from "@tiptap/extension-code";
@@ -47,6 +25,28 @@ import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { ConversationCombobox } from "@/components/conversation-combobox";
+import { GridPattern } from "@/components/magicui/grid-pattern";
+import { ThemedScrollbar } from "@/components/themed-scrollbar";
+import {
+	EmojiPicker,
+	EmojiPickerContent,
+	EmojiPickerFooter,
+	EmojiPickerSearch,
+} from "@/components/ui/emoji-picker";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+// Replaced Textarea with TipTap's EditorContent for live formatting
+import { useCustomerData } from "@/lib/customer-data-context";
+import { i18n } from "@/lib/i18n";
+import { useLanguage } from "@/lib/language-context";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
+import { toastService } from "@/lib/toast-service";
+import { cn } from "@/lib/utils";
+import type { ConversationMessage, Reservation } from "@/types/calendar";
 
 interface ChatSidebarContentProps {
 	selectedConversationId: string | null;
@@ -181,7 +181,7 @@ const BasicChatInput: React.FC<{
 		],
 		editorProps: {
 			attributes: {
-				class: "min-h-[32px] text-xs leading-6 outline-none",
+				class: "min-h-[2rem] text-xs leading-6 outline-none",
 			},
 		},
 		content: "",
@@ -482,7 +482,7 @@ const BasicChatInput: React.FC<{
 							sideOffset={8}
 						>
 							<EmojiPicker
-								className="h-[342px] rounded-lg border shadow-md"
+								className="h-[21.375rem] rounded-lg border shadow-md"
 								onEmojiSelect={handleEmojiSelect}
 							>
 								<EmojiPickerSearch placeholder="Search emoji..." />
@@ -636,7 +636,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isUser }) => {
 				{/* Timestamp positioned inside the rounded container */}
 				<div
 					className={cn(
-						"absolute bottom-2 right-3 flex items-center gap-1 text-[10px] transition-colors",
+						"absolute bottom-2 right-3 flex items-center gap-1 text-[0.625rem] transition-colors",
 						isHovered ? "text-muted-foreground/80" : "text-muted-foreground/50",
 					)}
 				>
@@ -1089,7 +1089,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 				>
 					<div ref={messageListRef} className="message-list px-4 pt-4 pb-2">
 						{sortedMessages.length === 0 ? (
-							<div className="flex items-center justify-center min-h-[200px] text-muted-foreground p-4">
+							<div className="flex items-center justify-center min-h-[12.5rem] text-muted-foreground p-4">
 								<div className="text-center">
 									<MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
 									<p className="text-sm">

@@ -194,7 +194,7 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
 											/>
 											<span>{isLocalized ? "عميل منذ" : "Customer since"}</span>
 										</div>
-										<span className="text-muted-foreground text-[10px]">
+										<span className="text-muted-foreground text-[0.625rem]">
 											{formatDate(firstMessage.date)}
 										</span>
 									</div>
@@ -210,7 +210,10 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
 										/>
 										<span>{isLocalized ? "الرسائل" : "Messages"}</span>
 									</div>
-									<Badge variant="secondary" className="text-[10px] h-4 px-1">
+									<Badge
+										variant="secondary"
+										className="text-[0.625rem] h-4 px-1"
+									>
 										{messageCount}
 									</Badge>
 								</div>
@@ -226,7 +229,7 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
 											/>
 											<span>{isLocalized ? "آخر رسالة" : "Last message"}</span>
 										</div>
-										<span className="text-muted-foreground text-[10px]">
+										<span className="text-muted-foreground text-[0.625rem]">
 											{formatDate(lastMessage.date)}{" "}
 											{formatTime(lastMessage.time)}
 										</span>
@@ -255,7 +258,7 @@ export const CustomerStatsCard = React.memo(function CustomerStatsCard({
 											<span>{isLocalized ? "الحجوزات" : "Reservations"}</span>
 											<Badge
 												variant="outline"
-												className="text-[10px] h-4 px-1 ml-auto"
+												className="text-[0.625rem] h-4 px-1 ml-auto"
 											>
 												{customerReservations.length}
 											</Badge>

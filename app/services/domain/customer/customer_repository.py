@@ -1,4 +1,5 @@
 from typing import Optional
+from datetime import date
 from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
 from .customer_models import Customer
 
@@ -26,6 +27,7 @@ class CustomerRepository:
                     wa_id=db_customer.wa_id,
                     customer_name=db_customer.customer_name,
                     age=getattr(db_customer, "age", None),
+                    age_recorded_at=getattr(db_customer, "age_recorded_at", None),
                 )
             return None
     
@@ -48,6 +50,7 @@ class CustomerRepository:
                             wa_id=customer.wa_id,
                             customer_name=customer.customer_name,
                             age=customer.age,
+                            age_recorded_at=customer.age_recorded_at,
                         )
                     )
                 else:
@@ -55,6 +58,11 @@ class CustomerRepository:
                     # Age column may not exist in older DBs; guard with getattr
                     try:
                         setattr(existing, "age", customer.age)
+                    except Exception:
+                        pass
+                    # Record/update age_recorded_at if column exists
+                    try:
+                        setattr(existing, "age_recorded_at", customer.age_recorded_at)
                     except Exception:
                         pass
                 session.commit()

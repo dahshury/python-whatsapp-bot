@@ -108,6 +108,8 @@ class CustomerModel(Base):
     customer_name = Column(String, nullable=True)
     # Optional age field; keep nullable to avoid forcing data for all existing customers
     age = Column(Integer, nullable=True)
+    # Date when the age value was recorded/reset. Used to auto-increment age yearly.
+    age_recorded_at = Column(Date, nullable=True)
 
     __table_args__ = (
         Index("idx_customers_wa_id", "wa_id"),
@@ -214,6 +216,18 @@ class CustomerDocumentModel(Base):
         Index("idx_customer_documents_wa_id", "wa_id"),
     )
 
+
+class DefaultDocumentModel(Base):
+    __tablename__ = "default_document"
+
+    # Single-row table holding the global default Excalidraw scene
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    document_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, server_default=func.current_timestamp())
+    updated_at = Column(
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+
 def init_models() -> None:
     """Create database tables if they do not exist."""
     # Ensure auth models are imported so metadata includes them
@@ -224,7 +238,7 @@ def init_models() -> None:
         pass
     Base.metadata.create_all(bind=engine)
 
-    # Lightweight migration: ensure 'age' column exists on 'customers'
+    # Lightweight migration: ensure 'age' and 'age_recorded_at' columns exist on 'customers'
     try:
         with engine.begin() as conn:
             # Check existing columns
@@ -233,6 +247,16 @@ def init_models() -> None:
             if "age" not in cols:
                 # Add nullable column for age
                 conn.exec_driver_sql("ALTER TABLE customers ADD COLUMN age INTEGER NULL;")
+            if "age_recorded_at" not in cols:
+                # Store date when age was last recorded/reset
+                conn.exec_driver_sql("ALTER TABLE customers ADD COLUMN age_recorded_at DATE NULL;")
+            # Initialize recorded date for existing rows with an age but no recorded date
+            try:
+                conn.exec_driver_sql(
+                    "UPDATE customers SET age_recorded_at = DATE('now') WHERE age_recorded_at IS NULL AND age IS NOT NULL;"
+                )
+            except Exception:
+                pass
     except Exception:
         # Best-effort migration; ignore if fails in read-only contexts
         pass

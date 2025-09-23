@@ -40,10 +40,10 @@
 	--font-mono: var(--font-mono);
 	--font-serif: var(--font-serif);
 
-	--radius-sm: calc(var(--radius) - 4px);
-	--radius-md: calc(var(--radius) - 2px);
+	--radius-sm: calc(var(--radius) - 0.25rem);
+	--radius-md: calc(var(--radius) - 0.125rem);
 	--radius-lg: var(--radius);
-	--radius-xl: calc(var(--radius) + 4px);
+	--radius-xl: calc(var(--radius) + 0.25rem);
 
 	--shadow-2xs: var(--shadow-2xs);
 	--shadow-xs: var(--shadow-xs);
@@ -120,9 +120,9 @@
 	position: relative;
 	overflow: hidden;
 	border-radius: var(--radius);
-	border: 1px solid hsl(var(--border));
+	border: 0.0625rem solid hsl(var(--border));
 	background: hsl(var(--card));
-	box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+	box-shadow: 0 0.625rem 1.875rem rgba(0, 0, 0, 0.25);
 }
 /* Subtle diagonal grid overlay with top-right fade mask */
 .fancy-toast::after {
@@ -130,9 +130,17 @@
 	position: absolute;
 	inset: 0;
 	background-image:
-		linear-gradient(to right, hsl(var(--border) / 0.6) 1px, transparent 1px),
-		linear-gradient(to bottom, hsl(var(--border) / 0.6) 1px, transparent 1px);
-	background-size: 32px 32px;
+		linear-gradient(
+			to right,
+			hsl(var(--border) / 0.6) 0.0625rem,
+			transparent 0.0625rem
+		),
+		linear-gradient(
+			to bottom,
+			hsl(var(--border) / 0.6) 0.0625rem,
+			transparent 0.0625rem
+		);
+	background-size: 2rem 2rem;
 	opacity: 0.08;
 	-webkit-mask-image: radial-gradient(
 		ellipse 80% 80% at 100% 0%,
@@ -151,40 +159,62 @@
 	position: absolute;
 	inset: 0;
 	background:
-		radial-gradient(ellipse 120% 80% at 70% 20%, hsl(var(--primary) / 0.15), transparent 50%),
-		radial-gradient(ellipse 100% 60% at 30% 10%, hsl(var(--accent) / 0.12), transparent 60%),
-		radial-gradient(ellipse 90% 70% at 50% 0%, hsl(var(--chart-4) / 0.18), transparent 65%),
-		radial-gradient(ellipse 110% 50% at 80% 30%, hsl(var(--secondary) / 0.08), transparent 40%),
-		hsl(var(--card));
-	filter: blur(12px);
+		radial-gradient(
+			ellipse 120% 80% at 70% 20%,
+			hsl(var(--primary) / 0.15),
+			transparent 50%
+		),
+		radial-gradient(
+			ellipse 100% 60% at 30% 10%,
+			hsl(var(--accent) / 0.12),
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 90% 70% at 50% 0%,
+			hsl(var(--chart-4) / 0.18),
+			transparent 65%
+		),
+		radial-gradient(
+			ellipse 110% 50% at 80% 30%,
+			hsl(var(--secondary) / 0.08),
+			transparent 40%
+		), hsl(var(--card));
+	filter: blur(0.75rem);
 	/* match radius to outer to avoid double edges */
 	border-radius: inherit;
 	z-index: 0;
 }
 .fancy-toast-content {
 	position: relative;
-	padding: 12px 14px;
+	padding: 0.75rem 0.875rem;
 	z-index: 2;
 }
 .fancy-toast-title {
 	font-weight: 700;
-	letter-spacing: 0.2px;
+	letter-spacing: 0.0125rem;
 }
 .fancy-toast-sub {
-	font-size: 12px;
+	font-size: 0.75rem;
 	opacity: 0.9;
 }
 
 /* Error toast styling with destructive/error colors */
 .fancy-toast-error {
-	border: 1px solid hsl(var(--destructive));
+	border: 0.0625rem solid hsl(var(--destructive));
 	background: hsl(var(--card));
 }
 
 /* Override the standard background for error toasts */
 .fancy-toast-error .fancy-toast-bg {
 	background:
-		radial-gradient(ellipse 120% 80% at 70% 20%, hsl(var(--destructive) / 0.18), transparent 50%),
-		radial-gradient(ellipse 90% 70% at 50% 0%, hsl(var(--destructive) / 0.12), transparent 65%),
-		hsl(var(--card));
+		radial-gradient(
+			ellipse 120% 80% at 70% 20%,
+			hsl(var(--destructive) / 0.18),
+			transparent 50%
+		),
+		radial-gradient(
+			ellipse 90% 70% at 50% 0%,
+			hsl(var(--destructive) / 0.12),
+			transparent 65%
+		), hsl(var(--card));
 }

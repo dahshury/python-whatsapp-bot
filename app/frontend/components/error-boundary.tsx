@@ -55,7 +55,7 @@ export class ErrorBoundary extends React.Component<
 
 		if (hasError && error) {
 			return (
-				<div className="w-full h-full min-h-[600px] flex flex-col items-center justify-center p-6 bg-card rounded-lg shadow-sm">
+				<div className="w-full h-full min-h-[37.5rem] flex flex-col items-center justify-center p-6 bg-card rounded-lg shadow-sm">
 					<AlertCircle className="h-12 w-12 text-destructive mb-4" />
 					<h2 className="text-2xl font-semibold text-foreground">
 						Something went wrong

@@ -114,7 +114,15 @@ class CustomerService(BaseService):
             customer.update_age(age if age is None else int(age))
             ok = self.repository.save(customer)
             return (
-                format_response(True, message=get_message("customer_age_updated", ar), data={"wa_id": wa_id, "age": customer.age})
+                format_response(
+                    True,
+                    message=get_message("customer_age_updated", ar),
+                    data={
+                        "wa_id": wa_id,
+                        "age": customer.age,
+                        "age_recorded_at": customer.age_recorded_at.isoformat() if customer.age_recorded_at else None,
+                    },
+                )
                 if ok
                 else format_response(False, message=get_message("customer_age_update_failed", ar))
             )

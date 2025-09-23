@@ -99,7 +99,7 @@ export function DateRangeWithPresets({
 					<Button
 						variant="outline"
 						className={cn(
-							"w-[280px] justify-start text-left font-normal",
+							"w-[17.5rem] justify-start text-left font-normal",
 							!date && "text-muted-foreground",
 						)}
 						aria-label="Open date range filter"

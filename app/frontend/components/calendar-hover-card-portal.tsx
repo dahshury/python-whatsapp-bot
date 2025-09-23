@@ -42,7 +42,7 @@ export function CalendarHoverCardPortal({
 	return createPortal(
 		<div
 			className={cn(
-				"fixed pointer-events-none w-[300px] calendar-hover-card-portal",
+				"fixed pointer-events-none w-[18.75rem] calendar-hover-card-portal",
 			)}
 			style={{
 				zIndex: "var(--z-hover-card)",

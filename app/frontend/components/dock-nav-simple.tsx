@@ -90,7 +90,7 @@ function DualCalendarViewSelector({
 								className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-xs"
 							>
 								<option.icon className="mb-0.5 h-3 w-3" />
-								<span className="text-[10px]">{option.label}</span>
+								<span className="text-[0.625rem]">{option.label}</span>
 							</Label>
 						</div>
 					))}
@@ -118,7 +118,7 @@ function DualCalendarViewSelector({
 								className="flex flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer text-xs"
 							>
 								<option.icon className="mb-0.5 h-3 w-3" />
-								<span className="text-[10px]">{option.label}</span>
+								<span className="text-[0.625rem]">{option.label}</span>
 							</Label>
 						</div>
 					))}
@@ -319,7 +319,10 @@ export function DockNavSimple({
 
 	return (
 		<TooltipProvider>
-			<Dock direction="middle" className={cn("h-auto min-h-[44px]", className)}>
+			<Dock
+				direction="middle"
+				className={cn("h-auto min-h-[2.75rem]", className)}
+			>
 				<DockIcon>
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -376,7 +379,7 @@ export function DockNavSimple({
 
 						<PopoverContent
 							align="center"
-							className="w-auto max-w-[500px] bg-background/70 backdrop-blur-md border-border/40"
+							className="w-auto max-w-[31.25rem] bg-background/70 backdrop-blur-md border-border/40"
 						>
 							{_isDualMode && viewMode === "dual" ? (
 								<SettingsTabs
