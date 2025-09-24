@@ -33,8 +33,8 @@ export function CalendarContainer({
 			<div className="relative z-10">{children}</div>
 			<style jsx>{`
 				/* Ensure the radial glow is visible through FullCalendar */
-				.calendar-bg-wrap :global(.fc) { background-color: transparent !important; }
-				.calendar-bg-wrap :global(.fc-scrollgrid-section-sticky > *) { background: transparent !important; }
+				.calendar-bg-wrap :global(.fc) { background-color: transparent; }
+				.calendar-bg-wrap :global(.fc-scrollgrid-section-sticky > *) { background: transparent; }
 				.calendar-bg-wrap :global(.fc .fc-view-harness),
 				.calendar-bg-wrap :global(.fc .fc-view),
 				.calendar-bg-wrap :global(.fc .fc-scrollgrid),
@@ -50,8 +50,8 @@ export function CalendarContainer({
 				.calendar-bg-wrap :global(.fc .fc-timegrid-slots),
 				.calendar-bg-wrap :global(.fc th),
 				.calendar-bg-wrap :global(.fc td) {
-					background: transparent !important;
-					background-color: transparent !important;
+					background: transparent;
+					background-color: transparent;
 				}
 				/* Also paint glow on scrollgrid to cover cases where harness isn't filling */
 				.calendar-bg-wrap :global(.fc .fc-scrollgrid) {
@@ -65,10 +65,10 @@ export function CalendarContainer({
 						radial-gradient(ellipse 90% 60% at 50% 85%,
 							hsl(var(--muted-foreground) / 0.018) 0%,
 							transparent 42%
-						) !important;
-					background-color: hsl(var(--background)) !important;
-					background-repeat: no-repeat !important;
-					background-size: 100% 100% !important;
+						);
+					background-color: hsl(var(--background));
+					background-repeat: no-repeat;
+					background-size: 100% 100%;
 				}
 				/* Apply the subtle radial glow directly on the view harness (under events) */
 				.calendar-bg-wrap :global(.fc .fc-view-harness) {

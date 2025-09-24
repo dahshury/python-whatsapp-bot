@@ -29,14 +29,15 @@
 }
 
 /* Reduce extra space below the last message */
-.message-list {
-	padding-bottom: 0 !important;
+.message-list:last-child,
+.message-list[data-trim-bottom="true"] {
+	padding-bottom: 0;
 }
 .message-list > .message-row {
 	position: relative;
 	z-index: 1;
 }
-.message-row {
+.message-list :where(.message-row) {
 	padding: 0;
 	border-radius: 0;
 	overflow: visible;
@@ -58,58 +59,60 @@
 	);
 }
 .message-row-assistant {
-	/* outer background removed */
+	background: transparent;
 }
 .message-row-secretary {
-	/* outer background removed */
+	background: transparent;
 }
 /* Remove outer backgrounds; keep only inner bubble styles */
-.message-row,
-.message-row-user,
-.message-row-admin,
-.message-row-assistant,
-.message-row-secretary {
-	background: transparent !important;
+:where(
+		.message-row,
+		.message-row-user,
+		.message-row-admin,
+		.message-row-assistant,
+		.message-row-secretary
+	) {
+	background: transparent;
 }
 
 /* Remove extra vertical padding introduced by the wrapper inside message rows */
-.message-row > div:first-child {
-	padding-top: 0 !important;
-	padding-bottom: 0 !important;
+.message-row > div:first-of-type {
+	padding-top: 0;
+	padding-bottom: 0;
 }
-.message-row-user .rounded-lg {
+.message-row-user :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
 		hsl(var(--primary) / 0.15) 0%,
 		hsl(var(--primary) / 0.06) 50%,
 		hsl(var(--primary) / 0.1) 100%
-	) !important;
+	);
 }
-.message-row-admin .rounded-lg {
+.message-row-admin :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
 		hsl(var(--accent) / 0.17) 0%,
 		hsl(var(--accent) / 0.08) 50%,
 		hsl(var(--accent) / 0.12) 100%
-	) !important;
+	);
 }
-.message-row-assistant .rounded-lg {
+.message-row-assistant :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
 		hsl(var(--ring) / 0.15) 0%,
 		hsl(var(--ring) / 0.07) 50%,
 		hsl(var(--ring) / 0.11) 100%
-	) !important;
+	);
 }
-.message-row-secretary .rounded-lg {
+.message-row-secretary :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
 		hsl(var(--muted-foreground) / 0.19) 0%,
 		hsl(var(--muted-foreground) / 0.1) 50%,
 		hsl(var(--muted-foreground) / 0.14) 100%
-	) !important;
+	);
 }
-.message-row .rounded-lg {
+.message-row :where(.rounded-lg, .rounded-md) {
 	border: 1px solid hsl(var(--border) / 0.4);
 }
 .icon-neon {

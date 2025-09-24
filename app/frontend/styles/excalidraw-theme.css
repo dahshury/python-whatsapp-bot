@@ -11,57 +11,57 @@
 .theme-perplexity .excali-theme-scope .excalidraw,
 .theme-art-deco .excali-theme-scope .excalidraw,
 .theme-neomorphism .excali-theme-scope .excalidraw {
-  /* Map our theme tokens to Excalidraw primary scale */
-  --color-primary: hsl(var(--primary)) !important;
-  --color-primary-darker: hsl(var(--accent-foreground)) !important;
-  --color-primary-darkest: hsl(var(--foreground)) !important;
-  --color-primary-light: hsl(var(--accent)) !important;
-  --color-primary-contrast-offset: hsl(var(--primary)) !important;
+	/* Map our theme tokens to Excalidraw primary scale */
+	--color-primary: hsl(var(--primary));
+	--color-primary-darker: hsl(var(--accent-foreground));
+	--color-primary-darkest: hsl(var(--foreground));
+	--color-primary-light: hsl(var(--accent));
+	--color-primary-contrast-offset: hsl(var(--primary));
 
-  /* Core text & backgrounds */
-  --text-primary-color: hsl(var(--foreground)) !important;
-  --default-bg-color: hsl(var(--background)) !important;
-  --input-bg-color: hsl(var(--card)) !important;
-  --input-border-color: hsl(var(--border)) !important;
-  --input-hover-bg-color: hsl(var(--accent) / 0.6) !important;
-  --island-bg-color: hsl(var(--card)) !important;
-  --popup-bg-color: hsl(var(--card)) !important;
-  --popup-secondary-bg-color: hsl(var(--secondary)) !important;
-  --popup-text-color: hsl(var(--foreground)) !important;
-  --popup-text-inverted-color: hsl(var(--primary-foreground)) !important;
-  --overlay-bg-color: hsl(var(--background) / 0.12) !important;
-  --default-border-color: hsl(var(--border)) !important;
+	/* Core text & backgrounds */
+	--text-primary-color: hsl(var(--foreground));
+	--default-bg-color: hsl(var(--background));
+	--input-bg-color: hsl(var(--card));
+	--input-border-color: hsl(var(--border));
+	--input-hover-bg-color: hsl(var(--accent) / 0.6);
+	--island-bg-color: hsl(var(--card));
+	--popup-bg-color: hsl(var(--card));
+	--popup-secondary-bg-color: hsl(var(--secondary));
+	--popup-text-color: hsl(var(--foreground));
+	--popup-text-inverted-color: hsl(var(--primary-foreground));
+	--overlay-bg-color: hsl(var(--background) / 0.12);
+	--default-border-color: hsl(var(--border));
 
-  /* Surfaces & on-surface */
-  --color-surface-high: hsl(var(--accent)) !important;
-  --color-surface-mid: hsl(var(--secondary)) !important;
-  --color-surface-low: hsl(var(--muted)) !important;
-  --color-surface-lowest: hsl(var(--card)) !important;
-  --color-on-surface: hsl(var(--foreground)) !important;
+	/* Surfaces & on-surface */
+	--color-surface-high: hsl(var(--accent));
+	--color-surface-mid: hsl(var(--secondary));
+	--color-surface-low: hsl(var(--muted));
+	--color-surface-lowest: hsl(var(--card));
+	--color-on-surface: hsl(var(--foreground));
 
-  /* Borders & outlines */
-  --dialog-border-color: hsl(var(--border)) !important;
-  --sidebar-border-color: hsl(var(--border)) !important;
-  --color-border-outline: hsl(var(--border)) !important;
-  --color-border-outline-variant: hsl(var(--muted)) !important;
+	/* Borders & outlines */
+	--dialog-border-color: hsl(var(--border));
+	--sidebar-border-color: hsl(var(--border));
+	--color-border-outline: hsl(var(--border));
+	--color-border-outline-variant: hsl(var(--muted));
 
-  /* Buttons */
-  --button-hover-bg: hsl(var(--accent)) !important;
-  --button-active-bg: hsl(var(--accent)) !important;
-  --button-active-border: hsl(var(--primary)) !important;
-  --button-gray-1: hsl(var(--secondary)) !important;
-  --button-gray-2: hsl(var(--muted)) !important;
-  --button-gray-3: hsl(var(--accent)) !important;
-  --button-destructive-bg-color: hsl(var(--destructive-foreground)) !important;
-  --button-destructive-color: hsl(var(--destructive)) !important;
+	/* Buttons */
+	--button-hover-bg: hsl(var(--accent));
+	--button-active-bg: hsl(var(--accent));
+	--button-active-border: hsl(var(--primary));
+	--button-gray-1: hsl(var(--secondary));
+	--button-gray-2: hsl(var(--muted));
+	--button-gray-3: hsl(var(--accent));
+	--button-destructive-bg-color: hsl(var(--destructive-foreground));
+	--button-destructive-color: hsl(var(--destructive));
 
-  /* Links & selection */
-  --link-color: hsl(var(--primary)) !important;
-  --color-selection: hsl(var(--primary)) !important;
+	/* Links & selection */
+	--link-color: hsl(var(--primary));
+	--color-selection: hsl(var(--primary));
 
-  /* Misc visual */
-  --icon-fill-color: hsl(var(--foreground)) !important;
-  --keybinding-color: hsl(var(--muted-foreground)) !important;
+	/* Misc visual */
+	--icon-fill-color: hsl(var(--foreground));
+	--keybinding-color: hsl(var(--muted-foreground));
 }
 
 /* Dark mode variants (Excalidraw toggles .theme--dark on its root) */
@@ -77,55 +77,54 @@
 .theme-perplexity .excali-theme-scope .excalidraw.theme--dark,
 .theme-art-deco .excali-theme-scope .excalidraw.theme--dark,
 .theme-neomorphism .excali-theme-scope .excalidraw.theme--dark {
-  --color-primary: hsl(var(--primary)) !important;
-  --color-primary-darker: hsl(var(--accent)) !important;
-  --color-primary-darkest: hsl(var(--primary-foreground)) !important;
-  --color-primary-light: hsl(var(--muted-foreground)) !important;
-  --color-primary-contrast-offset: hsl(var(--primary)) !important;
+	--color-primary: hsl(var(--primary));
+	--color-primary-darker: hsl(var(--accent));
+	--color-primary-darkest: hsl(var(--primary-foreground));
+	--color-primary-light: hsl(var(--muted-foreground));
+	--color-primary-contrast-offset: hsl(var(--primary));
 
-  /* Core text & backgrounds (dark) */
-  --text-primary-color: hsl(var(--primary-foreground)) !important;
-  --default-bg-color: hsl(var(--background)) !important;
-  --input-bg-color: hsl(var(--card)) !important;
-  --input-border-color: hsl(var(--border)) !important;
-  --input-hover-bg-color: hsl(var(--accent) / 0.4) !important;
-  --island-bg-color: hsl(var(--card)) !important;
-  --popup-bg-color: hsl(var(--card)) !important;
-  --popup-secondary-bg-color: hsl(var(--secondary)) !important;
-  --popup-text-color: hsl(var(--primary-foreground)) !important;
-  --popup-text-inverted-color: hsl(var(--foreground)) !important;
-  --overlay-bg-color: hsl(var(--background) / 0.2) !important;
-  --default-border-color: hsl(var(--border)) !important;
+	/* Core text & backgrounds (dark) */
+	--text-primary-color: hsl(var(--primary-foreground));
+	--default-bg-color: hsl(var(--background));
+	--input-bg-color: hsl(var(--card));
+	--input-border-color: hsl(var(--border));
+	--input-hover-bg-color: hsl(var(--accent) / 0.4);
+	--island-bg-color: hsl(var(--card));
+	--popup-bg-color: hsl(var(--card));
+	--popup-secondary-bg-color: hsl(var(--secondary));
+	--popup-text-color: hsl(var(--primary-foreground));
+	--popup-text-inverted-color: hsl(var(--foreground));
+	--overlay-bg-color: hsl(var(--background) / 0.2);
+	--default-border-color: hsl(var(--border));
 
-  /* Surfaces & on-surface */
-  --color-surface-high: hsl(var(--accent)) !important;
-  --color-surface-mid: hsl(var(--secondary)) !important;
-  --color-surface-low: hsl(var(--muted)) !important;
-  --color-surface-lowest: hsl(var(--card)) !important;
+	/* Surfaces & on-surface */
+	--color-surface-high: hsl(var(--accent));
+	--color-surface-mid: hsl(var(--secondary));
+	--color-surface-low: hsl(var(--muted));
+	--color-surface-lowest: hsl(var(--card));
 
+	/* Borders & outlines */
+	--dialog-border-color: hsl(var(--border));
+	--sidebar-border-color: hsl(var(--border));
+	--color-border-outline: hsl(var(--border));
+	--color-border-outline-variant: hsl(var(--muted));
 
-  /* Borders & outlines */
-  --dialog-border-color: hsl(var(--border)) !important;
-  --sidebar-border-color: hsl(var(--border)) !important;
-  --color-border-outline: hsl(var(--border)) !important;
-  --color-border-outline-variant: hsl(var(--muted)) !important;
+	/* Buttons */
+	--button-hover-bg: hsl(var(--accent));
+	--button-active-bg: hsl(var(--accent));
+	--button-active-border: hsl(var(--primary));
+	--button-gray-1: hsl(var(--secondary));
+	--button-gray-2: hsl(var(--muted));
+	--button-gray-3: hsl(var(--accent));
+	--button-destructive-bg-color: hsl(var(--destructive));
+	--button-destructive-color: hsl(var(--destructive-foreground));
 
-  /* Buttons */
-  --button-hover-bg: hsl(var(--accent)) !important;
-  --button-active-bg: hsl(var(--accent)) !important;
-  --button-active-border: hsl(var(--primary)) !important;
-  --button-gray-1: hsl(var(--secondary)) !important;
-  --button-gray-2: hsl(var(--muted)) !important;
-  --button-gray-3: hsl(var(--accent)) !important;
-  --button-destructive-bg-color: hsl(var(--destructive)) !important;
-  --button-destructive-color: hsl(var(--destructive-foreground)) !important;
+	/* Links & selection */
+	--link-color: hsl(var(--primary));
+	--color-selection: hsl(var(--primary));
 
-  /* Links & selection */
-  --link-color: hsl(var(--primary)) !important;
-  --color-selection: hsl(var(--primary)) !important;
-
-  /* Misc visual */
-  --keybinding-color: hsl(var(--muted-foreground)) !important;
+	/* Misc visual */
+	--keybinding-color: hsl(var(--muted-foreground));
 }
 
 /* Optional: tweak some background/toolbar neutrals to align better */
@@ -141,8 +140,8 @@
 .theme-perplexity .excali-theme-scope .excalidraw,
 .theme-art-deco .excali-theme-scope .excalidraw,
 .theme-neomorphism .excali-theme-scope .excalidraw {
-  --color-background: hsl(var(--card)) !important;
-  --color-text: hsl(var(--foreground)) !important;
+	--color-background: hsl(var(--card));
+	--color-text: hsl(var(--foreground));
 }
 
 .theme-default .excali-theme-scope .excalidraw.theme--dark,
@@ -157,8 +156,6 @@
 .theme-perplexity .excali-theme-scope .excalidraw.theme--dark,
 .theme-art-deco .excali-theme-scope .excalidraw.theme--dark,
 .theme-neomorphism .excali-theme-scope .excalidraw.theme--dark {
-  --color-background: hsl(var(--card)) !important;
-  --color-text: hsl(var(--primary-foreground)) !important;
+	--color-background: hsl(var(--card));
+	--color-text: hsl(var(--primary-foreground));
 }
-
-

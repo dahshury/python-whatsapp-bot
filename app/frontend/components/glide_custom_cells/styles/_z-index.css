@@ -243,7 +243,7 @@
 /* Timegrid more links - DISABLED */
 /*
 .fc-timegrid-more-link {
-  z-index: var(--z-timegrid-more-link) !important;
+  z-index: var(--z-timegrid-more-link);
 }
 */
 
@@ -252,7 +252,7 @@
 .fc-multimonth .fc-more-popover,
 .fc-multimonth .fc-more-link,
 .fc-more-link {
-  z-index: var(--z-fc-more-popover) !important;
+  z-index: var(--z-fc-more-popover);
 }
 */
 
@@ -402,66 +402,66 @@ select,
 
 /* Force dialog backdrop to highest z-index */
 .dialog-backdrop {
-	position: fixed !important;
-	inset: 0 !important;
-	z-index: var(--z-dialog-backdrop) !important;
+	position: fixed;
+	inset: 0;
+	z-index: var(--z-dialog-backdrop);
 }
 
 /* Force all potentially conflicting elements to lower z-index */
 .animated-sidebar-trigger {
-	z-index: 10001 !important; /* Above sticky header/backdrop */
-	pointer-events: auto !important;
+	z-index: 10001; /* Above sticky header/backdrop */
+	pointer-events: auto;
 }
 
 .calendar-legend-trigger {
-	z-index: 10001 !important; /* Above sticky header/backdrop */
-	pointer-events: auto !important;
+	z-index: 10001; /* Above sticky header/backdrop */
+	pointer-events: auto;
 }
 
 [data-radix-hover-card-content] {
-	z-index: var(--z-hover-card) !important;
+	z-index: var(--z-hover-card);
 }
 
 /* Nuclear option: When dialog backdrop exists anywhere, force specific elements below it */
 html:has(.dialog-backdrop) .animated-sidebar-trigger,
 html:has(.dialog-backdrop) .calendar-legend-trigger,
 html:has(.dialog-backdrop) [data-radix-hover-card-content] {
-	z-index: 39 !important;
-	opacity: 0.3 !important; /* Visual debugging: make them dimmed */
+	z-index: 39;
+	opacity: 0.3; /* Visual debugging: make them dimmed */
 }
 
 /* Alternative fallback using sibling selector */
 .dialog-backdrop ~ * .animated-sidebar-trigger,
 .dialog-backdrop ~ * .calendar-legend-trigger,
 .dialog-backdrop ~ * [data-radix-hover-card-content] {
-	z-index: 39 !important;
-	opacity: 0.3 !important;
+	z-index: 39;
+	opacity: 0.3;
 }
 
 /* Direct override approach - check for dialog backdrop in document */
 body:has(.dialog-backdrop) .animated-sidebar-trigger,
 body:has(.dialog-backdrop) .calendar-legend-trigger {
-	z-index: 39 !important;
-	opacity: 0.3 !important;
+	z-index: 39;
+	opacity: 0.3;
 }
 
 body:has(.dialog-backdrop) [data-radix-hover-card-content] {
-	z-index: 39 !important;
-	opacity: 0.3 !important;
-	pointer-events: none !important;
+	z-index: 39;
+	opacity: 0.3;
+	pointer-events: none;
 }
 
 /* JavaScript-based fallback using body class */
 body.has-dialog-backdrop .animated-sidebar-trigger,
 body.has-dialog-backdrop .calendar-legend-trigger {
-	z-index: 39 !important;
-	opacity: 0.3 !important;
+	z-index: 39;
+	opacity: 0.3;
 }
 
 body.has-dialog-backdrop [data-radix-hover-card-content] {
-	z-index: 39 !important;
-	opacity: 0.3 !important;
-	pointer-events: none !important;
+	z-index: 39;
+	opacity: 0.3;
+	pointer-events: none;
 }
 
 /* ========================================
@@ -499,9 +499,9 @@ body:has([data-radix-dialog-content]) [data-radix-popover-content] {
 /* Fallback approaches for better browser compatibility */
 
 /* Target popovers during grid editing sessions */
-body:has(.gdg-d19meir1) [data-radix-popover-content],
-body:has(.glide-data-grid-overlay-editor) [data-radix-popover-content],
-body:has(.click-outside-ignore) [data-radix-popover-content] {
+body:has(.gdg-d19meir1) :where([data-radix-popover-content]),
+body:has(.glide-data-grid-overlay-editor) :where([data-radix-popover-content]),
+body:has(.click-outside-ignore) :where([data-radix-popover-content]) {
 	z-index: var(--z-command-overlay);
 }
 
@@ -513,8 +513,7 @@ body:has(.click-outside-ignore) [data-radix-popover-content] {
 /* Direct Command component targeting */
 .gdg-d19meir1 [cmdk-root],
 .glide-data-grid-overlay-editor [cmdk-root],
-.click-outside-ignore [cmdk-root],
-[cmdk-root] {
+.click-outside-ignore [cmdk-root] {
 	z-index: var(--z-command-overlay);
 }
 

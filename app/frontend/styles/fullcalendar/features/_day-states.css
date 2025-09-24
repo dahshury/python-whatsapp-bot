@@ -1,8 +1,8 @@
 /* Day States Feature - Shared state styles for all calendar views */
 
 /* TODAY'S DATE STYLING */
-.fc-multimonth .fc-daygrid-day.fc-day-today,
-.fc-daygrid .fc-daygrid-day.fc-day-today {
+.fc-multimonth :where(.fc-daygrid-day.fc-day-today),
+.fc-daygrid :where(.fc-daygrid-day.fc-day-today) {
 	/* Add subtle background tint like in week view */
 	background: hsl(var(--primary) / 0.03);
 	z-index: var(--z-calendar-event);
@@ -10,11 +10,9 @@
 }
 
 .fc-multimonth
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past)
-	.fc-daygrid-day-frame,
+	:where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame),
 .fc-daygrid
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past)
-	.fc-daygrid-day-frame {
+	:where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
 	background: linear-gradient(
 		135deg,
 		hsl(var(--primary) / 0.15) 0%,
@@ -100,28 +98,28 @@
 
 /* Ensure multimonth past events are hoverable in free roam mode */
 /* [data-free-roam="true"] .fc-multimonth .fc-daygrid-day.fc-day-past .fc-event:hover {
-  transition: all 0.2s ease !important;
-  opacity: 0.8 !important;
+  transition: all 0.2s ease;
+  opacity: 0.8;
 } */
 
 /* Ensure multimonth past more links are hoverable in free roam mode */
 /* [data-free-roam="true"] .fc-multimonth .fc-daygrid-day.fc-day-past .fc-more-link:hover,
 [data-free-roam="true"] .fc-daygrid .fc-daygrid-day.fc-day-past .fc-more-link:hover {
-  opacity: 0.8 !important;
+  opacity: 0.8;
 }
 
 .fc-multimonth .fc-daygrid-day.fc-day-past .fc-daygrid-day-frame,
 .fc-daygrid .fc-daygrid-day.fc-day-past .fc-daygrid-day-frame {
   background: hsl(var(--muted) / 0.1);
   opacity: 0.6;
-  border-radius: calc(var(--radius) * 0.75) !important;
+  border-radius: calc(var(--radius) * 0.75);
 }
 
 .fc-multimonth .fc-daygrid-day.fc-day-past .fc-daygrid-day-bg,
 .fc-multimonth .fc-daygrid-day.fc-day-past .fc-daygrid-day-top,
 .fc-daygrid .fc-daygrid-day.fc-day-past .fc-daygrid-day-bg,
 .fc-daygrid .fc-daygrid-day.fc-day-past .fc-daygrid-day-top {
-  border-radius: calc(var(--radius) * 0.75) !important;
+  border-radius: calc(var(--radius) * 0.75);
   overflow: hidden;
 }
 
@@ -137,8 +135,8 @@
 	cursor: pointer; /* Allow clicks for calendar navigation */
 }
 
-.fc-multimonth .fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame,
-.fc-daygrid .fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame {
+.fc-multimonth :where(.fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame),
+.fc-daygrid :where(.fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame) {
 	background: hsl(var(--muted) / 0.05);
 	border-color: hsl(var(--border) / 0.1);
 	opacity: 0.5;
@@ -187,8 +185,8 @@
 }
 
 /* Style for days with highlight */
-.fc-multimonth .fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-frame,
-.fc-daygrid .fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-frame {
+.fc-multimonth :where(.fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-frame),
+.fc-daygrid :where(.fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-frame) {
 	border: 2px solid hsl(var(--primary) / 0.5);
 	box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
 	z-index: var(--z-calendar-event);
@@ -196,8 +194,8 @@
 }
 
 /* Fallback for browsers without :has() support */
-.fc-multimonth .fc-daygrid-day.fc-day-highlight .fc-daygrid-day-frame,
-.fc-daygrid .fc-daygrid-day.fc-day-highlight .fc-daygrid-day-frame {
+.fc-multimonth :where(.fc-daygrid-day.fc-day-highlight .fc-daygrid-day-frame),
+.fc-daygrid :where(.fc-daygrid-day.fc-day-highlight .fc-daygrid-day-frame) {
 	border: 2px solid hsl(var(--primary) / 0.5);
 	box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
 	z-index: var(--z-calendar-event);
@@ -277,8 +275,8 @@
    ================================================== */
 
 /* Remove background, shadow, and transition on hover for any daygrid day */
-.fc-daygrid .fc-daygrid-day:hover,
-.fc-daygrid .fc-daygrid-day:hover .fc-daygrid-day-frame {
+.fc-daygrid :where(.fc-daygrid-day:hover),
+.fc-daygrid :where(.fc-daygrid-day:hover .fc-daygrid-day-frame) {
 	background-color: inherit;
 	box-shadow: none;
 	transform: none;
@@ -286,8 +284,8 @@
 }
 
 /* Explicitly disable hover effects for timeGridDay's all-day daygrid header cell */
-.fc-timeGridDay-view .fc-daygrid-day:hover,
-.fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-frame {
+.fc-timeGridDay-view :where(.fc-daygrid-day:hover),
+.fc-timeGridDay-view :where(.fc-daygrid-day:hover .fc-daygrid-day-frame) {
 	background-color: inherit;
 	box-shadow: none;
 	transform: none;

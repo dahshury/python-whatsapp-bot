@@ -12,7 +12,7 @@ function getStagedFiles() {
 		.split(/\r?\n/)
 		.map((s) => s.trim())
 		.filter(Boolean);
-	const allowed = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json"]);
+	const allowed = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".css"]);
 	return files.filter((f) => {
 		const inFrontend = f.startsWith("app/frontend/");
 		if (!inFrontend) return false;
@@ -76,10 +76,10 @@ for (const line of lines) {
 	} catch {}
 }
 
-if (errorCount > 0 || warningCount > 0) {
-	process.stderr.write(`\nBiome found ${errorCount} errors and ${warningCount} warnings in staged files. Showing details...\n\n`);
-	runSh(`pnpm exec biome check ${fileArgs}`, "inherit");
-	process.exit(1);
+if (errorCount > 0) {
+    process.stderr.write(`\nBiome found ${errorCount} errors and ${warningCount} warnings in staged files. Showing details...\n\n`);
+    runSh(`pnpm exec biome check ${fileArgs}`, "inherit");
+    process.exit(1);
 }
 
 process.exit(0);

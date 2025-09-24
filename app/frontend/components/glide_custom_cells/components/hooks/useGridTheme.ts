@@ -29,8 +29,9 @@ export function useGridTheme(_disableDocumentClass = false) {
 			isDark = resolvedTheme === "dark";
 		} else if (typeof document !== "undefined") {
 			isDark = document.documentElement.classList.contains("dark");
-		} else if (typeof window !== "undefined" && window.matchMedia) {
-			isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+		} else {
+			// Use globalThis + optional chaining to avoid SSR reference errors
+			isDark = globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
 		}
 		setTheme(isDark ? darkTheme : lightTheme);
 	}, [resolvedTheme]);
@@ -63,21 +64,21 @@ export function useGridTheme(_disableDocumentClass = false) {
                 [class*="react-select"] [class*="placeholder"],
                 [class*="react-select"] [class*="option"],
                 [class*="react-select"] [class*="menu"] {
-                color: #000000 !important;
+                color: #000000;
                 }
                 
                 [class*="react-select"] [class*="menu"] {
-                background-color: #ffffff !important;
+                background-color: #ffffff;
                 }
                 
                 [class*="react-select"] [class*="option"]:hover {
-                background-color: #f0f0f0 !important;
-                color: #000000 !important;
+                background-color: #f0f0f0;
+                color: #000000;
                 }
                 
                 [class*="react-select"] [class*="option--is-selected"] {
-                background-color: #4F5DFF !important;
-                color: #ffffff !important;
+                background-color: #4F5DFF;
+                color: #ffffff;
                 }
             `;
 		} else {
@@ -93,21 +94,21 @@ export function useGridTheme(_disableDocumentClass = false) {
                 [class*="react-select"] [class*="placeholder"],
                 [class*="react-select"] [class*="option"],
                 [class*="react-select"] [class*="menu"] {
-                color: #e8e8e8 !important;
+                color: #e8e8e8;
                 }
                 
                 [class*="react-select"] [class*="menu"] {
-                background-color: #2a2a2a !important;
+                background-color: #2a2a2a;
                 }
                 
                 [class*="react-select"] [class*="option"]:hover {
-                background-color: #404040 !important;
-                color: #e8e8e8 !important;
+                background-color: #404040;
+                color: #e8e8e8;
                 }
                 
                 [class*="react-select"] [class*="option--is-selected"] {
-                background-color: #4F5DFF !important;
-                color: #ffffff !important;
+                background-color: #4F5DFF;
+                color: #ffffff;
                 }
             `;
 		}

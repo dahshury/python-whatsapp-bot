@@ -2,9 +2,9 @@
 
 /* Enhanced hover effects for free roam events */
 /* [data-free-roam="true"] .fc-timegrid-event:hover {
-  transform: scale(1.02) !important;
-  transition: transform 0.1s ease !important;
-  z-index: var(--z-fc-free-roam) !important;
+  transform: scale(1.02);
+  transition: transform 0.1s ease;
+  z-index: var(--z-fc-free-roam);
 } */
 
 /* Ensure event titles are visible in free roam (use text color variable) */
