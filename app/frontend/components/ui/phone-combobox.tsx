@@ -1,179 +1,45 @@
-import { CheckCircle2, ChevronsUpDown, Plus } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import * as React from "react";
 import type * as RPNInput from "react-phone-number-input";
 import {
 	getCountryCallingCode,
-	isPossiblePhoneNumber,
-	isValidPhoneNumber,
 	parsePhoneNumber,
 } from "react-phone-number-input";
-import flags from "react-phone-number-input/flags";
-import countryLabelsAr from "react-phone-number-input/locale/ar.json";
-import countryLabelsEn from "react-phone-number-input/locale/en.json";
-import { ThemedScrollbar } from "@/components/themed-scrollbar";
+// ThemedScrollbar is used inside sub-components
 import { Button } from "@/components/ui/button";
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
+import { PhoneCountrySelector } from "@/components/ui/phone/phone-country-selector";
+import { PhoneNumberSelectorContent } from "@/components/ui/phone/phone-number-selector";
+// (Command UI moved into PhoneCountrySelector/PhoneNumberSelectorContent)
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { createFuseIndex, fuzzySearchItems } from "@/lib/fuzzy";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useScrollSelectedIntoView } from "@/hooks/useScrollSelectedIntoView";
+import { useShrinkToFitText } from "@/hooks/useShrinkToFitText";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
+import { DEFAULT_COUNTRY } from "@/lib/phone/config";
+import { CALLING_CODES_SORTED } from "@/lib/phone/countries";
+import { createNewPhoneOption as createNewPhoneOptionSvc } from "@/lib/services/phone/phone-options.service";
+import {
+	canCreateNewPhone,
+	createPhoneFuseIndex,
+	filterPhones,
+	getAddPreviewDisplay,
+	getVisiblePhones,
+} from "@/lib/services/phone/phone-search.service";
+import { validatePhoneNumber as validatePhoneNumberSvc } from "@/lib/services/phone/validation.service";
+import { getSizeClasses } from "@/lib/ui/size";
 import { cn } from "@/lib/utils";
+import {
+	formatNumberForDisplay,
+	getCountryFromPhone,
+} from "@/lib/utils/phone-utils";
+import type { PhoneOption } from "@/types/phone";
 
-// Utility function to convert 00 prefix to + prefix
-const convertZeroZeroToPlus = (phoneNumber: string): string => {
-	if (phoneNumber.startsWith("00")) {
-		return `+${phoneNumber.substring(2)}`;
-	}
-	return phoneNumber;
-};
-
-// Get country from phone number (robust: supports plain digits and 00 prefix)
-const getCountryFromPhone = (phoneNumber: string): RPNInput.Country => {
-	try {
-		if (!phoneNumber) return "US";
-		// Normalize input for parsing
-		let normalized = convertZeroZeroToPlus(String(phoneNumber).trim());
-		const digitsOnly = normalized.replace(/[\s-]/g, "");
-		if (!normalized.startsWith("+") && /^\d+$/.test(digitsOnly)) {
-			normalized = `+${digitsOnly}`;
-		}
-
-		const parsed = parsePhoneNumber(normalized);
-		if (parsed?.country) return parsed.country as RPNInput.Country;
-	} catch {}
-
-	// Fallback: infer by calling code prefix if parsing failed
-	try {
-		let s = String(phoneNumber || "");
-		s = convertZeroZeroToPlus(s);
-		if (s.startsWith("+")) s = s.slice(1);
-		const digits = s.replace(/\D/g, "");
-		if (digits) {
-			const match = CALLING_CODES_SORTED.find((code) =>
-				digits.startsWith(code),
-			);
-			if (match) return CALLING_CODE_TO_COUNTRY[match] as RPNInput.Country;
-		}
-	} catch {}
-	return "US";
-};
-
-// Comprehensive country list with calling codes
-const COUNTRY_OPTIONS = [
-	{ code: "US", name: "United States", callingCode: "1" },
-	{ code: "GB", name: "United Kingdom", callingCode: "44" },
-	{ code: "DE", name: "Germany", callingCode: "49" },
-	{ code: "FR", name: "France", callingCode: "33" },
-	{ code: "JP", name: "Japan", callingCode: "81" },
-	{ code: "AU", name: "Australia", callingCode: "61" },
-	{ code: "BR", name: "Brazil", callingCode: "55" },
-	{ code: "IN", name: "India", callingCode: "91" },
-	{ code: "CN", name: "China", callingCode: "86" },
-	{ code: "RU", name: "Russia", callingCode: "7" },
-	{ code: "CA", name: "Canada", callingCode: "1" },
-	{ code: "MX", name: "Mexico", callingCode: "52" },
-	{ code: "ES", name: "Spain", callingCode: "34" },
-	{ code: "IT", name: "Italy", callingCode: "39" },
-	{ code: "NL", name: "Netherlands", callingCode: "31" },
-	{ code: "SE", name: "Sweden", callingCode: "46" },
-	{ code: "NO", name: "Norway", callingCode: "47" },
-	{ code: "DK", name: "Denmark", callingCode: "45" },
-	{ code: "FI", name: "Finland", callingCode: "358" },
-	{ code: "PL", name: "Poland", callingCode: "48" },
-	{ code: "CZ", name: "Czech Republic", callingCode: "420" },
-	{ code: "AT", name: "Austria", callingCode: "43" },
-	{ code: "CH", name: "Switzerland", callingCode: "41" },
-	{ code: "BE", name: "Belgium", callingCode: "32" },
-	{ code: "PT", name: "Portugal", callingCode: "351" },
-	{ code: "GR", name: "Greece", callingCode: "30" },
-	{ code: "HU", name: "Hungary", callingCode: "36" },
-	{ code: "TR", name: "Turkey", callingCode: "90" },
-	{ code: "ZA", name: "South Africa", callingCode: "27" },
-	{ code: "EG", name: "Egypt", callingCode: "20" },
-	{ code: "NG", name: "Nigeria", callingCode: "234" },
-	{ code: "KE", name: "Kenya", callingCode: "254" },
-	{ code: "AE", name: "UAE", callingCode: "971" },
-	{ code: "SG", name: "Singapore", callingCode: "65" },
-	{ code: "MY", name: "Malaysia", callingCode: "60" },
-	{ code: "TH", name: "Thailand", callingCode: "66" },
-	{ code: "ID", name: "Indonesia", callingCode: "62" },
-	{ code: "PH", name: "Philippines", callingCode: "63" },
-	{ code: "VN", name: "Vietnam", callingCode: "84" },
-	{ code: "KR", name: "South Korea", callingCode: "82" },
-	{ code: "TW", name: "Taiwan", callingCode: "886" },
-	{ code: "HK", name: "Hong Kong", callingCode: "852" },
-	{ code: "AR", name: "Argentina", callingCode: "54" },
-	{ code: "CL", name: "Chile", callingCode: "56" },
-	{ code: "CO", name: "Colombia", callingCode: "57" },
-	{ code: "PE", name: "Peru", callingCode: "51" },
-	{ code: "VE", name: "Venezuela", callingCode: "58" },
-	{ code: "UY", name: "Uruguay", callingCode: "598" },
-	{ code: "NZ", name: "New Zealand", callingCode: "64" },
-	{ code: "IL", name: "Israel", callingCode: "972" },
-	{ code: "SA", name: "Saudi Arabia", callingCode: "966" },
-	{ code: "PK", name: "Pakistan", callingCode: "92" },
-	{ code: "BD", name: "Bangladesh", callingCode: "880" },
-	{ code: "LK", name: "Sri Lanka", callingCode: "94" },
-	{ code: "MM", name: "Myanmar", callingCode: "95" },
-] as const;
-
-// Get country label from country code
-const getCountryLabel = (countryCode: RPNInput.Country): string => {
-	const country = COUNTRY_OPTIONS.find((c) => c.code === countryCode);
-	if (country) {
-		return `${country.name} (+${country.callingCode})`;
-	}
-	return `${countryCode} (+${getCountryCallingCode(countryCode)})`;
-};
-
-// Build calling code → country code lookup and a longest-first list of codes
-const CALLING_CODE_TO_COUNTRY: Record<string, RPNInput.Country> = (() => {
-	const map: Record<string, RPNInput.Country> = {};
-	for (const c of COUNTRY_OPTIONS) {
-		if (!map[c.callingCode]) map[c.callingCode] = c.code as RPNInput.Country;
-	}
-	return map;
-})();
-
-const CALLING_CODES_SORTED: string[] = Object.keys(
-	CALLING_CODE_TO_COUNTRY,
-).sort((a, b) => b.length - a.length);
-
-// Format number for clean display without affecting value semantics
-const formatNumberForDisplay = (phoneNumber: string): string => {
-	try {
-		let normalized = phoneNumber;
-		const digitsOnly = normalized.replace(/[\s-]/g, "");
-		if (normalized && !normalized.startsWith("+") && /^\d+$/.test(digitsOnly)) {
-			normalized = `+${digitsOnly}`;
-		}
-		const parsed = parsePhoneNumber(normalized);
-		if (parsed) return parsed.formatInternational();
-		return normalized;
-	} catch {}
-	return phoneNumber;
-};
-
-export interface PhoneOption {
-	number: string;
-	name: string;
-	country: string;
-	label: string;
-	id?: string;
-	// Optional preformatted display number to avoid recomputation during render
-	displayNumber?: string;
-}
+// (types and helpers moved to shared modules)
 
 interface PhoneComboboxProps {
 	value?: string;
@@ -229,43 +95,16 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		setMounted(true);
 	}, []);
 
-	// Phone validation function
-	const validatePhoneNumber = React.useCallback(
+	// Use centralized validation service
+	const validatePhone = React.useCallback(
 		(phone: string): { isValid: boolean; error?: string } => {
-			if (!phone.trim()) {
-				return { isValid: true }; // Empty is valid
-			}
-
-			// First check if it's a possible phone number (lenient validation)
-			if (!isPossiblePhoneNumber(phone)) {
-				return {
-					isValid: false,
-					error: "Invalid phone number format or too short",
-				};
-			}
-
-			// For stricter validation, also check if it's a valid phone number
-			if (!isValidPhoneNumber(phone)) {
-				try {
-					const parsed = parsePhoneNumber(phone);
-					if (parsed) {
-						return {
-							isValid: false,
-							error: "Phone number may have invalid area code or format",
-						};
-					}
-				} catch {
-					// If parsing fails, fall back to the possible check result
-				}
-			}
-
-			return { isValid: true };
+			return validatePhoneNumberSvc(phone);
 		},
 		[],
 	);
 
 	const [country, setCountry] = React.useState<RPNInput.Country | undefined>(
-		"SA" as RPNInput.Country,
+		DEFAULT_COUNTRY as RPNInput.Country,
 	);
 
 	const [countrySearch, setCountrySearch] = React.useState("");
@@ -315,57 +154,29 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 	}, [phoneOptions]);
 
 	// Create a fuzzy index for name/label/number display matching (language-agnostic)
-	const fuse = React.useMemo(() => {
-		try {
-			return createFuseIndex(indexedOptions, {
-				keys: [
-					{ name: "__searchName", weight: 0.85 },
-					{ name: "__searchLabel", weight: 0.15 },
-				],
-				threshold: 0.28,
-				ignoreLocation: true,
-				minMatchCharLength: 2,
-				includeScore: true,
-				shouldSort: true,
-			});
-		} catch {
-			// Fallback: a tiny wrapper that simulates Fuse API if construction fails
-			return createFuseIndex(indexedOptions, {
-				keys: ["__searchName", "__searchLabel"],
-				threshold: 0.28,
-			});
-		}
-	}, [indexedOptions]);
+	const fuse = React.useMemo(
+		() => createPhoneFuseIndex(indexedOptions),
+		[indexedOptions],
+	);
 
 	// Debounce search input to avoid filtering on each keystroke
-	const [debouncedPhoneSearch, setDebouncedPhoneSearch] = React.useState("");
-	React.useEffect(() => {
-		const handle = setTimeout(() => setDebouncedPhoneSearch(phoneSearch), 120);
-		return () => clearTimeout(handle);
-	}, [phoneSearch]);
+	// Debounce search input
+	const debouncedPhoneSearch = useDebouncedValue(phoneSearch, 120);
 
-	// Get all countries with localized names
-	const countryOptions = React.useMemo(() => {
-		const labels: Record<string, string> = isLocalized
-			? (countryLabelsAr as Record<string, string>)
-			: (countryLabelsEn as Record<string, string>);
-		return COUNTRY_OPTIONS.map((c) => {
-			const code = c.code as RPNInput.Country;
-			const localizedName = labels[c.code] || c.name;
-			return {
-				value: code,
-				label: `${localizedName} (+${c.callingCode})`,
-			};
-		});
-	}, [isLocalized]);
+	// Country options are handled inside PhoneCountrySelector
 
 	// Handle controlled vs uncontrolled behavior
 	React.useEffect(() => {
 		if (!uncontrolled && value !== undefined) {
 			setSelectedPhone(value);
 		} else if ((value === undefined || value === "") && selectedPhone === "") {
-			// When uncontrolled/new usage, initialize to +966 on first mount if empty
-			setSelectedPhone("+966 ");
+			// When uncontrolled/new usage, initialize to +<DEFAULT_COUNTRY CC> on first mount if empty
+			try {
+				const cc = getCountryCallingCode(DEFAULT_COUNTRY as RPNInput.Country);
+				setSelectedPhone(`+${cc} `);
+			} catch {
+				setSelectedPhone("+");
+			}
 		}
 	}, [value, uncontrolled, selectedPhone]);
 
@@ -388,68 +199,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 
 	// Update filtered phones when search changes (fuzzy names + numeric prefix only)
 	React.useEffect(() => {
-		const raw = debouncedPhoneSearch.trim();
-		const search = raw.toLowerCase();
-		if (!search) {
-			setFilteredPhones(indexedOptions);
-			return;
-		}
-
-		let normalizedSearch = convertZeroZeroToPlus(search);
-		normalizedSearch = normalizedSearch.replace(/[\s\-+]/g, "");
-
-		const hasLetters = /\p{L}/u.test(search);
-		const lettersOnly = search.replace(/[^\p{L}\s]/gu, "").trim();
-		const isNumericOnly =
-			!hasLetters &&
-			(/[0-9]/.test(search) || raw.startsWith("+") || raw.startsWith("00"));
-
-		const numberMatches =
-			isNumericOnly && normalizedSearch.length >= 2
-				? indexedOptions.filter((option) => {
-						const normalizedDisplay = String(
-							option.displayNumber || option.number,
-						)
-							.toLowerCase()
-							.replace(/[\s\-+]/g, "");
-						const matchesNumber =
-							option.__normalizedNumber.includes(normalizedSearch) ||
-							normalizedDisplay.includes(normalizedSearch);
-						return matchesNumber;
-					})
-				: [];
-
-		let fuzzyMatches: IndexedPhoneOption[] = [];
-		if (hasLetters && lettersOnly.length > 0) {
-			try {
-				fuzzyMatches = fuzzySearchItems<IndexedPhoneOption>(fuse, lettersOnly);
-			} catch {
-				fuzzyMatches = [];
-			}
-		}
-
-		const seen = new Set<string>();
-		const pushUnique = (
-			list: IndexedPhoneOption[],
-			acc: IndexedPhoneOption[],
-		) => {
-			for (const item of list) {
-				const key = item.number;
-				if (!seen.has(key)) {
-					seen.add(key);
-					acc.push(item);
-				}
-			}
-		};
-
-		const merged: IndexedPhoneOption[] = [];
-		if (isNumericOnly) {
-			pushUnique(numberMatches, merged);
-		} else {
-			pushUnique(fuzzyMatches, merged);
-			pushUnique(numberMatches, merged);
-		}
-
+		const merged = filterPhones(fuse, indexedOptions, debouncedPhoneSearch);
 		setFilteredPhones(merged);
 	}, [debouncedPhoneSearch, indexedOptions, fuse]);
 
@@ -457,123 +207,48 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 
 	// Limit initial render count when there is no search to speed up popover opening
 	const VISIBLE_LIMIT_NO_SEARCH = 120;
-	const visiblePhones = React.useMemo(() => {
+	const visiblePhones: IndexedPhoneOption[] = React.useMemo(() => {
 		if (!debouncedPhoneSearch) {
-			const normalize = (s: string) =>
-				String(s)
-					.replace(/[\s\-+]/g, "")
-					.toLowerCase();
-			if (selectedPhone) {
-				const selectedIndex = filteredPhones.findIndex(
-					(opt) =>
-						opt.number === selectedPhone ||
-						normalize(opt.number) === normalize(selectedPhone),
-				);
-				if (selectedIndex >= 0) {
-					const half = Math.floor(VISIBLE_LIMIT_NO_SEARCH / 2);
-					const maxStart = Math.max(
-						0,
-						filteredPhones.length - VISIBLE_LIMIT_NO_SEARCH,
-					);
-					const start = Math.max(0, Math.min(maxStart, selectedIndex - half));
-					const end = Math.min(
-						filteredPhones.length,
-						start + VISIBLE_LIMIT_NO_SEARCH,
-					);
-					return filteredPhones.slice(start, end);
-				}
-			}
-			return filteredPhones.slice(0, VISIBLE_LIMIT_NO_SEARCH);
+			return getVisiblePhones(
+				filteredPhones as IndexedPhoneOption[],
+				selectedPhone,
+				VISIBLE_LIMIT_NO_SEARCH,
+			) as IndexedPhoneOption[];
 		}
-		return filteredPhones;
+		return filteredPhones as IndexedPhoneOption[];
 	}, [filteredPhones, debouncedPhoneSearch, selectedPhone]);
 
 	// Preview label for creating a new phone using the currently selected country
-	const addPreviewDisplay = React.useMemo(() => {
-		const raw = debouncedPhoneSearch.trim();
-		if (!raw) return "";
-		const digits = raw.replace(/\D/g, "");
-		try {
-			const selected = country || ("SA" as RPNInput.Country);
-			const cc = getCountryCallingCode(selected);
-			return digits ? `+${cc}${digits}` : `+${cc} `;
-		} catch {
-			return digits ? `+${digits}` : "+";
-		}
-	}, [debouncedPhoneSearch, country]);
+	const addPreviewDisplay = React.useMemo(
+		() =>
+			getAddPreviewDisplay(debouncedPhoneSearch, country, (c: string) =>
+				String(getCountryCallingCode(c as unknown as RPNInput.Country)),
+			),
+		[debouncedPhoneSearch, country],
+	);
 
 	// Decide whether to show the create-new option even if there are matches
-	const canCreateNew = React.useMemo(() => {
-		if (!allowCreateNew) return false;
-		const raw = debouncedPhoneSearch.trim();
-		if (!raw) return false;
-		const lower = raw.toLowerCase();
-		const hasLetters = /\p{L}/u.test(lower);
-		const isNumericOnly =
-			!hasLetters &&
-			(/[0-9]/.test(lower) || raw.startsWith("+") || raw.startsWith("00"));
-		if (!isNumericOnly) return false;
-		const normalized = convertZeroZeroToPlus(lower).replace(/[\s\-+]/g, "");
-		// Require a sensible minimum length to avoid noise
-		if (normalized.length < 6) return false;
-		// Only offer create if no exact number exists
-		const existsExact = indexedOptions.some(
-			(opt) => opt.__normalizedNumber === normalized,
-		);
-		return !existsExact;
-	}, [allowCreateNew, debouncedPhoneSearch, indexedOptions]);
+	const canCreateNew = React.useMemo(
+		() =>
+			canCreateNewPhone(
+				allowCreateNew,
+				debouncedPhoneSearch,
+				indexedOptions as IndexedPhoneOption[],
+			),
+		[allowCreateNew, debouncedPhoneSearch, indexedOptions],
+	);
 
-	// Create a new phone number option
+	// Create a new phone number option via service
 	const createNewPhoneOption = (phoneNumber: string): PhoneOption => {
-		// Always perform validation but don't block creation (suppress inline errors)
-		validatePhoneNumber(phoneNumber);
-
-		// Format the phone number properly, respecting the currently selected country
-		let formattedNumber = convertZeroZeroToPlus(phoneNumber.trim());
-		if (!formattedNumber.startsWith("+")) {
-			// No international prefix provided by user → use selected country calling code
-			try {
-				const selected = country || ("SA" as RPNInput.Country);
-				const cc = getCountryCallingCode(selected);
-				const digits = formattedNumber.replace(/\D/g, "");
-				formattedNumber = cc ? `+${cc}${digits}` : `+${digits}`;
-			} catch {
-				const digits = formattedNumber.replace(/\D/g, "");
-				formattedNumber = `+${digits}`;
-			}
-		}
-
-		try {
-			const parsed = parsePhoneNumber(formattedNumber);
-			if (parsed) {
-				formattedNumber = parsed.formatInternational();
-			}
-		} catch {
-			// Keep as-is if parsing fails
-		}
-
-		const selected =
-			country ||
-			(getCountryFromPhone(formattedNumber) as RPNInput.Country) ||
-			("SA" as RPNInput.Country);
-		const localizedEntry = countryOptions.find((opt) => opt.value === selected);
-		const label = localizedEntry?.label || getCountryLabel(selected);
-
-		const newOption: PhoneOption = {
-			number: formattedNumber,
-			name: "New Phone Number",
-			country: selected,
-			label: label,
-			id: `new-${Date.now()}`, // Generate unique ID
-		};
-
-		return newOption;
+		// Validate but do not block creation in UI
+		validatePhone(phoneNumber);
+		return createNewPhoneOptionSvc(phoneNumber, country, isLocalized);
 	};
 
 	// Handle phone selection with different behavior for controlled vs uncontrolled
 	const handlePhoneSelectInternal = (phoneNumber: string) => {
 		// Validate the phone number (suppress inline errors)
-		validatePhoneNumber(phoneNumber);
+		validatePhone(phoneNumber);
 
 		setSelectedPhone(phoneNumber);
 		if (!uncontrolled && onChange) {
@@ -630,7 +305,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		setIsCountryOpen(false);
 
 		// Re-validate current phone number when country changes (no inline errors)
-		if (selectedPhone) validatePhoneNumber(selectedPhone);
+		if (selectedPhone) validatePhone(selectedPhone);
 
 		// If there's a selected phone number, convert it to the new country's format
 		if (selectedPhone?.trim()) {
@@ -688,106 +363,26 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		}
 	};
 
-	// Track popover states for focus management
-	const [isCountryOpen, setIsCountryOpen] = React.useState(false);
-	const [isPhoneOpen, setIsPhoneOpen] = React.useState(false);
+	// Track popover states and selected refs via hooks
+	const {
+		selectedRef: selectedCountryRef,
+		isOpen: isCountryOpen,
+		setIsOpen: setIsCountryOpen,
+	} = useScrollSelectedIntoView<HTMLDivElement>();
+	const {
+		selectedRef: selectedPhoneRef,
+		isOpen: isPhoneOpen,
+		setIsOpen: setIsPhoneOpen,
+	} = useScrollSelectedIntoView<HTMLDivElement>();
 
-	// Refs to scroll selected items into view when opening popovers
-	const selectedCountryRef = React.useRef<HTMLDivElement | null>(null);
-	const selectedPhoneRef = React.useRef<HTMLDivElement | null>(null);
-
-	React.useEffect(() => {
-		if (isCountryOpen) {
-			queueMicrotask(() => {
-				try {
-					selectedCountryRef.current?.scrollIntoView({
-						block: "nearest",
-						inline: "nearest",
-						behavior: "auto",
-					});
-				} catch {}
-			});
-		}
-	}, [isCountryOpen]);
-
-	React.useEffect(() => {
-		if (isPhoneOpen) {
-			queueMicrotask(() => {
-				try {
-					selectedPhoneRef.current?.scrollIntoView({
-						block: "nearest",
-						inline: "nearest",
-						behavior: "auto",
-					});
-				} catch {}
-			});
-		}
-	}, [isPhoneOpen]);
-
-	// Size utilities
-	const getSizeClasses = (componentSize: "sm" | "default" | "lg") => {
-		switch (componentSize) {
-			case "sm":
-				return "h-8 px-2 text-xs";
-			case "lg":
-				return "h-12 px-4 text-base";
-			default:
-				return "h-10 px-3 text-sm";
-		}
-	};
+	// Size utilities moved to lib/ui/size
 
 	// Shrink-to-fit measurement for closed state text
-	const textContainerRef = React.useRef<HTMLDivElement | null>(null);
-	const textRef = React.useRef<HTMLDivElement | null>(null);
-	const [textScale, setTextScale] = React.useState(1);
-
-	const recomputeScale = React.useCallback(() => {
-		if (!shrinkTextToFit) return;
-		const container = textContainerRef.current;
-		const textEl = textRef.current;
-		if (!container || !textEl) return;
-		// Allow natural size first
-		textEl.style.transform = "";
-		textEl.style.transformOrigin = "left center";
-		const available = container.clientWidth;
-		const needed = textEl.scrollWidth;
-		if (available > 0 && needed > available) {
-			const raw = available / needed;
-			const clamped = Math.max(0.6, Math.min(1, raw));
-			setTextScale(clamped);
-		} else {
-			setTextScale(1);
-		}
-	}, [shrinkTextToFit]);
-
-	// Recompute scale after layout changes for smoother sizing
-	React.useLayoutEffect(() => {
-		recomputeScale();
-	}, [recomputeScale]);
-
-	React.useEffect(() => {
-		if (!shrinkTextToFit) return;
-		const handle = () => recomputeScale();
-		window.addEventListener("resize", handle);
-		return () => window.removeEventListener("resize", handle);
-	}, [recomputeScale, shrinkTextToFit]);
-
-	// Track container size changes precisely
-	React.useEffect(() => {
-		if (!shrinkTextToFit) return;
-		const container = textContainerRef.current;
-		if (!container) return;
-		const ro = new ResizeObserver(() => recomputeScale());
-		ro.observe(container);
-		return () => ro.disconnect();
-	}, [recomputeScale, shrinkTextToFit]);
-
-	// Recompute scale when the displayed content or popover state changes
-	React.useEffect(() => {
-		if (!shrinkTextToFit) return;
-		const id = setTimeout(() => recomputeScale(), 0);
-		return () => clearTimeout(id);
-	}, [shrinkTextToFit, recomputeScale]);
+	const {
+		containerRef: textContainerRef,
+		textRef,
+		scale: textScale,
+	} = useShrinkToFitText(shrinkTextToFit);
 
 	// Prevent hydration mismatch and show loading state
 	if (!mounted) {
@@ -809,102 +404,17 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 			<div className="flex">
 				{/* Country Selector - only show if enabled */}
 				{showCountrySelector && (
-					<Popover open={isCountryOpen} onOpenChange={setIsCountryOpen}>
-						<PopoverTrigger asChild>
-							<Button
-								type="button"
-								variant="outline"
-								disabled={disabled}
-								className={cn(
-									"flex gap-1 rounded-e-none rounded-s-lg border-r-0 focus:z-10",
-									getSizeClasses(_size),
-								)}
-							>
-								{country ? (
-									<FlagComponent country={country} countryName={country} />
-								) : (
-									<span className="text-muted-foreground">🌍</span>
-								)}
-								<ChevronsUpDown className="-mr-2 size-4 opacity-50" />
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent
-							className={cn("w-[18.75rem] p-0", "click-outside-ignore")}
-						>
-							<Command shouldFilter={false}>
-								<CommandInput
-									value={countrySearch}
-									onValueChange={setCountrySearch}
-									placeholder={i18n.getMessage(
-										"phone_country_search_placeholder",
-										isLocalized,
-									)}
-									onKeyDown={(e) => {
-										if (e.key === "Enter") {
-											try {
-												const root = (e.currentTarget.closest("[cmdk-root]") ||
-													e.currentTarget.parentElement) as HTMLElement | null;
-												const active = root?.querySelector(
-													"[cmdk-item][data-selected='true']",
-												) as HTMLElement | null;
-												const selectedCountry = active?.getAttribute(
-													"data-option-country",
-												);
-												if (selectedCountry) {
-													e.preventDefault();
-													e.stopPropagation();
-													handleCountrySelect(
-														selectedCountry as RPNInput.Country,
-													);
-													return;
-												}
-											} catch {}
-										}
-									}}
-								/>
-								<CommandList>
-									<ThemedScrollbar className="h-72">
-										<CommandEmpty>
-											{i18n.getMessage("phone_no_country_found", isLocalized)}
-										</CommandEmpty>
-										<CommandGroup>
-											{countryOptions
-												.filter((option) =>
-													option.label
-														.toLowerCase()
-														.includes(countrySearch.toLowerCase()),
-												)
-												.map((option) => (
-													<CommandItem
-														key={option.value}
-														value={option.value}
-														onSelect={() => handleCountrySelect(option.value)}
-														className="gap-2"
-														ref={
-															country === option.value
-																? selectedCountryRef
-																: undefined
-														}
-														data-option-country={option.value}
-													>
-														<FlagComponent
-															country={option.value}
-															countryName={option.label}
-														/>
-														<span className="flex-1 text-sm">
-															{option.label}
-														</span>
-														{country === option.value && (
-															<CheckCircle2 className="ms-auto size-4 text-primary" />
-														)}
-													</CommandItem>
-												))}
-										</CommandGroup>
-									</ThemedScrollbar>
-								</CommandList>
-							</Command>
-						</PopoverContent>
-					</Popover>
+					<PhoneCountrySelector
+						country={country}
+						setCountry={handleCountrySelect}
+						search={countrySearch}
+						setSearch={setCountrySearch}
+						isOpen={isCountryOpen}
+						setIsOpen={setIsCountryOpen}
+						selectedRef={selectedCountryRef}
+						disabled={disabled}
+						size={_size}
+					/>
 				)}
 
 				{/* Phone Number Selector */}
@@ -961,7 +471,10 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 													const selectedOption = phoneOptions.find(
 														(option) => option.number === selectedPhone,
 													);
-													return selectedOption?.name || "Unknown";
+													return (
+														selectedOption?.name ||
+														i18n.getMessage("phone_unknown_label", isLocalized)
+													);
 												})()}
 											</span>
 										</>
@@ -983,130 +496,19 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 					<PopoverContent
 						className={cn("w-[25rem] p-0", "click-outside-ignore")}
 					>
-						<Command shouldFilter={false}>
-							<CommandInput
-								value={phoneSearch}
-								onValueChange={setPhoneSearch}
-								placeholder={i18n.getMessage(
-									"phone_search_placeholder",
-									isLocalized,
-								)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter") {
-										// Handle create-new when no options are shown
-										if (canCreateNew) {
-											e.preventDefault();
-											e.stopPropagation();
-											handleCreateNewPhone(phoneSearch);
-											return;
-										}
-
-										// Fallback: if there are no matches but input exists and creation allowed
-										if (
-											phoneSearch.trim() &&
-											filteredPhones.length === 0 &&
-											allowCreateNew
-										) {
-											e.preventDefault();
-											e.stopPropagation();
-											handleCreateNewPhone(phoneSearch);
-											return;
-										}
-
-										// Otherwise, select the currently highlighted item from the list
-										try {
-											const root = (e.currentTarget.closest("[cmdk-root]") ||
-												e.currentTarget.parentElement) as HTMLElement | null;
-											const active = root?.querySelector(
-												"[cmdk-item][data-selected='true']",
-											) as HTMLElement | null;
-											const selectedNumber =
-												active?.getAttribute("data-option-number");
-											if (selectedNumber) {
-												e.preventDefault();
-												e.stopPropagation();
-												handlePhoneSelectControlled(selectedNumber);
-												return;
-											}
-										} catch {}
-									}
-								}}
-							/>
-							<CommandList>
-								<ThemedScrollbar className="h-72">
-									{canCreateNew && (
-										<div className="p-2">
-											<CommandItem
-												value="create-new"
-												onSelect={() =>
-													handleCreateNewPhone(debouncedPhoneSearch)
-												}
-												className="gap-2 text-blue-600 hover:text-blue-700"
-											>
-												<Plus className="size-4" />
-												<span>
-													{i18n
-														.getMessage("phone_add_number_label", isLocalized)
-														.replace("{value}", addPreviewDisplay)}
-												</span>
-											</CommandItem>
-										</div>
-									)}
-									<CommandEmpty>
-										{i18n.getMessage("phone_no_phone_found", isLocalized)}
-									</CommandEmpty>
-									<CommandGroup>
-										{visiblePhones.map((option) => (
-											<CommandItem
-												key={option.number}
-												value={option.number}
-												onSelect={() =>
-													handlePhoneSelectControlled(option.number)
-												}
-												className="gap-3 py-2.5 px-3"
-												ref={
-													selectedPhone === option.number
-														? selectedPhoneRef
-														: undefined
-												}
-												data-option-number={option.number}
-											>
-												<div className="flex flex-col space-y-2 min-w-0 flex-1">
-													<span className="text-sm font-medium text-foreground truncate leading-tight">
-														{option.name ||
-															option.displayNumber ||
-															option.number}
-													</span>
-													<div className="flex items-center gap-1.5">
-														<FlagComponent
-															country={
-																(option as unknown as IndexedPhoneOption)
-																	.__country
-															}
-															countryName={option.label}
-															className="opacity-60 scale-75"
-														/>
-														<span className="text-sm text-muted-foreground leading-tight truncate">
-															{option.displayNumber || option.number}
-														</span>
-													</div>
-												</div>
-												{selectedPhone === option.number && (
-													<CheckCircle2 className="ms-auto size-4 text-primary" />
-												)}
-											</CommandItem>
-										))}
-										{!debouncedPhoneSearch &&
-										filteredPhones.length > VISIBLE_LIMIT_NO_SEARCH ? (
-											<div className="px-3 py-2 text-xs text-muted-foreground">
-												{filteredPhones.length - VISIBLE_LIMIT_NO_SEARCH} more.
-												Type to search.
-											</div>
-										) : null}
-									</CommandGroup>
-								</ThemedScrollbar>
-							</CommandList>
-						</Command>
+						<PhoneNumberSelectorContent
+							search={phoneSearch}
+							setSearch={setPhoneSearch}
+							visiblePhones={visiblePhones}
+							selectedPhone={selectedPhone}
+							onSelect={handlePhoneSelectControlled}
+							canCreateNew={canCreateNew}
+							onCreateNew={handleCreateNewPhone}
+							addPreviewDisplay={addPreviewDisplay}
+							isLocalized={isLocalized}
+							selectedRef={selectedPhoneRef}
+							allowCreateNew={allowCreateNew}
+						/>
 					</PopoverContent>
 				</Popover>
 			</div>
@@ -1116,20 +518,6 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 	);
 };
 
-const FlagComponent = ({
-	country,
-	countryName,
-	className,
-}: RPNInput.FlagProps & { className?: string }) => {
-	const Flag = flags[country];
-
-	return (
-		<span
-			className={`flex h-4 w-6 overflow-hidden rounded-sm bg-foreground/20 [&_svg:not([class*='size-'])]:size-full ${className || ""}`}
-		>
-			{Flag && <Flag title={countryName} />}
-		</span>
-	);
-};
+// Flag rendering moved into sub-components
 
 export { PhoneCombobox };

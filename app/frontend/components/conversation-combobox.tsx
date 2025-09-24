@@ -9,14 +9,12 @@ import {
 	HoverCardContent,
 	HoverCardTrigger,
 } from "@/components/ui/hover-card";
-import {
-	PhoneCombobox,
-	type PhoneOption,
-} from "@/components/ui/phone-combobox";
+import { PhoneCombobox } from "@/components/ui/phone-combobox";
 import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import type { Conversations, Reservation } from "@/types/calendar";
+import type { PhoneOption } from "@/types/phone";
 
 interface ConversationComboboxProps {
 	conversations: Conversations;

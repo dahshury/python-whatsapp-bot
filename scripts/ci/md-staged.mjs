@@ -26,26 +26,37 @@ if (files.length === 0) {
 
 const fileArgs = quoteFiles(files);
 
-// 1) markdownlint --fix
-const fix = runSh(`pnpm exec markdownlint --fix ${fileArgs}`, "inherit");
-if (fix.error) {
-	process.stderr.write(`markdownlint fix failed to execute: ${String(fix.error)}\n`);
-	process.exit(1);
+// helpers that fall back to pnpm dlx if tool is not installed locally
+function runMarkdownlint(args, stdio) {
+	// Quietly detect local availability to avoid noisy errors
+	const hasLocal = runSh("pnpm exec markdownlint --version", "pipe").status === 0;
+	if (hasLocal) return runSh(`pnpm exec markdownlint ${args}`, stdio);
+	return runSh(`pnpm dlx markdownlint-cli ${args}`, stdio);
 }
 
+function runPrettier(args, stdio) {
+	const first = runSh(`pnpm exec prettier ${args}`, stdio);
+	if (first.status === 0) return first;
+	return runSh(`pnpm dlx prettier ${args}`, stdio);
+}
+
+// 1) markdownlint --fix
+const fix = runMarkdownlint(`--fix ${fileArgs}`, "inherit");
+// Do not fail here; some rules are not auto-fixable. Proceed to check.
+
 // 2) re-check markdownlint, fail and print diagnostics if any remain
-const check = runSh(`pnpm exec markdownlint ${fileArgs}`, "pipe");
+const check = runMarkdownlint(`${fileArgs}`, "pipe");
 if (check.status !== 0) {
 	process.stderr.write("\nmarkdownlint found issues after fixing. Showing details...\n\n");
 	// Print readable output
-	runSh(`pnpm exec markdownlint ${fileArgs}`, "inherit");
+	runMarkdownlint(`${fileArgs}`, "inherit");
 	process.exit(1);
 }
 
 // 3) Prettier write (markdown only)
-const prettier = runSh(`pnpm exec prettier --log-level warn --write ${fileArgs}`, "inherit");
-if (prettier.error) {
-	process.stderr.write(`prettier failed to execute: ${String(prettier.error)}\n`);
+const prettier = runPrettier(`--log-level warn --write ${fileArgs}`, "inherit");
+if (prettier.status !== 0) {
+	process.stderr.write("prettier failed to execute.\n");
 	process.exit(1);
 }
 

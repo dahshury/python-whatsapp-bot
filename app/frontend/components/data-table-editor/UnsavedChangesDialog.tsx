@@ -1,9 +1,9 @@
 // Using custom portal-based dialog for proper centering on viewport
 
-import { Button } from "@/components/ui/button";
-import { Z_INDEX } from "@/lib/z-index";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { Button } from "@/components/ui/button";
+import { Z_INDEX } from "@/lib/z-index";
 
 interface UnsavedChangesDialogProps {
 	open: boolean;
@@ -84,7 +84,7 @@ export function UnsavedChangesDialog({
 					}}
 				>
 					<div className="space-y-4">
-						<div className={isLocalized ? "text-right" : "text-left"}>
+						<div className="text-left">
 							<h2
 								id={`unsaved-changes-title-${typeof window !== "undefined" ? Math.random().toString(36).slice(2) : "ssr"}`}
 								className="text-lg font-semibold"

@@ -16,6 +16,9 @@ export const RealtimeEventBus: React.FC = () => {
 			try {
 				const { type, data } = message?.detail || {};
 				if (!type || !data) return;
+				try {
+					console.debug("🔔 [RealtimeEventBus] message", type, data);
+				} catch {}
 
 				// Suppress notification events for snapshots and ack/nack control messages
 				try {

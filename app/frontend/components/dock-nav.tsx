@@ -94,7 +94,7 @@ export function DockNav({
 		<TooltipProvider>
 			<Dock
 				direction="middle"
-				className={cn("mt-4 h-auto min-h-[2.75rem]", className)}
+				className={cn("mt-0 h-auto min-h-[2.25rem]", className)}
 			>
 				{navigationOnly ? (
 					// Minimal: show Calendar link + other pages (Dashboard, Documents), no prev/next or date

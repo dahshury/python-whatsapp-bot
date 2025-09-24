@@ -15,6 +15,61 @@ export function reduceOnMessage(
 	};
 
 	switch (type) {
+    case "document_snapshot": {
+        // Relay snapshot to interested listeners (documents scene hook)
+        try {
+            setTimeout(() => {
+                try {
+                    const evt = new CustomEvent("documents:sceneSnapshot", {
+                        detail: data,
+                    });
+                    window.dispatchEvent(evt);
+                } catch {}
+            }, 0);
+        } catch {}
+        next.lastUpdate = timestamp;
+        return next;
+    }
+
+    case "customer_profile": {
+        // Relay customer profile to listeners (document customer row hook)
+        try {
+            setTimeout(() => {
+                try {
+                    const evt = new CustomEvent("documents:customerProfile", {
+                        detail: data,
+                    });
+                    window.dispatchEvent(evt);
+                } catch {}
+            }, 0);
+        } catch {}
+        next.lastUpdate = timestamp;
+        return next;
+    }
+    case "notifications_history": {
+			// Pass-through: reducer doesn't store notifications, the panel manages its own state.
+			// Fan-out as a browser event so listeners (notifications-button) can ingest.
+			try {
+				const list = (data as unknown as { items?: unknown[] })?.items as Array<{
+					id?: number | string;
+					type?: string;
+					timestamp?: string | number;
+					data?: Record<string, unknown>;
+				}> | null;
+				if (Array.isArray(list)) {
+                setTimeout(() => {
+                    try {
+                        const evt = new CustomEvent("notifications:history", {
+                            detail: { items: list },
+                        });
+                        window.dispatchEvent(evt);
+                    } catch {}
+                }, 0);
+				}
+			} catch {}
+			next.lastUpdate = timestamp;
+			return next;
+		}
 		case "reservation_created":
 		case "reservation_updated":
 		case "reservation_reinstated": {

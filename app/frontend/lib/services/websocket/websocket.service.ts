@@ -1,4 +1,4 @@
-import { modifyReservation } from "@/lib/api";
+import { modifyReservation, cancelReservation as httpCancelReservation } from "@/lib/api";
 import type { ApiResponse, WebSocketMessage } from "../types/data-table-types";
 
 class WebSocketService {
@@ -107,19 +107,20 @@ class WebSocketService {
 	/**
 	 * Modify reservation via WebSocket with confirmation
 	 */
-	async modifyReservation(
-		waId: string,
-		updates: {
-			date: string;
-			time: string;
-			title?: string;
-			type?: number;
-			reservationId?: number;
-			approximate?: boolean;
-		},
-	): Promise<ApiResponse> {
+    async modifyReservation(
+        waId: string,
+        updates: {
+            date: string;
+            time: string;
+            title?: string;
+            type?: number;
+            reservationId?: number;
+            approximate?: boolean;
+        },
+        opts?: { isLocalized?: boolean },
+    ): Promise<ApiResponse> {
 		// Try WebSocket first
-		const wsSuccess = await this.sendMessage({
+        const wsSuccess = await this.sendMessage({
 			type: "modify_reservation",
 			data: {
 				wa_id: waId,
@@ -129,6 +130,8 @@ class WebSocketService {
 				type: updates.type,
 				reservation_id: updates.reservationId,
 				approximate: updates.approximate,
+                // pass localization preference through to backend for ack/nack messages
+                ar: opts?.isLocalized || false,
 			},
 		});
 
@@ -153,3 +156,38 @@ class WebSocketService {
 }
 
 export { WebSocketService };
+
+/**
+ * Extend WebSocketService with cancellation helper
+ */
+declare module "../websocket/websocket.service" {
+  interface WebSocketService {
+    cancelReservation(
+      waId: string,
+      date: string,
+      opts?: { isLocalized?: boolean },
+    ): Promise<ApiResponse>;
+  }
+}
+
+WebSocketService.prototype.cancelReservation = async function (
+  this: WebSocketService,
+  waId: string,
+  date: string,
+  opts?: { isLocalized?: boolean },
+): Promise<ApiResponse> {
+  const wsSuccess = await this.sendMessage({
+    type: "cancel_reservation",
+    data: { wa_id: waId, date, ar: opts?.isLocalized || false },
+  });
+  if (wsSuccess) return { success: true } as ApiResponse;
+  // Fallback to HTTP
+  const payload: { id: string; date: string; isLocalized?: boolean } = {
+    id: waId,
+    date,
+    ...(typeof opts?.isLocalized === "boolean"
+      ? { isLocalized: opts.isLocalized }
+      : {}),
+  };
+  return (await httpCancelReservation(payload)) as unknown as ApiResponse;
+};

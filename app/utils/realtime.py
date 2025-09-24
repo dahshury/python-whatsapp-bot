@@ -2,6 +2,8 @@ import asyncio
 import json
 import logging
 from dataclasses import dataclass
+import base64
+import gzip
 from typing import Any, Dict, List, Optional, Set
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -17,6 +19,22 @@ def _utc_iso_now() -> str:
     dt = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
     # Normalize to Z suffix for UTC
     return dt.isoformat().replace("+00:00", "Z")
+
+
+def _maybe_decompress_document_ws(raw: Any) -> str:
+    try:
+        if isinstance(raw, str) and raw.startswith("gz:"):
+            b = base64.b64decode(raw[3:])
+            return gzip.decompress(b).decode("utf-8")
+    except Exception:
+        pass
+    try:
+        # If already a dict/list, stringify
+        if not isinstance(raw, str):
+            return json.dumps(raw or {})
+    except Exception:
+        pass
+    return raw if isinstance(raw, str) else "{}"
 
 
 @dataclass
@@ -369,6 +387,65 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         "metrics": metrics,
                     },
                 })
+            elif msg_type == "get_document":
+                # Serve document snapshot for a given wa_id
+                try:
+                    data = payload.get("data") or {}
+                    wa_id = str(data.get("wa_id") or "").strip()
+                    if not wa_id:
+                        await conn.send_json({
+                            "type": "document_snapshot",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"wa_id": wa_id, "document": {}},
+                        })
+                        continue
+                    # Load document using same logic as HTTP GET /documents/{wa_id}
+                    from app.db import get_session, CustomerDocumentModel, DefaultDocumentModel
+                    DEFAULT_DOCUMENT_WA_ID = "0000000000000"
+                    doc_json_str = "{}"
+                    with get_session() as session:
+                        if wa_id == DEFAULT_DOCUMENT_WA_ID:
+                            default_row = (
+                                session.query(DefaultDocumentModel)
+                                .order_by(DefaultDocumentModel.id.asc())
+                                .first()
+                            )
+                            if default_row and getattr(default_row, "document_json", None) is not None:
+                                doc_json_str = _maybe_decompress_document_ws(default_row.document_json)
+                            else:
+                                doc_json_str = "{}"
+                        else:
+                            row = session.get(CustomerDocumentModel, wa_id)
+                            if row and getattr(row, "document_json", None) is not None:
+                                doc_json_str = _maybe_decompress_document_ws(row.document_json)
+                            else:
+                                # fall back to default template when user has no doc
+                                default_row = (
+                                    session.query(DefaultDocumentModel)
+                                    .order_by(DefaultDocumentModel.id.asc())
+                                    .first()
+                                )
+                                if default_row and getattr(default_row, "document_json", None) is not None:
+                                    doc_json_str = _maybe_decompress_document_ws(default_row.document_json)
+                                else:
+                                    doc_json_str = "{}"
+                    # Try to parse to guarantee valid JSON
+                    try:
+                        doc_obj = json.loads(doc_json_str)
+                    except Exception:
+                        doc_obj = {}
+                    await conn.send_json({
+                        "type": "document_snapshot",
+                        "timestamp": _utc_iso_now(),
+                        "data": {"wa_id": wa_id, "document": doc_obj},
+                    })
+                except Exception as e:
+                    logging.error(f"WS get_document error: {e}")
+                    await conn.send_json({
+                        "type": "document_snapshot",
+                        "timestamp": _utc_iso_now(),
+                        "data": {"wa_id": str((payload.get('data') or {}).get('wa_id') or ''), "document": {}},
+                    })
             elif msg_type == "modify_reservation":
                 # Handle reservation modification via websocket
                 try:
@@ -592,6 +669,64 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 except Exception as e:
                     logging.error(f"Vacation update exception: {e}")
                     await conn.send_json({"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": "exception"})
+            elif msg_type == "get_customer":
+                # Serve customer profile (name/age) for a given wa_id
+                try:
+                    data = payload.get("data") or {}
+                    wa_id = str(data.get("wa_id") or "").strip()
+                    if not wa_id:
+                        await conn.send_json({
+                            "type": "customer_profile",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"wa_id": wa_id, "name": None, "age": None},
+                        })
+                        continue
+                    from app.db import get_session, CustomerModel
+                    from datetime import date
+                    name_val = None
+                    age_val = None
+                    age_recorded_at = None
+                    with get_session() as session:
+                        row = session.get(CustomerModel, wa_id)
+                        if row:
+                            try:
+                                name_val = getattr(row, "customer_name", None)
+                            except Exception:
+                                name_val = None
+                            try:
+                                age_val = getattr(row, "age", None)
+                                recorded = getattr(row, "age_recorded_at", None)
+                                if age_val is not None:
+                                    eff = age_val
+                                    if recorded is not None:
+                                        try:
+                                            today = date.today()
+                                            years = (
+                                                today.year
+                                                - recorded.year
+                                                - ((today.month, today.day) < (recorded.month, recorded.day))
+                                            )
+                                            if years > 0:
+                                                eff = max(0, age_val + years)
+                                        except Exception:
+                                            eff = age_val
+                                    age_val = eff
+                                    age_recorded_at = recorded.isoformat() if recorded else None
+                            except Exception:
+                                age_val = None
+                                age_recorded_at = None
+                    await conn.send_json({
+                        "type": "customer_profile",
+                        "timestamp": _utc_iso_now(),
+                        "data": {"wa_id": wa_id, "name": name_val, "age": age_val, "age_recorded_at": age_recorded_at},
+                    })
+                except Exception as e:
+                    logging.error(f"WS get_customer error: {e}")
+                    await conn.send_json({
+                        "type": "customer_profile",
+                        "timestamp": _utc_iso_now(),
+                        "data": {"wa_id": str((payload.get('data') or {}).get('wa_id') or ''), "name": None, "age": None},
+                    })
             else:
                 # Unknown message types ignored
                 await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})

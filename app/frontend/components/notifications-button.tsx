@@ -11,7 +11,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import { callPythonBackend } from "@/lib/backend";
 import { useLanguage } from "@/lib/language-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { cn } from "@/lib/utils";
@@ -118,26 +117,30 @@ export function NotificationsButton({
 		[reservations],
 	);
 
-	// Load persisted notifications from backend on mount (no sessionStorage gate)
+	// Load notifications via WebSocket history event only (no REST fallback)
 	React.useEffect(() => {
 		let isCancelled = false;
-		(async () => {
+		const fromWs = (ev: Event) => {
 			try {
-				const resp = await callPythonBackend<{
-					success?: boolean;
-					data?: Array<{
-						id: number;
-						type: string;
-						timestamp: string;
-						data: Record<string, unknown>;
-					}>;
-					message?: string;
-				}>("/notifications?limit=2000");
-				const list = Array.isArray(resp?.data) ? resp.data : [];
+				const detail = (ev as CustomEvent).detail as
+					| {
+							items?: Array<{
+								id?: number | string;
+								type?: string;
+								timestamp?: string | number;
+								data?: Record<string, unknown>;
+							}>;
+					  }
+					| undefined;
+				const list = Array.isArray(detail?.items) ? detail?.items : [];
 				const loaded: NotificationItem[] = list
 					.map((r) => {
-						const tsIso = String(r.timestamp || "");
-						const tsNum = Number(new Date(tsIso).getTime() || Date.now());
+						const tsNum = (() => {
+							const t = r.timestamp as string | number | undefined;
+							if (typeof t === "number") return t;
+							const tsIso = String(t || "");
+							return Number(new Date(tsIso).getTime() || Date.now());
+						})();
 						const d = (r.data || {}) as ReservationData;
 						const compositeKey = `${r.type}:${d?.id ?? d?.wa_id ?? ""}:${d?.date ?? ""}:${d?.time_slot ?? ""}`;
 						return {
@@ -168,7 +171,7 @@ export function NotificationsButton({
 							})(),
 							timestamp: tsNum,
 							unread: false,
-							type: r.type,
+							type: String(r.type || ""),
 							data: d,
 						};
 					})
@@ -208,9 +211,45 @@ export function NotificationsButton({
 				loaded.sort((a, b) => b.timestamp - a.timestamp);
 				if (!isCancelled) setItems(loaded.slice(0, 2000));
 			} catch {}
-		})();
+		};
+		window.addEventListener("notifications:history", fromWs as EventListener);
+		// Send one WS request for notifications history (guard to prevent duplicates)
+		try {
+			(
+				window as unknown as { __notif_history_requested__?: boolean }
+			).__notif_history_requested__ =
+				(window as unknown as { __notif_history_requested__?: boolean })
+					.__notif_history_requested__ || false;
+			const already = (
+				window as unknown as {
+					__notif_history_requested__?: boolean;
+				}
+			).__notif_history_requested__;
+			if (!already) {
+				const wsRef = (
+					globalThis as {
+						__wsConnection?: { current?: WebSocket };
+					}
+				).__wsConnection;
+				if (wsRef?.current?.readyState === WebSocket.OPEN) {
+					wsRef.current.send(
+						JSON.stringify({
+							type: "get_notifications",
+							data: { limit: 2000 },
+						}),
+					);
+				}
+				(
+					window as unknown as { __notif_history_requested__?: boolean }
+				).__notif_history_requested__ = true;
+			}
+		} catch {}
 		return () => {
 			isCancelled = true;
+			window.removeEventListener(
+				"notifications:history",
+				fromWs as EventListener,
+			);
 		};
 	}, [isLocalized, resolveCustomerName]);
 

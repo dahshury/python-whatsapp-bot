@@ -1,7 +1,9 @@
 import type { EventChangeArg } from "@fullcalendar/core";
+import { useRouter } from "next/navigation";
 import type React from "react";
 import type { CalendarCallbacks } from "@/lib/calendar-callbacks";
 import { calculateCalendarHeight } from "@/lib/calendar-view-utils";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import type {
 	CalendarEvent,
 	ConversationMessage,
@@ -111,6 +113,8 @@ export function CalendarMainContent({
 	setCurrentDate,
 }: CalendarMainContentProps) {
 	const _isLocalized = isLocalized ?? false;
+	const router = useRouter();
+	const { setSelectedDocumentWaId } = useSidebarChatStore();
 	return (
 		<>
 			<CalendarCore
@@ -229,8 +233,9 @@ export function CalendarMainContent({
 				onOpenConversation={handleOpenConversation}
 				onOpenDocument={(waId) => {
 					try {
+						setSelectedDocumentWaId(waId || "");
 						if (typeof window !== "undefined") {
-							window.location.href = `/documents?waId=${encodeURIComponent(waId)}`;
+							router.push("/documents");
 						}
 					} catch {}
 				}}

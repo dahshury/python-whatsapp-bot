@@ -710,7 +710,9 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							<div className="px-4 py-1.5 border-b flex flex-row items-center justify-between">
 								<div className="flex flex-col space-y-1.5">
 									<h2
-										className={`text-xl font-semibold leading-none tracking-tight py-2 ${_isLocalized ? "text-right" : "text-left"}`}
+										className={
+											"text-xl font-semibold leading-none tracking-tight py-2 text-left"
+										}
 									>
 										{_isLocalized ? "محرر البيانات" : "Data Editor"} -{" "}
 										{formatDateRange()}

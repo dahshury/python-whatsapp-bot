@@ -1,13 +1,11 @@
 import * as React from "react";
 import { parsePhoneNumber } from "react-phone-number-input";
-import {
-	PhoneCombobox,
-	type PhoneOption,
-} from "@/components/ui/phone-combobox";
+import { PhoneCombobox } from "@/components/ui/phone-combobox";
 import { useCustomerData } from "@/lib/customer-data-context";
 import { DEFAULT_DOCUMENT_WA_ID } from "@/lib/default-document";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
+import type { PhoneOption } from "@/types/phone";
 
 // Format phone number for display
 const formatPhoneForDisplay = (phoneNumber: string): string => {

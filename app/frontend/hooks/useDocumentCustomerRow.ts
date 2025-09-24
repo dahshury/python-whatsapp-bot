@@ -12,6 +12,7 @@ import { useCustomerData } from "@/lib/customer-data-context";
 import { DEFAULT_DOCUMENT_WA_ID } from "@/lib/default-document";
 import { stableStringify } from "@/lib/documents/scene-utils";
 import { i18n } from "@/lib/i18n";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 
 const CUSTOMER_TTL_MS = 15_000;
@@ -47,6 +48,7 @@ export function useDocumentCustomerRow(
 	const { customers } = useCustomerData();
 	const customersRef = useRef(customers);
 	const router = useRouter();
+	const { setSelectedDocumentWaId } = useSidebarChatStore();
 	const isNewCustomerModeRef = useRef<boolean>(false);
 
 	// Re-evaluate completeness/unlock when data source is applied (e.g., after refresh)
@@ -413,9 +415,8 @@ export function useDocumentCustomerRow(
 						body: JSON.stringify({ name, age }),
 					});
 					try {
-						router.push(
-							`/documents?waId=${encodeURIComponent(normalizedPhone)}`,
-						);
+						setSelectedDocumentWaId(normalizedPhone);
+						router.push("/documents");
 					} catch {}
 					return;
 				}
@@ -428,7 +429,7 @@ export function useDocumentCustomerRow(
 				});
 			} catch {}
 		}, 400);
-	}, [waId, computeIsCustomerComplete, router]);
+	}, [waId, computeIsCustomerComplete, router, setSelectedDocumentWaId]);
 
 	const onAddRowOverride = useCallback(() => {
 		try {
@@ -540,9 +541,10 @@ export function useDocumentCustomerRow(
 			} catch {}
 			hasAutoCreatedRef.current = true;
 			isNewCustomerModeRef.current = false;
-			router.push(`/documents?waId=${encodeURIComponent(newWaId)}`);
+			setSelectedDocumentWaId(newWaId);
+			router.push("/documents");
 		} catch {}
-	}, [computeIsCustomerComplete, router, waId]);
+	}, [computeIsCustomerComplete, router, waId, setSelectedDocumentWaId]);
 
 	useEffect(() => {
 		// reset the guard when waId changes away from empty/default
@@ -569,7 +571,8 @@ export function useDocumentCustomerRow(
 				const normalized = normalizePhoneForStorage(phone);
 				if (normalized === DEFAULT_DOCUMENT_WA_ID) {
 					isNewCustomerModeRef.current = false;
-					router.push(`/documents?waId=${encodeURIComponent(normalized)}`);
+					setSelectedDocumentWaId(normalized);
+					router.push("/documents");
 					return;
 				}
 				try {
@@ -585,7 +588,8 @@ export function useDocumentCustomerRow(
 					);
 					if (exists) {
 						isNewCustomerModeRef.current = false;
-						router.push(`/documents?waId=${encodeURIComponent(normalized)}`);
+						setSelectedDocumentWaId(normalized);
+						router.push("/documents");
 						return;
 					}
 				} catch {}
@@ -600,7 +604,8 @@ export function useDocumentCustomerRow(
 					.then(() => {
 						try {
 							isNewCustomerModeRef.current = false;
-							router.push(`/documents?waId=${encodeURIComponent(normalized)}`);
+							setSelectedDocumentWaId(normalized);
+							router.push("/documents");
 						} catch {}
 					})
 					.catch(() => {});
@@ -615,9 +620,9 @@ export function useDocumentCustomerRow(
 				"documents:customerSelected",
 				handler as EventListener,
 			);
-	}, [router]);
+	}, [router, setSelectedDocumentWaId]);
 
-	// Load customer row when waId changes (deduped + cached + abortable)
+	// Load customer row when waId changes (WS-first with fallback; cached + abortable)
 	useEffect(() => {
 		if (!waId) {
 			setCustomerDataSource(null);
@@ -731,47 +736,95 @@ export function useDocumentCustomerRow(
 			return;
 		}
 
-		// If a fetch is already inflight for this waId, reuse it and apply when done
-		const existing = inflightMap.get(cacheKey);
-		if (existing) {
+		// WS-first: request customer profile and listen briefly
+		let wsHandled = false;
+		const onWsProfile = (ev: Event) => {
 			try {
-				existing.promise
-					.then(() => {
-						const cachedDone = customerCache.get(cacheKey);
-						applyCustomer(cachedDone?.data || null);
-					})
-					.catch(() => {});
-			} catch {}
-			// Keep loading state true until existing completes
-			return () => {};
-		}
-		const controller = new AbortController();
-		const p = fetch(cacheKey, { cache: "no-store", signal: controller.signal })
-			.then((resp) => resp.json().catch(() => ({})))
-			.then((data) => {
-				const payload =
-					(data?.data as {
-						name?: string | null;
-						age?: number | null;
-					} | null) || null;
+				const detail = (ev as CustomEvent).detail as
+					| { wa_id?: string; name?: string | null; age?: number | null }
+					| undefined;
+				const docWaId = String(detail?.wa_id || "");
+				if (!docWaId || docWaId !== waId) return;
+				const payload = {
+					name: detail?.name ?? null,
+					age: detail?.age ?? null,
+				};
 				customerCache.set(cacheKey, { data: payload, ts: Date.now() });
 				applyCustomer(payload);
-			})
-			.catch((err) => {
-				if ((err as { name?: string })?.name === "AbortError") return;
-				setCustomerError((err as Error).message);
-			})
-			.finally(() => {
-				if (inflightMap.get(cacheKey)?.controller === controller)
-					inflightMap.delete(cacheKey);
+				wsHandled = true;
 				setCustomerLoading(false);
-			});
-		inflightMap.set(cacheKey, { controller, promise: p });
+			} catch {}
+		};
+		window.addEventListener(
+			"documents:customerProfile",
+			onWsProfile as EventListener,
+		);
+		try {
+			const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
+				.__wsConnection;
+			if (wsRef?.current?.readyState === WebSocket.OPEN) {
+				wsRef.current.send(
+					JSON.stringify({ type: "get_customer", data: { wa_id: waId } }),
+				);
+			}
+		} catch {}
+		let controller: AbortController | null = null;
+		const wsFallback = setTimeout(() => {
+			if (wsHandled) return;
+
+			// If a fetch is already inflight for this waId, reuse it and apply when done
+			const existing = inflightMap.get(cacheKey);
+			if (existing) {
+				try {
+					existing.promise
+						.then(() => {
+							const cachedDone = customerCache.get(cacheKey);
+							applyCustomer(cachedDone?.data || null);
+						})
+						.catch(() => {});
+				} catch {}
+				// Keep loading state true until existing completes
+				return;
+			}
+			controller = new AbortController();
+			const p = fetch(cacheKey, {
+				cache: "no-store",
+				signal: controller.signal,
+			})
+				.then((resp) => resp.json().catch(() => ({})))
+				.then((data) => {
+					const payload =
+						(data?.data as {
+							name?: string | null;
+							age?: number | null;
+						} | null) || null;
+					customerCache.set(cacheKey, { data: payload, ts: Date.now() });
+					applyCustomer(payload);
+				})
+				.catch((err) => {
+					if ((err as { name?: string })?.name === "AbortError") return;
+					setCustomerError((err as Error).message);
+				})
+				.finally(() => {
+					if (
+						controller &&
+						inflightMap.get(cacheKey)?.controller === controller
+					)
+						inflightMap.delete(cacheKey);
+					setCustomerLoading(false);
+				});
+			inflightMap.set(cacheKey, { controller, promise: p });
+		}, 250);
 
 		return () => {
+			clearTimeout(wsFallback);
 			try {
-				controller.abort();
+				controller?.abort();
 			} catch {}
+			window.removeEventListener(
+				"documents:customerProfile",
+				onWsProfile as EventListener,
+			);
 		};
 	}, [waId, customerColumns, isLocalized]);
 

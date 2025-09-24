@@ -44,6 +44,7 @@ export class DataTableOperationsService {
 			this.calendarIntegration,
 			localEchoManager,
 			this.isLocalized,
+			webSocketService,
 		);
 
 		this.modifyService = new ReservationModifyService(

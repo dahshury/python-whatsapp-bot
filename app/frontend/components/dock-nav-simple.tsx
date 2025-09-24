@@ -321,7 +321,7 @@ export function DockNavSimple({
 		<TooltipProvider>
 			<Dock
 				direction="middle"
-				className={cn("h-auto min-h-[2.75rem]", className)}
+				className={cn("h-auto min-h-[2.25rem]", className)}
 			>
 				<DockIcon>
 					<Tooltip>

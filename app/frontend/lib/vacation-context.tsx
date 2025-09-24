@@ -2,7 +2,8 @@
 import * as React from "react";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
-import { useVacationsData, type Vacation } from "@/lib/websocket-data-provider";
+import { useVacationsData } from "@/lib/websocket-data-provider";
+import type { Vacation } from "@/types/unified";
 import type { CalendarEvent } from "@/types/calendar";
 
 export interface VacationPeriod {

@@ -13,13 +13,14 @@ const docCache = new Map<
 	string,
 	{ data: Record<string, unknown>; ts: number }
 >();
-const inflightMap = new Map<
-	string,
-	{ controller: AbortController; promise: Promise<unknown> }
->();
+// Legacy REST inflight tracking retained for reference; unused in WS-only path
+// const inflightMap = new Map<
+//     string,
+//     { controller: AbortController; promise: Promise<unknown> }
+// >();
 
 // Track recent fetch starts to dedupe back-to-back mounts (e.g., React StrictMode)
-const lastFetchStartMs = new Map<string, number>();
+// const lastFetchStartMs = new Map<string, number>();
 
 export type ExcalidrawAPI = {
 	updateScene: (scene: {
@@ -358,75 +359,97 @@ export function useDocumentScene(
 			return true;
 		};
 
-		if (isCacheFresh()) {
-			maybeApplyFromCache();
-			setLoading(false);
-			return () => {};
-		}
+		// Try cache immediately for instant paint
+		try {
+			if (isCacheFresh()) {
+				maybeApplyFromCache();
+				setLoading(false);
+			}
+		} catch {}
 
-		// If a fetch is already inflight for this key, reuse it instead of starting a new one
-		const existing = inflightMap.get(cacheKey);
-		if (existing) {
+		// WS-first with safe REST fallback
+		let wsHandled = false;
+		const onWsSnapshot = (ev: Event) => {
 			try {
-				// When existing promise resolves, apply from cache to current seq
-				existing.promise
-					.then(() => {
-						const cachedDone = docCache.get(cacheKey);
-						if (!cachedDone) return;
-						const scene = toSceneFromDoc(
-							(cachedDone.data as { document?: Record<string, unknown> })
-								?.document,
-						);
-						applyScene(scene as Record<string, unknown>, seq);
-					})
-					.catch(() => {});
+				const detail = (ev as CustomEvent).detail as {
+					wa_id?: string;
+					document?: Record<string, unknown>;
+				};
+				const docWaId = String(detail?.wa_id || "");
+				if (!docWaId || docWaId !== waId) return;
+				console.log("📥 [WS] document_snapshot received for waId", docWaId);
+				const scene = toSceneFromDoc(detail?.document || {});
+				applyScene(scene as Record<string, unknown>, seq);
+				wsHandled = true;
+				setLoading(false);
 			} catch {}
-			setLoading(true);
-			return () => {};
-		}
+		};
+		window.addEventListener(
+			"documents:sceneSnapshot",
+			onWsSnapshot as EventListener,
+		);
+		let controller: AbortController | null = null;
+		try {
+			const wsRef = (
+				globalThis as {
+					__wsConnection?: { current?: WebSocket };
+				}
+			).__wsConnection;
+			const send = () => {
+				console.log("📤 [WS] sending get_document for waId", waId);
+				wsRef?.current?.send?.(
+					JSON.stringify({ type: "get_document", data: { wa_id: waId } }),
+				);
+			};
+			if (wsRef?.current?.readyState === WebSocket.OPEN) {
+				send();
+			} else if (wsRef?.current) {
+				const t = setInterval(() => {
+					try {
+						if (wsRef?.current?.readyState === WebSocket.OPEN) {
+							send();
+							clearInterval(t);
+						}
+					} catch {}
+				}, 300);
+				setTimeout(() => {
+					try {
+						clearInterval(t);
+					} catch {}
+				}, 5000);
+			}
+		} catch {}
 
-		const controller = new AbortController();
-		const prevUpdatedAtUnknown = (
-			docCache.get(cacheKey)?.data as { updated_at?: unknown } | undefined
-		)?.updated_at;
-		const ifModifiedHeader =
-			prevUpdatedAtUnknown !== undefined && prevUpdatedAtUnknown !== null
-				? {
-						"If-Modified-Since": String(
-							prevUpdatedAtUnknown as string | number | Date,
-						),
-					}
-				: {};
-		lastFetchStartMs.set(cacheKey, Date.now());
-		const p = fetch(cacheKey, {
-			cache: "no-store",
-			signal: controller.signal,
-			headers: { ...ifModifiedHeader },
-		})
-			.then((res) => res.json())
-			.then((data) => {
-				docCache.set(cacheKey, { data, ts: Date.now() });
-				if (seq === loadSeqRef.current) {
+		// REST fallback after short delay if no WS snapshot
+		const wsFallback = setTimeout(() => {
+			if (wsHandled) return;
+			controller = new AbortController();
+			fetch(`/api/documents/${encodeURIComponent(waId)}`, {
+				cache: "no-store",
+				signal: controller.signal,
+			})
+				.then((res) => res.json())
+				.then((data) => {
 					const scene = toSceneFromDoc(
 						(data as { document?: Record<string, unknown> })?.document,
 					);
 					applyScene(scene as Record<string, unknown>, seq);
-				}
-			})
-			.catch((err) => {
-				if ((err as { name?: string })?.name === "AbortError") return;
-				setError((err as Error).message);
-			})
-			.finally(() => {
-				if (inflightMap.get(cacheKey)?.controller === controller)
-					inflightMap.delete(cacheKey);
-				setLoading(false);
-			});
-
-		inflightMap.set(cacheKey, { controller, promise: p });
+				})
+				.catch(() => {})
+				.finally(() => setLoading(false));
+		}, 600);
 
 		return () => {
-			// Do not abort inflight fetch; allow dedupe/reuse across remounts
+			try {
+				if (controller) controller.abort();
+			} catch {}
+			try {
+				clearTimeout(wsFallback);
+			} catch {}
+			window.removeEventListener(
+				"documents:sceneSnapshot",
+				onWsSnapshot as EventListener,
+			);
 		};
 	}, [waId, applyScene, enabled]);
 

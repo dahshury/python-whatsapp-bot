@@ -12,6 +12,9 @@ interface SidebarChatState {
 	selectedConversationId?: string | null;
 	isLoadingConversation: boolean;
 
+	// Documents-specific state (selection without URL params)
+	selectedDocumentWaId: string | null;
+
 	// Cross-component triggers
 	shouldOpenChat: boolean;
 	conversationIdToOpen?: string | null;
@@ -24,6 +27,7 @@ interface SidebarChatState {
 	setChatSidebarOpen: (open: boolean) => void;
 	setSelectedConversation: (id?: string | null) => void;
 	setLoadingConversation: (loading: boolean) => void;
+	setSelectedDocumentWaId: (waId?: string | null) => void;
 	clearOpenRequest: () => void;
 	openConversation: (id: string) => void;
 	setConversation: (id?: string | null) => void; // alias
@@ -36,6 +40,7 @@ const useSidebarChatStore = create<SidebarChatState>((set) => ({
 	activeTab: "calendar",
 	selectedConversationId: null,
 	isLoadingConversation: false,
+	selectedDocumentWaId: null,
 	shouldOpenChat: false,
 	conversationIdToOpen: null,
 	_hasHydrated: true,
@@ -54,6 +59,7 @@ const useSidebarChatStore = create<SidebarChatState>((set) => ({
 	setChatSidebarOpen: (open) => set({ isChatSidebarOpen: open }),
 	setSelectedConversation: (id) => set({ selectedConversationId: id ?? null }),
 	setLoadingConversation: (loading) => set({ isLoadingConversation: loading }),
+	setSelectedDocumentWaId: (waId) => set({ selectedDocumentWaId: waId ?? null }),
 	clearOpenRequest: () =>
 		set({ shouldOpenChat: false, conversationIdToOpen: null }),
 	openConversation: (id) =>

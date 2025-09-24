@@ -10,10 +10,12 @@ import {
 	MessageCircle,
 	User,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { Z_INDEX } from "@/lib/z-index";
 import type { CalendarEvent } from "@/types/calendar";
 
@@ -40,6 +42,8 @@ export function CalendarEventContextMenu({
 }: CalendarEventContextMenuProps) {
 	const { isLocalized } = useLanguage();
 	const [mounted, setMounted] = useState(false);
+	const router = useRouter();
+	const { setSelectedDocumentWaId } = useSidebarChatStore();
 
 	useEffect(() => {
 		setMounted(true);
@@ -205,7 +209,8 @@ export function CalendarEventContextMenu({
 								if (onOpenDocument) {
 									onOpenDocument(wa);
 								} else if (typeof window !== "undefined") {
-									window.location.href = `/documents?waId=${encodeURIComponent(wa)}`;
+									setSelectedDocumentWaId(wa || "");
+									router.push("/documents");
 								}
 							} catch {}
 							onClose();
@@ -233,7 +238,8 @@ export function CalendarEventContextMenu({
 									if (onOpenDocument) {
 										onOpenDocument(wa);
 									} else if (typeof window !== "undefined") {
-										window.location.href = `/documents?waId=${encodeURIComponent(wa)}`;
+										setSelectedDocumentWaId(wa || "");
+										router.push("/documents");
 									}
 								} catch {}
 								onClose();

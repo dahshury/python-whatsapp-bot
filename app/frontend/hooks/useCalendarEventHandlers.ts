@@ -5,13 +5,15 @@ import { getSlotTimes, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import { convertDataTableEventToCalendarEvent } from "@/lib/calendar-event-converters";
 import {
 	handleCancelReservation as handleCancelReservationService,
-	handleEventChange as handleEventChangeService,
 	handleOpenConversation as handleOpenConversationService,
 } from "@/lib/calendar-event-handlers";
+import { CalendarDnDService } from "@/lib/services/calendar/calendar-dnd.service";
+import { LocalEchoManager } from "@/lib/services/utils/local-echo.manager";
+import { WebSocketService } from "@/lib/services/websocket/websocket.service";
 import { to24h } from "@/lib/utils";
 import type { CalendarEvent } from "@/types/calendar";
 
-type HandleEventChangeArgs = Parameters<typeof handleEventChangeService>[0];
+// Removed HandleEventChangeArgs from legacy handler to avoid unused type
 type CancelReservationArgs = Parameters<
 	typeof handleCancelReservationService
 >[0];
@@ -461,29 +463,31 @@ export function useCalendarEventHandlers({
 				console.warn("No calendar ref available for event change handling");
 			}
 
-			await handleEventChangeService({
-				info: info as unknown as HandleEventChangeArgs["info"],
+			// Use CalendarDnDService for SoC and DRY
+			const api = getCalendarApi?.();
+			if (!api) return;
+			const wsService = new WebSocketService();
+			const echo = new LocalEchoManager();
+			const dnd = new CalendarDnDService(
+				api as unknown as import("@/lib/services/types/data-table-types").CalendarApi,
+				wsService,
+				echo,
+				_isLocalized,
+			);
+			await dnd.handleEventChange({
+				info: info as unknown as import("@/lib/services/calendar/calendar-dnd.service").EventChangeInfo,
 				isVacationDate,
-				isLocalized: _isLocalized,
 				currentView,
-				onRefresh: handleRefreshWithBlur,
-				...(getCalendarApi
-					? {
-							getCalendarApi: () =>
-								getCalendarApi() as unknown as ReturnType<
-									NonNullable<HandleEventChangeArgs["getCalendarApi"]>
-								>,
-						}
-					: {}),
-				updateEvent:
-					updateEvent as unknown as HandleEventChangeArgs["updateEvent"],
+				updateEvent: updateEvent as unknown as (
+					id: string,
+					event: { id: string; title?: string; start?: string; end?: string },
+				) => void,
 				resolveEvent: (id: string) => {
 					// Prefer React state events for reliable extendedProps
 					const stateEvent = events.find((e) => e.id === String(id));
 					if (stateEvent)
 						return { extendedProps: stateEvent.extendedProps || {} };
 					try {
-						const api = getCalendarApi?.();
 						const ev = api?.getEventById?.(String(id));
 						return ev
 							? { extendedProps: (ev as EventApi).extendedProps || {} }
@@ -498,7 +502,6 @@ export function useCalendarEventHandlers({
 			isVacationDate,
 			_isLocalized,
 			currentView,
-			handleRefreshWithBlur,
 			calendarRef,
 			updateEvent,
 			events.find,

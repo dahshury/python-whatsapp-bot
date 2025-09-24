@@ -117,11 +117,7 @@ export function WordCloudChart({
 	);
 
 	return (
-		<div
-			className={className}
-			dir={isLocalized ? "rtl" : "ltr"}
-			ref={containerRef}
-		>
+		<div className={className} ref={containerRef}>
 			{ReactWordcloud ? (
 				sizedWords.length > 0 && canRender ? (
 					<SafeBoundary fallback={noData}>

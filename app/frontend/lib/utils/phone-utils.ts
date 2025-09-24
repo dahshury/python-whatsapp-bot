@@ -40,6 +40,61 @@ export function formatPhoneForDisplay(phone: string | undefined): string {
 	return `+${normalized}`;
 }
 
+// New utilities for combobox refactor
+import type * as RPNInput from "react-phone-number-input";
+import { parsePhoneNumber } from "react-phone-number-input";
+import { CALLING_CODE_TO_COUNTRY, CALLING_CODES_SORTED } from "@/lib/phone/countries";
+
+/** Convert `00` prefix to `+` prefix */
+export const convertZeroZeroToPlus = (phoneNumber: string): string => {
+	if (phoneNumber.startsWith("00")) {
+		return `+${phoneNumber.substring(2)}`;
+	}
+	return phoneNumber;
+};
+
+/** Infer country from a phone number string. Robust to plain digits and 00 prefix. */
+export const getCountryFromPhone = (phoneNumber: string): RPNInput.Country => {
+	try {
+		if (!phoneNumber) return "US" as RPNInput.Country;
+		let normalized = convertZeroZeroToPlus(String(phoneNumber).trim());
+		const digitsOnly = normalized.replace(/[\s-]/g, "");
+		if (!normalized.startsWith("+") && /^\d+$/.test(digitsOnly)) {
+			normalized = `+${digitsOnly}`;
+		}
+		const parsed = parsePhoneNumber(normalized);
+		if (parsed?.country) return parsed.country as RPNInput.Country;
+	} catch {}
+
+	// Fallback by calling code prefix if parsing failed
+	try {
+		let s = String(phoneNumber || "");
+		s = convertZeroZeroToPlus(s);
+		if (s.startsWith("+")) s = s.slice(1);
+		const digits = s.replace(/\D/g, "");
+		if (digits) {
+			const match = CALLING_CODES_SORTED.find((code) => digits.startsWith(code));
+			if (match) return CALLING_CODE_TO_COUNTRY[match] as RPNInput.Country;
+		}
+	} catch {}
+	return "US" as RPNInput.Country;
+};
+
+/** Format number for clean display without affecting value semantics */
+export const formatNumberForDisplay = (phoneNumber: string): string => {
+	try {
+		let normalized = phoneNumber;
+		const digitsOnly = normalized.replace(/[\s-]/g, "");
+		if (normalized && !normalized.startsWith("+") && /^\d+$/.test(digitsOnly)) {
+			normalized = `+${digitsOnly}`;
+		}
+		const parsed = parsePhoneNumber(normalized);
+		if (parsed) return parsed.formatInternational();
+		return normalized;
+	} catch {}
+	return phoneNumber;
+};
+
 /**
  * Check if a phone number is valid (basic validation)
  *

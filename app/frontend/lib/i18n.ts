@@ -105,6 +105,8 @@ const en = {
 	phone_no_phone_found: "No phone number found.",
 	phone_add_number_label: 'Add "{value}" as new phone number',
 	phone_select_placeholder: "Select a phone number",
+	phone_new_number_label: "New Phone Number",
+	phone_unknown_label: "Unknown",
 	// Column/format menus
 	cm_sort_asc: "Sort ascending",
 	cm_sort_desc: "Sort descending",
@@ -192,6 +194,23 @@ const ar = {
 	unsaved_changes: "تغييرات غير محفوظة",
 	default_contact: "افتراضي",
 };
+
+// Chat toolbar/title and emoji search keys
+Object.assign(en, {
+    chat_toolbar_bold: "Bold (*text*)",
+    chat_toolbar_italic: "Italic (_text_)",
+    chat_toolbar_strike: "Strikethrough (~text~)",
+    chat_toolbar_code: "Monospace (`text`)",
+    emoji_search: "Search emoji...",
+});
+
+Object.assign(ar, {
+    chat_toolbar_bold: "عريض (*نص*)",
+    chat_toolbar_italic: "مائل (_نص_)",
+    chat_toolbar_strike: "مشطوب (~نص~)",
+    chat_toolbar_code: "أحادي المسافة (`نص`)",
+    emoji_search: "ابحث عن الإيموجي...",
+});
 
 // Extend English keys for charts, messages, operations, insights
 Object.assign(en, {

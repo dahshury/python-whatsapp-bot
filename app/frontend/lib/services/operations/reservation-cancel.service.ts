@@ -10,12 +10,14 @@ import type {
 	SuccessfulOperation,
 } from "../types/data-table-types";
 import type { LocalEchoManager } from "../utils/local-echo.manager";
+import type { WebSocketService } from "../websocket/websocket.service";
 
 export class ReservationCancelService {
 	constructor(
 		private readonly calendarIntegration: CalendarIntegrationService,
 		private readonly localEchoManager: LocalEchoManager,
 		private readonly isLocalized: boolean,
+		private readonly webSocketService?: WebSocketService,
 	) {}
 
 	async processCancellations(
@@ -52,12 +54,16 @@ export class ReservationCancelService {
 					}
 				} catch {}
 
-				// Backend cancellation
-				const resp = (await cancelReservation({
-					id: waId,
-					date,
-					isLocalized: this.isLocalized,
-				})) as unknown as ApiResponse;
+				// Backend cancellation via WebSocket, fallback to HTTP
+				const resp = this.webSocketService
+					? await this.webSocketService.cancelReservation(waId, date, {
+							isLocalized: this.isLocalized,
+					  })
+					: ((await cancelReservation({
+							id: waId,
+							date,
+							isLocalized: this.isLocalized,
+					  })) as unknown as ApiResponse);
 
 				if (!resp?.success) {
 					throw new Error(resp?.message || resp?.error || "Cancel failed");

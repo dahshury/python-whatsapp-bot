@@ -1,5 +1,4 @@
 from typing import Optional
-from datetime import date
 from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
 from .customer_models import Customer
 

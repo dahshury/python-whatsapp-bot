@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadCachedState, persistState } from "@/lib/ws/cache";
 import { reduceOnMessage } from "@/lib/ws/reducer";
 import type {
@@ -6,7 +7,6 @@ import type {
 	WebSocketMessage,
 } from "@/lib/ws/types";
 import { resolveWebSocketUrl } from "@/lib/ws/url";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // Toggle verbose WebSocket error logging via env flag (default: off)
 const WS_DEBUG = process.env.NEXT_PUBLIC_WS_DEBUG === "true";
@@ -150,6 +150,10 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			);
 			const ws = __g.__wsInstance as WebSocket;
 			wsRef.current = ws;
+			// Ensure global window reference is set even when reusing an already-open instance
+			try {
+				setWindowProperty("__wsConnection", wsRef);
+			} catch {}
 			// Rebind handlers to this hook instance to avoid stale closures after StrictMode remounts
 			try {
 				ws.onmessage = (event) => {

@@ -225,7 +225,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						?.waId || "",
 				);
 				if (waIdFromEvent) {
-					router.push(`/documents?waId=${encodeURIComponent(waIdFromEvent)}`);
+					try {
+						const setter =
+							useSidebarChatStore.getState().setSelectedDocumentWaId;
+						if (typeof setter === "function") setter(waIdFromEvent);
+					} catch {}
+					router.push("/documents");
 				}
 			} catch {}
 		},
@@ -459,7 +464,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 	if (isDocumentsPage) {
 		return (
-			<Sidebar {...props} className="bg-sidebar">
+			<Sidebar {...props} className="bg-sidebar" dir="ltr">
 				<SidebarHeader className="border-b border-sidebar-border p-4 bg-sidebar">
 					<div className="flex items-center gap-2 mb-0">
 						<Calendar className="h-6 w-6" />
@@ -468,144 +473,156 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						</span>
 					</div>
 				</SidebarHeader>
-				<SidebarContent className="px-3 pt-1 pb-3 bg-sidebar">
-					{/* Mini list-view calendar with simple dock navigation */}
-					<div className="mt-0 flex-1 min-h-0 flex flex-col">
-						{/* Minimal navigation: Prev | Title (Today) | Next */}
-						<div className="mb-1 flex items-center justify-between gap-2">
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => {
-									try {
-										miniCalendarRef.current?.getApi?.()?.prev?.();
-									} catch {}
-								}}
-								aria-label={isLocalized ? "السابق" : "Previous"}
-								className="size-9 rounded-full"
+				{/* Theme-aware aurora overlay for Documents sidebar */}
+				<SidebarContent className="px-3 pt-1 pb-3 bg-sidebar relative overflow-hidden">
+					<div
+						className="absolute inset-0 z-0 pointer-events-none"
+						style={{
+							background: `radial-gradient(circle at top,
+								hsl(var(--foreground) / 0.06) 0%,
+								hsl(var(--sidebar-primary) / 0.08) 22%,
+								transparent 60%)`,
+						}}
+					/>
+					<div className="relative z-[1] flex min-h-0 flex-1 flex-col">
+						{/* Mini list-view calendar with simple dock navigation */}
+						<div className="mt-0 flex-1 min-h-0 flex flex-col overflow-auto">
+							{/* Minimal navigation: Prev | Title (Today) | Next */}
+							<div className="mb-1 flex items-center justify-between gap-2">
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => {
+										try {
+											miniCalendarRef.current?.getApi?.()?.prev?.();
+										} catch {}
+									}}
+									aria-label={isLocalized ? "السابق" : "Previous"}
+									className="size-9 rounded-full"
+								>
+									<ChevronLeft className="size-4" />
+								</Button>
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => {
+										try {
+											miniCalendarRef.current?.getApi?.()?.today?.();
+										} catch {}
+									}}
+									disabled={miniIsTodayDisabled}
+									className="h-9 w-[12.5rem] rounded-full"
+									aria-label={isLocalized ? "الذهاب إلى اليوم" : "Go to today"}
+								>
+									<CalendarDays className="h-4 w-4 mr-2" />
+									<span
+										className="text-sm font-medium truncate max-w-[9.375rem]"
+										id={titleId}
+									/>
+								</Button>
+								<Button
+									variant="ghost"
+									size="icon"
+									onClick={() => {
+										try {
+											miniCalendarRef.current?.getApi?.()?.next?.();
+										} catch {}
+									}}
+									aria-label={isLocalized ? "التالي" : "Next"}
+									className="size-9 rounded-full"
+								>
+									<ChevronRight className="size-4" />
+								</Button>
+							</div>
+							<div
+								ref={miniCalendarContainerRef}
+								className="calendar-translucent border rounded-md overflow-hidden bg-background/10 backdrop-blur-[2px] flex-1 min-h-0"
 							>
-								<ChevronLeft className="size-4" />
-							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => {
-									try {
-										miniCalendarRef.current?.getApi?.()?.today?.();
-									} catch {}
-								}}
-								disabled={miniIsTodayDisabled}
-								className="h-9 w-[12.5rem] rounded-full"
-								aria-label={isLocalized ? "الذهاب إلى اليوم" : "Go to today"}
-							>
-								<CalendarDays className="h-4 w-4 mr-2" />
-								<span
-									className="text-sm font-medium truncate max-w-[9.375rem]"
-									id={titleId}
-								/>
-							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => {
-									try {
-										miniCalendarRef.current?.getApi?.()?.next?.();
-									} catch {}
-								}}
-								aria-label={isLocalized ? "التالي" : "Next"}
-								className="size-9 rounded-full"
-							>
-								<ChevronRight className="size-4" />
-							</Button>
-						</div>
-						<div
-							ref={miniCalendarContainerRef}
-							className="border rounded-md overflow-hidden bg-card flex-1 min-h-0"
-						>
-							<CalendarCore
-								ref={miniCalendarRef}
-								events={miniEvents}
-								currentView="listMonth"
-								currentDate={miniCalDate}
-								isLocalized={isLocalized}
-								freeRoam={true}
-								slotTimes={miniSlotTimes}
-								slotTimesKey={miniSlotTimesKey}
-								calendarHeight={miniCalendarHeight}
-								onEventClick={handleMiniEventClick}
-								onNavDate={handleMiniNavDate}
-								// Disable validRange constraints for sidebar mini calendar to allow past navigation
-								overrideValidRange={true}
-								onDatesSet={(info) => {
-									try {
-										const el = document.getElementById(titleId);
-										if (el) el.textContent = String(info?.view?.title || "");
-										const cs = info?.view?.currentStart as Date | undefined;
-										const ce = info?.view?.currentEnd as Date | undefined;
-										const today = new Date();
-										today.setHours(0, 0, 0, 0);
-										if (cs && ce) {
-											setMiniIsTodayDisabled(today >= cs && today < ce);
-										}
-									} catch {}
-								}}
-								onViewDidMount={(info) => {
-									try {
-										const el = document.getElementById(titleId);
-										if (el) el.textContent = String(info?.view?.title || "");
-										// Fallback compute via API on first mount
-										const api = miniCalendarRef.current?.getApi?.();
-										const cs = api?.view?.currentStart as Date | undefined;
-										const ce = api?.view?.currentEnd as Date | undefined;
-										if (cs && ce) {
+								<CalendarCore
+									ref={miniCalendarRef}
+									events={miniEvents}
+									currentView="listMonth"
+									currentDate={miniCalDate}
+									isLocalized={isLocalized}
+									freeRoam={true}
+									slotTimes={miniSlotTimes}
+									slotTimesKey={miniSlotTimesKey}
+									calendarHeight={miniCalendarHeight}
+									onEventClick={handleMiniEventClick}
+									onNavDate={handleMiniNavDate}
+									// Disable validRange constraints for sidebar mini calendar to allow past navigation
+									overrideValidRange={true}
+									onDatesSet={(info) => {
+										try {
+											const el = document.getElementById(titleId);
+											if (el) el.textContent = String(info?.view?.title || "");
+											const cs = info?.view?.currentStart as Date | undefined;
+											const ce = info?.view?.currentEnd as Date | undefined;
 											const today = new Date();
 											today.setHours(0, 0, 0, 0);
-											setMiniIsTodayDisabled(today >= cs && today < ce);
-										}
-									} catch {}
-								}}
-								droppable={false}
-							/>
+											if (cs && ce) {
+												setMiniIsTodayDisabled(today >= cs && today < ce);
+											}
+										} catch {}
+									}}
+									onViewDidMount={(info) => {
+										try {
+											const el = document.getElementById(titleId);
+											if (el) el.textContent = String(info?.view?.title || "");
+											// Fallback compute via API on first mount
+											const api = miniCalendarRef.current?.getApi?.();
+											const cs = api?.view?.currentStart as Date | undefined;
+											const ce = api?.view?.currentEnd as Date | undefined;
+											if (cs && ce) {
+												const today = new Date();
+												today.setHours(0, 0, 0, 0);
+												setMiniIsTodayDisabled(today >= cs && today < ce);
+											}
+										} catch {}
+									}}
+									droppable={false}
+								/>
+							</div>
 						</div>
-					</div>
-					{/* Save/lock status row (reads from window vars set by the Documents page) */}
-					<div className="pt-3 border-t border-sidebar-border text-sm text-muted-foreground flex items-center gap-2">
-						{!mounted ? null : docSaveState.loading ? (
-							<>
-								<CircleDashed className="h-4 w-4 animate-spin" />
-								<span>{i18n.getMessage("loading", isLocalized)}</span>
-							</>
-						) : docSaveState.saving ? (
-							<>
-								<CircleDashed className="h-4 w-4 animate-spin" />
-								<span>{i18n.getMessage("saving", isLocalized)}</span>
-							</>
-						) : docSaveState.errorMessage ? (
-							<>
-								<CircleAlert className="h-4 w-4 text-red-500" />
-								<span
-									className="truncate max-w-[12rem]"
-									title={docSaveState.errorMessage}
-								>
-									{docSaveState.errorMessage}
-								</span>
-							</>
-						) : docLocked ? (
-							<>
-								<CircleAlert className="h-4 w-4 text-amber-500" />
-								<span>{i18n.getMessage("locked", isLocalized)}</span>
-							</>
-						) : docSaveState.isDirty ? (
-							<>
-								<CircleAlert className="h-4 w-4 text-amber-500" />
-								<span>{i18n.getMessage("unsaved_changes", isLocalized)}</span>
-							</>
-						) : (
-							<>
-								<CheckCircle2 className="h-4 w-4 text-emerald-600" />
-								<span>{i18n.getMessage("saved", isLocalized)}</span>
-							</>
-						)}
+						{/* Save/lock status row (reads from window vars set by the Documents page) */}
+						<div className="sticky bottom-0 bg-sidebar pt-3 border-t border-sidebar-border text-sm text-muted-foreground flex items-center gap-2">
+							{!mounted ? null : docSaveState.loading ? (
+								<>
+									<CircleDashed className="h-4 w-4 animate-spin" />
+									<span>{i18n.getMessage("loading", isLocalized)}</span>
+								</>
+							) : docSaveState.saving ? (
+								<>
+									<CircleDashed className="h-4 w-4 animate-spin" />
+									<span>{i18n.getMessage("saving", isLocalized)}</span>
+								</>
+							) : docSaveState.errorMessage ? (
+								<>
+									<CircleAlert className="h-4 w-4 text-red-500" />
+									<span
+										className="truncate max-w-[12rem]"
+										title={docSaveState.errorMessage}
+									>
+										{docSaveState.errorMessage}
+									</span>
+								</>
+							) : docLocked ? (
+								<>
+									<CircleAlert className="h-4 w-4 text-amber-500" />
+									<span>{i18n.getMessage("locked", isLocalized)}</span>
+								</>
+							) : docSaveState.isDirty ? (
+								<>
+									<CircleAlert className="h-4 w-4 text-amber-500" />
+									<span>{i18n.getMessage("unsaved_changes", isLocalized)}</span>
+								</>
+							) : (
+								<>
+									<CheckCircle2 className="h-4 w-4 text-emerald-600" />
+									<span>{i18n.getMessage("saved", isLocalized)}</span>
+								</>
+							)}
+						</div>
 					</div>
 				</SidebarContent>
 			</Sidebar>

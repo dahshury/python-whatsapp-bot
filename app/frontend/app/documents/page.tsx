@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { LockIllustration } from "@/components/lock-illustration";
 import "@excalidraw/excalidraw/index.css";
-import { useSearchParams } from "next/navigation";
 import { useTheme as useNextThemes } from "next-themes";
 import { useEffect, useMemo, useState } from "react";
 import { DockNav } from "@/components/dock-nav";
@@ -17,6 +16,7 @@ import { useDocumentScene } from "@/hooks/useDocumentScene";
 import { DEFAULT_DOCUMENT_WA_ID } from "@/lib/default-document";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 
 const Grid = dynamic(() => import("@/components/grids/DocumentsGrid"), {
 	ssr: false,
@@ -24,8 +24,8 @@ const Grid = dynamic(() => import("@/components/grids/DocumentsGrid"), {
 
 export default function DocumentsPage() {
 	const { isLocalized, locale } = useLanguage();
-	const search = useSearchParams();
-	const selectedWaId = search.get("waId") || "";
+	const { selectedDocumentWaId } = useSidebarChatStore();
+	const selectedWaId = selectedDocumentWaId || "";
 	const { resolvedTheme, theme: nextTheme } = useNextThemes();
 	useSettings();
 
@@ -124,7 +124,7 @@ export default function DocumentsPage() {
 	}, [selectedWaId, customerColumns]);
 
 	return (
-		<SidebarInset>
+		<SidebarInset dir="ltr">
 			<header className="relative flex h-10 shrink-0 items-center justify-center border-b px-3">
 				<SidebarTrigger className="absolute left-4" />
 				<DockNav className="mt-0 min-h-[2.25rem]" />

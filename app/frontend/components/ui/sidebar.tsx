@@ -152,6 +152,7 @@ const SidebarProvider = React.forwardRef<
 		return (
 			<SidebarContext.Provider value={contextValue}>
 				<div
+					dir="ltr"
 					style={
 						{
 							"--sidebar-width": SIDEBAR_WIDTH,
@@ -230,7 +231,9 @@ const Sidebar = React.forwardRef<
 							<SheetTitle>Sidebar</SheetTitle>
 							<SheetDescription>Displays the mobile sidebar.</SheetDescription>
 						</SheetHeader>
-						<div className="flex h-full w-full flex-col">{children}</div>
+						<div dir="ltr" className="flex h-full w-full flex-col">
+							{children}
+						</div>
 					</SheetContent>
 				</Sheet>
 			);
@@ -271,6 +274,7 @@ const Sidebar = React.forwardRef<
 					{...props}
 				>
 					<div
+						dir="ltr"
 						data-sidebar="sidebar"
 						className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
 					>

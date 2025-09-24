@@ -252,7 +252,7 @@ async def api_get_customer_document(wa_id: str, request: Request):
     If none exists, return success with no persisted record and let the frontend apply its default template.
     """
     try:
-        from app.db import get_session, CustomerDocumentModel, DefaultDocumentModel, CustomerModel
+        from app.db import get_session, CustomerDocumentModel, DefaultDocumentModel
         with get_session() as session:
             # Special case: global default document
             if wa_id == DEFAULT_DOCUMENT_WA_ID:

@@ -4,7 +4,12 @@ import type { ConversationMessage, Reservation } from "@/types/calendar";
 export type UpdateType =
 	| BaseUpdateType
 	| "vacation_update_ack"
-	| "vacation_update_nack";
+	| "vacation_update_nack"
+	| "notifications_history"
+	| "document_snapshot"
+	| "document_save_ack"
+	| "document_save_nack"
+	| "customer_profile";
 
 export interface WebSocketMessage {
 	type: UpdateType;

@@ -1,9 +1,7 @@
 import * as React from "react";
-import {
-	PhoneCombobox,
-	type PhoneOption,
-} from "@/components/ui/phone-combobox";
+import { PhoneCombobox } from "@/components/ui/phone-combobox";
 import { cn } from "@/lib/utils";
+import type { PhoneOption } from "@/types/phone";
 
 // Predefined phone numbers with fake owner names and their countries
 const PHONE_OPTIONS: PhoneOption[] = [
