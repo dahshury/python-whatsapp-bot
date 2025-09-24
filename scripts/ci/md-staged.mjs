@@ -35,8 +35,8 @@ function runMarkdownlint(args, stdio) {
 }
 
 function runPrettier(args, stdio) {
-	const first = runSh(`pnpm exec prettier ${args}`, stdio);
-	if (first.status === 0) return first;
+	const hasLocal = runSh("pnpm exec prettier --version", "pipe").status === 0;
+	if (hasLocal) return runSh(`pnpm exec prettier ${args}`, stdio);
 	return runSh(`pnpm dlx prettier ${args}`, stdio);
 }
 
