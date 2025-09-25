@@ -154,9 +154,6 @@ jobs:
 
               # First, clean up space BEFORE pulling new images
               
-              # Get container IDs but don't stop them yet
-              running_containers=$(docker ps -q)
-              
               # Clean all unused volumes (not used by running containers)
               docker volume prune -f
               
@@ -174,9 +171,9 @@ jobs:
               docker compose -f docker-compose.prod.yml pull
 
               # Attempt an in-container WAL checkpoint BEFORE stopping containers
-              if docker compose -f docker-compose.prod.yml ps -q backend | grep -q .; then
-                echo "Checkpointing SQLite WAL inside running backend (compose exec)..."
-                docker compose -f docker-compose.prod.yml exec -T backend sh -lc \
+              if docker inspect -f '{{.State.Running}}' reservation_backend 2>/dev/null | grep -q true; then
+                echo "Checkpointing SQLite WAL inside running backend (docker exec)..."
+                docker exec -i reservation_backend sh -lc \
                   "sqlite3 /app/data/threads_db.sqlite \"PRAGMA wal_checkpoint(RESTART); PRAGMA wal_checkpoint(TRUNCATE);\"" || true
               fi
 
@@ -191,11 +188,9 @@ jobs:
                   "PRAGMA wal_checkpoint(RESTART); PRAGMA wal_checkpoint(TRUNCATE);" || true
               fi
 
-              # Now safe to stop running containers
-              if [ -n "$running_containers" ]; then
-                echo "Stopping running containers..."
-                docker stop $running_containers || true
-              fi
+              # Bring down the compose stack cleanly to avoid container/task conflicts
+              echo "Stopping running containers (compose down)..."
+              docker compose -f docker-compose.prod.yml down --remove-orphans || true
               
               # Start new containers
               echo "Starting updated services..."
