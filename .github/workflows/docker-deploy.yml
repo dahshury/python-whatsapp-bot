@@ -173,15 +173,28 @@ jobs:
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
 
+              # Attempt an in-container WAL checkpoint BEFORE stopping containers
+              if docker compose -f docker-compose.prod.yml ps -q backend | grep -q .; then
+                echo "Checkpointing SQLite WAL inside running backend (compose exec)..."
+                docker compose -f docker-compose.prod.yml exec -T backend sh -lc \
+                  "sqlite3 /app/data/threads_db.sqlite \"PRAGMA wal_checkpoint(RESTART); PRAGMA wal_checkpoint(TRUNCATE);\"" || true
+              fi
+
+              # Fallback: run WAL checkpoint using a one-off container with the backend image
+              if [ -f data/threads_db.sqlite ]; then
+                echo "Checkpointing SQLite WAL via one-off backend container..."
+                docker run --rm \
+                  -v "$(pwd)/data:/app/data" \
+                  --entrypoint sqlite3 \
+                  ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_REPO }}:latest \
+                  /app/data/threads_db.sqlite \
+                  "PRAGMA wal_checkpoint(RESTART); PRAGMA wal_checkpoint(TRUNCATE);" || true
+              fi
+
               # Now safe to stop running containers
               if [ -n "$running_containers" ]; then
                 echo "Stopping running containers..."
-                # Before stopping, if backend is running with a mounted DB, checkpoint WAL to avoid data loss
-                if docker ps --format '{{.Names}}' | grep -q '^reservation_backend$'; then
-                  echo "Checkpointing SQLite WAL inside running backend..."
-                  docker exec reservation_backend /bin/sh -c "sqlite3 /app/data/threads_db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);' || true"
-                fi
-                docker stop $running_containers
+                docker stop $running_containers || true
               fi
               
               # Start new containers
