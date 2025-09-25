@@ -77,6 +77,7 @@ function hashToHue(input: string): number {
 type GroupEntry = {
 	kind: "group";
 	waId: string;
+	date: string; // YYYY-MM-DD grouping key
 	customerName: string;
 	latest: NotificationItem;
 	unreadCount: number;
@@ -261,6 +262,7 @@ export function NotificationsButton({
 				items: NotificationItem[];
 				latest: NotificationItem;
 				customerName: string;
+				date: string;
 			}
 		>();
 		const nonMessages: NotificationItem[] = [];
@@ -269,9 +271,13 @@ export function NotificationsButton({
 			if (it.type === "conversation_new_message") {
 				const waId = getWaId(it.data);
 				if (!waId) continue;
-				const existing = groups.get(waId);
+				const dateStr = String(
+					(it.data as { date?: string } | undefined)?.date || "",
+				);
+				const key = `${waId}|${dateStr}`;
+				const existing = groups.get(key);
 				if (!existing) {
-					groups.set(waId, {
+					groups.set(key, {
 						items: [it],
 						latest: it,
 						customerName:
@@ -279,6 +285,7 @@ export function NotificationsButton({
 								(it.data as ReservationData | undefined)?.wa_id,
 								(it.data as ReservationData | undefined)?.customer_name,
 							) || waId,
+						date: dateStr,
 					});
 				} else {
 					existing.items.push(it);
@@ -289,9 +296,10 @@ export function NotificationsButton({
 			}
 		}
 
-		// Build group entries
+		// Build group entries (per waId per day)
 		const groupEntries: GroupEntry[] = Array.from(groups.entries()).map(
-			([waId, g]) => {
+			([key, g]) => {
+				const waId = String(key.split("|")[0] ?? "");
 				const unreadCount = g.items.reduce(
 					(acc, n) => acc + (n.unread ? 1 : 0),
 					0,
@@ -299,11 +307,12 @@ export function NotificationsButton({
 				return {
 					kind: "group",
 					waId,
+					date: g.date,
 					customerName: g.customerName,
 					latest: g.latest,
 					unreadCount,
 					totalCount: g.items.length,
-				} as GroupEntry;
+				};
 			},
 		);
 
@@ -498,14 +507,20 @@ export function NotificationsButton({
 		[],
 	);
 
-	const handleGroupClick = React.useCallback((waId: string) => {
-		// Mark all messages for this waId as read
+	const handleGroupClick = React.useCallback((waId: string, date: string) => {
+		// Mark all messages for this waId on this specific date as read
 		setItems((prev) =>
-			prev.map((n) =>
-				n.type === "conversation_new_message" && getWaId(n.data) === waId
-					? { ...n, unread: false }
-					: n,
-			),
+			prev.map((n) => {
+				if (
+					n.type === "conversation_new_message" &&
+					getWaId(n.data) === waId &&
+					String((n.data as { date?: string } | undefined)?.date || "") ===
+						String(date || "")
+				) {
+					return { ...n, unread: false };
+				}
+				return n;
+			}),
 		);
 		// Open conversation and close popover
 		try {
@@ -677,7 +692,7 @@ export function NotificationsButton({
 
 											return (
 												<motion.div
-													key={`group:${group.waId}`}
+													key={`group:${group.waId}:${group.date}`}
 													variants={itemVariants}
 													transition={{
 														duration: 0.14,
@@ -690,7 +705,9 @@ export function NotificationsButton({
 															<button
 																type="button"
 																className="text-foreground/80 text-left after:absolute after:inset-0"
-																onClick={() => handleGroupClick(group.waId)}
+																onClick={() =>
+																	handleGroupClick(group.waId, group.date)
+																}
 															>
 																<span className="text-foreground font-medium">
 																	{label}: {group.customerName}

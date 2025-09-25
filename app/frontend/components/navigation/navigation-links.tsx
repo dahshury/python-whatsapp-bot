@@ -40,6 +40,8 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 								isDocumentsActive && "shadow-lg",
 								className,
 							)}
+							data-slot="sidebar-menu-button"
+							data-active={isDocumentsActive}
 						>
 							<FileText className="size-4" />
 						</Link>
@@ -65,6 +67,8 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 								isDashboardActive && "shadow-lg",
 								className,
 							)}
+							data-slot="sidebar-menu-button"
+							data-active={isDashboardActive}
 						>
 							<BarChart3 className="size-4" />
 						</Link>

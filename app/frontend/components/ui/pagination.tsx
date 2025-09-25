@@ -5,7 +5,11 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 
 const Pagination = ({ className, ...props }: React.ComponentProps<"nav">) => (
-	<nav className={cn("mx-auto w-full", className)} {...props} />
+	<nav
+		data-slot="pagination"
+		className={cn("mx-auto w-full", className)}
+		{...props}
+	/>
 );
 Pagination.displayName = "Pagination";
 
@@ -14,6 +18,7 @@ const PaginationContent = ({
 	...props
 }: React.ComponentProps<"ul">) => (
 	<ul
+		data-slot="pagination-content"
 		className={cn("flex flex-row items-center gap-1", className)}
 		{...props}
 	/>
@@ -24,7 +29,11 @@ const PaginationItem = ({
 	className,
 	...props
 }: React.ComponentProps<"li">) => (
-	<li className={cn("list-none", className)} {...props} />
+	<li
+		data-slot="pagination-item"
+		className={cn("list-none", className)}
+		{...props}
+	/>
 );
 PaginationItem.displayName = "PaginationItem";
 
@@ -40,6 +49,7 @@ const PaginationLink = ({
 	...props
 }: PaginationLinkProps) => (
 	<a
+		data-slot="pagination-link"
 		className={cn(baseLink, isActive ? activeLink : inactiveLink, className)}
 		aria-current={isActive ? "page" : undefined}
 		{...props}
@@ -51,7 +61,11 @@ const PaginationPrevious = ({
 	className,
 	...props
 }: React.ComponentProps<"a">) => (
-	<a className={cn(baseLink, inactiveLink, className)} {...props}>
+	<a
+		data-slot="pagination-previous"
+		className={cn(baseLink, inactiveLink, className)}
+		{...props}
+	>
 		<ChevronLeft className="mr-2 h-4 w-4" />
 		<span>Previous</span>
 	</a>
@@ -59,7 +73,11 @@ const PaginationPrevious = ({
 PaginationPrevious.displayName = "PaginationPrevious";
 
 const PaginationNext = ({ className, ...props }: React.ComponentProps<"a">) => (
-	<a className={cn(baseLink, inactiveLink, className)} {...props}>
+	<a
+		data-slot="pagination-next"
+		className={cn(baseLink, inactiveLink, className)}
+		{...props}
+	>
 		<span>Next</span>
 		<ChevronRight className="ml-2 h-4 w-4" />
 	</a>
@@ -71,6 +89,7 @@ const PaginationEllipsis = ({
 	...props
 }: React.ComponentProps<"span">) => (
 	<span
+		data-slot="pagination-ellipsis"
 		className={cn("flex h-9 min-w-9 items-center justify-center", className)}
 		aria-hidden
 		{...props}

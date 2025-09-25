@@ -43,12 +43,7 @@
 	overflow: visible;
 }
 .message-row-user {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--primary) / 0.18) 0%,
-		hsl(var(--primary) / 0.08) 50%,
-		hsl(var(--primary) / 0.12) 100%
-	);
+	background: transparent;
 }
 .message-row-admin {
 	background: linear-gradient(

@@ -64,6 +64,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 						className="h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
+						data-slot="dock-prev"
 						{...prevHoldHandlers}
 					>
 						<ChevronLeft className="size-5" />
@@ -95,6 +96,7 @@ export const NavigationControls = React.memo(function NavigationControls({
 						className="h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
+						data-slot="dock-next"
 						{...nextHoldHandlers}
 					>
 						<ChevronRight className="size-5" />
