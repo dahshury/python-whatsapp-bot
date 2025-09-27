@@ -31,13 +31,7 @@ import { Toaster } from "sonner";
 import { AnimatedSidebarTrigger } from "@/components/animated-sidebar-trigger";
 import { CalendarContainer } from "@/components/calendar-container";
 import type { CalendarCoreRef } from "@/components/calendar-core";
-import { CalendarDataTableEditorWrapper } from "@/components/calendar-data-table-editor-wrapper";
-import { CalendarDock } from "@/components/calendar-dock";
-import { CalendarMainContent } from "@/components/calendar-main-content";
 import { CalendarSkeleton } from "@/components/calendar-skeleton";
-import { DockNav } from "@/components/dock-nav";
-import { DockNavSimple } from "@/components/dock-nav-simple";
-import { NotificationsButton } from "@/components/notifications-button";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useCalendarContextMenu } from "@/hooks/useCalendarContextMenu";
 import { useCalendarDataTableEditor } from "@/hooks/useCalendarDataTableEditor";
@@ -51,6 +45,7 @@ import { createCalendarCallbacks } from "@/lib/calendar-callbacks";
 import { getTimezone, SLOT_DURATION_HOURS } from "@/lib/calendar-config";
 import { filterEventsForCalendar } from "@/lib/calendar-event-processor";
 import { mark } from "@/lib/dev-profiler";
+import { useDockBridge } from "@/lib/dock-bridge-context";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
@@ -74,6 +69,21 @@ const DualCalendarComponent = dynamic(
 	},
 );
 
+const CalendarMainContent = dynamic(
+	() =>
+		import("@/components/calendar-main-content").then(
+			(m) => m.CalendarMainContent,
+		),
+	{ ssr: false, loading: () => <CalendarSkeleton /> },
+);
+const CalendarDataTableEditorWrapper = dynamic(
+	() =>
+		import("@/components/calendar-data-table-editor-wrapper").then(
+			(m) => m.CalendarDataTableEditorWrapper,
+		),
+	{ ssr: false },
+);
+
 export default function HomePage() {
 	const { freeRoam, showDualCalendar } = useSettings();
 	const {
@@ -83,8 +93,8 @@ export default function HomePage() {
 	} = useVacation();
 	const isVacationDate = useVacationDateChecker(vacationPeriods);
 
-	// Persist settings popover state across mode switches
-	const [settingsOpen, setSettingsOpen] = React.useState(false);
+	// Persist settings popover state across mode switches (used in local header variant)
+	// const [settingsOpen, setSettingsOpen] = React.useState(false);
 
 	// Avoid hydration mismatch: compute dynamic layout only after mount
 	const [mounted, setMounted] = React.useState(false);
@@ -350,8 +360,6 @@ export default function HomePage() {
 	// Track dual calendar refs directly with guard to avoid re-render loops
 	const [leftCalendarRef, setLeftCalendarRef] =
 		React.useState<React.RefObject<CalendarCoreRef | null> | null>(null);
-	const [rightCalendarRef, setRightCalendarRef] =
-		React.useState<React.RefObject<CalendarCoreRef | null> | null>(null);
 
 	// Callback ref to capture the dual calendar refs when they become available
 	const dualCalendarCallbackRef = React.useCallback(
@@ -370,73 +378,33 @@ export default function HomePage() {
 						? dualCalendarInstance.leftCalendarRef
 						: prev,
 				);
-				setRightCalendarRef((prev) =>
-					prev !== dualCalendarInstance.rightCalendarRef
-						? dualCalendarInstance.rightCalendarRef
-						: prev,
-				);
 			}
 		},
 		[],
 	);
 
+	// Bridge calendar control into the persistent dock header
+	const { setState: setDockBridgeState } = useDockBridge();
+	React.useEffect(() => {
+		setDockBridgeState({
+			calendarRef: (showDualCalendar
+				? leftCalendarRef || null
+				: calendarRef) as React.RefObject<CalendarCoreRef | null>,
+			currentCalendarView: calendarState.currentView,
+			onCalendarViewChange: calendarState.setCurrentView,
+		});
+	}, [
+		showDualCalendar,
+		leftCalendarRef,
+		calendarState.currentView,
+		calendarState.setCurrentView,
+		setDockBridgeState,
+	]);
+
 	return (
 		<SidebarInset>
 			{/* Animated Sidebar Trigger with Legend (fixed, independent of header layout) */}
 			<AnimatedSidebarTrigger freeRoam={freeRoam} />
-			<header className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-				{showDualCalendar ? (
-					// Dual Calendar Mode Header Layout
-					<div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-						<div className="justify-self-center">
-							<CalendarDock
-								currentView={calendarState.currentView}
-								calendarRef={leftCalendarRef}
-								freeRoam={freeRoam}
-								isLocalized={isLocalized}
-							/>
-						</div>
-						<DockNavSimple
-							className="mt-0"
-							currentCalendarView={calendarState.currentView}
-							onCalendarViewChange={calendarState.setCurrentView}
-							leftCalendarView={calendarState.currentView}
-							rightCalendarView={rightCalendarView}
-							onLeftCalendarViewChange={calendarState.setCurrentView}
-							onRightCalendarViewChange={setRightCalendarView}
-							leftCalendarRef={leftCalendarRef}
-							rightCalendarRef={rightCalendarRef}
-							isDualMode={true}
-							settingsOpen={settingsOpen}
-							onSettingsOpenChange={setSettingsOpen}
-						/>
-						<div className="justify-self-center">
-							<CalendarDock
-								currentView={rightCalendarView}
-								calendarRef={rightCalendarRef}
-								freeRoam={freeRoam}
-								isLocalized={isLocalized}
-							/>
-						</div>
-					</div>
-				) : (
-					// Single Calendar Mode Header Layout
-					<div className="flex-1 flex justify-center">
-						<DockNav
-							className="mt-0"
-							calendarRef={calendarRef}
-							currentCalendarView={calendarState.currentView}
-							onCalendarViewChange={calendarState.setCurrentView}
-							settingsOpen={settingsOpen}
-							onSettingsOpenChange={setSettingsOpen}
-						/>
-					</div>
-				)}
-
-				<div className="absolute right-4">
-					<NotificationsButton />
-				</div>
-			</header>
 			{(() => {
 				// Stable default during SSR/first client render to avoid mismatch
 				let wrapperHeightClass = "h-[calc(100vh-4rem)]";

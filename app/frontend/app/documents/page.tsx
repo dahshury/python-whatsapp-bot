@@ -3,16 +3,15 @@
 import dynamic from "next/dynamic";
 import { LockIllustration } from "@/components/lock-illustration";
 import "@excalidraw/excalidraw/index.css";
-import { ChevronDown, ChevronUp, Maximize2, Minimize2 } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { useTheme as useNextThemes } from "next-themes";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DockNav } from "@/components/dock-nav";
 import { DocumentCanvas } from "@/components/documents/DocumentCanvas";
 import { FullscreenProvider } from "@/components/glide_custom_cells/components/contexts/FullscreenContext";
 import { InMemoryDataSource } from "@/components/glide_custom_cells/components/core/data-sources/InMemoryDataSource";
 import { createGlideTheme } from "@/components/glide_custom_cells/components/utils/streamlitGlideTheme";
 import { Button } from "@/components/ui/button";
-import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarInset } from "@/components/ui/sidebar";
 import { useDocumentCustomerRow } from "@/hooks/useDocumentCustomerRow";
 import type { ExcalidrawAPI } from "@/hooks/useDocumentScene";
 import { useDocumentScene } from "@/hooks/useDocumentScene";
@@ -273,20 +272,7 @@ export default function DocumentsPage() {
 		() => createGlideTheme(isDarkMode ? "dark" : "light"),
 		[isDarkMode],
 	);
-	// Collapsible header with animated mount/unmount
-	const [showHeader, setShowHeader] = useState(false);
-	const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
-	const toggleHeader = () => {
-		if (isHeaderExpanded) {
-			setIsHeaderExpanded(false);
-			setTimeout(() => setShowHeader(false), 280);
-		} else {
-			setShowHeader(true);
-			requestAnimationFrame(() => setIsHeaderExpanded(true));
-		}
-		scheduleExcalRefresh();
-		setTimeout(scheduleExcalRefresh, 220);
-	};
+	// Documents header is now always visible; collapsible behavior removed
 
 	// Deprecated remount key (kept for future use)
 
@@ -321,34 +307,16 @@ export default function DocumentsPage() {
 	}, [selectedWaId, customerColumns]);
 
 	return (
-		<SidebarInset dir="ltr">
-			{/* Floating header toggle button (always visible, top-right) */}
-			<Button
-				variant="ghost"
-				size="icon"
-				aria-label={isHeaderExpanded ? "Collapse header" : "Expand header"}
-				onClick={toggleHeader}
-				className="fixed right-2 top-2 z-[100] h-7 w-7"
-			>
-				{!isHeaderExpanded ? (
-					<ChevronDown className="h-4 w-4 transition-transform duration-200" />
-				) : (
-					<ChevronUp className="h-4 w-4 transition-transform duration-200" />
-				)}
-			</Button>
-
-			{/* Animated header mount/unmount */}
-			{showHeader ? (
-				<header
-					className="relative shrink-0 border-b px-3 overflow-hidden transition-[height] duration-300 ease-in-out"
-					style={{ height: isHeaderExpanded ? "2.5rem" : "0rem" }}
-				>
-					<SidebarTrigger className="absolute left-4" />
-					<DockNav className="mt-0 min-h-[2.25rem]" />
-				</header>
-			) : null}
+		<SidebarInset
+			dir="ltr"
+			style={{
+				minHeight: "var(--doc-dvh, 100dvh)",
+				height: "var(--doc-dvh, 100dvh)",
+			}}
+		>
+			{/* Header is provided globally by PersistentDockHeader; avoid duplicate here */}
 			<div
-				className="flex flex-col gap-2 px-4 pt-1 pb-4 flex-1 min-h-0"
+				className="flex flex-col gap-1.5 sm:gap-2 px-2 sm:px-4 pt-1 pb-2 sm:pb-4 flex-1 min-h-0"
 				style={{ overscrollBehaviorY: "contain" }}
 			>
 				<div className="w-full">
@@ -426,7 +394,7 @@ export default function DocumentsPage() {
 
 				<div className="flex-1 min-h-0 relative" ref={fsContainerRef}>
 					<div
-						className={`absolute inset-0 grid grid-rows-[minmax(0,1fr)_minmax(0,5fr)] gap-2 ${isFullscreen ? "z-[9999] bg-background" : ""}`}
+						className={`absolute inset-0 grid grid-rows-[minmax(0,0.8fr)_minmax(0,4.2fr)] sm:grid-rows-[minmax(0,1fr)_minmax(0,5fr)] gap-1.5 sm:gap-2 ${isFullscreen ? "z-[9999] bg-background" : ""}`}
 					>
 						{/* Read-only preview (top, ~20% of bottom height) */}
 						<div
@@ -443,7 +411,8 @@ export default function DocumentsPage() {
 									forceLTR={true}
 									viewModeEnabled={true}
 									zenModeEnabled={true}
-									scrollable={true}
+									scrollable={false}
+									hideToolbar={true}
 									scene={
 										previewScene || { elements: [], appState: {}, files: {} }
 									}
@@ -468,6 +437,7 @@ export default function DocumentsPage() {
 									theme={excalidrawTheme as "light" | "dark"}
 									langCode={excalidrawLang as unknown as string}
 									forceLTR={true}
+									hideHelpIcon={true}
 									onChange={(els, app, files) => {
 										const next = {
 											elements: (els || []) as unknown[],
@@ -522,7 +492,7 @@ export default function DocumentsPage() {
 							</div>
 							{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
 								<div className="absolute inset-0 z-20 pointer-events-auto flex items-center justify-center bg-background/70 backdrop-blur-[0.125rem]">
-									<LockIllustration className="h-full w-auto max-w-[56%] opacity-95" />
+									<LockIllustration className="h-full w-auto max-w-[80%] sm:max-w-[56%] opacity-95" />
 								</div>
 							)}
 							{loading ? (
@@ -536,6 +506,10 @@ export default function DocumentsPage() {
 							variant="secondary"
 							size="icon"
 							className="absolute bottom-2 right-2 z-[100] h-8 w-8 shadow"
+							style={{
+								bottom: "max(0.5rem, env(safe-area-inset-bottom))",
+								right: "max(0.5rem, env(safe-area-inset-right))",
+							}}
 							aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
 							onClick={isFullscreen ? exitFullscreen : enterFullscreen}
 						>

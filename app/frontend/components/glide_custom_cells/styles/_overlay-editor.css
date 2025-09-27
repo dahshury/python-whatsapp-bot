@@ -82,6 +82,7 @@
 	font-family: inherit;
 	font-size: inherit;
 	color: hsl(var(--foreground));
+	direction: ltr; /* Force LTR inside overlay editors (phone input) */
 }
 
 /* Overlay editor styles */

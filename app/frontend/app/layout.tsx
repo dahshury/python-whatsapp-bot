@@ -7,6 +7,8 @@ import "@ncdai/react-wheel-picker/style.css";
 import { ConditionalAppSidebar } from "@/components/conditional-app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
+import { RouteTransition } from "@/components/motion-primitives/route-transition";
+import { PersistentDockHeader } from "@/components/persistent-dock-header";
 import { PortalBootstrap } from "@/components/portal-bootstrap";
 import { THEME_OPTIONS } from "@/components/settings/theme-data";
 import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
@@ -17,6 +19,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/ui/theme-provider";
 import { BackendConnectionProvider } from "@/lib/backend-connection-provider";
 import { CustomerDataProvider } from "@/lib/customer-data-context";
+import { DockBridgeProvider } from "@/lib/dock-bridge-context";
 import { LanguageProvider } from "@/lib/language-context";
 import { RealtimeEventBus } from "@/lib/realtime-event-bus";
 import { SettingsProvider } from "@/lib/settings-context";
@@ -144,16 +147,21 @@ export default function RootLayout({
 												<ThemeWrapper>
 													<VacationProvider>
 														<CustomerDataProvider>
-															<div className="flex flex-col h-screen">
-																<div className="flex flex-1 overflow-hidden">
-																	<SidebarProvider>
-																		<ConditionalAppSidebar />
-																		<MainContentWrapper>
-																			{children}
-																		</MainContentWrapper>
-																	</SidebarProvider>
+															<DockBridgeProvider>
+																<div className="flex flex-col h-screen">
+																	<div className="flex flex-1 overflow-hidden">
+																		<SidebarProvider>
+																			<ConditionalAppSidebar />
+																			<MainContentWrapper>
+																				<PersistentDockHeader />
+																				<RouteTransition>
+																					{children}
+																				</RouteTransition>
+																			</MainContentWrapper>
+																		</SidebarProvider>
+																	</div>
 																</div>
-															</div>
+															</DockBridgeProvider>
 															<RealtimeEventBus />
 															<ToastRouter />
 														</CustomerDataProvider>

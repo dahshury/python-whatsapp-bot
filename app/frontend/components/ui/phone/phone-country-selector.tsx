@@ -56,6 +56,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 		<Popover open={isOpen} onOpenChange={setIsOpen}>
 			<PopoverTrigger asChild>
 				<Button
+					dir="ltr"
 					type="button"
 					variant="outline"
 					disabled={disabled}
@@ -76,7 +77,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 				className={cn("w-[18.75rem] p-0", "click-outside-ignore")}
 				dir="ltr"
 			>
-				<Command shouldFilter={false}>
+				<Command shouldFilter={false} dir="ltr">
 					<CommandInput
 						value={search}
 						onValueChange={setSearch}

@@ -22,7 +22,7 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
 		(cell as CustomCell<PhoneCellData>).data?.kind === "phone-cell",
 
 	draw: ({ ctx, theme, rect, cell }) => {
-		const text = cell.data.value ?? "";
+		const raw = cell.data.value ?? "";
 		const paddingX = 8;
 		const paddingY = 0;
 
@@ -33,8 +33,19 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
 		ctx.fillStyle = cell.style === "faded" ? theme.textLight : theme.textDark;
 		ctx.textBaseline = "middle";
 		ctx.font = theme.baseFontStyle;
+		// Force LTR rendering regardless of page direction
+		try {
+			(ctx as unknown as { direction?: CanvasDirection }).direction = "ltr";
+		} catch {}
+		try {
+			ctx.textAlign = "left";
+		} catch {}
 
 		const y = rect.y + rect.height / 2 + paddingY;
+		// Wrap text with LTR isolate markers to avoid bidi issues in RTL locales
+		const LRI = "\u2066"; // Left-to-Right Isolate
+		const PDI = "\u2069"; // Pop Directional Isolate
+		const text = `${LRI}${String(raw)}${PDI}`;
 		ctx.fillText(text, rect.x + paddingX, y);
 		ctx.restore();
 	},

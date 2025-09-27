@@ -36,7 +36,18 @@
 		],
 		"types": ["node"],
 		"paths": {
-			"@/*": ["./*"]
+			"@/*": ["./*"],
+			"@libs/*": ["./lib/*"],
+			"@ui/*": ["./components/ui/*"],
+			"@ui": ["./components/ui"],
+			"@providers/*": ["./shared/providers/*"],
+			"@widgets/*": ["./components/*", "./widgets/*"],
+			"@features/*": ["./features/*"],
+			"@services/*": ["./services/*"],
+			"@vendor/*": ["./vendor/*"],
+			"@entities/*": ["./entities/*"],
+			"@shared/*": ["./shared/*"],
+			"@components/*": ["./components/*"]
 		},
 		"target": "ES2020"
 	},

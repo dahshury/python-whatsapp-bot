@@ -144,6 +144,13 @@
 	--color-text: hsl(var(--foreground));
 }
 
+/* Hide help icon inside the bottom (editable) document canvas only */
+.doc-excal-bottom .excalidraw .help-icon,
+.doc-excal-bottom .excalidraw .App-toolbar__help,
+.doc-excal-bottom .excalidraw .ToolIcon__keybinding {
+	display: none;
+}
+
 .theme-default .excali-theme-scope .excalidraw.theme--dark,
 .theme-claude .excali-theme-scope .excalidraw.theme--dark,
 .theme-neo-brutalism .excali-theme-scope .excalidraw.theme--dark,

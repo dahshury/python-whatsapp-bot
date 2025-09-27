@@ -10,7 +10,7 @@ import { computeSceneSignature } from "@/lib/documents/scene-utils";
 
 type ExcalidrawAPI = ExcalidrawImperativeAPI;
 
-const Excalidraw = dynamic(
+const Excalidraw = dynamic<ExcalidrawProps>(
 	async () => (await import("@excalidraw/excalidraw")).Excalidraw,
 	{
 		ssr: false,
@@ -24,9 +24,12 @@ export function DocumentCanvas({
 	onApiReady,
 	viewModeEnabled,
 	zenModeEnabled,
+	uiOptions,
 	scene,
 	scrollable,
 	forceLTR,
+	hideToolbar,
+	hideHelpIcon,
 }: {
 	theme: "light" | "dark";
 	langCode: string;
@@ -34,6 +37,7 @@ export function DocumentCanvas({
 	onApiReady: (api: ExcalidrawAPI) => void;
 	viewModeEnabled?: boolean;
 	zenModeEnabled?: boolean;
+	uiOptions?: ExcalidrawProps["UIOptions"];
 	scene?: {
 		elements?: unknown[];
 		appState?: Record<string, unknown>;
@@ -41,6 +45,8 @@ export function DocumentCanvas({
 	};
 	scrollable?: boolean;
 	forceLTR?: boolean;
+	hideToolbar?: boolean;
+	hideHelpIcon?: boolean;
 }) {
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const apiRef = useRef<ExcalidrawAPI | null>(null);
@@ -71,6 +77,70 @@ export function DocumentCanvas({
 		};
 		raf = requestAnimationFrame(tick);
 		return () => cancelAnimationFrame(raf);
+	}, []);
+
+	// Keep canvas sized when container/viewport changes
+	useExcalidrawResize(containerRef, apiRef);
+
+	// Extra stabilization refreshes around context menu and page visibility
+	useEffect(() => {
+		let scheduled = false;
+		const scheduleRefreshBurst = () => {
+			if (scheduled) return;
+			scheduled = true;
+			try {
+				const doRefresh = () => apiRef.current?.refresh?.();
+				requestAnimationFrame(() => {
+					doRefresh();
+					setTimeout(doRefresh, 80);
+					setTimeout(doRefresh, 160);
+					setTimeout(() => {
+						doRefresh();
+						scheduled = false;
+					}, 320);
+				});
+			} catch {
+				scheduled = false;
+			}
+		};
+
+		const onContextMenu = () => scheduleRefreshBurst();
+		const onVisibility = () => {
+			if (!document.hidden) scheduleRefreshBurst();
+		};
+
+		document.addEventListener("contextmenu", onContextMenu, true);
+		document.addEventListener("visibilitychange", onVisibility);
+
+		// Catch pointer interactions near edges and scrolling in ancestors
+		const onPointerUp = () => scheduleRefreshBurst();
+		const onScroll = () => scheduleRefreshBurst();
+		window.addEventListener("pointerup", onPointerUp, true);
+		window.addEventListener("scroll", onScroll, true);
+
+		// Observe DOM changes inside the container that may affect layout (e.g., menu flip)
+		const target = containerRef.current as HTMLElement | null;
+		let observer: MutationObserver | null = null;
+		try {
+			if (target) {
+				observer = new MutationObserver(() => scheduleRefreshBurst());
+				observer.observe(target, {
+					attributes: true,
+					childList: true,
+					subtree: true,
+					attributeFilter: ["style", "class", "data-placement"],
+				});
+			}
+		} catch {}
+		return () => {
+			document.removeEventListener("contextmenu", onContextMenu, true);
+			document.removeEventListener("visibilitychange", onVisibility);
+			window.removeEventListener("pointerup", onPointerUp, true);
+			window.removeEventListener("scroll", onScroll, true);
+			try {
+				observer?.disconnect();
+			} catch {}
+		};
 	}, []);
 
 	// Apply external scene updates when provided, avoiding redundant updates
@@ -127,7 +197,7 @@ export function DocumentCanvas({
 	return (
 		<div
 			ref={containerRef}
-			className="excali-theme-scope w-full h-full"
+			className={`excali-theme-scope w-full h-full${hideToolbar ? " excal-preview-hide-ui" : ""}${hideHelpIcon ? " excal-hide-help" : ""}`}
 			style={{
 				// Prevent scroll chaining into the canvas on touch devices so
 				// the page can scroll back when keyboard toggles
@@ -137,6 +207,16 @@ export function DocumentCanvas({
 			}}
 			dir={forceLTR ? "ltr" : undefined}
 		>
+			{hideToolbar ? (
+				<style>
+					{
+						".excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}"
+					}
+				</style>
+			) : null}
+			{hideHelpIcon ? (
+				<style>{".excal-hide-help .help-icon{display:none!important;}"}</style>
+			) : null}
 			{mountReady && (
 				<Excalidraw
 					theme={theme}
@@ -146,6 +226,7 @@ export function DocumentCanvas({
 							ExcalidrawProps["onChange"]
 						>
 					}
+					{...(uiOptions ? { UIOptions: uiOptions } : {})}
 					initialData={{
 						appState: {
 							viewModeEnabled: Boolean(viewModeEnabled),
@@ -163,6 +244,8 @@ export function DocumentCanvas({
 							} | null;
 							requestAnimationFrame(() => apiLike?.refresh?.());
 							setTimeout(() => apiLike?.refresh?.(), 120);
+							setTimeout(() => apiLike?.refresh?.(), 300);
+							setTimeout(() => apiLike?.refresh?.(), 600);
 						} catch {}
 						if (!didNotifyApiRef.current) {
 							didNotifyApiRef.current = true;
