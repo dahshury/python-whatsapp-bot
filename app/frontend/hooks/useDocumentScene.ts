@@ -29,6 +29,8 @@ export type ExcalidrawAPI = {
 		files?: Record<string, unknown>;
 		commitToHistory?: boolean;
 	}) => void;
+	/** Optional resize/refresh hook exposed by Excalidraw */
+	refresh?: () => void;
 	getAppState?: () => Record<string, unknown>;
 	getSceneElementsIncludingDeleted?: () => unknown[];
 	getFiles?: () => Record<string, unknown>;
@@ -67,6 +69,25 @@ export function useDocumentScene(
 	const inactivitySaveTimerRef = useRef<number | null>(null);
 	const lastSigComputeAtRef = useRef<number>(0);
 
+	// Guard state updates until the hook's component is actually mounted
+	const isMountedRef = useRef<boolean>(false);
+	useEffect(() => {
+		isMountedRef.current = true;
+		return () => {
+			isMountedRef.current = false;
+		};
+	}, []);
+
+	const runAfterMounted = useCallback((fn: () => void) => {
+		if (isMountedRef.current) {
+			fn();
+			return;
+		}
+		setTimeout(() => {
+			if (isMountedRef.current) fn();
+		}, 0);
+	}, []);
+
 	// Staged scene application to avoid refetch when Excalidraw API mounts
 	const pendingSceneRef = useRef<Record<string, unknown> | null>(null);
 	const pendingSeqRef = useRef<number>(0);
@@ -83,8 +104,21 @@ export function useDocumentScene(
 				savedDigestRef.current = savedStr;
 				savedSizeRef.current = savedStr.length;
 				currentDigestRef.current = savedDigestRef.current;
-				setIsDirty(false);
-				isDirtyRef.current = false;
+				runAfterMounted(() => {
+					setIsDirty(false);
+					isDirtyRef.current = false;
+				});
+				// Notify listeners (e.g., preview) that a new scene was applied
+				try {
+					window.dispatchEvent(
+						new CustomEvent("documents:sceneApplied", {
+							detail: {
+								wa_id: waId,
+								scene: persisted,
+							},
+						}),
+					);
+				} catch {}
 				try {
 					const sig = computeSceneSignature(
 						(scene as { elements?: unknown[] }).elements as
@@ -113,7 +147,8 @@ export function useDocumentScene(
 							0,
 							programmaticUpdates.current - 1,
 						);
-						if (seq === loadSeqRef.current) setLoadedVerified(true);
+						if (seq === loadSeqRef.current)
+							runAfterMounted(() => setLoadedVerified(true));
 					}, 0);
 				}
 				return;
@@ -121,7 +156,7 @@ export function useDocumentScene(
 			pendingSceneRef.current = scene;
 			pendingSeqRef.current = seq;
 		},
-		[],
+		[runAfterMounted, waId],
 	);
 
 	const onExcalidrawAPI = useCallback(
@@ -318,26 +353,26 @@ export function useDocumentScene(
 						const changed = sig !== (savedSignatureRef.current || null);
 						if (changed !== isDirtyRef.current) {
 							isDirtyRef.current = changed;
-							setIsDirty(changed);
+							runAfterMounted(() => setIsDirty(changed));
 						}
 						if (changed) scheduleInactivitySave();
 					} catch {}
 				});
 			} catch {}
 		},
-		[loadedVerified, scheduleInactivitySave],
+		[loadedVerified, scheduleInactivitySave, runAfterMounted],
 	);
 
 	// Load scene on waId change (only when enabled)
 	useEffect(() => {
 		if (!waId || !enabled) {
-			setLoading(false);
-			setLoadedVerified(false);
+			runAfterMounted(() => setLoading(false));
+			runAfterMounted(() => setLoadedVerified(false));
 			return;
 		}
-		setLoading(true);
+		runAfterMounted(() => setLoading(true));
 		setError(null);
-		setLoadedVerified(false);
+		runAfterMounted(() => setLoadedVerified(false));
 		loadSeqRef.current = loadSeqRef.current + 1;
 		const seq = loadSeqRef.current;
 
@@ -363,7 +398,7 @@ export function useDocumentScene(
 		try {
 			if (isCacheFresh()) {
 				maybeApplyFromCache();
-				setLoading(false);
+				runAfterMounted(() => setLoading(false));
 			}
 		} catch {}
 
@@ -381,7 +416,7 @@ export function useDocumentScene(
 				const scene = toSceneFromDoc(detail?.document || {});
 				applyScene(scene as Record<string, unknown>, seq);
 				wsHandled = true;
-				setLoading(false);
+				runAfterMounted(() => setLoading(false));
 			} catch {}
 		};
 		window.addEventListener(
@@ -436,7 +471,7 @@ export function useDocumentScene(
 					applyScene(scene as Record<string, unknown>, seq);
 				})
 				.catch(() => {})
-				.finally(() => setLoading(false));
+				.finally(() => runAfterMounted(() => setLoading(false)));
 		}, 600);
 
 		return () => {
@@ -451,7 +486,7 @@ export function useDocumentScene(
 				onWsSnapshot as EventListener,
 			);
 		};
-	}, [waId, applyScene, enabled]);
+	}, [waId, applyScene, enabled, runAfterMounted]);
 
 	// Periodic autosave (only when enabled)
 	useEffect(() => {

@@ -74,6 +74,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 			</PopoverTrigger>
 			<PopoverContent
 				className={cn("w-[18.75rem] p-0", "click-outside-ignore")}
+				dir="ltr"
 			>
 				<Command shouldFilter={false}>
 					<CommandInput
@@ -83,13 +84,14 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 							"phone_country_search_placeholder",
 							isLocalized,
 						)}
+						dir="ltr"
 					/>
-					<CommandList>
-						<ThemedScrollbar className="h-72">
+					<CommandList dir="ltr">
+						<ThemedScrollbar className="h-72" rtl={false}>
 							<CommandEmpty>
 								{i18n.getMessage("phone_no_country_found", isLocalized)}
 							</CommandEmpty>
-							<CommandGroup>
+							<CommandGroup dir="ltr">
 								{countryOptions
 									.filter((option) =>
 										option.label.toLowerCase().includes(search.toLowerCase()),

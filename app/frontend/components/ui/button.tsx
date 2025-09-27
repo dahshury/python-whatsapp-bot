@@ -1,7 +1,9 @@
+"use client";
+
 import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import type * as React from "react";
-
+import { useUiOverride } from "@/lib/ui-registry";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -34,16 +36,18 @@ const buttonVariants = cva(
 	},
 );
 
-function Button({
+type ButtonProps = React.ComponentProps<"button"> &
+	VariantProps<typeof buttonVariants> & {
+		asChild?: boolean;
+	};
+
+function BaseButton({
 	className,
 	variant,
 	size,
 	asChild = false,
 	...props
-}: React.ComponentProps<"button"> &
-	VariantProps<typeof buttonVariants> & {
-		asChild?: boolean;
-	}) {
+}: ButtonProps) {
 	const Comp = asChild ? Slot.Root : "button";
 
 	return (
@@ -53,6 +57,11 @@ function Button({
 			{...props}
 		/>
 	);
+}
+
+function Button(props: ButtonProps) {
+	const Override = useUiOverride<ButtonProps>("Button", BaseButton);
+	return <Override {...props} />;
 }
 
 export { Button, buttonVariants };

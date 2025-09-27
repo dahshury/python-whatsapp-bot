@@ -5,6 +5,8 @@ import type {
 	ExcalidrawProps,
 } from "@excalidraw/excalidraw/types";
 import dynamic from "next/dynamic";
+import { useEffect, useRef, useState } from "react";
+import { computeSceneSignature } from "@/lib/documents/scene-utils";
 
 type ExcalidrawAPI = ExcalidrawImperativeAPI;
 
@@ -20,20 +22,195 @@ export function DocumentCanvas({
 	langCode,
 	onChange,
 	onApiReady,
+	viewModeEnabled,
+	zenModeEnabled,
+	scene,
+	scrollable,
+	forceLTR,
 }: {
 	theme: "light" | "dark";
 	langCode: string;
-	onChange: NonNullable<ExcalidrawProps["onChange"]>;
+	onChange?: ExcalidrawProps["onChange"];
 	onApiReady: (api: ExcalidrawAPI) => void;
+	viewModeEnabled?: boolean;
+	zenModeEnabled?: boolean;
+	scene?: {
+		elements?: unknown[];
+		appState?: Record<string, unknown>;
+		files?: Record<string, unknown>;
+	};
+	scrollable?: boolean;
+	forceLTR?: boolean;
 }) {
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const apiRef = useRef<ExcalidrawAPI | null>(null);
+	const [mountReady, setMountReady] = useState(false);
+	const lastAppliedSceneSigRef = useRef<string | null>(null);
+	const didNotifyApiRef = useRef<boolean>(false);
+	const prevDirRef = useRef<string | null>(null);
+
+	// Wait until container has a non-zero size to mount Excalidraw to avoid 0px canvas
+	useEffect(() => {
+		let raf = 0;
+		let attempts = 0;
+		const tick = () => {
+			attempts += 1;
+			try {
+				const rect = containerRef.current?.getBoundingClientRect?.();
+				if (rect && rect.width > 2 && rect.height > 2) {
+					setMountReady(true);
+					return;
+				}
+			} catch {}
+			if (attempts < 60) {
+				raf = requestAnimationFrame(tick);
+			} else {
+				// Fallback: proceed anyway and let refresh() correct the size later
+				setMountReady(true);
+			}
+		};
+		raf = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(raf);
+	}, []);
+
+	// Apply external scene updates when provided, avoiding redundant updates
+	useEffect(() => {
+		try {
+			if (!apiRef.current || !scene) return;
+			const nextSig = computeSceneSignature(
+				(scene.elements as unknown[]) || [],
+				(scene.appState as Record<string, unknown>) || {},
+				(scene.files as Record<string, unknown>) || {},
+			);
+			if (nextSig && nextSig === (lastAppliedSceneSigRef.current || null))
+				return;
+			// Cast to any to avoid coupling to Excalidraw internal element types
+			(
+				apiRef.current as unknown as {
+					updateScene: (s: Record<string, unknown>) => void;
+				}
+			).updateScene(scene as Record<string, unknown>);
+			lastAppliedSceneSigRef.current = nextSig;
+		} catch {}
+	}, [scene]);
+
+	// Force LTR direction for Excalidraw even when using RTL languages
+	useEffect(() => {
+		if (!forceLTR) return () => {};
+		try {
+			const root = document.documentElement;
+			if (prevDirRef.current === null)
+				prevDirRef.current = root.getAttribute("dir");
+			root.setAttribute("dir", "ltr");
+			const observer = new MutationObserver(() => {
+				try {
+					const curr = root.getAttribute("dir") || "";
+					if (curr.toLowerCase() !== "ltr") root.setAttribute("dir", "ltr");
+				} catch {}
+			});
+			observer.observe(root, { attributes: true, attributeFilter: ["dir"] });
+			return () => {
+				try {
+					observer.disconnect();
+					if (prevDirRef.current === null || prevDirRef.current === undefined) {
+						root.removeAttribute("dir");
+					} else {
+						root.setAttribute("dir", String(prevDirRef.current));
+					}
+				} catch {}
+			};
+		} catch {
+			return () => {};
+		}
+	}, [forceLTR]);
+
 	return (
-		<div className="excali-theme-scope w-full h-full">
-			<Excalidraw
-				theme={theme}
-				langCode={langCode as unknown as string}
-				onChange={onChange}
-				excalidrawAPI={(api: ExcalidrawImperativeAPI) => onApiReady(api)}
-			/>
+		<div
+			ref={containerRef}
+			className="excali-theme-scope w-full h-full"
+			style={{
+				// Prevent scroll chaining into the canvas on touch devices so
+				// the page can scroll back when keyboard toggles
+				overflow: scrollable ? "auto" : "hidden",
+				overscrollBehavior: "contain",
+				touchAction: "manipulation",
+			}}
+			dir={forceLTR ? "ltr" : undefined}
+		>
+			{mountReady && (
+				<Excalidraw
+					theme={theme}
+					langCode={langCode as unknown as string}
+					onChange={
+						(onChange || ((): void => {})) as NonNullable<
+							ExcalidrawProps["onChange"]
+						>
+					}
+					initialData={{
+						appState: {
+							viewModeEnabled: Boolean(viewModeEnabled),
+							zenModeEnabled: Boolean(zenModeEnabled),
+						},
+					}}
+					viewModeEnabled={Boolean(viewModeEnabled)}
+					zenModeEnabled={Boolean(zenModeEnabled)}
+					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
+						apiRef.current = api;
+						try {
+							// Initial refresh to compute correct canvas size
+							const apiLike = apiRef.current as unknown as {
+								refresh?: () => void;
+							} | null;
+							requestAnimationFrame(() => apiLike?.refresh?.());
+							setTimeout(() => apiLike?.refresh?.(), 120);
+						} catch {}
+						if (!didNotifyApiRef.current) {
+							didNotifyApiRef.current = true;
+							onApiReady(api);
+						}
+					}}
+				/>
+			)}
 		</div>
 	);
+}
+
+// Keep Excalidraw sized on container/viewport changes
+export function useExcalidrawResize(
+	container: React.RefObject<HTMLElement | null>,
+	apiRef: React.RefObject<ExcalidrawAPI | null>,
+) {
+	useEffect(() => {
+		if (!container?.current) return;
+		let scheduled = false;
+		const refresh = () => {
+			if (scheduled) return;
+			scheduled = true;
+			requestAnimationFrame(() => {
+				try {
+					apiRef.current?.refresh?.();
+				} finally {
+					scheduled = false;
+				}
+			});
+		};
+		const ro = new ResizeObserver(() => refresh());
+		try {
+			ro.observe(container.current as Element);
+		} catch {}
+		const onWin = () => refresh();
+		window.addEventListener("resize", onWin);
+		try {
+			window.visualViewport?.addEventListener?.("resize", onWin);
+		} catch {}
+		return () => {
+			try {
+				ro.disconnect();
+			} catch {}
+			window.removeEventListener("resize", onWin);
+			try {
+				window.visualViewport?.removeEventListener?.("resize", onWin);
+			} catch {}
+		};
+	}, [container, apiRef]);
 }

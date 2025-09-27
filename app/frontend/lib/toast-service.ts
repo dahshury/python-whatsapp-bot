@@ -3,6 +3,7 @@
 import React from "react";
 import { toast as sonner } from "sonner";
 import { i18n } from "@/lib/i18n";
+import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 
 export type ReservationToastPayload = {
 	id?: string | number;
@@ -17,6 +18,11 @@ export type MessageToastPayload = {
 	title: string;
 	description?: string;
 	isLocalized?: boolean;
+    wa_id?: string;
+    waId?: string;
+    date?: string;
+    time?: string;
+    message?: string;
 };
 
 // Convert 24-hour "HH:MM" to 12-hour "h:MM AM/PM"; return input if not simple time
@@ -237,10 +243,75 @@ export const toastService = {
 	) {
 		themedUndoable(title, description, actionLabel, onClick, duration);
 	},
-	newMessage(payload: MessageToastPayload) {
-		const { title, description } = payload;
-		themed(title, description, 2500);
-	},
+    newMessage(payload: MessageToastPayload) {
+        const { title, description } = payload;
+        const waId = String(payload.wa_id || payload.waId || "");
+        const date = payload.date;
+        const time = payload.time;
+        const message = payload.message;
+
+        // Render a clickable custom toast only for message notifications
+        sonner.custom(
+            (id) =>
+                React.createElement(
+                    "div",
+                    {
+                        className: "sonner-description fancy-toast cursor-pointer",
+                        role: "button",
+                        tabIndex: 0,
+                        onClick: () => {
+                            try {
+                                if (waId) {
+                                    useSidebarChatStore.getState().openConversation(waId);
+                                    // Stash target globally in case listeners attach later
+                                    try {
+                                        (globalThis as unknown as { __chatScrollTarget?: unknown }).__chatScrollTarget = {
+                                            waId,
+                                            date,
+                                            time,
+                                            message,
+                                        };
+                                    } catch {}
+                                    try {
+                                        const evt = new CustomEvent("chat:scrollToMessage", {
+                                            detail: { wa_id: waId, date, time, message },
+                                        });
+                                        window.dispatchEvent(evt);
+                                    } catch {}
+                                }
+                            } finally {
+                                try {
+                                    sonner.dismiss(id);
+                                } catch {}
+                            }
+                        },
+                        onKeyDown: (e: unknown) => {
+                            try {
+                                const ev = e as KeyboardEvent;
+                                if (ev.key === "Enter" || ev.key === " ") {
+                                    ev.preventDefault();
+                                    (document.activeElement as HTMLElement | null)?.click?.();
+                                }
+                            } catch {}
+                        },
+                    },
+                    React.createElement("div", { className: "fancy-toast-bg" }),
+                    React.createElement(
+                        "div",
+                        { className: "fancy-toast-content" },
+                        React.createElement("div", { className: "fancy-toast-title" }, title),
+                        description
+                            ? React.createElement(
+                                  "div",
+                                  { className: "fancy-toast-sub" },
+                                  description,
+                              )
+                            : null,
+                    ),
+                ),
+            { duration: 2500 },
+        );
+    },
 	info(title: string, description?: string, duration = 2500) {
 		// Use themed (fancy) variant for informational toasts
 		themed(title, description, duration);

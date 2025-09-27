@@ -9,7 +9,7 @@ from .logging_utils import log_http_response
 from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message, get_all_conversations
 import inspect
 from app.utils.http_client import ensure_client_healthy
-from app.metrics import WHATSAPP_MESSAGE_FAILURES
+from app.metrics import WHATSAPP_MESSAGE_FAILURES, WHATSAPP_MESSAGE_FAILURES_BY_REASON
 
 # In-memory LRU of recently processed WhatsApp message IDs to avoid duplicate processing
 _recent_message_ids_queue: deque[str] = deque(maxlen=1000)
@@ -111,6 +111,12 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
         # Check if response is None
         if not response:
             WHATSAPP_MESSAGE_FAILURES.inc()  # Track any response failures
+            try:
+                WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
+                    reason="empty_response", message_type="location",
+                ).inc()
+            except Exception:
+                pass
             return {"status": "error", "message": "Empty response when sending location"}, 500
             
         # Fully consume the response but don't close it
@@ -122,7 +128,13 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
         
     except Exception as e:
         logging.error(f"Exception in send_whatsapp_location: {e}")
-        WHATSAPP_MESSAGE_FAILURES.inc()  # Track exceptions as message failures
+        WHATSAPP_MESSAGE_FAILURES.inc()
+        try:
+            WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
+                reason=e.__class__.__name__ or "exception", message_type="location",
+            ).inc()
+        except Exception:
+            pass
         return {"status": "error", "message": f"Failed to send location message: {str(e)}"}, 500
 
 
@@ -210,8 +222,23 @@ async def _send_whatsapp_request(payload, message_type):
             try:
                 error_body = response.json()
                 logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {error_body}")
+                try:
+                    title = None
+                    if isinstance(error_body, dict):
+                        title = error_body.get("error", {}).get("type") or error_body.get("error", {}).get("subcode") or error_body.get("error", {}).get("message")
+                    WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
+                        reason=str(title or f"http_{response.status_code}"), message_type=str(message_type),
+                    ).inc()
+                except Exception:
+                    pass
             except (ValueError, TypeError):
                 logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {response.text}")
+                try:
+                    WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
+                        reason=f"http_{response.status_code}", message_type=str(message_type),
+                    ).inc()
+                except Exception:
+                    pass
             
             # Return error tuple instead of raising exception to prevent retries
             return {"status": "error", "message": f"WhatsApp API error {response.status_code}"}, response.status_code
@@ -229,7 +256,13 @@ async def _send_whatsapp_request(payload, message_type):
         return {"status": "error", "message": "Request timed out"}, 408
     except (httpx.TransportError, httpx.NetworkError, RuntimeError) as e:
         logging.error(f"Transport or network error when sending {message_type}: {e}")
-        WHATSAPP_MESSAGE_FAILURES.inc()  # Track transport/network errors
+        WHATSAPP_MESSAGE_FAILURES.inc()
+        try:
+            WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
+                reason=e.__class__.__name__ or "network_error", message_type=str(message_type),
+            ).inc()
+        except Exception:
+            pass
         if response:
             try:
                 response.close()

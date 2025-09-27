@@ -49,6 +49,8 @@ export const PhoneNumberSelectorContent: React.FC<
 				value={search}
 				onValueChange={setSearch}
 				placeholder={i18n.getMessage("phone_search_placeholder", isLocalized)}
+				// Force input to behave LTR for numbers
+				dir="ltr"
 				onKeyDown={(e) => {
 					if (e.key === "Enter") {
 						// Create-new when allowed and meaningful
@@ -85,8 +87,8 @@ export const PhoneNumberSelectorContent: React.FC<
 					}
 				}}
 			/>
-			<CommandList>
-				<ThemedScrollbar className="h-72">
+			<CommandList dir="ltr">
+				<ThemedScrollbar className="h-72" rtl={false}>
 					{canCreateNew && (
 						<div className="p-2">
 							<CommandItem
@@ -106,7 +108,7 @@ export const PhoneNumberSelectorContent: React.FC<
 					<CommandEmpty>
 						{i18n.getMessage("phone_no_phone_found", isLocalized)}
 					</CommandEmpty>
-					<CommandGroup>
+					<CommandGroup dir="ltr">
 						{visiblePhones.map((option) => (
 							<CommandItem
 								key={option.number}

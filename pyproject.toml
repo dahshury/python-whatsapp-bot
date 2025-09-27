@@ -7,6 +7,9 @@ name = "python-whatsapp-bot"
 version = "0.1.0"
 description = "WhatsApp bot backend services"
 readme = "README.md"
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+]
 requires-python = ">=3.10"
 authors = [
   { name = "Your Name" }
@@ -51,13 +54,16 @@ backend = [
 
 [tool.uv]
 managed = true
-dev-dependencies = [
-    "ipykernel>=6.30.1",
-    "pytest>=8.4.1",
-]
 python-preference = "system"
 cache-keys = ["platform", "implementation", "version"]
 
+[dependency-groups]
+dev = [
+  "ipykernel>=6.30.1",
+  "pytest>=8.4.1",
+  "pip-licenses>=4.5.0",
+  "mypy>=1.10.0",
+]
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 

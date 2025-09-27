@@ -72,6 +72,7 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 
 	// Extract remaining props from the spread
 	const { elementRef, rtl, ...otherProps } = props;
+	const disableX = Boolean((otherProps as { noScrollX?: boolean }).noScrollX);
 
 	return (
 		<Scrollbar
@@ -99,8 +100,12 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 			trackXProps={{
 				className: cn(
 					"ScrollbarsCustom-Track ScrollbarsCustom-TrackX",
+					disableX ? "hidden" : undefined,
 					trackClassName,
 				),
+				style: disableX
+					? ({ display: "none", height: 0 } as React.CSSProperties)
+					: undefined,
 			}}
 			trackYProps={{
 				className: cn(
@@ -113,9 +118,13 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 			}}
 			contentProps={{
 				className: "ScrollbarsCustom-Content",
+				style: { paddingBottom: 0 },
 			}}
 			scrollerProps={{
 				className: "ScrollbarsCustom-Scroller",
+				style: disableX
+					? ({ overflowX: "hidden", paddingBottom: 0 } as React.CSSProperties)
+					: undefined,
 			}}
 			{...(rtl !== undefined && { rtl })}
 			{...Object.fromEntries(

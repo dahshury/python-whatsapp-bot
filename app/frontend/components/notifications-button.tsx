@@ -623,6 +623,7 @@ export function NotificationsButton({
 								{/* Scrollable list area with themed scrollbar; header remains static */}
 								<ThemedScrollbar
 									className="max-h-[min(60vh,420px)]"
+									style={{ height: "min(60vh, 420px)" }}
 									noScrollX={true}
 									removeTracksWhenNotUsed={true}
 								>

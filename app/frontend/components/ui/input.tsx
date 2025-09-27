@@ -1,8 +1,12 @@
-import * as React from "react";
+"use client";
 
+import * as React from "react";
+import { useUiOverride } from "@/lib/ui-registry";
 import { cn } from "@/lib/utils";
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
+type InputProps = React.ComponentProps<"input">;
+
+const BaseInput = React.forwardRef<HTMLInputElement, InputProps>(
 	({ className, type, ...props }, ref) => {
 		return (
 			<input
@@ -17,6 +21,11 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
 		);
 	},
 );
-Input.displayName = "Input";
+BaseInput.displayName = "Input";
+
+function Input(props: InputProps) {
+	const Override = useUiOverride<InputProps>("Input", BaseInput);
+	return <Override {...props} />;
+}
 
 export { Input };

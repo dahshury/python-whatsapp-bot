@@ -5,20 +5,35 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-const Popover = ({
+// Note: Popover should always use Radix primitives to preserve context for Portal.
+// Theme overrides should customize styles via classNames rather than replacing Root/Trigger/Content components.
+
+function Popover({
 	modal = true,
 	...props
-}: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Root>) => (
-	<PopoverPrimitive.Root modal={modal} {...props} />
-);
+}: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Root>) {
+	return <PopoverPrimitive.Root modal={modal} {...props} />;
+}
 Popover.displayName = "Popover";
 
-const PopoverTrigger = PopoverPrimitive.Trigger;
-const PopoverAnchor = PopoverPrimitive.Anchor;
+function PopoverTrigger(
+	props: React.ComponentProps<typeof PopoverPrimitive.Trigger>,
+) {
+	return <PopoverPrimitive.Trigger {...props} />;
+}
+
+function PopoverAnchor(
+	props: React.ComponentProps<typeof PopoverPrimitive.Anchor>,
+) {
+	return <PopoverPrimitive.Anchor {...props} />;
+}
 
 const PopoverContent = React.forwardRef<
 	React.ElementRef<typeof PopoverPrimitive.Content>,
-	React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+	React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
+		className?: string | undefined;
+		portal?: boolean | undefined;
+	}
 >(
 	(
 		{
@@ -27,9 +42,6 @@ const PopoverContent = React.forwardRef<
 			sideOffset = 4,
 			portal = true,
 			...props
-		}: React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> & {
-			className?: string | undefined;
-			portal?: boolean | undefined;
 		},
 		ref: React.Ref<HTMLDivElement>,
 	) => {

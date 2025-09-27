@@ -27,6 +27,7 @@ interface WebSocketReservation {
 
 import dynamic from "next/dynamic";
 import React from "react";
+import { Toaster } from "sonner";
 import { AnimatedSidebarTrigger } from "@/components/animated-sidebar-trigger";
 import { CalendarContainer } from "@/components/calendar-container";
 import type { CalendarCoreRef } from "@/components/calendar-core";
@@ -58,6 +59,7 @@ import {
 	useConversationsData,
 	useReservationsData,
 } from "@/lib/websocket-data-provider";
+import { Z_INDEX } from "@/lib/z-index";
 
 // FullCalendar component is loaded dynamically in DualCalendarComponent when needed
 
@@ -253,7 +255,7 @@ export default function HomePage() {
 	// Stage I: adopt useCalendarState for robust view/date/slotTimes
 	const calendarState = useCalendarState({
 		freeRoam,
-		initialView: "multiMonthYear",
+		initialView: "timeGridWeek",
 	});
 
 	// Stage M: Enable real data-table editor state
@@ -323,11 +325,9 @@ export default function HomePage() {
 
 	const [rightCalendarView, setRightCalendarView] = React.useState(() => {
 		if (typeof window !== "undefined") {
-			return (
-				localStorage.getItem("dual-right-calendar-view") || "multiMonthYear"
-			);
+			return localStorage.getItem("dual-right-calendar-view") || "timeGridWeek";
 		}
-		return "multiMonthYear";
+		return "timeGridWeek";
 	});
 
 	// Save to localStorage when views change
@@ -562,6 +562,35 @@ export default function HomePage() {
 					</div>
 				);
 			})()}
+			<Toaster
+				position="bottom-right"
+				gap={8}
+				style={{
+					zIndex: Z_INDEX.TOASTER,
+				}}
+				toastOptions={{
+					className: "sonner-toast",
+					descriptionClassName: "sonner-description",
+					style: {
+						background: "transparent",
+						border: "none",
+						// @ts-expect-error custom css var
+						"--toaster-z": Z_INDEX.TOASTER,
+					},
+					classNames: {
+						toast: "sonner-toast group",
+						title: "sonner-title",
+						description: "sonner-description",
+						actionButton: "sonner-action",
+						cancelButton: "sonner-cancel",
+						closeButton: "sonner-close",
+						error: "sonner-error",
+						success: "sonner-success",
+						warning: "sonner-warning",
+						info: "sonner-info",
+					},
+				}}
+			/>
 		</SidebarInset>
 	);
 }

@@ -18,5 +18,6 @@
 		"**/*.spec.{ts,tsx,js,jsx}"
 	],
 	"ignoreExportsUsedInFile": true,
-	"ignoreDependencies": ["@biomejs/biome"]
+	"ignoreDependencies": ["@biomejs/biome", "critters"],
+	"ignoreBinaries": ["python"]
 }

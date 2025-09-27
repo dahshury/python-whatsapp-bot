@@ -23,7 +23,7 @@ import type {
 
 export function DockNav({
 	className = "",
-	currentCalendarView = "multiMonthYear",
+	currentCalendarView = "timeGridWeek",
 	calendarRef,
 	onCalendarViewChange,
 	navigationOnly = false,

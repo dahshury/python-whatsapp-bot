@@ -4,13 +4,13 @@ import type React from "react";
 import "./globals.css";
 import "@glideapps/glide-data-grid/dist/index.css";
 import "@ncdai/react-wheel-picker/style.css";
-import { Toaster } from "sonner";
 import { ConditionalAppSidebar } from "@/components/conditional-app-sidebar";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
 import { PortalBootstrap } from "@/components/portal-bootstrap";
 import { THEME_OPTIONS } from "@/components/settings/theme-data";
 import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
+import { UiThemeBridge } from "@/components/theme/ui-theme-bridge";
 import { ThemeWrapper } from "@/components/theme-wrapper";
 import { UndoManager } from "@/components/UndoManager";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -24,7 +24,6 @@ import { ToastRouter } from "@/lib/toast-router";
 import { UnifiedDataProvider } from "@/lib/unified-data-provider";
 import { VacationProvider } from "@/lib/vacation-context";
 import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
-import { Z_INDEX } from "@/lib/z-index";
 
 // import { GlobalSettings } from "@/components/global-settings"
 
@@ -137,66 +136,37 @@ export default function RootLayout({
 					<ErrorRecoveryInit />
 					<LanguageProvider>
 						<SettingsProvider>
-							<SpacemanThemeBridge>
-								<BackendConnectionProvider>
-									<WebSocketDataProvider>
-										<UnifiedDataProvider>
-											<ThemeWrapper>
-												<VacationProvider>
-													<CustomerDataProvider>
-														<div className="flex flex-col h-screen">
-															<div className="flex flex-1 overflow-hidden">
-																<SidebarProvider>
-																	<ConditionalAppSidebar />
-																	<MainContentWrapper>
-																		{children}
-																	</MainContentWrapper>
-																</SidebarProvider>
+							<UiThemeBridge>
+								<SpacemanThemeBridge>
+									<BackendConnectionProvider>
+										<WebSocketDataProvider>
+											<UnifiedDataProvider>
+												<ThemeWrapper>
+													<VacationProvider>
+														<CustomerDataProvider>
+															<div className="flex flex-col h-screen">
+																<div className="flex flex-1 overflow-hidden">
+																	<SidebarProvider>
+																		<ConditionalAppSidebar />
+																		<MainContentWrapper>
+																			{children}
+																		</MainContentWrapper>
+																	</SidebarProvider>
+																</div>
 															</div>
-														</div>
-														<RealtimeEventBus />
-														<ToastRouter />
-													</CustomerDataProvider>
-												</VacationProvider>
-												<UndoManager />
-											</ThemeWrapper>
-										</UnifiedDataProvider>
-									</WebSocketDataProvider>
-								</BackendConnectionProvider>
-							</SpacemanThemeBridge>
+															<RealtimeEventBus />
+															<ToastRouter />
+														</CustomerDataProvider>
+													</VacationProvider>
+													<UndoManager />
+												</ThemeWrapper>
+											</UnifiedDataProvider>
+										</WebSocketDataProvider>
+									</BackendConnectionProvider>
+								</SpacemanThemeBridge>
+							</UiThemeBridge>
 						</SettingsProvider>
 					</LanguageProvider>
-					<Toaster
-						position="bottom-right"
-						gap={8}
-						style={{
-							zIndex: Z_INDEX.TOASTER,
-						}}
-						toastOptions={{
-							className: "sonner-toast",
-							descriptionClassName: "sonner-description",
-							style: {
-								background: "transparent",
-								border: "none",
-								// Don't set zIndex here - let Sonner handle individual toast stacking
-								// Only expose z-index as CSS variable for the container
-								// @ts-expect-error custom css var
-								"--toaster-z": Z_INDEX.TOASTER,
-							},
-							classNames: {
-								toast: "sonner-toast group",
-								title: "sonner-title",
-								description: "sonner-description",
-								actionButton: "sonner-action",
-								cancelButton: "sonner-cancel",
-								closeButton: "sonner-close",
-								error: "sonner-error",
-								success: "sonner-success",
-								warning: "sonner-warning",
-								info: "sonner-info",
-							},
-						}}
-					/>
 				</ThemeProvider>
 				<PortalBootstrap />
 			</body>

@@ -33,6 +33,7 @@ WORKDIR /app
 LABEL org.opencontainers.image.title="python-whatsapp-bot-backend"
 LABEL org.opencontainers.image.description="Backend service for python-whatsapp-bot"
 LABEL com.dahshury.prunable="true"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Minimal runtime OS deps only
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -66,6 +67,10 @@ COPY app/utils/ app/utils/
 COPY app/services/ app/services/
 COPY app/decorators/ app/decorators/
 COPY scripts/ /app/scripts/
+
+# Include license files in image
+COPY LICENSE /licenses/
+COPY LICENCE.txt /licenses/
 
 # Set environment variable to point to persisted database location
 ENV DB_PATH=/app/data/threads_db.sqlite

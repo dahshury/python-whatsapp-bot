@@ -16,7 +16,7 @@ interface ViewSettingsProps {
 
 export function ViewSettings({
 	isLocalized = false,
-	currentCalendarView = "multiMonthYear",
+	currentCalendarView = "timeGridWeek",
 	activeView,
 	onCalendarViewChange,
 }: ViewSettingsProps) {

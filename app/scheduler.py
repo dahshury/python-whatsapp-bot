@@ -12,7 +12,14 @@ from apscheduler.events import EVENT_JOB_MISSED, EVENT_JOB_ERROR
 from app.config import config
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
-from app.metrics import monitor_system_metrics, FUNCTION_ERRORS, SCHEDULER_JOB_MISSED, BACKUP_SCRIPT_FAILURES
+from app.metrics import (
+    monitor_system_metrics,
+    FUNCTION_ERRORS,
+    SCHEDULER_JOB_MISSED,
+    BACKUP_SCRIPT_FAILURES,
+    BACKUP_SCRIPT_FAILURES_BY_REASON,
+    SCHEDULER_JOB_MISSED_BY_REASON,
+)
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False
@@ -122,7 +129,10 @@ def run_database_backup():
         # Check if script exists
         if not os.path.isfile(script_path):
             logging.error(f"Backup script not found at {script_path}")
-            BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+            BACKUP_SCRIPT_FAILURES.inc()
+            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+                reason="script_not_found", stage="preflight", exit_code="127"
+            ).inc()
             FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             return
         
@@ -143,29 +153,100 @@ def run_database_backup():
         # Get output with timeout (to prevent hanging)
         try:
             stdout, stderr = process.communicate(timeout=300)  # 5-minute timeout
-            
+
             if process.returncode == 0:
                 logging.info("Database backup completed successfully")
-                # Log stdout at debug level
                 for line in stdout.splitlines():
                     logging.debug(f"Backup: {line}")
             else:
-                logging.error(f"Database backup failed with code {process.returncode}")
-                BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+                logging.error(
+                    f"Database backup failed with code {process.returncode}"
+                )
+                # Classify failure reason and stage from structured output or heuristics
+                reason, stage, exit_code = _classify_backup_failure(stdout, stderr, process.returncode)
+                BACKUP_SCRIPT_FAILURES.inc()
+                BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+                    reason=reason, stage=stage, exit_code=str(exit_code)
+                ).inc()
                 FUNCTION_ERRORS.labels(function="run_database_backup").inc()
-                for line in stderr.splitlines():
-                    FUNCTION_ERRORS.labels(function="run_database_backup").inc()
+                logging.error(
+                    f"Backup failure classified: reason={reason} stage={stage} exit_code={exit_code}"
+                )
+                for line in (stderr or "").splitlines():
                     logging.error(f"Backup error: {line}")
+                for line in (stdout or "").splitlines():
+                    if line.startswith("BACKUP_ERROR"):
+                        logging.error(f"Backup error detail: {line}")
         except subprocess.TimeoutExpired:
             process.kill()
             logging.error("Database backup timed out after 5 minutes")
-            BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+            BACKUP_SCRIPT_FAILURES.inc()
+            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+                reason="timeout", stage="timeout", exit_code="timeout"
+            ).inc()
             FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             
     except Exception as e:
         logging.error(f"Error during database backup: {e}")
-        BACKUP_SCRIPT_FAILURES.inc()  # Increment the metric
+        BACKUP_SCRIPT_FAILURES.inc()
+        BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+            reason="unhandled_exception", stage="scheduler", exit_code="exception"
+        ).inc()
         FUNCTION_ERRORS.labels(function="run_database_backup").inc()
+
+
+def _classify_backup_failure(stdout: str, stderr: str, returncode: int):
+    """
+    Attempt to classify the backup failure reason and stage from the script output.
+
+    Returns a tuple: (reason, stage, exit_code)
+    """
+    try:
+        combined = []
+        if stdout:
+            combined.extend(stdout.splitlines())
+        if stderr:
+            combined.extend(stderr.splitlines())
+
+        # Prefer structured error lines emitted by the script
+        for line in combined:
+            line_stripped = line.strip()
+            if line_stripped.startswith("BACKUP_ERROR"):
+                # Format: BACKUP_ERROR stage=... code=... reason=... ...
+                reason = None
+                stage = None
+                code = None
+                parts = line_stripped.split()
+                for part in parts:
+                    if part.startswith("reason="):
+                        reason = part.split("=", 1)[1]
+                    elif part.startswith("stage="):
+                        stage = part.split("=", 1)[1]
+                    elif part.startswith("code="):
+                        code = part.split("=", 1)[1]
+                return (
+                    reason or "unknown_error",
+                    stage or "unknown",
+                    code or str(returncode),
+                )
+
+        # Heuristic classification
+        text = "\n".join(combined)
+        if "Database not found" in text:
+            return "db_not_found", "preflight", str(returncode)
+        if "Permission denied" in text:
+            return "permission_denied", "preflight", str(returncode)
+        if "locked" in text.lower() and "sqlite" in text.lower():
+            return "sqlite_locked", "sqlite_backup", str(returncode)
+        if "zip" in text.lower() and "error" in text.lower():
+            return "zip_failed", "compress_zip", str(returncode)
+        if "aws s3" in text.lower() or "An error occurred" in text:
+            return "s3_upload_failed", "s3_upload", str(returncode)
+        if "wal_checkpoint" in text.lower():
+            return "wal_checkpoint_failed", "wal_checkpoint", str(returncode)
+        return "unknown_error", "unknown", str(returncode)
+    except Exception:
+        return "unknown_error", "unknown", str(returncode)
 
 
 # Define a job to manually trigger Python garbage collection
@@ -179,7 +260,13 @@ def scheduler_listener(event):
     if event.code == EVENT_JOB_MISSED:
         job_id = event.job_id
         logging.warning(f"Run time of job {job_id} was missed")
-        SCHEDULER_JOB_MISSED.inc()  # Increment the missed job counter
+        SCHEDULER_JOB_MISSED.inc()
+        try:
+            SCHEDULER_JOB_MISSED_BY_REASON.labels(
+                reason="missed_start_deadline", job_id=str(job_id)
+            ).inc()
+        except Exception:
+            pass
     elif event.code == EVENT_JOB_ERROR:
         job_id = event.job_id
         exception = event.exception

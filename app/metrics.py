@@ -23,6 +23,11 @@ RESERVATION_SUCCESSES = Counter(
 RESERVATION_FAILURES = Counter(
     'reservations_failed_total', 'Total failed reservations'
 )
+RESERVATION_FAILURES_BY_REASON = Counter(
+    'reservations_failed_by_reason_total',
+    'Failed reservations categorized by reason and context',
+    ['reason', 'endpoint', 'method']
+)
 
 CANCELLATION_REQUESTS = Counter(
     'reservations_cancellation_requested_total', 'Total cancellation attempts'
@@ -33,6 +38,11 @@ CANCELLATION_SUCCESSES = Counter(
 CANCELLATION_FAILURES = Counter(
     'reservations_cancellation_failed_total', 'Total failed cancellations'
 )
+CANCELLATION_FAILURES_BY_REASON = Counter(
+    'reservations_cancellation_failed_by_reason_total',
+    'Failed cancellations categorized by reason and context',
+    ['reason', 'endpoint', 'method']
+)
 
 MODIFY_REQUESTS = Counter(
     'reservations_modification_requested_total', 'Total reservation modification attempts'
@@ -42,6 +52,11 @@ MODIFY_SUCCESSES = Counter(
 )
 MODIFY_FAILURES = Counter(
     'reservations_modification_failed_total', 'Total failed modifications'
+)
+MODIFY_FAILURES_BY_REASON = Counter(
+    'reservations_modification_failed_by_reason_total',
+    'Failed modifications categorized by reason and context',
+    ['reason', 'endpoint', 'method']
 )
 
 # Retry metrics: include exception type
@@ -124,10 +139,20 @@ WHATSAPP_MESSAGE_FAILURES = Counter(
     'whatsapp_message_failures_total',
     'Total number of WhatsApp message delivery failures'
 )
+WHATSAPP_MESSAGE_FAILURES_BY_REASON = Counter(
+    'whatsapp_message_failures_by_reason_total',
+    'WhatsApp failures by reason and message type',
+    ['reason', 'message_type']
+)
 
 SCHEDULER_JOB_MISSED = Counter(
     'scheduler_job_missed_total',
     'Total number of scheduler jobs that missed their execution time'
+)
+SCHEDULER_JOB_MISSED_BY_REASON = Counter(
+    'scheduler_job_missed_by_reason_total',
+    'Missed scheduler jobs categorized by reason',
+    ['reason', 'job_id']
 )
 
 BACKUP_SCRIPT_FAILURES = Counter(
@@ -135,12 +160,30 @@ BACKUP_SCRIPT_FAILURES = Counter(
     'Total number of backup script failures'
 )
 
+# Labeled version to capture clear reasons and stages for backup failures
+BACKUP_SCRIPT_FAILURES_BY_REASON = Counter(
+    'backup_script_failures_by_reason_total',
+    'Total number of backup script failures categorized by reason and stage',
+    ['reason', 'stage', 'exit_code']
+)
+
 INVALID_HTTP_REQUESTS = Counter(
     'invalid_http_requests_total',
     'Total number of invalid HTTP requests received'
+)
+INVALID_HTTP_REQUESTS_BY_REASON = Counter(
+    'invalid_http_requests_by_reason_total',
+    'Invalid HTTP requests categorized by reason and route',
+    ['reason', 'endpoint', 'method']
 )
 
 CONCURRENT_TASK_LIMIT_REACHED = Counter(
     'concurrent_task_limit_reached_total',
     'Number of times the concurrent task limit was reached'
 ) 
+
+CONCURRENT_TASK_LIMIT_REACHED_BY_REASON = Counter(
+    'concurrent_task_limit_reached_by_reason_total',
+    'Concurrent task limit events categorized by reason and route',
+    ['reason', 'endpoint', 'method']
+)

@@ -90,7 +90,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
 			ref,
 		) => {
 			return (
-				<div ref={ref} className={cn("", className)} {...props}>
+				<div ref={ref} className={cn("", className)} {...props} dir="ltr">
 					<PhoneCombobox
 						value={value || ""}
 						onChange={onChange || (() => {})}

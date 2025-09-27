@@ -2,6 +2,7 @@
 	"name": "python-whatsapp-bot-monorepo",
 	"private": true,
 	"version": "0.0.0",
+	"license": "MIT",
 	"workspaces": [
 		"app/frontend"
 	],
@@ -14,7 +15,10 @@
 		"dev": "pnpm --filter ./app/frontend dev",
 		"build": "pnpm --filter ./app/frontend build",
 		"start": "pnpm --filter ./app/frontend start",
-		"lint": "pnpm --filter ./app/frontend lint"
+		"lint": "pnpm --filter ./app/frontend lint",
+		"licenses:js": "pnpm --filter ./app/frontend licenses list --json > app/frontend/third_party_licenses.json",
+		"licenses:js:notice": "pnpm --filter ./app/frontend licenses generate-disclaimer > app/frontend/THIRD_PARTY_NOTICES.txt",
+		"licenses:python": "python -m piplicenses --format=markdown --with-authors --with-urls --with-license-file --no-license-path --output-file THIRD_PARTY_LICENSES_PY.md"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",

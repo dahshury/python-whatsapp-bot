@@ -130,10 +130,10 @@ function DualCalendarViewSelector({
 
 export function DockNavSimple({
 	className = "",
-	currentCalendarView = "multiMonthYear",
+	currentCalendarView = "timeGridWeek",
 	onCalendarViewChange,
-	leftCalendarView = "multiMonthYear",
-	rightCalendarView = "multiMonthYear",
+	leftCalendarView = "timeGridWeek",
+	rightCalendarView = "timeGridWeek",
 	onLeftCalendarViewChange,
 	onRightCalendarViewChange,
 	leftCalendarRef,

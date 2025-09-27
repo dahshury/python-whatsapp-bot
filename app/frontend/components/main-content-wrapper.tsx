@@ -12,6 +12,8 @@ export function MainContentWrapper({ children }: MainContentWrapperProps) {
 		<ThemedScrollbar
 			className="flex-1 scrollbar-autohide main-content-scrollbar"
 			style={{ height: "100%" }}
+			noScrollX={true}
+			removeTrackXWhenNotUsed={true}
 			disableTracksWidthCompensation={true}
 			rtl={false}
 		>

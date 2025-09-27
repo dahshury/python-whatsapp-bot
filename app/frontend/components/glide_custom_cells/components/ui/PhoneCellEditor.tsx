@@ -115,7 +115,7 @@ const PhoneCellEditor: React.FC<PhoneCellEditorProps> = ({
 	};
 
 	return (
-		<div className="flex flex-col glide-data-grid-overlay-editor">
+		<div className="flex flex-col glide-data-grid-overlay-editor" dir="ltr">
 			<PhoneCombobox
 				value={value}
 				onChange={onChange}

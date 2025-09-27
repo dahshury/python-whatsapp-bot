@@ -135,8 +135,8 @@ export function SettingsPopover({
 						isLocalized={isLocalized}
 						activeTab={activeTab ?? "view"}
 						onTabChange={onTabChange ?? (() => {})}
-						currentCalendarView={currentCalendarView ?? "multiMonthYear"}
-						activeView={activeView ?? currentCalendarView ?? "multiMonthYear"}
+						currentCalendarView={currentCalendarView ?? "timeGridWeek"}
+						activeView={activeView ?? currentCalendarView ?? "timeGridWeek"}
 						onCalendarViewChange={onCalendarViewChange ?? (() => {})}
 						isCalendarPage={isCalendarPage}
 					/>

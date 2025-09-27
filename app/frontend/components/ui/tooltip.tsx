@@ -6,6 +6,8 @@ import type * as React from "react";
 import { cn } from "@/lib/utils";
 import { Z_INDEX } from "@/lib/z-index";
 
+// Note: composite overrides are applied via theme registry; Tooltip always uses Radix primitives to preserve context
+
 function TooltipProvider({
 	delayDuration = 0,
 	...props
@@ -22,6 +24,7 @@ function TooltipProvider({
 function Tooltip({
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Root>) {
+	// Always render Radix Tooltip root to preserve context; overrides are applied to content/trigger via styles only
 	return (
 		<TooltipProvider>
 			<TooltipPrimitive.Root data-slot="tooltip" {...props} />
@@ -32,6 +35,7 @@ function Tooltip({
 function TooltipTrigger({
 	...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
+	// Keep Radix Trigger to maintain semantics
 	return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />;
 }
 

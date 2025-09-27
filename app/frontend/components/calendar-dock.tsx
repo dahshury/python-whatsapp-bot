@@ -27,7 +27,7 @@ interface CalendarDockProps {
 
 export function CalendarDock({
 	className = "",
-	currentView = "multiMonthYear",
+	currentView = "timeGridWeek",
 	calendarRef,
 	freeRoam: _freeRoam = false,
 	isLocalized = false,

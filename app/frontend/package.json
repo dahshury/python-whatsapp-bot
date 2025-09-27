@@ -2,6 +2,7 @@
 	"name": "my-app",
 	"version": "0.1.0",
 	"private": true,
+	"license": "MIT",
 	"packageManager": "pnpm@10.1.0",
 	"engines": {
 		"node": ">=20",
@@ -18,7 +19,9 @@
 		"build:classic": "next build",
 		"start": "next start --turbo",
 		"lint": "next lint",
-		"clean": "rm -rf .next out dist node_modules/.cache"
+		"clean": "rm -rf .next out dist node_modules/.cache",
+		"licenses:list": "pnpm licenses list --json > third_party_licenses.json",
+		"licenses:notice": "pnpm licenses generate-disclaimer > THIRD_PARTY_NOTICES.txt"
 	},
 	"dependencies": {
 		"@emotion-icons/material-outlined": "^3.14.0",

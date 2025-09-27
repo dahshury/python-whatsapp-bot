@@ -37,7 +37,7 @@ class BaseLLMService(abc.ABC):
         
         # OpenAI
         self.openai_model = "gpt-5"
-        self.openai_reasoning_effort = "medium"
+        self.openai_reasoning_effort = "high"
         self.openai_reasoning_summary = "auto"
         self.openai_text_format = "text"
         self.openai_store = True

@@ -16,6 +16,10 @@ from app.decorators.metrics_decorators import (
     instrument_reservation, instrument_cancellation, instrument_modification
 )
 from app.utils.realtime import enqueue_broadcast
+from app.metrics import (
+    MODIFY_FAILURES_BY_REASON,
+    CANCELLATION_FAILURES_BY_REASON,
+)
 
 
 class ReservationService(BaseService):
@@ -43,6 +47,23 @@ class ReservationService(BaseService):
         self.availability_service = availability_service or AvailabilityService(
             reservation_repository=self.reservation_repository, **kwargs
         )
+
+    def _record_failure_metric(self, operation: str, reason: str) -> None:
+        """
+        Increment labeled failure metrics with context where available.
+        Endpoint and method are not known in domain layer; set to 'n/a'.
+        """
+        try:
+            if operation == "modify":
+                MODIFY_FAILURES_BY_REASON.labels(
+                    reason=reason, endpoint="n/a", method="n/a"
+                ).inc()
+            elif operation == "cancel":
+                CANCELLATION_FAILURES_BY_REASON.labels(
+                    reason=reason, endpoint="n/a", method="n/a"
+                ).inc()
+        except Exception:
+            pass
     
     def get_service_name(self) -> str:
         return "ReservationService"
@@ -111,6 +132,7 @@ class ReservationService(BaseService):
             # Validate WhatsApp ID
             validation_error = self._validate_wa_id(wa_id, ar)
             if validation_error:
+                self._record_failure_metric("modify", "invalid_wa_id")
                 return validation_error
             
             # Validate inputs
@@ -322,6 +344,7 @@ class ReservationService(BaseService):
             
             # Ensure there is something to modify
             if not any([new_date, new_time_slot, new_name, new_type is not None]):
+                self._record_failure_metric("modify", "no_new_details")
                 return format_response(False, message=get_message("no_new_details", ar))
             
             # Get current time
@@ -332,12 +355,14 @@ class ReservationService(BaseService):
             if reservation_id_to_modify:
                 reservation_to_modify = self.reservation_repository.find_by_id(reservation_id_to_modify)
                 if not reservation_to_modify:
+                    self._record_failure_metric("modify", "reservation_not_found")
                     return format_response(False, message=get_message("reservation_not_found_id", ar, id=reservation_id_to_modify))
                 # Security check: Ensure the reservation belongs to the wa_id if both are provided
                 if reservation_to_modify.wa_id != wa_id:
                     # This case should ideally not happen if API is structured well,
                     # but good for defense. The frontend should pass the correct wa_id for the reservation.
                     self.logger.warning(f"Attempt to modify reservation ID {reservation_id_to_modify} with mismatched wa_id {wa_id} (owner is {reservation_to_modify.wa_id})")
+                    self._record_failure_metric("modify", "wa_id_mismatch")
                     return format_response(False, message=get_message("reservation_not_found_id", ar, id=reservation_id_to_modify)) # Generic error for security
             else:
                 # Get upcoming reservations for the customer
@@ -345,6 +370,7 @@ class ReservationService(BaseService):
                 future_reservations = [res for res in reservations if res.is_future(now)]
                 
                 if not future_reservations:
+                    self._record_failure_metric("modify", "no_future_reservations")
                     return format_response(False, message=get_message("no_future_reservations", ar))
                 
                 # For simplicity, target the next upcoming reservation if no specific ID is given.
@@ -411,6 +437,7 @@ class ReservationService(BaseService):
                     date_to_parse, time_to_parse, hijri
                 )
                 if not valid_dt:
+                    self._record_failure_metric("modify", "invalid_date_time")
                     return format_response(False, message=err_msg_dt)
                 
                 parsed_new_date_str = temp_parsed_date
@@ -438,6 +465,7 @@ class ReservationService(BaseService):
                     display_time_slot_candidate = normalize_time_format(parsed_new_time_str, to_24h=False)
                     allowed_slots_display = get_time_slots(date_str=parsed_new_date_str, to_24h=False)
                     if isinstance(allowed_slots_display, dict) and allowed_slots_display.get("success") is False:
+                        self._record_failure_metric("modify", "slot_invalid_or_unavailable")
                         return allowed_slots_display
                     slots_list = list(allowed_slots_display.keys()) if isinstance(allowed_slots_display, dict) else []
                     slots_str = ', '.join(slots_list) if slots_list else "None available"
@@ -454,8 +482,10 @@ class ReservationService(BaseService):
                     if approximate:
                         # Attempt to find nearest available slot (simplified example)
                         # This needs more robust implementation in AvailabilityService
+                        self._record_failure_metric("modify", "slot_unavailable_approx_not_impl")
                         return format_response(False, message=get_message("slot_unavailable_approx_not_impl", ar))
                     else:
+                        self._record_failure_metric("modify", "slot_fully_booked")
                         return format_response(False, message=get_message("slot_fully_booked", ar))
                 
                 reservation_to_modify.date = parsed_new_date_str
@@ -466,6 +496,7 @@ class ReservationService(BaseService):
             update_success = self.reservation_repository.update(reservation_to_modify)
             
             if not update_success:
+                self._record_failure_metric("modify", "db_update_failed")
                 return self._handle_error("modify_reservation", Exception("Failed to update reservation in DB"), ar)
 
             # Prepare response data
@@ -530,6 +561,7 @@ class ReservationService(BaseService):
             # Validate WhatsApp ID
             validation_error = self._validate_wa_id(wa_id, ar)
             if validation_error:
+                self._record_failure_metric("cancel", "invalid_wa_id")
                 return validation_error
             
             # Get current time for future checks
@@ -542,15 +574,18 @@ class ReservationService(BaseService):
                 # Find the reservation to ensure it belongs to the wa_id (security/consistency check)
                 reservation = self.reservation_repository.find_by_id(reservation_id_to_cancel)
                 if not reservation:
+                    self._record_failure_metric("cancel", "reservation_not_found")
                     return format_response(False, message=get_message("reservation_not_found_id", ar, id=reservation_id_to_cancel))
                 if reservation.wa_id != wa_id:
                     self.logger.warning(f"Attempt to cancel reservation ID {reservation_id_to_cancel} with mismatched wa_id {wa_id} (owner is {reservation.wa_id})")
+                    self._record_failure_metric("cancel", "wa_id_mismatch")
                     return format_response(False, message=get_message("reservation_not_found_id", ar, id=reservation_id_to_cancel)) # Generic error for security
                 if reservation.status == 'cancelled':
                      return format_response(True, message=get_message("reservation_already_cancelled", ar), data={"cancelled_ids": [reservation_id_to_cancel]})
 
                 # Check if reservation is in the future
                 if not reservation.is_future(now):
+                    self._record_failure_metric("cancel", "cannot_cancel_past")
                     return format_response(False, message=get_message("cannot_cancel_past_reservation", ar, id=reservation_id_to_cancel))
 
                 success = self.reservation_repository.cancel_by_id(reservation_id_to_cancel)
@@ -569,11 +604,13 @@ class ReservationService(BaseService):
                     # cancel_by_id returns False if already cancelled or not found, but we checked found.
                     # So this implies it was already cancelled, or an unexpected DB issue.
                     # Re-fetch to confirm status if needed, or assume prior check was enough.
+                    self._record_failure_metric("cancel", "db_update_failed")
                     return format_response(False, message=get_message("cancellation_failed_specific", ar, id=reservation_id_to_cancel))
 
             elif date_str: # Cancel specific reservation by date for the wa_id
                 parsed_target_date_str = parse_date(date_str, hijri)
                 if not parsed_target_date_str:
+                    self._record_failure_metric("cancel", "invalid_date_format")
                     return format_response(False, message=get_message("invalid_date_format", ar))
                 
                 # Find active reservations for that date for the customer
@@ -584,6 +621,7 @@ class ReservationService(BaseService):
                 ]
 
                 if not active_reservations_on_date:
+                    self._record_failure_metric("cancel", "no_reservation_on_date")
                     return format_response(False, message=get_message("no_reservation_on_date", ar, date=parsed_target_date_str))
 
                 # Filter to only future reservations
@@ -593,6 +631,7 @@ class ReservationService(BaseService):
                 ]
                 
                 if not future_reservations_on_date:
+                    self._record_failure_metric("cancel", "no_future_reservations_on_date")
                     return format_response(False, message=get_message("no_future_reservations_on_date", ar, date=parsed_target_date_str))
 
                 for res in future_reservations_on_date:
@@ -605,6 +644,7 @@ class ReservationService(BaseService):
                             pass
                 
                 if cancelled_count == 0 and future_reservations_on_date: # Should not happen if logic is correct
+                     self._record_failure_metric("cancel", "cancellation_failed_date")
                      return format_response(False, message=get_message("cancellation_failed_date", ar, date=parsed_target_date_str))
 
 
@@ -616,6 +656,7 @@ class ReservationService(BaseService):
                 ]
                 
                 if not active_future_reservations:
+                    self._record_failure_metric("cancel", "no_future_reservations")
                     return format_response(False, message=get_message("no_future_reservations", ar))
                 
                 for res in active_future_reservations:
@@ -639,6 +680,7 @@ class ReservationService(BaseService):
                 # This path could be hit if no reservations were found to cancel, or if cancellation failed for some reason
                 # The messages like "no_future_reservations" or "no_reservation_on_date" should catch most cases.
                 # If reservation_id_to_cancel was given and it failed, that's handled above.
+                self._record_failure_metric("cancel", "no_reservations_to_cancel")
                 return format_response(False, message=get_message("no_reservations_to_cancel", ar))
             
         except Exception as e:

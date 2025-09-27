@@ -72,21 +72,28 @@ export const ToastRouter: React.FC = () => {
 						time: (data.time_slot || "").slice(0, 5),
 						isLocalized,
 					});
-				} else if (type === "conversation_new_message") {
+                } else if (type === "conversation_new_message") {
 					const messageLabel = i18n.getMessage(
 						"toast_new_message",
 						isLocalized,
 					);
-					const waId = String((data as { wa_id?: string })?.wa_id || "");
+                    const waId = String((data as { wa_id?: string; waId?: string })?.wa_id || (data as { waId?: string }).waId || "");
 					const name = resolveCustomerName(
 						waId,
 						(data as { customer_name?: string })?.customer_name,
 					);
 					const who = name || waId;
 					const title = `${messageLabel} • ${who}`;
+					const maybeDate = (data as { date?: string }).date;
+					const maybeTime = (data as { time?: string }).time;
+					const maybeMessage = (data as { message?: string }).message;
 					toastService.newMessage({
 						title,
-						description: (data.message || "").slice(0, 100),
+						description: (maybeMessage || "").slice(0, 100),
+						wa_id: waId,
+						...(typeof maybeDate === "string" ? { date: maybeDate } : {}),
+						...(typeof maybeTime === "string" ? { time: maybeTime } : {}),
+						...(typeof maybeMessage === "string" ? { message: maybeMessage } : {}),
 						isLocalized,
 					});
 				} else if (type === "vacation_period_updated") {

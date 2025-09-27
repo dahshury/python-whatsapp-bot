@@ -473,20 +473,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						</span>
 					</div>
 				</SidebarHeader>
-				{/* Theme-aware aurora overlay for Documents sidebar */}
-				<SidebarContent className="px-3 pt-1 pb-3 bg-sidebar relative overflow-hidden">
-					<div
-						className="absolute inset-0 z-0 pointer-events-none"
-						style={{
-							background: `radial-gradient(circle at top,
-								hsl(var(--foreground) / 0.06) 0%,
-								hsl(var(--sidebar-primary) / 0.08) 22%,
-								transparent 60%)`,
-						}}
-					/>
+				<SidebarContent className="px-3 pt-1 bg-sidebar relative overflow-hidden">
 					<div className="relative z-[1] flex min-h-0 flex-1 flex-col">
 						{/* Mini list-view calendar with simple dock navigation */}
-						<div className="mt-0 flex-1 min-h-0 flex flex-col overflow-auto">
+						<div
+							className="mt-0 flex-1 min-h-0 flex flex-col overflow-auto overscroll-contain relative"
+							style={{ overscrollBehaviorY: "contain", touchAction: "pan-y" }}
+						>
+							{/* Removed decorative gradient to avoid any bleed into status area */}
 							{/* Minimal navigation: Prev | Title (Today) | Next */}
 							<div className="mb-1 flex items-center justify-between gap-2">
 								<Button
@@ -544,14 +538,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									currentView="listMonth"
 									currentDate={miniCalDate}
 									isLocalized={isLocalized}
-									freeRoam={true}
+									freeRoam={false}
 									slotTimes={miniSlotTimes}
 									slotTimesKey={miniSlotTimesKey}
 									calendarHeight={miniCalendarHeight}
 									onEventClick={handleMiniEventClick}
 									onNavDate={handleMiniNavDate}
-									// Disable validRange constraints for sidebar mini calendar to allow past navigation
-									overrideValidRange={true}
 									onDatesSet={(info) => {
 										try {
 											const el = document.getElementById(titleId);
@@ -585,7 +577,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							</div>
 						</div>
 						{/* Save/lock status row (reads from window vars set by the Documents page) */}
-						<div className="sticky bottom-0 bg-sidebar pt-3 border-t border-sidebar-border text-sm text-muted-foreground flex items-center gap-2">
+						<div className="relative z-[1] bg-transparent pt-3 pb-3 border-t border-sidebar-border text-sm text-muted-foreground flex items-center gap-2">
 							{!mounted ? null : docSaveState.loading ? (
 								<>
 									<CircleDashed className="h-4 w-4 animate-spin" />

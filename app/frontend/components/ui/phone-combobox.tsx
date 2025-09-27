@@ -400,7 +400,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 	}
 
 	return (
-		<div className={cn("flex flex-col", className)}>
+		<div className={cn("flex flex-col", className)} dir="ltr">
 			<div className="flex">
 				{/* Country Selector - only show if enabled */}
 				{showCountrySelector && (
@@ -461,7 +461,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 									{showNameAndPhoneWhenClosed && selectedPhone ? (
 										<>
 											<span
-												className="text-sm text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded text-xs"
+												className="text-sm text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded"
 												style={{ direction: "ltr" }}
 											>
 												[{selectedPhone}]
@@ -495,6 +495,7 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 					</PopoverTrigger>
 					<PopoverContent
 						className={cn("w-[25rem] p-0", "click-outside-ignore")}
+						dir="ltr"
 					>
 						<PhoneNumberSelectorContent
 							search={phoneSearch}

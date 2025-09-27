@@ -3,17 +3,21 @@
 import dynamic from "next/dynamic";
 import { LockIllustration } from "@/components/lock-illustration";
 import "@excalidraw/excalidraw/index.css";
+import { ChevronDown, ChevronUp, Maximize2, Minimize2 } from "lucide-react";
 import { useTheme as useNextThemes } from "next-themes";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DockNav } from "@/components/dock-nav";
 import { DocumentCanvas } from "@/components/documents/DocumentCanvas";
 import { FullscreenProvider } from "@/components/glide_custom_cells/components/contexts/FullscreenContext";
 import { InMemoryDataSource } from "@/components/glide_custom_cells/components/core/data-sources/InMemoryDataSource";
 import { createGlideTheme } from "@/components/glide_custom_cells/components/utils/streamlitGlideTheme";
+import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { useDocumentCustomerRow } from "@/hooks/useDocumentCustomerRow";
+import type { ExcalidrawAPI } from "@/hooks/useDocumentScene";
 import { useDocumentScene } from "@/hooks/useDocumentScene";
 import { DEFAULT_DOCUMENT_WA_ID } from "@/lib/default-document";
+import { computeSceneSignature } from "@/lib/documents/scene-utils";
 import { useLanguage } from "@/lib/language-context";
 import { useSettings } from "@/lib/settings-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
@@ -44,7 +48,7 @@ export default function DocumentsPage() {
 	const { loading, handleCanvasChange, onExcalidrawAPI } = useDocumentScene(
 		selectedWaId,
 		{
-			enabled: selectedWaId === DEFAULT_DOCUMENT_WA_ID || isUnlockReady,
+			enabled: true,
 		},
 	);
 
@@ -73,6 +77,183 @@ export default function DocumentsPage() {
 		return () => cancelAnimationFrame(id);
 	}, []);
 
+	// Use dynamic viewport height so the layout doesn't jump when virtual
+	// keyboards appear on tablets/phones. Fallback to 100dvh when supported.
+	const excalApiRef = useRef<ExcalidrawAPI | null>(null);
+	const fsContainerRef = useRef<HTMLDivElement | null>(null);
+	const [previewScene, setPreviewScene] = useState<{
+		elements?: unknown[];
+		appState?: Record<string, unknown>;
+		files?: Record<string, unknown>;
+	} | null>(null);
+	const previewSigRef = useRef<string | null>(null);
+	const sanitizePreviewAppState = useCallback(
+		(app: Record<string, unknown> | null | undefined) => {
+			const a = (app || {}) as Record<string, unknown>;
+			const out: Record<string, unknown> = {};
+			if (typeof a.viewBackgroundColor !== "undefined")
+				out.viewBackgroundColor = a.viewBackgroundColor;
+			if (typeof a.gridSize !== "undefined")
+				out.gridSize = a.gridSize as unknown;
+			return out;
+		},
+		[],
+	);
+	const scheduleExcalRefresh = useCallback(() => {
+		try {
+			const api = excalApiRef.current as unknown as {
+				refresh?: () => void;
+			} | null;
+			requestAnimationFrame(() => api?.refresh?.());
+			setTimeout(() => api?.refresh?.(), 160);
+		} catch {}
+	}, []);
+
+	// Fullscreen toggle state & handlers
+	const [isFullscreen, setIsFullscreen] = useState(false);
+	const enterFullscreen = useCallback(() => {
+		try {
+			type FullscreenElement = Element & {
+				webkitRequestFullscreen?: () => Promise<void> | void;
+			};
+			const el = fsContainerRef.current as unknown as FullscreenElement | null;
+			if (!el) return;
+			const req =
+				el.requestFullscreen?.bind(el) || el.webkitRequestFullscreen?.bind(el);
+			if (typeof req === "function") {
+				void req();
+			}
+		} catch {}
+	}, []);
+	const exitFullscreen = useCallback(() => {
+		try {
+			const doc = document as Document & {
+				webkitExitFullscreen?: () => Promise<void> | void;
+			};
+			const exit =
+				document.exitFullscreen?.bind(document) ||
+				doc.webkitExitFullscreen?.bind(document);
+			if (typeof exit === "function") void exit();
+		} catch {}
+	}, []);
+	useEffect(() => {
+		const onFsChange = () => {
+			try {
+				const active = Boolean(document.fullscreenElement);
+				setIsFullscreen(active);
+				scheduleExcalRefresh();
+				setTimeout(scheduleExcalRefresh, 200);
+			} catch {}
+		};
+		document.addEventListener("fullscreenchange", onFsChange as EventListener);
+		try {
+			(
+				document as unknown as {
+					addEventListener?: (t: string, cb: EventListener) => void;
+				}
+			).addEventListener?.(
+				"webkitfullscreenchange",
+				onFsChange as EventListener,
+			);
+		} catch {}
+		return () => {
+			document.removeEventListener(
+				"fullscreenchange",
+				onFsChange as EventListener,
+			);
+			try {
+				(
+					document as unknown as {
+						removeEventListener?: (t: string, cb: EventListener) => void;
+					}
+				).removeEventListener?.(
+					"webkitfullscreenchange",
+					onFsChange as EventListener,
+				);
+			} catch {}
+		};
+	}, [scheduleExcalRefresh]);
+
+	// Keep preview in sync when a scene is applied (load or switch)
+	useEffect(() => {
+		const onSceneApplied = (ev: Event) => {
+			try {
+				const { wa_id, scene } = (ev as CustomEvent).detail as {
+					wa_id?: string;
+					scene?: {
+						elements?: unknown[];
+						appState?: Record<string, unknown>;
+						files?: Record<string, unknown>;
+					};
+				};
+				if (!wa_id || wa_id !== selectedWaId) return;
+				const sanitized = {
+					elements: (scene?.elements || []) as unknown[],
+					appState: sanitizePreviewAppState(
+						(scene?.appState || {}) as Record<string, unknown>,
+					),
+					files: (scene?.files || {}) as Record<string, unknown>,
+				};
+				const sig = computeSceneSignature(
+					sanitized.elements || [],
+					sanitized.appState || {},
+					sanitized.files || {},
+				);
+				if (sig !== (previewSigRef.current || null)) {
+					previewSigRef.current = sig;
+					setPreviewScene(sanitized);
+				}
+			} catch {}
+		};
+		window.addEventListener(
+			"documents:sceneApplied",
+			onSceneApplied as EventListener,
+		);
+		return () =>
+			window.removeEventListener(
+				"documents:sceneApplied",
+				onSceneApplied as EventListener,
+			);
+	}, [sanitizePreviewAppState, selectedWaId]);
+
+	// Reset preview when switching documents to avoid stale content
+	useEffect(() => {
+		previewSigRef.current = null;
+		setPreviewScene(null);
+		void selectedWaId;
+	}, [selectedWaId]);
+
+	useEffect(() => {
+		if (typeof window === "undefined") return;
+		let didInitRemount = false;
+		const updateDocDvh = () => {
+			try {
+				const vh = Math.max(
+					0,
+					Math.floor(window.visualViewport?.height || window.innerHeight || 0),
+				);
+				document.documentElement.style.setProperty("--doc-dvh", `${vh}px`);
+				if (!didInitRemount) {
+					didInitRemount = true;
+					// Light refresh to help any canvas settle after first layout
+					scheduleExcalRefresh();
+				}
+			} catch {}
+		};
+
+		updateDocDvh();
+		window.addEventListener("resize", updateDocDvh);
+		try {
+			window.visualViewport?.addEventListener?.("resize", updateDocDvh);
+		} catch {}
+		return () => {
+			window.removeEventListener("resize", updateDocDvh);
+			try {
+				window.visualViewport?.removeEventListener?.("resize", updateDocDvh);
+			} catch {}
+		};
+	}, [scheduleExcalRefresh]);
+
 	useEffect(() => {
 		if (typeof window === "undefined") return;
 		const el = document.documentElement;
@@ -92,6 +273,22 @@ export default function DocumentsPage() {
 		() => createGlideTheme(isDarkMode ? "dark" : "light"),
 		[isDarkMode],
 	);
+	// Collapsible header with animated mount/unmount
+	const [showHeader, setShowHeader] = useState(false);
+	const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
+	const toggleHeader = () => {
+		if (isHeaderExpanded) {
+			setIsHeaderExpanded(false);
+			setTimeout(() => setShowHeader(false), 280);
+		} else {
+			setShowHeader(true);
+			requestAnimationFrame(() => setIsHeaderExpanded(true));
+		}
+		scheduleExcalRefresh();
+		setTimeout(scheduleExcalRefresh, 220);
+	};
+
+	// Deprecated remount key (kept for future use)
 
 	// moved above to compute enablement before useDocumentScene
 
@@ -125,11 +322,35 @@ export default function DocumentsPage() {
 
 	return (
 		<SidebarInset dir="ltr">
-			<header className="relative flex h-10 shrink-0 items-center justify-center border-b px-3">
-				<SidebarTrigger className="absolute left-4" />
-				<DockNav className="mt-0 min-h-[2.25rem]" />
-			</header>
-			<div className="flex flex-col gap-2 px-4 pt-1 pb-4 h-[calc(100vh-2.5rem)]">
+			{/* Floating header toggle button (always visible, top-right) */}
+			<Button
+				variant="ghost"
+				size="icon"
+				aria-label={isHeaderExpanded ? "Collapse header" : "Expand header"}
+				onClick={toggleHeader}
+				className="fixed right-2 top-2 z-[100] h-7 w-7"
+			>
+				{!isHeaderExpanded ? (
+					<ChevronDown className="h-4 w-4 transition-transform duration-200" />
+				) : (
+					<ChevronUp className="h-4 w-4 transition-transform duration-200" />
+				)}
+			</Button>
+
+			{/* Animated header mount/unmount */}
+			{showHeader ? (
+				<header
+					className="relative shrink-0 border-b px-3 overflow-hidden transition-[height] duration-300 ease-in-out"
+					style={{ height: isHeaderExpanded ? "2.5rem" : "0rem" }}
+				>
+					<SidebarTrigger className="absolute left-4" />
+					<DockNav className="mt-0 min-h-[2.25rem]" />
+				</header>
+			) : null}
+			<div
+				className="flex flex-col gap-2 px-4 pt-1 pb-4 flex-1 min-h-0"
+				style={{ overscrollBehaviorY: "contain" }}
+			>
 				<div className="w-full">
 					{selectedWaId ? (
 						<div className="relative transition-[width] duration-300 ease-out">
@@ -203,37 +424,127 @@ export default function DocumentsPage() {
 					)}
 				</div>
 
-				<div className="flex-1 min-h-0">
+				<div className="flex-1 min-h-0 relative" ref={fsContainerRef}>
 					<div
-						className="w-full h-full border rounded-md overflow-hidden bg-background relative"
-						aria-busy={loading}
+						className={`absolute inset-0 grid grid-rows-[minmax(0,1fr)_minmax(0,5fr)] gap-2 ${isFullscreen ? "z-[9999] bg-background" : ""}`}
 					>
+						{/* Read-only preview (top, ~20% of bottom height) */}
 						<div
-							className={`w-full h-full transition-opacity ${loading || (!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID) ? "opacity-30 pointer-events-none" : "opacity-100"}`}
+							className="border rounded-md overflow-hidden bg-background relative"
+							aria-busy={loading}
 						>
-							<DocumentCanvas
-								theme={excalidrawTheme as "light" | "dark"}
-								langCode={excalidrawLang as unknown as string}
-								onChange={(els, app, files) =>
-									handleCanvasChange(
-										(els || []) as unknown[],
-										(app || {}) as unknown as Record<string, unknown>,
-										(files || {}) as Record<string, unknown>,
-									)
-								}
-								onApiReady={(api) => onExcalidrawAPI(api as unknown as never)}
-							/>
+							<div
+								className={`w-full h-full transition-opacity ${!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID ? "opacity-20" : "opacity-100"}`}
+							>
+								<DocumentCanvas
+									key={`preview-${selectedWaId || "none"}`}
+									theme={excalidrawTheme as "light" | "dark"}
+									langCode={excalidrawLang as unknown as string}
+									forceLTR={true}
+									viewModeEnabled={true}
+									zenModeEnabled={true}
+									scrollable={true}
+									scene={
+										previewScene || { elements: [], appState: {}, files: {} }
+									}
+									onApiReady={() => {}}
+								/>
+							</div>
+							{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
+								<div className="absolute inset-0 z-20 pointer-events-auto bg-background/80 backdrop-blur-[0.125rem]" />
+							)}
 						</div>
-						{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
-							<div className="absolute inset-0 z-20 pointer-events-auto flex items-center justify-center bg-background/70 backdrop-blur-[0.125rem]">
-								<LockIllustration className="h-full w-auto max-w-[56%] opacity-95" />
+
+						{/* Editable canvas (bottom) */}
+						<div
+							className="border rounded-md overflow-hidden bg-background relative"
+							aria-busy={loading}
+						>
+							<div
+								className={`w-full h-full transition-opacity ${loading || (!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID) ? "opacity-30 pointer-events-none" : "opacity-100"}`}
+							>
+								<DocumentCanvas
+									key={`editor-${selectedWaId || "none"}`}
+									theme={excalidrawTheme as "light" | "dark"}
+									langCode={excalidrawLang as unknown as string}
+									forceLTR={true}
+									onChange={(els, app, files) => {
+										const next = {
+											elements: (els || []) as unknown[],
+											appState: sanitizePreviewAppState(
+												(app || {}) as unknown as Record<string, unknown>,
+											),
+											files: (files || {}) as Record<string, unknown>,
+										};
+										const sig = computeSceneSignature(
+											next.elements || [],
+											next.appState || {},
+											next.files || {},
+										);
+										if (sig !== (previewSigRef.current || null)) {
+											previewSigRef.current = sig;
+											setPreviewScene(next);
+										}
+										handleCanvasChange(
+											(els || []) as unknown[],
+											(app || {}) as unknown as Record<string, unknown>,
+											(files || {}) as Record<string, unknown>,
+										);
+									}}
+									onApiReady={(api) => {
+										try {
+											excalApiRef.current = api as unknown as ExcalidrawAPI;
+											const els =
+												(excalApiRef.current.getSceneElementsIncludingDeleted?.() ||
+													[]) as unknown[];
+											const app = (excalApiRef.current.getAppState?.() ||
+												{}) as Record<string, unknown>;
+											const files = (excalApiRef.current.getFiles?.() ||
+												{}) as Record<string, unknown>;
+											const initial = {
+												elements: els,
+												appState: sanitizePreviewAppState(
+													app as Record<string, unknown>,
+												),
+												files,
+											};
+											const sig = computeSceneSignature(
+												els || [],
+												initial.appState || {},
+												files || {},
+											);
+											previewSigRef.current = sig;
+											setPreviewScene(initial);
+										} catch {}
+										onExcalidrawAPI(api as unknown as never);
+									}}
+								/>
 							</div>
-						)}
-						{loading ? (
-							<div className="absolute inset-0 grid place-items-center pointer-events-auto z-10 cursor-wait bg-black/50">
-								<div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-							</div>
-						) : null}
+							{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
+								<div className="absolute inset-0 z-20 pointer-events-auto flex items-center justify-center bg-background/70 backdrop-blur-[0.125rem]">
+									<LockIllustration className="h-full w-auto max-w-[56%] opacity-95" />
+								</div>
+							)}
+							{loading ? (
+								<div className="absolute inset-0 grid place-items-center pointer-events-auto z-10 cursor-wait bg-black/50">
+									<div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+								</div>
+							) : null}
+						</div>
+						{/* Fullscreen toggle floating inside canvas area (bottom-right) */}
+						<Button
+							variant="secondary"
+							size="icon"
+							className="absolute bottom-2 right-2 z-[100] h-8 w-8 shadow"
+							aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+							onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+						>
+							{!isFullscreen ? (
+								<Maximize2 className="h-4 w-4" />
+							) : (
+								<Minimize2 className="h-4 w-4" />
+							)}
+						</Button>
 					</div>
 				</div>
 			</div>

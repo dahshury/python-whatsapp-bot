@@ -18,7 +18,7 @@
 	position: absolute;
 	inset: 0;
 	padding-right: var(--scrollbar-width, 17px);
-	padding-bottom: var(--scrollbar-width, 17px);
+	padding-bottom: 0; /* Do not reserve space for horizontal track by default */
 	overflow: scroll;
 	scrollbar-width: none; /* Firefox */
 	-ms-overflow-style: none; /* IE/Edge */
@@ -28,6 +28,12 @@
 .main-content-scrollbar .ScrollbarsCustom-Scroller {
 	/* Keep default padding-right to make space for scrollbar */
 	padding-right: 18px; /* Track width + 3px extra space */
+}
+
+/* Remove any reserved space for a horizontal scrollbar in main content */
+.main-content-scrollbar .ScrollbarsCustom-Scroller {
+	padding-bottom: 0;
+	overflow-x: hidden;
 }
 
 .main-content-scrollbar .ScrollbarsCustom-TrackY {
@@ -40,6 +46,9 @@
 	width: 12px;
 	margin: 0 1.5px; /* Center thumb in track */
 }
+
+/* Hide horizontal track entirely for main content */
+/* Horizontal track hidden via inline styles when noScrollX is set */
 
 /* Chat scrollbar - 20% thicker than default */
 .chat-scrollbar .ScrollbarsCustom-TrackY {
@@ -58,6 +67,13 @@
 /* Content wrapper */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Content {
 	box-sizing: border-box;
+}
+
+/* Ensure page content can flex to fill available height */
+.main-content-scrollbar .ScrollbarsCustom-Content {
+	min-height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 /* Track styles */

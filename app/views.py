@@ -13,7 +13,7 @@ from app.utils.whatsapp_utils import is_valid_whatsapp_message, process_whatsapp
 from app.utils.service_utils import get_all_conversations, get_all_reservations, append_message, format_enhanced_vacation_message
 from app.utils.realtime import enqueue_broadcast
 from app.services.assistant_functions import reserve_time_slot, cancel_reservation, modify_reservation, modify_id, undo_cancel_reservation, undo_reserve_time_slot
-from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES
+from app.metrics import INVALID_HTTP_REQUESTS, CONCURRENT_TASK_LIMIT_REACHED, WHATSAPP_MESSAGE_FAILURES, INVALID_HTTP_REQUESTS_BY_REASON, WHATSAPP_MESSAGE_FAILURES_BY_REASON, CONCURRENT_TASK_LIMIT_REACHED_BY_REASON
 import datetime
 from zoneinfo import ZoneInfo
 from app.i18n import get_message
@@ -45,11 +45,23 @@ async def webhook_get(
             return JSONResponse(content=hub_challenge)
         else:
             logging.info("VERIFICATION_FAILED")
-            INVALID_HTTP_REQUESTS.inc()  # Track invalid verification
+            INVALID_HTTP_REQUESTS.inc()
+            try:
+                INVALID_HTTP_REQUESTS_BY_REASON.labels(
+                    reason="verification_failed", endpoint="/webhook", method="GET",
+                ).inc()
+            except Exception:
+                pass
             raise HTTPException(status_code=403, detail="Verification failed")
     else:
         logging.info("MISSING_PARAMETER")
-        INVALID_HTTP_REQUESTS.inc()  # Track missing parameters
+        INVALID_HTTP_REQUESTS.inc()
+        try:
+            INVALID_HTTP_REQUESTS_BY_REASON.labels(
+                reason="missing_parameters", endpoint="/webhook", method="GET",
+            ).inc()
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail="Missing parameters")
 
 async def _process_and_release(body, run_llm_function):
@@ -82,7 +94,13 @@ async def webhook_post(
         logging.info(f"Request body: {body}")
     except Exception:
         logging.error("Failed to decode JSON")
-        INVALID_HTTP_REQUESTS.inc()  # Track invalid JSON
+        INVALID_HTTP_REQUESTS.inc()
+        try:
+            INVALID_HTTP_REQUESTS_BY_REASON.labels(
+                reason="invalid_json", endpoint="/webhook", method="POST",
+            ).inc()
+        except Exception:
+            pass
         raise HTTPException(status_code=400, detail="Invalid JSON provided")
     
     # Check for WhatsApp status update
@@ -94,7 +112,14 @@ async def webhook_post(
         for status in statuses:
             if status.get("status") == "failed":
                 logging.warning(f"WhatsApp message delivery failed: {status}")
-                WHATSAPP_MESSAGE_FAILURES.inc()  # Track message delivery failures
+                WHATSAPP_MESSAGE_FAILURES.inc()
+                try:
+                    status_reason = status.get("error", {}).get("title") or status.get("errors", [{}])[0].get("title") or "delivery_failed"
+                    WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
+                        reason=str(status_reason), message_type="delivery_status",
+                    ).inc()
+                except Exception:
+                    pass
                 
         return JSONResponse(content={"status": "ok"})
     
@@ -113,7 +138,13 @@ async def webhook_post(
         if task_semaphore.locked() and task_semaphore._value == 0:
             # Log current semaphore status
             logging.warning(f"Maximum concurrent tasks reached ({MAX_CONCURRENT_TASKS}). Message processing delayed.")
-            CONCURRENT_TASK_LIMIT_REACHED.inc()  # Track concurrent task limit reached
+            CONCURRENT_TASK_LIMIT_REACHED.inc()
+            try:
+                CONCURRENT_TASK_LIMIT_REACHED_BY_REASON.labels(
+                    reason="semaphore_saturated", endpoint="/webhook", method="POST",
+                ).inc()
+            except Exception:
+                pass
             # Still return 200 OK to WhatsApp API to prevent retries
             return JSONResponse(content={"status": "ok", "note": "Processing delayed due to high load"})
         
@@ -137,7 +168,13 @@ async def webhook_post(
         return JSONResponse(content={"status": "ok"})
     else:
         logging.warning(f"Unknown webhook payload structure: {body}")
-        INVALID_HTTP_REQUESTS.inc()  # Track unknown webhook payload
+        INVALID_HTTP_REQUESTS.inc()
+        try:
+            INVALID_HTTP_REQUESTS_BY_REASON.labels(
+                reason="unknown_payload", endpoint="/webhook", method="POST",
+            ).inc()
+        except Exception:
+            pass
         return JSONResponse(content={"status": "unknown"})
 
 def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
@@ -149,7 +186,13 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username == correct_username and credentials.password == correct_password:
         return True
     else:
-        INVALID_HTTP_REQUESTS.inc()  # Track unauthorized access
+        INVALID_HTTP_REQUESTS.inc()
+        try:
+            INVALID_HTTP_REQUESTS_BY_REASON.labels(
+                reason="unauthorized_access", endpoint="/auth", method="BASIC",
+            ).inc()
+        except Exception:
+            pass
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 @router.get("/app")
