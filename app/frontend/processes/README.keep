@@ -1,4 +1,0 @@
-This directory will host long-running or multi-step process orchestrations,
-such as reservation workflows (create/modify/cancel), RSVP flows, etc.
-Extraction will be performed incrementally.
-
