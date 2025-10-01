@@ -19,7 +19,9 @@
         "**/.git/**",
         "components/index.ts",
         "../scripts/ci/biome-staged.mjs",
-        "../scripts/ci/md-staged.mjs"
+        "../scripts/ci/md-staged.mjs",
+        "../scripts/ci/tsc-staged.mjs",
+        "../scripts/ci/knip-staged.mjs"
       ]
     }
   },
@@ -33,6 +35,8 @@
     "**/__pycache__/**",
     "scripts/ci/biome-staged.mjs",
     "scripts/ci/md-staged.mjs",
+    "scripts/ci/tsc-staged.mjs",
+    "scripts/ci/knip-staged.mjs",
     "scripts/ci/pre-commit.mjs",
     "scripts/ci/mypy-staged.py"
   ],

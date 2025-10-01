@@ -25,6 +25,12 @@ let failed = false;
 if (hasFrontend) {
   const biome = run("node scripts/ci/biome-staged.mjs", "inherit");
   if (biome.status !== 0) failed = true;
+
+  const tsc = run("node scripts/ci/tsc-staged.mjs", "inherit");
+  if (tsc.status !== 0) failed = true;
+
+  const knip = run("node scripts/ci/knip-staged.mjs", "inherit");
+  if (knip.status !== 0) failed = true;
 }
 
 if (hasMarkdown) {
