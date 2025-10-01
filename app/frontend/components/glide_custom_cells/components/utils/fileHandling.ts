@@ -1,4 +1,3 @@
-import { BrowserUtils } from "./browserUtils";
 import { isNullOrUndefined, toSafeString } from "./generalUtils";
 
 const CSV_DELIMITER = ",";
@@ -84,7 +83,7 @@ export class FileExporter {
 		const timestamp = new Date().toISOString().slice(0, 16).replace(":", "-");
 		const suggestedName = filename || `${timestamp}_export.csv`;
 
-		const _capabilities = BrowserUtils.getBrowserCapabilities();
+		// Browser capabilities are not used here; if needed later, re-enable.
 
 		try {
 			await this.fallbackCSVExport(data, headers, suggestedName);

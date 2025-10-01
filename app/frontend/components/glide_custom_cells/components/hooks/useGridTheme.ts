@@ -23,7 +23,6 @@ export function useGridTheme(_disableDocumentClass = false) {
 
 	// Initialize and sync grid theme with app color scheme (managed by next-themes)
 	React.useEffect(() => {
-		const { darkTheme, lightTheme } = getThemes();
 		let isDark: boolean | undefined;
 		if (resolvedTheme) {
 			isDark = resolvedTheme === "dark";

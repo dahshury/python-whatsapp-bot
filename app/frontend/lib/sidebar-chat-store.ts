@@ -36,7 +36,7 @@ interface SidebarChatState {
 
 const useSidebarChatStore = create<SidebarChatState>()(
     persist(
-        (set, get) => ({
+        (set, _get) => ({
 	// Defaults
 	isOpen: false,
 	isChatSidebarOpen: false,
@@ -87,7 +87,7 @@ const useSidebarChatStore = create<SidebarChatState>()(
                 return () => {
                     try {
                         // Signal that client-side state has hydrated
-                        set({ _hasHydrated: true });
+                        useSidebarChatStore.setState({ _hasHydrated: true });
                     } catch {}
                 };
             },

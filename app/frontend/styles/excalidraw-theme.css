@@ -168,7 +168,22 @@
 }
 
 /* Ensure Excalidraw context menu/popover never affects layout and stays overlayed */
-.excali-theme-scope .excalidraw {
+:is(
+		.theme-default,
+		.theme-claude,
+		.theme-neo-brutalism,
+		.theme-perpetuity,
+		.theme-retro-arcade,
+		.theme-soft-pop,
+		.theme-ghibli-studio,
+		.theme-valorant,
+		.theme-t3chat,
+		.theme-perplexity,
+		.theme-art-deco,
+		.theme-neomorphism
+	)
+	.excali-theme-scope
+	.excalidraw {
 	position: relative;
 }
 
@@ -202,7 +217,22 @@
 }
 
 /* Ensure Excalidraw context menu popover overlays without layout shifts */
-.excali-theme-scope .excalidraw {
+:is(
+		.theme-default,
+		.theme-claude,
+		.theme-neo-brutalism,
+		.theme-perpetuity,
+		.theme-retro-arcade,
+		.theme-soft-pop,
+		.theme-ghibli-studio,
+		.theme-valorant,
+		.theme-t3chat,
+		.theme-perplexity,
+		.theme-art-deco,
+		.theme-neomorphism
+	)
+	.excali-theme-scope
+	.excalidraw {
 	position: relative;
 }
 .excali-theme-scope .excalidraw .popover:has(.context-menu) {

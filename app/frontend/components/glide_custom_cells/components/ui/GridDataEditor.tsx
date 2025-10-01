@@ -738,7 +738,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 							}
 						: {})}
 					rowSelect={readOnly ? "none" : "multi"}
-					rowSelectionMode={readOnly ? "none" : "multi"}
+					rowSelectionMode={readOnly ? "auto" : "multi"}
 					columnSelect="none"
 					searchValue={searchValue}
 					onSearchValueChange={onSearchValueChange}

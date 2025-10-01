@@ -4,11 +4,8 @@ import type React from "react";
 import type { CalendarCallbacks } from "@/lib/calendar-callbacks";
 import { calculateCalendarHeight } from "@/lib/calendar-view-utils";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
-import type {
-	CalendarEvent,
-	ConversationMessage,
-	Reservation,
-} from "@/types/calendar";
+import type { CalendarEvent, Reservation } from "@/types/calendar";
+import type { ConversationMessage } from "@/types/conversation";
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
 import { CalendarEventContextMenu } from "./calendar-event-context-menu";
 import { CalendarHoverCardPortal } from "./calendar-hover-card-portal";

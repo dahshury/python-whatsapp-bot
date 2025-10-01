@@ -71,7 +71,7 @@
 }
 
 /* Keep header cells readable with subtle tint while still seeing texture */
-.calendar-translucent .fc-scrollgrid-section-header > * {
+.calendar-translucent .fc .fc-scrollgrid-section-header > * {
 	background-color: hsl(var(--muted) / 0.35);
 }
 

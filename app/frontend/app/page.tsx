@@ -144,7 +144,7 @@ export default function HomePage() {
 	const mappedConversations = React.useMemo(() => {
 		const out: Record<
 			string,
-			import("@/types/calendar").ConversationMessage[]
+			import("@/types/conversation").ConversationMessage[]
 		> = {};
 		for (const [waId, msgs] of Object.entries(conversations || {})) {
 			out[waId] = (Array.isArray(msgs) ? msgs : []).map(
