@@ -23,6 +23,11 @@
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
 		"eslint-plugin-boundaries": "^5.0.1",
-		"typescript": "^5"
+		"typescript": "^5",
+		"simple-git-hooks": "^2.11.1"
+	}
+	,
+	"simple-git-hooks": {
+		"pre-commit": "node scripts/ci/pre-commit.mjs"
 	}
 }

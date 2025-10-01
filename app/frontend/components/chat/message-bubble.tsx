@@ -1,14 +1,15 @@
 "use client";
 
+import Youtube from "@tiptap/extension-youtube";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
 import { Bot, Clock, MessageSquare, User } from "lucide-react";
-import React, { useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkBreaks from "remark-breaks";
-import remarkGfm from "remark-gfm";
+import { marked } from "marked";
+import React, { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { normalizeSimpleFormattingForMarkdown } from "@/lib/utils/chat-markdown";
 import { formatMessageTimestamp } from "@/lib/utils/date-format";
-import type { ConversationMessage } from "@/types/calendar";
+import type { ConversationMessage } from "@/types/conversation";
 
 export const MessageBubble: React.FC<{
 	message: ConversationMessage;
@@ -22,6 +23,109 @@ export const MessageBubble: React.FC<{
 			return message.message;
 		}
 	}, [message.message]);
+
+	const withYoutubeEmbeds = React.useMemo(() => {
+		const toEmbedHtml = (id: string, start?: number) => {
+			const base = `https://www.youtube-nocookie.com/embed/${id}`;
+			const params = new URLSearchParams({
+				modestbranding: "1",
+				rel: "0",
+				iv_load_policy: "3",
+				controls: "1",
+			});
+			if (typeof start === "number" && start > 0)
+				params.set("start", String(start));
+			const src = `${base}?${params.toString()}`;
+			return `<div data-youtube-video><iframe src="${src}" width="640" height="360" allowfullscreen></iframe></div>`;
+		};
+		const getStart = (qs: string): number | undefined => {
+			try {
+				const params = new URLSearchParams(qs.replace(/^\?/, ""));
+				if (params.has("start"))
+					return Number(params.get("start") || 0) || undefined;
+				if (params.has("t")) {
+					const t = String(params.get("t") || "");
+					if (/^\d+$/.test(t)) return Number(t);
+					const m = t.match(/(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?/);
+					if (m) {
+						const h = Number(m[1] || 0);
+						const mm = Number(m[2] || 0);
+						const s = Number(m[3] || 0);
+						return h * 3600 + mm * 60 + s || undefined;
+					}
+				}
+			} catch {}
+			return undefined;
+		};
+		const replaceAll = (input: string): string => {
+			let out = input;
+			// youtu.be short links
+			out = out.replace(
+				/(?:^|\s)(https?:\/\/(?:www\.)?youtu\.be\/([A-Za-z0-9_-]{11})(\?[^\s]*)?)(?=$|\s)/g,
+				(_m, _url, id, qs = "") => {
+					const start = getStart(String(qs || ""));
+					return `\n${toEmbedHtml(String(id), start)}\n`;
+				},
+			);
+			// youtube.com/watch links
+			out = out.replace(
+				/(?:^|\s)(https?:\/\/(?:www\.)?youtube\.com\/watch\?([^\s]*?))(?:\s|$)/g,
+				(_m, _full, qs) => {
+					const params = new URLSearchParams(String(qs || ""));
+					const id = params.get("v");
+					if (!id || id.length < 11) return _m as string;
+					const start = getStart(String(qs || ""));
+					return `\n${toEmbedHtml(String(id), start)}\n`;
+				},
+			);
+			// youtube.com/shorts/{id}
+			out = out.replace(
+				/(?:^|\s)(https?:\/\/(?:www\.)?youtube\.com\/shorts\/([A-Za-z0-9_-]{11})(?:\?[^\s]*)?)(?=$|\s)/g,
+				(_m, _u, id) => {
+					return `\n${toEmbedHtml(String(id))}\n`;
+				},
+			);
+			return out;
+		};
+		try {
+			return replaceAll(normalizedMessage);
+		} catch {
+			return normalizedMessage;
+		}
+	}, [normalizedMessage]);
+
+	const htmlContent = React.useMemo(() => {
+		try {
+			return String(marked.parse(withYoutubeEmbeds));
+		} catch {
+			return withYoutubeEmbeds;
+		}
+	}, [withYoutubeEmbeds]);
+
+	const viewer = useEditor({
+		editable: false,
+		immediatelyRender: true,
+		extensions: [
+			StarterKit,
+			Youtube.configure({
+				inline: false,
+				width: 640,
+				height: 360,
+				nocookie: true,
+				controls: true,
+				allowFullscreen: true,
+			}),
+		],
+		content: htmlContent,
+	});
+
+	useEffect(() => {
+		try {
+			if (viewer) {
+				viewer.commands.setContent(htmlContent);
+			}
+		} catch {}
+	}, [htmlContent, viewer]);
 
 	return (
 		<div className="w-full py-1 px-2 bg-transparent">
@@ -61,10 +165,8 @@ export const MessageBubble: React.FC<{
 					</div>
 
 					<div className="flex-1 min-w-0">
-						<div className="text-sm prose prose-sm max-w-none prose-p:my-0.5 prose-headings:mt-1.5 prose-headings:mb-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0 prose-pre:my-0.5 prose-code:text-xs break-words whitespace-pre-wrap overflow-x-hidden prose-a:[overflow-wrap:anywhere] prose-pre:overflow-x-auto">
-							<ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
-								{normalizedMessage}
-							</ReactMarkdown>
+						<div className="tiptap text-sm break-words whitespace-pre-wrap overflow-x-hidden">
+							<EditorContent editor={viewer} />
 						</div>
 					</div>
 				</div>

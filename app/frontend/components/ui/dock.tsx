@@ -21,12 +21,12 @@ export interface DockProps extends VariantProps<typeof dockVariants> {
 	children: React.ReactNode;
 }
 
-const DEFAULT_SIZE = 30;
-const DEFAULT_MAGNIFICATION = 45;
-const DEFAULT_DISTANCE = 140;
+const DEFAULT_SIZE = 26; // smaller base for mobile; per-icon can override
+const DEFAULT_MAGNIFICATION = 40;
+const DEFAULT_DISTANCE = 120;
 
 const dockVariants = cva(
-	"supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 mx-auto flex h-auto min-h-[2.5rem] w-max items-center justify-center gap-2 rounded-2xl border p-2 backdrop-blur-md",
+	"supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 mx-auto flex h-auto min-h-[2.25rem] sm:min-h-[2.5rem] w-max items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border px-1.5 py-1.5 sm:p-2 backdrop-blur-md",
 );
 
 const Dock = React.forwardRef<HTMLDivElement, DockProps>(

@@ -1,8 +1,8 @@
 "use client";
 
-import { useSettings } from "@/lib/settings-context";
 import { useTheme as useNextThemes } from "next-themes";
 import { useEffect, useLayoutEffect } from "react";
+import { useSettings } from "@/lib/settings-context";
 
 export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 	const { theme } = useSettings();
@@ -54,6 +54,39 @@ export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 		const observer = new MutationObserver(() => {
 			if (document.documentElement.classList.contains("dark")) {
 				document.documentElement.classList.remove("dark");
+			}
+		});
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["class"],
+		});
+
+		return () => {
+			cancelAnimationFrame(raf1);
+			cancelAnimationFrame(raf2);
+			observer.disconnect();
+		};
+	}, [nextTheme]);
+
+	// Symmetric guard: if user explicitly chose dark, ensure 'dark' stays present
+	useEffect(() => {
+		const explicitMode =
+			nextTheme && nextTheme !== "system" ? nextTheme : undefined;
+		if (explicitMode !== "dark") return;
+
+		// Immediate assert of dark class
+		document.documentElement.classList.add("dark");
+		const raf1 = requestAnimationFrame(() => {
+			document.documentElement.classList.add("dark");
+		});
+		const raf2 = requestAnimationFrame(() => {
+			document.documentElement.classList.add("dark");
+		});
+
+		// Observe class changes and re-add 'dark' if removed by any late listeners
+		const observer = new MutationObserver(() => {
+			if (!document.documentElement.classList.contains("dark")) {
+				document.documentElement.classList.add("dark");
 			}
 		});
 		observer.observe(document.documentElement, {

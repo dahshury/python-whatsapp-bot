@@ -166,3 +166,54 @@
 	--color-background: hsl(var(--card));
 	--color-text: hsl(var(--primary-foreground));
 }
+
+/* Ensure Excalidraw context menu/popover never affects layout and stays overlayed */
+.excali-theme-scope .excalidraw {
+	position: relative;
+}
+
+/* Force Excalidraw popover/context-menu to overlay using fixed positioning */
+.theme-default .excali-theme-scope .excalidraw .popover,
+.theme-claude .excali-theme-scope .excalidraw .popover,
+.theme-neo-brutalism .excali-theme-scope .excalidraw .popover,
+.theme-perpetuity .excali-theme-scope .excalidraw .popover,
+.theme-retro-arcade .excali-theme-scope .excalidraw .popover,
+.theme-soft-pop .excali-theme-scope .excalidraw .popover,
+.theme-ghibli-studio .excali-theme-scope .excalidraw .popover,
+.theme-valorant .excali-theme-scope .excalidraw .popover,
+.theme-t3chat .excali-theme-scope .excalidraw .popover,
+.theme-perplexity .excali-theme-scope .excalidraw .popover,
+.theme-art-deco .excali-theme-scope .excalidraw .popover,
+.theme-neomorphism .excali-theme-scope .excalidraw .popover,
+.theme-default .excali-theme-scope .excalidraw .context-menu,
+.theme-claude .excali-theme-scope .excalidraw .context-menu,
+.theme-neo-brutalism .excali-theme-scope .excalidraw .context-menu,
+.theme-perpetuity .excali-theme-scope .excalidraw .context-menu,
+.theme-retro-arcade .excali-theme-scope .excalidraw .context-menu,
+.theme-soft-pop .excali-theme-scope .excalidraw .context-menu,
+.theme-ghibli-studio .excali-theme-scope .excalidraw .context-menu,
+.theme-valorant .excali-theme-scope .excalidraw .context-menu,
+.theme-t3chat .excali-theme-scope .excalidraw .context-menu,
+.theme-perplexity .excali-theme-scope .excalidraw .context-menu,
+.theme-art-deco .excali-theme-scope .excalidraw .context-menu,
+.theme-neomorphism .excali-theme-scope .excalidraw .context-menu {
+	position: fixed;
+	z-index: var(--z-context-menu);
+}
+
+/* Ensure Excalidraw context menu popover overlays without layout shifts */
+.excali-theme-scope .excalidraw {
+	position: relative;
+}
+.excali-theme-scope .excalidraw .popover:has(.context-menu) {
+	position: absolute;
+	z-index: var(--z-context-menu);
+}
+
+/* Match zoom reset and section headings color to sidebar label */
+.excali-theme-scope .excalidraw h3,
+.excali-theme-scope .excalidraw .reset-zoom-button,
+.excali-theme-scope .excalidraw .zoom-button.reset-zoom-button,
+.excali-theme-scope .excalidraw .ToolIcon_type_button.reset-zoom-button {
+	color: var(--text-primary-color);
+}

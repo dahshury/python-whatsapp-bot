@@ -96,6 +96,13 @@ LLM_API_ERRORS = Counter(
     ['provider', 'error_type']
 )
 
+# Detailed LLM API errors with extra context for alert annotations
+LLM_API_ERRORS_DETAILED = Counter(
+    'llm_api_errors_detailed_total',
+    'Detailed errors from LLM API calls with context',
+    ['provider', 'error_type', 'exception_type', 'http_status', 'function']
+)
+
 LLM_TOOL_EXECUTION_ERRORS = Counter(
     'llm_tool_execution_errors_total',
     'Total errors from executing tools called by LLMs',

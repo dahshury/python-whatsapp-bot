@@ -118,13 +118,20 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			}
 		} catch {}
 		try {
-			setTimeout(() => {
-				try {
-					// Pass the entire message to preserve all fields (error, timestamp, etc.)
-					const evt = new CustomEvent("realtime", { detail: message });
-					window.dispatchEvent(evt);
-				} catch {}
-			}, 0);
+			// Do not emit realtime events for document-related messages; they have their own fan-out
+			const t = String(type || "").toLowerCase();
+			const allowRealtime = !(
+				t.startsWith("document_") || t === "customer_profile"
+			);
+			if (allowRealtime) {
+				setTimeout(() => {
+					try {
+						// Pass the entire message to preserve all fields (error, timestamp, etc.)
+						const evt = new CustomEvent("realtime", { detail: message });
+						window.dispatchEvent(evt);
+					} catch {}
+				}, 0);
+			}
 		} catch {}
 
 		// Do not call notifyUpdate here to avoid duplicate toasts; handled via RealtimeEventBus -> ToastRouter

@@ -1,4 +1,5 @@
 import { create } from "zustand"; // ESM import
+import { persist, createJSONStorage } from "zustand/middleware";
 
 interface SidebarChatState {
 	// Basic sidebar open state (legacy)
@@ -33,7 +34,9 @@ interface SidebarChatState {
 	setConversation: (id?: string | null) => void; // alias
 }
 
-const useSidebarChatStore = create<SidebarChatState>((set) => ({
+const useSidebarChatStore = create<SidebarChatState>()(
+    persist(
+        (set, get) => ({
 	// Defaults
 	isOpen: false,
 	isChatSidebarOpen: false,
@@ -59,7 +62,7 @@ const useSidebarChatStore = create<SidebarChatState>((set) => ({
 	setChatSidebarOpen: (open) => set({ isChatSidebarOpen: open }),
 	setSelectedConversation: (id) => set({ selectedConversationId: id ?? null }),
 	setLoadingConversation: (loading) => set({ isLoadingConversation: loading }),
-	setSelectedDocumentWaId: (waId) => set({ selectedDocumentWaId: waId ?? null }),
+    setSelectedDocumentWaId: (waId) => set({ selectedDocumentWaId: waId ?? null }),
 	clearOpenRequest: () =>
 		set({ shouldOpenChat: false, conversationIdToOpen: null }),
 	openConversation: (id) =>
@@ -72,6 +75,24 @@ const useSidebarChatStore = create<SidebarChatState>((set) => ({
 			isLoadingConversation: true,
 		}),
 	setConversation: (id) => set({ selectedConversationId: id ?? null }),
-}));
+        }),
+        {
+            name: "sidebar-chat-store",
+            version: 1,
+            storage: createJSONStorage(() => localStorage),
+            partialize: (state) => ({
+                selectedDocumentWaId: state.selectedDocumentWaId,
+            }),
+            onRehydrateStorage: () => {
+                return () => {
+                    try {
+                        // Signal that client-side state has hydrated
+                        set({ _hasHydrated: true });
+                    } catch {}
+                };
+            },
+        },
+    ),
+);
 
 export { useSidebarChatStore };

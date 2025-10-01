@@ -48,15 +48,4 @@ export interface Reservation {
 	[key: string]: unknown;
 }
 
-// Conversation message shape from backend
-export interface ConversationMessage {
-	role: string; // Role of the sender (user, assistant, etc.)
-	message: string; // The message content
-	time: string; // Time in HH:MM:SS format
-	date: string; // Date in YYYY-MM-DD format
-}
-
-// Conversation data structure - Record of wa_id to array of messages
-export interface Conversations {
-	[wa_id: string]: ConversationMessage[];
-}
+// Note: conversation-related types moved to '@/types/conversation' for SoC

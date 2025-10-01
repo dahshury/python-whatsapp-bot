@@ -133,7 +133,14 @@ export function NotificationsButton({
 							}>;
 					  }
 					| undefined;
-				const list = Array.isArray(detail?.items) ? detail?.items : [];
+				const list = (
+					detail && Array.isArray(detail.items) ? detail.items : []
+				) as Array<{
+					id?: number | string;
+					type?: string;
+					timestamp?: string | number;
+					data?: Record<string, unknown>;
+				}>;
 				const loaded: NotificationItem[] = list
 					.map((r) => {
 						const tsNum = (() => {
@@ -365,6 +372,7 @@ export function NotificationsButton({
 		const handler = (ev: Event) => {
 			const { type, data, ts, __local } = (ev as CustomEvent).detail || {};
 			if (!type) return;
+			// Revert: no filtering here; source filtering happens upstream
 			const timestamp = Number(ts) || Date.now();
 			const compositeKey = `${type}:${data?.id ?? data?.wa_id ?? ""}:${
 				data?.date ?? ""

@@ -13,7 +13,8 @@ import { PhoneCombobox } from "@/components/ui/phone-combobox";
 import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
-import type { Conversations, Reservation } from "@/types/calendar";
+import type { Reservation } from "@/types/calendar";
+import type { Conversations } from "@/types/conversation";
 import type { PhoneOption } from "@/types/phone";
 
 interface ConversationComboboxProps {

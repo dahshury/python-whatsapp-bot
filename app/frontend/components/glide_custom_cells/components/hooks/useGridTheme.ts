@@ -33,7 +33,9 @@ export function useGridTheme(_disableDocumentClass = false) {
 			// Use globalThis + optional chaining to avoid SSR reference errors
 			isDark = globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
 		}
-		setTheme(isDark ? darkTheme : lightTheme);
+		// Recreate theme from current CSS variables to capture brand theme changes
+		const computed = createGlideTheme(isDark ? "dark" : "light");
+		setTheme(computed);
 	}, [resolvedTheme]);
 
 	// Add CSS overrides for dropdown text color based on theme

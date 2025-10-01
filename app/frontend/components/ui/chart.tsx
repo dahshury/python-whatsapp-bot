@@ -10,13 +10,13 @@ const THEMES = { light: "", dark: ".dark" } as const;
 
 // Validate that a string is a safe CSS color value
 function isValidCssColor(color: string): boolean {
-	// Allow hex colors, rgb/rgba, hsl/hsla, named colors, and CSS custom properties
+	// Allow hex colors, rgb/rgba, hsl/hsla, named colors, and any usage of CSS variables
+	// Note: We intentionally allow nested functions like hsl(var(--chart-1))
 	return (
 		/^#[0-9a-fA-F]{3,8}$/.test(color) || // hex
-		/^rgb(a?\([^)]+\))$/.test(color) || // rgb/rgba
-		/^hsl(a?\([^)]+\))$/.test(color) || // hsl/hsla
+		/^(?:rgb|rgba|hsl|hsla)\([^)]*\)$/.test(color) || // functional color notations
 		/^[a-zA-Z]+$/.test(color) || // named colors
-		color.startsWith("var(--") // CSS custom properties
+		color.includes("var(") // CSS custom properties anywhere in the string (e.g., hsl(var(--x)))
 	);
 }
 

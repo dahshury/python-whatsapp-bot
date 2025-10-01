@@ -64,6 +64,13 @@
 	--fc-event-resizer-dot-total-width: 8px;
 	--fc-event-resizer-dot-border-width: 1px;
 
+	/* Event stroke thickness - rem-based, clamped for readability across DPIs */
+	--fc-event-stroke-width: clamp(1px, 0.125rem, 0.1875rem);
+
+	/* Event typography sizes (REM-based) */
+	--fc-event-title-size: 0.78rem;
+	--fc-event-time-size: 0.65rem;
+
 	/* Special background colors */
 	--fc-non-business-color: hsl(var(--muted) / 0.3);
 	--fc-bg-event-color: hsl(var(--chart-3));

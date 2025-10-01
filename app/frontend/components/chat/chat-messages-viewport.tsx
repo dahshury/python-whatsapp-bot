@@ -8,7 +8,7 @@ import { ThemedScrollbar } from "@/components/themed-scrollbar";
 import { i18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { normalizeTimeToHHmm } from "@/lib/utils/date-format";
-import type { ConversationMessage } from "@/types/calendar";
+import type { ConversationMessage } from "@/types/conversation";
 import { MessageBubble } from "./message-bubble";
 
 export function ChatMessagesViewport({

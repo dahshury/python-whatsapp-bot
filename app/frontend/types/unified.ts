@@ -1,7 +1,5 @@
-import type {
-	ConversationMessage as CalendarConversationMessage,
-	Reservation as CalendarReservation,
-} from "@/types/calendar";
+import type { Reservation as CalendarReservation } from "@/types/calendar";
+import type { ConversationMessage as CalendarConversationMessage } from "@/types/conversation";
 
 export type ConversationMessage = CalendarConversationMessage & {
 	ts?: string;

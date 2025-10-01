@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import type { ConversationMessage } from "@/types/calendar";
+import type { ConversationMessage } from "@/types/conversation";
 
 export function useConversationMessages(
 	rawConversations: unknown,

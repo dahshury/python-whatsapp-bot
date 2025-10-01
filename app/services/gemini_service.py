@@ -10,7 +10,7 @@ import datetime
 from zoneinfo import ZoneInfo
 
 from app.config import config, load_config
-from app.utils import retrieve_messages
+from app.utils import retrieve_messages, parse_unix_timestamp, append_message
 from app.decorators import retry_decorator
 from google import genai
 from google.genai import types
@@ -343,6 +343,20 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                     function_args[arg_name] = arg_value
                 
                 logging.info(f"Function call: {function_name} with args: {function_args}")
+                # Persist tool call (arguments)
+                try:
+                    pretty_args = json.dumps(function_args or {}, ensure_ascii=False, indent=2)
+                    from html import escape as _escape
+                    html_args = (
+                        f"<details class=\"details\">"
+                        f"<summary>Tool: {function_name}</summary>"
+                        f"<div><pre><code class=\"language-json\">{_escape(pretty_args)}</code></pre></div>"
+                        f"</details>"
+                    )
+                    d, t = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
+                    append_message(wa_id, 'tool', html_args, d, t)
+                except Exception as _persist_args_err:
+                    logging.error(f"Persist tool args failed for {function_name}: {_persist_args_err}")
                 
                 # Execute the function if it exists
                 if function_name in FUNCTION_MAPPING:
@@ -394,6 +408,20 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                         parts=[types.Part.from_text(text=f"Result of {function_name}: {result_str}")],
                     )
                 )
+                # Persist tool result
+                try:
+                    from html import escape as _escape
+                    pretty_out = result_str if isinstance(result_str, str) else json.dumps(result_str, ensure_ascii=False, indent=2)
+                    html_out = (
+                        f"<details class=\"details\">"
+                        f"<summary>Result: {function_name}</summary>"
+                        f"<div><pre><code class=\"language-json\">{_escape(pretty_out)}</code></pre></div>"
+                        f"</details>"
+                    )
+                    d2, t2 = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
+                    append_message(wa_id, 'tool', html_out, d2, t2)
+                except Exception as _persist_out_err:
+                    logging.error(f"Persist tool result failed for {function_name}: {_persist_out_err}")
             
             # Generate follow-up response
             try:

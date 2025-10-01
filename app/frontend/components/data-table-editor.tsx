@@ -125,12 +125,48 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		previousEventsRef.current = sourceEvents;
 	}, [sourceEvents]);
 
-	// Theme changes are handled via props; avoid forced remount timers
-
-	const gridTheme = React.useMemo(
-		() => createGlideTheme(isDarkMode ? "dark" : "light"),
-		[isDarkMode],
+	// Theme: build from CSS variables, react to dark/light and brand theme changes without remounts
+	const [gridTheme, setGridTheme] = useState(() =>
+		createGlideTheme(isDarkMode ? "dark" : "light"),
 	);
+	useEffect(() => {
+		// Recompute from current CSS variables; small settle delay to allow class flip to apply
+		try {
+			setGridTheme(createGlideTheme(isDarkMode ? "dark" : "light"));
+			setTimeout(() => {
+				try {
+					setGridTheme(createGlideTheme(isDarkMode ? "dark" : "light"));
+				} catch {}
+			}, 50);
+		} catch {}
+	}, [isDarkMode]);
+	useEffect(() => {
+		if (typeof window === "undefined") return () => {};
+		const el = document.documentElement;
+		let prev = el.className;
+		const schedule = () => {
+			try {
+				setTimeout(() => {
+					const dark = el.classList.contains("dark");
+					setGridTheme(createGlideTheme(dark ? "dark" : "light"));
+				}, 50);
+			} catch {}
+		};
+		const mo = new MutationObserver(() => {
+			if (el.className !== prev) {
+				prev = el.className;
+				schedule();
+			}
+		});
+		try {
+			mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+		} catch {}
+		return () => {
+			try {
+				mo.disconnect();
+			} catch {}
+		};
+	}, []);
 
 	const { dataSource, gridRowToEventMapRef } = useDataTableDataSource(
 		sourceEvents,

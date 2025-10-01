@@ -49,6 +49,15 @@
 	background-color: transparent;
 }
 
+/* Disable navigation links inside the mini calendar list headers */
+.calendar-translucent .fc a[data-navlink],
+.calendar-translucent a.fc-list-day-text,
+.calendar-translucent a.fc-list-day-side-text {
+	pointer-events: none;
+	cursor: default;
+	text-decoration: none;
+}
+
 /* List view sticky date headers: soften tint and allow texture */
 .calendar-translucent .fc-list-sticky .fc-list-day > * {
 	background-color: hsl(var(--muted) / 0.35);

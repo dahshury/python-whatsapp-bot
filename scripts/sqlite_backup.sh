@@ -62,10 +62,10 @@ fi
 # Ensure backup directory exists
 mkdir -p "$BACKUP_DIR"
 
-# Checkpoint WAL before backup to ensure latest pages are merged and WAL truncated
-echo "Checkpointing WAL (TRUNCATE) before backup"
-if ! sqlite3 "$DB_PATH" 'PRAGMA wal_checkpoint(TRUNCATE);'; then
-    report_error "wal_checkpoint" 2 "wal_checkpoint_failed" "Pre-backup wal_checkpoint failed"
+# Pre-backup: safely merge WAL without truncating, with elevated durability
+echo "Checkpointing WAL (FULL, no truncate) before backup with elevated durability"
+if ! sqlite3 "$DB_PATH" 'PRAGMA synchronous=FULL; PRAGMA fullfsync=ON; PRAGMA wal_checkpoint(FULL);'; then
+    report_error "wal_checkpoint" 2 "wal_checkpoint_failed" "Pre-backup wal_checkpoint(FULL) failed"
 fi
 
 # Backup SQLite database
@@ -82,10 +82,10 @@ if ! zip -j "$BACKUP_DIR/$ZIP_NAME" "$BACKUP_DIR/$BACKUP_NAME"; then
 fi
 rm "$BACKUP_DIR/$BACKUP_NAME"  # Remove uncompressed version
 
-# Optional: checkpoint again to keep WAL small after backup
-echo "Checkpointing WAL (TRUNCATE) after backup"
-if ! sqlite3 "$DB_PATH" 'PRAGMA wal_checkpoint(TRUNCATE);'; then
-    report_error "wal_checkpoint" 2 "wal_checkpoint_failed" "Post-backup wal_checkpoint failed"
+# Optional: perform a RESTART (no truncate) after backup to begin a new WAL without risking corruption
+echo "Checkpointing WAL (RESTART) after backup (no truncate)"
+if ! sqlite3 "$DB_PATH" 'PRAGMA wal_checkpoint(RESTART);'; then
+    report_error "wal_checkpoint" 2 "wal_checkpoint_failed" "Post-backup wal_checkpoint(RESTART) failed"
 fi
 
 # Upload to S3 if configured and aws CLI is available

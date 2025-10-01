@@ -4,14 +4,16 @@ import json
 import inspect
 from app.config import config
 import httpx
+import time
+import html
 from openai import OpenAI
 from openai import APIError, RateLimitError, APIConnectionError, AuthenticationError, BadRequestError, APITimeoutError
-from app.utils import parse_unix_timestamp
+from app.utils import parse_unix_timestamp, append_message
 from app.utils.service_utils import retrieve_messages
 from app.decorators.safety import retry_decorator
 from app.services.tool_schemas import TOOL_DEFINITIONS, FUNCTION_MAPPING
 from app.utils.http_client import sync_client
-from app.metrics import FUNCTION_ERRORS, LLM_API_ERRORS, LLM_TOOL_EXECUTION_ERRORS, LLM_RETRY_ATTEMPTS, LLM_EMPTY_RESPONSES
+from app.metrics import FUNCTION_ERRORS, LLM_API_ERRORS, LLM_TOOL_EXECUTION_ERRORS, LLM_RETRY_ATTEMPTS, LLM_EMPTY_RESPONSES, LLM_API_ERRORS_DETAILED
 
 # API key is still needed at module level for client initialization
 OPENAI_API_KEY = config["OPENAI_API_KEY"]
@@ -125,7 +127,25 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
         }]
 
     # Log request payload
-    response = client.responses.create(**kwargs)
+    try:
+        response = client.responses.create(**kwargs)
+    except Exception as e:
+        # Emit detailed metric for initial call
+        error_type = map_openai_error(e)
+        exception_type = type(e).__name__
+        if error_type == "unknown":
+            error_type = f"unknown::{exception_type}"
+        http_status = None
+        try:
+            http_status = getattr(getattr(e, 'response', None), 'status_code', None)
+        except Exception:
+            http_status = None
+        LLM_API_ERRORS.labels(provider="openai", error_type=error_type).inc()
+        try:
+            LLM_API_ERRORS_DETAILED.labels(provider="openai", error_type=error_type, exception_type=str(exception_type), http_status=str(http_status or ""), function="run_responses_initial").inc()
+        except Exception:
+            pass
+        raise
     # handle any function calls with maximum iteration limit to prevent infinite loops
     max_iterations = 10
     iteration_count = 0
@@ -146,6 +166,27 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
             
             # Log function call name and arguments
             logging.info(f"Tool call: {fc.name} with arguments: {args}")
+            # Persist tool call into conversation history for sidebar chat
+            try:
+                persist_args = dict(args) if isinstance(args, dict) else {}
+                if func and 'wa_id' in inspect.signature(func).parameters:
+                    persist_args['wa_id'] = wa_id
+                if isinstance(persist_args, dict) and len(persist_args) > 0:
+                    pretty = json.dumps(persist_args, ensure_ascii=False, indent=2)
+                    safe_json = html.escape(pretty)
+                    message_html = (
+                        f"<details class=\"details\">"
+                        f"<summary>Tool: {fc.name}</summary>"
+                        f"<div><pre><code class=\"language-json\">{safe_json}</code></pre></div>"
+                        f"</details>"
+                    )
+                else:
+                    message_html = f"Tool: {fc.name}"
+                now_ts = int(time.time())
+                date_str, time_str = parse_unix_timestamp(now_ts)
+                append_message(wa_id, 'tool', message_html, date_str, time_str)
+            except Exception as persist_err:
+                logging.error(f"Failed to persist tool call message for {fc.name}: {persist_err}")
             
             if func and 'wa_id' in inspect.signature(func).parameters:
                 args['wa_id'] = wa_id
@@ -159,6 +200,25 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
                     else:
                         # For regular functions, call them directly
                         result = func(**args)
+                    # Persist tool result as a follow-up message
+                    try:
+                        result_str = (
+                            json.dumps(result, ensure_ascii=False, indent=2)
+                            if isinstance(result, (dict, list))
+                            else str(result)
+                        )
+                        safe_out = html.escape(result_str)
+                        result_html = (
+                            f"<details class=\"details\">"
+                            f"<summary>Result: {fc.name}</summary>"
+                            f"<div><pre><code class=\"language-json\">{safe_out}</code></pre></div>"
+                            f"</details>"
+                        )
+                        now_ts2 = int(time.time())
+                        d2, t2 = parse_unix_timestamp(now_ts2)
+                        append_message(wa_id, 'tool', result_html, d2, t2)
+                    except Exception as persist_res_err:
+                        logging.error(f"Failed to persist tool result for {fc.name}: {persist_res_err}")
                 except Exception as e:
                     # Use both metrics for now during transition
                     FUNCTION_ERRORS.labels(function=fc.name).inc()
@@ -186,6 +246,21 @@ def run_responses(wa_id, input_chat, model, system_prompt, max_tokens=None, reas
         try:
             response = client.responses.create(**kwargs)
         except Exception as e:
+            # Emit detailed metric for iterative call
+            error_type = map_openai_error(e)
+            exception_type = type(e).__name__
+            if error_type == "unknown":
+                error_type = f"unknown::{exception_type}"
+            http_status = None
+            try:
+                http_status = getattr(getattr(e, 'response', None), 'status_code', None)
+            except Exception:
+                http_status = None
+            LLM_API_ERRORS.labels(provider="openai", error_type=error_type).inc()
+            try:
+                LLM_API_ERRORS_DETAILED.labels(provider="openai", error_type=error_type, exception_type=str(exception_type), http_status=str(http_status or ""), function="run_responses_iter").inc()
+            except Exception:
+                pass
             logging.error(f"Error creating OpenAI response in iteration {iteration_count}: {e}")
             break
     
@@ -220,6 +295,12 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
     
     # Retrieve message history using centralized service
     input_chat = retrieve_messages(wa_id)
+    # Guard: OpenAI Responses API requires one of input/previous_response_id/prompt/conversation_id
+    # Avoid 400 errors by short-circuiting when there is no input history yet
+    if not input_chat:
+        logging.warning(f"Skipping OpenAI call for wa_id={wa_id}: no conversation input available")
+        LLM_EMPTY_RESPONSES.labels(provider="openai", response_type="missing_input").inc()
+        return "", "", ""
     # Call the synchronous Responses API function
     try:
         new_message, created_at = run_responses(
@@ -236,10 +317,21 @@ def run_openai(wa_id, model, system_prompt, max_tokens=None, reasoning_effort="h
         )
     except Exception as e:
         error_type = map_openai_error(e)
+        exception_type = type(e).__name__
         if error_type == "unknown":
-            error_type = f"unknown::{type(e).__name__}"
-        logging.error(f"OpenAI API ERROR for wa_id={wa_id}: {e} (type: {error_type})", exc_info=True)
+            error_type = f"unknown::{exception_type}"
+        # Try to extract HTTP status from SDK errors
+        http_status = None
+        try:
+            http_status = getattr(getattr(e, 'response', None), 'status_code', None)
+        except Exception:
+            http_status = None
+        logging.error(f"OpenAI API ERROR for wa_id={wa_id}: {e} (type: {error_type}, exception={exception_type}, status={http_status})", exc_info=True)
         LLM_API_ERRORS.labels(provider="openai", error_type=error_type).inc()
+        try:
+            LLM_API_ERRORS_DETAILED.labels(provider="openai", error_type=error_type, exception_type=str(exception_type), http_status=str(http_status or ""), function="run_openai").inc()
+        except Exception:
+            pass
         # Only mark retry attempt when the exception is retry-eligible
         if _is_retryable_openai_exception(e):
             LLM_RETRY_ATTEMPTS.labels(provider="openai", error_type=error_type).inc()

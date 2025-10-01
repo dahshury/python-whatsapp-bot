@@ -3,13 +3,25 @@
 import dynamic from "next/dynamic";
 import { LockIllustration } from "@/components/lock-illustration";
 import "@excalidraw/excalidraw/index.css";
+import type {
+	ExcalidrawImperativeAPI,
+	ExcalidrawProps,
+} from "@excalidraw/excalidraw/types";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useTheme as useNextThemes } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+	useTransition,
+} from "react";
 import { DocumentCanvas } from "@/components/documents/DocumentCanvas";
 import { FullscreenProvider } from "@/components/glide_custom_cells/components/contexts/FullscreenContext";
 import { InMemoryDataSource } from "@/components/glide_custom_cells/components/core/data-sources/InMemoryDataSource";
 import { createGlideTheme } from "@/components/glide_custom_cells/components/utils/streamlitGlideTheme";
+
 import { Button } from "@/components/ui/button";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { useDocumentCustomerRow } from "@/hooks/useDocumentCustomerRow";
@@ -30,7 +42,7 @@ export default function DocumentsPage() {
 	const { selectedDocumentWaId } = useSidebarChatStore();
 	const selectedWaId = selectedDocumentWaId || "";
 	const { resolvedTheme, theme: nextTheme } = useNextThemes();
-	useSettings();
+	const { theme: _styleTheme } = useSettings();
 
 	// Initialize hooks whose values are used for enabling scene
 	const {
@@ -67,6 +79,7 @@ export default function DocumentsPage() {
 		const desired = (
 			nextTheme && nextTheme !== "system" ? nextTheme : resolvedTheme
 		) as string | undefined;
+		// Always use current UI theme; never defer to saved document theme
 		return desired === "dark" ? "dark" : "light";
 	}, [nextTheme, resolvedTheme]);
 
@@ -80,12 +93,24 @@ export default function DocumentsPage() {
 	// keyboards appear on tablets/phones. Fallback to 100dvh when supported.
 	const excalApiRef = useRef<ExcalidrawAPI | null>(null);
 	const fsContainerRef = useRef<HTMLDivElement | null>(null);
+	const lastPreviewUpdateAtRef = useRef<number>(0);
+	const previewThrottleTimerRef = useRef<number | null>(null);
+	const pendingPreviewRef = useRef<{
+		scene: {
+			elements?: unknown[];
+			appState?: Record<string, unknown>;
+			files?: Record<string, unknown>;
+		};
+		sig: string;
+	} | null>(null);
 	const [previewScene, setPreviewScene] = useState<{
 		elements?: unknown[];
 		appState?: Record<string, unknown>;
 		files?: Record<string, unknown>;
 	} | null>(null);
 	const previewSigRef = useRef<string | null>(null);
+	const [, startTransition] = useTransition();
+	// eslint-disable-next-line @typescript-eslint/no-empty-function
 	const sanitizePreviewAppState = useCallback(
 		(app: Record<string, unknown> | null | undefined) => {
 			const a = (app || {}) as Record<string, unknown>;
@@ -107,6 +132,108 @@ export default function DocumentsPage() {
 			setTimeout(() => api?.refresh?.(), 160);
 		} catch {}
 	}, []);
+
+	// Throttled preview updater to avoid re-rendering on every pointer move
+	const commitPreview = useCallback(() => {
+		try {
+			const pending = pendingPreviewRef.current;
+			if (!pending) return;
+			previewSigRef.current = pending.sig;
+			startTransition(() => setPreviewScene(pending.scene));
+			pendingPreviewRef.current = null;
+		} catch {}
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (previewThrottleTimerRef.current)
+				window.clearTimeout(previewThrottleTimerRef.current);
+		};
+	}, []);
+
+	const handleEditorChange: ExcalidrawProps["onChange"] = useCallback(
+		(
+			els: Parameters<NonNullable<ExcalidrawProps["onChange"]>>[0],
+			app: Parameters<NonNullable<ExcalidrawProps["onChange"]>>[1],
+			files: Parameters<NonNullable<ExcalidrawProps["onChange"]>>[2],
+		) => {
+			try {
+				const next = {
+					elements: (els || []) as unknown[],
+					appState: sanitizePreviewAppState(
+						(app || {}) as unknown as Record<string, unknown>,
+					),
+					files: (files || {}) as Record<string, unknown>,
+				};
+				const sig = computeSceneSignature(
+					next.elements || [],
+					next.appState || {},
+					next.files || {},
+				);
+				if (sig !== (previewSigRef.current || null)) {
+					pendingPreviewRef.current = { scene: next, sig };
+					const now =
+						typeof performance !== "undefined" ? performance.now() : Date.now();
+					const elapsed = now - (lastPreviewUpdateAtRef.current || 0);
+					if (elapsed >= 120) {
+						lastPreviewUpdateAtRef.current = now;
+						commitPreview();
+					} else {
+						if (previewThrottleTimerRef.current)
+							window.clearTimeout(previewThrottleTimerRef.current);
+						previewThrottleTimerRef.current = window.setTimeout(
+							() => {
+								lastPreviewUpdateAtRef.current =
+									typeof performance !== "undefined"
+										? performance.now()
+										: Date.now();
+								commitPreview();
+							},
+							Math.max(0, 120 - elapsed),
+						);
+					}
+				}
+				handleCanvasChange(
+					(els || []) as unknown[],
+					(app || {}) as unknown as Record<string, unknown>,
+					(files || {}) as Record<string, unknown>,
+				);
+			} catch {}
+		},
+		[sanitizePreviewAppState, commitPreview, handleCanvasChange],
+	);
+
+	const handleEditorApiReady = useCallback(
+		(api: ExcalidrawImperativeAPI) => {
+			try {
+				excalApiRef.current = api as unknown as ExcalidrawAPI;
+				const els = (excalApiRef.current.getSceneElementsIncludingDeleted?.() ||
+					[]) as unknown[];
+				const app = (excalApiRef.current.getAppState?.() || {}) as Record<
+					string,
+					unknown
+				>;
+				const files = (excalApiRef.current.getFiles?.() || {}) as Record<
+					string,
+					unknown
+				>;
+				const initial = {
+					elements: els,
+					appState: sanitizePreviewAppState(app as Record<string, unknown>),
+					files,
+				};
+				const sig = computeSceneSignature(
+					els || [],
+					initial.appState || {},
+					files || {},
+				);
+				previewSigRef.current = sig;
+				startTransition(() => setPreviewScene(initial));
+			} catch {}
+			onExcalidrawAPI(api as unknown as never);
+		},
+		[sanitizePreviewAppState, onExcalidrawAPI],
+	);
 
 	// Fullscreen toggle state & handlers
 	const [isFullscreen, setIsFullscreen] = useState(false);
@@ -253,25 +380,48 @@ export default function DocumentsPage() {
 		};
 	}, [scheduleExcalRefresh]);
 
+	// Grid theme: mirror calendar editor behavior exactly
+	const [gridTheme, setGridTheme] = useState(() =>
+		createGlideTheme(isDarkMode ? "dark" : "light"),
+	);
 	useEffect(() => {
-		if (typeof window === "undefined") return;
+		void _styleTheme;
+		try {
+			setGridTheme(createGlideTheme(isDarkMode ? "dark" : "light"));
+			setTimeout(() => {
+				try {
+					setGridTheme(createGlideTheme(isDarkMode ? "dark" : "light"));
+				} catch {}
+			}, 50);
+		} catch {}
+	}, [isDarkMode, _styleTheme]);
+	useEffect(() => {
+		if (typeof window === "undefined") return () => {};
 		const el = document.documentElement;
-		let prevDark = el.classList.contains("dark");
-		const observer = new MutationObserver(() => {
-			const currDark = el.classList.contains("dark");
-			if (currDark !== prevDark) {
-				prevDark = currDark;
-				requestAnimationFrame(() => setGridThemeTick((t) => t + 1));
+		let prev = el.className;
+		const schedule = () => {
+			try {
+				setTimeout(() => {
+					const dark = el.classList.contains("dark");
+					setGridTheme(createGlideTheme(dark ? "dark" : "light"));
+				}, 50);
+			} catch {}
+		};
+		const mo = new MutationObserver(() => {
+			if (el.className !== prev) {
+				prev = el.className;
+				schedule();
 			}
 		});
-		observer.observe(el, { attributes: true, attributeFilter: ["class"] });
-		return () => observer.disconnect();
+		try {
+			mo.observe(el, { attributes: true, attributeFilter: ["class"] });
+		} catch {}
+		return () => {
+			try {
+				mo.disconnect();
+			} catch {}
+		};
 	}, []);
-
-	const gridTheme = useMemo(
-		() => createGlideTheme(isDarkMode ? "dark" : "light"),
-		[isDarkMode],
-	);
 	// Documents header is now always visible; collapsible behavior removed
 
 	// Deprecated remount key (kept for future use)
@@ -307,16 +457,10 @@ export default function DocumentsPage() {
 	}, [selectedWaId, customerColumns]);
 
 	return (
-		<SidebarInset
-			dir="ltr"
-			style={{
-				minHeight: "var(--doc-dvh, 100dvh)",
-				height: "var(--doc-dvh, 100dvh)",
-			}}
-		>
+		<SidebarInset dir="ltr">
 			{/* Header is provided globally by PersistentDockHeader; avoid duplicate here */}
 			<div
-				className="flex flex-col gap-1.5 sm:gap-2 px-2 sm:px-4 pt-1 pb-2 sm:pb-4 flex-1 min-h-0"
+				className="px-2 sm:px-4 pt-1 pb-2 sm:pb-4 flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2"
 				style={{ overscrollBehaviorY: "contain" }}
 			>
 				<div className="w-full">
@@ -344,7 +488,7 @@ export default function DocumentsPage() {
 												[["", null, selectedWaId || ""]],
 											)
 										}
-										validationErrors={validationErrors}
+										validationErrors={validationErrors || []}
 										rowHeight={24}
 										headerHeight={22}
 										hideAppendRowPlaceholder={true}
@@ -376,7 +520,7 @@ export default function DocumentsPage() {
 												[["", null, ""]],
 											)
 										}
-										validationErrors={validationErrors}
+										validationErrors={validationErrors || []}
 										rowHeight={24}
 										headerHeight={22}
 										hideAppendRowPlaceholder={true}
@@ -391,115 +535,106 @@ export default function DocumentsPage() {
 						</div>
 					)}
 				</div>
-
 				<div className="flex-1 min-h-0 relative" ref={fsContainerRef}>
 					<div
-						className={`absolute inset-0 grid grid-rows-[minmax(0,0.8fr)_minmax(0,4.2fr)] sm:grid-rows-[minmax(0,1fr)_minmax(0,5fr)] gap-1.5 sm:gap-2 ${isFullscreen ? "z-[9999] bg-background" : ""}`}
+						className={`absolute inset-0 ${isFullscreen ? "z-[9999] bg-background" : ""}`}
 					>
-						{/* Read-only preview (top, ~20% of bottom height) */}
-						<div
-							className="border rounded-md overflow-hidden bg-background relative"
-							aria-busy={loading}
-						>
-							<div
-								className={`w-full h-full transition-opacity ${!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID ? "opacity-20" : "opacity-100"}`}
-							>
-								<DocumentCanvas
-									key={`preview-${selectedWaId || "none"}`}
-									theme={excalidrawTheme as "light" | "dark"}
-									langCode={excalidrawLang as unknown as string}
-									forceLTR={true}
-									viewModeEnabled={true}
-									zenModeEnabled={true}
-									scrollable={false}
-									hideToolbar={true}
-									scene={
-										previewScene || { elements: [], appState: {}, files: {} }
-									}
-									onApiReady={() => {}}
-								/>
-							</div>
-							{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
-								<div className="absolute inset-0 z-20 pointer-events-auto bg-background/80 backdrop-blur-[0.125rem]" />
-							)}
-						</div>
-
-						{/* Editable canvas (bottom) */}
-						<div
-							className="border rounded-md overflow-hidden bg-background relative"
-							aria-busy={loading}
-						>
-							<div
-								className={`w-full h-full transition-opacity ${loading || (!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID) ? "opacity-30 pointer-events-none" : "opacity-100"}`}
-							>
-								<DocumentCanvas
-									key={`editor-${selectedWaId || "none"}`}
-									theme={excalidrawTheme as "light" | "dark"}
-									langCode={excalidrawLang as unknown as string}
-									forceLTR={true}
-									hideHelpIcon={true}
-									onChange={(els, app, files) => {
-										const next = {
-											elements: (els || []) as unknown[],
-											appState: sanitizePreviewAppState(
-												(app || {}) as unknown as Record<string, unknown>,
-											),
-											files: (files || {}) as Record<string, unknown>,
-										};
-										const sig = computeSceneSignature(
-											next.elements || [],
-											next.appState || {},
-											next.files || {},
-										);
-										if (sig !== (previewSigRef.current || null)) {
-											previewSigRef.current = sig;
-											setPreviewScene(next);
-										}
-										handleCanvasChange(
-											(els || []) as unknown[],
-											(app || {}) as unknown as Record<string, unknown>,
-											(files || {}) as Record<string, unknown>,
-										);
-									}}
-									onApiReady={(api) => {
-										try {
-											excalApiRef.current = api as unknown as ExcalidrawAPI;
-											const els =
-												(excalApiRef.current.getSceneElementsIncludingDeleted?.() ||
-													[]) as unknown[];
-											const app = (excalApiRef.current.getAppState?.() ||
-												{}) as Record<string, unknown>;
-											const files = (excalApiRef.current.getFiles?.() ||
-												{}) as Record<string, unknown>;
-											const initial = {
-												elements: els,
-												appState: sanitizePreviewAppState(
-													app as Record<string, unknown>,
-												),
-												files,
-											};
-											const sig = computeSceneSignature(
-												els || [],
-												initial.appState || {},
-												files || {},
-											);
-											previewSigRef.current = sig;
-											setPreviewScene(initial);
-										} catch {}
-										onExcalidrawAPI(api as unknown as never);
-									}}
-								/>
-							</div>
-							{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
-								<div className="absolute inset-0 z-20 pointer-events-auto flex items-center justify-center bg-background/70 backdrop-blur-[0.125rem]">
-									<LockIllustration className="h-full w-auto max-w-[80%] sm:max-w-[56%] opacity-95" />
-								</div>
-							)}
-							{loading ? (
-								<div className="absolute inset-0 grid place-items-center pointer-events-auto z-10 cursor-wait bg-black/50">
-									<div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+						{/* Fullscreen container content: Grid at top, then two canvases stacked */}
+						<div className="absolute inset-0 flex flex-col gap-1.5 sm:gap-2 min-h-0">
+							{/* Read-only grid shown only in fullscreen */}
+							{isFullscreen && Grid ? (
+								<div className="border rounded-md overflow-hidden bg-background">
+									<FullscreenProvider>
+										<Grid
+											key={`customer-grid-fs-${selectedWaId || "none"}`}
+											showThemeToggle={false}
+											fullWidth={true}
+											theme={gridTheme}
+											isDarkMode={isDarkMode}
+											loading={customerLoading}
+											dataSource={
+												customerDataSource ||
+												placeholderCustomerDataSource ||
+												new InMemoryDataSource(
+													1,
+													customerColumns.length,
+													customerColumns,
+													[["", null, selectedWaId || ""]],
+												)
+											}
+											{...(validationErrors && validationErrors.length > 0
+												? { validationErrors }
+												: {})}
+											rowHeight={22}
+											headerHeight={20}
+											hideAppendRowPlaceholder={true}
+											rowMarkers="none"
+											disableTrailingRow={true}
+											className="!border-0 m-0 p-0"
+											readOnly={true}
+											disableTooltips={true}
+										/>
+									</FullscreenProvider>
 								</div>
 							) : null}
+
+							{/* Read-only preview (top of canvases) */}
+							<div
+								className="border rounded-md overflow-hidden bg-background relative flex-[2] min-h-0"
+								aria-busy={loading}
+							>
+								<div
+									className={`w-full h-full transition-opacity ${!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID ? "opacity-20" : "opacity-100"}`}
+								>
+									<DocumentCanvas
+										key={`preview-${selectedWaId || "none"}`}
+										theme={excalidrawTheme as "light" | "dark"}
+										langCode={excalidrawLang as unknown as string}
+										forceLTR={true}
+										viewModeEnabled={true}
+										zenModeEnabled={true}
+										scrollable={false}
+										hideToolbar={true}
+										scene={
+											previewScene || { elements: [], appState: {}, files: {} }
+										}
+										onApiReady={() => {}}
+									/>
+								</div>
+								{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
+									<div className="absolute inset-0 z-20 pointer-events-auto bg-background/80 backdrop-blur-[0.125rem]" />
+								)}
+							</div>
+
+							{/* Editable canvas (bottom) */}
+							<div
+								className="border rounded-md overflow-hidden bg-background relative flex-[8] min-h-0"
+								aria-busy={loading}
+							>
+								<div
+									className={`w-full h-full transition-opacity ${loading || (!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID) ? "opacity-30 pointer-events-none" : "opacity-100"}`}
+								>
+									<DocumentCanvas
+										key={`editor-${selectedWaId || "none"}`}
+										theme={excalidrawTheme as "light" | "dark"}
+										langCode={excalidrawLang as unknown as string}
+										forceLTR={true}
+										hideHelpIcon={true}
+										onChange={handleEditorChange}
+										onApiReady={handleEditorApiReady}
+									/>
+								</div>
+								{!isUnlockReady && selectedWaId !== DEFAULT_DOCUMENT_WA_ID && (
+									<div className="absolute inset-0 z-20 pointer-events-auto flex items-center justify-center bg-background/70 backdrop-blur-[0.125rem]">
+										<LockIllustration className="h-full w-auto max-w-[80%] sm:max-w-[56%] opacity-95" />
+									</div>
+								)}
+								{loading ? (
+									<div className="absolute inset-0 grid place-items-center pointer-events-auto z-10 cursor-wait bg-black/50">
+										<div className="h-6 w-6 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+									</div>
+								) : null}
+							</div>
 						</div>
 						{/* Fullscreen toggle floating inside canvas area (bottom-right) */}
 						<Button

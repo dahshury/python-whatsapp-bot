@@ -15,7 +15,8 @@ import { chatService } from "@/lib/services/chat/chat.service";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
-import type { ConversationMessage, Reservation } from "@/types/calendar";
+import type { Reservation } from "@/types/calendar";
+import type { ConversationMessage } from "@/types/conversation";
 
 interface ChatSidebarContentProps {
 	selectedConversationId: string | null;

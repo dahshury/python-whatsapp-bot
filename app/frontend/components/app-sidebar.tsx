@@ -64,6 +64,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	// Removed old hover combobox logic for Documents sidebar
 	// placeholder state kept to avoid larger refactor; may be removed later
 
+	// Documents page: force-open sidebar (no toggle in header) using effect (avoid setState during render)
+	useEffect(() => {
+		if (!isDocumentsPage) return;
+		setOpen(true);
+		setOpenMobile(true);
+	}, [isDocumentsPage, setOpen, setOpenMobile]);
+
 	// Mount guard to avoid hydration mismatches for client-only state
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => {
@@ -456,12 +463,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		[setActiveTab, setChatSidebarOpen],
 	);
 
-	// Documents page: render minimal sidebar with only contact selector
 	// Dashboard page: hide sidebar entirely
 	if (isDashboardPage) {
 		return null;
 	}
 
+	// Documents page: render specialized sidebar
 	if (isDocumentsPage) {
 		return (
 			<Sidebar {...props} className="bg-sidebar" dir="ltr">

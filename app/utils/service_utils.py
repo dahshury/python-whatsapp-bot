@@ -421,8 +421,15 @@ def retrieve_messages(wa_id):
             pass
         input_chat = []
         for msg in messages:
+            try:
+                role = str(msg.get("role") or "")
+            except Exception:
+                role = ""
+            # Skip tool-call records from LLM prompt context
+            if role.strip().lower() == "tool":
+                continue
             input_chat.append({
-                "role": "assistant" if msg["role"] != "user" else "user",
+                "role": "assistant" if role != "user" else "user",
                 "content": msg["message"]
             })
         return input_chat

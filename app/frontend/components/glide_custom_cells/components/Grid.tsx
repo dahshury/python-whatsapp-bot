@@ -68,6 +68,8 @@ export default function Grid({
 	rowMarkers,
 	disableTrailingRow,
 	onAddRowOverride,
+	readOnly,
+	disableTooltips,
 }: {
 	showThemeToggle?: boolean;
 	fullWidth?: boolean;
@@ -101,6 +103,8 @@ export default function Grid({
 		| "selection";
 	disableTrailingRow?: boolean;
 	onAddRowOverride?: () => void;
+	readOnly?: boolean;
+	disableTooltips?: boolean;
 } = {}) {
 	// Initialize the data source - use external if provided, otherwise create default
 	const dataSource = React.useMemo(() => {
@@ -996,21 +1000,24 @@ export default function Grid({
 										},
 									}
 								: {})}
-							onItemHovered={(args: {
-								location: [number, number];
-								item: Item;
-								bounds?: {
-									x: number;
-									y: number;
-									width: number;
-									height: number;
-								};
-							}) =>
-								handleItemHovered({
-									kind: "cell",
-									location: args.location,
-									...(args.bounds && { bounds: args.bounds }),
-								})
+							onItemHovered={
+								disableTooltips
+									? () => {}
+									: (args: {
+											location: [number, number];
+											item: Item;
+											bounds?: {
+												x: number;
+												y: number;
+												width: number;
+												height: number;
+											};
+										}) =>
+											handleItemHovered({
+												kind: "cell",
+												location: args.location,
+												...(args.bounds && { bounds: args.bounds }),
+											})
 							}
 							onHeaderMenuClick={handleHeaderMenuClick}
 							searchValue={gs.searchValue}
@@ -1041,6 +1048,7 @@ export default function Grid({
 							showAppendRowPlaceholder={!hideAppendRowPlaceholder}
 							{...(rowMarkers ? { rowMarkers } : {})}
 							{...(disableTrailingRow ? { disableTrailingRow: true } : {})}
+							{...(typeof readOnly === "boolean" ? { readOnly } : {})}
 							// Column management props - using Streamlit-style configuration
 							columnConfigMapping={columnConfigMapping}
 							onColumnConfigChange={(mapping) =>
@@ -1054,7 +1062,7 @@ export default function Grid({
 				</div>
 
 				{/* Floating tooltip above grid with Shadcn look (2s delayed by hook) */}
-				{tooltip?.content && (
+				{!disableTooltips && tooltip?.content && (
 					<TooltipFloat
 						content={tooltip.content}
 						x={tooltip.left || 0}

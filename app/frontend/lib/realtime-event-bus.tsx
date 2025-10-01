@@ -24,6 +24,7 @@ export const RealtimeEventBus: React.FC = () => {
 				try {
 					const t = String(type).toLowerCase();
 					if (t === "snapshot") return;
+					// Revert: do not filter here; source filtering happens in useWebSocketData and reducer
 					if (t.endsWith("_ack") || t.endsWith("_nack")) return;
 					if (t === "ack" || t === "nack") return;
 				} catch {}

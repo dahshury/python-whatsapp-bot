@@ -3,7 +3,7 @@
 
 /* Base pill styling for reservation events */
 .fc-event.reservation-event {
-	border-width: 1px; /* 1px outline */
+	border-width: var(--fc-event-stroke-width); /* rem-based outline */
 	border-radius: 6px;
 	padding: 2px 6px; /* horizontal breathing room */
 	box-shadow: none;
@@ -36,13 +36,25 @@
 	background: transparent;
 }
 
+/* Ensure timegrid events occupy the full computed height from start/end duration */
+.fc-timegrid-event.reservation-event {
+	height: 100%; /* respect harness-calculated height */
+	box-sizing: border-box;
+}
+.fc-timegrid-event.reservation-event .fc-event-main,
+.fc-timegrid-event.reservation-event .fc-event-main-frame {
+	height: 100%;
+	min-height: 100%;
+	align-items: stretch;
+}
+
 /* UNIFIED TIME STYLING - All views use same approach */
 .fc-event.reservation-event .fc-event-time,
 .fc-daygrid-event.reservation-event .fc-event-time,
 .fc-timegrid-event.reservation-event .fc-event-time,
 .fc-multimonth .fc-daygrid-event.reservation-event .fc-event-time,
 .fc-multimonth .fc-event.reservation-event .fc-event-time {
-	font-size: 0.65rem;
+	font-size: var(--fc-event-time-size);
 	line-height: 1.1;
 	opacity: 0.95;
 	text-transform: uppercase; /* AM/PM uppercase */
@@ -51,7 +63,7 @@
 	text-align: right;
 	font-style: italic;
 	font-weight: 400; /* override bold defaults */
-	flex-shrink: 0; /* prevent time from shrinking */
+	flex-shrink: 1; /* allow time to shrink within scaled container */
 	white-space: nowrap;
 	background: transparent;
 }
@@ -62,16 +74,19 @@
 .fc-timegrid-event.reservation-event .fc-event-title,
 .fc-multimonth .fc-daygrid-event.reservation-event .fc-event-title,
 .fc-multimonth .fc-event.reservation-event .fc-event-title {
-	font-size: 0.78rem; /* slightly larger than time */
+	font-size: var(--fc-event-title-size); /* slightly larger than time */
 	line-height: 1.1;
 	font-weight: 700;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	overflow: visible;
+	text-overflow: clip;
 	order: 1;
 	flex: 1 1 auto;
 	min-width: 0;
 	text-align: left;
 	background: transparent;
+	white-space: normal;
+	word-break: break-word;
+	overflow-wrap: anywhere;
 }
 
 /* ==============================================================================
@@ -146,3 +161,138 @@
 }
 
 /* Colors are sourced from variables in _variables.css and applied in _universal.css */
+
+/* Visual indicator for customers with documents (age present) */
+.fc-event.reservation-event.has-documents::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	border-radius: inherit;
+	background-image:
+		linear-gradient(
+			45deg,
+			transparent 49%,
+			rgba(0, 0, 0, 0.6) 49%,
+			rgba(0, 0, 0, 0.6) 51%,
+			transparent 51%
+		),
+		linear-gradient(
+			-45deg,
+			transparent 49%,
+			rgba(0, 0, 0, 0.6) 49%,
+			rgba(0, 0, 0, 0.6) 51%,
+			transparent 51%
+		);
+	background-repeat: repeat;
+	background-position: center top;
+	background-size: 16px 16px;
+	/* show only the top portion */
+	-webkit-mask-image: radial-gradient(
+		ellipse 70% 60% at 50% 0%,
+		#000 60%,
+		transparent 100%
+	);
+	mask-image: radial-gradient(
+		ellipse 70% 60% at 50% 0%,
+		#000 60%,
+		transparent 100%
+	);
+	-webkit-mask-repeat: no-repeat;
+	mask-repeat: no-repeat;
+}
+
+/* Slightly denser for short time slots */
+.fc-timegrid-event.reservation-event.has-documents::after {
+	background-size: 12px 12px;
+}
+
+/* Tighter for dayGrid/multiMonth cells */
+.fc-daygrid-event.reservation-event.has-documents::after,
+.fc-multimonth .fc-event.reservation-event.has-documents::after {
+	background-size: 10px 10px;
+}
+
+/* Dark mode: brighten overlay for contrast */
+.dark .fc-event.reservation-event.has-documents::after {
+	background-image:
+		linear-gradient(
+			45deg,
+			transparent 49%,
+			rgba(255, 255, 255, 0.9) 49%,
+			rgba(255, 255, 255, 0.9) 51%,
+			transparent 51%
+		),
+		linear-gradient(
+			-45deg,
+			transparent 49%,
+			rgba(255, 255, 255, 0.9) 49%,
+			rgba(255, 255, 255, 0.9) 51%,
+			transparent 51%
+		);
+}
+
+/* Ensure the hatch doesn’t obscure text in list view */
+.fc-list .fc-list-event.reservation-event.has-documents .fc-list-event-title,
+.fc-list .fc-list-event.reservation-event.has-documents .fc-list-event-time {
+	position: relative;
+	z-index: 1;
+}
+
+/* =============================
+   THEME-INVERTED STROKES (NO PATTERN)
+   ============================= */
+
+/* Remove any hatch/overlay for document events explicitly */
+.fc-event.reservation-event.has-documents::after {
+	content: none;
+	background: none;
+	-webkit-mask-image: none;
+	mask-image: none;
+}
+
+/* Default (light): black stroke for all events except document-marked reservations */
+.fc-event.reservation-event:not(.has-documents):not(.vacation-text-event),
+.fc-event.conversation-event:not(.vacation-text-event),
+.fc-timegrid-event.reservation-event:not(.has-documents):not(
+		.vacation-text-event
+	),
+.fc-timegrid-event.conversation-event:not(.vacation-text-event),
+.fc-daygrid-event.reservation-event:not(.has-documents):not(
+		.vacation-text-event
+	),
+.fc-daygrid-event.conversation-event:not(.vacation-text-event) {
+	border-width: var(--fc-event-stroke-width);
+	border-color: #000;
+}
+
+/* Dark theme: white stroke for all events except document-marked reservations */
+.dark .fc-event.reservation-event:not(.has-documents):not(.vacation-text-event),
+.dark .fc-event.conversation-event:not(.vacation-text-event),
+.dark
+	.fc-timegrid-event.reservation-event:not(.has-documents):not(
+		.vacation-text-event
+	),
+.dark .fc-timegrid-event.conversation-event:not(.vacation-text-event),
+.dark
+	.fc-daygrid-event.reservation-event:not(.has-documents):not(
+		.vacation-text-event
+	),
+.dark .fc-daygrid-event.conversation-event:not(.vacation-text-event) {
+	border-width: var(--fc-event-stroke-width);
+	border-color: #fff;
+}
+
+/* Fallback: ensure ALL non-document events invert stroke with theme */
+.dark .fc-event:not(.has-documents):not(.vacation-text-event) {
+	border-width: var(--fc-event-stroke-width);
+	border-color: #fff;
+}
+
+/* Documents (has files): use theme-inferred stroke instead of typed colors */
+.fc-event.reservation-event.has-documents,
+.fc-timegrid-event.reservation-event.has-documents,
+.fc-daygrid-event.reservation-event.has-documents {
+	border-width: var(--fc-event-stroke-width);
+	border-color: var(--fc-typed-border); /* fixed per type */
+}

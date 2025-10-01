@@ -24,9 +24,15 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 }: NavigationDateButtonProps) {
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
 
-	const width = navigationOnly ? "w-[16.25rem]" : "w-[26rem]";
-	const textSize = navigationOnly ? "text-lg" : "text-2xl";
-	const loaderSize = navigationOnly ? "h-6 w-6" : "h-8 w-8";
+	const width = navigationOnly
+		? "w-[12rem] sm:w-[16.25rem]"
+		: "w-[14rem] sm:w-[22rem] md:w-[26rem]";
+	const textSize = navigationOnly
+		? "text-base sm:text-lg"
+		: "text-lg sm:text-xl md:text-2xl";
+	const loaderSize = navigationOnly
+		? "h-5 w-5 sm:h-6 sm:w-6"
+		: "h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8";
 
 	return (
 		<Tooltip>
@@ -55,7 +61,7 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 								: "opacity-100 scale-100",
 						)}
 					>
-						<span className={cn(textSize, "font-medium px-2")}>
+						<span className={cn(textSize, "font-medium px-2 truncate")}>
 							{title && title.trim().length > 0 ? (
 								title
 							) : (

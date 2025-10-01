@@ -19,6 +19,7 @@ export interface ReservationProcessingOptions {
 	freeRoam: boolean;
 	isLocalized: boolean;
 	vacationPeriods: Array<{ start: string | Date; end: string | Date }>;
+    ageByWaId?: Record<string, number | null>;
 }
 
 export function getReservationEventProcessor() {
@@ -49,8 +50,13 @@ export function getReservationEventProcessor() {
 						options.freeRoam,
 					);
 					const key = `${dateStr}_${baseTime}`;
-					if (!groupMap[key]) groupMap[key] = [];
-					groupMap[key].push({ waId, r });
+					if (!groupMap[key]) {
+						groupMap[key] = [] as Array<{ waId: string; r: ReservationItem }>;
+					}
+					(groupMap[key] as Array<{ waId: string; r: ReservationItem }>).push({
+						waId,
+						r,
+					});
 				});
 			});
 
@@ -104,7 +110,24 @@ export function getReservationEventProcessor() {
 						const cancelled = Boolean(r.cancelled);
 						const type = Number(r.type ?? 0);
 
-						const isConversation = type === 2;
+                        const isConversation = type === 2;
+                        // Prefer explicit ages provided via options for first-paint accuracy
+                        let hasAgeCached = false;
+                        try {
+                            const map = (options?.ageByWaId || {}) as Record<string, number | null>;
+                            const maybe = map?.[waId];
+                            const n = typeof maybe === "number" ? maybe : Number.NaN;
+                            hasAgeCached = Number.isFinite(n) && n >= 10 && n <= 120;
+                        } catch {}
+                        // Fallback to global registry if no map value is present
+                        if (!hasAgeCached) {
+                            try {
+                                const reg = (globalThis as unknown as {
+                                    __customerAgeRegistry?: { hasAge?: (id: string) => boolean };
+                                }).__customerAgeRegistry;
+                                hasAgeCached = Boolean(reg?.hasAge?.(waId));
+                            } catch {}
+                        }
 						const eventData: Record<string, unknown> = {
 							id: String(r.id ?? waId),
 							title: r.customer_name ?? String(waId),
@@ -113,12 +136,14 @@ export function getReservationEventProcessor() {
 							end: `${baseDate}T${endTime}`,
 							// Allow dragging for reservations even if moved to past; backend will validate
 							editable: !isConversation && !cancelled,
-							extendedProps: {
+								extendedProps: {
 								type,
 								cancelled,
 								waId,
 								slotDate: baseDate,
-							slotTime: baseTime,
+                                slotTime: baseTime,
+                                // Hint for CSS/class builder
+                                ...(hasAgeCached ? { hasAge: true } : {}),
 							// Preserve DB reservation id for drag/drop operations
 							...(typeof (r as { id?: unknown }).id !== "undefined"
 								? {
@@ -158,10 +183,9 @@ export function getReservationEventProcessor() {
 					);
 					const startTime = `${baseTime}:00`;
 					const endTime = addMinutesToClock(baseTime, Math.floor(120 / 6));
-					const convArr: ConversationItem[] = Array.isArray(
-						conversationsByUser?.[waId],
-					)
-						? conversationsByUser[waId]
+					const convMaybe = conversationsByUser?.[waId];
+					const convArr: ConversationItem[] = Array.isArray(convMaybe)
+						? (convMaybe as ConversationItem[])
 						: [];
 					const convNameFromConv = (() => {
 						try {
@@ -175,10 +199,9 @@ export function getReservationEventProcessor() {
 							return "";
 						}
 					})();
-					const resArr: ReservationItem[] = Array.isArray(
-						reservationsByUser?.[waId],
-					)
-						? reservationsByUser[waId]
+					const resMaybe = reservationsByUser?.[waId];
+					const resArr: ReservationItem[] = Array.isArray(resMaybe)
+						? (resMaybe as ReservationItem[])
 						: [];
 					const convNameFromRes = (() => {
 						try {

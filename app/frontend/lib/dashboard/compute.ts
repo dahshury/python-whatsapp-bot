@@ -1,8 +1,6 @@
 import type { DashboardData, PrometheusMetrics } from "@/types/dashboard";
-import type {
-	ConversationMessage as CalendarConversationMessage,
-	Reservation as CalendarReservation,
-} from "@/types/calendar";
+import type { ConversationMessage as CalendarConversationMessage } from "@/types/conversation";
+import type { Reservation as CalendarReservation } from "@/types/calendar";
 
 export type ConversationMessage = CalendarConversationMessage & {
 	ts?: string;

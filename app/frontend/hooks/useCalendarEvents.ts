@@ -23,6 +23,7 @@ export interface UseCalendarEventsOptions {
 	isLocalized: boolean;
 	autoRefresh?: boolean;
 	refreshInterval?: number;
+	ageByWaId?: Record<string, number | null>;
 }
 
 export interface CalendarEventsState {
@@ -87,9 +88,12 @@ export function useCalendarEvents(
 		reservationsLoading || conversationsLoading || vacationsLoading;
 	const dataError = reservationsError || conversationsError || vacationsError;
 
-	// Memoize processing options
+	// Prepare static processing options (age map is injected at call site below)
 	const processingOptions = useMemo(
-		(): Omit<ReservationProcessingOptions, "vacationPeriods"> => ({
+		(): Omit<
+			ReservationProcessingOptions,
+			"vacationPeriods" | "ageByWaId"
+		> => ({
 			freeRoam: options.freeRoam,
 			isLocalized: options.isLocalized,
 		}),
@@ -116,10 +120,6 @@ export function useCalendarEvents(
 				vacationPeriods
 			) {
 				// Process events
-				const fullProcessingOptions: ReservationProcessingOptions = {
-					...processingOptions,
-					vacationPeriods,
-				};
 
 				const processedEvents = eventProcessor.generateCalendarEvents(
 					Object.fromEntries(
@@ -157,7 +157,11 @@ export function useCalendarEvents(
 						string,
 						Array<{ id?: string; text?: string; ts?: string }>
 					>,
-					fullProcessingOptions,
+					{
+						...processingOptions,
+						vacationPeriods,
+						...(options.ageByWaId ? { ageByWaId: options.ageByWaId } : {}),
+					},
 				);
 
 				setState((prev) => ({
@@ -193,6 +197,7 @@ export function useCalendarEvents(
 		vacationPeriods,
 		eventProcessor,
 		processingOptions,
+		options.ageByWaId,
 	]);
 
 	/**

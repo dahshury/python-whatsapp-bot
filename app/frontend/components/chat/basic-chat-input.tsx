@@ -2,6 +2,7 @@
 
 import Code from "@tiptap/extension-code";
 import Placeholder from "@tiptap/extension-placeholder";
+import Youtube from "@tiptap/extension-youtube";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Clock, Smile } from "lucide-react";
@@ -56,6 +57,14 @@ export const BasicChatInput: React.FC<{
 				italic: false,
 				strike: false,
 				code: false,
+			}),
+			Youtube.configure({
+				inline: false,
+				width: 640,
+				height: 360,
+				controls: true,
+				nocookie: true,
+				allowFullscreen: true,
 			}),
 			SingleAsteriskBold,
 			UnderscoreItalic,

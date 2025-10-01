@@ -36,10 +36,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          exception_type={{ $labels.exception_type }}
 
     # Alert when retry count spikes above threshold
     - alert: ExcessiveAssistantRetries
@@ -55,10 +52,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          exception_type={{ $labels.exception_type }}
 
     # Alert when all retries are exhausted for a function
     - alert: AssistantRetriesExhausted
@@ -75,10 +69,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
           function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
 
     # Alert on any handled reservation failure
     - alert: ReservationFailure
@@ -94,10 +85,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
 
     # Alert on any handled cancellation failure
     - alert: CancellationFailure
@@ -113,10 +101,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
 
     # Alert on any handled modification failure
     - alert: ModificationFailure
@@ -132,10 +117,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
         
     # Alert on any delete reservation failure
     - alert: DeleteReservationFailure
@@ -153,9 +135,6 @@ groups:
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
           endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
 
 - name: llm_errors
   rules:
@@ -174,10 +153,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          provider={{ $labels.provider }} error_type={{ $labels.error_type }}
 
     # Alert on LLM retry attempts
     - alert: LLMRetryAttempts
@@ -194,10 +170,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          provider={{ $labels.provider }} error_type={{ $labels.error_type }}
         
     # Alert on LLM tool execution errors
     - alert: LLMToolExecutionError
@@ -214,10 +187,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          tool_name={{ $labels.tool_name }} provider={{ $labels.provider }}
         
     # Alert on empty LLM responses
     - alert: LLMEmptyResponse
@@ -234,10 +204,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          provider={{ $labels.provider }} response_type={{ $labels.response_type }}
         
 - name: application_errors
   rules:
@@ -256,10 +223,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} message_type={{ $labels.message_type }}
         
     # Alert on APScheduler missed jobs
     - alert: SchedulerJobMissed
@@ -276,10 +240,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} job_id={{ $labels.job_id }}
         
     # Alert on backup script failures
     - alert: BackupScriptFailure
@@ -296,9 +257,6 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
           reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
         
     # Alert on invalid HTTP requests
@@ -316,10 +274,7 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
         
     # Alert on concurrent task limits
     - alert: ConcurrentTaskLimitReached
@@ -336,7 +291,4 @@ groups:
           ---
           severity={{ $labels.severity }} value={{ $value }}
           job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}

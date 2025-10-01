@@ -32,7 +32,9 @@
     "**/*.pyc",
     "**/__pycache__/**",
     "scripts/ci/biome-staged.mjs",
-    "scripts/ci/md-staged.mjs"
+    "scripts/ci/md-staged.mjs",
+    "scripts/ci/pre-commit.mjs",
+    "scripts/ci/mypy-staged.py"
   ],
   "ignoreDependencies": [
     "critters",

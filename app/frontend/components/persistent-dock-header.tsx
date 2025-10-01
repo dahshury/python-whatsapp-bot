@@ -1,18 +1,29 @@
 "use client";
 
+import { usePathname } from "next/navigation";
+import { CalendarLegend } from "@/components/calendar-legend";
 import { DockNav } from "@/components/dock-nav";
 import { NotificationsButton } from "@/components/notifications-button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useDockBridge } from "@/lib/dock-bridge-context";
+import { useSettings } from "@/lib/settings-context";
 
 export function PersistentDockHeader() {
 	const { state } = useDockBridge();
+	const { freeRoam } = useSettings();
+	const pathname = usePathname();
+	const hideSidebarTrigger = Boolean(
+		pathname?.startsWith("/dashboard") || pathname?.startsWith("/documents"),
+	);
 	return (
-		<header className="sticky top-0 z-40 flex h-16 shrink-0 items-center border-b px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-			<div className="flex items-center gap-2 min-w-[10rem]">
-				<SidebarTrigger />
+		<header className="sticky top-0 z-40 grid grid-cols-[auto_1fr_auto] items-center border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 h-12 sm:h-14 md:h-16 px-2 sm:px-3 md:px-4 gap-2 sm:gap-3">
+			<div className="flex items-center gap-2 min-w-0">
+				{!hideSidebarTrigger && <SidebarTrigger />}
+				{pathname === "/" && (
+					<CalendarLegend freeRoam={freeRoam} className="ml-1 h-6 sm:h-7" />
+				)}
 			</div>
-			<div className="flex-1 flex justify-center">
+			<div className="min-w-0 flex justify-center">
 				<DockNav
 					className="mt-0"
 					calendarRef={state.calendarRef || null}
@@ -22,8 +33,8 @@ export function PersistentDockHeader() {
 						: {})}
 				/>
 			</div>
-			<div className="absolute right-4">
-				<NotificationsButton />
+			<div className="flex items-center justify-end">
+				<NotificationsButton className="scale-90 sm:scale-100" />
 			</div>
 		</header>
 	);

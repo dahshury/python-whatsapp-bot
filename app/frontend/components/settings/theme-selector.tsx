@@ -21,27 +21,18 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 	const { theme: nextTheme, setTheme: setNextTheme } = useNextThemes();
 
 	const handleAppThemeChange = (value: string) => {
-		// Store current light/dark mode before changing style theme
+		// Cache the user's explicit mode selection (light/dark/system)
 		const currentMode = nextTheme;
 
-		// If user explicitly chose light, force it immediately to lock next-themes state
-		if (currentMode === "light") {
-			setNextTheme("light");
-		}
-
-		// Animate via Spaceman and also update our Settings immediately
+		// Apply the style theme through both animation and settings store
 		setColorTheme(value as Theme);
 		setAppTheme(value as Theme);
 
-		// Explicitly restore the light/dark mode after style theme change
-		if (currentMode && currentMode !== "system") {
-			// Re-assert via raf to win over any late class toggles
-			requestAnimationFrame(() => {
-				setNextTheme(currentMode);
-				requestAnimationFrame(() => {
-					setNextTheme(currentMode);
-				});
-			});
+		// Preserve previously selected mode exactly as-is
+		if (currentMode) {
+			// Apply immediately and then again on the next frame to override late mutations
+			setNextTheme(currentMode);
+			requestAnimationFrame(() => setNextTheme(currentMode));
 		}
 
 		const themeName = getThemeNameLocalized(value, isLocalized);

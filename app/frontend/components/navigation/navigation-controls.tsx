@@ -45,12 +45,14 @@ export const NavigationControls = React.memo(function NavigationControls({
 		isSidebarOpen: open || openMobile,
 	});
 	// Enlarge clickable area and add subtle theme-aware styling
+	const isSmall = typeof window !== "undefined" && window.innerWidth < 640;
+
 	const prevButton = (
 		<DockIcon
-			size={38}
+			size={isSmall ? 28 : 38}
 			widthScale={1.4}
 			paddingPx={0}
-			magnification={48}
+			magnification={isSmall ? 36 : 48}
 			className="transition-colors"
 			{...prevHoldHandlers}
 		>
@@ -61,13 +63,13 @@ export const NavigationControls = React.memo(function NavigationControls({
 						size="icon"
 						onClick={onPrev}
 						disabled={isCalendarPage && isPrevDisabled}
-						className="h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
+						className="h-9 sm:h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
 						data-slot="dock-prev"
 						{...prevHoldHandlers}
 					>
-						<ChevronLeft className="size-5" />
+						<ChevronLeft className="size-4 sm:size-5" />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
@@ -79,10 +81,10 @@ export const NavigationControls = React.memo(function NavigationControls({
 
 	const nextButton = (
 		<DockIcon
-			size={38}
+			size={isSmall ? 28 : 38}
 			widthScale={1.4}
 			paddingPx={0}
-			magnification={48}
+			magnification={isSmall ? 36 : 48}
 			className="transition-colors"
 			{...nextHoldHandlers}
 		>
@@ -93,13 +95,13 @@ export const NavigationControls = React.memo(function NavigationControls({
 						size="icon"
 						onClick={onNext}
 						disabled={isCalendarPage && isNextDisabled}
-						className="h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
+						className="h-9 sm:h-10 w-full rounded-theme transition-all duration-200 flex items-center justify-center
 						bg-background/40 hover:bg-accent/60 hover:text-accent-foreground
 						border border-border/40 shadow-sm"
 						data-slot="dock-next"
 						{...nextHoldHandlers}
 					>
-						<ChevronRight className="size-5" />
+						<ChevronRight className="size-4 sm:size-5" />
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>

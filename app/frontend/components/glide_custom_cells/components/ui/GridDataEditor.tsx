@@ -111,6 +111,8 @@ interface GridDataEditorProps {
 				theme?: Partial<Theme>;
 		  };
 	disableTrailingRow?: boolean;
+	// If true, disable editing/selection/fill handle
+	readOnly?: boolean;
 }
 
 // Hook for managing column pinning (similar to Streamlit's useColumnPinning)
@@ -343,6 +345,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 	showAppendRowPlaceholder = true,
 	rowMarkers,
 	disableTrailingRow,
+	readOnly,
 }) => {
 	const {
 		isFullscreen,
@@ -701,11 +704,11 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					drawCell={drawCell}
 					getRowThemeOverride={getRowThemeOverride}
 					gridSelection={gridSelection}
-					onGridSelectionChange={onGridSelectionChange}
+					{...(readOnly ? {} : { onGridSelectionChange })}
 					freezeColumns={freezeColumns} // Use calculated freeze columns count
 					{...(onRowAppended ? { onRowAppended } : {})}
 					onColumnMoved={onColumnMoved} // Use Streamlit-style column reordering
-					onCellEdited={onCellEdited}
+					{...(readOnly ? {} : { onCellEdited })}
 					onItemHovered={handleItemHovered}
 					{...(rowMarkers !== undefined
 						? {
@@ -734,8 +737,8 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 												  }),
 							}
 						: {})}
-					rowSelect="multi"
-					rowSelectionMode="multi"
+					rowSelect={readOnly ? "none" : "multi"}
+					rowSelectionMode={readOnly ? "none" : "multi"}
 					columnSelect="none"
 					searchValue={searchValue}
 					onSearchValueChange={onSearchValueChange}
@@ -751,7 +754,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
 					rowHeight={rowHeight}
 					headerHeight={headerHeight}
 					getCellsForSelection={true}
-					fillHandle={true}
+					fillHandle={!readOnly}
 					{...(!disableTrailingRow
 						? { trailingRowOptions: { sticky: false, tint: true } }
 						: {})}

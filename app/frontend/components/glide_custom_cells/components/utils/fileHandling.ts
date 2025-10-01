@@ -84,16 +84,10 @@ export class FileExporter {
 		const timestamp = new Date().toISOString().slice(0, 16).replace(":", "-");
 		const suggestedName = filename || `${timestamp}_export.csv`;
 
-		const capabilities = BrowserUtils.getBrowserCapabilities();
+		const _capabilities = BrowserUtils.getBrowserCapabilities();
 
 		try {
-			if (capabilities.supportsFileSystemAPI) {
-				// TODO: Install native-file-system-adapter or implement fallback
-				// For now, fall back to download method
-				await this.fallbackCSVExport(data, headers, suggestedName);
-			} else {
-				await this.fallbackCSVExport(data, headers, suggestedName);
-			}
+			await this.fallbackCSVExport(data, headers, suggestedName);
 		} catch (error) {
 			if (error instanceof Error && error.name === "AbortError") {
 				return;

@@ -7,12 +7,14 @@ interface DocumentsGridProps {
 	dataSource: IDataSource;
 	dataEditorRef?: React.RefObject<DataEditorRef | null>;
 	loading?: boolean;
-	validationErrors?: Array<{
-		row: number;
-		col: number;
-		message: string;
-		fieldName?: string;
-	}>;
+	validationErrors?:
+		| Array<{
+				row: number;
+				col: number;
+				message: string;
+				fieldName?: string;
+		  }>
+		| undefined;
 	theme?: Partial<Theme>;
 	isDarkMode?: boolean;
 	className?: string;
@@ -31,6 +33,8 @@ interface DocumentsGridProps {
 		| "clickable-number"
 		| "selection";
 	disableTrailingRow?: boolean;
+	readOnly?: boolean;
+	disableTooltips?: boolean;
 	// passthrough lifecycle hooks
 	onReady?: () => void;
 	onDataProviderReady?: (provider: unknown) => void;
@@ -54,6 +58,8 @@ export default function DocumentsGrid({
 	hideAppendRowPlaceholder,
 	rowMarkers,
 	disableTrailingRow,
+	readOnly,
+	disableTooltips,
 	onReady,
 	onDataProviderReady,
 	onAddRowOverride,
@@ -86,6 +92,8 @@ export default function DocumentsGrid({
 			{...(typeof disableTrailingRow === "boolean"
 				? { disableTrailingRow }
 				: { disableTrailingRow: true })}
+			{...(typeof readOnly === "boolean" ? { readOnly } : {})}
+			{...(typeof disableTooltips === "boolean" ? { disableTooltips } : {})}
 			{...(typeof rowHeight === "number" ? { rowHeight } : {})}
 			{...(typeof headerHeight === "number" ? { headerHeight } : {})}
 		/>

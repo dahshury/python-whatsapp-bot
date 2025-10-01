@@ -5,7 +5,7 @@ import type {
 	ExcalidrawProps,
 } from "@excalidraw/excalidraw/types";
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { computeSceneSignature } from "@/lib/documents/scene-utils";
 
 type ExcalidrawAPI = ExcalidrawImperativeAPI;
@@ -17,7 +17,7 @@ const Excalidraw = dynamic<ExcalidrawProps>(
 	},
 );
 
-export function DocumentCanvas({
+function DocumentCanvasComponent({
 	theme,
 	langCode,
 	onChange,
@@ -55,7 +55,7 @@ export function DocumentCanvas({
 	const didNotifyApiRef = useRef<boolean>(false);
 	const prevDirRef = useRef<string | null>(null);
 
-	// Wait until container has a non-zero size to mount Excalidraw to avoid 0px canvas
+	// Wait until container has a non-zero size AND theme class matches to mount Excalidraw
 	useEffect(() => {
 		let raf = 0;
 		let attempts = 0;
@@ -63,7 +63,13 @@ export function DocumentCanvas({
 			attempts += 1;
 			try {
 				const rect = containerRef.current?.getBoundingClientRect?.();
-				if (rect && rect.width > 2 && rect.height > 2) {
+				let themeMatches = true;
+				try {
+					const wantsDark = theme === "dark";
+					const hasDark = document.documentElement.classList.contains("dark");
+					themeMatches = wantsDark === hasDark;
+				} catch {}
+				if (rect && rect.width > 2 && rect.height > 2 && themeMatches) {
 					setMountReady(true);
 					return;
 				}
@@ -77,7 +83,7 @@ export function DocumentCanvas({
 		};
 		raf = requestAnimationFrame(tick);
 		return () => cancelAnimationFrame(raf);
-	}, []);
+	}, [theme]);
 
 	// Keep canvas sized when container/viewport changes
 	useExcalidrawResize(containerRef, apiRef);
@@ -104,7 +110,26 @@ export function DocumentCanvas({
 			}
 		};
 
-		const onContextMenu = () => scheduleRefreshBurst();
+		let contextMenuInterval: number | null = null;
+		const onContextMenu = () => {
+			scheduleRefreshBurst();
+			try {
+				if (contextMenuInterval) window.clearInterval(contextMenuInterval);
+				// While context menu might be open and affecting layout, keep refreshing
+				contextMenuInterval = window.setInterval(() => {
+					try {
+						apiRef.current?.refresh?.();
+					} catch {}
+				}, 120);
+				// Auto stop after a short period to avoid leaks
+				window.setTimeout(() => {
+					if (contextMenuInterval) {
+						window.clearInterval(contextMenuInterval);
+						contextMenuInterval = null;
+					}
+				}, 1200);
+			} catch {}
+		};
 		const onVisibility = () => {
 			if (!document.hidden) scheduleRefreshBurst();
 		};
@@ -118,7 +143,7 @@ export function DocumentCanvas({
 		window.addEventListener("pointerup", onPointerUp, true);
 		window.addEventListener("scroll", onScroll, true);
 
-		// Observe DOM changes inside the container that may affect layout (e.g., menu flip)
+		// Observe minimal attribute changes on the container that may affect layout
 		const target = containerRef.current as HTMLElement | null;
 		let observer: MutationObserver | null = null;
 		try {
@@ -126,11 +151,19 @@ export function DocumentCanvas({
 				observer = new MutationObserver(() => scheduleRefreshBurst());
 				observer.observe(target, {
 					attributes: true,
-					childList: true,
-					subtree: true,
-					attributeFilter: ["style", "class", "data-placement"],
+					attributeFilter: ["style", "class"],
 				});
 			}
+		} catch {}
+
+		// Observe document theme class changes and refresh
+		let themeObserver: MutationObserver | null = null;
+		try {
+			themeObserver = new MutationObserver(() => scheduleRefreshBurst());
+			themeObserver.observe(document.documentElement, {
+				attributes: true,
+				attributeFilter: ["class"],
+			});
 		} catch {}
 		return () => {
 			document.removeEventListener("contextmenu", onContextMenu, true);
@@ -140,7 +173,26 @@ export function DocumentCanvas({
 			try {
 				observer?.disconnect();
 			} catch {}
+			try {
+				themeObserver?.disconnect();
+			} catch {}
+			try {
+				if (contextMenuInterval) window.clearInterval(contextMenuInterval);
+			} catch {}
 		};
+	}, []);
+
+	// When theme prop changes, burst refresh to ensure immediate repaint
+	useEffect(() => {
+		try {
+			const doRefresh = () => apiRef.current?.refresh?.();
+			requestAnimationFrame(() => {
+				doRefresh();
+				setTimeout(doRefresh, 80);
+				setTimeout(doRefresh, 160);
+				setTimeout(doRefresh, 320);
+			});
+		} catch {}
 	}, []);
 
 	// Apply external scene updates when provided, avoiding redundant updates
@@ -155,14 +207,49 @@ export function DocumentCanvas({
 			if (nextSig && nextSig === (lastAppliedSceneSigRef.current || null))
 				return;
 			// Cast to any to avoid coupling to Excalidraw internal element types
-			(
-				apiRef.current as unknown as {
-					updateScene: (s: Record<string, unknown>) => void;
+			const doUpdate = () => {
+				try {
+					(
+						apiRef.current as unknown as {
+							updateScene: (s: Record<string, unknown>) => void;
+						}
+					).updateScene(scene as Record<string, unknown>);
+					lastAppliedSceneSigRef.current = nextSig;
+				} catch {}
+			};
+			try {
+				if (typeof requestAnimationFrame === "function") {
+					requestAnimationFrame(() => {
+						try {
+							requestAnimationFrame(() => setTimeout(doUpdate, 0));
+						} catch {
+							setTimeout(doUpdate, 0);
+						}
+					});
+				} else {
+					setTimeout(doUpdate, 0);
 				}
-			).updateScene(scene as Record<string, unknown>);
-			lastAppliedSceneSigRef.current = nextSig;
+			} catch {
+				setTimeout(doUpdate, 0);
+			}
 		} catch {}
 	}, [scene]);
+
+	// Force current theme on Excalidraw whenever theme changes
+	useEffect(() => {
+		try {
+			if (!apiRef.current) return;
+			const apiLike = apiRef.current as unknown as {
+				updateScene?: (s: Record<string, unknown>) => void;
+			} | null;
+			const applyTheme = () => apiLike?.updateScene?.({ appState: { theme } });
+			requestAnimationFrame(() => {
+				applyTheme();
+				setTimeout(applyTheme, 80);
+				setTimeout(applyTheme, 200);
+			});
+		} catch {}
+	}, [theme]);
 
 	// Force LTR direction for Excalidraw even when using RTL languages
 	useEffect(() => {
@@ -204,19 +291,30 @@ export function DocumentCanvas({
 				overflow: scrollable ? "auto" : "hidden",
 				overscrollBehavior: "contain",
 				touchAction: "manipulation",
+				contain: "layout paint size",
 			}}
 			dir={forceLTR ? "ltr" : undefined}
 		>
 			{hideToolbar ? (
 				<style>
 					{
-						".excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}"
+						".excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}\n.excali-theme-scope .excalidraw,.excali-theme-scope .excalidraw .canvas-container{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container>div{height:100%!important;}"
 					}
 				</style>
 			) : null}
 			{hideHelpIcon ? (
-				<style>{".excal-hide-help .help-icon{display:none!important;}"}</style>
-			) : null}
+				<style>
+					{
+						".excal-hide-help .help-icon{display:none!important;}\n.excali-theme-scope .excalidraw,.excali-theme-scope .excalidraw .canvas-container{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container>div{height:100%!important;}"
+					}
+				</style>
+			) : (
+				<style>
+					{
+						".excali-theme-scope .excalidraw,.excali-theme-scope .excalidraw .canvas-container{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container>div{height:100%!important;}"
+					}
+				</style>
+			)}
 			{mountReady && (
 				<Excalidraw
 					theme={theme}
@@ -231,6 +329,7 @@ export function DocumentCanvas({
 						appState: {
 							viewModeEnabled: Boolean(viewModeEnabled),
 							zenModeEnabled: Boolean(zenModeEnabled),
+							theme,
 						},
 					}}
 					viewModeEnabled={Boolean(viewModeEnabled)}
@@ -247,6 +346,19 @@ export function DocumentCanvas({
 							setTimeout(() => apiLike?.refresh?.(), 300);
 							setTimeout(() => apiLike?.refresh?.(), 600);
 						} catch {}
+						// Enforce current theme immediately after API becomes ready
+						try {
+							const apiLike = apiRef.current as unknown as {
+								updateScene?: (s: Record<string, unknown>) => void;
+							} | null;
+							const applyTheme = () =>
+								apiLike?.updateScene?.({ appState: { theme } });
+							requestAnimationFrame(() => {
+								applyTheme();
+								setTimeout(applyTheme, 80);
+								setTimeout(applyTheme, 200);
+							});
+						} catch {}
 						if (!didNotifyApiRef.current) {
 							didNotifyApiRef.current = true;
 							onApiReady(api);
@@ -257,6 +369,8 @@ export function DocumentCanvas({
 		</div>
 	);
 }
+
+export const DocumentCanvas = memo(DocumentCanvasComponent);
 
 // Keep Excalidraw sized on container/viewport changes
 export function useExcalidrawResize(

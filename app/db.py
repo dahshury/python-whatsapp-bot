@@ -85,19 +85,47 @@ def _set_sqlite_pragmas(dbapi_connection, _connection_record):  # noqa: ANN001
             pass
 
 
-def checkpoint_wal(truncate: bool = True) -> bool:
-    """Perform a WAL checkpoint to merge WAL into the main DB file.
+def checkpoint_wal_safe(mode: str = "FULL", elevate_durability: bool = True, busy_timeout_ms: int = 10000) -> bool:
+    """Perform a WAL checkpoint with optional durability safeguards.
 
-    When truncate=True, issue TRUNCATE to clear WAL size on disk.
-    Return True on success, False otherwise.
+    Parameters:
+        mode: One of PASSIVE|FULL|RESTART|TRUNCATE. Defaults to FULL (safer).
+        elevate_durability: When True, temporarily bump durability on this connection
+            (synchronous=FULL and fullfsync=ON) while performing the checkpoint to
+            reduce risk during power loss/reboots.
+        busy_timeout_ms: busy_timeout in milliseconds for this connection.
+
+    Returns True on success, False otherwise.
     """
     try:
         with engine.begin() as conn:
-            mode = "TRUNCATE" if truncate else "FULL"
+            try:
+                conn.exec_driver_sql(f"PRAGMA busy_timeout={int(busy_timeout_ms)};")
+            except Exception:
+                pass
+            if elevate_durability:
+                try:
+                    conn.exec_driver_sql("PRAGMA synchronous=FULL;")
+                except Exception:
+                    pass
+                try:
+                    conn.exec_driver_sql("PRAGMA fullfsync=ON;")
+                except Exception:
+                    # Some platforms/filesystems may not support fullfsync
+                    pass
             conn.exec_driver_sql(f"PRAGMA wal_checkpoint({mode});")
         return True
     except Exception:
         return False
+
+
+def checkpoint_wal(truncate: bool = True) -> bool:
+    """Backward-compatible wrapper around checkpoint_wal_safe.
+
+    When truncate=True, uses TRUNCATE; otherwise uses FULL.
+    """
+    mode = "TRUNCATE" if truncate else "FULL"
+    return checkpoint_wal_safe(mode=mode, elevate_durability=True)
 
 
 

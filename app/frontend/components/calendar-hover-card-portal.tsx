@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
-import type { Conversations, Reservation } from "@/types/calendar";
+import type { Reservation } from "@/types/calendar";
+import type { Conversations } from "@/types/conversation";
 import { CustomerStatsCard } from "./customer-stats-card";
 
 interface CalendarHoverCardPortalProps {

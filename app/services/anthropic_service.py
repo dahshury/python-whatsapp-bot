@@ -5,7 +5,7 @@ import inspect
 from app.config import config
 from anthropic import Anthropic, AnthropicError, APITimeoutError, APIConnectionError, BadRequestError, RateLimitError, AuthenticationError
 from app.utils.http_client import sync_client
-from app.utils import retrieve_messages
+from app.utils import retrieve_messages, parse_unix_timestamp, append_message
 from app.decorators import retry_decorator
 import datetime
 from zoneinfo import ZoneInfo
@@ -157,6 +157,20 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             logging.info(f"Tool used: {tool_name}")
             if tool_input:
                 logging.info(f"Tool input: {json.dumps(tool_input)}")
+            # Persist tool call (arguments)
+            try:
+                pretty_args = json.dumps(tool_input or {}, ensure_ascii=False, indent=2)
+                from html import escape as _escape
+                html_args = (
+                    f"<details class=\"details\">"
+                    f"<summary>Tool: {tool_name}</summary>"
+                    f"<div><pre><code class=\"language-json\">{_escape(pretty_args)}</code></pre></div>"
+                    f"</details>"
+                )
+                d, t = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
+                append_message(wa_id, 'tool', html_args, d, t)
+            except Exception as _persist_args_err:
+                logging.error(f"Persist tool args failed for {tool_name}: {_persist_args_err}")
                             
             # Prepare the assistant's response content with correct ordering:
             # 1. All thinking blocks must come first if present
@@ -202,6 +216,20 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                             "content": json.dumps(output.get('message', output)) if isinstance(output, (dict, list)) else str(output)
                         }]
                     })
+                    # Persist tool result
+                    try:
+                        pretty_out = json.dumps(output, ensure_ascii=False, indent=2) if isinstance(output, (dict, list)) else str(output)
+                        from html import escape as _escape
+                        html_out = (
+                            f"<details class=\"details\">"
+                            f"<summary>Result: {tool_name}</summary>"
+                            f"<div><pre><code class=\"language-json\">{_escape(pretty_out)}</code></pre></div>"
+                            f"</details>"
+                        )
+                        d2, t2 = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
+                        append_message(wa_id, 'tool', html_out, d2, t2)
+                    except Exception as _persist_out_err:
+                        logging.error(f"Persist tool result failed for {tool_name}: {_persist_out_err}")
                     
                 except Exception as e:
                     # Handle tool execution errors
@@ -223,6 +251,19 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                             "content": f"Error: {str(e)}"
                         }]
                     })
+                    # Persist error as result
+                    try:
+                        from html import escape as _escape
+                        html_out = (
+                            f"<details class=\"details\">"
+                            f"<summary>Result: {tool_name}</summary>"
+                            f"<div><pre><code class=\"language-json\">{_escape(str(e))}</code></pre></div>"
+                            f"</details>"
+                        )
+                        d3, t3 = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
+                        append_message(wa_id, 'tool', html_out, d3, t3)
+                    except Exception:
+                        pass
                     
             else:
                 # Handle unimplemented tool

@@ -45,6 +45,7 @@ interface FullCalendarApi {
 
 import type { CalendarApi as FC_CalendarApi } from "@fullcalendar/core";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useCalendarCustomerAges } from "@/hooks/useCalendarCustomerAges";
 // Custom hooks
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useCalendarState } from "@/hooks/useCalendarState";
@@ -197,6 +198,33 @@ export const DualCalendarComponent = React.forwardRef<
 		// Use processed events for both calendars
 		const processedLeftEvents = processedAllEvents;
 		const processedRightEvents = processedAllEvents;
+
+		// Request and track ages for waIds visible in dual calendars (WS-only)
+		const waIdReservations: Record<
+			string,
+			import("@/types/calendar").Reservation[]
+		> = useMemo(() => {
+			const map: Record<string, import("@/types/calendar").Reservation[]> = {};
+			for (const ev of processedAllEvents) {
+				const wa = String(
+					(ev.extendedProps as { wa_id?: string; waId?: string })?.wa_id ||
+						(ev.extendedProps as { wa_id?: string; waId?: string })?.waId ||
+						"",
+				).trim();
+				if (!wa) continue;
+				if (!map[wa]) map[wa] = [];
+				map[wa].push({
+					customer_id: wa,
+					date: String(ev.start).slice(0, 10),
+					time_slot: String(ev.start).slice(11, 16),
+					customer_name: ev.title,
+					type: Number((ev.extendedProps as { type?: number })?.type ?? 0),
+				});
+			}
+			return map;
+		}, [processedAllEvents]);
+
+		useCalendarCustomerAges(waIdReservations);
 
 		// Vacation period checker (for drag/drop validation only, styling handled by background events)
 		const isVacationDate: VacationDateChecker = useMemo(() => {

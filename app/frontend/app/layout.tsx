@@ -161,9 +161,9 @@ export default function RootLayout({
 																		</SidebarProvider>
 																	</div>
 																</div>
+																<RealtimeEventBus />
+																<ToastRouter />
 															</DockBridgeProvider>
-															<RealtimeEventBus />
-															<ToastRouter />
 														</CustomerDataProvider>
 													</VacationProvider>
 													<UndoManager />

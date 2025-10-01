@@ -60,9 +60,63 @@
 
 /* List markers should use theme colors */
 .prose :where(ul > li)::marker {
-	color: hsl(var(--muted-foreground));
+	color: hsl(var(--primary));
 }
 
 .prose :where(ol > li)::marker {
-	color: hsl(var(--muted-foreground));
+	color: hsl(var(--primary));
+}
+
+/* TipTap editor: ensure list markers follow theme colors as well */
+.tiptap .ProseMirror ul li::marker {
+	color: hsl(var(--primary));
+}
+
+.tiptap .ProseMirror ol li::marker {
+	color: hsl(var(--primary));
+}
+
+/* Chat-only stronger override to guarantee theme color in the sidebar */
+.message-row .prose :where(ul > li)::marker,
+.message-row .prose :where(ol > li)::marker,
+.message-row .tiptap .ProseMirror ul li::marker,
+.message-row .tiptap .ProseMirror ol li::marker {
+	color: hsl(var(--primary));
+}
+
+/* Details UI inside chat messages */
+.prose details.details {
+	margin: 0.75rem 0;
+	border: 1px solid hsl(var(--border));
+	border-radius: 0.5rem;
+	padding: 0.5rem 0.6rem;
+	background: hsl(var(--card));
+}
+.prose details.details > summary {
+	font-weight: 700;
+	cursor: pointer;
+}
+.prose details.details pre {
+	margin: 0.5rem 0 0 0;
+	background: hsl(var(--muted));
+	color: hsl(var(--foreground));
+}
+.prose details.details[open] {
+	box-shadow: 0 0 0 1px hsl(var(--accent) / 0.3) inset;
+}
+
+/* YouTube embed styles in chat */
+.prose div[data-youtube-video] {
+	cursor: move;
+	padding-right: 1.5rem;
+}
+.prose div[data-youtube-video] iframe {
+	border: 0.5rem solid hsl(var(--border));
+	display: block;
+	min-height: 200px;
+	min-width: 200px;
+	outline: 0px solid transparent;
+	border-radius: 0.5rem;
+	width: 100%;
+	max-width: 800px;
 }

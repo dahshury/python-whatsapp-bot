@@ -28,12 +28,13 @@ interface WebSocketReservation {
 import dynamic from "next/dynamic";
 import React from "react";
 import { Toaster } from "sonner";
-import { AnimatedSidebarTrigger } from "@/components/animated-sidebar-trigger";
 import { CalendarContainer } from "@/components/calendar-container";
 import type { CalendarCoreRef } from "@/components/calendar-core";
 import { CalendarSkeleton } from "@/components/calendar-skeleton";
 import { SidebarInset } from "@/components/ui/sidebar";
+import { useCalendarAgesBlocking } from "@/hooks/useCalendarAgesBlocking";
 import { useCalendarContextMenu } from "@/hooks/useCalendarContextMenu";
+import { useCalendarCustomerAges } from "@/hooks/useCalendarCustomerAges";
 import { useCalendarDataTableEditor } from "@/hooks/useCalendarDataTableEditor";
 import { useCalendarDragHandlers } from "@/hooks/useCalendarDragHandlers";
 import { useCalendarEventHandlers } from "@/hooks/useCalendarEventHandlers";
@@ -103,17 +104,38 @@ export default function HomePage() {
 		mark("HomePage:mounted");
 	}, []);
 
+	React.useEffect(() => {
+		if (typeof window === "undefined") return;
+		const updateCalendarDvh = () => {
+			try {
+				const vh = Math.max(
+					0,
+					Math.floor(window.visualViewport?.height || window.innerHeight || 0),
+				);
+				document.documentElement.style.setProperty("--calendar-dvh", `${vh}px`);
+			} catch {}
+		};
+		updateCalendarDvh();
+		window.addEventListener("resize", updateCalendarDvh);
+		try {
+			window.visualViewport?.addEventListener?.("resize", updateCalendarDvh);
+		} catch {}
+		return () => {
+			window.removeEventListener("resize", updateCalendarDvh);
+			try {
+				window.visualViewport?.removeEventListener?.(
+					"resize",
+					updateCalendarDvh,
+				);
+			} catch {}
+		};
+	}, []);
+
 	// Use refs to capture calendar instances for integration with other components
 	const calendarRef = React.useRef<CalendarCoreRef | null>(null);
 
 	// CalendarCore will populate calendarRef directly through forwardRef
-	// Stage C: Load events via existing hook (no extra UI around it)
 	const { isLocalized } = useLanguage();
-	const eventsState = useCalendarEvents({
-		freeRoam,
-		isLocalized: isLocalized,
-		autoRefresh: false,
-	});
 	// Pull live conversations/reservations so hover card has real data
 	const { conversations } = useConversationsData();
 	const { reservations } = useReservationsData();
@@ -194,6 +216,23 @@ export default function HomePage() {
 		}
 		return out;
 	}, [reservations]);
+
+	// Block until we fetch ages for all loaded waIds via WebSocket on first render
+	const { agesByWaId, ready: agesReady } = useCalendarAgesBlocking(
+		mappedReservations,
+		1500,
+	);
+	// Keep non-blocking updates flowing for subsequent realtime changes
+	// (static import to respect hooks rules)
+	useCalendarCustomerAges(mappedReservations);
+
+	// Stage C: Load events via existing hook, passing resolved ages for first-paint accuracy
+	const eventsState = useCalendarEvents({
+		freeRoam,
+		isLocalized: isLocalized,
+		autoRefresh: false,
+		ageByWaId: agesByWaId,
+	});
 
 	// Get vacation events from context
 	const { vacationEvents } = useVacation();
@@ -402,9 +441,8 @@ export default function HomePage() {
 	]);
 
 	return (
-		<SidebarInset>
-			{/* Animated Sidebar Trigger with Legend (fixed, independent of header layout) */}
-			<AnimatedSidebarTrigger freeRoam={freeRoam} />
+		<SidebarInset style={{ minHeight: "var(--calendar-dvh, 100vh)" }}>
+			{/* Removed duplicate fixed trigger to avoid two sidebar buttons; header SidebarTrigger remains */}
 			{(() => {
 				// Stable default during SSR/first client render to avoid mismatch
 				let wrapperHeightClass = "h-[calc(100vh-4rem)]";
@@ -454,7 +492,9 @@ export default function HomePage() {
 							isRefreshing={isRefreshing}
 						>
 							<div className="flex-1 rounded-lg border border-border/50 bg-card/50 p-2">
-								{showDualCalendar ? (
+								{!agesReady ? (
+									<CalendarSkeleton />
+								) : showDualCalendar ? (
 									<DualCalendarComponent
 										ref={dualCalendarCallbackRef}
 										freeRoam={freeRoam}

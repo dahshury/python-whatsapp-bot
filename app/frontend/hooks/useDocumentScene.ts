@@ -138,18 +138,37 @@ export function useDocumentScene(
 
 			const api = excalidrawAPIRef.current;
 			if (api?.updateScene) {
-				try {
+				const doApply = () => {
 					programmaticUpdates.current += 1;
-					api.updateScene({ ...scene, commitToHistory: false });
-				} finally {
-					setTimeout(() => {
-						programmaticUpdates.current = Math.max(
-							0,
-							programmaticUpdates.current - 1,
-						);
-						if (seq === loadSeqRef.current)
-							runAfterMounted(() => setLoadedVerified(true));
-					}, 0);
+					try {
+						api.updateScene({ ...scene, commitToHistory: false });
+					} finally {
+						setTimeout(() => {
+							programmaticUpdates.current = Math.max(
+								0,
+								programmaticUpdates.current - 1,
+							);
+							if (seq === loadSeqRef.current)
+								runAfterMounted(() => setLoadedVerified(true));
+						}, 0);
+					}
+				};
+				try {
+					if (typeof requestAnimationFrame === "function") {
+						requestAnimationFrame(() => {
+							try {
+								requestAnimationFrame(() => {
+									setTimeout(doApply, 0);
+								});
+							} catch {
+								setTimeout(doApply, 0);
+							}
+						});
+					} else {
+						setTimeout(doApply, 0);
+					}
+				} catch {
+					setTimeout(doApply, 0);
 				}
 				return;
 			}
@@ -163,11 +182,27 @@ export function useDocumentScene(
 		(api: ExcalidrawAPI) => {
 			excalidrawAPIRef.current = api;
 			if (pendingSceneRef.current) {
-				applyScene(
-					pendingSceneRef.current as Record<string, unknown>,
-					pendingSeqRef.current,
-				);
+				// Defer applying pending scene to give Excalidraw time to finish mounting
+				const scene = pendingSceneRef.current as Record<string, unknown>;
+				const seq = pendingSeqRef.current;
 				pendingSceneRef.current = null;
+				try {
+					if (typeof requestAnimationFrame === "function") {
+						requestAnimationFrame(() => {
+							try {
+								requestAnimationFrame(() => {
+									setTimeout(() => applyScene(scene, seq), 0);
+								});
+							} catch {
+								setTimeout(() => applyScene(scene, seq), 0);
+							}
+						});
+					} else {
+						setTimeout(() => applyScene(scene, seq), 0);
+					}
+				} catch {
+					setTimeout(() => applyScene(scene, seq), 0);
+				}
 			}
 		},
 		[applyScene],

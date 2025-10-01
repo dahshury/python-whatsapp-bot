@@ -14,7 +14,8 @@ import { MagicCard } from "@/components/magicui/magic-card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Conversations, Reservation } from "@/types/calendar";
+import type { Reservation } from "@/types/calendar";
+import type { Conversations } from "@/types/conversation";
 
 interface CustomerStatsCardProps {
 	selectedConversationId: string;

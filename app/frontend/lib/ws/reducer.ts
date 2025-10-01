@@ -3,7 +3,8 @@ import type {
 	WebSocketDataState,
 	WebSocketMessage,
 } from "@/lib/ws/types";
-import type { ConversationMessage, Reservation } from "@/types/calendar";
+import type { ConversationMessage } from "@/types/conversation";
+import type { Reservation } from "@/types/calendar";
 
 export function reduceOnMessage(
 	prev: WebSocketDataState,
@@ -48,23 +49,27 @@ export function reduceOnMessage(
     }
     case "notifications_history": {
 			// Pass-through: reducer doesn't store notifications, the panel manages its own state.
-			// Fan-out as a browser event so listeners (notifications-button) can ingest.
+			// Fan-out as a browser event so listeners (notifications-button) can ingest, filtering doc-related types at the source.
 			try {
-				const list = (data as unknown as { items?: unknown[] })?.items as Array<{
+				const raw = (data as unknown as { items?: unknown[] })?.items as Array<{
 					id?: number | string;
 					type?: string;
 					timestamp?: string | number;
 					data?: Record<string, unknown>;
 				}> | null;
-				if (Array.isArray(list)) {
-                setTimeout(() => {
-                    try {
-                        const evt = new CustomEvent("notifications:history", {
-                            detail: { items: list },
-                        });
-                        window.dispatchEvent(evt);
-                    } catch {}
-                }, 0);
+				if (Array.isArray(raw)) {
+					const filtered = raw.filter((r) => {
+						const t = String(r?.type || "").toLowerCase();
+						return !(t.startsWith("document_") || t === "customer_profile");
+					});
+					setTimeout(() => {
+						try {
+							const evt = new CustomEvent("notifications:history", {
+								detail: { items: filtered },
+							});
+							window.dispatchEvent(evt);
+						} catch {}
+					}, 0);
 				}
 			} catch {}
 			next.lastUpdate = timestamp;

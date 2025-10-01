@@ -515,10 +515,14 @@ def _checkpoint_and_vacuum(db_path: str) -> bool:
         cursor = conn.cursor()
         
         try:
-            # First checkpoint to flush WAL
-            cursor.execute('PRAGMA wal_checkpoint(RESTART);')
-            cursor.execute('PRAGMA wal_checkpoint(TRUNCATE);')
-            print(f"✅ WAL checkpoint completed for {db_path}")
+            # First checkpoint to flush WAL safely without truncation
+            cursor.execute('PRAGMA synchronous=FULL;')
+            try:
+                cursor.execute('PRAGMA fullfsync=ON;')
+            except Exception:
+                pass
+            cursor.execute('PRAGMA wal_checkpoint(FULL);')
+            print(f"✅ WAL checkpoint(FULL) completed for {db_path}")
         except sqlite3.OperationalError as e:
             if 'not a wal database' not in str(e).lower():
                 print(f"⚠️  WAL checkpoint issue for {db_path}: {e}")

@@ -141,6 +141,9 @@ export interface CalendarCoreProps {
 
 	// Add to CalendarCoreProps after onViewChange
 	onNavDate?: (date: Date) => void;
+
+	// Toggle FullCalendar navLinks (clickable day/week headers)
+	navLinks?: boolean;
 }
 
 // Export the ref type for parent components
@@ -192,6 +195,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			droppable,
 			onEventReceive,
 			onEventLeave,
+			navLinks: navLinksEnabled = true,
 		} = props;
 
 		// Optimize events for multiMonth view - simplified event objects
@@ -297,6 +301,98 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 		const calendarRef = useRef<FullCalendar>(null);
 		const containerRef = useRef<HTMLDivElement>(null);
+
+		// Compute responsive font sizes (REM-based with min/max) for event title/time
+		const applyResponsiveEventFonts = useCallback((eventEl: HTMLElement) => {
+			try {
+				const rootFontPx = Number.parseFloat(
+					getComputedStyle(document.documentElement).fontSize || "16",
+				);
+				const rect = eventEl.getBoundingClientRect();
+				const availableHeight = Math.max(0, rect.height - 4);
+				// Estimate a usable font-size from height (account for line-height/padding)
+				const heightDrivenRem = availableHeight / (1.35 * rootFontPx);
+				// Clamp to sensible bounds so text is readable across devices
+				const MIN_TITLE_REM = 0.55;
+				const MAX_TITLE_REM = 0.95;
+				const MIN_TIME_REM = 0.5;
+				const MAX_TIME_REM = 0.85;
+				const titleSizeRem = Math.max(
+					MIN_TITLE_REM,
+					Math.min(MAX_TITLE_REM, heightDrivenRem),
+				);
+				const timeSizeRem = Math.max(
+					MIN_TIME_REM,
+					Math.min(MAX_TIME_REM, titleSizeRem * 0.85),
+				);
+				const titleEl = eventEl.querySelector(
+					".fc-event-title",
+				) as HTMLElement | null;
+				const timeEl = eventEl.querySelector(
+					".fc-event-time",
+				) as HTMLElement | null;
+				if (titleEl) titleEl.style.fontSize = `${titleSizeRem}rem`;
+				if (timeEl) timeEl.style.fontSize = `${timeSizeRem}rem`;
+				(eventEl as HTMLElement).style.setProperty(
+					"--fc-fit-title-rem",
+					String(titleSizeRem),
+				);
+				(eventEl as HTMLElement).style.setProperty(
+					"--fc-fit-time-rem",
+					String(timeSizeRem),
+				);
+			} catch {}
+		}, []);
+
+		// Dynamically fit event text (title/time) within the event rectangle across DPIs and screen sizes
+		const fitEventTextToBounds = useCallback(
+			(eventEl: HTMLElement) => {
+				try {
+					const frame = eventEl.querySelector(
+						".fc-event-main-frame",
+					) as HTMLElement | null;
+					if (!frame) return;
+					// Reset transform before measurements
+					frame.style.transform = "none";
+					frame.style.transformOrigin = "left top";
+					// First, apply responsive font sizes based on current height
+					applyResponsiveEventFonts(eventEl);
+					// Calculate available box (subtract a tiny safety margin)
+					const box = eventEl.getBoundingClientRect();
+					const availableWidth = Math.max(0, box.width - 2);
+					const availableHeight = Math.max(0, box.height - 2);
+					// Measure intrinsic content size using scroll metrics
+					const contentWidth = Math.max(frame.scrollWidth, frame.offsetWidth);
+					const contentHeight = Math.max(
+						frame.scrollHeight,
+						frame.offsetHeight,
+					);
+					if (availableWidth <= 0 || availableHeight <= 0) return;
+					if (contentWidth <= 0 || contentHeight <= 0) return;
+					const scaleX = availableWidth / contentWidth;
+					const scaleY = availableHeight / contentHeight;
+					const scale = Math.min(1, scaleX, scaleY);
+					frame.style.willChange = "transform";
+					frame.style.transform = `scale(${scale})`;
+					frame.setAttribute(
+						"data-fit-scale",
+						String(Math.round(scale * 1000) / 1000),
+					);
+				} catch {}
+			},
+			[applyResponsiveEventFonts],
+		);
+
+		const refitAllEvents = useCallback(() => {
+			try {
+				const root = containerRef.current;
+				if (!root) return;
+				const nodes = root.querySelectorAll(".fc-event");
+				for (const n of Array.from(nodes)) {
+					fitEventTextToBounds(n as HTMLElement);
+				}
+			} catch {}
+		}, [fitEventTextToBounds]);
 
 		// Expose calendar API to parent component
 		useImperativeHandle(
@@ -518,6 +614,39 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					el.addEventListener("mousedown", onEventMouseDown);
 				}
 
+				// Assign data attribute for waId to allow CSS/JS toggling
+				try {
+					const waId = String(
+						(event.extendedProps as { waId?: string; wa_id?: string })?.waId ||
+							(event.extendedProps as { waId?: string; wa_id?: string })
+								?.wa_id ||
+							"",
+					).trim();
+					if (waId) el.setAttribute("data-wa-id", waId);
+				} catch {}
+
+				// Toggle document-available class based on global age registry
+				try {
+					const wa = el.getAttribute("data-wa-id") || "";
+					const reg = (
+						globalThis as unknown as {
+							__customerAgeRegistry?: { hasAge?: (id: string) => boolean };
+						}
+					).__customerAgeRegistry;
+					let has = reg?.hasAge?.(wa) || false;
+					// Fallback to event payload hint on first paint
+					if (!has) {
+						try {
+							const hint = Boolean(
+								(event.extendedProps as { hasAge?: boolean })?.hasAge,
+							);
+							has = hint;
+						} catch {}
+					}
+					if (has) el.classList.add("has-documents");
+					else el.classList.remove("has-documents");
+				} catch {}
+
 				// List view: normalize time cell to start-only structure with optional end (Alt+hover reveals)
 				try {
 					if (
@@ -645,6 +774,17 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					el.addEventListener("contextmenu", handleContextMenu);
 				}
 
+				// After mounting, fit text into bounds for this event element
+				try {
+					applyResponsiveEventFonts(el);
+					fitEventTextToBounds(el);
+					// Refit once after layout settles
+					requestAnimationFrame(() => {
+						applyResponsiveEventFonts(el);
+						fitEventTextToBounds(el);
+					});
+				} catch {}
+
 				// Call original handler if provided
 				if (onEventDidMount) {
 					const safeStart =
@@ -662,8 +802,44 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					});
 				}
 			},
-			[onContextMenu, onEventDidMount, onEventMouseDown],
+			[
+				applyResponsiveEventFonts,
+				fitEventTextToBounds,
+				onContextMenu,
+				onEventDidMount,
+				onEventMouseDown,
+			],
 		);
+
+		// Listen for global age updates and toggle classes instantly
+		useEffect(() => {
+			const handler = (e: Event) => {
+				try {
+					const detail = (e as CustomEvent).detail as
+						| { wa_id?: string; waId?: string; hasAge?: boolean }
+						| undefined;
+					const wa = String(detail?.wa_id || detail?.waId || "").trim();
+					if (!wa) return;
+					// Update all rendered events for this waId
+					const root = containerRef.current;
+					if (!root) return;
+					const nodes = root.querySelectorAll(
+						`.fc-event[data-wa-id="${CSS.escape(wa)}"]`,
+					);
+					for (const n of Array.from(nodes)) {
+						if (detail?.hasAge)
+							(n as HTMLElement).classList.add("has-documents");
+						else (n as HTMLElement).classList.remove("has-documents");
+					}
+				} catch {}
+			};
+			window.addEventListener("customers:ageUpdated", handler as EventListener);
+			return () =>
+				window.removeEventListener(
+					"customers:ageUpdated",
+					handler as EventListener,
+				);
+		}, []);
 
 		// Handle view mounting
 		const handleViewDidMount = useCallback(
@@ -796,6 +972,10 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			};
 			const resizeObserver = new ResizeObserver(() => {
 				scheduleUpdateSize();
+				// Also refit text when container resizes
+				requestAnimationFrame(() => {
+					refitAllEvents();
+				});
 			});
 			resizeObserver.observe(containerRef.current);
 			observers.push(resizeObserver);
@@ -803,6 +983,9 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 			// Always listen to window resize
 			const handleWindowResize = () => {
 				scheduleUpdateSize();
+				requestAnimationFrame(() => {
+					refitAllEvents();
+				});
 			};
 			window.addEventListener("resize", handleWindowResize);
 
@@ -812,7 +995,14 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				}
 				window.removeEventListener("resize", handleWindowResize);
 			};
-		}, []);
+		}, [refitAllEvents]);
+
+		// Refit all events whenever we change rendered events or view/date
+		useEffect(() => {
+			requestAnimationFrame(() => {
+				refitAllEvents();
+			});
+		}, [refitAllEvents]);
 
 		// (removed) _handleEventAllow was unused; relying on other constraints
 
@@ -943,7 +1133,7 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					eventDurationEditable={false}
 					eventOverlap={true}
 					expandRows={true}
-					navLinks={true}
+					navLinks={navLinksEnabled}
 					weekNumbers={false}
 					buttonIcons={{
 						prev: "chevron-left",
@@ -1014,6 +1204,12 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 							classes.push("reservation-event");
 							if (type === 1) classes.push("reservation-type-1");
 							else classes.push("reservation-type-0");
+							try {
+								const hasAge = Boolean(
+									(event?.extendedProps as { hasAge?: boolean })?.hasAge,
+								);
+								if (hasAge) classes.push("has-documents");
+							} catch {}
 						}
 						return classes;
 					}, [])}
