@@ -9,7 +9,12 @@ import {
 	useSpring,
 	useTransform,
 } from "motion/react";
-import React, { type PropsWithChildren, useRef } from "react";
+import React, {
+	type PropsWithChildren,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { cn } from "@/lib/utils";
 
 export interface DockProps extends VariantProps<typeof dockVariants> {
@@ -26,7 +31,7 @@ const DEFAULT_MAGNIFICATION = 40;
 const DEFAULT_DISTANCE = 120;
 
 const dockVariants = cva(
-	"supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 mx-auto flex h-auto min-h-[2.25rem] sm:min-h-[2.5rem] w-max items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border px-1.5 py-1.5 sm:p-2 backdrop-blur-md",
+	"supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 mx-auto flex h-auto min-h-[2.25rem] sm:min-h-[2.5rem] max-w-full items-center justify-center gap-1.5 sm:gap-2 rounded-2xl border px-1.5 py-1.5 sm:p-2 backdrop-blur-md",
 );
 
 const Dock = React.forwardRef<HTMLDivElement, DockProps>(
@@ -44,6 +49,62 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
 	) => {
 		const mouseX = useMotionValue(Number.POSITIVE_INFINITY);
 
+		// REM-based sizing: derive px from root font-size and viewport
+		const [rootPx, setRootPx] = useState<number>(16);
+		const [isSmall, setIsSmall] = useState<boolean>(true);
+		useEffect(() => {
+			const recompute = () => {
+				try {
+					const px = Number.parseFloat(
+						getComputedStyle(document.documentElement).fontSize || "16",
+					);
+					setRootPx(Number.isFinite(px) ? px : 16);
+					setIsSmall(window.innerWidth < 640);
+				} catch {}
+			};
+			recompute();
+			window.addEventListener("resize", recompute);
+			try {
+				(
+					window as unknown as { visualViewport?: VisualViewport }
+				).visualViewport?.addEventListener?.(
+					"resize",
+					recompute as EventListener,
+				);
+			} catch {}
+			window.addEventListener("orientationchange", recompute);
+			return () => {
+				window.removeEventListener("resize", recompute);
+				try {
+					(
+						window as unknown as { visualViewport?: VisualViewport }
+					).visualViewport?.removeEventListener?.(
+						"resize",
+						recompute as EventListener,
+					);
+				} catch {}
+				window.removeEventListener("orientationchange", recompute);
+			};
+		}, []);
+
+		// If consumer didn't override sizing, use REM-based defaults per breakpoint
+		const autoSizing =
+			iconSize === DEFAULT_SIZE &&
+			iconMagnification === DEFAULT_MAGNIFICATION &&
+			iconDistance === DEFAULT_DISTANCE;
+
+		const baseRem = isSmall ? 1.15 : 1.35; // icon base height in rem
+		const magRem = isSmall ? 1.6 : 1.9; // magnified height in rem
+		const distRem = isSmall ? 5.5 : 7; // mouse influence distance in rem
+
+		const effIconSize = autoSizing ? Math.round(baseRem * rootPx) : iconSize;
+		const effIconMagnification = autoSizing
+			? Math.round(magRem * rootPx)
+			: iconMagnification;
+		const effIconDistance = autoSizing
+			? Math.round(distRem * rootPx)
+			: iconDistance;
+
 		const renderChildren = () => {
 			return React.Children.map(children, (child) => {
 				if (
@@ -54,10 +115,12 @@ const Dock = React.forwardRef<HTMLDivElement, DockProps>(
 					return React.cloneElement(child, {
 						...child.props,
 						mouseX: mouseX,
-						size: (child.props as DockIconProps).size ?? iconSize,
+						size: (child.props as DockIconProps).size ?? effIconSize,
 						magnification:
-							(child.props as DockIconProps).magnification ?? iconMagnification,
-						distance: (child.props as DockIconProps).distance ?? iconDistance,
+							(child.props as DockIconProps).magnification ??
+							effIconMagnification,
+						distance:
+							(child.props as DockIconProps).distance ?? effIconDistance,
 					});
 				}
 				return child;

@@ -5,6 +5,7 @@ import "./globals.css";
 import "@glideapps/glide-data-grid/dist/index.css";
 import "@ncdai/react-wheel-picker/style.css";
 import { ConditionalAppSidebar } from "@/components/conditional-app-sidebar";
+import { DvhInit } from "@/components/dvh-init";
 import { ErrorRecoveryInit } from "@/components/error-recovery-init";
 import { MainContentWrapper } from "@/components/main-content-wrapper";
 import { RouteTransition } from "@/components/motion-primitives/route-transition";
@@ -79,8 +80,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-	width: 1280,
+	width: "device-width",
 	initialScale: 1,
+	maximumScale: 1,
+	userScalable: false,
+	viewportFit: "cover",
 	themeColor: "#2563eb",
 };
 
@@ -148,7 +152,13 @@ export default function RootLayout({
 													<VacationProvider>
 														<CustomerDataProvider>
 															<DockBridgeProvider>
-																<div className="flex flex-col h-screen">
+																<DvhInit />
+																<div
+																	className="flex flex-col"
+																	style={{
+																		minHeight: "var(--doc-dvh, 100dvh)",
+																	}}
+																>
 																	<div className="flex flex-1 overflow-hidden">
 																		<SidebarProvider>
 																			<ConditionalAppSidebar />

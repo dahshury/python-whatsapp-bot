@@ -301,6 +301,30 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 
 		const calendarRef = useRef<FullCalendar>(null);
 		const containerRef = useRef<HTMLDivElement>(null);
+		const [mountReady, setMountReady] = useState(false);
+
+		// Defer mounting FullCalendar until container has measurable size (prevents zoomed-in initial paint on mobile)
+		useEffect(() => {
+			let raf = 0;
+			let tries = 0;
+			const tick = () => {
+				tries += 1;
+				try {
+					const rect = containerRef.current?.getBoundingClientRect?.();
+					if (rect && rect.width > 2 && rect.height > 2) {
+						setMountReady(true);
+						return;
+					}
+				} catch {}
+				if (tries < 60) {
+					raf = requestAnimationFrame(tick);
+				} else {
+					setMountReady(true);
+				}
+			};
+			raf = requestAnimationFrame(tick);
+			return () => cancelAnimationFrame(raf);
+		}, []);
 
 		// Compute responsive font sizes (REM-based with min/max) for event title/time
 		const applyResponsiveEventFonts = useCallback((eventEl: HTMLElement) => {
@@ -311,12 +335,14 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				const rect = eventEl.getBoundingClientRect();
 				const availableHeight = Math.max(0, rect.height - 4);
 				// Estimate a usable font-size from height (account for line-height/padding)
-				const heightDrivenRem = availableHeight / (1.35 * rootFontPx);
-				// Clamp to sensible bounds so text is readable across devices
-				const MIN_TITLE_REM = 0.55;
-				const MAX_TITLE_REM = 0.95;
-				const MIN_TIME_REM = 0.5;
-				const MAX_TIME_REM = 0.85;
+				const heightDrivenRem = availableHeight / (1.45 * rootFontPx);
+				// Clamp to sensible bounds so text is readable across devices (smaller on phones)
+				const isSmallScreen =
+					typeof window !== "undefined" && window.innerWidth < 640;
+				const MIN_TITLE_REM = isSmallScreen ? 0.42 : 0.55;
+				const MAX_TITLE_REM = isSmallScreen ? 0.72 : 0.95;
+				const MIN_TIME_REM = isSmallScreen ? 0.4 : 0.5;
+				const MAX_TIME_REM = isSmallScreen ? 0.62 : 0.85;
 				const titleSizeRem = Math.max(
 					MIN_TITLE_REM,
 					Math.min(MAX_TITLE_REM, heightDrivenRem),
@@ -348,6 +374,28 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 		const fitEventTextToBounds = useCallback(
 			(eventEl: HTMLElement) => {
 				try {
+					// On small screens, avoid expensive transforms; enforce single-line ellipsis
+					const isSmallScreen =
+						typeof window !== "undefined" && window.innerWidth < 640;
+					if (isSmallScreen) {
+						const frame = eventEl.querySelector(
+							".fc-event-main-frame",
+						) as HTMLElement | null;
+						if (frame) {
+							frame.style.transform = "none";
+							frame.style.transformOrigin = "left center";
+							frame.style.display = "flex";
+							frame.style.alignItems = "center";
+							frame.style.justifyContent = "flex-start";
+							frame.style.width = "100%";
+							frame.style.height = "100%";
+							frame.style.whiteSpace = "nowrap";
+							frame.style.overflow = "hidden";
+							frame.style.textOverflow = "ellipsis";
+							applyResponsiveEventFonts(eventEl);
+						}
+						return;
+					}
 					const frame = eventEl.querySelector(
 						".fc-event-main-frame",
 					) as HTMLElement | null;
@@ -369,9 +417,15 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 					);
 					if (availableWidth <= 0 || availableHeight <= 0) return;
 					if (contentWidth <= 0 || contentHeight <= 0) return;
+					frame.style.padding = "0";
+					frame.style.margin = "0";
+					frame.style.lineHeight = "1.05";
 					const scaleX = availableWidth / contentWidth;
 					const scaleY = availableHeight / contentHeight;
-					const scale = Math.min(1, scaleX, scaleY);
+					const scale = Math.max(
+						0.6,
+						Math.min(1, Math.min(scaleX, scaleY) * 0.9),
+					);
 					frame.style.willChange = "transform";
 					frame.style.transform = `scale(${scale})`;
 					frame.setAttribute(
@@ -393,6 +447,102 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				}
 			} catch {}
 		}, [fitEventTextToBounds]);
+
+		// Stable callbacks for FullCalendar props to avoid conditional hook calls
+		const eventClassNamesMemo = useCallback((arg: EventContentArg) => {
+			const event = arg?.event;
+			const classes = ["text-xs"] as string[];
+			const type = event?.extendedProps?.type;
+			// Skip reservation/conversation classes for vacation text overlays
+			if (event?.classNames?.includes("vacation-text-event")) {
+				classes.push("vacation-text-event");
+				return classes;
+			}
+			if (type === 2) {
+				classes.push("conversation-event");
+			} else {
+				// All reservation-like events share unified styling and type tokens
+				classes.push("reservation-event");
+				if (type === 1) classes.push("reservation-type-1");
+				else classes.push("reservation-type-0");
+				try {
+					const hasAge = Boolean(
+						(event?.extendedProps as { hasAge?: boolean })?.hasAge,
+					);
+					if (hasAge) classes.push("has-documents");
+				} catch {}
+			}
+			return classes;
+		}, []);
+
+		const eventContentMemo = useCallback((arg: EventContentArg) => {
+			// If this is a vacation text overlay, render large centered title only
+			if (arg?.event?.classNames?.includes("vacation-text-event")) {
+				const wrapper = document.createElement("div");
+				wrapper.style.position = "absolute";
+				wrapper.style.inset = "0";
+				wrapper.style.display = "flex";
+				wrapper.style.alignItems = "center";
+				wrapper.style.justifyContent = "center";
+				wrapper.style.pointerEvents = "none";
+				const title = document.createElement("div");
+				title.textContent = arg?.event?.title || "";
+				title.style.fontWeight = "800";
+				title.style.fontSize = "18px";
+				title.style.letterSpacing = "0.3px";
+				wrapper.appendChild(title);
+				return { domNodes: [wrapper] };
+			}
+			// On small screens, suppress time completely for compact single-line titles
+			const isSmallScreen =
+				typeof window !== "undefined" && window.innerWidth < 640;
+			const { timeText } = arg;
+			let startText = isSmallScreen ? "" : timeText || "";
+			let endText = "";
+			let sep = "";
+			if (!isSmallScreen && timeText && /[–—-]/.test(timeText)) {
+				const parts = timeText.split(/\s*[–—-]\s*/);
+				startText = (parts[0] || "").trim();
+				endText = (parts[1] || "").trim();
+				sep = endText ? " - " : "";
+			}
+
+			const container = document.createElement("div");
+			container.className = "fc-event-main-frame";
+
+			const timeContainer = document.createElement("div");
+			timeContainer.className = "fc-event-time";
+			if (!isSmallScreen) {
+				const startSpan = document.createElement("span");
+				startSpan.className = "fc-event-time-start";
+				startSpan.textContent = startText;
+				const sepSpan = document.createElement("span");
+				sepSpan.className = "fc-event-time-sep";
+				sepSpan.textContent = sep;
+				const endSpan = document.createElement("span");
+				endSpan.className = "fc-event-time-end";
+				endSpan.textContent = endText;
+				timeContainer.appendChild(startSpan);
+				timeContainer.appendChild(sepSpan);
+				timeContainer.appendChild(endSpan);
+			}
+
+			const titleSpan = document.createElement("div");
+			titleSpan.className = "fc-event-title";
+			titleSpan.textContent = arg?.event?.title || "";
+			// Enforce single-line ellipsis on small screens
+			if (isSmallScreen) {
+				titleSpan.style.whiteSpace = "nowrap";
+				titleSpan.style.overflow = "hidden";
+				titleSpan.style.textOverflow = "ellipsis";
+			}
+
+			// Order is managed by CSS for reservation vs conversation
+			container.appendChild(titleSpan);
+			if (!isSmallScreen) container.appendChild(timeContainer);
+
+			return { domNodes: [container] };
+		}, []);
 
 		// Expose calendar API to parent component
 		useImperativeHandle(
@@ -1107,259 +1257,185 @@ const CalendarCoreComponent = forwardRef<CalendarCoreRef, CalendarCoreProps>(
 				className={`w-full h-full ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[37.5rem]"} ${getCalendarClassNames(currentView)}`}
 				data-free-roam={freeRoam}
 			>
-				<FullCalendar
-					ref={calendarRef}
-					plugins={[
-						multiMonthPlugin,
-						dayGridPlugin,
-						timeGridPlugin,
-						listPlugin,
-						interactionPlugin,
-					]}
-					initialView={currentView}
-					initialDate={currentDate}
-					height={calendarHeight}
-					contentHeight={calendarHeight}
-					events={renderEvents}
-					// Header configuration - disable native toolbar since we use dock navbar
-					headerToolbar={false}
-					// Enhanced calendar options
-					editable={true}
-					selectable={true}
-					unselectAuto={false}
-					selectMirror={false}
-					selectMinDistance={0}
-					eventStartEditable={true}
-					eventDurationEditable={false}
-					eventOverlap={true}
-					expandRows={true}
-					navLinks={navLinksEnabled}
-					weekNumbers={false}
-					buttonIcons={{
-						prev: "chevron-left",
-						next: "chevron-right",
-					}}
-					nowIndicator={true}
-					allDaySlot={false}
-					slotDuration={{ hours: SLOT_DURATION_HOURS }}
-					// Business hours and constraints
-					businessHours={businessHours}
-					// Only enforce constraints in timeGrid views so month/week drags are not blocked
-					{...constraintsProp}
-					selectAllow={handleSelectAllow}
-					hiddenDays={freeRoam ? [] : [5]} // Hide Friday unless in free roam
-					// Valid range for navigation
-					{...validRangeProp}
-					// View-specific overrides for multiMonthYear
-					views={viewsProp}
-					// Dynamic slot times
-					slotMinTime={slotTimes.slotMinTime}
-					slotMaxTime={slotTimes.slotMaxTime}
-					// Localization and Timezone (critical - matches Python implementation)
-					locale={isLocalized ? arLocale : "en"}
-					direction={"ltr"}
-					timeZone={TIMEZONE} // ✅ Critical: Set timezone like Python calendar_view.py
-					firstDay={6} // Saturday as first day
-					aspectRatio={1.4}
-					// Multi-month specific options
-					multiMonthMaxColumns={3}
-					multiMonthMinWidth={280}
-					fixedWeekCount={false}
-					showNonCurrentDates={false}
-					dayMaxEvents={true}
-					dayMaxEventRows={true}
-					moreLinkClick="popover"
-					eventDisplay="block"
-					displayEventTime={true}
-					eventTimeFormat={{
-						hour: "numeric",
-						minute: "2-digit",
-						meridiem: "short",
-						hour12: true,
-					}}
-					// Interaction control
-					// Block drag/resizes in vacation periods while allowing event clicks
-					{...(isVacationDate
-						? {
-								// FullCalendar's type expects (dropInfo, draggedEvent) but for resizes it passes (resizeInfo)
-								// We only care about the new start/end range to validate against vacations
-								eventAllow: (dropInfo: { start?: Date; end?: Date }) =>
-									handleEventAllow(dropInfo),
-							}
-						: {})}
-					// Styling
-					eventClassNames={useCallback((arg: EventContentArg) => {
-						const event = arg?.event;
-						const classes = ["text-xs"] as string[];
-						const type = event?.extendedProps?.type;
-						// Skip reservation/conversation classes for vacation text overlays
-						if (event?.classNames?.includes("vacation-text-event")) {
-							classes.push("vacation-text-event");
-							return classes;
+				{mountReady && (
+					<FullCalendar
+						ref={calendarRef}
+						plugins={[
+							multiMonthPlugin,
+							dayGridPlugin,
+							timeGridPlugin,
+							listPlugin,
+							interactionPlugin,
+						]}
+						initialView={currentView}
+						initialDate={currentDate}
+						height={calendarHeight}
+						contentHeight={calendarHeight}
+						events={renderEvents}
+						// Header configuration - disable native toolbar since we use dock navbar
+						headerToolbar={false}
+						// Enhanced calendar options
+						editable={true}
+						selectable={true}
+						unselectAuto={false}
+						selectMirror={false}
+						selectMinDistance={0}
+						eventStartEditable={true}
+						eventDurationEditable={false}
+						eventOverlap={true}
+						expandRows={true}
+						navLinks={navLinksEnabled}
+						weekNumbers={false}
+						buttonIcons={{
+							prev: "chevron-left",
+							next: "chevron-right",
+						}}
+						nowIndicator={true}
+						allDaySlot={false}
+						slotDuration={{ hours: SLOT_DURATION_HOURS }}
+						// Business hours and constraints
+						businessHours={businessHours}
+						// Only enforce constraints in timeGrid views so month/week drags are not blocked
+						{...constraintsProp}
+						selectAllow={handleSelectAllow}
+						hiddenDays={freeRoam ? [] : [5]} // Hide Friday unless in free roam
+						// Valid range for navigation
+						{...validRangeProp}
+						// View-specific overrides for multiMonthYear
+						views={viewsProp}
+						// Dynamic slot times
+						slotMinTime={slotTimes.slotMinTime}
+						slotMaxTime={slotTimes.slotMaxTime}
+						// Localization and Timezone (critical - matches Python implementation)
+						locale={isLocalized ? arLocale : "en"}
+						direction={"ltr"}
+						timeZone={TIMEZONE} // ✅ Critical: Set timezone like Python calendar_view.py
+						firstDay={6} // Saturday as first day
+						aspectRatio={1.4}
+						// Multi-month specific options
+						multiMonthMaxColumns={3}
+						multiMonthMinWidth={280}
+						fixedWeekCount={false}
+						showNonCurrentDates={false}
+						dayMaxEvents={true}
+						dayMaxEventRows={true}
+						moreLinkClick="popover"
+						eventDisplay="block"
+						displayEventTime={true}
+						eventTimeFormat={
+							typeof window !== "undefined" && window.innerWidth < 640
+								? { hour: "2-digit", minute: "2-digit" }
+								: {
+										hour: "numeric",
+										minute: "2-digit",
+										meridiem: "short",
+										hour12: true,
+									}
 						}
-						if (type === 2) {
-							classes.push("conversation-event");
-						} else {
-							// All reservation-like events share unified styling and type tokens
-							classes.push("reservation-event");
-							if (type === 1) classes.push("reservation-type-1");
-							else classes.push("reservation-type-0");
+						// Interaction control
+						// Block drag/resizes in vacation periods while allowing event clicks
+						{...(isVacationDate
+							? {
+									// FullCalendar's type expects (dropInfo, draggedEvent) but for resizes it passes (resizeInfo)
+									// We only care about the new start/end range to validate against vacations
+									eventAllow: (dropInfo: { start?: Date; end?: Date }) =>
+										handleEventAllow(dropInfo),
+								}
+							: {})}
+						// Styling
+						eventClassNames={eventClassNamesMemo}
+						eventContent={eventContentMemo}
+						dayCellClassNames={getDayCellClassNames}
+						dayHeaderClassNames={getDayHeaderClassNames}
+						viewClassNames="bg-card rounded-lg shadow-sm"
+						// Event callbacks - use enhanced handler for eventChange
+						{...(onDateClick ? { dateClick: onDateClick } : {})}
+						{...(onSelect ? { select: onSelect } : {})}
+						{...(onEventClick ? { eventClick: onEventClick } : {})}
+						eventChange={handleEventChangeWithProcessing}
+						viewDidMount={handleViewDidMount}
+						eventDidMount={handleEventDidMount}
+						datesSet={handleDatesSet}
+						{...(onEventMouseEnter
+							? { eventMouseEnter: onEventMouseEnter }
+							: {})}
+						{...(onEventMouseLeave
+							? { eventMouseLeave: onEventMouseLeave }
+							: {})}
+						eventDragStart={(info) => {
 							try {
-								const hasAge = Boolean(
-									(event?.extendedProps as { hasAge?: boolean })?.hasAge,
-								);
-								if (hasAge) classes.push("has-documents");
+								(
+									globalThis as { __isCalendarDragging?: boolean }
+								).__isCalendarDragging = true;
 							} catch {}
-						}
-						return classes;
-					}, [])}
-					eventContent={useCallback((arg: EventContentArg) => {
-						// If this is a vacation text overlay, render large centered title only
-						if (arg?.event?.classNames?.includes("vacation-text-event")) {
-							const wrapper = document.createElement("div");
-							wrapper.style.position = "absolute";
-							wrapper.style.inset = "0";
-							wrapper.style.display = "flex";
-							wrapper.style.alignItems = "center";
-							wrapper.style.justifyContent = "center";
-							wrapper.style.pointerEvents = "none";
-							const title = document.createElement("div");
-							title.textContent = arg?.event?.title || "";
-							title.style.fontWeight = "800";
-							title.style.fontSize = "18px";
-							title.style.letterSpacing = "0.3px";
-							wrapper.appendChild(title);
-							return { domNodes: [wrapper] };
-						}
-						// Render start-only time; keep separator and end spans for CSS-controlled reveal
-						// FullCalendar by default renders <div class="fc-event-time">start–end</div>
-						// We replace with structured spans to control visibility via CSS (and Alt key)
-						const { timeText } = arg;
-						// Parse timeText like "11:00 AM - 11:20 AM" or "11:00 AM" (supports hyphen/en dash/em dash)
-						let startText = timeText || "";
-						let endText = "";
-						let sep = "";
-						if (timeText && /[–—-]/.test(timeText)) {
-							const parts = timeText.split(/\s*[–—-]\s*/);
-							startText = (parts[0] || "").trim();
-							endText = (parts[1] || "").trim();
-							sep = endText ? " - " : "";
-						}
-
-						const container = document.createElement("div");
-						container.className = "fc-event-main-frame";
-
-						const timeContainer = document.createElement("div");
-						timeContainer.className = "fc-event-time";
-						const startSpan = document.createElement("span");
-						startSpan.className = "fc-event-time-start";
-						startSpan.textContent = startText;
-						const sepSpan = document.createElement("span");
-						sepSpan.className = "fc-event-time-sep";
-						sepSpan.textContent = sep;
-						const endSpan = document.createElement("span");
-						endSpan.className = "fc-event-time-end";
-						endSpan.textContent = endText;
-						timeContainer.appendChild(startSpan);
-						timeContainer.appendChild(sepSpan);
-						timeContainer.appendChild(endSpan);
-
-						const titleSpan = document.createElement("div");
-						titleSpan.className = "fc-event-title";
-						titleSpan.textContent = arg?.event?.title || "";
-
-						// Order is managed by CSS for reservation vs conversation
-						container.appendChild(titleSpan);
-						container.appendChild(timeContainer);
-
-						return { domNodes: [container] };
-					}, [])}
-					dayCellClassNames={getDayCellClassNames}
-					dayHeaderClassNames={getDayHeaderClassNames}
-					viewClassNames="bg-card rounded-lg shadow-sm"
-					// Event callbacks - use enhanced handler for eventChange
-					{...(onDateClick ? { dateClick: onDateClick } : {})}
-					{...(onSelect ? { select: onSelect } : {})}
-					{...(onEventClick ? { eventClick: onEventClick } : {})}
-					eventChange={handleEventChangeWithProcessing}
-					viewDidMount={handleViewDidMount}
-					eventDidMount={handleEventDidMount}
-					datesSet={handleDatesSet}
-					{...(onEventMouseEnter ? { eventMouseEnter: onEventMouseEnter } : {})}
-					{...(onEventMouseLeave ? { eventMouseLeave: onEventMouseLeave } : {})}
-					eventDragStart={(info) => {
-						try {
-							(
-								globalThis as { __isCalendarDragging?: boolean }
-							).__isCalendarDragging = true;
-						} catch {}
-						if (onEventDragStart) {
-							const e = info.event;
-							const safeStart =
-								e.start ?? (e.startStr ? new Date(e.startStr) : new Date());
-							onEventDragStart({
-								event: {
-									id: String(e.id),
-									title: String(e.title || ""),
-									start: safeStart,
-									...(e.end ? { end: e.end } : {}),
-									extendedProps: { ...(e.extendedProps || {}) },
-								},
-								el: info.el as HTMLElement,
-								jsEvent: info.jsEvent as MouseEvent,
-							});
-						}
-					}}
-					eventDragStop={(info) => {
-						try {
-							(
-								globalThis as { __isCalendarDragging?: boolean }
-							).__isCalendarDragging = false;
-						} catch {}
-						if (onEventDragStop) {
-							const e = info.event;
-							const safeStart =
-								e.start ?? (e.startStr ? new Date(e.startStr) : new Date());
-							onEventDragStop({
-								event: {
-									id: String(e.id),
-									title: String(e.title || ""),
-									start: safeStart,
-									...(e.end ? { end: e.end } : {}),
-									extendedProps: { ...(e.extendedProps || {}) },
-								},
-								el: info.el as HTMLElement,
-								jsEvent: info.jsEvent as MouseEvent,
-							});
-						}
-					}}
-					// Time grid specific options
-					slotLabelFormat={{
-						hour: "numeric",
-						minute: "2-digit",
-						omitZeroMinute: true,
-						meridiem: "short",
-					}}
-					slotLabelInterval={{ hours: 1 }}
-					// Drag and drop options
-					droppable={Boolean(droppable)}
-					{...(onEventReceive
-						? {
-								eventReceive: (info: unknown) =>
-									onEventReceive(
-										info as { event: EventApi; draggedEl: HTMLElement },
-									),
+							if (onEventDragStart) {
+								const e = info.event;
+								const safeStart =
+									e.start ?? (e.startStr ? new Date(e.startStr) : new Date());
+								onEventDragStart({
+									event: {
+										id: String(e.id),
+										title: String(e.title || ""),
+										start: safeStart,
+										...(e.end ? { end: e.end } : {}),
+										extendedProps: { ...(e.extendedProps || {}) },
+									},
+									el: info.el as HTMLElement,
+									jsEvent: info.jsEvent as MouseEvent,
+								});
 							}
-						: {})}
-					{...(onEventLeave
-						? {
-								eventLeave: (info: unknown) =>
-									onEventLeave(
-										info as { event?: EventApi; draggedEl: HTMLElement },
-									),
+						}}
+						eventDragStop={(info) => {
+							try {
+								(
+									globalThis as { __isCalendarDragging?: boolean }
+								).__isCalendarDragging = false;
+							} catch {}
+							if (onEventDragStop) {
+								const e = info.event;
+								const safeStart =
+									e.start ?? (e.startStr ? new Date(e.startStr) : new Date());
+								onEventDragStop({
+									event: {
+										id: String(e.id),
+										title: String(e.title || ""),
+										start: safeStart,
+										...(e.end ? { end: e.end } : {}),
+										extendedProps: { ...(e.extendedProps || {}) },
+									},
+									el: info.el as HTMLElement,
+									jsEvent: info.jsEvent as MouseEvent,
+								});
 							}
-						: {})}
-				/>
+						}}
+						// Time grid specific options
+						slotLabelFormat={{
+							hour: "numeric",
+							minute: "2-digit",
+							omitZeroMinute: true,
+							meridiem: "short",
+						}}
+						slotLabelInterval={{ hours: 1 }}
+						// Drag and drop options
+						droppable={Boolean(droppable)}
+						{...(onEventReceive
+							? {
+									eventReceive: (info: unknown) =>
+										onEventReceive(
+											info as { event: EventApi; draggedEl: HTMLElement },
+										),
+								}
+							: {})}
+						{...(onEventLeave
+							? {
+									eventLeave: (info: unknown) =>
+										onEventLeave(
+											info as { event?: EventApi; draggedEl: HTMLElement },
+										),
+								}
+							: {})}
+					/>
+				)}
 			</div>
 		);
 	},

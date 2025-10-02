@@ -5,7 +5,7 @@ import type {
 	ExcalidrawProps,
 } from "@excalidraw/excalidraw/types";
 import dynamic from "next/dynamic";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { computeSceneSignature } from "@/lib/documents/scene-utils";
 
 type ExcalidrawAPI = ExcalidrawImperativeAPI;
@@ -55,6 +55,24 @@ function DocumentCanvasComponent({
 	const didNotifyApiRef = useRef<boolean>(false);
 	const prevDirRef = useRef<string | null>(null);
 
+	// Stable props to avoid unnecessary Excalidraw re-renders
+	const noopOnChange = useCallback(() => {}, []);
+	const mergedOnChange = (onChange ||
+		(noopOnChange as NonNullable<ExcalidrawProps["onChange"]>)) as NonNullable<
+		ExcalidrawProps["onChange"]
+	>;
+
+	const initialData = useMemo(
+		() => ({
+			appState: {
+				viewModeEnabled: Boolean(viewModeEnabled),
+				zenModeEnabled: Boolean(zenModeEnabled),
+				theme,
+			},
+		}),
+		[viewModeEnabled, zenModeEnabled, theme],
+	);
+
 	// Wait until container has a non-zero size AND theme class matches to mount Excalidraw
 	useEffect(() => {
 		let raf = 0;
@@ -87,6 +105,93 @@ function DocumentCanvasComponent({
 
 	// Keep canvas sized when container/viewport changes
 	useExcalidrawResize(containerRef, apiRef);
+
+	// Verify canvas fills container on mount and on orientation/pageshow
+	useEffect(() => {
+		if (!mountReady) return;
+		let timer: number | null = null;
+		let remaining = 40;
+		const verifyAndFix = () => {
+			try {
+				const root = containerRef.current?.querySelector(
+					".excalidraw .canvas-container",
+				) as HTMLElement | null;
+				const canvas = containerRef.current?.querySelector(
+					"canvas.excalidraw__canvas.interactive",
+				) as HTMLCanvasElement | null;
+				if (!root || !canvas) return;
+				const cw = Math.floor(root.clientWidth || 0);
+				const ch = Math.floor(root.clientHeight || 0);
+				const rect = canvas.getBoundingClientRect();
+				const sw = Math.floor(rect.width || 0);
+				const sh = Math.floor(rect.height || 0);
+				if (Math.abs(cw - sw) > 1 || Math.abs(ch - sh) > 1) {
+					try {
+						requestAnimationFrame(() => apiRef.current?.refresh?.());
+					} catch {
+						apiRef.current?.refresh?.();
+					}
+					// Nudge Excalidraw's internal listeners
+					try {
+						window.dispatchEvent(new Event("resize"));
+					} catch {}
+					return true;
+				}
+			} catch {}
+			return false;
+		};
+		const runBurst = () => {
+			try {
+				const needsMore = verifyAndFix();
+				remaining -= 1;
+				if (remaining > 0 && needsMore) {
+					timer = window.setTimeout(runBurst, 90);
+				}
+			} catch {}
+		};
+		runBurst();
+		const onOrientation = () => {
+			remaining = 40;
+			runBurst();
+		};
+		const onPageShow = (ev: PageTransitionEvent) => {
+			try {
+				if ((ev as PageTransitionEvent)?.persisted) {
+					remaining = 40;
+					runBurst();
+				}
+			} catch {}
+		};
+		window.addEventListener("orientationchange", onOrientation);
+		window.addEventListener("pageshow", onPageShow as unknown as EventListener);
+		// Observe the inner canvas-container for dynamic size changes
+		let innerRO: ResizeObserver | null = null;
+		try {
+			const el = containerRef.current?.querySelector(
+				".excalidraw .canvas-container",
+			) as Element | null;
+			if (el) {
+				innerRO = new ResizeObserver(() => {
+					try {
+						apiRef.current?.refresh?.();
+						verifyAndFix();
+					} catch {}
+				});
+				innerRO.observe(el);
+			}
+		} catch {}
+		return () => {
+			if (timer) window.clearTimeout(timer);
+			window.removeEventListener("orientationchange", onOrientation);
+			window.removeEventListener(
+				"pageshow",
+				onPageShow as unknown as EventListener,
+			);
+			try {
+				innerRO?.disconnect();
+			} catch {}
+		};
+	}, [mountReady]);
 
 	// Extra stabilization refreshes around context menu and page visibility
 	useEffect(() => {
@@ -298,20 +403,20 @@ function DocumentCanvasComponent({
 			{hideToolbar ? (
 				<style>
 					{
-						".excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}\n.excali-theme-scope .excalidraw,.excali-theme-scope .excalidraw .canvas-container{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container>div{height:100%!important;}"
+						".excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}\n.excali-theme-scope .excalidraw{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container{position:absolute!important;inset:0!important;height:100%!important;width:100%!important;}\n.excali-theme-scope .excalidraw .excalidraw__canvas-wrapper{height:100%!important;width:100%!important;}"
 					}
 				</style>
 			) : null}
 			{hideHelpIcon ? (
 				<style>
 					{
-						".excal-hide-help .help-icon{display:none!important;}\n.excali-theme-scope .excalidraw,.excali-theme-scope .excalidraw .canvas-container{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container>div{height:100%!important;}"
+						".excal-hide-help .help-icon{display:none!important;}\n.excali-theme-scope .excalidraw{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container{position:absolute!important;inset:0!important;height:100%!important;width:100%!important;}\n.excali-theme-scope .excalidraw .excalidraw__canvas-wrapper{height:100%!important;width:100%!important;}"
 					}
 				</style>
 			) : (
 				<style>
 					{
-						".excali-theme-scope .excalidraw,.excali-theme-scope .excalidraw .canvas-container{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container>div{height:100%!important;}"
+						".excali-theme-scope .excalidraw{height:100%!important;}\n.excali-theme-scope .excalidraw .canvas-container{position:absolute!important;inset:0!important;height:100%!important;width:100%!important;}\n.excali-theme-scope .excalidraw .excalidraw__canvas-wrapper{height:100%!important;width:100%!important;}"
 					}
 				</style>
 			)}
@@ -319,19 +424,9 @@ function DocumentCanvasComponent({
 				<Excalidraw
 					theme={theme}
 					langCode={langCode as unknown as string}
-					onChange={
-						(onChange || ((): void => {})) as NonNullable<
-							ExcalidrawProps["onChange"]
-						>
-					}
+					onChange={mergedOnChange}
 					{...(uiOptions ? { UIOptions: uiOptions } : {})}
-					initialData={{
-						appState: {
-							viewModeEnabled: Boolean(viewModeEnabled),
-							zenModeEnabled: Boolean(zenModeEnabled),
-							theme,
-						},
-					}}
+					initialData={initialData}
 					viewModeEnabled={Boolean(viewModeEnabled)}
 					zenModeEnabled={Boolean(zenModeEnabled)}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
@@ -361,7 +456,18 @@ function DocumentCanvasComponent({
 						} catch {}
 						if (!didNotifyApiRef.current) {
 							didNotifyApiRef.current = true;
-							onApiReady(api);
+							// Defer onApiReady to a post-render tick to avoid setState during render
+							try {
+								if (typeof requestAnimationFrame === "function") {
+									requestAnimationFrame(() =>
+										setTimeout(() => onApiReady(api), 0),
+									);
+								} else {
+									setTimeout(() => onApiReady(api), 0);
+								}
+							} catch {
+								setTimeout(() => onApiReady(api), 0);
+							}
 						}
 					}}
 				/>

@@ -189,6 +189,10 @@ export function ColumnMenu({
 		position: "absolute",
 		left: adjustedMenuLeft,
 		top: adjustedY,
+		zIndex:
+			Number((Z_INDEX as Record<string, number>).GRID_MENU) ||
+			Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) + 1,
+		pointerEvents: "auto",
 	};
 
 	const contentStyles: React.CSSProperties = {
@@ -197,7 +201,9 @@ export function ColumnMenu({
 		borderRadius: 4,
 		boxShadow: "0 2px 5px rgba(0,0,0,0.12)",
 		minWidth: 160,
-		zIndex: Z_INDEX.GRID_OVERLAY_EDITOR,
+		zIndex:
+			Number((Z_INDEX as Record<string, number>).GRID_MENU) ||
+			Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) + 1,
 		padding: 3,
 	};
 

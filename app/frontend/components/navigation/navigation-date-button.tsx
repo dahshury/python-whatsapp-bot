@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, CalendarRange, Loader2 } from "lucide-react";
+import { CalendarDays, Loader2 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,9 +8,10 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { i18n } from "@/lib/i18n";
+import { useFitTextScale } from "@/hooks/use-fit-text-scale";
 import { cn } from "@/lib/utils";
 import type { NavigationDateButtonProps } from "@/types/navigation";
+import { EventCountBadgePortal } from "./event-count-badge-portal";
 
 export const NavigationDateButton = React.memo(function NavigationDateButton({
 	title,
@@ -23,13 +24,19 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 	visibleEventCount,
 }: NavigationDateButtonProps) {
 	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
+	const anchorRef = React.useRef<HTMLSpanElement | null>(null);
+	const { containerRef, contentRef, fontSizePx } = useFitTextScale({
+		minScale: 0.65,
+		maxScale: 1,
+		paddingPx: 0,
+	});
 
 	const width = navigationOnly
-		? "w-[12rem] sm:w-[16.25rem]"
-		: "w-[14rem] sm:w-[22rem] md:w-[26rem]";
+		? "w-[56vw] sm:w-[16.25rem]"
+		: "w-[62vw] sm:w-[22rem] md:w-[26rem]";
 	const textSize = navigationOnly
-		? "text-base sm:text-lg"
-		: "text-lg sm:text-xl md:text-2xl";
+		? "text-[0.95rem] sm:text-lg"
+		: "text-[1.05rem] sm:text-xl md:text-2xl";
 	const loaderSize = navigationOnly
 		? "h-5 w-5 sm:h-6 sm:w-6"
 		: "h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8";
@@ -45,7 +52,7 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 					onMouseEnter={() => setIsHoveringDate(true)}
 					onMouseLeave={() => setIsHoveringDate(false)}
 					className={cn(
-						"h-9 rounded-full relative group overflow-hidden",
+						"h-9 rounded-full relative group overflow-visible",
 						"hover:bg-accent hover:text-accent-foreground",
 						"transition-all duration-200",
 						!isTodayDisabled && "cursor-pointer",
@@ -54,6 +61,10 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 					)}
 				>
 					<span
+						ref={anchorRef}
+						className="absolute top-0 right-0 w-0 h-0 pointer-events-none"
+					/>
+					<span
 						className={cn(
 							"absolute inset-0 flex items-center justify-center transition-all duration-200",
 							isHoveringDate && !isTodayDisabled
@@ -61,54 +72,41 @@ export const NavigationDateButton = React.memo(function NavigationDateButton({
 								: "opacity-100 scale-100",
 						)}
 					>
-						<span className={cn(textSize, "font-medium px-2 truncate")}>
-							{title && title.trim().length > 0 ? (
-								title
-							) : (
-								<Loader2 className={cn(loaderSize, "animate-spin mx-auto")} />
-							)}
-						</span>
+						<div
+							ref={containerRef}
+							className="max-w-full w-full px-6 text-center"
+						>
+							<span
+								ref={contentRef}
+								className={cn(
+									textSize,
+									"font-medium whitespace-nowrap inline-block",
+								)}
+								style={{ fontSize: fontSizePx ? `${fontSizePx}px` : undefined }}
+							>
+								{title && title.trim().length > 0 ? (
+									title
+								) : (
+									<Loader2 className={cn(loaderSize, "animate-spin mx-auto")} />
+								)}
+							</span>
+						</div>
 					</span>
 
 					<CalendarDays
 						className={cn(
 							"absolute inset-0 m-auto transition-all duration-200",
-							"size-4",
+							"size-4 sm:size-5",
 							isHoveringDate && !isTodayDisabled
 								? "opacity-100 scale-100"
 								: "opacity-0 scale-75",
 						)}
 					/>
-					{typeof visibleEventCount === "number" && visibleEventCount > 0 && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<span
-									className={cn(
-										"absolute top-1 right-2",
-										"inline-flex items-center gap-1 h-5 px-1.5",
-										"rounded-theme bg-muted/60 text-foreground/80",
-										"text-[0.625rem] leading-none font-mono tabular-nums",
-										"border border-border/50 shadow-sm",
-									)}
-									onClickCapture={(e) => {
-										e.stopPropagation();
-										e.preventDefault();
-									}}
-								>
-									<CalendarRange className="h-3 w-3 opacity-80" />
-									<span>
-										{visibleEventCount > 99 ? "99+" : visibleEventCount}
-									</span>
-								</span>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p className="text-xs">
-									{visibleEventCount > 99 ? "99+" : visibleEventCount}{" "}
-									{i18n.getMessage("calendar_events", isLocalized)}
-								</p>
-							</TooltipContent>
-						</Tooltip>
-					)}
+					<EventCountBadgePortal
+						anchorRef={anchorRef}
+						count={visibleEventCount}
+						isLocalized={isLocalized}
+					/>
 				</Button>
 			</TooltipTrigger>
 			<TooltipContent>

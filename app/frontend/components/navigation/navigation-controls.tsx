@@ -49,10 +49,10 @@ export const NavigationControls = React.memo(function NavigationControls({
 
 	const prevButton = (
 		<DockIcon
-			size={isSmall ? 28 : 38}
+			size={isSmall ? 26 : 38}
 			widthScale={1.4}
 			paddingPx={0}
-			magnification={isSmall ? 36 : 48}
+			magnification={isSmall ? 34 : 48}
 			className="transition-colors"
 			{...prevHoldHandlers}
 		>
@@ -81,10 +81,10 @@ export const NavigationControls = React.memo(function NavigationControls({
 
 	const nextButton = (
 		<DockIcon
-			size={isSmall ? 28 : 38}
+			size={isSmall ? 26 : 38}
 			widthScale={1.4}
 			paddingPx={0}
-			magnification={isSmall ? 36 : 48}
+			magnification={isSmall ? 34 : 48}
 			className="transition-colors"
 			{...nextHoldHandlers}
 		>

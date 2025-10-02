@@ -36,14 +36,14 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 									variant: isDocumentsActive ? "default" : "ghost",
 									size: "icon",
 								}),
-								"size-9 rounded-full transition-all duration-200",
+								"size-9 sm:size-10 rounded-full transition-all duration-200",
 								isDocumentsActive && "shadow-lg",
 								className,
 							)}
 							data-slot="sidebar-menu-button"
 							data-active={isDocumentsActive}
 						>
-							<FileText className="size-4" />
+							<FileText className="size-4 sm:size-5" />
 						</Link>
 					</TooltipTrigger>
 					<TooltipContent>
@@ -63,14 +63,14 @@ export const NavigationLinks = React.memo(function NavigationLinks({
 									variant: isDashboardActive ? "default" : "ghost",
 									size: "icon",
 								}),
-								"size-9 rounded-full transition-all duration-200",
+								"size-9 sm:size-10 rounded-full transition-all duration-200",
 								isDashboardActive && "shadow-lg",
 								className,
 							)}
 							data-slot="sidebar-menu-button"
 							data-active={isDashboardActive}
 						>
-							<BarChart3 className="size-4" />
+							<BarChart3 className="size-4 sm:size-5" />
 						</Link>
 					</TooltipTrigger>
 					<TooltipContent>

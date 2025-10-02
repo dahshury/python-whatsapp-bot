@@ -33,6 +33,18 @@ export class InMemoryDataSource implements IDataSource {
 		}
 	}
 
+	/**
+	 * Replace the entire dataset and columns in-place without changing the instance.
+	 * This is used to keep grid instances stable across context changes (e.g., customer switch).
+	 */
+	public reset(columns: IColumnDefinition[], rows: unknown[][]): void {
+		this.columns = columns ? [...columns] : [];
+		this.columnCount = this.columns.length;
+		this.data = Array.isArray(rows) ? rows.map((r) => [...r]) : [];
+		this.rowCount = this.data.length;
+		this.deletedRows.clear();
+	}
+
 	private initializeDefaultColumns(): void {
 		this.columns = [
 			{

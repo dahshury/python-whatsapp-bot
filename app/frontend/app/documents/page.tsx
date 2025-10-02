@@ -134,12 +134,24 @@ export default function DocumentsPage() {
 	}, []);
 
 	// Throttled preview updater to avoid re-rendering on every pointer move
+	// Defer setState outside of the current call stack to avoid scheduling
+	// updates during Excalidraw's internal update function (pinch/zoom, etc.)
 	const commitPreview = useCallback(() => {
 		try {
 			const pending = pendingPreviewRef.current;
 			if (!pending) return;
 			previewSigRef.current = pending.sig;
-			startTransition(() => setPreviewScene(pending.scene));
+			const scene = pending.scene;
+			const schedule = () => startTransition(() => setPreviewScene(scene));
+			try {
+				if (typeof requestAnimationFrame === "function") {
+					requestAnimationFrame(() => schedule());
+				} else {
+					setTimeout(() => schedule(), 0);
+				}
+			} catch {
+				setTimeout(() => schedule(), 0);
+			}
 			pendingPreviewRef.current = null;
 		} catch {}
 	}, []);
@@ -472,7 +484,6 @@ export default function DocumentsPage() {
 							{Grid && (
 								<FullscreenProvider>
 									<Grid
-										key={`customer-grid-${selectedWaId || "none"}`}
 										showThemeToggle={false}
 										fullWidth={true}
 										theme={gridTheme}
@@ -546,7 +557,6 @@ export default function DocumentsPage() {
 								<div className="border rounded-md overflow-hidden bg-background">
 									<FullscreenProvider>
 										<Grid
-											key={`customer-grid-fs-${selectedWaId || "none"}`}
 											showThemeToggle={false}
 											fullWidth={true}
 											theme={gridTheme}
@@ -640,7 +650,7 @@ export default function DocumentsPage() {
 						<Button
 							variant="secondary"
 							size="icon"
-							className="absolute bottom-2 right-2 z-[100] h-8 w-8 shadow"
+							className="absolute bottom-2 right-2 z-[100] h-10 w-10 shadow"
 							style={{
 								bottom: "max(0.5rem, env(safe-area-inset-bottom))",
 								right: "max(0.5rem, env(safe-area-inset-right))",
@@ -649,9 +659,9 @@ export default function DocumentsPage() {
 							onClick={isFullscreen ? exitFullscreen : enterFullscreen}
 						>
 							{!isFullscreen ? (
-								<Maximize2 className="h-4 w-4" />
+								<Maximize2 className="h-5 w-5" />
 							) : (
-								<Minimize2 className="h-4 w-4" />
+								<Minimize2 className="h-5 w-5" />
 							)}
 						</Button>
 					</div>

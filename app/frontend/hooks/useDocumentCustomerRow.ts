@@ -34,6 +34,7 @@ export function useDocumentCustomerRow(
 	const [customerError, setCustomerError] = useState<string | null>(null);
 	const [customerDataSource, setCustomerDataSource] =
 		useState<InMemoryDataSource | null>(null);
+	const customerDataSourceRef = useRef<InMemoryDataSource | null>(null);
 	const customerProviderRef = useRef<DataProvider | null>(null);
 	const [isCustomerDataComplete, setIsCustomerDataComplete] =
 		useState<boolean>(false);
@@ -625,38 +626,60 @@ export function useDocumentCustomerRow(
 	// Load customer row when waId changes (WS-first with fallback; cached + abortable)
 	useEffect(() => {
 		if (!waId) {
-			setCustomerDataSource(null);
-			setIsCustomerDataComplete(false);
-			return;
-		}
-		if (waId === DEFAULT_DOCUMENT_WA_ID) {
-			if (isNewCustomerModeRef.current) {
+			// Keep stable data source instance; reset to empty state
+			const rows: unknown[][] = [["", null, ""]];
+			if (!customerDataSourceRef.current) {
 				const ds = new InMemoryDataSource(
 					1,
 					customerColumns.length,
 					customerColumns,
-					[["", null, ""]],
+					rows,
 				);
+				customerDataSourceRef.current = ds;
 				setCustomerDataSource(ds);
-				setIsCustomerDataComplete(false);
-				setCustomerLoading(false);
-				setCustomerError(null);
-				return;
+			} else {
+				try {
+					customerDataSourceRef.current.reset(customerColumns, rows);
+					(
+						customerProviderRef.current as unknown as {
+							refresh?: () => Promise<void> | void;
+						}
+					)?.refresh?.();
+				} catch {}
 			}
-			const ds = new InMemoryDataSource(
-				1,
-				customerColumns.length,
-				customerColumns,
-				[
-					[
-						i18n.getMessage("default_contact", isLocalized),
-						null,
-						"+0000000000000",
-					],
-				],
-			);
-			setCustomerDataSource(ds);
-			setIsCustomerDataComplete(true);
+			setIsCustomerDataComplete(false);
+			return;
+		}
+		if (waId === DEFAULT_DOCUMENT_WA_ID) {
+			const rows: unknown[][] = isNewCustomerModeRef.current
+				? [["", null, ""]]
+				: [
+						[
+							i18n.getMessage("default_contact", isLocalized),
+							null,
+							"+0000000000000",
+						],
+					];
+			if (!customerDataSourceRef.current) {
+				const ds = new InMemoryDataSource(
+					1,
+					customerColumns.length,
+					customerColumns,
+					rows,
+				);
+				customerDataSourceRef.current = ds;
+				setCustomerDataSource(ds);
+			} else {
+				try {
+					customerDataSourceRef.current.reset(customerColumns, rows);
+					(
+						customerProviderRef.current as unknown as {
+							refresh?: () => Promise<void> | void;
+						}
+					)?.refresh?.();
+				} catch {}
+			}
+			setIsCustomerDataComplete(!isNewCustomerModeRef.current);
 			setCustomerLoading(false);
 			setCustomerError(null);
 			return;
@@ -705,13 +728,25 @@ export function useDocumentCustomerRow(
 				normalizedAge,
 				waId || "",
 			];
-			const ds = new InMemoryDataSource(
-				1,
-				customerColumns.length,
-				customerColumns,
-				[initialRow],
-			);
-			setCustomerDataSource(ds);
+			if (!customerDataSourceRef.current) {
+				const ds = new InMemoryDataSource(
+					1,
+					customerColumns.length,
+					customerColumns,
+					[initialRow],
+				);
+				customerDataSourceRef.current = ds;
+				setCustomerDataSource(ds);
+			} else {
+				try {
+					customerDataSourceRef.current.reset(customerColumns, [initialRow]);
+					(
+						customerProviderRef.current as unknown as {
+							refresh?: () => Promise<void> | void;
+						}
+					)?.refresh?.();
+				} catch {}
+			}
 			try {
 				const hasName = String(initialRow[0] || "").trim().length > 0;
 				const ageVal = (initialRow[1] as number | null) ?? null;

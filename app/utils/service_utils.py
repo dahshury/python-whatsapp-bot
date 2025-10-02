@@ -128,9 +128,11 @@ def find_nearest_time_slot(target_slot, available_slots):
     except (ValueError, Exception):
         return None
 
-    # Get current time
+    # Get current time (timezone-aware) and prepare minute comparator
     now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
     current_time = now.time()
+    current_minutes = current_time.hour * 60 + current_time.minute
+    slot_duration_minutes = max(60, 2 * 60)
 
     closest_slot = None
     min_difference = float('inf')
@@ -140,9 +142,11 @@ def find_nearest_time_slot(target_slot, available_slots):
             # Use our robust parse_time function
             slot_24h = parse_time(slot, to_24h=True)
             slot_time = datetime.datetime.strptime(slot_24h, "%H:%M")
-            
-            # Check if this slot is in the future
-            if slot_time.time() <= current_time:
+            # Determine if this slot has completely ended relative to now
+            slot_start_minutes = slot_time.hour * 60 + slot_time.minute
+            slot_end_minutes = slot_start_minutes + slot_duration_minutes
+            # Skip only if the slot has fully ended
+            if slot_end_minutes <= current_minutes:
                 continue
 
             # Calculate difference (in minutes)
@@ -1068,13 +1072,14 @@ def validate_reservation_type(reservation_type, ar=False):
     except (ValueError, TypeError):
         return False, format_response(False, message=get_message("invalid_reservation_type", ar)), None
 
-def filter_past_time_slots(time_slots_dict, current_time=None):
+def filter_past_time_slots(time_slots_dict, current_time=None, slot_duration_hours: int = 2):
     """
-    Filter out time slots that have already passed from a dictionary of time slots.
+    Filter out time slots that have completely ended from a dictionary of time slots.
     
     Parameters:
         time_slots_dict (dict): Dictionary of time slots
         current_time (datetime.time, optional): Current time for comparison. If None, uses the current time.
+        slot_duration_hours (int): Duration of each slot in hours (default: 2)
         
     Returns:
         dict: Dictionary of time slots with past slots removed
@@ -1093,8 +1098,14 @@ def filter_past_time_slots(time_slots_dict, current_time=None):
             # Use our robust parse_time function to handle various formats
             parsed_time_24h = parse_time(time_slot, to_24h=True)
             time_obj = datetime.datetime.strptime(parsed_time_24h, "%H:%M").time()
-            
-            if time_obj > current_time:
+            # Compute slot end time by adding slot_duration_hours
+            slot_start_dt = datetime.datetime(2000, 1, 1, time_obj.hour, time_obj.minute)
+            slot_end_dt = slot_start_dt + datetime.timedelta(hours=max(1, int(slot_duration_hours)))
+            slot_end_time = slot_end_dt.time()
+
+            # Keep slots that have NOT completely ended yet
+            # i.e., current_time is strictly before the slot end
+            if current_time < slot_end_time:
                 filtered_slots[time_slot] = count
         except (ValueError, Exception) as e:
             # If we can't parse the time, log error but keep the slot to be safe
@@ -1147,8 +1158,14 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
                 # Convert time to datetime objects for comparison
                 time_obj = datetime.datetime.strptime(parsed_time_str, "%H:%M").time()
                 current_time = now.time()
-                
-                if time_obj <= current_time:
+
+                # Allow reservations within the current in-progress slot window
+                start_dt = datetime.datetime(2000, 1, 1, time_obj.hour, time_obj.minute)
+                slot_end_dt = start_dt + datetime.timedelta(hours=2)  # default 2-hour slots
+                slot_end_time = slot_end_dt.time()
+
+                # If the slot has completely ended, treat as past; otherwise allow
+                if current_time >= slot_end_time:
                     return False, get_message("cannot_reserve_past"), parsed_date_str, parsed_time_str
         
         return True, None, parsed_date_str, parsed_time_str

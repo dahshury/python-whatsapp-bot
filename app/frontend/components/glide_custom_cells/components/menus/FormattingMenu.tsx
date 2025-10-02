@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
+import { Z_INDEX } from "@/lib/z-index";
 import { useGridPortal } from "../contexts/GridPortalContext";
 
 interface FormatOption {
@@ -226,7 +227,7 @@ export function FormattingMenu({
 				backdropFilter: "blur(8px)",
 				minWidth: "144px",
 				maxWidth: "192px",
-				zIndex: 300,
+				zIndex: Number((Z_INDEX as Record<string, number>).GRID_MENU) + 1,
 				padding: "3px 0",
 				animation: "submenuSlideIn 150ms ease-out",
 				transformOrigin: position.x < 500 ? "top left" : "top right",

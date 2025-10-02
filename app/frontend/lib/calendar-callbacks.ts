@@ -170,8 +170,31 @@ export function createCalendarCallbacks(
 					startStr = `${dateOnly}T${targetSlotTimes.slotMinTime}`;
 				}
 				const startDate = new Date(startStr);
-				// If not in free roam and the clicked time is in the past, do not open the editor
-				if (!freeRoam && startDate.getTime() < Date.now()) return;
+				// If not in free roam and the clicked time is in the past, allow if within current in-progress slot
+				if (!freeRoam && startDate.getTime() < Date.now()) {
+					try {
+						const timePart = (startStr.split("T")[1] || targetSlotTimes.slotMinTime) as string;
+						const [ch, cm] = timePart
+							.split(":")
+							.map((v) => Number.parseInt(String(v || "0"), 10));
+						const clickedMinutes = (Number.isFinite(ch) ? (ch as number) : 0) * 60 + (Number.isFinite(cm) ? (cm as number) : 0);
+						const [minH, minM] = targetSlotTimes.slotMinTime
+							.split(":")
+							.map((v) => Number.parseInt(String(v || "0"), 10));
+						const minMinutes = (Number.isFinite(minH) ? (minH as number) : 0) * 60 + (Number.isFinite(minM) ? (minM as number) : 0);
+						const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
+						const rel = Math.max(0, clickedMinutes - minMinutes);
+						const slotIndex = Math.floor(rel / duration);
+						const baseMinutes = minMinutes + slotIndex * duration;
+						const endMinutes = baseMinutes + duration;
+						const endH = String(Math.floor(endMinutes / 60)).padStart(2, "0");
+						const endM = String(endMinutes % 60).padStart(2, "0");
+						const slotEnd = new Date(`${dateOnly}T${endH}:${endM}:00`).getTime();
+						if (Date.now() >= slotEnd) return; // fully ended
+					} catch {
+						return; // conservative: block if computation fails
+					}
+				}
 				const endDate = new Date(
 					startDate.getTime() + SLOT_DURATION_HOURS * 60 * 60 * 1000,
 				);
@@ -208,10 +231,35 @@ export function createCalendarCallbacks(
 				if (handlers.isVacationDate(startDateOnly as string)) return;
 			}
 
-			// Prevent past selection when not in free roam
+			// Prevent past selection when not in free roam, but allow if within the current in-progress slot
 			if (!freeRoam && startStr) {
 				const start = new Date(startStr);
-				if (start.getTime() < Date.now()) return;
+				if (start.getTime() < Date.now()) {
+					try {
+						const dateOnly = startStr.split("T")[0] as string;
+						const slotTimes = getSlotTimes(new Date(`${dateOnly}T12:00:00`), freeRoam, info?.view?.type || "");
+						const timePart = (startStr.split("T")[1] || slotTimes.slotMinTime) as string;
+						const [ch, cm] = timePart
+							.split(":")
+							.map((v) => Number.parseInt(String(v || "0"), 10));
+						const clickedMinutes = (Number.isFinite(ch) ? (ch as number) : 0) * 60 + (Number.isFinite(cm) ? (cm as number) : 0);
+						const [minH, minM] = slotTimes.slotMinTime
+							.split(":")
+							.map((v) => Number.parseInt(String(v || "0"), 10));
+						const minMinutes = (Number.isFinite(minH) ? (minH as number) : 0) * 60 + (Number.isFinite(minM) ? (minM as number) : 0);
+						const duration = Math.max(60, (SLOT_DURATION_HOURS || 2) * 60);
+						const rel = Math.max(0, clickedMinutes - minMinutes);
+						const slotIndex = Math.floor(rel / duration);
+						const baseMinutes = minMinutes + slotIndex * duration;
+						const endMinutes = baseMinutes + duration;
+						const endH = String(Math.floor(endMinutes / 60)).padStart(2, "0");
+						const endM = String(endMinutes % 60).padStart(2, "0");
+						const slotEnd = new Date(`${dateOnly}T${endH}:${endM}:00`).getTime();
+						if (Date.now() >= slotEnd) return; // fully ended
+					} catch {
+						return; // conservative: block if computation fails
+					}
+				}
 			}
 
 			handlers.openEditor({ start: startStr || "", end: endStr });

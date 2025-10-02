@@ -64,12 +64,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	// Removed old hover combobox logic for Documents sidebar
 	// placeholder state kept to avoid larger refactor; may be removed later
 
-	// Documents page: force-open sidebar (no toggle in header) using effect (avoid setState during render)
+	// Documents page: do not force-open; allow header trigger to control
 	useEffect(() => {
 		if (!isDocumentsPage) return;
-		setOpen(true);
-		setOpenMobile(true);
-	}, [isDocumentsPage, setOpen, setOpenMobile]);
+		// Keep current state; mirror desktop open to mobile on first enter only
+		try {
+			if (openMobile === false && open === true) {
+				setOpenMobile(true);
+			}
+		} catch {}
+	}, [isDocumentsPage, open, openMobile, setOpenMobile]);
 
 	// Mount guard to avoid hydration mismatches for client-only state
 	const [mounted, setMounted] = useState(false);
@@ -409,16 +413,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 	// Auto-open sidebar when switching to chat tab or when hydrated with chat tab active
 	useEffect(() => {
+		// Respect manual toggling on Documents page; don't override desktop state here
+		if (isDocumentsPage) return;
 		if (isInitialized) {
 			if (activeTab === "chat") {
-				// Set the chat sidebar as open
 				setOpenState(true);
 			} else {
-				// Set as closed when not on chat tab
 				setOpenState(false);
 			}
 		}
-	}, [activeTab, isInitialized, setOpenState]);
+	}, [isDocumentsPage, activeTab, isInitialized, setOpenState]);
 
 	// Listen for chat open requests from calendar
 	useEffect(() => {

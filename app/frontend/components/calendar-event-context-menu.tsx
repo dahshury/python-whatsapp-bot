@@ -4,12 +4,10 @@ import {
 	Calendar,
 	CalendarX,
 	Clock,
-	Edit,
-	Eye,
 	FileText,
 	MessageCircle,
-	User,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -35,8 +33,6 @@ export function CalendarEventContextMenu({
 	position,
 	onClose,
 	onCancelReservation,
-	onEditReservation,
-	onViewDetails,
 	onOpenConversation,
 	onOpenDocument,
 }: CalendarEventContextMenuProps) {
@@ -75,16 +71,16 @@ export function CalendarEventContextMenu({
 		};
 	}, [event, position, onClose]);
 
-	if (!mounted || !event || !position) {
+	if (!mounted) {
 		return null;
 	}
 
-	const isCancelled = event.extendedProps?.cancelled;
-	const isConversation = event.extendedProps?.type === 2;
-	const isReservation = event.extendedProps?.type !== 2;
-	const isEditable = event.editable !== false;
-	const eventDate = new Date(event.start);
-	const isPast = eventDate < new Date();
+	// Precompute flags safely (guarded by optional chaining)
+	const isConversation = event?.extendedProps?.type === 2;
+	const isReservation = event?.extendedProps?.type !== 2;
+	const isCancelled = Boolean(event?.extendedProps?.cancelled);
+	// const isEditable = event?.editable !== false;
+	const isPast = event ? new Date(event.start) < new Date() : false;
 
 	const formatEventTime = (dateStr: string) => {
 		const date = new Date(dateStr);
@@ -104,160 +100,180 @@ export function CalendarEventContextMenu({
 		});
 	};
 
-	const menuContent = (
-		<div
-			className="z-50 min-w-[8rem] max-w-64 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-			style={{
-				position: "fixed",
-				left: position.x,
-				top: position.y,
-				zIndex: Z_INDEX.GRID_MENU,
-			}}
-			onClick={(e) => e.stopPropagation()}
-			onKeyDown={(e) => {
-				// Handle keyboard navigation for accessibility
-				if (e.key === "Escape") {
-					e.stopPropagation();
-				}
-			}}
-			role="menu"
-		>
-			{/* Event Info Header */}
-			<div className="flex items-center gap-2 py-2 px-2 font-semibold text-foreground">
-				{isConversation ? (
-					<MessageCircle className="h-4 w-4 text-orange-500" />
-				) : (
-					<Calendar className="h-4 w-4 text-blue-500" />
-				)}
-				<div className="flex-1 min-w-0">
-					<div className="font-medium truncate">{event.title}</div>
-					<div className="text-xs text-muted-foreground flex items-center gap-1">
-						<Clock className="h-3 w-3" />
-						{formatEventDate(event.start)} • {formatEventTime(event.start)}
-					</div>
-				</div>
-			</div>
-
-			<div className="-mx-1 my-1 h-px bg-border" />
-
-			{/* Actions for Reservations */}
-			{isReservation && (
+	return createPortal(
+		<AnimatePresence>
+			{event && position && (
 				<>
-					{/* View Details */}
-					<div
-						className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-						onClick={() => {
-							onViewDetails?.(event.id);
-							onClose();
-						}}
-						role="menuitem"
-						tabIndex={0}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault();
-								onViewDetails?.(event.id);
-								onClose();
-							}
-						}}
-					>
-						<Eye className="h-4 w-4" />
-						{isLocalized ? "عرض التفاصيل" : "View Details"}
-					</div>
+					{/* Outside click overlay */}
+					<motion.div
+						key="context-menu-overlay"
+						className="fixed inset-0"
+						style={{ zIndex: Z_INDEX.GRID_MENU - 1, background: "transparent" }}
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						exit={{ opacity: 0 }}
+						transition={{ duration: 0.1 }}
+						onClick={() => onClose()}
+					/>
 
-					{/* Edit Reservation - Only if editable and not past */}
-					{isEditable && !isPast && !isCancelled && (
-						<div
-							className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-							onClick={() => {
-								onEditReservation?.(event.id);
-								onClose();
-							}}
-							role="menuitem"
-							tabIndex={0}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" || e.key === " ") {
-									e.preventDefault();
-									onEditReservation?.(event.id);
-									onClose();
-								}
-							}}
-						>
-							<Edit className="h-4 w-4" />
-							{isLocalized ? "تعديل الحجز" : "Edit Reservation"}
+					{/* Animated context menu */}
+					<motion.div
+						key="context-menu"
+						className="z-50 min-w-[8rem] max-w-64 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+						style={{
+							position: "fixed",
+							left: position.x,
+							top: position.y,
+							zIndex: Z_INDEX.GRID_MENU,
+							transformOrigin: "top left",
+						}}
+						onClick={(e) => e.stopPropagation()}
+						onKeyDown={(e) => {
+							if (e.key === "Escape") e.stopPropagation();
+						}}
+						role="menu"
+						initial={{ opacity: 0, scale: 0.96, y: 6 }}
+						animate={{ opacity: 1, scale: 1, y: 0 }}
+						exit={{ opacity: 0, scale: 0.98, y: 2 }}
+						transition={{ duration: 0.14, ease: "easeOut" }}
+					>
+						<div className="flex items-center gap-2 py-2 px-2 font-semibold text-foreground">
+							{isConversation ? (
+								<MessageCircle className="h-4 w-4 text-orange-500" />
+							) : (
+								<Calendar className="h-4 w-4 text-blue-500" />
+							)}
+							<div className="flex-1 min-w-0">
+								<div className="font-medium truncate">{event.title}</div>
+								<div className="text-xs text-muted-foreground flex items-center gap-1">
+									<Clock className="h-3 w-3" />
+									{formatEventDate(event.start)} •{" "}
+									{formatEventTime(event.start)}
+								</div>
+							</div>
 						</div>
-					)}
 
-					{/* Open Customer Document */}
-					<div
-						className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-						onClick={() => {
-							try {
-								const wa = String(
-									(
-										event as {
-											extendedProps?: { waId?: string; wa_id?: string };
-										}
-									).extendedProps?.waId ||
-										(
-											event as {
-												extendedProps?: { waId?: string; wa_id?: string };
+						<div className="-mx-1 my-1 h-px bg-border" />
+
+						{isReservation && (
+							<>
+								<div
+									className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
+									onClick={() => {
+										try {
+											const wa = String(
+												(
+													event as {
+														extendedProps?: { waId?: string; wa_id?: string };
+													}
+												).extendedProps?.waId ||
+													(
+														event as {
+															extendedProps?: { waId?: string; wa_id?: string };
+														}
+													).extendedProps?.wa_id ||
+													event.id ||
+													"",
+											);
+											if (onOpenDocument) {
+												onOpenDocument(wa);
+											} else if (typeof window !== "undefined") {
+												setSelectedDocumentWaId(wa || "");
+												router.push("/documents");
 											}
-										).extendedProps?.wa_id ||
-										event.id ||
-										"",
-								);
-								if (onOpenDocument) {
-									onOpenDocument(wa);
-								} else if (typeof window !== "undefined") {
-									setSelectedDocumentWaId(wa || "");
-									router.push("/documents");
-								}
-							} catch {}
-							onClose();
-						}}
-						role="menuitem"
-						tabIndex={0}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault();
-								try {
-									const wa = String(
-										(
-											event as {
-												extendedProps?: { waId?: string; wa_id?: string };
-											}
-										).extendedProps?.waId ||
-											(
-												event as {
-													extendedProps?: { waId?: string; wa_id?: string };
+										} catch {}
+										onClose();
+									}}
+									role="menuitem"
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											try {
+												const wa = String(
+													(
+														event as {
+															extendedProps?: { waId?: string; wa_id?: string };
+														}
+													).extendedProps?.waId ||
+														(
+															event as {
+																extendedProps?: {
+																	waId?: string;
+																	wa_id?: string;
+																};
+															}
+														).extendedProps?.wa_id ||
+														event.id ||
+														"",
+												);
+												if (onOpenDocument) {
+													onOpenDocument(wa);
+												} else if (typeof window !== "undefined") {
+													setSelectedDocumentWaId(wa || "");
+													router.push("/documents");
 												}
-											).extendedProps?.wa_id ||
-											event.id ||
-											"",
-									);
-									if (onOpenDocument) {
-										onOpenDocument(wa);
-									} else if (typeof window !== "undefined") {
-										setSelectedDocumentWaId(wa || "");
-										router.push("/documents");
-									}
-								} catch {}
-								onClose();
-							}
-						}}
-					>
-						<FileText className="h-4 w-4" />
-						{i18n.getMessage("open_customer_document", isLocalized)}
-					</div>
+											} catch {}
+											onClose();
+										}
+									}}
+								>
+									<FileText className="h-4 w-4" />
+									{i18n.getMessage("open_customer_document", isLocalized)}
+								</div>
 
-					{/* Cancel Reservation - Only if not already cancelled and not past */}
-					{!isCancelled && !isPast && (
-						<>
-							<div className="-mx-1 my-1 h-px bg-border" />
+								{!isCancelled && !isPast && (
+									<>
+										<div className="-mx-1 my-1 h-px bg-border" />
+										<div
+											className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 gap-2 text-red-600"
+											onClick={() => {
+												onCancelReservation?.(event.id);
+												onClose();
+											}}
+											role="menuitem"
+											tabIndex={0}
+											onKeyDown={(e) => {
+												if (e.key === "Enter" || e.key === " ") {
+													e.preventDefault();
+													onCancelReservation?.(event.id);
+													onClose();
+												}
+											}}
+										>
+											<CalendarX className="h-4 w-4" />
+											{isLocalized ? "إلغاء الحجز" : "Cancel Reservation"}
+										</div>
+									</>
+								)}
+
+								{isCancelled && (
+									<>
+										<div className="-mx-1 my-1 h-px bg-border" />
+										<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+											<CalendarX className="h-4 w-4" />
+											{isLocalized ? "محجوز ملغي" : "Cancelled Reservation"}
+										</div>
+									</>
+								)}
+
+								{isPast && !isCancelled && (
+									<>
+										<div className="-mx-1 my-1 h-px bg-border" />
+										<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+											<Clock className="h-4 w-4" />
+											{isLocalized ? "حجز سابق" : "Past Reservation"}
+										</div>
+									</>
+								)}
+							</>
+						)}
+
+						{isConversation && (
 							<div
-								className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 gap-2 text-red-600"
+								className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
 								onClick={() => {
-									onCancelReservation?.(event.id);
+									onOpenConversation?.(event.id);
 									onClose();
 								}}
 								role="menuitem"
@@ -265,87 +281,19 @@ export function CalendarEventContextMenu({
 								onKeyDown={(e) => {
 									if (e.key === "Enter" || e.key === " ") {
 										e.preventDefault();
-										onCancelReservation?.(event.id);
+										onOpenConversation?.(event.id);
 										onClose();
 									}
 								}}
 							>
-								<CalendarX className="h-4 w-4" />
-								{isLocalized ? "إلغاء الحجز" : "Cancel Reservation"}
+								<MessageCircle className="h-4 w-4" />
+								{isLocalized ? "فتح المحادثة" : "Open Conversation"}
 							</div>
-						</>
-					)}
-
-					{/* Show status if cancelled */}
-					{isCancelled && (
-						<>
-							<div className="-mx-1 my-1 h-px bg-border" />
-							<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-								<CalendarX className="h-4 w-4" />
-								{isLocalized ? "محجوز ملغي" : "Cancelled Reservation"}
-							</div>
-						</>
-					)}
-
-					{/* Show past status */}
-					{isPast && !isCancelled && (
-						<>
-							<div className="-mx-1 my-1 h-px bg-border" />
-							<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-								<Clock className="h-4 w-4" />
-								{isLocalized ? "حجز سابق" : "Past Reservation"}
-							</div>
-						</>
-					)}
+						)}
+					</motion.div>
 				</>
 			)}
-
-			{/* Actions for Conversations */}
-			{isConversation && (
-				<>
-					<div
-						className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-						onClick={() => {
-							onOpenConversation?.(event.id);
-							onClose();
-						}}
-						role="menuitem"
-						tabIndex={0}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault();
-								onOpenConversation?.(event.id);
-								onClose();
-							}
-						}}
-					>
-						<MessageCircle className="h-4 w-4" />
-						{isLocalized ? "فتح المحادثة" : "Open Conversation"}
-					</div>
-
-					<div
-						className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-						onClick={() => {
-							onViewDetails?.(event.id);
-							onClose();
-						}}
-						role="menuitem"
-						tabIndex={0}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") {
-								e.preventDefault();
-								onViewDetails?.(event.id);
-								onClose();
-							}
-						}}
-					>
-						<User className="h-4 w-4" />
-						{isLocalized ? "عرض تفاصيل العميل" : "View Customer Details"}
-					</div>
-				</>
-			)}
-		</div>
+		</AnimatePresence>,
+		document.body,
 	);
-
-	return createPortal(menuContent, document.body);
 }
