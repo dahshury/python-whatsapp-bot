@@ -93,6 +93,22 @@ const config: Config = {
 						height: "0",
 					},
 				},
+				"collapsible-down": {
+					from: {
+						height: "0",
+					},
+					to: {
+						height: "var(--radix-collapsible-content-height)",
+					},
+				},
+				"collapsible-up": {
+					from: {
+						height: "var(--radix-collapsible-content-height)",
+					},
+					to: {
+						height: "0",
+					},
+				},
 				"slide-up-fade": {
 					"0%": {
 						opacity: "0",
@@ -117,11 +133,19 @@ const config: Config = {
 							"translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0))",
 					},
 				},
+				loading: {
+					"0%": { opacity: "0.2" },
+					"20%": { opacity: "1" },
+					"100%": { opacity: "0.2" },
+				},
 			},
 			animation: {
 				"accordion-down": "accordion-down 0.2s ease-out",
 				"accordion-up": "accordion-up 0.2s ease-out",
+				"collapsible-down": "collapsible-down 0.2s ease-out",
+				"collapsible-up": "collapsible-up 0.2s ease-out",
 				"slide-up-fade": "slide-up-fade 0.4s ease-out",
+				loading: "loading 1.4s linear infinite",
 			},
 		},
 	},

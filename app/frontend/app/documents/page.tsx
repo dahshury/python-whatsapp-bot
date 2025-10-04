@@ -60,6 +60,7 @@ export default function DocumentsPage() {
 		selectedWaId,
 		{
 			enabled: true,
+			isUnlocked: isUnlockReady,
 		},
 	);
 
@@ -209,6 +210,7 @@ export default function DocumentsPage() {
 					(els || []) as unknown[],
 					(app || {}) as unknown as Record<string, unknown>,
 					(files || {}) as Record<string, unknown>,
+					sig,
 				);
 			} catch {}
 		},
@@ -312,6 +314,42 @@ export default function DocumentsPage() {
 		};
 	}, [scheduleExcalRefresh]);
 
+	// Refresh canvas when unlock/loading state changes to ensure proper sizing
+	const canvasStateKey = `${isUnlockReady ? "unlocked" : "locked"}-${loading ? "loading" : "ready"}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: canvasStateKey changes are intentional
+	useEffect(() => {
+		const doRefresh = () => {
+			try {
+				const api = excalApiRef.current as unknown as {
+					refresh?: () => void;
+				} | null;
+				// Dispatch resize events to trigger Excalidraw's internal resize handlers
+				try {
+					window.dispatchEvent(new Event("resize"));
+				} catch {}
+				requestAnimationFrame(() => {
+					api?.refresh?.();
+					try {
+						window.dispatchEvent(new Event("resize"));
+					} catch {}
+				});
+				setTimeout(() => {
+					api?.refresh?.();
+					try {
+						window.dispatchEvent(new Event("resize"));
+					} catch {}
+				}, 100);
+				setTimeout(() => {
+					api?.refresh?.();
+					try {
+						window.dispatchEvent(new Event("resize"));
+					} catch {}
+				}, 250);
+			} catch {}
+		};
+		doRefresh();
+	}, [canvasStateKey]);
+
 	// Keep preview in sync when a scene is applied (load or switch)
 	useEffect(() => {
 		const onSceneApplied = (ev: Event) => {
@@ -341,6 +379,12 @@ export default function DocumentsPage() {
 					previewSigRef.current = sig;
 					setPreviewScene(sanitized);
 				}
+				// Refresh canvas and dispatch resize after scene update
+				scheduleExcalRefresh();
+				try {
+					window.dispatchEvent(new Event("resize"));
+					setTimeout(() => window.dispatchEvent(new Event("resize")), 100);
+				} catch {}
 			} catch {}
 		};
 		window.addEventListener(
@@ -352,12 +396,12 @@ export default function DocumentsPage() {
 				"documents:sceneApplied",
 				onSceneApplied as EventListener,
 			);
-	}, [sanitizePreviewAppState, selectedWaId]);
+	}, [sanitizePreviewAppState, selectedWaId, scheduleExcalRefresh]);
 
-	// Reset preview when switching documents to avoid stale content
+	// When switching documents, keep existing preview until a new scene arrives
+	// This avoids flashing an empty scene between loads
 	useEffect(() => {
 		previewSigRef.current = null;
-		setPreviewScene(null);
 		void selectedWaId;
 	}, [selectedWaId]);
 

@@ -1,26 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DEFAULT_EXCALIDRAW_SCENE } from "@/lib/default-document";
 import {
 	computeSceneSignature,
 	normalizeForPersist,
 	stableStringify,
 	toSceneFromDoc,
 } from "@/lib/documents/scene-utils";
-
-const DOCUMENT_TTL_MS = 15_000;
-const docCache = new Map<
-	string,
-	{ data: Record<string, unknown>; ts: number }
->();
-// Legacy REST inflight tracking retained for reference; unused in WS-only path
-// const inflightMap = new Map<
-//     string,
-//     { controller: AbortController; promise: Promise<unknown> }
-// >();
-
-// Track recent fetch starts to dedupe back-to-back mounts (e.g., React StrictMode)
-// const lastFetchStartMs = new Map<string, number>();
 
 export type ExcalidrawAPI = {
 	updateScene: (scene: {
@@ -29,7 +16,6 @@ export type ExcalidrawAPI = {
 		files?: Record<string, unknown>;
 		commitToHistory?: boolean;
 	}) => void;
-	/** Optional resize/refresh hook exposed by Excalidraw */
 	refresh?: () => void;
 	getAppState?: () => Record<string, unknown>;
 	getSceneElementsIncludingDeleted?: () => unknown[];
@@ -38,24 +24,19 @@ export type ExcalidrawAPI = {
 
 export function useDocumentScene(
 	selectedWaId: string | null | undefined,
-	options?: { enabled?: boolean },
+	options?: { enabled?: boolean; isUnlocked?: boolean },
 ) {
 	const waId = (selectedWaId || "").trim();
-	const enabled =
-		options && typeof options.enabled === "boolean"
-			? Boolean(options.enabled)
-			: true;
+	const enabled = options?.enabled !== false;
+	const isUnlocked = options?.isUnlocked === true;
+
 	const [loading, setLoading] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [loadedVerified, setLoadedVerified] = useState<boolean>(false);
 	const [isDirty, setIsDirty] = useState<boolean>(false);
 
 	const excalidrawAPIRef = useRef<ExcalidrawAPI | null>(null);
-	const programmaticUpdates = useRef(0);
-	const loadSeqRef = useRef(0);
-	const savedSizeRef = useRef(0);
-	const lastSavedAtRef = useRef(0);
+	const currentWaIdRef = useRef<string>("");
 	const savedDigestRef = useRef<string | null>(null);
 	const currentDigestRef = useRef<string | null>(null);
 	const savedSignatureRef = useRef<string | null>(null);
@@ -66,10 +47,13 @@ export function useDocumentScene(
 		appState: Record<string, unknown>;
 		files: Record<string, unknown>;
 	} | null>(null);
+	const programmaticUpdates = useRef(0);
+	const lastSavedAtRef = useRef(0);
 	const inactivitySaveTimerRef = useRef<number | null>(null);
-	const lastSigComputeAtRef = useRef<number>(0);
 
-	// Guard state updates until the hook's component is actually mounted
+	// Pending scene for deferred apply when API mounts
+	const pendingSceneRef = useRef<Record<string, unknown> | null>(null);
+
 	const isMountedRef = useRef<boolean>(false);
 	useEffect(() => {
 		isMountedRef.current = true;
@@ -88,127 +72,135 @@ export function useDocumentScene(
 		}, 0);
 	}, []);
 
-	// Staged scene application to avoid refetch when Excalidraw API mounts
-	const pendingSceneRef = useRef<Record<string, unknown> | null>(null);
-	const pendingSeqRef = useRef<number>(0);
-
+	// Apply a scene to the canvas
 	const applyScene = useCallback(
-		(scene: Record<string, unknown>, seq: number) => {
+		(scene: Record<string, unknown>, forWaId: string) => {
+			console.log(
+				"🎨 [applyScene] forWaId:",
+				forWaId,
+				"current:",
+				currentWaIdRef.current,
+				"elements:",
+				((scene as { elements?: unknown[] }).elements || []).length,
+			);
+			// CRITICAL: Only apply if waId still matches
+			if (forWaId !== currentWaIdRef.current) {
+				console.log("⚠️ [applyScene] REJECTED: waId changed");
+				return;
+			}
+
 			try {
 				const persisted = normalizeForPersist(
 					(scene as { elements?: unknown[] }).elements || [],
 					(scene as { appState?: Record<string, unknown> }).appState || {},
 					(scene as { files?: Record<string, unknown> }).files || {},
 				);
+
 				const savedStr = stableStringify(persisted);
 				savedDigestRef.current = savedStr;
-				savedSizeRef.current = savedStr.length;
-				currentDigestRef.current = savedDigestRef.current;
+				currentDigestRef.current = savedStr;
+
+				const sig = computeSceneSignature(
+					(scene as { elements?: unknown[] }).elements || [],
+					(scene as { appState?: Record<string, unknown> }).appState || {},
+					(scene as { files?: Record<string, unknown> }).files || {},
+				);
+				savedSignatureRef.current = sig;
+				currentSignatureRef.current = sig;
+
 				runAfterMounted(() => {
 					setIsDirty(false);
 					isDirtyRef.current = false;
 				});
-				// Notify listeners (e.g., preview) that a new scene was applied
+
+				// Notify preview listener
 				try {
 					window.dispatchEvent(
 						new CustomEvent("documents:sceneApplied", {
-							detail: {
-								wa_id: waId,
-								scene: persisted,
-							},
+							detail: { wa_id: forWaId, scene: persisted },
 						}),
 					);
 				} catch {}
-				try {
-					const sig = computeSceneSignature(
-						(scene as { elements?: unknown[] }).elements as
-							| unknown[]
-							| undefined,
-						(scene as { appState?: Record<string, unknown> }).appState as
-							| Record<string, unknown>
-							| undefined,
-						(scene as { files?: Record<string, unknown> }).files as
-							| Record<string, unknown>
-							| undefined,
-					);
-					savedSignatureRef.current = sig;
-					currentSignatureRef.current = sig;
-				} catch {}
+
+				console.log("✅ [applyScene] applied successfully");
 			} catch {}
 
+			// Apply to Excalidraw API if mounted
 			const api = excalidrawAPIRef.current;
 			if (api?.updateScene) {
 				const doApply = () => {
 					programmaticUpdates.current += 1;
 					try {
 						api.updateScene({ ...scene, commitToHistory: false });
+						// Force canvas refresh after scene application to ensure it fills container
+						try {
+							const refreshApi = api as unknown as { refresh?: () => void };
+							// Multiple refresh calls at intervals to handle async rendering
+							requestAnimationFrame(() => {
+								refreshApi.refresh?.();
+								// Dispatch resize events to trigger Excalidraw's internal handlers
+								try {
+									window.dispatchEvent(new Event("resize"));
+								} catch {}
+								setTimeout(() => {
+									refreshApi.refresh?.();
+									try {
+										window.dispatchEvent(new Event("resize"));
+									} catch {}
+								}, 80);
+								setTimeout(() => {
+									refreshApi.refresh?.();
+									try {
+										window.dispatchEvent(new Event("resize"));
+									} catch {}
+								}, 160);
+								setTimeout(() => {
+									refreshApi.refresh?.();
+									try {
+										window.dispatchEvent(new Event("resize"));
+									} catch {}
+								}, 320);
+							});
+						} catch {}
 					} finally {
 						setTimeout(() => {
 							programmaticUpdates.current = Math.max(
 								0,
 								programmaticUpdates.current - 1,
 							);
-							if (seq === loadSeqRef.current)
-								runAfterMounted(() => setLoadedVerified(true));
 						}, 0);
 					}
 				};
-				try {
-					if (typeof requestAnimationFrame === "function") {
-						requestAnimationFrame(() => {
-							try {
-								requestAnimationFrame(() => {
-									setTimeout(doApply, 0);
-								});
-							} catch {
-								setTimeout(doApply, 0);
-							}
-						});
-					} else {
-						setTimeout(doApply, 0);
-					}
-				} catch {
-					setTimeout(doApply, 0);
-				}
-				return;
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => setTimeout(doApply, 0));
+				});
+			} else {
+				// Store for when API mounts
+				pendingSceneRef.current = scene;
 			}
-			pendingSceneRef.current = scene;
-			pendingSeqRef.current = seq;
 		},
-		[runAfterMounted, waId],
+		[runAfterMounted],
 	);
 
+	// Handle Excalidraw API ready
 	const onExcalidrawAPI = useCallback(
 		(api: ExcalidrawAPI) => {
 			excalidrawAPIRef.current = api;
 			if (pendingSceneRef.current) {
-				// Defer applying pending scene to give Excalidraw time to finish mounting
-				const scene = pendingSceneRef.current as Record<string, unknown>;
-				const seq = pendingSeqRef.current;
+				const scene = pendingSceneRef.current;
+				const forWaId = currentWaIdRef.current;
 				pendingSceneRef.current = null;
-				try {
-					if (typeof requestAnimationFrame === "function") {
-						requestAnimationFrame(() => {
-							try {
-								requestAnimationFrame(() => {
-									setTimeout(() => applyScene(scene, seq), 0);
-								});
-							} catch {
-								setTimeout(() => applyScene(scene, seq), 0);
-							}
-						});
-					} else {
-						setTimeout(() => applyScene(scene, seq), 0);
-					}
-				} catch {
-					setTimeout(() => applyScene(scene, seq), 0);
-				}
+				requestAnimationFrame(() => {
+					requestAnimationFrame(() => {
+						setTimeout(() => applyScene(scene, forWaId), 0);
+					});
+				});
 			}
 		},
 		[applyScene],
 	);
 
-	// Bridge loading/saving/dirty state globally for sidebar consumers
+	// Bridge state for sidebar
 	useEffect(() => {
 		if (typeof window !== "undefined") {
 			(
@@ -229,9 +221,9 @@ export function useDocumentScene(
 		}
 	}, [loading, saving, isDirty, error]);
 
+	// Save document
 	const handleSave = useCallback(async () => {
 		if (!waId || !excalidrawAPIRef.current) return;
-		if (!loadedVerified) return;
 		try {
 			let payload: Record<string, unknown>;
 			if (latestSceneRef.current) {
@@ -241,15 +233,10 @@ export function useDocumentScene(
 					latestSceneRef.current.files,
 				);
 			} else {
-				const rawAppState = (excalidrawAPIRef.current.getAppState?.() ||
-					{}) as Record<string, unknown>;
+				const rawAppState = excalidrawAPIRef.current.getAppState?.() || {};
 				const elements =
-					(excalidrawAPIRef.current.getSceneElementsIncludingDeleted?.() ||
-						[]) as unknown[];
-				const files = (excalidrawAPIRef.current.getFiles?.() || {}) as Record<
-					string,
-					unknown
-				>;
+					excalidrawAPIRef.current.getSceneElementsIncludingDeleted?.() || [];
+				const files = excalidrawAPIRef.current.getFiles?.() || {};
 				payload = normalizeForPersist(elements, rawAppState, files);
 			}
 
@@ -258,7 +245,7 @@ export function useDocumentScene(
 				(payload as { appState?: Record<string, unknown> }).appState || {},
 				(payload as { files?: Record<string, unknown> }).files || {},
 			);
-			if (latestSig === (savedSignatureRef.current || null)) {
+			if (latestSig === savedSignatureRef.current) {
 				lastSavedAtRef.current = Date.now();
 				return;
 			}
@@ -266,26 +253,6 @@ export function useDocumentScene(
 			setSaving(true);
 			setError(null);
 
-			const payloadStr = stableStringify(payload);
-			try {
-				const prevSize = savedSizeRef.current || 0;
-				if (prevSize > 0) {
-					const minAbs = 512;
-					const minRel = 0.35;
-					if (
-						payloadStr.length <
-						Math.min(prevSize * minRel, Math.max(prevSize - 20000, prevSize))
-					) {
-						if (payloadStr.length < Math.max(minAbs, prevSize * minRel)) {
-							throw new Error("Suspiciously small document; auto-save blocked");
-						}
-					}
-				}
-			} catch (guardErr) {
-				setSaving(false);
-				setError((guardErr as Error).message);
-				return;
-			}
 			const res = await fetch(`/api/documents/${encodeURIComponent(waId)}`, {
 				method: "PUT",
 				headers: { "Content-Type": "application/json" },
@@ -293,9 +260,10 @@ export function useDocumentScene(
 			});
 			const data = await res.json();
 			if (!data?.success) throw new Error(data?.message || "Save failed");
+
+			const payloadStr = stableStringify(payload);
 			savedDigestRef.current = payloadStr;
-			savedSizeRef.current = payloadStr.length;
-			currentDigestRef.current = savedDigestRef.current;
+			currentDigestRef.current = payloadStr;
 			savedSignatureRef.current = latestSig;
 			currentSignatureRef.current = latestSig;
 			setIsDirty(false);
@@ -306,7 +274,7 @@ export function useDocumentScene(
 		} finally {
 			setSaving(false);
 		}
-	}, [waId, loadedVerified]);
+	}, [waId]);
 
 	const scheduleInactivitySave = useCallback(() => {
 		try {
@@ -314,27 +282,21 @@ export function useDocumentScene(
 				window.clearTimeout(inactivitySaveTimerRef.current);
 			inactivitySaveTimerRef.current = window.setTimeout(() => {
 				try {
-					if (!saving && waId && excalidrawAPIRef.current && loadedVerified) {
+					if (!saving && waId && excalidrawAPIRef.current) {
 						void handleSave();
 					}
 				} catch {}
 			}, 3000);
 		} catch {}
-	}, [saving, waId, handleSave, loadedVerified]);
+	}, [saving, waId, handleSave]);
 
 	const saveIfDirty = useCallback(async () => {
 		try {
-			if (
-				isDirtyRef.current &&
-				waId &&
-				excalidrawAPIRef.current &&
-				loadedVerified &&
-				!saving
-			) {
+			if (isDirtyRef.current && waId && excalidrawAPIRef.current && !saving) {
 				await handleSave();
 			}
 		} catch {}
-	}, [waId, loadedVerified, saving, handleSave]);
+	}, [waId, saving, handleSave]);
 
 	useEffect(() => {
 		try {
@@ -346,7 +308,7 @@ export function useDocumentScene(
 			return () => {
 				try {
 					(window as unknown as { __docSaveHelper?: unknown }).__docSaveHelper =
-						undefined as unknown as never;
+						undefined;
 				} catch {}
 			};
 		} catch {
@@ -354,38 +316,35 @@ export function useDocumentScene(
 		}
 	}, [saveIfDirty]);
 
+	// Handle canvas changes (user edits)
 	const handleCanvasChange = useCallback(
 		(
 			elements: readonly unknown[] | null,
 			app: Record<string, unknown> | null,
 			files: Record<string, unknown> | null,
+			precomputedSignature?: string,
 		) => {
 			try {
 				if (programmaticUpdates.current > 0) return;
-				if (!loadedVerified) return;
 				latestSceneRef.current = {
 					elements: (elements as unknown[]) || [],
-					appState: (app || {}) as unknown as Record<string, unknown>,
+					appState: (app || {}) as Record<string, unknown>,
 					files: (files || {}) as Record<string, unknown>,
 				};
-				if (typeof requestAnimationFrame !== "function") return;
+
 				requestAnimationFrame(() => {
 					try {
-						const now =
-							typeof performance !== "undefined"
-								? performance.now()
-								: Date.now();
-						if (now - (lastSigComputeAtRef.current || 0) < 120) return;
-						lastSigComputeAtRef.current = now;
 						const snapshot = latestSceneRef.current;
 						if (!snapshot) return;
-						const sig = computeSceneSignature(
-							snapshot.elements,
-							snapshot.appState,
-							snapshot.files,
-						);
+						const sig =
+							precomputedSignature ??
+							computeSceneSignature(
+								snapshot.elements,
+								snapshot.appState,
+								snapshot.files,
+							);
 						currentSignatureRef.current = sig;
-						const changed = sig !== (savedSignatureRef.current || null);
+						const changed = sig !== savedSignatureRef.current;
 						if (changed !== isDirtyRef.current) {
 							isDirtyRef.current = changed;
 							runAfterMounted(() => setIsDirty(changed));
@@ -395,49 +354,22 @@ export function useDocumentScene(
 				});
 			} catch {}
 		},
-		[loadedVerified, scheduleInactivitySave, runAfterMounted],
+		[scheduleInactivitySave, runAfterMounted],
 	);
 
-	// Load scene on waId change (only when enabled)
+	// Main load effect: only load when enabled AND unlocked
 	useEffect(() => {
-		if (!waId || !enabled) {
+		if (!enabled || !waId || !isUnlocked) {
 			runAfterMounted(() => setLoading(false));
-			runAfterMounted(() => setLoadedVerified(false));
 			return;
 		}
+
+		console.log("🔄 [LOAD] Starting load for waId:", waId);
+		currentWaIdRef.current = waId;
+
 		runAfterMounted(() => setLoading(true));
 		setError(null);
-		runAfterMounted(() => setLoadedVerified(false));
-		loadSeqRef.current = loadSeqRef.current + 1;
-		const seq = loadSeqRef.current;
 
-		const cacheKey = `/api/documents/${encodeURIComponent(waId)}`;
-		const now = Date.now();
-
-		const isCacheFresh = () => {
-			const cached = docCache.get(cacheKey);
-			return Boolean(cached && now - cached.ts < DOCUMENT_TTL_MS);
-		};
-
-		const maybeApplyFromCache = () => {
-			const cached = docCache.get(cacheKey);
-			if (!cached) return false;
-			const scene = toSceneFromDoc(
-				(cached.data as { document?: Record<string, unknown> })?.document,
-			);
-			applyScene(scene as Record<string, unknown>, seq);
-			return true;
-		};
-
-		// Try cache immediately for instant paint
-		try {
-			if (isCacheFresh()) {
-				maybeApplyFromCache();
-				runAfterMounted(() => setLoading(false));
-			}
-		} catch {}
-
-		// WS-first with safe REST fallback
 		let wsHandled = false;
 		const onWsSnapshot = (ev: Event) => {
 			try {
@@ -446,100 +378,120 @@ export function useDocumentScene(
 					document?: Record<string, unknown>;
 				};
 				const docWaId = String(detail?.wa_id || "");
-				if (!docWaId || docWaId !== waId) return;
-				console.log("📥 [WS] document_snapshot received for waId", docWaId);
-				const scene = toSceneFromDoc(detail?.document || {});
-				applyScene(scene as Record<string, unknown>, seq);
+				console.log(
+					"📥 [WS] snapshot received, waId:",
+					docWaId,
+					"expected:",
+					waId,
+				);
+
+				if (docWaId !== waId) {
+					console.log("⚠️ [WS] IGNORED: waId mismatch");
+					return;
+				}
+				if (currentWaIdRef.current !== waId) {
+					console.log("⚠️ [WS] IGNORED: currentWaId changed");
+					return;
+				}
+
+				const doc = detail?.document || {};
+				const scene = toSceneFromDoc(doc);
+
+				// If document is empty/doesn't exist, use default
+				const elems = ((scene as { elements?: unknown[] }).elements ||
+					[]) as unknown[];
+				console.log("📦 [WS] scene has", elems.length, "elements");
+
+				if (elems.length === 0) {
+					console.log("📄 [WS] Using default document (empty or new)");
+					applyScene(DEFAULT_EXCALIDRAW_SCENE, waId);
+				} else {
+					applyScene(scene as Record<string, unknown>, waId);
+				}
+
 				wsHandled = true;
 				runAfterMounted(() => setLoading(false));
 			} catch {}
 		};
+
 		window.addEventListener(
 			"documents:sceneSnapshot",
 			onWsSnapshot as EventListener,
 		);
-		let controller: AbortController | null = null;
+
+		// Send WS request
 		try {
-			const wsRef = (
-				globalThis as {
-					__wsConnection?: { current?: WebSocket };
-				}
-			).__wsConnection;
-			const send = () => {
-				console.log("📤 [WS] sending get_document for waId", waId);
-				wsRef?.current?.send?.(
+			const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
+				.__wsConnection;
+			console.log("📤 [WS] sending get_document for waId:", waId);
+			if (wsRef?.current?.readyState === WebSocket.OPEN) {
+				wsRef.current.send(
 					JSON.stringify({ type: "get_document", data: { wa_id: waId } }),
 				);
-			};
-			if (wsRef?.current?.readyState === WebSocket.OPEN) {
-				send();
-			} else if (wsRef?.current) {
-				const t = setInterval(() => {
-					try {
-						if (wsRef?.current?.readyState === WebSocket.OPEN) {
-							send();
-							clearInterval(t);
-						}
-					} catch {}
-				}, 300);
-				setTimeout(() => {
-					try {
-						clearInterval(t);
-					} catch {}
-				}, 5000);
 			}
 		} catch {}
 
-		// REST fallback after short delay if no WS snapshot
-		const wsFallback = setTimeout(() => {
+		// REST fallback after timeout
+		const fallbackTimer = setTimeout(() => {
 			if (wsHandled) return;
-			controller = new AbortController();
-			fetch(`/api/documents/${encodeURIComponent(waId)}`, {
-				cache: "no-store",
-				signal: controller.signal,
-			})
+			if (currentWaIdRef.current !== waId) return;
+
+			console.log("🌐 [REST] fallback for waId:", waId);
+			fetch(`/api/documents/${encodeURIComponent(waId)}`, { cache: "no-store" })
 				.then((res) => res.json())
 				.then((data) => {
-					const scene = toSceneFromDoc(
-						(data as { document?: Record<string, unknown> })?.document,
-					);
-					applyScene(scene as Record<string, unknown>, seq);
+					if (currentWaIdRef.current !== waId) {
+						console.log("⚠️ [REST] IGNORED: currentWaId changed");
+						return;
+					}
+					const doc =
+						(data as { document?: Record<string, unknown> })?.document || {};
+					const scene = toSceneFromDoc(doc);
+					const elems = ((scene as { elements?: unknown[] }).elements ||
+						[]) as unknown[];
+					console.log("📦 [REST] scene has", elems.length, "elements");
+
+					if (elems.length === 0) {
+						console.log("📄 [REST] Using default document (empty or new)");
+						applyScene(DEFAULT_EXCALIDRAW_SCENE, waId);
+					} else {
+						applyScene(scene as Record<string, unknown>, waId);
+					}
 				})
-				.catch(() => {})
+				.catch((err) => {
+					console.error("❌ [REST] error:", err);
+					// On error, use default document
+					if (currentWaIdRef.current === waId) {
+						console.log("📄 [REST] Using default document (error fallback)");
+						applyScene(DEFAULT_EXCALIDRAW_SCENE, waId);
+					}
+				})
 				.finally(() => runAfterMounted(() => setLoading(false)));
-		}, 600);
+		}, 800);
 
 		return () => {
-			try {
-				if (controller) controller.abort();
-			} catch {}
-			try {
-				clearTimeout(wsFallback);
-			} catch {}
+			clearTimeout(fallbackTimer);
 			window.removeEventListener(
 				"documents:sceneSnapshot",
 				onWsSnapshot as EventListener,
 			);
 		};
-	}, [waId, applyScene, enabled, runAfterMounted]);
+	}, [waId, enabled, isUnlocked, applyScene, runAfterMounted]);
 
-	// Periodic autosave (only when enabled)
+	// Periodic autosave
 	useEffect(() => {
 		if (!enabled) return () => {};
 		const id = window.setInterval(() => {
 			try {
-				if (!saving && waId && excalidrawAPIRef.current && loadedVerified) {
-					if (
-						(currentSignatureRef.current || null) ===
-						(savedSignatureRef.current || null)
-					)
-						return;
-					void handleSave();
+				if (!saving && waId && excalidrawAPIRef.current) {
+					if (currentSignatureRef.current !== savedSignatureRef.current) {
+						void handleSave();
+					}
 				}
 			} catch {}
 		}, 30000);
 		return () => window.clearInterval(id);
-	}, [saving, waId, handleSave, loadedVerified, enabled]);
+	}, [saving, waId, handleSave, enabled]);
 
 	useEffect(() => {
 		return () => {
@@ -553,7 +505,6 @@ export function useDocumentScene(
 		saving,
 		error,
 		isDirty,
-		loadedVerified,
 		handleCanvasChange,
 		onExcalidrawAPI,
 		saveIfDirty,

@@ -32,7 +32,9 @@
 /* Daygrid body */
 .fc-daygrid-body {
 	position: relative;
-	z-index: var(--z-base); /* container inner z-index's because <tr>s can't do it */
+	z-index: var(
+		--z-base
+	); /* container inner z-index's because <tr>s can't do it */
 	/* GPU acceleration */
 	transform: translateZ(0);
 	backface-visibility: hidden;

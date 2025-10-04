@@ -6,23 +6,42 @@ interface DateRange {
 	end: string;
 }
 
+interface EditorState {
+	open: boolean;
+	dateRange: DateRange | null;
+	shouldLoad: boolean;
+}
+
 export function useCalendarDataTableEditor() {
-	const [editorOpen, setEditorOpen] = useState(false);
-	const [selectedDateRange, setSelectedDateRange] = useState<DateRange | null>(
-		null,
-	);
-	const [shouldLoadEditor, setShouldLoadEditor] = useState(false);
+	const [state, setState] = useState<EditorState>({
+		open: false,
+		dateRange: null,
+		shouldLoad: false,
+	});
 
 	const openEditor = useCallback((dateRange: DateRange) => {
-		setSelectedDateRange(dateRange);
-		// Load immediately to avoid empty state and flicker on rapid re-opens
-		setShouldLoadEditor(true);
-		setEditorOpen(true);
+		// Update all states atomically to prevent flickering
+		setState({
+			open: true,
+			dateRange,
+			shouldLoad: true,
+		});
 	}, []);
 
 	const closeEditor = useCallback(() => {
-		setEditorOpen(false);
-		// Keep shouldLoadEditor true after the first load to avoid remount flicker
+		setState((prev) => ({
+			...prev,
+			open: false,
+			// Keep shouldLoad true and preserve dateRange for exit animation
+		}));
+	}, []);
+
+	const setEditorOpen = useCallback((open: boolean) => {
+		setState((prev) => ({ ...prev, open }));
+	}, []);
+
+	const setShouldLoadEditor = useCallback((shouldLoad: boolean) => {
+		setState((prev) => ({ ...prev, shouldLoad }));
 	}, []);
 
 	const handleEditReservation = useCallback(
@@ -36,9 +55,9 @@ export function useCalendarDataTableEditor() {
 	);
 
 	return {
-		editorOpen,
-		selectedDateRange,
-		shouldLoadEditor,
+		editorOpen: state.open,
+		selectedDateRange: state.dateRange,
+		shouldLoadEditor: state.shouldLoad,
 		setEditorOpen,
 		setShouldLoadEditor,
 		openEditor,

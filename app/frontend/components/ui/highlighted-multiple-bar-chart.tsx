@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingDown } from "lucide-react";
-import React from "react";
+import React, { useId } from "react";
 import { Bar, BarChart, Cell, XAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,6 +40,7 @@ const chartConfig = {
 
 export function HighlightedMultipleBarChart() {
 	const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+	const patternId = useId();
 
 	const activeData = React.useMemo(() => {
 		if (activeIndex === null) return null;
@@ -82,10 +83,10 @@ export function HighlightedMultipleBarChart() {
 							y="0"
 							width="100%"
 							height="85%"
-							fill="url(#default-multiple-pattern-dots)"
+							fill={`url(#${patternId})`}
 						/>
 						<defs>
-							<DottedBackgroundPattern />
+							<DottedBackgroundPattern id={patternId} />
 						</defs>
 						<XAxis
 							dataKey="month"
@@ -131,10 +132,10 @@ export function HighlightedMultipleBarChart() {
 	);
 }
 
-const DottedBackgroundPattern = () => {
+const DottedBackgroundPattern = ({ id }: { id: string }) => {
 	return (
 		<pattern
-			id="default-multiple-pattern-dots"
+			id={id}
 			x="0"
 			y="0"
 			width="10"

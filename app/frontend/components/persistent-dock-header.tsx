@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { CalendarLegend } from "@/components/calendar-legend";
 import { DockNav } from "@/components/dock-nav";
-import { NotificationsButton } from "@/components/notifications-button";
+import { NotificationInboxPopover } from "@/components/ui/notification-inbox-popover";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useDockBridge } from "@/lib/dock-bridge-context";
 import { useSettings } from "@/lib/settings-context";
@@ -34,7 +34,7 @@ export function PersistentDockHeader() {
 				/>
 			</div>
 			<div className="flex items-center justify-end">
-				<NotificationsButton className="scale-90 sm:scale-100" />
+				<NotificationInboxPopover />
 			</div>
 		</header>
 	);

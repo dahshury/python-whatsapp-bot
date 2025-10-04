@@ -13,6 +13,7 @@ type ScrollTarget = {
 export function useChatScroll(
 	selectedConversationId: string | null,
 	sortedMessages: ConversationMessage[],
+	options?: { preventAutoScroll?: boolean },
 ) {
 	const messagesEndRef = React.useRef<HTMLDivElement>(null);
 	const messageListRef = React.useRef<HTMLDivElement>(null);
@@ -20,6 +21,7 @@ export function useChatScroll(
 	const lastCountRef = React.useRef<number>(0);
 	const lastScrolledConversationIdRef = React.useRef<string | null>(null);
 	const initialScrollPendingRef = React.useRef<boolean>(false);
+	const preventAutoScroll = options?.preventAutoScroll ?? false;
 
 	const tryScrollToTarget = React.useCallback(() => {
 		const target = pendingScrollTargetRef.current;
@@ -99,6 +101,12 @@ export function useChatScroll(
 
 	// Auto-scroll: on conversation change jump to bottom instantly, then smooth on new messages
 	React.useEffect(() => {
+		if (preventAutoScroll) {
+			// Update count but skip scrolling
+			lastCountRef.current = sortedMessages.length;
+			return;
+		}
+
 		const nextCount = sortedMessages.length;
 		const conversationChanged =
 			selectedConversationId !== lastScrolledConversationIdRef.current;
@@ -117,7 +125,7 @@ export function useChatScroll(
 			initialScrollPendingRef.current = false;
 			lastCountRef.current = nextCount;
 		}
-	}, [sortedMessages, selectedConversationId]);
+	}, [sortedMessages, selectedConversationId, preventAutoScroll]);
 
 	// React to realtime websocket events for the active conversation
 	React.useEffect(() => {

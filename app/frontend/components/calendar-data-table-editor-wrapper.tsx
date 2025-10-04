@@ -1,8 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type React from "react";
-import { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import { GridLoadingState } from "@/components/glide_custom_cells/components/ui/GridLoadingState";
 import {
 	filterEventsForDataTable,
@@ -65,6 +64,27 @@ export function CalendarDataTableEditorWrapper({
 	closeEditor,
 	setShouldLoadEditor,
 }: CalendarDataTableEditorWrapperProps) {
+	// Keep mounted briefly after close to allow exit animation
+	const keepMounted = React.useRef(false);
+	const [renderOpen, setRenderOpen] = React.useState(editorOpen);
+
+	React.useEffect(() => {
+		if (editorOpen) {
+			keepMounted.current = true;
+			setRenderOpen(true);
+			return undefined;
+		}
+		if (keepMounted.current) {
+			// Delay unmount to let framer-motion exit run
+			const t = setTimeout(() => {
+				setRenderOpen(false);
+				keepMounted.current = false;
+			}, 260); // match DataTableEditor motion exit duration (~250ms)
+			return () => clearTimeout(t);
+		}
+		setRenderOpen(false);
+		return undefined;
+	}, [editorOpen]);
 	// Always compute mapped events so the grid has data immediately on open
 	const mappedEvents = useMemo(
 		() =>
@@ -90,7 +110,7 @@ export function CalendarDataTableEditorWrapper({
 	}, [onSave, closeEditor]);
 
 	// Avoid mounting the heavy editor when completely unused
-	if (!editorOpen && !shouldLoadEditor) return null;
+	if (!renderOpen && !shouldLoadEditor) return null;
 
 	return (
 		<LazyDataTableEditor

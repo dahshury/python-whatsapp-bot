@@ -130,9 +130,10 @@
 	}
 }
 
-.dialog-content {
-	animation: dialog-appear 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
+/* Disabled for framer-motion driven dialogs; set inline style animation: none */
+/* .dialog-content {
+    animation: dialog-appear 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+} */
 
 /* ========================================
  * GLIDE DATA GRID SPECIFIC OVERRIDES

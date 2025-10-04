@@ -84,6 +84,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 	const [pendingCloseAction, setPendingCloseAction] = useState<
 		(() => void) | null
 	>(null);
+	const [isExiting, setIsExiting] = useState(false);
 	const { theme: appTheme } = useTheme();
 	const { theme: _styleTheme } = useSettings();
 	const isDarkMode = appTheme === "dark";
@@ -233,7 +234,8 @@ export function DataTableEditor(props: DataTableEditorProps) {
 		hasUnsavedChangesRef.current = hasUnsavedChanges;
 	}, [hasUnsavedChanges]);
 
-	const formatDateRange = () => {
+	// Memoize the formatted date range to prevent flickering during dialog animation
+	const formattedDateRange = useMemo(() => {
 		if (!selectedDateRange) return "";
 
 		const startDate = new Date(selectedDateRange.start);
@@ -339,7 +341,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 			return `${startDayName}, ${startDate.toLocaleDateString()} - ${endDayName}, ${endDate.toLocaleDateString()}`;
 		}
 		return `${startDayName}, ${startDate.toLocaleDateString()}`;
-	};
+	}, [selectedDateRange, _isLocalized, slotDurationHours]);
 
 	const handleCheckEditingState = useCallback(() => {
 		const state = checkEditingState();
@@ -531,20 +533,35 @@ export function DataTableEditor(props: DataTableEditorProps) {
 					dataProviderRef.current.refresh?.();
 				} catch {}
 			}
-			// Add body class for CSS targeting when dialog is open
-			document.body.classList.add("has-dialog-backdrop");
-			return () => {
-				document.body.classList.remove("has-dialog-backdrop");
-			};
 		}
 		setCanSave(false);
-		// Clear validation errors when dialog is closed to prevent stale state
-		setValidationErrors([]);
-		previousValidationErrors.current = [];
-		// Remove body class when dialog is closed
-		document.body.classList.remove("has-dialog-backdrop");
-		return undefined;
+		// Clear validation errors when dialog transitions to closed to prevent stale state
+		if (!open) {
+			setValidationErrors([]);
+			previousValidationErrors.current = [];
+		}
 	}, [open]);
+
+	// Keep body backdrop class while open or exiting to avoid flicker
+	useEffect(() => {
+		if (open || isExiting) {
+			document.body.classList.add("has-dialog-backdrop");
+		} else {
+			document.body.classList.remove("has-dialog-backdrop");
+		}
+	}, [open, isExiting]);
+
+	// When open toggles to false, mark as exiting so class stays until exit completes
+	useEffect(() => {
+		if (!open) setIsExiting(true);
+	}, [open]);
+
+	// Ensure cleanup on unmount
+	useEffect(() => {
+		return () => {
+			document.body.classList.remove("has-dialog-backdrop");
+		};
+	}, []);
 
 	useEffect(() => {
 		return () => {
@@ -696,7 +713,13 @@ export function DataTableEditor(props: DataTableEditorProps) {
 
 	return (
 		<>
-			<AnimatePresence>
+			<AnimatePresence
+				mode="wait"
+				onExitComplete={() => {
+					setIsExiting(false);
+					document.body.classList.remove("has-dialog-backdrop");
+				}}
+			>
 				{open && (
 					<>
 						<motion.button
@@ -706,7 +729,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
 							exit={{ opacity: 0 }}
-							transition={{ duration: 0.22, ease: "easeInOut" }}
+							transition={{ duration: 0.25, ease: "easeInOut" }}
 							onClick={(e) => {
 								if (e.target === e.currentTarget) {
 									handleCloseAttempt(() => onOpenChange(false));
@@ -721,13 +744,17 @@ export function DataTableEditor(props: DataTableEditorProps) {
 						/>
 
 						<motion.dialog
-							key="dt-dialog"
-							className="fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 grid border bg-background shadow-lg sm:rounded-lg"
-							style={{ zIndex: Z_INDEX.DIALOG_CONTENT }}
+							key={`dt-dialog-${selectedDateRange?.start || "none"}`}
+							className="fixed left-[50%] top-[50%] max-w-6xl w-full h-auto max-h-[95vh] p-0 flex flex-col overflow-visible dialog-content gap-0 border bg-background shadow-lg sm:rounded-lg"
+							style={{
+								zIndex: Z_INDEX.DIALOG_CONTENT,
+								animation: "none",
+								x: "-50%",
+							}}
 							aria-describedby="data-editor-description"
-							initial={{ opacity: 0, scale: 0.98, y: 8 }}
-							animate={{ opacity: 1, scale: 1, y: 0 }}
-							exit={{ opacity: 0, scale: 0.98, y: -8 }}
+							initial={{ opacity: 0, scale: 0.98, y: "calc(-50% + 8px)" }}
+							animate={{ opacity: 1, scale: 1, y: "-50%" }}
+							exit={{ opacity: 0, scale: 0.98, y: "calc(-50% - 8px)" }}
 							transition={{ duration: 0.25, ease: "easeInOut" }}
 							onKeyDown={(e) => {
 								if (e.key === "Escape") {
@@ -751,7 +778,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
 										}
 									>
 										{_isLocalized ? "محرر البيانات" : "Data Editor"} -{" "}
-										{formatDateRange()}
+										{formattedDateRange}
 									</h2>
 									<p
 										id={`data-editor-description-${typeof window !== "undefined" ? "client" : "ssr"}`}

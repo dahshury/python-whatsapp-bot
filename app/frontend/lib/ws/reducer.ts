@@ -48,33 +48,53 @@ export function reduceOnMessage(
         return next;
     }
     case "notifications_history": {
-			// Pass-through: reducer doesn't store notifications, the panel manages its own state.
-			// Fan-out as a browser event so listeners (notifications-button) can ingest, filtering doc-related types at the source.
-			try {
-				const raw = (data as unknown as { items?: unknown[] })?.items as Array<{
-					id?: number | string;
-					type?: string;
-					timestamp?: string | number;
-					data?: Record<string, unknown>;
-				}> | null;
-				if (Array.isArray(raw)) {
-					const filtered = raw.filter((r) => {
-						const t = String(r?.type || "").toLowerCase();
-						return !(t.startsWith("document_") || t === "customer_profile");
-					});
-					setTimeout(() => {
-						try {
-							const evt = new CustomEvent("notifications:history", {
-								detail: { items: filtered },
-							});
-							window.dispatchEvent(evt);
-						} catch {}
-					}, 0);
-				}
-			} catch {}
-			next.lastUpdate = timestamp;
-			return next;
-		}
+            // Pass-through: reducer doesn't store notifications, the panel manages its own state.
+            // Fan-out as a browser event so listeners (notifications-button) can ingest, filtering doc-related types at the source.
+            try {
+                const raw = (data as unknown as { items?: unknown[] })?.items as Array<{
+                    id?: number | string;
+                    type?: string;
+                    timestamp?: string | number;
+                    data?: Record<string, unknown>;
+                }> | null;
+                if (Array.isArray(raw)) {
+                    const filtered = raw.filter((r) => {
+                        const t = String(r?.type || "").toLowerCase();
+                        return !(t.startsWith("document_") || t === "customer_profile");
+                    });
+                    setTimeout(() => {
+                        try {
+                            const evt = new CustomEvent("notifications:history", {
+                                detail: { items: filtered },
+                            });
+                            window.dispatchEvent(evt);
+                        } catch {}
+                    }, 0);
+                }
+            } catch {}
+            next.lastUpdate = timestamp;
+            return next;
+        }
+
+        case "conversation_typing": {
+            try {
+                const d = (data || {}) as { wa_id?: string; state?: string };
+                const wa = String(d?.wa_id || "");
+                const on = String(d?.state || "").toLowerCase() !== "stop";
+                if (wa) {
+                    setTimeout(() => {
+                        try {
+                            const evt = new CustomEvent("chat:typing", {
+                                detail: { wa_id: wa, typing: on },
+                            });
+                            window.dispatchEvent(evt);
+                        } catch {}
+                    }, 0);
+                }
+            } catch {}
+            // No state mutation required, UI listens to chat:typing
+            return next;
+        }
 		case "reservation_created":
 		case "reservation_updated":
 		case "reservation_reinstated": {

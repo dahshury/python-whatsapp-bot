@@ -1,10 +1,12 @@
 "use client";
-import { MessageSquare } from "lucide-react";
+import { Bot, ChevronUp, MessageSquare } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { BasicChatInput } from "@/components/chat/basic-chat-input";
 import { ChatMessagesViewport } from "@/components/chat/chat-messages-viewport";
 import { ConversationCombobox } from "@/components/conversation-combobox";
+import { Button } from "@/components/ui/button";
+import { LoadingDots } from "@/components/ui/loading-dots";
 import { useChatScroll } from "@/hooks/useChatScroll";
 import { useConversationActivity } from "@/hooks/useConversationActivity";
 // Replaced Textarea with TipTap's EditorContent for live formatting
@@ -12,6 +14,7 @@ import { useCustomerData } from "@/lib/customer-data-context";
 import { i18n } from "@/lib/i18n";
 import { useLanguage } from "@/lib/language-context";
 import { chatService } from "@/lib/services/chat/chat.service";
+import { useSettings } from "@/lib/settings-context";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { toastService } from "@/lib/toast-service";
 import { cn } from "@/lib/utils";
@@ -34,9 +37,15 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	className,
 }) => {
 	const { isLocalized } = useLanguage();
+	const { showToolCalls, chatMessageLimit } = useSettings();
 	const { isLoadingConversation, setLoadingConversation } =
 		useSidebarChatStore();
 	const [isSending, setIsSending] = useState(false);
+	const [loadedMessageCount, setLoadedMessageCount] =
+		useState<number>(chatMessageLimit);
+	const [isLoadingMore, setIsLoadingMore] = useState(false);
+	const [isAtTop, setIsAtTop] = useState(false);
+	const [isTyping, setIsTyping] = useState(false);
 	// scrolling refs managed by useChatScroll below
 
 	// Use centralized customer data
@@ -84,16 +93,71 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 		return aTime.getTime() - bTime.getTime();
 	}) as ConversationMessage[];
 
+	// Apply message limit (show last N messages)
+	const limitedMessages = useMemo(() => {
+		return sortedMessages.slice(-loadedMessageCount);
+	}, [sortedMessages, loadedMessageCount]);
+
+	const hasMoreMessages = sortedMessages.length > limitedMessages.length;
+
+	const handleLoadMore = useCallback(() => {
+		setIsLoadingMore(true);
+		// Use RAF to ensure state updates before scroll calculation
+		requestAnimationFrame(() => {
+			setLoadedMessageCount((prev) => prev + chatMessageLimit);
+			// Reset loading flag after a brief delay
+			setTimeout(() => setIsLoadingMore(false), 100);
+		});
+	}, [chatMessageLimit]);
+
+	// Reset loaded count when conversation changes
+	useEffect(() => {
+		setLoadedMessageCount(chatMessageLimit);
+	}, [chatMessageLimit]);
+
 	// Scrolling handled by dedicated hook
 	const { messageListRef, messagesEndRef } = useChatScroll(
 		selectedConversationId,
-		sortedMessages,
+		limitedMessages,
+		{ preventAutoScroll: isLoadingMore },
 	);
+
+	// Listen for top-of-scroll state emitted by viewport
+	useEffect(() => {
+		const handler = (e: Event) => {
+			try {
+				const { atTop } = (e as CustomEvent).detail || {};
+				if (typeof atTop === "boolean") setIsAtTop(atTop);
+			} catch {}
+		};
+		window.addEventListener("chat:scrollTopState", handler as EventListener);
+		return () =>
+			window.removeEventListener(
+				"chat:scrollTopState",
+				handler as EventListener,
+			);
+	}, []);
 
 	// Clear additional messages when conversation changes
 	useEffect(() => {
 		setAdditionalMessages({});
 	}, []);
+
+	// Listen for typing indicator events for the selected conversation
+	useEffect(() => {
+		const handler = (ev: Event) => {
+			try {
+				const { wa_id, typing } = (ev as CustomEvent).detail || {};
+				if (!selectedConversationId) return;
+				if (String(wa_id) === String(selectedConversationId)) {
+					setIsTyping(Boolean(typing));
+				}
+			} catch {}
+		};
+		window.addEventListener("chat:typing", handler as EventListener);
+		return () =>
+			window.removeEventListener("chat:typing", handler as EventListener);
+	}, [selectedConversationId]);
 
 	// Monitor when conversation data and rendering is complete
 	useEffect(() => {
@@ -146,7 +210,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	// Simple input state - no complex calculations
 	const hasConversationSelected = !!selectedConversationId;
 	// Inactivity: last USER message > 24 hours ago
-	const isInactive = useConversationActivity(sortedMessages);
+	const isInactive = useConversationActivity(limitedMessages);
 	const inputPlaceholder = hasConversationSelected
 		? i18n.getMessage("chat_type_message", isLocalized)
 		: i18n.getMessage("chat_no_conversation", isLocalized);
@@ -228,16 +292,63 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			</div>
 
 			{/* Messages Area */}
-			<ChatMessagesViewport
-				messages={sortedMessages}
-				messageListRef={
-					messageListRef as unknown as React.RefObject<HTMLDivElement>
-				}
-				messagesEndRef={
-					messagesEndRef as unknown as React.RefObject<HTMLDivElement>
-				}
-				isLocalized={isLocalized}
-			/>
+			<div className="flex flex-col flex-1 relative">
+				{/* Load More Button - only show when scrolled to top */}
+				{hasMoreMessages && isAtTop && (
+					<div className="sticky top-0 z-10 p-2 flex justify-center bg-gradient-to-b from-card to-transparent">
+						<Button
+							onClick={handleLoadMore}
+							variant="outline"
+							size="sm"
+							className="text-xs h-7 shadow-md"
+						>
+							<ChevronUp className="h-3 w-3 mr-1" />
+							{isLocalized ? "تحميل المزيد" : "Load More"}
+							<span className="ml-1.5 opacity-70">(+{chatMessageLimit})</span>
+						</Button>
+					</div>
+				)}
+				<ChatMessagesViewport
+					messages={limitedMessages}
+					messageListRef={
+						messageListRef as unknown as React.RefObject<HTMLDivElement>
+					}
+					messagesEndRef={
+						messagesEndRef as unknown as React.RefObject<HTMLDivElement>
+					}
+					isLocalized={isLocalized}
+					showToolCalls={showToolCalls}
+				/>
+
+				{isTyping && (
+					<div className="px-4 py-1">
+						<div className="w-full py-1 px-2 bg-transparent">
+							<article
+								className="rounded-lg p-2.5 w-full relative border bg-gradient-to-b from-ring/20 to-ring/10 border-ring/20"
+								aria-live="polite"
+							>
+								<div className="flex items-center gap-2">
+									<div
+										className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-xs font-medium bg-muted-foreground text-background"
+										aria-hidden="true"
+									>
+										<Bot className="h-3.5 w-3.5" />
+									</div>
+									<div className="flex-1 min-w-0">
+										<div className="text-sm text-muted-foreground">
+											<LoadingDots size={4}>
+												<span className="text-xs">
+													{i18n.getMessage("typing", isLocalized)}
+												</span>
+											</LoadingDots>
+										</div>
+									</div>
+								</div>
+							</article>
+						</div>
+					</div>
+				)}
+			</div>
 
 			{/* Message Input - Enhanced textarea with 24h inactivity detection */}
 			<div className="input-bubble">
@@ -250,7 +361,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 							isSending={isSending}
 							isInactive={isInactive}
 							inactiveText={
-								sortedMessages.length === 0
+								limitedMessages.length === 0
 									? i18n.getMessage(
 											"chat_cannot_message_no_conversation",
 											isLocalized,

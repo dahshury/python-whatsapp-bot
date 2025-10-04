@@ -4,6 +4,7 @@ import type { Reservation } from "@/types/calendar";
 
 export type UpdateType =
 	| BaseUpdateType
+	| "conversation_typing"
 	| "vacation_update_ack"
 	| "vacation_update_nack"
 	| "notifications_history"

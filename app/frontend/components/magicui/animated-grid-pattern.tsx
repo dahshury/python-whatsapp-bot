@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { memo, useMemo } from "react";
+import { memo, useId, useMemo } from "react";
 import { cn } from "@/lib/utils";
 
 interface GridPatternProps {
@@ -21,6 +21,7 @@ function GridPattern({
 	y = -1,
 	strokeDasharray = 0,
 }: GridPatternProps) {
+	const patternId = useId();
 	const dash =
 		typeof strokeDasharray === "number"
 			? `${strokeDasharray}`
@@ -35,7 +36,7 @@ function GridPattern({
 			<title>Decorative grid pattern background</title>
 			<defs>
 				<pattern
-					id="grid-pattern"
+					id={patternId}
 					x={x}
 					y={y}
 					width={width}
@@ -52,7 +53,7 @@ function GridPattern({
 					/>
 				</pattern>
 			</defs>
-			<rect width="100%" height="100%" fill="url(#grid-pattern)" />
+			<rect width="100%" height="100%" fill={`url(#${patternId})`} />
 		</svg>
 	);
 }

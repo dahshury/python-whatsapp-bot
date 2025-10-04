@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import * as React from "react";
 import { useUiCompositeOverride } from "@/lib/ui-registry";
 import { cn } from "@/lib/utils";
+import { Z_INDEX } from "@/lib/z-index";
 
 function getOverride<TProps>(
 	ov: Record<string, unknown>,
@@ -121,6 +122,10 @@ const SelectContent = React.forwardRef<
 				)}
 				position={position}
 				{...props}
+				style={{
+					zIndex: Z_INDEX.SELECT,
+					...(props as { style?: React.CSSProperties }).style,
+				}}
 			>
 				<SelectScrollUpButton />
 				<SelectPrimitive.Viewport

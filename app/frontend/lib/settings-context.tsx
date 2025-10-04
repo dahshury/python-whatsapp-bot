@@ -11,6 +11,10 @@ export interface SettingsState {
 	setFreeRoam: (value: boolean) => void;
 	showDualCalendar: boolean;
 	setShowDualCalendar: (value: boolean) => void;
+	showToolCalls: boolean;
+	setShowToolCalls: (value: boolean) => void;
+	chatMessageLimit: number;
+	setChatMessageLimit: (value: number) => void;
 }
 
 const SettingsContext = React.createContext<SettingsState | undefined>(
@@ -37,6 +41,8 @@ const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 	const [freeRoam, setFreeRoam] = React.useState<boolean>(false);
 	const [showDualCalendar, setShowDualCalendar] =
 		React.useState<boolean>(false);
+	const [showToolCalls, setShowToolCalls] = React.useState<boolean>(true);
+	const [chatMessageLimit, setChatMessageLimit] = React.useState<number>(50);
 
 	// Load persisted non-theme settings on mount
 	React.useEffect(() => {
@@ -45,6 +51,10 @@ const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 		if (storedFreeRoam != null) setFreeRoam(storedFreeRoam === "true");
 		const storedDual = localStorage.getItem("showDualCalendar");
 		if (storedDual != null) setShowDualCalendar(storedDual === "true");
+		const storedToolCalls = localStorage.getItem("showToolCalls");
+		if (storedToolCalls != null) setShowToolCalls(storedToolCalls === "true");
+		const storedLimit = localStorage.getItem("chatMessageLimit");
+		if (storedLimit != null) setChatMessageLimit(Number(storedLimit));
 	}, []);
 
 	// Persist style theme only; dark/light is managed by next-themes with its own storage key
@@ -65,6 +75,16 @@ const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 		localStorage.setItem("showDualCalendar", String(showDualCalendar));
 	}, [showDualCalendar]);
 
+	React.useEffect(() => {
+		if (typeof window === "undefined") return;
+		localStorage.setItem("showToolCalls", String(showToolCalls));
+	}, [showToolCalls]);
+
+	React.useEffect(() => {
+		if (typeof window === "undefined") return;
+		localStorage.setItem("chatMessageLimit", String(chatMessageLimit));
+	}, [chatMessageLimit]);
+
 	const value = React.useMemo<SettingsState>(
 		() => ({
 			theme,
@@ -73,8 +93,12 @@ const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 			setFreeRoam,
 			showDualCalendar,
 			setShowDualCalendar,
+			showToolCalls,
+			setShowToolCalls,
+			chatMessageLimit,
+			setChatMessageLimit,
 		}),
-		[theme, freeRoam, showDualCalendar],
+		[theme, freeRoam, showDualCalendar, showToolCalls, chatMessageLimit],
 	);
 	return (
 		<SettingsContext.Provider value={value}>

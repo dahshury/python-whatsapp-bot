@@ -24,6 +24,12 @@
    SINGLE COLUMN VARIANT
    ================================================================= */
 
+/* Firefox scrollbar support (must come before variant-specific rules) */
+.fc-multimonth {
+	scrollbar-width: thin;
+	scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--muted) / 0.2);
+}
+
 /* Single column variant */
 .fc-multimonth-singlecol .fc-multimonth {
 	position: relative;
@@ -168,10 +174,4 @@
 		hsl(var(--accent)) 50%,
 		hsl(var(--secondary)) 100%
 	);
-}
-
-/* Firefox scrollbar support */
-.fc-multimonth {
-	scrollbar-width: thin;
-	scrollbar-color: hsl(var(--primary) / 0.6) hsl(var(--muted) / 0.2);
 }

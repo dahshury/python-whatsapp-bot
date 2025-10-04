@@ -3,7 +3,7 @@
 import { useSpacemanTheme } from "@space-man/react-theme-animation";
 import { Monitor, Moon, Palette, Sun } from "lucide-react";
 import { useTheme as useNextThemes } from "next-themes";
-import { MiniToolbar } from "@/components/kokonutui/toolbar";
+import { ExpandableTabs } from "@/components/ui/expandable-tabs";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { i18n } from "@/lib/i18n";
@@ -53,28 +53,42 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 					</span>
 				</div>
 				<div className="flex items-center gap-1.5">
-					<MiniToolbar
-						compact
-						items={[
+					<ExpandableTabs
+						activeColor="text-primary"
+						tabs={[
 							{
-								id: "system",
-								icon: Monitor,
 								title: i18n.getMessage("theme_mode_system", isLocalized),
+								icon: Monitor,
 							},
+							{ type: "separator" as const },
 							{
-								id: "light",
-								icon: Sun,
 								title: i18n.getMessage("theme_mode_light", isLocalized),
+								icon: Sun,
 							},
+							{ type: "separator" as const },
 							{
-								id: "dark",
-								icon: Moon,
 								title: i18n.getMessage("theme_mode_dark", isLocalized),
+								icon: Moon,
 							},
 						]}
-						value={(nextTheme ?? "system") as string}
-						onChange={(id) => setNextTheme(id)}
-						className="h-[1.8rem]"
+						selectedIndex={
+							(nextTheme ?? "system") === "system"
+								? 0
+								: (nextTheme ?? "system") === "light"
+									? 2
+									: 4
+						}
+						onChange={(index) => {
+							if (index === null) return;
+							let normalized = -1;
+							if (index === 0) normalized = 0;
+							else if (index === 2) normalized = 1;
+							else if (index === 4) normalized = 2;
+							if (normalized < 0 || normalized > 2) return;
+							const map = ["system", "light", "dark"] as const;
+							const mode = map[normalized as 0 | 1 | 2];
+							if (mode) setNextTheme(mode);
+						}}
 					/>
 				</div>
 			</div>

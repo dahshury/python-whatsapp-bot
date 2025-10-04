@@ -1,7 +1,7 @@
 import {
 	type CustomRenderer,
-	GridCellKind,
 	drawTextCell,
+	GridCellKind,
 } from "@glideapps/glide-data-grid";
 import * as ReactDOM from "react-dom";
 import TimeKeeper from "react-timekeeper";

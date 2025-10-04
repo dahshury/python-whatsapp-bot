@@ -119,7 +119,7 @@ export function CalendarEventContextMenu({
 					{/* Animated context menu */}
 					<motion.div
 						key="context-menu"
-						className="z-50 min-w-[8rem] max-w-64 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+						className="no-scrollbar w-[310px] rounded-2xl bg-gray-50 dark:bg-black/90 p-0"
 						style={{
 							position: "fixed",
 							left: position.x,
@@ -137,58 +137,34 @@ export function CalendarEventContextMenu({
 						exit={{ opacity: 0, scale: 0.98, y: 2 }}
 						transition={{ duration: 0.14, ease: "easeOut" }}
 					>
-						<div className="flex items-center gap-2 py-2 px-2 font-semibold text-foreground">
-							{isConversation ? (
-								<MessageCircle className="h-4 w-4 text-orange-500" />
-							) : (
-								<Calendar className="h-4 w-4 text-blue-500" />
-							)}
-							<div className="flex-1 min-w-0">
-								<div className="font-medium truncate">{event.title}</div>
-								<div className="text-xs text-muted-foreground flex items-center gap-1">
-									<Clock className="h-3 w-3" />
-									{formatEventDate(event.start)} •{" "}
-									{formatEventTime(event.start)}
+						<section className="bg-white dark:bg-gray-100/10 backdrop-blur-lg rounded-2xl p-1 shadow border border-gray-200 dark:border-gray-700/20">
+							<div className="flex items-center p-2">
+								<div className="flex-1 flex items-center gap-2">
+									{isConversation ? (
+										<MessageCircle className="h-5 w-5 text-orange-500" />
+									) : (
+										<Calendar className="h-5 w-5 text-blue-500" />
+									)}
+									<div>
+										<h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate max-w-[240px]">
+											{event.title}
+										</h3>
+										<div className="text-xs text-muted-foreground flex items-center gap-1">
+											<Clock className="h-3 w-3" />
+											{formatEventDate(event.start)} •{" "}
+											{formatEventTime(event.start)}
+										</div>
+									</div>
 								</div>
 							</div>
-						</div>
 
-						<div className="-mx-1 my-1 h-px bg-border" />
+							<div className="-mx-1 my-1 h-px bg-border" />
 
-						{isReservation && (
-							<>
-								<div
-									className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-									onClick={() => {
-										try {
-											const wa = String(
-												(
-													event as {
-														extendedProps?: { waId?: string; wa_id?: string };
-													}
-												).extendedProps?.waId ||
-													(
-														event as {
-															extendedProps?: { waId?: string; wa_id?: string };
-														}
-													).extendedProps?.wa_id ||
-													event.id ||
-													"",
-											);
-											if (onOpenDocument) {
-												onOpenDocument(wa);
-											} else if (typeof window !== "undefined") {
-												setSelectedDocumentWaId(wa || "");
-												router.push("/documents");
-											}
-										} catch {}
-										onClose();
-									}}
-									role="menuitem"
-									tabIndex={0}
-									onKeyDown={(e) => {
-										if (e.key === "Enter" || e.key === " ") {
-											e.preventDefault();
+							{isReservation && (
+								<div className="p-1">
+									<div
+										className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
+										onClick={() => {
 											try {
 												const wa = String(
 													(
@@ -215,81 +191,119 @@ export function CalendarEventContextMenu({
 												}
 											} catch {}
 											onClose();
+										}}
+										role="menuitem"
+										tabIndex={0}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												try {
+													const wa = String(
+														(
+															event as {
+																extendedProps?: {
+																	waId?: string;
+																	wa_id?: string;
+																};
+															}
+														).extendedProps?.waId ||
+															(
+																event as {
+																	extendedProps?: {
+																		waId?: string;
+																		wa_id?: string;
+																	};
+																}
+															).extendedProps?.wa_id ||
+															event.id ||
+															"",
+													);
+													if (onOpenDocument) {
+														onOpenDocument(wa);
+													} else if (typeof window !== "undefined") {
+														setSelectedDocumentWaId(wa || "");
+														router.push("/documents");
+													}
+												} catch {}
+												onClose();
+											}
+										}}
+									>
+										<FileText className="h-4 w-4" />
+										{i18n.getMessage("open_customer_document", isLocalized)}
+									</div>
+
+									{!isCancelled && !isPast && (
+										<>
+											<div className="-mx-1 my-1 h-px bg-border" />
+											<div
+												className="flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 text-red-600"
+												onClick={() => {
+													onCancelReservation?.(event.id);
+													onClose();
+												}}
+												role="menuitem"
+												tabIndex={0}
+												onKeyDown={(e) => {
+													if (e.key === "Enter" || e.key === " ") {
+														e.preventDefault();
+														onCancelReservation?.(event.id);
+														onClose();
+													}
+												}}
+											>
+												<div className="flex items-center gap-1.5 font-medium">
+													<CalendarX className="h-4 w-4" />
+													{isLocalized ? "إلغاء الحجز" : "Cancel Reservation"}
+												</div>
+											</div>
+										</>
+									)}
+
+									{isCancelled && (
+										<>
+											<div className="-mx-1 my-1 h-px bg-border" />
+											<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+												<CalendarX className="h-4 w-4" />
+												{isLocalized ? "محجوز ملغي" : "Cancelled Reservation"}
+											</div>
+										</>
+									)}
+
+									{isPast && !isCancelled && (
+										<>
+											<div className="-mx-1 my-1 h-px bg-border" />
+											<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
+												<Clock className="h-4 w-4" />
+												{isLocalized ? "حجز سابق" : "Past Reservation"}
+											</div>
+										</>
+									)}
+								</div>
+							)}
+
+							{isConversation && (
+								<div
+									className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
+									onClick={() => {
+										onOpenConversation?.(event.id);
+										onClose();
+									}}
+									role="menuitem"
+									tabIndex={0}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" || e.key === " ") {
+											e.preventDefault();
+											onOpenConversation?.(event.id);
+											onClose();
 										}
 									}}
 								>
-									<FileText className="h-4 w-4" />
-									{i18n.getMessage("open_customer_document", isLocalized)}
+									<MessageCircle className="h-4 w-4" />
+									{isLocalized ? "فتح المحادثة" : "Open Conversation"}
 								</div>
-
-								{!isCancelled && !isPast && (
-									<>
-										<div className="-mx-1 my-1 h-px bg-border" />
-										<div
-											className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 gap-2 text-red-600"
-											onClick={() => {
-												onCancelReservation?.(event.id);
-												onClose();
-											}}
-											role="menuitem"
-											tabIndex={0}
-											onKeyDown={(e) => {
-												if (e.key === "Enter" || e.key === " ") {
-													e.preventDefault();
-													onCancelReservation?.(event.id);
-													onClose();
-												}
-											}}
-										>
-											<CalendarX className="h-4 w-4" />
-											{isLocalized ? "إلغاء الحجز" : "Cancel Reservation"}
-										</div>
-									</>
-								)}
-
-								{isCancelled && (
-									<>
-										<div className="-mx-1 my-1 h-px bg-border" />
-										<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-											<CalendarX className="h-4 w-4" />
-											{isLocalized ? "محجوز ملغي" : "Cancelled Reservation"}
-										</div>
-									</>
-								)}
-
-								{isPast && !isCancelled && (
-									<>
-										<div className="-mx-1 my-1 h-px bg-border" />
-										<div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-muted-foreground">
-											<Clock className="h-4 w-4" />
-											{isLocalized ? "حجز سابق" : "Past Reservation"}
-										</div>
-									</>
-								)}
-							</>
-						)}
-
-						{isConversation && (
-							<div
-								className="relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground gap-2"
-								onClick={() => {
-									onOpenConversation?.(event.id);
-									onClose();
-								}}
-								role="menuitem"
-								tabIndex={0}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" || e.key === " ") {
-										e.preventDefault();
-										onOpenConversation?.(event.id);
-										onClose();
-									}
-								}}
-							>
-								<MessageCircle className="h-4 w-4" />
-								{isLocalized ? "فتح المحادثة" : "Open Conversation"}
-							</div>
-						)}
+							)}
+						</section>
 					</motion.div>
 				</>
 			)}

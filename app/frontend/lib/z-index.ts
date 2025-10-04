@@ -23,7 +23,7 @@ const Z_INDEX = {
 	POPOVER: 1300,
 	HOVER_CARD: 2600,
 	CONTEXT_MENU: 1300,
-	SELECT: 1300,
+	SELECT: 1350,
 
 	// ========================================
 	// SIDEBAR & CHAT (1400-1420)

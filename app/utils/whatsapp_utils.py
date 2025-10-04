@@ -7,6 +7,7 @@ from collections import deque
 from app.config import config
 from .logging_utils import log_http_response
 from app.utils.service_utils import get_lock, parse_unix_timestamp, append_message, get_all_conversations
+from app.utils.realtime import enqueue_broadcast
 import inspect
 from app.utils.http_client import ensure_client_healthy
 from app.metrics import WHATSAPP_MESSAGE_FAILURES, WHATSAPP_MESSAGE_FAILURES_BY_REASON
@@ -391,6 +392,10 @@ async def process_whatsapp_message(body, run_llm_function):
             try:
                 lock = get_lock(wa_id)
                 if not lock.locked():
+                    try:
+                        enqueue_broadcast("conversation_typing", {"wa_id": wa_id, "state": "start"}, affected_entities=[wa_id])
+                    except Exception:
+                        pass
                     await send_typing_indicator(message_id)
             except Exception:
                 pass
@@ -410,6 +415,11 @@ async def process_whatsapp_message(body, run_llm_function):
                 except Exception as e:
                     # Don't let WhatsApp sending failures trigger LLM retries
                     logging.error(f"Exception while sending WhatsApp message to {wa_id}: {e}", exc_info=True)
+            # Regardless of success, clear typing state for UI
+            try:
+                enqueue_broadcast("conversation_typing", {"wa_id": wa_id, "state": "stop"}, affected_entities=[wa_id])
+            except Exception:
+                pass
             
     except Exception as e:
         logging.error(f"Error processing WhatsApp message: {e}", exc_info=True)

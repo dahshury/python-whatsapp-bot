@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingUp } from "lucide-react";
-import React from "react";
+import React, { useId } from "react";
 import { Bar, BarChart, Cell, XAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -42,6 +42,7 @@ const chartConfig = {
 
 export function HighlightedBarChart() {
 	const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+	const patternId = useId();
 
 	const activeData = React.useMemo(() => {
 		if (activeIndex === null) return null;
@@ -79,10 +80,10 @@ export function HighlightedBarChart() {
 							y="0"
 							width="100%"
 							height="85%"
-							fill="url(#highlighted-pattern-dots)"
+							fill={`url(#${patternId})`}
 						/>
 						<defs>
-							<DottedBackgroundPattern />
+							<DottedBackgroundPattern id={patternId} />
 						</defs>
 						<XAxis
 							dataKey="month"
@@ -115,10 +116,10 @@ export function HighlightedBarChart() {
 	);
 }
 
-const DottedBackgroundPattern = () => {
+const DottedBackgroundPattern = ({ id }: { id: string }) => {
 	return (
 		<pattern
-			id="highlighted-pattern-dots"
+			id={id}
 			x="0"
 			y="0"
 			width="10"

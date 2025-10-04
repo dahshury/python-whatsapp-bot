@@ -382,7 +382,20 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 		containerRef: textContainerRef,
 		textRef,
 		scale: textScale,
+		recompute,
+		isMeasured,
 	} = useShrinkToFitText(shrinkTextToFit);
+
+	// Trigger recompute when selected phone or display content changes
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Need to retrigger when selectedPhone changes to recalculate text width
+	React.useLayoutEffect(() => {
+		if (shrinkTextToFit) {
+			// Use requestAnimationFrame for immediate but smooth update
+			const rafId = requestAnimationFrame(() => recompute());
+			return () => cancelAnimationFrame(rafId);
+		}
+		return undefined;
+	}, [selectedPhone, shrinkTextToFit, recompute]);
 
 	// Prevent hydration mismatch and show loading state
 	if (!mounted) {
@@ -441,11 +454,10 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 								<div
 									ref={textRef}
 									className={cn(
-										"inline-flex items-center",
-										shrinkTextToFit
-											? "whitespace-nowrap overflow-hidden"
-											: "truncate",
+										"inline-flex items-center gap-1.5 w-full",
+										shrinkTextToFit ? "whitespace-nowrap" : "",
 										!selectedPhone && "text-muted-foreground",
+										shrinkTextToFit && !isMeasured && "opacity-0",
 									)}
 									style={
 										shrinkTextToFit
@@ -454,6 +466,9 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 													transformOrigin: "left center",
 													willChange: "transform",
 													direction: "ltr",
+													transition: isMeasured
+														? "transform 0.1s ease-out, opacity 0.05s ease-out"
+														: "none",
 												}
 											: { direction: "ltr" }
 									}
@@ -461,12 +476,22 @@ const PhoneCombobox: React.FC<PhoneComboboxProps> = ({
 									{showNameAndPhoneWhenClosed && selectedPhone ? (
 										<>
 											<span
-												className="text-sm text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded"
+												className={cn(
+													"text-sm text-muted-foreground font-mono bg-muted/30 px-1.5 py-0.5 rounded",
+													shrinkTextToFit ? "flex-shrink-0" : "flex-shrink-0",
+												)}
 												style={{ direction: "ltr" }}
 											>
 												[{selectedPhone}]
 											</span>
-											<span className="text-sm font-medium text-foreground">
+											<span
+												className={cn(
+													"text-sm font-medium text-foreground",
+													shrinkTextToFit
+														? "flex-shrink-0"
+														: "truncate min-w-0",
+												)}
+											>
 												{(() => {
 													const selectedOption = phoneOptions.find(
 														(option) => option.number === selectedPhone,

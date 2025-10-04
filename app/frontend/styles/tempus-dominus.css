@@ -138,42 +138,6 @@
 	grid-auto-rows: 40px;
 }
 
-.tempus-dominus-widget .toolbar div {
-	border-radius: var(--radius);
-	align-items: center;
-	justify-content: center;
-	box-sizing: border-box;
-	display: flex;
-}
-
-.tempus-dominus-widget .toolbar div:hover {
-	background-color: var(--td-hover-bg);
-	color: var(--td-hover-color);
-}
-
-/* Navigation buttons */
-.tempus-dominus-widget .td-picker-header .td-picker-header-row button {
-	background-color: transparent;
-	border: none;
-	color: var(--td-color);
-	border-radius: var(--radius);
-	padding: 0.25rem 0.5rem;
-	transition: all 0.15s ease;
-}
-
-.tempus-dominus-widget
-	.td-picker-header
-	.td-picker-header-row
-	button:hover:not(:disabled) {
-	background-color: var(--td-hover-bg);
-	color: var(--td-hover-color);
-}
-
-.tempus-dominus-widget .td-picker-header .td-picker-header-row button:disabled {
-	opacity: 0.5;
-	cursor: not-allowed;
-}
-
 /* Calendar grid */
 .tempus-dominus-widget .td-picker-body,
 .tempus-dominus-widget .date-container-days {
@@ -261,6 +225,20 @@
 .tempus-dominus-widget .time-container-hour div:not(.no-highlight):hover,
 .tempus-dominus-widget .time-container-minute div:not(.no-highlight):hover,
 .tempus-dominus-widget .time-container-second div:not(.no-highlight):hover {
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
+}
+
+/* Toolbar div styles (more specific than td > div, must come after) */
+.tempus-dominus-widget .toolbar div {
+	border-radius: var(--radius);
+	align-items: center;
+	justify-content: center;
+	box-sizing: border-box;
+	display: flex;
+}
+
+.tempus-dominus-widget .toolbar div:hover {
 	background-color: var(--td-hover-bg);
 	color: var(--td-hover-color);
 }
@@ -410,22 +388,6 @@
 }
 
 /* Time picker arrows */
-.tempus-dominus-widget .td-time-picker button,
-.tempus-dominus-widget button[data-action] {
-	background-color: transparent;
-	border: none;
-	color: var(--td-color);
-	padding: 6px;
-	border-radius: var(--radius);
-	transition: all 0.15s ease;
-}
-
-.tempus-dominus-widget .td-time-picker button:hover:not(:disabled),
-.tempus-dominus-widget button[data-action]:hover:not(:disabled) {
-	background-color: var(--td-hover-bg);
-	color: var(--td-hover-color);
-}
-
 .tempus-dominus-widget .toggleMeridiem {
 	text-align: center;
 	height: 38px;
@@ -438,6 +400,45 @@
 	display: flex;
 	justify-content: center;
 	gap: 0.5rem;
+}
+
+/* Button styles (ordered by specificity: general to specific) */
+.tempus-dominus-widget button {
+	background-color: var(--td-primary);
+	border-color: var(--td-primary);
+	color: var(--td-primary-text);
+}
+
+.tempus-dominus-widget button:hover {
+	opacity: 0.9;
+}
+
+.tempus-dominus-widget button[data-action] {
+	background-color: transparent;
+	border: none;
+	color: var(--td-color);
+	padding: 6px;
+	border-radius: var(--radius);
+	transition: all 0.15s ease;
+}
+
+.tempus-dominus-widget button[data-action]:hover:not(:disabled) {
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
+}
+
+.tempus-dominus-widget .td-time-picker button {
+	background-color: transparent;
+	border: none;
+	color: var(--td-color);
+	padding: 6px;
+	border-radius: var(--radius);
+	transition: all 0.15s ease;
+}
+
+.tempus-dominus-widget .td-time-picker button:hover:not(:disabled) {
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
 }
 
 .tempus-dominus-widget .td-picker-footer button {
@@ -457,16 +458,37 @@
 	color: var(--td-hover-color);
 }
 
-.tempus-dominus-widget .td-picker-footer button.td-button-primary,
-.tempus-dominus-widget button {
+.tempus-dominus-widget .td-picker-footer button.td-button-primary {
 	background-color: var(--td-primary);
 	border-color: var(--td-primary);
 	color: var(--td-primary-text);
 }
 
-.tempus-dominus-widget .td-picker-footer button.td-button-primary:hover,
-.tempus-dominus-widget button:hover {
+.tempus-dominus-widget .td-picker-footer button.td-button-primary:hover {
 	opacity: 0.9;
+}
+
+/* Navigation buttons (more specific, must come after general button styles) */
+.tempus-dominus-widget .td-picker-header .td-picker-header-row button {
+	background-color: transparent;
+	border: none;
+	color: var(--td-color);
+	border-radius: var(--radius);
+	padding: 0.25rem 0.5rem;
+	transition: all 0.15s ease;
+}
+
+.tempus-dominus-widget
+	.td-picker-header
+	.td-picker-header-row
+	button:hover:not(:disabled) {
+	background-color: var(--td-hover-bg);
+	color: var(--td-hover-color);
+}
+
+.tempus-dominus-widget .td-picker-header .td-picker-header-row button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
 }
 
 /* Month/Year/Decade views */
@@ -575,28 +597,25 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 	font-family: var(--font-sans);
 }
 
-/* Ensure the widget respects the rounded corners of themes */
+/* Ensure the widget respects the rounded corners of themes (ordered by specificity) */
 .tempus-dominus-widget,
-.tempus-dominus-widget .td-picker-header button,
-.tempus-dominus-widget td > div,
-.tempus-dominus-widget .td-time-picker input,
-.tempus-dominus-widget .td-time-picker button,
-.tempus-dominus-widget .td-picker-footer button,
-.tempus-dominus-widget .td-decades > div > div,
-.tempus-dominus-widget .td-years > div > div,
-.tempus-dominus-widget .td-months > div > div,
-.tempus-dominus-widget .toolbar div,
 .tempus-dominus-widget button[data-action],
 .tempus-dominus-widget .timepicker-hour,
 .tempus-dominus-widget .timepicker-minute,
-.tempus-dominus-widget .timepicker-second {
+.tempus-dominus-widget .timepicker-second,
+.tempus-dominus-widget td > div,
+.tempus-dominus-widget .td-time-picker input,
+.tempus-dominus-widget .td-picker-header button,
+.tempus-dominus-widget .td-time-picker button,
+.tempus-dominus-widget .td-picker-footer button,
+.tempus-dominus-widget .toolbar div,
+.tempus-dominus-widget .td-decades > div > div,
+.tempus-dominus-widget .td-years > div > div,
+.tempus-dominus-widget .td-months > div > div {
 	border-radius: var(--radius);
 }
 
-/* Small radius elements */
-.tempus-dominus-widget td > div,
-.tempus-dominus-widget .td-time-picker input,
-.tempus-dominus-widget .td-time-picker button,
+/* Small radius elements (duplicate removed, already covered above) */
 .tempus-dominus-widget .date-container-decades div:not(.no-highlight),
 .tempus-dominus-widget .date-container-years div:not(.no-highlight),
 .tempus-dominus-widget .date-container-months div:not(.no-highlight),

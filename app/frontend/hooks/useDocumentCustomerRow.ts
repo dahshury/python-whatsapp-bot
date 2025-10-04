@@ -15,15 +15,7 @@ import { i18n } from "@/lib/i18n";
 import { useSidebarChatStore } from "@/lib/sidebar-chat-store";
 import { normalizePhoneForStorage } from "@/lib/utils/phone-utils";
 
-const CUSTOMER_TTL_MS = 15_000;
-const customerCache = new Map<
-	string,
-	{ data: { name?: string | null; age?: number | null } | null; ts: number }
->();
-const inflightMap = new Map<
-	string,
-	{ controller: AbortController; promise: Promise<unknown> }
->();
+// Removed client-side customer cache to enforce WebSocket-only profile loading
 
 export function useDocumentCustomerRow(
 	selectedWaId: string | null | undefined,
@@ -47,10 +39,17 @@ export function useDocumentCustomerRow(
 	const saveCustomerDebouncedRef = useRef<number | null>(null);
 	const isInitializingRef = useRef<boolean>(false);
 	const { customers } = useCustomerData();
+	// deprecated: previously used to force data-source resets
+	// const resetTokenRef = useRef<number>(0);
 	const customersRef = useRef(customers);
 	const router = useRouter();
 	const { setSelectedDocumentWaId } = useSidebarChatStore();
 	const isNewCustomerModeRef = useRef<boolean>(false);
+	// deprecated: no longer prefill entire rows; cells are updated incrementally
+	// const prefillRowRef = useRef<unknown[] | null>(null);
+	const skipInitialClearRef = useRef<boolean>(false);
+
+	// pulseGrid no longer used; provider.refresh is called in-place where needed
 
 	// Re-evaluate completeness/unlock when data source is applied (e.g., after refresh)
 	useEffect(() => {
@@ -315,26 +314,12 @@ export function useDocumentCustomerRow(
 				);
 				// Unlock strictly mirrors completeness (name + age valid + phone)
 				setIsUnlockReady(complete);
-				// Fallback: if provider completeness is false, double-check raw data source in case of cell-kind mismatches
+				// Fallback: avoid unlocking based on raw data source; rely on provider state only
+				// This prevents transient unlocks when age is not yet applied to the provider
 				if (!complete && customerDataSource) {
 					Promise.resolve(customerDataSource.getRowData(0))
-						.then((row) => {
-							try {
-								const r = row || [];
-								const name = String((r[0] as unknown) ?? "").trim();
-								const ageNum = Number((r[1] as unknown) ?? Number.NaN);
-								const phone = String((r[2] as unknown) ?? "").trim();
-								const ok =
-									name.length > 0 &&
-									Number.isFinite(ageNum) &&
-									ageNum >= 10 &&
-									ageNum <= 120 &&
-									phone.length > 0;
-								if (ok) {
-									setIsCustomerDataComplete(true);
-									setIsUnlockReady(true);
-								}
-							} catch {}
+						.then(() => {
+							// Intentionally do not set isUnlockReady here
 						})
 						.catch(() => {});
 				}
@@ -570,27 +555,154 @@ export function useDocumentCustomerRow(
 					void helper?.saveIfDirty?.();
 				} catch {}
 				const normalized = normalizePhoneForStorage(phone);
-				if (normalized === DEFAULT_DOCUMENT_WA_ID) {
+				// Commit phone and name via provider.setCell to mimic onCellEdited and avoid grid remount
+				try {
+					const provider = customerProviderRef.current;
+					if (provider) {
+						const displayPhone = phone.startsWith("+")
+							? phone
+							: `+${normalizePhoneForStorage(phone)}`;
+						// Find customer name from unified data if not provided
+						let resolvedName = String(detail?.customerName || "").trim();
+						if (!resolvedName) {
+							try {
+								const list = customersRef.current || [];
+								const match = list.find(
+									(c) =>
+										normalizePhoneForStorage(
+											String(
+												(c as { phone?: string; id?: string }).phone ||
+													(c as { id?: string }).id ||
+													"",
+											),
+										) === normalized,
+								);
+								resolvedName = String(
+									(match as { name?: string })?.name || "",
+								).trim();
+							} catch {}
+						}
+						// Phone cell
+						const phoneCell = {
+							kind: GridCellKind.Custom,
+							data: { kind: "phone-cell", value: displayPhone },
+							copyData: displayPhone,
+							allowOverlay: true,
+						} as unknown as GridCell;
+						(
+							provider as unknown as {
+								setCell?: (c: number, r: number, v: GridCell) => void;
+							}
+						).setCell?.(2, 0, phoneCell);
+						// Age cell (if available in age registry)
+						try {
+							const reg = (
+								globalThis as unknown as {
+									__customerAgeRegistry?: {
+										hasAge?: (waId: string) => boolean;
+										ageByWaId?: Map<string, number | null>;
+									};
+								}
+							).__customerAgeRegistry;
+							const hasAge = reg?.hasAge?.(normalized) === true;
+							const ageMaybe = hasAge
+								? (reg?.ageByWaId?.get(normalized) as number | null)
+								: null;
+							if (hasAge && typeof ageMaybe === "number") {
+								const age = Number(ageMaybe);
+								if (Number.isFinite(age) && age >= 10 && age <= 120) {
+									const ageCell = {
+										kind: GridCellKind.Custom,
+										data: {
+											kind: "age-wheel-cell",
+											value: age,
+											display: String(age),
+											min: 10,
+											max: 120,
+										},
+										copyData: String(age),
+										allowOverlay: true,
+									} as unknown as GridCell;
+									(
+										provider as unknown as {
+											setCell?: (c: number, r: number, v: GridCell) => void;
+										}
+									).setCell?.(1, 0, ageCell);
+								}
+							} else {
+								// No known age for this customer: explicitly clear to avoid carrying over stale age
+								const emptyAgeCell = {
+									kind: GridCellKind.Custom,
+									data: {
+										kind: "age-wheel-cell",
+										value: null,
+										display: "",
+										min: 10,
+										max: 120,
+									},
+									copyData: "",
+									allowOverlay: true,
+								} as unknown as GridCell;
+								(
+									provider as unknown as {
+										setCell?: (c: number, r: number, v: GridCell) => void;
+									}
+								).setCell?.(1, 0, emptyAgeCell);
+							}
+						} catch {}
+						// Name cell (only if we have a non-empty name)
+						if (resolvedName) {
+							const nameCell = {
+								kind: GridCellKind.Text,
+								data: resolvedName,
+								displayData: resolvedName,
+								allowOverlay: true,
+							} as unknown as GridCell;
+							(
+								provider as unknown as {
+									setCell?: (c: number, r: number, v: GridCell) => void;
+								}
+							).setCell?.(0, 0, nameCell);
+						}
+						// Targeted redraw of just phone, age, and name cells
+						try {
+							(
+								window as unknown as {
+									__docGridApi?: {
+										updateCells?: (cells: { cell: [number, number] }[]) => void;
+									};
+								}
+							).__docGridApi?.updateCells?.([
+								{ cell: [2, 0] },
+								{ cell: [1, 0] },
+								{ cell: [0, 0] },
+							]);
+						} catch {}
+						setIsCustomerDataComplete(false);
+						// Ensure initial clear is skipped once if waId change follows
+						skipInitialClearRef.current = true;
+					}
+				} catch {}
+				// Immediately select document locally to clear grid and start load
+				try {
 					isNewCustomerModeRef.current = false;
 					setSelectedDocumentWaId(normalized);
 					router.push("/documents");
+				} catch {}
+				if (normalized === DEFAULT_DOCUMENT_WA_ID) {
 					return;
 				}
 				try {
-					const exists = (customersRef.current || []).some(
-						(c) =>
-							normalizePhoneForStorage(
-								String(
-									(c as { phone?: string; id?: string }).phone ||
-										(c as { id?: string }).id ||
-										"",
-								),
-							) === normalized,
-					);
+					const exists = (customersRef.current || []).some((c) => {
+						const idOrPhone = String(
+							(c as { phone?: string; id?: string }).phone ||
+								(c as { id?: string }).id ||
+								"",
+						);
+						return normalizePhoneForStorage(idOrPhone) === normalized;
+					});
 					if (exists) {
 						isNewCustomerModeRef.current = false;
-						setSelectedDocumentWaId(normalized);
-						router.push("/documents");
 						return;
 					}
 				} catch {}
@@ -605,8 +717,6 @@ export function useDocumentCustomerRow(
 					.then(() => {
 						try {
 							isNewCustomerModeRef.current = false;
-							setSelectedDocumentWaId(normalized);
-							router.push("/documents");
 						} catch {}
 					})
 					.catch(() => {});
@@ -623,96 +733,136 @@ export function useDocumentCustomerRow(
 			);
 	}, [router, setSelectedDocumentWaId]);
 
-	// Load customer row when waId changes (WS-first with fallback; cached + abortable)
+	// Load customer row when waId changes (WebSocket-only; keep grid instance; show Loading cells)
 	useEffect(() => {
-		if (!waId) {
-			// Keep stable data source instance; reset to empty state
-			const rows: unknown[][] = [["", null, ""]];
-			if (!customerDataSourceRef.current) {
-				const ds = new InMemoryDataSource(
-					1,
-					customerColumns.length,
-					customerColumns,
-					rows,
-				);
-				customerDataSourceRef.current = ds;
-				setCustomerDataSource(ds);
-			} else {
-				try {
-					customerDataSourceRef.current.reset(customerColumns, rows);
-					(
-						customerProviderRef.current as unknown as {
-							refresh?: () => Promise<void> | void;
-						}
-					)?.refresh?.();
-				} catch {}
-			}
-			setIsCustomerDataComplete(false);
-			return;
+		// Ensure a stable data source exists once
+		if (!customerDataSourceRef.current) {
+			const ds = new InMemoryDataSource(
+				1,
+				customerColumns.length,
+				customerColumns,
+				[["", null, ""]],
+			);
+			customerDataSourceRef.current = ds;
+			setCustomerDataSource(ds);
 		}
-		if (waId === DEFAULT_DOCUMENT_WA_ID) {
-			const rows: unknown[][] = isNewCustomerModeRef.current
-				? [["", null, ""]]
-				: [
-						[
-							i18n.getMessage("default_contact", isLocalized),
-							null,
-							"+0000000000000",
-						],
-					];
-			if (!customerDataSourceRef.current) {
-				const ds = new InMemoryDataSource(
-					1,
-					customerColumns.length,
-					customerColumns,
-					rows,
-				);
-				customerDataSourceRef.current = ds;
-				setCustomerDataSource(ds);
-			} else {
-				try {
-					customerDataSourceRef.current.reset(customerColumns, rows);
-					(
-						customerProviderRef.current as unknown as {
-							refresh?: () => Promise<void> | void;
-						}
-					)?.refresh?.();
-				} catch {}
-			}
-			setIsCustomerDataComplete(!isNewCustomerModeRef.current);
+
+		if (!waId) {
+			setIsCustomerDataComplete(false);
 			setCustomerLoading(false);
 			setCustomerError(null);
 			return;
 		}
+
+		if (waId === DEFAULT_DOCUMENT_WA_ID) {
+			try {
+				const provider = customerProviderRef.current as
+					| (DataProvider & { refresh?: () => Promise<void> | void })
+					| null;
+				if (provider) {
+					const nameCell = {
+						kind: GridCellKind.Text,
+						data: i18n.getMessage("default_contact", isLocalized),
+						displayData: i18n.getMessage("default_contact", isLocalized),
+						allowOverlay: true,
+					} as unknown as GridCell;
+					provider.setCell?.(0, 0, nameCell);
+					const ageCell = {
+						kind: GridCellKind.Custom,
+						data: {
+							kind: "age-wheel-cell",
+							value: null,
+							display: "",
+							min: 10,
+							max: 120,
+						},
+						copyData: "",
+						allowOverlay: true,
+					} as unknown as GridCell;
+					provider.setCell?.(1, 0, ageCell);
+					const phoneCell = {
+						kind: GridCellKind.Custom,
+						data: { kind: "phone-cell", value: "+0000000000000" },
+						copyData: "+0000000000000",
+						allowOverlay: true,
+					} as unknown as GridCell;
+					provider.setCell?.(2, 0, phoneCell);
+					provider.refresh?.();
+				}
+			} catch {}
+			setIsCustomerDataComplete(true);
+			setCustomerLoading(false);
+			setCustomerError(null);
+			return;
+		}
+
 		setIsCustomerDataComplete(false);
+		setIsUnlockReady(false);
 		setCustomerLoading(true);
 		setCustomerError(null);
 
-		const cacheKey = `/api/customers/${encodeURIComponent(waId)}`;
-		const now = Date.now();
-		const cached = customerCache.get(cacheKey);
-		const isFresh = Boolean(cached && now - cached.ts < CUSTOMER_TTL_MS);
+		// CRITICAL: Clear name and age cells, then set phone, to avoid showing stale data
+		try {
+			const provider = customerProviderRef.current as
+				| (DataProvider & { refresh?: () => Promise<void> | void })
+				| null;
+			if (provider) {
+				// Clear name cell
+				const emptyNameCell = {
+					kind: GridCellKind.Text,
+					data: "",
+					displayData: "",
+					allowOverlay: true,
+				} as unknown as GridCell;
+				provider.setCell?.(0, 0, emptyNameCell);
+
+				// Clear age cell
+				const emptyAgeCell = {
+					kind: GridCellKind.Custom,
+					data: {
+						kind: "age-wheel-cell",
+						value: null,
+						display: "",
+						min: 10,
+						max: 120,
+					},
+					copyData: "",
+					allowOverlay: true,
+				} as unknown as GridCell;
+				provider.setCell?.(1, 0, emptyAgeCell);
+
+				// Set phone cell
+				const displayPhone = waId.startsWith("+") ? waId : `+${waId}`;
+				const phoneCell = {
+					kind: GridCellKind.Custom,
+					data: { kind: "phone-cell", value: displayPhone },
+					copyData: displayPhone,
+					allowOverlay: true,
+				} as unknown as GridCell;
+				provider.setCell?.(2, 0, phoneCell);
+
+				// Update all three cells at once
+				try {
+					(
+						window as unknown as {
+							__docGridApi?: {
+								updateCells?: (cells: { cell: [number, number] }[]) => void;
+							};
+						}
+					).__docGridApi?.updateCells?.([
+						{ cell: [0, 0] },
+						{ cell: [1, 0] },
+						{ cell: [2, 0] },
+					]);
+				} catch {}
+				provider.refresh?.();
+			}
+		} catch {}
 
 		const applyCustomer = (
 			payload: { name?: string | null; age?: number | null } | null,
 		) => {
-			let fallbackName = "";
-			try {
-				const target = normalizePhoneForStorage(waId || "");
-				const match = (customersRef.current || []).find((c) => {
-					const idMatch =
-						normalizePhoneForStorage(
-							String((c as { id?: string }).id || ""),
-						) === target;
-					const phoneMatch =
-						normalizePhoneForStorage(
-							String((c as { phone?: string }).phone || ""),
-						) === target;
-					return idMatch || phoneMatch;
-				});
-				fallbackName = (match?.name || "").trim();
-			} catch {}
-			// Robust numeric parsing for age from API
+			// Respect DB only: if no age in DB, keep it empty (null)
 			const ageNum = Number(
 				(payload?.age as unknown) !== undefined &&
 					(payload?.age as unknown) !== null
@@ -723,56 +873,99 @@ export function useDocumentCustomerRow(
 				Number.isFinite(ageNum) && ageNum >= 10 && ageNum <= 120
 					? ageNum
 					: null;
-			const initialRow: unknown[] = [
-				payload?.name || fallbackName || "",
-				normalizedAge,
-				waId || "",
-			];
-			if (!customerDataSourceRef.current) {
-				const ds = new InMemoryDataSource(
-					1,
-					customerColumns.length,
-					customerColumns,
-					[initialRow],
-				);
-				customerDataSourceRef.current = ds;
-				setCustomerDataSource(ds);
-			} else {
-				try {
-					customerDataSourceRef.current.reset(customerColumns, [initialRow]);
+
+			const provider = customerProviderRef.current;
+			if (provider) {
+				const updates: Array<{ cell: [number, number] }> = [];
+				const incomingName = String(payload?.name || "").trim();
+				if (incomingName) {
+					const nameCell = {
+						kind: GridCellKind.Text,
+						data: incomingName,
+						displayData: incomingName,
+						allowOverlay: true,
+					} as unknown as GridCell;
 					(
-						customerProviderRef.current as unknown as {
-							refresh?: () => Promise<void> | void;
+						provider as unknown as {
+							setCell?: (c: number, r: number, v: GridCell) => void;
 						}
-					)?.refresh?.();
+					).setCell?.(0, 0, nameCell);
+					updates.push({ cell: [0, 0] });
+				}
+				if (normalizedAge !== null) {
+					const ageCell = {
+						kind: GridCellKind.Custom,
+						data: {
+							kind: "age-wheel-cell",
+							value: normalizedAge,
+							display: String(normalizedAge),
+							min: 10,
+							max: 120,
+						},
+						copyData: String(normalizedAge),
+						allowOverlay: true,
+					} as unknown as GridCell;
+					(
+						provider as unknown as {
+							setCell?: (c: number, r: number, v: GridCell) => void;
+						}
+					).setCell?.(1, 0, ageCell);
+					updates.push({ cell: [1, 0] });
+				} else {
+					// Explicitly clear age when DB has none
+					const emptyAgeCell = {
+						kind: GridCellKind.Custom,
+						data: {
+							kind: "age-wheel-cell",
+							value: null,
+							display: "",
+							min: 10,
+							max: 120,
+						},
+						copyData: "",
+						allowOverlay: true,
+					} as unknown as GridCell;
+					(
+						provider as unknown as {
+							setCell?: (c: number, r: number, v: GridCell) => void;
+						}
+					).setCell?.(1, 0, emptyAgeCell);
+					updates.push({ cell: [1, 0] });
+				}
+				const displayPhone = waId.startsWith("+") ? waId : `+${waId}`;
+				const phoneCell = {
+					kind: GridCellKind.Custom,
+					data: { kind: "phone-cell", value: displayPhone },
+					copyData: displayPhone,
+					allowOverlay: true,
+				} as unknown as GridCell;
+				(
+					provider as unknown as {
+						setCell?: (c: number, r: number, v: GridCell) => void;
+					}
+				).setCell?.(2, 0, phoneCell);
+				updates.push({ cell: [2, 0] });
+
+				try {
+					(
+						window as unknown as {
+							__docGridApi?: {
+								updateCells?: (cells: { cell: [number, number] }[]) => void;
+							};
+						}
+					).__docGridApi?.updateCells?.(updates);
 				} catch {}
 			}
-			try {
-				const hasName = String(initialRow[0] || "").trim().length > 0;
-				const ageVal = (initialRow[1] as number | null) ?? null;
-				const hasValidAge =
-					typeof ageVal === "number" &&
-					Number.isFinite(ageVal) &&
-					ageVal >= 10 &&
-					ageVal <= 120;
-				const hasPhone = String(initialRow[2] || "").trim().length > 0;
-				const complete = Boolean(hasName && hasValidAge && hasPhone);
-				setIsUnlockReady(complete);
-				setIsCustomerDataComplete(complete);
-			} catch {
-				setIsUnlockReady(false);
-				setIsCustomerDataComplete(false);
-			}
+
+			const complete = Boolean(
+				String(payload?.name || "").trim().length > 0 &&
+					normalizedAge !== null &&
+					String(waId).trim().length > 0,
+			);
+			setIsUnlockReady(complete);
+			setIsCustomerDataComplete(complete);
 		};
 
-		if (isFresh) {
-			applyCustomer(cached?.data || null);
-			setCustomerLoading(false);
-			return;
-		}
-
-		// WS-first: request customer profile and listen briefly
-		let wsHandled = false;
 		const onWsProfile = (ev: Event) => {
 			try {
 				const detail = (ev as CustomEvent).detail as
@@ -784,9 +977,7 @@ export function useDocumentCustomerRow(
 					name: detail?.name ?? null,
 					age: detail?.age ?? null,
 				};
-				customerCache.set(cacheKey, { data: payload, ts: Date.now() });
 				applyCustomer(payload);
-				wsHandled = true;
 				setCustomerLoading(false);
 			} catch {}
 		};
@@ -803,59 +994,8 @@ export function useDocumentCustomerRow(
 				);
 			}
 		} catch {}
-		let controller: AbortController | null = null;
-		const wsFallback = setTimeout(() => {
-			if (wsHandled) return;
-
-			// If a fetch is already inflight for this waId, reuse it and apply when done
-			const existing = inflightMap.get(cacheKey);
-			if (existing) {
-				try {
-					existing.promise
-						.then(() => {
-							const cachedDone = customerCache.get(cacheKey);
-							applyCustomer(cachedDone?.data || null);
-						})
-						.catch(() => {});
-				} catch {}
-				// Keep loading state true until existing completes
-				return;
-			}
-			controller = new AbortController();
-			const p = fetch(cacheKey, {
-				cache: "no-store",
-				signal: controller.signal,
-			})
-				.then((resp) => resp.json().catch(() => ({})))
-				.then((data) => {
-					const payload =
-						(data?.data as {
-							name?: string | null;
-							age?: number | null;
-						} | null) || null;
-					customerCache.set(cacheKey, { data: payload, ts: Date.now() });
-					applyCustomer(payload);
-				})
-				.catch((err) => {
-					if ((err as { name?: string })?.name === "AbortError") return;
-					setCustomerError((err as Error).message);
-				})
-				.finally(() => {
-					if (
-						controller &&
-						inflightMap.get(cacheKey)?.controller === controller
-					)
-						inflightMap.delete(cacheKey);
-					setCustomerLoading(false);
-				});
-			inflightMap.set(cacheKey, { controller, promise: p });
-		}, 250);
 
 		return () => {
-			clearTimeout(wsFallback);
-			try {
-				controller?.abort();
-			} catch {}
 			window.removeEventListener(
 				"documents:customerProfile",
 				onWsProfile as EventListener,

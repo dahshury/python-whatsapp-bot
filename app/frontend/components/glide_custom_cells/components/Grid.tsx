@@ -345,6 +345,30 @@ export default function Grid({
 	const internalDataEditorRef = React.useRef<DataEditorRef>(null);
 	const dataEditorRef = externalDataEditorRef || internalDataEditorRef;
 
+	// Expose a minimal grid API for targeted cell refreshes without remounting
+	React.useEffect(() => {
+		try {
+			(
+				window as unknown as {
+					__docGridApi?: {
+						updateCells?: (cells: { cell: [number, number] }[]) => void;
+					};
+				}
+			).__docGridApi = {
+				updateCells: (cells: { cell: [number, number] }[]) => {
+					try {
+						dataEditorRef.current?.updateCells(cells);
+					} catch {}
+				},
+			};
+		} catch {}
+		return () => {
+			try {
+				delete (window as unknown as { __docGridApi?: unknown }).__docGridApi;
+			} catch {}
+		};
+	}, [dataEditorRef]);
+
 	// Callback to refresh specific cells without re-rendering the entire grid
 	const refreshCells = React.useCallback(
 		(cells: { cell: [number, number] }[]) => {
@@ -374,19 +398,65 @@ export default function Grid({
 
 		const onScroll = () => compute();
 		const onResize = () => compute();
-		window.addEventListener("scroll", onScroll, true);
+
+		// Attach listeners broadly so we catch scrolls within fullscreen containers too
+		const scrollTargets: Array<EventTarget | null | undefined> = [
+			window,
+			document,
+			containerRef.current,
+			typeof document !== "undefined"
+				? document.getElementById("grid-fullscreen-portal")
+				: undefined,
+			typeof document !== "undefined"
+				? (document.querySelector(
+						".glide-grid-fullscreen-container",
+					) as HTMLElement | null)
+				: undefined,
+		];
+
+		for (const target of scrollTargets) {
+			try {
+				if (target && "addEventListener" in target)
+					(target as unknown as Window).addEventListener("scroll", onScroll, {
+						capture: true,
+						passive: true,
+					} as unknown as boolean);
+			} catch {}
+		}
+
 		window.addEventListener("resize", onResize);
+
 		const ro = new ResizeObserver(() => compute());
 		try {
 			if (containerRef.current) ro.observe(containerRef.current);
 		} catch {}
+
 		return () => {
-			window.removeEventListener("scroll", onScroll, true);
+			for (const target of scrollTargets) {
+				try {
+					if (target && "removeEventListener" in target)
+						(target as unknown as Window).removeEventListener(
+							"scroll",
+							onScroll,
+							true,
+						);
+				} catch {}
+			}
 			window.removeEventListener("resize", onResize);
 			try {
 				ro.disconnect();
 			} catch {}
 		};
+	}, []);
+
+	// Recompute overlay position when fullscreen toggles to ensure toolbar returns to place
+	React.useEffect(() => {
+		try {
+			const el = containerRef.current;
+			if (!el) return;
+			const rect = el.getBoundingClientRect();
+			setOverlayPosition({ top: rect.top, left: rect.right });
+		} catch {}
 	}, []);
 
 	// Force a redraw of all visible cells when display geometry changes

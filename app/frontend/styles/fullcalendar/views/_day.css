@@ -58,13 +58,8 @@
 	transition: none;
 }
 
-/* Disable day frame hover effects in day view */
-.fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-past):not(
-		.fc-day-disabled
-	):not(.fc-day-today):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-frame,
-.fc-timeGridDay-view
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+/* Disable day frame hover effects in day view (ordered by specificity) */
+.fc-timeGridDay-view .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-frame,
 .fc-timeGridDay-view
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
@@ -73,6 +68,11 @@
 	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
 		.fc-day-disabled
 	):hover
+	.fc-daygrid-day-frame,
+.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-frame {
 	transform: none;
 	box-shadow: none;
@@ -82,13 +82,8 @@
 	transition: none;
 }
 
-/* Disable day number hover effects in day view */
-.fc-timeGridDay-view .fc-daygrid-day:not(.fc-day-disabled):not(
-		.fc-day-past
-	):not(.fc-day-today):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-number,
-.fc-timeGridDay-view
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+/* Disable day number hover effects in day view (ordered by specificity) */
+.fc-timeGridDay-view .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-number,
 .fc-timeGridDay-view
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(.fc-day-past):hover
@@ -97,6 +92,11 @@
 	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
 		.fc-day-past
 	):hover
+	.fc-daygrid-day-number,
+.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-number {
 	color: inherit;
 	font-weight: inherit;
@@ -150,11 +150,26 @@
 	transition: none;
 }
 
-/* Dark mode fc-daygrid-day-frame hover overrides */
+/* Dark mode fc-daygrid-day-frame hover overrides (higher specificity to override base styles) */
 .dark .fc-timeGridDay-view
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-frame,
-.dark .fc-timeGridDay-view .fc-daygrid-day:hover .fc-daygrid-day-frame {
+.dark
+	.fc-timeGridDay-view
+	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day-frame,
+.dark
+	.fc-timeGridDay-view
+	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
+		.fc-day-disabled
+	):hover
+	.fc-daygrid-day-frame,
+.dark
+	.fc-timeGridDay-view
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day-frame {
 	transform: none;
 	box-shadow: none;
 	background-color: inherit;

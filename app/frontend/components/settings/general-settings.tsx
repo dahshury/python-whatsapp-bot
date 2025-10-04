@@ -23,6 +23,7 @@ export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
 
 	return (
 		<div className="space-y-4">
+			{/* Language Setting */}
 			<div className="flex items-center justify-between rounded-lg border p-3 bg-background/40 backdrop-blur-sm">
 				<div className="space-y-0.5">
 					<Label className="text-sm font-medium flex items-center gap-2">

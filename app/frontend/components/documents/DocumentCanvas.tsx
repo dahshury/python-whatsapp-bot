@@ -110,7 +110,7 @@ function DocumentCanvasComponent({
 	useEffect(() => {
 		if (!mountReady) return;
 		let timer: number | null = null;
-		let remaining = 40;
+		let remaining = 60; // Increased attempts
 		const verifyAndFix = () => {
 			try {
 				const root = containerRef.current?.querySelector(
@@ -119,21 +119,28 @@ function DocumentCanvasComponent({
 				const canvas = containerRef.current?.querySelector(
 					"canvas.excalidraw__canvas.interactive",
 				) as HTMLCanvasElement | null;
-				if (!root || !canvas) return;
+				if (!root || !canvas) return true;
 				const cw = Math.floor(root.clientWidth || 0);
 				const ch = Math.floor(root.clientHeight || 0);
+				if (cw <= 1 || ch <= 1) return true;
 				const rect = canvas.getBoundingClientRect();
 				const sw = Math.floor(rect.width || 0);
 				const sh = Math.floor(rect.height || 0);
 				if (Math.abs(cw - sw) > 1 || Math.abs(ch - sh) > 1) {
+					const refresh = () => apiRef.current?.refresh?.();
 					try {
-						requestAnimationFrame(() => apiRef.current?.refresh?.());
+						requestAnimationFrame(refresh);
 					} catch {
-						apiRef.current?.refresh?.();
+						refresh();
 					}
-					// Nudge Excalidraw's internal listeners
+					// Aggressively nudge Excalidraw's internal resize handlers
 					try {
 						window.dispatchEvent(new Event("resize"));
+						setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
+					} catch {}
+					// Also try visualViewport if available
+					try {
+						window.visualViewport?.dispatchEvent?.(new Event("resize"));
 					} catch {}
 					return true;
 				}
@@ -145,11 +152,14 @@ function DocumentCanvasComponent({
 				const needsMore = verifyAndFix();
 				remaining -= 1;
 				if (remaining > 0 && needsMore) {
-					timer = window.setTimeout(runBurst, 90);
+					timer = window.setTimeout(runBurst, 60); // Faster interval
 				}
 			} catch {}
 		};
-		runBurst();
+		// Start verification immediately and aggressively
+		verifyAndFix();
+		setTimeout(() => verifyAndFix(), 0);
+		setTimeout(() => runBurst(), 16);
 		const onOrientation = () => {
 			remaining = 40;
 			runBurst();
@@ -436,10 +446,28 @@ function DocumentCanvasComponent({
 							const apiLike = apiRef.current as unknown as {
 								refresh?: () => void;
 							} | null;
-							requestAnimationFrame(() => apiLike?.refresh?.());
-							setTimeout(() => apiLike?.refresh?.(), 120);
-							setTimeout(() => apiLike?.refresh?.(), 300);
-							setTimeout(() => apiLike?.refresh?.(), 600);
+							// Dispatch resize events to trigger Excalidraw's internal resize handlers
+							const dispatchResize = () => {
+								try {
+									window.dispatchEvent(new Event("resize"));
+								} catch {}
+							};
+							requestAnimationFrame(() => {
+								apiLike?.refresh?.();
+								dispatchResize();
+							});
+							setTimeout(() => {
+								apiLike?.refresh?.();
+								dispatchResize();
+							}, 120);
+							setTimeout(() => {
+								apiLike?.refresh?.();
+								dispatchResize();
+							}, 300);
+							setTimeout(() => {
+								apiLike?.refresh?.();
+								dispatchResize();
+							}, 600);
 						} catch {}
 						// Enforce current theme immediately after API becomes ready
 						try {

@@ -1,6 +1,7 @@
 "use client";
 
 import { TrendingDown } from "lucide-react";
+import { useId } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -44,6 +45,9 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function GradientRoundedAreaChart() {
+	const desktopGradientId = useId();
+	const mobileGradientId = useId();
+
 	return (
 		<Card>
 			<CardHeader>
@@ -75,7 +79,7 @@ export function GradientRoundedAreaChart() {
 						<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
 						<defs>
 							<linearGradient
-								id="gradient-rounded-chart-desktop"
+								id={desktopGradientId}
 								x1="0"
 								y1="0"
 								x2="0"
@@ -92,13 +96,7 @@ export function GradientRoundedAreaChart() {
 									stopOpacity={0.1}
 								/>
 							</linearGradient>
-							<linearGradient
-								id="gradient-rounded-chart-mobile"
-								x1="0"
-								y1="0"
-								x2="0"
-								y2="1"
-							>
+							<linearGradient id={mobileGradientId} x1="0" y1="0" x2="0" y2="1">
 								<stop
 									offset="5%"
 									stopColor="var(--color-mobile)"
@@ -114,7 +112,7 @@ export function GradientRoundedAreaChart() {
 						<Area
 							dataKey="mobile"
 							type="natural"
-							fill="url(#gradient-rounded-chart-mobile)"
+							fill={`url(#${mobileGradientId})`}
 							fillOpacity={0.4}
 							stroke="var(--color-mobile)"
 							stackId="a"
@@ -124,7 +122,7 @@ export function GradientRoundedAreaChart() {
 						<Area
 							dataKey="desktop"
 							type="natural"
-							fill="url(#gradient-rounded-chart-desktop)"
+							fill={`url(#${desktopGradientId})`}
 							fillOpacity={0.4}
 							stroke="var(--color-desktop)"
 							stackId="a"

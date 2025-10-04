@@ -12,6 +12,7 @@ import {
 	Undo,
 } from "lucide-react";
 import React from "react";
+import { MenuBar } from "@/components/ui/bottom-menu";
 
 interface GridToolbarProps {
 	isFocused: boolean;
@@ -33,76 +34,10 @@ interface GridToolbarProps {
 	overlayPosition?: { top: number; left: number } | null;
 }
 
-interface ToolbarButtonProps {
-	onClick: () => void;
-	icon: React.ReactNode;
-	label: string;
-	disabled?: boolean;
-	variant?: "default" | "danger";
-	isHovered?: boolean;
-	onMouseEnter?: () => void;
-	onMouseLeave?: () => void;
-}
+// Legacy toolbar button removed after MenuBar integration
 
-const ICON_SIZE = 12; // reduced ~40%
-
-const ToolbarButton: React.FC<ToolbarButtonProps> = ({
-	onClick,
-	icon,
-	label,
-	disabled = false,
-	variant: _variant = "default",
-	isHovered = false,
-	onMouseEnter,
-	onMouseLeave,
-}) => {
-	const buttonStyle: React.CSSProperties = {
-		background:
-			isHovered && !disabled
-				? "var(--gdg-toolbar-hover-bg, rgba(0, 0, 0, 0.1))"
-				: "transparent",
-		border: "none",
-		padding: "2px",
-		cursor: disabled ? "not-allowed" : "pointer",
-		color:
-			isHovered && !disabled
-				? "var(--gdg-toolbar-hover-icon, #000)"
-				: "var(--gdg-toolbar-icon, #666)",
-		borderRadius: "2px",
-		transition: "all 120ms ease",
-		transform: isHovered && !disabled ? "scale(1.05)" : "scale(1)",
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
-		opacity: disabled ? 0.4 : 1,
-		width: `${ICON_SIZE + 4}px`,
-		height: `${ICON_SIZE + 4}px`,
-	};
-
-	// enforce icon size by wrapping in a span
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			disabled={disabled}
-			style={buttonStyle}
-			title={label}
-			aria-label={label}
-			onMouseEnter={onMouseEnter}
-			onMouseLeave={onMouseLeave}
-		>
-			<span
-				style={{ width: ICON_SIZE, height: ICON_SIZE, display: "inline-flex" }}
-			>
-				{React.isValidElement(icon)
-					? React.cloneElement(icon, {
-							size: ICON_SIZE,
-						} as React.SVGProps<SVGSVGElement>)
-					: icon}
-			</span>
-		</button>
-	);
-};
+// Use rem-based sizing; increase by ~30% relative to previous size
+const ICON_SIZE = 16; // was 12px; ~33% increase
 
 export const GridToolbar: React.FC<GridToolbarProps> = ({
 	isFocused,
@@ -123,13 +58,8 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 	overlay = false,
 	overlayPosition,
 }) => {
-	const [hoveredButton, setHoveredButton] = React.useState<string | null>(null);
 	const [isToolbarHovered, setIsToolbarHovered] = React.useState(false);
-
-	// Show toolbar when grid is focused, toolbar hovered, OR there is a selection
 	const shouldShow = isFocused || isToolbarHovered || hasSelection;
-
-	// Add a slight hide delay to allow the cursor to travel from grid to toolbar
 	const [isShown, setIsShown] = React.useState<boolean>(false);
 	const hideTimerRef = React.useRef<number | null>(null);
 
@@ -142,7 +72,6 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 			setIsShown(true);
 			return;
 		}
-		// Delay hiding to create a bridge between grid and toolbar
 		hideTimerRef.current = window.setTimeout(() => {
 			setIsShown(false);
 			hideTimerRef.current = null;
@@ -189,25 +118,22 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 		flexDirection: "row",
 		alignItems: "center",
 		justifyContent: "flex-end",
-		padding: "2px 3px",
+		padding: "0",
 		margin: overlay ? "0" : "2px 4px 0 0",
-		background: "var(--gdg-toolbar-bg, rgba(255, 255, 255, 0.95))",
-		backdropFilter: "blur(6px)",
-		border: "1px solid var(--gdg-toolbar-border, rgba(0, 0, 0, 0.1))",
-		borderRadius: "3px",
-		boxShadow: "0 1px 4px rgba(0, 0, 0, 0.12)",
-		gap: "1px",
+		background: "transparent",
+		border: "none",
+		gap: "0",
 		width: "fit-content",
 		transform: isShown ? "scale(1)" : "scale(0.96)",
 		transition: "transform 200ms ease-in-out",
 	};
 
-	const separatorStyle: React.CSSProperties = {
-		width: "1px",
-		height: "8px",
-		background: "var(--gdg-toolbar-border, rgba(0, 0, 0, 0.2))",
-		margin: "0 2px",
-	};
+	// const separatorStyle: React.CSSProperties = {
+	// 	width: "1px",
+	// 	height: "8px",
+	// 	background: "var(--gdg-toolbar-border, rgba(0, 0, 0, 0.2))",
+	// 	margin: "0 2px",
+	// };
 
 	return (
 		<div
@@ -217,122 +143,110 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
 			onMouseEnter={() => setIsToolbarHovered(true)}
 			onMouseLeave={() => {
 				setIsToolbarHovered(false);
-				setHoveredButton(null);
 			}}
 			onKeyDown={(e) => {
 				if (e.key === "Escape") {
 					setIsToolbarHovered(false);
-					setHoveredButton(null);
 				}
 			}}
 			tabIndex={-1}
 		>
 			<div style={toolbarStyle}>
-				{hasSelection && (
-					<>
-						<ToolbarButton
-							onClick={onClearSelection}
-							icon={<Close />}
-							label="Clear selection"
-							isHovered={hoveredButton === "clear"}
-							onMouseEnter={() => setHoveredButton("clear")}
-							onMouseLeave={() => setHoveredButton(null)}
-						/>
-						<ToolbarButton
-							onClick={onDeleteRows}
-							icon={<Delete />}
-							label="Delete selected rows"
-							variant="danger"
-							isHovered={hoveredButton === "delete"}
-							onMouseEnter={() => setHoveredButton("delete")}
-							onMouseLeave={() => setHoveredButton(null)}
-						/>
-						<div style={separatorStyle} />
-					</>
-				)}
-
-				<ToolbarButton
-					onClick={onUndo}
-					icon={<Undo />}
-					label="Undo (Ctrl+Z)"
-					disabled={!canUndo}
-					isHovered={hoveredButton === "undo"}
-					onMouseEnter={() => canUndo && setHoveredButton("undo")}
-					onMouseLeave={() => setHoveredButton(null)}
+				<MenuBar
+					menuClassName="h-[1.15rem] px-2 rounded-[0.25rem] border border-border/50 shadow-sm"
+					buttonClassName="w-[1.3rem] h-[1.3rem] p-0 hover:bg-muted/80"
+					iconWrapperClassName="w-[1rem] h-[1rem]"
+					items={[
+						...(hasSelection
+							? [
+									{
+										icon: (p: React.SVGProps<SVGSVGElement>) => (
+											<Close {...p} size={ICON_SIZE} />
+										),
+										label: "Clear selection",
+										onClick: onClearSelection,
+									},
+									{
+										icon: (p: React.SVGProps<SVGSVGElement>) => (
+											<Delete {...p} size={ICON_SIZE} />
+										),
+										label: "Delete selected rows",
+										onClick: onDeleteRows,
+									},
+								]
+							: []),
+						{
+							icon: (p: React.SVGProps<SVGSVGElement>) => (
+								<Undo {...p} size={ICON_SIZE} />
+							),
+							label: "Undo (Ctrl+Z)",
+							onClick: onUndo,
+							disabled: !canUndo,
+						},
+						{
+							icon: (p: React.SVGProps<SVGSVGElement>) => (
+								<Redo {...p} size={ICON_SIZE} />
+							),
+							label: "Redo (Ctrl+Shift+Z)",
+							onClick: onRedo,
+							disabled: !canRedo,
+						},
+						...(hasSelection
+							? []
+							: [
+									{
+										icon: (p: React.SVGProps<SVGSVGElement>) => (
+											<Plus {...p} size={ICON_SIZE} />
+										),
+										label: "Add row",
+										onClick: onAddRow,
+									},
+								]),
+						...(hasHiddenColumns
+							? [
+									{
+										icon: (p: React.SVGProps<SVGSVGElement>) => (
+											<Eye {...p} size={ICON_SIZE} />
+										),
+										label: "Show/hide columns",
+										onClick: onToggleColumnVisibility,
+									},
+								]
+							: []),
+						{
+							icon: (p: React.SVGProps<SVGSVGElement>) => (
+								<Download {...p} size={ICON_SIZE} />
+							),
+							label: "Download as CSV",
+							onClick: onDownloadCsv,
+						},
+						{
+							icon: (p: React.SVGProps<SVGSVGElement>) => (
+								<Search {...p} size={ICON_SIZE} />
+							),
+							label: "Search",
+							onClick: onToggleSearch,
+						},
+						{
+							icon: (p: React.SVGProps<SVGSVGElement>) => (
+								<Maximize {...p} size={ICON_SIZE} />
+							),
+							label: "Toggle fullscreen",
+							onClick: onToggleFullscreen,
+						},
+						...(onClose
+							? [
+									{
+										icon: (p: React.SVGProps<SVGSVGElement>) => (
+											<Close {...p} size={ICON_SIZE} />
+										),
+										label: "Close",
+										onClick: onClose,
+									},
+								]
+							: []),
+					]}
 				/>
-				<ToolbarButton
-					onClick={onRedo}
-					icon={<Redo />}
-					label="Redo (Ctrl+Shift+Z)"
-					disabled={!canRedo}
-					isHovered={hoveredButton === "redo"}
-					onMouseEnter={() => canRedo && setHoveredButton("redo")}
-					onMouseLeave={() => setHoveredButton(null)}
-				/>
-
-				<div style={separatorStyle} />
-
-				{!hasSelection && (
-					<ToolbarButton
-						onClick={onAddRow}
-						icon={<Plus />}
-						label="Add row"
-						isHovered={hoveredButton === "add"}
-						onMouseEnter={() => setHoveredButton("add")}
-						onMouseLeave={() => setHoveredButton(null)}
-					/>
-				)}
-
-				{hasHiddenColumns && (
-					<ToolbarButton
-						onClick={onToggleColumnVisibility}
-						icon={<Eye />}
-						label="Show/hide columns"
-						isHovered={hoveredButton === "visibility"}
-						onMouseEnter={() => setHoveredButton("visibility")}
-						onMouseLeave={() => setHoveredButton(null)}
-					/>
-				)}
-
-				<ToolbarButton
-					onClick={onDownloadCsv}
-					icon={<Download />}
-					label="Download as CSV"
-					isHovered={hoveredButton === "download"}
-					onMouseEnter={() => setHoveredButton("download")}
-					onMouseLeave={() => setHoveredButton(null)}
-				/>
-
-				<ToolbarButton
-					onClick={onToggleSearch}
-					icon={<Search />}
-					label="Search"
-					isHovered={hoveredButton === "search"}
-					onMouseEnter={() => setHoveredButton("search")}
-					onMouseLeave={() => setHoveredButton(null)}
-				/>
-
-				<div style={separatorStyle} />
-
-				<ToolbarButton
-					onClick={onToggleFullscreen}
-					icon={<Maximize />}
-					label="Toggle fullscreen"
-					isHovered={hoveredButton === "fullscreen"}
-					onMouseEnter={() => setHoveredButton("fullscreen")}
-					onMouseLeave={() => setHoveredButton(null)}
-				/>
-
-				{onClose && (
-					<ToolbarButton
-						onClick={onClose}
-						icon={<Close />}
-						label="Close"
-						isHovered={hoveredButton === "close"}
-						onMouseEnter={() => setHoveredButton("close")}
-						onMouseLeave={() => setHoveredButton(null)}
-					/>
-				)}
 			</div>
 		</div>
 	);

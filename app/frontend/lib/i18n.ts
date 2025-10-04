@@ -133,6 +133,8 @@ const en = {
 	locked: "Locked",
 	unsaved_changes: "Unsaved changes",
 	default_contact: "Default",
+	// Chat typing indicator
+	typing: "Typing",
 };
 
 const ar = {
@@ -193,6 +195,8 @@ const ar = {
 	locked: "مقفل",
 	unsaved_changes: "تغييرات غير محفوظة",
 	default_contact: "افتراضي",
+	// Chat typing indicator
+	typing: "يكتب",
 };
 
 // Chat toolbar/title and emoji search keys

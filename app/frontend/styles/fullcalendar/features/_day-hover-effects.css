@@ -19,33 +19,31 @@
    DAY CELL HOVER EFFECTS
    ================================================================= */
 
-/* Enhanced day cell hover - smooth transform and shadow effects */
-.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+/* Special hover for today (lowest specificity) */
+.fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-frame {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.15) 0%,
-		hsl(var(--muted) / 0.25) 100%
-	);
-	border-color: hsl(var(--muted) / 0.4);
+	background: hsl(var(--accent) / 0.35);
+	transform: translateY(-2px);
+	border-color: hsl(var(--accent) / 0.7);
+	box-shadow: 0 4px 12px hsl(var(--accent) / 0.3);
 	border-radius: calc(var(--radius) * 0.75);
-	transform: translateY(-3px) scale(1.02);
-	box-shadow:
-		0 8px 16px rgba(0, 0, 0, 0.15),
-		0 4px 8px rgba(0, 0, 0, 0.1),
-		0 2px 4px rgba(0, 0, 0, 0.05),
-		inset 0 1px 0 hsl(var(--background) / 0.8);
-	z-index: var(--z-fc-free-roam);
 }
 
-/* Special hover for selected/highlighted dates */
+/* Active/pressed day cell styling (low specificity) */
+.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
+	.fc-daygrid-day-frame,
+.fc-daygrid
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
+	.fc-daygrid-day-frame {
+	transform: translateY(0);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	border-radius: calc(var(--radius) * 0.75);
+}
+
+/* Special hover for selected/highlighted dates (medium specificity) */
 .fc-multimonth .fc-daygrid
 	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
 	.fc-daygrid-day-frame,
@@ -71,39 +69,47 @@
 	box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
 }
 
-/* Special hover for today */
-.fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+/* Enhanced day cell hover - smooth transform and shadow effects (highest specificity) */
+.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-frame {
-	background: hsl(var(--accent) / 0.35);
-	transform: translateY(-2px);
-	border-color: hsl(var(--accent) / 0.7);
-	box-shadow: 0 4px 12px hsl(var(--accent) / 0.3);
+	background: linear-gradient(
+		135deg,
+		hsl(var(--muted) / 0.15) 0%,
+		hsl(var(--muted) / 0.25) 100%
+	);
+	border-color: hsl(var(--muted) / 0.4);
 	border-radius: calc(var(--radius) * 0.75);
+	transform: translateY(-3px) scale(1.02);
+	box-shadow:
+		0 8px 16px rgba(0, 0, 0, 0.15),
+		0 4px 8px rgba(0, 0, 0, 0.1),
+		0 2px 4px rgba(0, 0, 0, 0.05),
+		inset 0 1px 0 hsl(var(--background) / 0.8);
+	z-index: var(--z-fc-free-roam);
 }
 
 /* =================================================================
    DAY NUMBER HOVER EFFECTS
    ================================================================= */
 
-/* Hover effect for day numbers */
-.fc-multimonth .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+/* Special hover for today's number (lowest specificity) */
+.fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
 	.fc-daygrid-day-number {
-	background: hsl(var(--muted) / 0.3);
-	color: hsl(var(--muted-foreground));
-	transform: scale(1.05);
+	background: hsl(var(--accent) / 0.45);
+	color: hsl(var(--accent-foreground));
 }
 
-/* Special hover for selected/highlighted day numbers */
+/* Special hover for selected/highlighted day numbers (medium specificity) */
 .fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(
 		.fc-day-past
 	):hover
@@ -125,30 +131,24 @@
 	color: hsl(var(--primary-foreground));
 }
 
-/* Special hover for today's number */
-.fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+/* Hover effect for day numbers (highest specificity) */
+.fc-multimonth .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+	.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-number {
-	background: hsl(var(--accent) / 0.45);
-	color: hsl(var(--accent-foreground));
+	background: hsl(var(--muted) / 0.3);
+	color: hsl(var(--muted-foreground));
+	transform: scale(1.05);
 }
 
 /* =================================================================
    ACTIVE/CLICK STATE EFFECTS
    ================================================================= */
-
-/* Active/pressed day cell styling */
-.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
-	.fc-daygrid-day-frame,
-.fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
-	.fc-daygrid-day-frame {
-	transform: translateY(0);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	border-radius: calc(var(--radius) * 0.75);
-}
 
 /* Only animate on hover, not on scroll - DISABLED FOR PERFORMANCE */
 /* .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover,
@@ -160,13 +160,17 @@
    DARK MODE HOVER ADJUSTMENTS
    ================================================================= */
 
-/* Enhanced dark mode hover effects */
+/* Enhanced dark mode hover effects (must come after base hover styles) */
 .dark .fc-multimonth
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-frame,
 .dark
 	.fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):hover
+	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+		.fc-day-today
+	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
 	.fc-daygrid-day-frame {
 	transform: translateY(-3px) scale(1.02);
 	box-shadow:

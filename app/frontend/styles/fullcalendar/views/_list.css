@@ -48,7 +48,6 @@
 .fc-list-table {
 	width: 100%;
 	border-style: hidden;
-	@apply w-full;
 }
 
 .fc-list-table tr > * {
@@ -84,8 +83,9 @@
 .fc-list-sticky .fc-list-day > * {
 	position: sticky;
 	top: 0;
-	background: var(--fc-page-bg-color);
-	@apply sticky top-0 z-10 bg-muted/95 backdrop-blur-sm;
+	z-index: 10;
+	background: hsl(var(--muted) / 0.95);
+	backdrop-filter: blur(4px);
 }
 
 /* Ensure the very first sticky day header shows rounded top corners */
@@ -137,7 +137,7 @@
 
 /* Event dot */
 .fc-list-event-dot {
-	@apply bg-primary;
+	background-color: hsl(var(--primary));
 }
 
 /* Reset <a> styling */

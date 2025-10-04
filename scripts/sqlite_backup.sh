@@ -13,15 +13,67 @@ report_error() {
 # Trap unhandled errors
 trap 'code=$?; report_error "trap" "$code" "unhandled_error" "Script aborted unexpectedly"; exit $code' ERR
 
-# Load environment variables from .env if present
+# Robust .env loader that supports "KEY=VALUE" and "KEY: VALUE", skips invalid lines
+load_env_file() {
+    local env_file="$1"
+    [ -f "$env_file" ] || return 0
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Strip CRLF and surrounding whitespace
+        line="${line%$'\r'}"
+        line="${line#"${line%%[![:space:]]*}"}"
+        line="${line%"${line##*[![:space:]]}"}"
+
+        # Skip blanks and comments
+        [ -z "$line" ] && continue
+        case "$line" in
+            \#*) continue ;;
+        esac
+
+        local key
+        local val
+
+        # Normalize "KEY: VALUE" to "KEY=VALUE"
+        if printf '%s\n' "$line" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*:[[:space:]]'; then
+            key="${line%%:*}"
+            val="${line#*:}"
+        elif printf '%s\n' "$line" | grep -Eq '^(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*='; then
+            key="${line%%=*}"
+            val="${line#*=}"
+        else
+            # Not a supported assignment; skip
+            continue
+        fi
+
+        # Handle optional "export " prefix
+        case "$key" in
+            export[[:space:]]*) key="${key#export }" ;;
+        esac
+
+        # Trim whitespace around key and value
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        val="${val#"${val%%[![:space:]]*}"}"
+        val="${val%"${val##*[![:space:]]}"}"
+
+        # Strip surrounding single/double quotes
+        if [ "${val#\"}" != "$val" ] && [ "${val%\"}" != "$val" ]; then
+            val="${val#\"}"; val="${val%\"}"
+        elif [ "${val#\'}" != "$val" ] && [ "${val%\'}" != "$val" ]; then
+            val="${val#\'}"; val="${val%\'}"
+        fi
+
+        # Only export valid identifiers
+        if printf '%s\n' "$key" | grep -Eq '^[A-Za-z_][A-Za-z0-9_]*$'; then
+            export "$key=$val"
+        fi
+    done < "$env_file"
+}
+
+# Load environment variables from .env if present (robust parsing)
 if [ -f "/app/.env" ]; then
-    set -a
-    . /app/.env
-    set +a
+    load_env_file "/app/.env"
 elif [ -f ".env" ]; then
-    set -a
-    . ./.env
-    set +a
+    load_env_file ".env"
 fi
 
 # Detect environment - container or host
