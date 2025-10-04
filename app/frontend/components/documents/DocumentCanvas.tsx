@@ -110,7 +110,7 @@ function DocumentCanvasComponent({
 	useEffect(() => {
 		if (!mountReady) return;
 		let timer: number | null = null;
-		let remaining = 60; // Increased attempts
+		let remaining = 15; // Reduced from 60 - trust ResizeObserver more
 		const verifyAndFix = () => {
 			try {
 				const root = containerRef.current?.querySelector(
@@ -127,23 +127,17 @@ function DocumentCanvasComponent({
 				const sw = Math.floor(rect.width || 0);
 				const sh = Math.floor(rect.height || 0);
 				if (Math.abs(cw - sw) > 1 || Math.abs(ch - sh) > 1) {
+					// Single refresh is enough - ResizeObserver will handle cascading updates
 					const refresh = () => apiRef.current?.refresh?.();
 					try {
 						requestAnimationFrame(refresh);
 					} catch {
 						refresh();
 					}
-					// Aggressively nudge Excalidraw's internal resize handlers
-					try {
-						window.dispatchEvent(new Event("resize"));
-						setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
-					} catch {}
-					// Also try visualViewport if available
-					try {
-						window.visualViewport?.dispatchEvent?.(new Event("resize"));
-					} catch {}
 					return true;
 				}
+				// Canvas matches container - early exit
+				return false;
 			} catch {}
 			return false;
 		};
@@ -152,14 +146,16 @@ function DocumentCanvasComponent({
 				const needsMore = verifyAndFix();
 				remaining -= 1;
 				if (remaining > 0 && needsMore) {
-					timer = window.setTimeout(runBurst, 60); // Faster interval
+					timer = window.setTimeout(runBurst, 100); // Slower interval
 				}
 			} catch {}
 		};
-		// Start verification immediately and aggressively
-		verifyAndFix();
-		setTimeout(() => verifyAndFix(), 0);
-		setTimeout(() => runBurst(), 16);
+		// Start verification with single check, then burst if needed
+		setTimeout(() => {
+			if (verifyAndFix()) {
+				setTimeout(() => runBurst(), 50);
+			}
+		}, 16);
 		const onOrientation = () => {
 			remaining = 40;
 			runBurst();
@@ -225,25 +221,9 @@ function DocumentCanvasComponent({
 			}
 		};
 
-		let contextMenuInterval: number | null = null;
 		const onContextMenu = () => {
+			// Single refresh burst on context menu - no interval needed
 			scheduleRefreshBurst();
-			try {
-				if (contextMenuInterval) window.clearInterval(contextMenuInterval);
-				// While context menu might be open and affecting layout, keep refreshing
-				contextMenuInterval = window.setInterval(() => {
-					try {
-						apiRef.current?.refresh?.();
-					} catch {}
-				}, 120);
-				// Auto stop after a short period to avoid leaks
-				window.setTimeout(() => {
-					if (contextMenuInterval) {
-						window.clearInterval(contextMenuInterval);
-						contextMenuInterval = null;
-					}
-				}, 1200);
-			} catch {}
 		};
 		const onVisibility = () => {
 			if (!document.hidden) scheduleRefreshBurst();
@@ -290,9 +270,6 @@ function DocumentCanvasComponent({
 			} catch {}
 			try {
 				themeObserver?.disconnect();
-			} catch {}
-			try {
-				if (contextMenuInterval) window.clearInterval(contextMenuInterval);
 			} catch {}
 		};
 	}, []);
@@ -357,11 +334,9 @@ function DocumentCanvasComponent({
 			const apiLike = apiRef.current as unknown as {
 				updateScene?: (s: Record<string, unknown>) => void;
 			} | null;
-			const applyTheme = () => apiLike?.updateScene?.({ appState: { theme } });
+			// Single application is enough - Excalidraw respects appState.theme immediately
 			requestAnimationFrame(() => {
-				applyTheme();
-				setTimeout(applyTheme, 80);
-				setTimeout(applyTheme, 200);
+				apiLike?.updateScene?.({ appState: { theme } });
 			});
 		} catch {}
 	}, [theme]);
@@ -442,44 +417,28 @@ function DocumentCanvasComponent({
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
 						apiRef.current = api;
 						try {
-							// Initial refresh to compute correct canvas size
+							// Initial refresh to compute correct canvas size - minimal burst
 							const apiLike = apiRef.current as unknown as {
 								refresh?: () => void;
 							} | null;
-							// Dispatch resize events to trigger Excalidraw's internal resize handlers
-							const dispatchResize = () => {
+							// Single resize event to wake handlers, then one refresh
+							requestAnimationFrame(() => {
 								try {
 									window.dispatchEvent(new Event("resize"));
 								} catch {}
-							};
-							requestAnimationFrame(() => {
 								apiLike?.refresh?.();
-								dispatchResize();
+								// Second refresh after short delay for async operations
+								setTimeout(() => apiLike?.refresh?.(), 150);
 							});
-							setTimeout(() => {
-								apiLike?.refresh?.();
-								dispatchResize();
-							}, 120);
-							setTimeout(() => {
-								apiLike?.refresh?.();
-								dispatchResize();
-							}, 300);
-							setTimeout(() => {
-								apiLike?.refresh?.();
-								dispatchResize();
-							}, 600);
 						} catch {}
 						// Enforce current theme immediately after API becomes ready
 						try {
 							const apiLike = apiRef.current as unknown as {
 								updateScene?: (s: Record<string, unknown>) => void;
 							} | null;
-							const applyTheme = () =>
-								apiLike?.updateScene?.({ appState: { theme } });
+							// Single theme application
 							requestAnimationFrame(() => {
-								applyTheme();
-								setTimeout(applyTheme, 80);
-								setTimeout(applyTheme, 200);
+								apiLike?.updateScene?.({ appState: { theme } });
 							});
 						} catch {}
 						if (!didNotifyApiRef.current) {

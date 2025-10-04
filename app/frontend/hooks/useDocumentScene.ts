@@ -75,17 +75,8 @@ export function useDocumentScene(
 	// Apply a scene to the canvas
 	const applyScene = useCallback(
 		(scene: Record<string, unknown>, forWaId: string) => {
-			console.log(
-				"🎨 [applyScene] forWaId:",
-				forWaId,
-				"current:",
-				currentWaIdRef.current,
-				"elements:",
-				((scene as { elements?: unknown[] }).elements || []).length,
-			);
 			// CRITICAL: Only apply if waId still matches
 			if (forWaId !== currentWaIdRef.current) {
-				console.log("⚠️ [applyScene] REJECTED: waId changed");
 				return;
 			}
 
@@ -121,8 +112,6 @@ export function useDocumentScene(
 						}),
 					);
 				} catch {}
-
-				console.log("✅ [applyScene] applied successfully");
 			} catch {}
 
 			// Apply to Excalidraw API if mounted
@@ -132,34 +121,11 @@ export function useDocumentScene(
 					programmaticUpdates.current += 1;
 					try {
 						api.updateScene({ ...scene, commitToHistory: false });
-						// Force canvas refresh after scene application to ensure it fills container
+						// Single refresh after scene update - ResizeObserver will handle sizing
 						try {
 							const refreshApi = api as unknown as { refresh?: () => void };
-							// Multiple refresh calls at intervals to handle async rendering
 							requestAnimationFrame(() => {
 								refreshApi.refresh?.();
-								// Dispatch resize events to trigger Excalidraw's internal handlers
-								try {
-									window.dispatchEvent(new Event("resize"));
-								} catch {}
-								setTimeout(() => {
-									refreshApi.refresh?.();
-									try {
-										window.dispatchEvent(new Event("resize"));
-									} catch {}
-								}, 80);
-								setTimeout(() => {
-									refreshApi.refresh?.();
-									try {
-										window.dispatchEvent(new Event("resize"));
-									} catch {}
-								}, 160);
-								setTimeout(() => {
-									refreshApi.refresh?.();
-									try {
-										window.dispatchEvent(new Event("resize"));
-									} catch {}
-								}, 320);
 							});
 						} catch {}
 					} finally {
@@ -278,8 +244,11 @@ export function useDocumentScene(
 
 	const scheduleInactivitySave = useCallback(() => {
 		try {
+			// Clear any existing timer to debounce during active drawing
 			if (inactivitySaveTimerRef.current)
 				window.clearTimeout(inactivitySaveTimerRef.current);
+			// Only schedule if programmatic updates are complete (not actively drawing)
+			if (programmaticUpdates.current > 0) return;
 			inactivitySaveTimerRef.current = window.setTimeout(() => {
 				try {
 					if (!saving && waId && excalidrawAPIRef.current) {
@@ -364,7 +333,6 @@ export function useDocumentScene(
 			return;
 		}
 
-		console.log("🔄 [LOAD] Starting load for waId:", waId);
 		currentWaIdRef.current = waId;
 
 		runAfterMounted(() => setLoading(true));
@@ -378,19 +346,11 @@ export function useDocumentScene(
 					document?: Record<string, unknown>;
 				};
 				const docWaId = String(detail?.wa_id || "");
-				console.log(
-					"📥 [WS] snapshot received, waId:",
-					docWaId,
-					"expected:",
-					waId,
-				);
 
 				if (docWaId !== waId) {
-					console.log("⚠️ [WS] IGNORED: waId mismatch");
 					return;
 				}
 				if (currentWaIdRef.current !== waId) {
-					console.log("⚠️ [WS] IGNORED: currentWaId changed");
 					return;
 				}
 
@@ -400,10 +360,8 @@ export function useDocumentScene(
 				// If document is empty/doesn't exist, use default
 				const elems = ((scene as { elements?: unknown[] }).elements ||
 					[]) as unknown[];
-				console.log("📦 [WS] scene has", elems.length, "elements");
 
 				if (elems.length === 0) {
-					console.log("📄 [WS] Using default document (empty or new)");
 					applyScene(DEFAULT_EXCALIDRAW_SCENE, waId);
 				} else {
 					applyScene(scene as Record<string, unknown>, waId);
@@ -423,7 +381,6 @@ export function useDocumentScene(
 		try {
 			const wsRef = (globalThis as { __wsConnection?: { current?: WebSocket } })
 				.__wsConnection;
-			console.log("📤 [WS] sending get_document for waId:", waId);
 			if (wsRef?.current?.readyState === WebSocket.OPEN) {
 				wsRef.current.send(
 					JSON.stringify({ type: "get_document", data: { wa_id: waId } }),
@@ -436,12 +393,10 @@ export function useDocumentScene(
 			if (wsHandled) return;
 			if (currentWaIdRef.current !== waId) return;
 
-			console.log("🌐 [REST] fallback for waId:", waId);
 			fetch(`/api/documents/${encodeURIComponent(waId)}`, { cache: "no-store" })
 				.then((res) => res.json())
 				.then((data) => {
 					if (currentWaIdRef.current !== waId) {
-						console.log("⚠️ [REST] IGNORED: currentWaId changed");
 						return;
 					}
 					const doc =
@@ -449,20 +404,16 @@ export function useDocumentScene(
 					const scene = toSceneFromDoc(doc);
 					const elems = ((scene as { elements?: unknown[] }).elements ||
 						[]) as unknown[];
-					console.log("📦 [REST] scene has", elems.length, "elements");
 
 					if (elems.length === 0) {
-						console.log("📄 [REST] Using default document (empty or new)");
 						applyScene(DEFAULT_EXCALIDRAW_SCENE, waId);
 					} else {
 						applyScene(scene as Record<string, unknown>, waId);
 					}
 				})
-				.catch((err) => {
-					console.error("❌ [REST] error:", err);
+				.catch(() => {
 					// On error, use default document
 					if (currentWaIdRef.current === waId) {
-						console.log("📄 [REST] Using default document (error fallback)");
 						applyScene(DEFAULT_EXCALIDRAW_SCENE, waId);
 					}
 				})

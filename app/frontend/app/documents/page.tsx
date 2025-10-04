@@ -96,6 +96,7 @@ export default function DocumentsPage() {
 	const fsContainerRef = useRef<HTMLDivElement | null>(null);
 	const lastPreviewUpdateAtRef = useRef<number>(0);
 	const previewThrottleTimerRef = useRef<number | null>(null);
+	const isDrawingRef = useRef<boolean>(false);
 	const pendingPreviewRef = useRef<{
 		scene: {
 			elements?: unknown[];
@@ -137,8 +138,11 @@ export default function DocumentsPage() {
 	// Throttled preview updater to avoid re-rendering on every pointer move
 	// Defer setState outside of the current call stack to avoid scheduling
 	// updates during Excalidraw's internal update function (pinch/zoom, etc.)
+	// Skip preview updates during active drawing to eliminate contention
 	const commitPreview = useCallback(() => {
 		try {
+			// Skip preview updates while drawing to reduce main thread contention
+			if (isDrawingRef.current) return;
 			const pending = pendingPreviewRef.current;
 			if (!pending) return;
 			previewSigRef.current = pending.sig;
@@ -239,14 +243,40 @@ export default function DocumentsPage() {
 				const sig = computeSceneSignature(
 					els || [],
 					initial.appState || {},
-					files || {},
+					files || [],
 				);
 				previewSigRef.current = sig;
 				startTransition(() => setPreviewScene(initial));
-			} catch {}
-			onExcalidrawAPI(api as unknown as never);
+
+				// Listen for pointer events to detect active drawing and pause preview updates
+				const onPointerDown = () => {
+					isDrawingRef.current = true;
+				};
+				const onPointerUp = () => {
+					isDrawingRef.current = false;
+					// Commit any pending preview update after drawing stops
+					if (pendingPreviewRef.current) {
+						commitPreview();
+					}
+				};
+				window.addEventListener("pointerdown", onPointerDown);
+				window.addEventListener("pointerup", onPointerUp);
+				window.addEventListener("pointercancel", onPointerUp);
+
+				onExcalidrawAPI(api as unknown as never);
+
+				// Cleanup on unmount
+				return () => {
+					window.removeEventListener("pointerdown", onPointerDown);
+					window.removeEventListener("pointerup", onPointerUp);
+					window.removeEventListener("pointercancel", onPointerUp);
+				};
+			} catch {
+				onExcalidrawAPI(api as unknown as never);
+				return undefined;
+			}
 		},
-		[sanitizePreviewAppState, onExcalidrawAPI],
+		[sanitizePreviewAppState, onExcalidrawAPI, commitPreview],
 	);
 
 	// Fullscreen toggle state & handlers
@@ -323,28 +353,12 @@ export default function DocumentsPage() {
 				const api = excalApiRef.current as unknown as {
 					refresh?: () => void;
 				} | null;
-				// Dispatch resize events to trigger Excalidraw's internal resize handlers
+				// Single resize event is enough - ResizeObserver will handle the rest
 				try {
 					window.dispatchEvent(new Event("resize"));
 				} catch {}
-				requestAnimationFrame(() => {
-					api?.refresh?.();
-					try {
-						window.dispatchEvent(new Event("resize"));
-					} catch {}
-				});
-				setTimeout(() => {
-					api?.refresh?.();
-					try {
-						window.dispatchEvent(new Event("resize"));
-					} catch {}
-				}, 100);
-				setTimeout(() => {
-					api?.refresh?.();
-					try {
-						window.dispatchEvent(new Event("resize"));
-					} catch {}
-				}, 250);
+				// Single refresh after short delay to let layout settle
+				setTimeout(() => api?.refresh?.(), 50);
 			} catch {}
 		};
 		doRefresh();
@@ -378,13 +392,9 @@ export default function DocumentsPage() {
 				if (sig !== (previewSigRef.current || null)) {
 					previewSigRef.current = sig;
 					setPreviewScene(sanitized);
+					// Single refresh is enough after scene change
+					scheduleExcalRefresh();
 				}
-				// Refresh canvas and dispatch resize after scene update
-				scheduleExcalRefresh();
-				try {
-					window.dispatchEvent(new Event("resize"));
-					setTimeout(() => window.dispatchEvent(new Event("resize")), 100);
-				} catch {}
 			} catch {}
 		};
 		window.addEventListener(
@@ -408,13 +418,18 @@ export default function DocumentsPage() {
 	useEffect(() => {
 		if (typeof window === "undefined") return;
 		let didInitRemount = false;
+		let lastVh = 0;
 		const updateDocDvh = () => {
 			try {
 				const vh = Math.max(
 					0,
 					Math.floor(window.visualViewport?.height || window.innerHeight || 0),
 				);
-				document.documentElement.style.setProperty("--doc-dvh", `${vh}px`);
+				// Only update CSS var if value actually changed to avoid style recalc
+				if (vh !== lastVh) {
+					lastVh = vh;
+					document.documentElement.style.setProperty("--doc-dvh", `${vh}px`);
+				}
 				if (!didInitRemount) {
 					didInitRemount = true;
 					// Light refresh to help any canvas settle after first layout
