@@ -7,3 +7,9 @@ declare global {
 }
 
 export {};
+
+// Ambient module declarations to smooth over ESM/CJS typings for third-party libs
+declare module "@fullcalendar/timegrid" {
+	const plugin: unknown;
+	export default plugin;
+}

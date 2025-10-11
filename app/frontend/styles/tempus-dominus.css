@@ -41,7 +41,8 @@
 /* Light theme specific */
 .tempus-dominus-widget.light,
 :root:not(.dark) .tempus-dominus-widget,
-.tempus-dominus-widget[data-theme="light"] {
+.tempus-dominus-widget[data-theme="light"],
+.tempus-dominus-widget.lightTheme {
 	--td-primary: hsl(var(--primary));
 	--td-primary-text: hsl(var(--primary-foreground));
 	--td-hover-bg: hsl(var(--accent));
@@ -64,7 +65,8 @@
 /* Dark theme specific */
 .tempus-dominus-widget.dark,
 .dark .tempus-dominus-widget,
-.tempus-dominus-widget[data-theme="dark"] {
+.tempus-dominus-widget[data-theme="dark"],
+.tempus-dominus-widget.darkTheme {
 	--td-primary: hsl(var(--primary));
 	--td-primary-text: hsl(var(--primary-foreground));
 	--td-hover-bg: hsl(var(--accent));
@@ -100,6 +102,40 @@
 	background: none;
 	cursor: not-allowed;
 	color: var(--td-disabled-color);
+}
+
+/* Icon base styles - defined early to allow more specific overrides */
+/* Specificity (0,1,1) - element selectors */
+.tempus-dominus-widget svg,
+.tempus-dominus-widget i {
+	color: inherit;
+	fill: currentColor;
+}
+
+/* Specificity (0,2,0) - class selectors */
+.tempus-dominus-widget .fa,
+.tempus-dominus-widget .fas,
+.tempus-dominus-widget .far,
+.tempus-dominus-widget .fa-solid,
+.tempus-dominus-widget .fa-regular {
+	color: inherit;
+	fill: currentColor;
+}
+
+/* Specificity (0,2,1) - attribute + element selectors */
+.tempus-dominus-widget span[data-action] svg,
+.tempus-dominus-widget span[data-action] i,
+.tempus-dominus-widget [class*="icon"] svg,
+.tempus-dominus-widget [class*="icon"] i {
+	color: inherit;
+	fill: currentColor;
+}
+
+/* Specificity (0,3,0) - attribute + class selectors */
+.tempus-dominus-widget span[data-action] .fa,
+.tempus-dominus-widget [class*="icon"] .fa {
+	color: inherit;
+	fill: currentColor;
 }
 
 /* Header styles */
@@ -236,6 +272,9 @@
 	justify-content: center;
 	box-sizing: border-box;
 	display: flex;
+	color: var(--td-color);
+	cursor: pointer;
+	transition: all 0.15s ease;
 }
 
 .tempus-dominus-widget .toolbar div:hover {
@@ -427,6 +466,25 @@
 	color: var(--td-hover-color);
 }
 
+/* Ensure action button icons are visible */
+.tempus-dominus-widget button[data-action] svg,
+.tempus-dominus-widget button[data-action] i,
+.tempus-dominus-widget button[data-action] .fa,
+.tempus-dominus-widget button[data-action] .fas,
+.tempus-dominus-widget button[data-action] .far {
+	color: var(--td-color);
+	fill: currentColor;
+}
+
+.tempus-dominus-widget button[data-action]:hover:not(:disabled) svg,
+.tempus-dominus-widget button[data-action]:hover:not(:disabled) i,
+.tempus-dominus-widget button[data-action]:hover:not(:disabled) .fa,
+.tempus-dominus-widget button[data-action]:hover:not(:disabled) .fas,
+.tempus-dominus-widget button[data-action]:hover:not(:disabled) .far {
+	color: var(--td-hover-color);
+	fill: currentColor;
+}
+
 .tempus-dominus-widget .td-time-picker button {
 	background-color: transparent;
 	border: none;
@@ -439,6 +497,25 @@
 .tempus-dominus-widget .td-time-picker button:hover:not(:disabled) {
 	background-color: var(--td-hover-bg);
 	color: var(--td-hover-color);
+}
+
+/* Ensure time picker button icons are visible */
+.tempus-dominus-widget .td-time-picker button svg,
+.tempus-dominus-widget .td-time-picker button i,
+.tempus-dominus-widget .td-time-picker button .fa,
+.tempus-dominus-widget .td-time-picker button .fas,
+.tempus-dominus-widget .td-time-picker button .far {
+	color: var(--td-color);
+	fill: currentColor;
+}
+
+.tempus-dominus-widget .td-time-picker button:hover:not(:disabled) svg,
+.tempus-dominus-widget .td-time-picker button:hover:not(:disabled) i,
+.tempus-dominus-widget .td-time-picker button:hover:not(:disabled) .fa,
+.tempus-dominus-widget .td-time-picker button:hover:not(:disabled) .fas,
+.tempus-dominus-widget .td-time-picker button:hover:not(:disabled) .far {
+	color: var(--td-hover-color);
+	fill: currentColor;
 }
 
 .tempus-dominus-widget .td-picker-footer button {
@@ -478,10 +555,7 @@
 	transition: all 0.15s ease;
 }
 
-.tempus-dominus-widget
-	.td-picker-header
-	.td-picker-header-row
-	button:hover:not(:disabled) {
+.tempus-dominus-widget .td-picker-header .td-picker-header-row button:hover:not(:disabled) {
 	background-color: var(--td-hover-bg);
 	color: var(--td-hover-color);
 }
@@ -538,10 +612,7 @@
 	cursor: default;
 }
 
-.tempus-dominus-widget.tempus-dominus-widget-readonly
-	table
-	td
-	[data-action]:hover {
+.tempus-dominus-widget.tempus-dominus-widget-readonly table td [data-action]:hover {
 	background: none;
 }
 
@@ -627,11 +698,35 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 	border-radius: var(--radius);
 }
 
-/* Remove any hardcoded colors from Font Awesome icons */
-.tempus-dominus-widget .fa,
-.tempus-dominus-widget .fas,
-.tempus-dominus-widget .far {
-	color: inherit;
+/* Ensure toolbar icons are visible */
+.tempus-dominus-widget .toolbar div svg,
+.tempus-dominus-widget .toolbar div i,
+.tempus-dominus-widget .toolbar div .fa,
+.tempus-dominus-widget .toolbar div .fas,
+.tempus-dominus-widget .toolbar div .far,
+.tempus-dominus-widget .toolbar [data-action] svg,
+.tempus-dominus-widget .toolbar [data-action] i,
+.tempus-dominus-widget .toolbar [data-action] .fa,
+.tempus-dominus-widget .toolbar button svg,
+.tempus-dominus-widget .toolbar button i,
+.tempus-dominus-widget .toolbar button .fa {
+	color: var(--td-color);
+	fill: currentColor;
+}
+
+.tempus-dominus-widget .toolbar div:hover svg,
+.tempus-dominus-widget .toolbar div:hover i,
+.tempus-dominus-widget .toolbar div:hover .fa,
+.tempus-dominus-widget .toolbar div:hover .fas,
+.tempus-dominus-widget .toolbar div:hover .far,
+.tempus-dominus-widget .toolbar [data-action]:hover svg,
+.tempus-dominus-widget .toolbar [data-action]:hover i,
+.tempus-dominus-widget .toolbar [data-action]:hover .fa,
+.tempus-dominus-widget .toolbar button:hover svg,
+.tempus-dominus-widget .toolbar button:hover i,
+.tempus-dominus-widget .toolbar button:hover .fa {
+	color: var(--td-hover-color);
+	fill: currentColor;
 }
 
 /* Animation keyframes for smooth transitions */

@@ -1,0 +1,128 @@
+"use client";
+
+import { useReservationsData } from "@shared/libs/data/websocket-data-provider";
+import { i18n } from "@shared/libs/i18n";
+import { Z_INDEX } from "@shared/libs/ui/z-index";
+import * as React from "react";
+import { Toaster } from "sonner";
+import { notificationManager } from "@/services/notifications/notification-manager.service";
+import { toastService } from "./toast-service";
+
+export const ToastRouter: React.FC = () => {
+	const { reservations } = useReservationsData();
+
+	const resolveCustomerName = React.useCallback(
+		(waId?: string, fallbackName?: string): string | undefined => {
+			try {
+				if (fallbackName && String(fallbackName).trim()) return String(fallbackName);
+				const id = String(waId || "");
+				if (!id) return undefined;
+				const list = (reservations as Record<string, Array<{ customer_name?: string }>> | undefined)?.[id] || [];
+				for (const r of list) {
+					if (r?.customer_name) return String(r.customer_name);
+				}
+			} catch {}
+			return undefined;
+		},
+		[reservations]
+	);
+
+	React.useEffect(() => {
+		const handleAny = (ev: Event) => {
+			try {
+				const { type, data } = (ev as CustomEvent).detail || {};
+				if (!type || !data) return;
+				const isLocalized = (() => {
+					try {
+						const loc = localStorage.getItem("locale");
+						return Boolean(loc && loc !== "en");
+					} catch {
+						return false;
+					}
+				})();
+
+				if (type === "reservation_created") {
+					notificationManager.showReservationCreated({
+						customer: data.customer_name,
+						wa_id: data.wa_id,
+						date: data.date,
+						time: (data.time_slot || "").slice(0, 5),
+						isLocalized,
+					});
+				} else if (type === "reservation_updated" || type === "reservation_reinstated") {
+					notificationManager.showReservationModified({
+						customer: data.customer_name,
+						wa_id: data.wa_id,
+						date: data.date,
+						time: (data.time_slot || "").slice(0, 5),
+						isLocalized,
+					});
+				} else if (type === "reservation_cancelled") {
+					notificationManager.showReservationCancelled({
+						customer: data.customer_name,
+						wa_id: data.wa_id,
+						date: data.date,
+						time: (data.time_slot || "").slice(0, 5),
+						isLocalized,
+					});
+				} else if (type === "conversation_new_message") {
+					const messageLabel = i18n.getMessage("toast_new_message", isLocalized);
+					const waId = String(
+						(data as { wa_id?: string; waId?: string })?.wa_id || (data as { waId?: string }).waId || ""
+					);
+					const name = resolveCustomerName(waId, (data as { customer_name?: string })?.customer_name);
+					const who = name || waId;
+					const title = `${messageLabel} • ${who}`;
+					const maybeDate = (data as { date?: string }).date;
+					const maybeTime = (data as { time?: string }).time;
+					const maybeMessage = (data as { message?: string }).message;
+					toastService.newMessage({
+						title,
+						description: (maybeMessage || "").slice(0, 100),
+						wa_id: waId,
+						...(typeof maybeDate === "string" ? { date: maybeDate } : {}),
+						...(typeof maybeTime === "string" ? { time: maybeTime } : {}),
+						...(typeof maybeMessage === "string" ? { message: maybeMessage } : {}),
+						isLocalized,
+					});
+				} else if (type === "vacation_period_updated") {
+					// silent
+				}
+			} catch {}
+		};
+		window.addEventListener("notification:add", handleAny as EventListener);
+		return () => {
+			window.removeEventListener("notification:add", handleAny as EventListener);
+		};
+	}, [resolveCustomerName]);
+
+	return (
+		<Toaster
+			position="bottom-right"
+			gap={8}
+			style={{ zIndex: Z_INDEX.TOASTER }}
+			toastOptions={{
+				className: "sonner-toast",
+				descriptionClassName: "sonner-description",
+				style: {
+					background: "transparent",
+					border: "none",
+					// @ts-expect-error custom css var forwarded to CSS
+					"--toaster-z": Z_INDEX.TOASTER,
+				},
+				classNames: {
+					toast: "sonner-toast group",
+					title: "sonner-title",
+					description: "sonner-description",
+					actionButton: "sonner-action",
+					cancelButton: "sonner-cancel",
+					closeButton: "sonner-close",
+					error: "sonner-error",
+					success: "sonner-success",
+					warning: "sonner-warning",
+					info: "sonner-info",
+				},
+			}}
+		/>
+	);
+};

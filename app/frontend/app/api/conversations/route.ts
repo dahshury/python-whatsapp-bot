@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { callPythonBackend } from "@/lib/backend";
+import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function GET(req: NextRequest) {
 	try {
@@ -20,9 +20,7 @@ export async function GET(req: NextRequest) {
 		}
 
 		// Make request to Python backend with date filtering
-		const backendResponse = await callPythonBackend(
-			params.toString() ? `/conversations?${params}` : "/conversations",
-		);
+		const backendResponse = await callPythonBackend(params.toString() ? `/conversations?${params}` : "/conversations");
 
 		// The Python backend should return the data in the expected format
 		// { success: true, data: Record<string, Conversation[]> }
@@ -37,7 +35,7 @@ export async function GET(req: NextRequest) {
 				message: `Failed to fetch conversations: ${error instanceof Error ? error.message : "Unknown error"}`,
 				data: {},
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

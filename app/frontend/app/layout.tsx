@@ -4,30 +4,31 @@ import type React from "react";
 import "./globals.css";
 import "@glideapps/glide-data-grid/dist/index.css";
 import "@ncdai/react-wheel-picker/style.css";
-import { ConditionalAppSidebar } from "@/components/conditional-app-sidebar";
-import { DvhInit } from "@/components/dvh-init";
-import { ErrorRecoveryInit } from "@/components/error-recovery-init";
-import { MainContentWrapper } from "@/components/main-content-wrapper";
-import { RouteTransition } from "@/components/motion-primitives/route-transition";
-import { PersistentDockHeader } from "@/components/persistent-dock-header";
-import { PortalBootstrap } from "@/components/portal-bootstrap";
-import { THEME_OPTIONS } from "@/components/settings/theme-data";
-import { SpacemanThemeBridge } from "@/components/theme/spaceman-theme-bridge";
-import { UiThemeBridge } from "@/components/theme/ui-theme-bridge";
-import { ThemeWrapper } from "@/components/theme-wrapper";
-import { UndoManager } from "@/components/UndoManager";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { ThemeProvider } from "@/components/ui/theme-provider";
-import { BackendConnectionProvider } from "@/lib/backend-connection-provider";
-import { CustomerDataProvider } from "@/lib/customer-data-context";
-import { DockBridgeProvider } from "@/lib/dock-bridge-context";
-import { LanguageProvider } from "@/lib/language-context";
-import { RealtimeEventBus } from "@/lib/realtime-event-bus";
-import { SettingsProvider } from "@/lib/settings-context";
-import { ToastRouter } from "@/lib/toast-router";
-import { UnifiedDataProvider } from "@/lib/unified-data-provider";
-import { VacationProvider } from "@/lib/vacation-context";
-import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
+import "@excalidraw/excalidraw/index.css";
+import { CustomerDataProvider } from "@shared/libs/data/customer-data-context";
+import { UnifiedDataProvider } from "@shared/libs/data/unified-data-provider";
+import { WebSocketDataProvider } from "@shared/libs/data/websocket-data-provider";
+import { DockBridgeProvider } from "@shared/libs/dock-bridge-context";
+import { LanguageProvider } from "@shared/libs/state/language-context";
+import { SettingsProvider } from "@shared/libs/state/settings-context";
+import { VacationProvider } from "@shared/libs/state/vacation-context";
+import { ToastRouter } from "@shared/libs/toast";
+import { DvhInit } from "@shared/ui/dvh-init";
+import { ErrorRecoveryInit } from "@shared/ui/error-recovery-init";
+import { MainContentWrapper } from "@shared/ui/main-content-wrapper";
+import { ThemeWrapper } from "@shared/ui/theme-wrapper";
+import { UndoManager } from "@shared/ui/undo-manager";
+import { ConditionalAppSidebar } from "@/features/navigation/conditional-app-sidebar";
+import { PersistentDockHeader } from "@/features/navigation/persistent-dock-header";
+import { THEME_OPTIONS } from "@/features/settings/settings/theme-data";
+import { BackendConnectionProvider } from "@/shared/libs/backend-connection-provider";
+import { RealtimeEventBus } from "@/shared/libs/realtime-event-bus";
+import { PortalBootstrap } from "@/shared/ui/portal-bootstrap";
+import { SidebarProvider } from "@/shared/ui/sidebar";
+import { SuppressExcalidrawWarnings } from "@/shared/ui/suppress-excalidraw-warnings";
+import { SpacemanThemeBridge } from "@/shared/ui/theme/spaceman-theme-bridge";
+import { UiThemeBridge } from "@/shared/ui/theme/ui-theme-bridge";
+import { ThemeProvider } from "@/shared/ui/theme-provider";
 
 // import { GlobalSettings } from "@/components/global-settings"
 
@@ -37,7 +38,7 @@ import { WebSocketDataProvider } from "@/lib/websocket-data-provider";
 function getThemeInitScript(): string {
 	const allowedThemes = THEME_OPTIONS.map((t) => t.value);
 	return `((function(){try{var t=localStorage.getItem('styleTheme');if(!t||!${JSON.stringify(
-		allowedThemes,
+		allowedThemes
 	)}.includes(t))return;var cl=document.documentElement.classList;for(var i=cl.length-1;i>=0;i--){var c=cl[i];if(c&&c.indexOf('theme-')===0){cl.remove(c)}}cl.add(t)}catch(e){}})());`;
 }
 
@@ -64,14 +65,7 @@ export const metadata: Metadata = {
 	title: "Reservation Manager | WhatsApp Bot Dashboard",
 	description:
 		"Comprehensive reservation management system with WhatsApp integration, calendar scheduling, and real-time customer communication",
-	keywords: [
-		"reservations",
-		"calendar",
-		"WhatsApp",
-		"booking",
-		"scheduling",
-		"appointments",
-	],
+	keywords: ["reservations", "calendar", "WhatsApp", "booking", "scheduling", "appointments"],
 	authors: [{ name: "Reservation Manager Team" }],
 	icons: {
 		icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
@@ -88,11 +82,7 @@ export const viewport: Viewport = {
 	themeColor: "#2563eb",
 };
 
-export default function RootLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
@@ -103,17 +93,9 @@ export default function RootLayout({
 
 				{/* Font optimization */}
 				<link rel="dns-prefetch" href="//fonts.googleapis.com" />
-				<link
-					rel="preconnect"
-					href="https://fonts.gstatic.com"
-					crossOrigin="anonymous"
-				/>
+				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 				{/* Preconnect to backend to speed up initial WebSocket handshake (localhost only) */}
-				<link
-					rel="preconnect"
-					href="http://localhost:8000"
-					crossOrigin="anonymous"
-				/>
+				<link rel="preconnect" href="http://localhost:8000" crossOrigin="anonymous" />
 				{/* Apply saved style theme class before paint to prevent FOUC */}
 				<script
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>This is safe as it only applies validated theme classes from localStorage</explanation>
@@ -129,10 +111,7 @@ export default function RootLayout({
 					}}
 				/>
 			</head>
-			<body
-				className={`${geist.variable} ${geistMono.variable} font-sans`}
-				suppressHydrationWarning
-			>
+			<body className={`${geist.variable} ${geistMono.variable} font-sans`} suppressHydrationWarning>
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
@@ -140,6 +119,7 @@ export default function RootLayout({
 					disableTransitionOnChange
 					storageKey="ui-theme"
 				>
+					<SuppressExcalidrawWarnings />
 					<ErrorRecoveryInit />
 					<LanguageProvider>
 						<SettingsProvider>
@@ -164,9 +144,7 @@ export default function RootLayout({
 																			<ConditionalAppSidebar />
 																			<MainContentWrapper>
 																				<PersistentDockHeader />
-																				<RouteTransition>
-																					{children}
-																				</RouteTransition>
+																				{children}
 																			</MainContentWrapper>
 																		</SidebarProvider>
 																	</div>

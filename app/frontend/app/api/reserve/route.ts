@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callPythonBackend } from "@/lib/backend";
+import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: Request) {
 	try {
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 					success: false,
 					message: "Missing required fields: id, title, date, time",
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 				success: false,
 				message: `Failed to create reservation: ${error instanceof Error ? error.message : "Unknown error"}`,
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

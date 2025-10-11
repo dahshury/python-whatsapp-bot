@@ -1,5 +1,6 @@
 /* External library imports - MUST come first in CSS */
 @import "../styles/imports.css";
+@import "@fortawesome/fontawesome-free/css/all.min.css";
 
 /* Theme definitions */
 @import "../styles/themes/themes.css";
@@ -15,11 +16,15 @@
 @import "../styles/themes/theme-perplexity.css";
 @import "../styles/themes/theme-art-deco.css";
 @import "../styles/themes/theme-neomorphism.css";
+@import "../styles/themes/theme-clerk.css";
 
 /* Theme inline configuration - must be loaded after all theme definitions */
 @import "../styles/themes/theme-inline.css";
-@import "../styles/excalidraw-theme.css";
 @import "../styles/chat.css";
+/* Keep ButtonGroup overrides after Tailwind so they can win specificity when needed */
+@import "../styles/button-group.css";
+/* Excalidraw theme integration - must come after themes are loaded */
+@import "../styles/excalidraw-theme.css";
 
 /* Global Error Suppression for React Timekeeper Issues */
 @layer base {

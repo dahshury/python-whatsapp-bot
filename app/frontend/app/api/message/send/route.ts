@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callPythonBackend } from "@/lib/backend";
+import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: Request) {
 	try {
@@ -8,10 +8,7 @@ export async function POST(request: Request) {
 
 		// Validate required fields
 		if (!wa_id || !text) {
-			return NextResponse.json(
-				{ success: false, message: "Missing required fields: wa_id, text" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ success: false, message: "Missing required fields: wa_id, text" }, { status: 400 });
 		}
 
 		// Call Python backend to send WhatsApp message
@@ -31,7 +28,7 @@ export async function POST(request: Request) {
 				success: false,
 				message: `Failed to send message: ${error instanceof Error ? error.message : "Unknown error"}`,
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

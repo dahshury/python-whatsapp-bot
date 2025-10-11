@@ -37,17 +37,21 @@
 		"types": ["node"],
 		"paths": {
 			"@/*": ["./*"],
-			"@libs/*": ["./lib/*"],
-			"@ui/*": ["./components/ui/*"],
-			"@ui": ["./components/ui"],
-			"@providers/*": ["./shared/providers/*"],
-			"@widgets/*": ["./components/*", "./widgets/*"],
+			"@libs/*": ["./shared/libs/*"],
+			"@ui/*": ["./shared/ui/*"],
+			"@ui": ["./shared/ui"],
+			"@widgets/*": ["./widgets/*"],
 			"@features/*": ["./features/*"],
+			"@processes/*": ["./processes/*"],
 			"@services/*": ["./services/*"],
-			"@vendor/*": ["./vendor/*"],
 			"@entities/*": ["./entities/*"],
 			"@shared/*": ["./shared/*"],
-			"@components/*": ["./components/*"]
+			"@shared/ui/*": ["./shared/ui/*"],
+			"@shared/ui": ["./shared/ui"],
+			"@shared/libs/*": ["./shared/libs/*"],
+			"@shared/libs/hooks/*": ["./shared/libs/hooks/*"],
+			"@shared/config/*": ["./shared/config/*"],
+			"@shared/validation/*": ["./shared/validation/*"]
 		},
 		"target": "ES2020"
 	},

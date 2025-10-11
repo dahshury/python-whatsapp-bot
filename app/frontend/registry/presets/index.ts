@@ -1,6 +1,6 @@
-import type { UiCompositeRegistryMap, UiRegistryMap } from "@/lib/ui-registry";
 import { neoRegistry } from "@/registry/themes/neo-brutalism/registry";
 import { neoCompositeRegistry } from "@/registry/themes/neo-brutalism/registry-composite";
+import type { UiCompositeRegistryMap, UiRegistryMap } from "@/shared/libs/ui-registry";
 
 export function getUiPresetForTheme(theme?: string): UiRegistryMap {
 	if (!theme) return {};
@@ -13,9 +13,7 @@ export function getUiPresetForTheme(theme?: string): UiRegistryMap {
 	}
 }
 
-export function getUiCompositePresetForTheme(
-	theme?: string,
-): UiCompositeRegistryMap {
+export function getUiCompositePresetForTheme(theme?: string): UiCompositeRegistryMap {
 	if (!theme) return {};
 	const key = theme.replace(/^theme-/, "");
 	switch (key) {

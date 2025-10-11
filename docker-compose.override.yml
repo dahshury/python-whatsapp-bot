@@ -5,13 +5,11 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     volumes:
-      - ./data:/app/data
       - ./.env:/app/.env
     environment:
-      - DB_PATH=/app/data/threads_db.sqlite
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/whatsapp_bot
 
   frontend:
     build:
       context: app/frontend
       dockerfile: Dockerfile
-

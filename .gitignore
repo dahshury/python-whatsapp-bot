@@ -107,3 +107,4 @@ node_modules
 *.sqlite
 
 data/
+app/frontend/.prettiercache

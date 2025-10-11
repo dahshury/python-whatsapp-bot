@@ -3,8 +3,7 @@ import path from "node:path";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	env: {
-		NEXT_PUBLIC_TIMEZONE:
-			process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
+		NEXT_PUBLIC_TIMEZONE: process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
 	},
 
 	// Allow remote images from YouTube thumbnail hosts
@@ -62,13 +61,7 @@ const nextConfig = {
 	// Webpack configuration to fix Glide Data Grid module resolution issues
 	webpack: (
 		config,
-		{
-			buildId: _buildId,
-			dev: _dev,
-			isServer: _isServer,
-			defaultLoaders: _defaultLoaders,
-			webpack: _webpack,
-		},
+		{ buildId: _buildId, dev: _dev, isServer: _isServer, defaultLoaders: _defaultLoaders, webpack: _webpack }
 	) => {
 		// Fix for Glide Data Grid module resolution
 		config.resolve.alias = {
@@ -77,10 +70,7 @@ const nextConfig = {
 			"@glideapps/glide-data-grid/dist/esm/internal/common/math.js":
 				"@glideapps/glide-data-grid/dist/esm/internal/common/math",
 			// Alias Streamlit internal lib path (~lib/*) to the copied directory
-			"~lib": path.resolve(
-				process.cwd(),
-				"components/glide-data-editor-streamlit/lib",
-			),
+			"~lib": path.resolve(process.cwd(), "components/glide-data-editor-streamlit/lib"),
 		};
 
 		// Add fallbacks for Node.js modules
@@ -129,6 +119,24 @@ const nextConfig = {
 			config.optimization.emitOnErrors = false;
 		}
 
+		// Strip console.* in production bundles except warn/error
+		if (!_dev && process.env.NODE_ENV === "production") {
+			config.optimization = {
+				...config.optimization,
+				minimize: true,
+			};
+			config.plugins = config.plugins || [];
+			// Rely on SWC compiler setting removeConsole below
+		}
+
+		// Define __DEV__ for webpack bundles
+		config.plugins = config.plugins || [];
+		config.plugins.push(
+			new _webpack.DefinePlugin({
+				__DEV__: _dev,
+			})
+		);
+
 		return config;
 	},
 
@@ -137,6 +145,11 @@ const nextConfig = {
 
 	// Enable Strict Mode in production only to avoid double-mount in dev
 	reactStrictMode: process.env.NODE_ENV === "production",
+
+	// Remove console logs in production except warn/error
+	compiler: {
+		removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+	},
 
 	// Use standalone output to minimize runtime image size
 	output: "standalone",

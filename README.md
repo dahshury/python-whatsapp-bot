@@ -103,7 +103,7 @@ For the original repository and setup tutorial (Flask version), please refer to 
 ├── pnpm-workspace.yaml      # pnpm workspace configuration
 ├── package.json            # Root package.json for monorepo management
 ├── pnpm-lock.yaml          # pnpm lock file
-├── threads_db.sqlite       # SQLite database file
+├── data/postgres           # PostgreSQL data directory (via Docker volume)
 ├── run.py                  # Entry point to run the FastAPI application
 └── README.md               # Project documentation
 ```

@@ -1,6 +1,22 @@
 # Local docker-compose configuration
 
 services:
+  postgres:
+    image: postgres:16
+    container_name: reservation_postgres
+    environment:
+      - POSTGRES_DB=whatsapp_bot
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d whatsapp_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   backend:
     build:
       context: .
@@ -11,14 +27,15 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - prometheus
+      postgres:
+        condition: service_healthy
+      prometheus: { condition: service_started }
     environment:
       - ENV=${ENVIRONMENT:-development}
-      - DB_PATH=/app/data/threads_db.sqlite
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/whatsapp_bot
     volumes:
       - ${MOUNT_BACKEND:-./app:/app/app}
       - ./run.py:/app/run.py
-      - ./data:/app/data
       - ./.env:/app/.env
       - ./scripts:/app/scripts
     restart: on-failure
@@ -28,18 +45,7 @@ services:
         max-size: "10m"
         max-file: "3"
     command: >
-      sh -c "mkdir -p /app/data &&
-             # If a legacy DB exists in working dir, migrate it into the mounted volume once
-             if [ -f /app/threads_db.sqlite ] && [ ! -f /app/data/threads_db.sqlite ]; then
-               echo 'Migrating legacy DB to data volume...';
-               mv /app/threads_db.sqlite /app/data/threads_db.sqlite || cp /app/threads_db.sqlite /app/data/threads_db.sqlite;
-             fi;
-             # Optional: merge WAL without truncation before startup (safer)
-             if [ -f /app/data/threads_db.sqlite ]; then
-               echo 'Checkpointing WAL (FULL) before startup (no truncate)...';
-               sqlite3 /app/data/threads_db.sqlite 'PRAGMA synchronous=FULL; PRAGMA fullfsync=ON; PRAGMA wal_checkpoint(FULL);' || true;
-             fi;
-             uvicorn run:app --host 0.0.0.0 --port 8000"
+      sh -c "until pg_isready -h postgres -p 5432 -d whatsapp_bot; do echo 'waiting for postgres...'; sleep 1; done; uvicorn run:app --host 0.0.0.0 --port 8000"
   frontend:
     build:
       context: ./app/frontend

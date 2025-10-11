@@ -1,13 +1,12 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-import { callPythonBackend } from "@/lib/backend";
+import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function GET(req: NextRequest) {
 	try {
 		const url = new URL(req.url);
 		const future = url.searchParams.get("future") === "true";
-		const includeCancelled =
-			url.searchParams.get("include_cancelled") === "true";
+		const includeCancelled = url.searchParams.get("include_cancelled") === "true";
 		const fromDate = url.searchParams.get("from_date"); // YYYY-MM-DD format
 		const toDate = url.searchParams.get("to_date"); // YYYY-MM-DD format
 
@@ -40,7 +39,7 @@ export async function GET(req: NextRequest) {
 				message: `Failed to fetch reservations: ${error instanceof Error ? error.message : "Unknown error"}`,
 				data: {},
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

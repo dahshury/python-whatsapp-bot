@@ -1,5 +1,5 @@
 "use client";
-import type { UiRegistryMap } from "@/lib/ui-registry";
+import type { UiRegistryMap } from "@/shared/libs/ui-registry";
 
 // Important: Avoid overriding structural components (like Button) at runtime to
 // keep SSR and client markup identical and prevent hydration mismatches.

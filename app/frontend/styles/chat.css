@@ -60,13 +60,7 @@
 	background: transparent;
 }
 /* Remove outer backgrounds; keep only inner bubble styles */
-:where(
-		.message-row,
-		.message-row-user,
-		.message-row-admin,
-		.message-row-assistant,
-		.message-row-secretary
-	) {
+:where(.message-row, .message-row-user, .message-row-admin, .message-row-assistant, .message-row-secretary) {
 	background: transparent;
 }
 
@@ -78,33 +72,33 @@
 .message-row-user :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
-		hsl(var(--primary) / 0.15) 0%,
-		hsl(var(--primary) / 0.06) 50%,
-		hsl(var(--primary) / 0.1) 100%
+		hsl(var(--primary) / 0.4) 0%,
+		hsl(var(--primary) / 0.28) 50%,
+		hsl(var(--primary) / 0.3) 100%
 	);
 }
 .message-row-admin :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
-		hsl(var(--accent) / 0.17) 0%,
-		hsl(var(--accent) / 0.08) 50%,
-		hsl(var(--accent) / 0.12) 100%
+		hsl(var(--accent) / 0.36) 0%,
+		hsl(var(--accent) / 0.24) 50%,
+		hsl(var(--accent) / 0.28) 100%
 	);
 }
 .message-row-assistant :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
-		hsl(var(--ring) / 0.15) 0%,
-		hsl(var(--ring) / 0.07) 50%,
-		hsl(var(--ring) / 0.11) 100%
+		hsl(var(--muted) / 0.36) 0%,
+		hsl(var(--muted) / 0.24) 50%,
+		hsl(var(--muted) / 0.28) 100%
 	);
 }
 .message-row-secretary :where(.rounded-lg, .rounded-md) {
 	background: linear-gradient(
 		135deg,
-		hsl(var(--muted-foreground) / 0.19) 0%,
-		hsl(var(--muted-foreground) / 0.1) 50%,
-		hsl(var(--muted-foreground) / 0.14) 100%
+		hsl(var(--accent) / 0.36) 0%,
+		hsl(var(--accent) / 0.24) 50%,
+		hsl(var(--accent) / 0.28) 100%
 	);
 }
 .message-row :where(.rounded-lg, .rounded-md) {
@@ -119,11 +113,7 @@
 	position: absolute;
 	inset: -4px;
 	border-radius: 8px;
-	background: radial-gradient(
-		40% 40% at 50% 50%,
-		currentColor 0%,
-		transparent 60%
-	);
+	background: radial-gradient(40% 40% at 50% 50%, currentColor 0%, transparent 60%);
 	filter: blur(8px);
 	opacity: 0;
 	transition: opacity 200ms ease;
@@ -158,32 +148,16 @@
 	transform: scale(1.02);
 }
 .message-row-user .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--primary)) 0%,
-		transparent 70%
-	);
+	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--primary)) 0%, transparent 70%);
 }
 .message-row-admin .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--accent)) 0%,
-		transparent 70%
-	);
+	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--accent)) 0%, transparent 70%);
 }
 .message-row-assistant .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--ring)) 0%,
-		transparent 70%
-	);
+	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--ring)) 0%, transparent 70%);
 }
 .message-row-secretary .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--muted-foreground)) 0%,
-		transparent 70%
-	);
+	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--muted-foreground)) 0%, transparent 70%);
 }
 .prose a {
 	overflow-wrap: anywhere;
@@ -203,4 +177,42 @@
 	white-space: pre;
 	overflow-x: auto;
 	max-width: 100%;
+}
+
+/* Calendar page sidebar specific chat tweaks */
+.calendar-chat {
+	/* Scope all overrides to calendar chat within the sidebar */
+}
+
+/* 1) Increase opacity of bubbles in calendar sidebar */
+.calendar-chat .message-row-user :where(.rounded-lg, .rounded-md) {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--primary) / 0.48) 0%,
+		hsl(var(--primary) / 0.36) 50%,
+		hsl(var(--primary) / 0.4) 100%
+	);
+}
+
+.calendar-chat .message-row-admin :where(.rounded-lg, .rounded-md),
+.calendar-chat .message-row-assistant :where(.rounded-lg, .rounded-md),
+.calendar-chat .message-row-secretary :where(.rounded-lg, .rounded-md) {
+	background: linear-gradient(
+		135deg,
+		hsl(var(--muted) / 0.44) 0%,
+		hsl(var(--muted) / 0.32) 50%,
+		hsl(var(--muted) / 0.36) 100%
+	);
+}
+
+/* 2) Remove avatar glow in calendar sidebar chat */
+.calendar-chat .avatar-neon::before {
+	content: none;
+}
+
+/* 3) Ensure timestamp sits at the bottom-right inside the bubble */
+.calendar-chat .message-row article > div.absolute {
+	position: absolute;
+	bottom: 0.5rem;
+	right: 0.75rem;
 }

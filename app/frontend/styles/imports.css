@@ -48,7 +48,7 @@
 /* =================================
    Z-INDEX VARIABLES (CRITICAL FIRST)
    ================================= */
-@import "../components/glide_custom_cells/styles/_z-index.css";
+@import "../shared/libs/data-grid/styles/_z-index.css";
 
 /* =================================
    CORE STYLES

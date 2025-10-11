@@ -1,0 +1,41 @@
+/* ButtonGroup global styling to visually join nested buttons, even when wrapped (e.g., PopoverTrigger) */
+
+/* Vertical orientation: remove inner radii and collapse borders */
+[data-button-group][data-orientation="vertical"] > *:not(:first-child) button,
+[data-button-group][data-orientation="vertical"] > *:not(:first-child) [role="button"],
+[data-button-group][data-orientation="vertical"] > button:not(:first-child),
+[data-button-group][data-orientation="vertical"] > a[role="button"]:not(:first-child) {
+	margin-top: -1px; /* collapse adjacent borders */
+}
+
+[data-button-group][data-orientation="vertical"] > *:first-child button,
+[data-button-group][data-orientation="vertical"] > button:first-child {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+[data-button-group][data-orientation="vertical"] > *:last-child button,
+[data-button-group][data-orientation="vertical"] > button:last-child {
+	border-top-left-radius: 0;
+	border-top-right-radius: 0;
+}
+
+/* Horizontal orientation (not used here, but provided for completeness) */
+[data-button-group][data-orientation="horizontal"] > *:not(:first-child) button,
+[data-button-group][data-orientation="horizontal"] > *:not(:first-child) [role="button"],
+[data-button-group][data-orientation="horizontal"] > button:not(:first-child),
+[data-button-group][data-orientation="horizontal"] > a[role="button"]:not(:first-child) {
+	margin-left: -1px;
+}
+
+[data-button-group][data-orientation="horizontal"] > *:first-child button,
+[data-button-group][data-orientation="horizontal"] > button:first-child {
+	border-top-right-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+[data-button-group][data-orientation="horizontal"] > *:last-child button,
+[data-button-group][data-orientation="horizontal"] > button:last-child {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
+}

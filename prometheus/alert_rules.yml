@@ -21,23 +21,6 @@ groups:
           provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
           reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
 
-    # Alert whenever a retry occurs in the safety decorator
-    - alert: AssistantRetryOccurred
-      expr: |
-        increase(api_retry_attempts_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: info
-      annotations:
-        summary: "Retry occurred in assistant safety decorator"
-        description: |
-          A retry was attempted in the assistant's retry decorator with exception type {{ $labels.exception_type }}.
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          exception_type={{ $labels.exception_type }}
-
     # Alert when retry count spikes above threshold
     - alert: ExcessiveAssistantRetries
       expr: increase(api_retry_attempts_total[5m]) > 10
@@ -287,6 +270,34 @@ groups:
         summary: "Maximum Concurrent Tasks Reached"
         description: |
           The application has reached its maximum concurrent task limit
+    # Alert on inbound durable queue backlog (preferred signal)
+    - alert: InboundQueueBacklogHigh
+      expr: |
+        avg_over_time(inbound_queue_length[5m]) > 25
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Inbound queue backlog is high"
+        description: |
+          The durable inbound queue length is elevated.
+          ---
+          severity={{ $labels.severity }} value={{ $value }}
+          job={{ $labels.job }} instance={{ $labels.instance }}
+
+    - alert: InboundQueueOldestTooOld
+      expr: |
+        avg_over_time(inbound_queue_oldest_age_seconds[5m]) > 120
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Inbound queue item waiting too long"
+        description: |
+          The oldest pending inbound queue item has been waiting > 120s on average over 5m.
+          ---
+          severity={{ $labels.severity }} value={{ $value }}
+          job={{ $labels.job }} instance={{ $labels.instance }}
           
           ---
           severity={{ $labels.severity }} value={{ $value }}

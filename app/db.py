@@ -1,8 +1,11 @@
+import contextlib
 import os
+import urllib.parse
+from collections.abc import AsyncGenerator
+from datetime import date, datetime
 
 from sqlalchemy import (
     CheckConstraint,
-    Column,
     Date,
     DateTime,
     ForeignKey,
@@ -13,148 +16,126 @@ from sqlalchemy import (
     create_engine,
     func,
     text,
-    event,
 )
-from sqlalchemy.orm import declarative_base, relationship, sessionmaker, scoped_session, Session
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, scoped_session, sessionmaker
 
-def _resolve_db_path() -> str:
-    """Resolve a stable, hardcoded SQLite path with sane fallbacks.
+try:
+    from sqlalchemy.dialects.postgresql import JSONB as _JSON_TYPE
+except Exception:  # pragma: no cover
+    from sqlalchemy import JSON as _JSON_TYPE
+JSON_TYPE = _JSON_TYPE
 
-    Priority:
-    1) /app/data/threads_db.sqlite (inside container with mounted volume)
-    2) ./data/threads_db.sqlite (when running from project root without container)
-    3) ./threads_db.sqlite (last resort in current working directory)
+
+def _default_database_url() -> str:
+    """Return a sensible default PostgreSQL URL.
+
+    - Inside Docker: prefer service hostname "postgres" (same compose network)
+    - Outside Docker: default to localhost
+    Override any case with the DATABASE_URL env var.
     """
-    # Prefer container data volume
-    container_data_dir = "/app/data"
-    if os.path.isdir(container_data_dir):
-        return os.path.join(container_data_dir, "threads_db.sqlite")
-
-    # Prefer local data directory when running outside container
-    local_data_dir = os.path.join(os.getcwd(), "data")
     try:
-        if not os.path.isdir(local_data_dir):
-            # Do not create eagerly; just fallback when missing
-            pass
-        else:
-            return os.path.join(local_data_dir, "threads_db.sqlite")
+        in_docker = os.path.exists("/.dockerenv") or os.environ.get("IN_DOCKER") == "1"
     except Exception:
-        pass
+        in_docker = False
+    if in_docker:
+        return "postgresql+psycopg://postgres:postgres@postgres:5432/whatsapp_bot"
+    return "postgresql+psycopg://postgres:postgres@localhost:5432/whatsapp_bot"
 
-    # Fallback: current working directory
-    return os.path.join(os.getcwd(), "threads_db.sqlite")
+
+def _normalize_database_url(url: str) -> str:
+    """If running inside Docker and URL points to localhost, rewrite host to 'postgres'.
+
+    This avoids accidental use of 127.0.0.1/::1 inside the backend container.
+    """
+    try:
+        in_docker = os.path.exists("/.dockerenv") or os.environ.get("IN_DOCKER") == "1"
+        if not in_docker:
+            return url
+        parsed = urllib.parse.urlsplit(url)
+        # Only adjust for postgresql schemes
+        if not parsed.scheme.startswith("postgresql"):
+            return url
+        hostname = parsed.hostname or ""
+        if hostname in {"localhost", "127.0.0.1", "::1"}:
+            # Rebuild netloc with 'postgres' hostname
+            userinfo = parsed.username or ""
+            if parsed.password:
+                userinfo = f"{userinfo}:{parsed.password}"
+            if userinfo:
+                userinfo = f"{userinfo}@"
+            port = f":{parsed.port}" if parsed.port else ""
+            new_netloc = f"{userinfo}postgres{port}"
+            return urllib.parse.urlunsplit((parsed.scheme, new_netloc, parsed.path, parsed.query, parsed.fragment))
+        return url
+    except Exception:
+        return url
 
 
-# Hardcode DB location (do not rely on .env). Still allow ENV override if explicitly set.
-DB_PATH = os.environ.get("DB_PATH") or _resolve_db_path()
+DATABASE_URL = _normalize_database_url(os.environ.get("DATABASE_URL") or _default_database_url())
+
+
+def _derive_async_url(url: str) -> str:
+    """Derive an async SQLAlchemy URL from a sync URL.
+
+    Example: postgresql+psycopg -> postgresql+asyncpg
+    """
+    if "+" in url:
+        dialect, driver_and_rest = url.split("+", 1)
+        driver, rest = driver_and_rest.split("://", 1)
+        # Force async driver for PostgreSQL
+        if dialect == "postgresql":
+            return f"postgresql+asyncpg://{rest}"
+    # Fallback: assume postgresql without explicit driver
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
 
 # SQLAlchemy engine and session factory (sync)
-engine = create_engine(
-    f"sqlite:///{DB_PATH}", echo=False, future=True, connect_args={"check_same_thread": False}
+engine: Engine = create_engine(
+    DATABASE_URL,
+    echo=False,
+    future=True,
+    pool_pre_ping=True,
 )
-SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True))
+SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, expire_on_commit=False))
 
 # Async engine/session for libraries that require AsyncSession (e.g., fastapi-users)
-async_engine = create_async_engine(
-    f"sqlite+aiosqlite:///{DB_PATH}", echo=False, future=True
-)
-AsyncSessionLocal = sessionmaker(
-    bind=async_engine, class_=AsyncSession, autoflush=False, autocommit=False, expire_on_commit=False
-)
-
-# Declarative Base
-Base = declarative_base()
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragmas(dbapi_connection, _connection_record):  # noqa: ANN001
-    """Ensure stable SQLite journaling and sync settings on each connection."""
-    try:
-        cursor = dbapi_connection.cursor()
-        # WAL for durability across restarts with concurrent readers
-        cursor.execute("PRAGMA journal_mode=WAL;")
-        # Balance safety/perf; NORMAL is fine for WAL
-        cursor.execute("PRAGMA synchronous=NORMAL;")
-        # Limit WAL growth between checkpoints
-        cursor.execute("PRAGMA wal_autocheckpoint=1000;")
-        cursor.close()
-    except Exception:
-        # Best-effort; ignore PRAGMA failures
-        try:
-            cursor.close()
-        except Exception:
-            pass
+async_engine: AsyncEngine = create_async_engine(_derive_async_url(DATABASE_URL), echo=False, future=True)
+AsyncSessionLocal = sessionmaker(bind=async_engine, class_=_AsyncSession, autoflush=False, expire_on_commit=False)
 
 
-def checkpoint_wal_safe(mode: str = "FULL", elevate_durability: bool = True, busy_timeout_ms: int = 10000) -> bool:
-    """Perform a WAL checkpoint with optional durability safeguards.
-
-    Parameters:
-        mode: One of PASSIVE|FULL|RESTART|TRUNCATE. Defaults to FULL (safer).
-        elevate_durability: When True, temporarily bump durability on this connection
-            (synchronous=FULL and fullfsync=ON) while performing the checkpoint to
-            reduce risk during power loss/reboots.
-        busy_timeout_ms: busy_timeout in milliseconds for this connection.
-
-    Returns True on success, False otherwise.
-    """
-    try:
-        with engine.begin() as conn:
-            try:
-                conn.exec_driver_sql(f"PRAGMA busy_timeout={int(busy_timeout_ms)};")
-            except Exception:
-                pass
-            if elevate_durability:
-                try:
-                    conn.exec_driver_sql("PRAGMA synchronous=FULL;")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("PRAGMA fullfsync=ON;")
-                except Exception:
-                    # Some platforms/filesystems may not support fullfsync
-                    pass
-            conn.exec_driver_sql(f"PRAGMA wal_checkpoint({mode});")
-        return True
-    except Exception:
-        return False
-
-
-def checkpoint_wal(truncate: bool = True) -> bool:
-    """Backward-compatible wrapper around checkpoint_wal_safe.
-
-    When truncate=True, uses TRUNCATE; otherwise uses FULL.
-    """
-    mode = "TRUNCATE" if truncate else "FULL"
-    return checkpoint_wal_safe(mode=mode, elevate_durability=True)
-
+class Base(DeclarativeBase):
+    pass
 
 
 class CustomerModel(Base):
     __tablename__ = "customers"
 
-    wa_id = Column(String, primary_key=True)
-    customer_name = Column(String, nullable=True)
+    wa_id: Mapped[str] = mapped_column(String, primary_key=True)
+    customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
     # Optional age field; keep nullable to avoid forcing data for all existing customers
-    age = Column(Integer, nullable=True)
+    age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Date when the age value was recorded/reset. Used to auto-increment age yearly.
-    age_recorded_at = Column(Date, nullable=True)
+    age_recorded_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # JSON/JSONB document for Excalidraw data
+    document: Mapped[object | None] = mapped_column(JSON_TYPE, nullable=True)
 
-    __table_args__ = (
-        Index("idx_customers_wa_id", "wa_id"),
-    )
+    __table_args__ = (Index("idx_customers_wa_id", "wa_id"),)
 
 
 class ConversationModel(Base):
     __tablename__ = "conversation"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    wa_id = Column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
-    role = Column(String, nullable=True)
-    message = Column(Text, nullable=True)
-    date = Column(String, nullable=True)
-    time = Column(String, nullable=True)
-
-    customer = relationship("CustomerModel", backref="conversations")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    wa_id: Mapped[str] = mapped_column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
+    role: Mapped[str | None] = mapped_column(String, nullable=True)
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    date: Mapped[str | None] = mapped_column(String, nullable=True)
+    time: Mapped[str | None] = mapped_column(String, nullable=True)
 
     __table_args__ = (
         Index("idx_conversation_wa_id", "wa_id"),
@@ -165,19 +146,17 @@ class ConversationModel(Base):
 class ReservationModel(Base):
     __tablename__ = "reservations"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    wa_id = Column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
-    date = Column(String, nullable=False, index=True)
-    time_slot = Column(String, nullable=False, index=True)
-    type = Column(Integer, nullable=False)
-    status = Column(String, nullable=False, default="active")
-    cancelled_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    wa_id: Mapped[str] = mapped_column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
+    date: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    time_slot: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    type: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="active")
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-
-    customer = relationship("CustomerModel", backref="reservations")
 
     __table_args__ = (
         CheckConstraint("type IN (0, 1)", name="ck_reservations_type"),
@@ -193,13 +172,15 @@ class ReservationModel(Base):
 class VacationPeriodModel(Base):
     __tablename__ = "vacation_periods"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    start_date = Column(Date, nullable=False, index=True)
-    end_date = Column(Date, nullable=True, index=True)
-    duration_days = Column(Integer, nullable=True)  # inclusive days count
-    title = Column(Text, nullable=True)
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    start_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    duration_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
 
     __table_args__ = (
         CheckConstraint("duration_days IS NULL OR duration_days >= 1", name="ck_vacation_duration_positive"),
@@ -212,13 +193,13 @@ class VacationPeriodModel(Base):
 class NotificationEventModel(Base):
     __tablename__ = "notification_events"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    event_type = Column(String, nullable=False, index=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    event_type: Mapped[str] = mapped_column(String, nullable=False, index=True)
     # ISO 8601 UTC timestamp string (matches websocket broadcast timestamp)
-    ts_iso = Column(String, nullable=False, index=True)
+    ts_iso: Mapped[str] = mapped_column(String, nullable=False, index=True)
     # Raw payload as JSON string (so frontend can reconstruct message-specific text)
-    data = Column(Text, nullable=False)
-    created_at = Column(DateTime, server_default=text('CURRENT_TIMESTAMP'))
+    data: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
 
     __table_args__ = (
         Index("idx_notification_events_type_ts", "event_type", "ts_iso"),
@@ -226,35 +207,37 @@ class NotificationEventModel(Base):
     )
 
 
-class CustomerDocumentModel(Base):
-    __tablename__ = "customer_documents"
+class InboundMessageQueueModel(Base):
+    __tablename__ = "inbound_message_queue"
 
-    # Use wa_id as the primary key to store a single document per customer
-    wa_id = Column(String, ForeignKey("customers.wa_id"), primary_key=True, index=True)
-    # Excalidraw JSON is stored as TEXT
-    document_json = Column(Text, nullable=False, default="{}")
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    # WhatsApp message id for idempotency; nullable to handle edge cases without message id
+    message_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    # Minimal fields needed to re-process
+    wa_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    payload: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending|processing|done|failed
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), index=True)
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-
-    customer = relationship("CustomerModel", backref="document", uselist=False)
+    # When claimed by a worker
+    locked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
 
     __table_args__ = (
-        Index("idx_customer_documents_wa_id", "wa_id"),
+        # De-duplication for known message ids (skip NULLs to allow inserts when unknown)
+        Index(
+            "uq_inbound_message_queue_message_id_not_null",
+            "message_id",
+            unique=True,
+            postgresql_where=text("message_id IS NOT NULL"),
+        )
+        if "postgresql" in str(engine.url)
+        else Index("idx_inbound_message_queue_message_id", "message_id"),
+        Index("idx_inbound_queue_status_created", "status", "created_at"),
     )
 
-
-class DefaultDocumentModel(Base):
-    __tablename__ = "default_document"
-
-    # Single-row table holding the global default Excalidraw scene
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    document_json = Column(Text, nullable=False, default="{}")
-    created_at = Column(DateTime, server_default=func.current_timestamp())
-    updated_at = Column(
-        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
-    )
 
 def init_models() -> None:
     """Create database tables if they do not exist."""
@@ -266,27 +249,28 @@ def init_models() -> None:
         pass
     Base.metadata.create_all(bind=engine)
 
-    # Lightweight migration: ensure 'age' and 'age_recorded_at' columns exist on 'customers'
+    # Lightweight migration (PostgreSQL-safe): ensure optional columns exist
     try:
         with engine.begin() as conn:
-            # Check existing columns
-            result = conn.exec_driver_sql("PRAGMA table_info(customers);")
-            cols = [row[1] for row in result.fetchall()]  # row[1] is column name
-            if "age" not in cols:
-                # Add nullable column for age
-                conn.exec_driver_sql("ALTER TABLE customers ADD COLUMN age INTEGER NULL;")
-            if "age_recorded_at" not in cols:
-                # Store date when age was last recorded/reset
-                conn.exec_driver_sql("ALTER TABLE customers ADD COLUMN age_recorded_at DATE NULL;")
-            # Initialize recorded date for existing rows with an age but no recorded date
-            try:
+            # Ensure partial unique index for message_id on Postgres (idempotency)
+            with contextlib.suppress(Exception):
                 conn.exec_driver_sql(
-                    "UPDATE customers SET age_recorded_at = DATE('now') WHERE age_recorded_at IS NULL AND age IS NOT NULL;"
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_inbound_message_queue_message_id_not_null ON inbound_message_queue (message_id) WHERE message_id IS NOT NULL;"
                 )
+            conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age INTEGER;")
+            conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age_recorded_at DATE;")
+            # Try JSONB first (Postgres), fallback to JSON for other engines
+            try:
+                conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSONB;")
             except Exception:
-                pass
+                with contextlib.suppress(Exception):
+                    conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSON;")
+            with contextlib.suppress(Exception):
+                conn.exec_driver_sql(
+                    "UPDATE customers SET age_recorded_at = CURRENT_DATE WHERE age_recorded_at IS NULL AND age IS NOT NULL;"
+                )
     except Exception:
-        # Best-effort migration; ignore if fails in read-only contexts
+        # Best-effort migration; ignore if fails in restricted contexts
         pass
 
 
@@ -300,7 +284,7 @@ def get_session() -> Session:
     return SessionLocal()
 
 
-async def get_async_session() -> AsyncSession:
+async def get_async_session() -> AsyncGenerator[_AsyncSession, None]:
     """Yield an AsyncSession for async database operations.
 
     Usage:

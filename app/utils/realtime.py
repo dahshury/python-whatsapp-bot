@@ -1,18 +1,16 @@
 import asyncio
+import contextlib
+import datetime
 import json
 import logging
 from dataclasses import dataclass
-import base64
-import gzip
-from typing import Any, Dict, List, Optional, Set
-
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from fastapi import FastAPI
-from prometheus_client import generate_latest
-from app.config import config
-import datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
+from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect
+from prometheus_client import generate_latest
+
+from app.config import config
 
 
 def _utc_iso_now() -> str:
@@ -21,34 +19,18 @@ def _utc_iso_now() -> str:
     return dt.isoformat().replace("+00:00", "Z")
 
 
-def _maybe_decompress_document_ws(raw: Any) -> str:
-    try:
-        if isinstance(raw, str) and raw.startswith("gz:"):
-            b = base64.b64decode(raw[3:])
-            return gzip.decompress(b).decode("utf-8")
-    except Exception:
-        pass
-    try:
-        # If already a dict/list, stringify
-        if not isinstance(raw, str):
-            return json.dumps(raw or {})
-    except Exception:
-        pass
-    return raw if isinstance(raw, str) else "{}"
-
-
 @dataclass
 class ClientConnection:
     websocket: WebSocket
-    update_types: Optional[Set[str]] = None
-    entity_ids: Optional[Set[str]] = None
-    tab_id: Optional[str] = None
+    update_types: set[str] | None = None
+    entity_ids: set[str] | None = None
+    tab_id: str | None = None
     client_host: str = "unknown"
 
-    async def send_json(self, payload: Dict[str, Any]) -> None:
+    async def send_json(self, payload: dict[str, Any]) -> None:
         await self.websocket.send_text(json.dumps(payload, ensure_ascii=False))
 
-    def accepts(self, event_type: str, affected_entities: Optional[List[str]]) -> bool:
+    def accepts(self, event_type: str, affected_entities: list[str] | None) -> bool:
         # Filter by update types if provided
         if self.update_types and event_type not in self.update_types:
             return False
@@ -61,14 +43,16 @@ class ClientConnection:
 class RealtimeManager:
     def __init__(self) -> None:
         # Map websocket id -> ClientConnection
-        self._clients: Dict[int, ClientConnection] = {}
+        self._clients: dict[int, ClientConnection] = {}
         # Map tab id -> ClientConnection (enforce single connection per browser tab)
-        self._clients_by_tab: Dict[str, ClientConnection] = {}
+        self._clients_by_tab: dict[str, ClientConnection] = {}
         self._lock = asyncio.Lock()
-        self._metrics_task: Optional[asyncio.Task] = None
+        self._metrics_task: asyncio.Task | None = None
         # Recent reservation events to suppress contradictory duplicates
         # key -> {"type": str, "ts": datetime.datetime}
-        self._recent_reservation_events: Dict[str, Dict[str, Any]] = {}
+        self._recent_reservation_events: dict[str, dict[str, Any]] = {}
+        # Main event loop captured on FastAPI startup for cross-thread scheduling
+        self._main_loop: asyncio.AbstractEventLoop | None = None
 
     async def connect(self, websocket: WebSocket) -> ClientConnection:
         client_host = websocket.client.host if websocket.client else "unknown"
@@ -86,9 +70,7 @@ class RealtimeManager:
                 existing = self._clients_by_tab.get(tab_id)
                 if existing and existing.websocket is not websocket:
                     try:
-                        logging.info(
-                            f"♻️ Replacing existing connection for tab={tab_id} from {existing.client_host}"
-                        )
+                        logging.info(f"♻️ Replacing existing connection for tab={tab_id} from {existing.client_host}")
                         await existing.websocket.close(code=1000)
                     except Exception:
                         pass
@@ -116,8 +98,8 @@ class RealtimeManager:
     async def broadcast(
         self,
         event_type: str,
-        data: Dict[str, Any],
-        affected_entities: Optional[List[str]] = None,
+        data: dict[str, Any],
+        affected_entities: list[str] | None = None,
     ) -> None:
         # Optional: suppress contradictory duplicate reservation events within a short window
         try:
@@ -171,7 +153,7 @@ class RealtimeManager:
                     if age_sec <= 1.0:
                         # Within suppression window
                         if priority.get(event_type, 0) <= priority.get(str(existing_type), 0):
-                            logging.info(
+                            logging.debug(
                                 f"🚫 Suppressing {event_type} due to recent {existing_type} for key {key} ({age_sec:.3f}s)"
                             )
                             return
@@ -196,9 +178,9 @@ class RealtimeManager:
         async with self._lock:
             targets = list(self._clients.values())
 
-        logging.info(f"📢 Broadcasting {event_type} to {len(targets)} clients: {data}")
+        logging.debug(f"📢 Broadcasting {event_type} to {len(targets)} clients: {data}")
 
-        to_drop: List[ClientConnection] = []
+        to_drop: list[ClientConnection] = []
         sent_count = 0
         for conn in targets:
             try:
@@ -212,7 +194,7 @@ class RealtimeManager:
                 logging.warning(f"❌ WebSocket send failed: {e}. Scheduling disconnect.")
                 to_drop.append(conn)
 
-        logging.info(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
+        logging.debug(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
 
         # Persist qualifying notification events and prune to last 2000
         try:
@@ -227,7 +209,9 @@ class RealtimeManager:
             }
             if event_type in notif_types:
                 import json as _json
-                from app.db import get_session, NotificationEventModel
+
+                from app.db import NotificationEventModel, get_session
+
                 # Use payload timestamp for consistency
                 ts_iso = payload.get("timestamp") or _utc_iso_now()
                 with get_session() as session:
@@ -251,7 +235,7 @@ class RealtimeManager:
                         ]
                         if keep_ids:
                             session.execute(
-                                "DELETE FROM notification_events WHERE id NOT IN (%s)" % (
+                                "DELETE FROM notification_events WHERE id NOT IN ({})".format(
                                     ",".join(str(i) for i in keep_ids)
                                 )
                             )
@@ -290,21 +274,24 @@ class RealtimeManager:
         async def _startup() -> None:
             if not self._metrics_task or self._metrics_task.done():
                 self._metrics_task = asyncio.create_task(_run())
+            # Capture the running loop for use from sync/non-loop threads
+            try:
+                self._main_loop = asyncio.get_running_loop()
+            except Exception:
+                self._main_loop = None
 
         async def _shutdown() -> None:
             if self._metrics_task and not self._metrics_task.done():
                 self._metrics_task.cancel()
-                try:
+                with contextlib.suppress(Exception):
                     await self._metrics_task
-                except Exception:
-                    pass
 
         app.add_event_handler("startup", _startup)
         app.add_event_handler("shutdown", _shutdown)
 
 
-def _parse_prometheus_text(text: str) -> Dict[str, float]:
-    values: Dict[str, float] = {}
+def _parse_prometheus_text(text: str) -> dict[str, float]:
+    values: dict[str, float] = {}
     for raw in text.splitlines():
         line = raw.strip()
         if not line or line.startswith("#"):
@@ -359,12 +346,14 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 # Optional: parse range, but service functions already time-scope reasonably
                 try:
                     from app.utils.service_utils import get_all_reservations  # lazy import to avoid circular
+
                     reservations_resp = get_all_reservations(future=False, include_cancelled=True)
                     reservations = reservations_resp.get("data", {}) if isinstance(reservations_resp, dict) else {}
                 except Exception:
                     reservations = {}
                 try:
                     from app.utils.service_utils import get_all_conversations  # lazy import to avoid circular
+
                     conversations_resp = get_all_conversations()
                     conversations = conversations_resp.get("data", {}) if isinstance(conversations_resp, dict) else {}
                 except Exception:
@@ -377,75 +366,44 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     metrics = _parse_prometheus_text(generate_latest().decode("utf-8"))
                 except Exception:
                     metrics = {}
-                await conn.send_json({
-                    "type": "snapshot",
-                    "timestamp": _utc_iso_now(),
-                    "data": {
-                        "reservations": reservations,
-                        "conversations": conversations,
-                        "vacations": vacations,
-                        "metrics": metrics,
-                    },
-                })
-            elif msg_type == "get_document":
-                # Serve document snapshot for a given wa_id
+                await conn.send_json(
+                    {
+                        "type": "snapshot",
+                        "timestamp": _utc_iso_now(),
+                        "data": {
+                            "reservations": reservations,
+                            "conversations": conversations,
+                            "vacations": vacations,
+                            "metrics": metrics,
+                        },
+                    }
+                )
+            elif msg_type in ("get_customer_document", "get_document", "get_customer_doc"):
                 try:
-                    data = payload.get("data") or {}
-                    wa_id = str(data.get("wa_id") or "").strip()
-                    if not wa_id:
-                        await conn.send_json({
-                            "type": "document_snapshot",
-                            "timestamp": _utc_iso_now(),
-                            "data": {"wa_id": wa_id, "document": {}},
-                        })
+                    wa = (payload.get("data") or {}).get("wa_id") or payload.get("wa_id") or payload.get("waId")
+                    wa = str(wa or "")
+                    if not wa:
+                        await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
                         continue
-                    # Load document using same logic as HTTP GET /documents/{wa_id}
-                    from app.db import get_session, CustomerDocumentModel, DefaultDocumentModel
-                    DEFAULT_DOCUMENT_WA_ID = "0000000000000"
-                    doc_json_str = "{}"
-                    with get_session() as session:
-                        if wa_id == DEFAULT_DOCUMENT_WA_ID:
-                            default_row = (
-                                session.query(DefaultDocumentModel)
-                                .order_by(DefaultDocumentModel.id.asc())
-                                .first()
-                            )
-                            if default_row and getattr(default_row, "document_json", None) is not None:
-                                doc_json_str = _maybe_decompress_document_ws(default_row.document_json)
-                            else:
-                                doc_json_str = "{}"
-                        else:
-                            row = session.get(CustomerDocumentModel, wa_id)
-                            if row and getattr(row, "document_json", None) is not None:
-                                doc_json_str = _maybe_decompress_document_ws(row.document_json)
-                            else:
-                                # fall back to default template when user has no doc
-                                default_row = (
-                                    session.query(DefaultDocumentModel)
-                                    .order_by(DefaultDocumentModel.id.asc())
-                                    .first()
-                                )
-                                if default_row and getattr(default_row, "document_json", None) is not None:
-                                    doc_json_str = _maybe_decompress_document_ws(default_row.document_json)
-                                else:
-                                    doc_json_str = "{}"
-                    # Try to parse to guarantee valid JSON
                     try:
-                        doc_obj = json.loads(doc_json_str)
-                    except Exception:
-                        doc_obj = {}
-                    await conn.send_json({
-                        "type": "document_snapshot",
-                        "timestamp": _utc_iso_now(),
-                        "data": {"wa_id": wa_id, "document": doc_obj},
-                    })
+                        from app.db import CustomerModel, get_session
+
+                        with get_session() as session:
+                            row = session.get(CustomerModel, wa)
+                            doc = getattr(row, "document", None) if row else None
+                    except Exception as e:
+                        logging.error(f"WS get_customer_document error: {e}")
+                        doc = None
+                    await conn.send_json(
+                        {
+                            "type": "customer_document_updated",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"wa_id": wa, "document": doc},
+                        }
+                    )
                 except Exception as e:
-                    logging.error(f"WS get_document error: {e}")
-                    await conn.send_json({
-                        "type": "document_snapshot",
-                        "timestamp": _utc_iso_now(),
-                        "data": {"wa_id": str((payload.get('data') or {}).get('wa_id') or ''), "document": {}},
-                    })
+                    logging.error(f"WS get_customer_document exception: {e}")
+                    await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
             elif msg_type == "modify_reservation":
                 # Handle reservation modification via websocket
                 try:
@@ -458,23 +416,28 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     approximate = data.get("approximate", False)
                     reservation_id = data.get("reservation_id")
                     ar = data.get("ar", False)  # Extract Arabic/RTL flag
-                    
+
                     if not wa_id or not new_date or not new_time_slot:
                         # Use Arabic error message if requested
                         error_msg = "Missing required fields: wa_id, date, time_slot"
                         if ar:
                             error_msg = "حقول مطلوبة مفقودة: wa_id, date, time_slot"
-                        await conn.send_json({
-                            "type": "modify_reservation_nack", 
-                            "timestamp": _utc_iso_now(),
-                            "data": {"message": error_msg}
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "modify_reservation_nack",
+                                "timestamp": _utc_iso_now(),
+                                "data": {"message": error_msg},
+                            }
+                        )
                         continue
-                    
+
                     # Import and call the modify function
                     from app.services.assistant_functions import modify_reservation
-                    logging.info(f"🔄 WebSocket modify_reservation called with: wa_id={wa_id}, date={new_date}, time={new_time_slot}, reservation_id={reservation_id}, ar={ar}")
-                    
+
+                    logging.info(
+                        f"🔄 WebSocket modify_reservation called with: wa_id={wa_id}, date={new_date}, time={new_time_slot}, reservation_id={reservation_id}, ar={ar}"
+                    )
+
                     result = modify_reservation(
                         wa_id=wa_id,
                         new_date=new_date,
@@ -483,34 +446,42 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         new_type=reservation_type,
                         approximate=approximate,
                         ar=ar,  # Pass Arabic flag to get translated error messages
-                        reservation_id_to_modify=reservation_id
+                        reservation_id_to_modify=reservation_id,
                     )
-                    
+
                     logging.info(f"📥 modify_reservation result: {result}")
-                    
+
                     if result.get("success"):
                         logging.info("✅ Sending modify_reservation_ack")
-                        await conn.send_json({
-                            "type": "modify_reservation_ack", 
-                            "timestamp": _utc_iso_now(),
-                            "data": result.get("data", {})
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "modify_reservation_ack",
+                                "timestamp": _utc_iso_now(),
+                                "data": result.get("data", {}),
+                            }
+                        )
                     else:
-                        logging.info(f"❌ Sending modify_reservation_nack: {result.get('message', 'Modification failed')}")
-                        await conn.send_json({
-                            "type": "modify_reservation_nack", 
-                            "timestamp": _utc_iso_now(),
-                            "data": {"message": result.get("message", "Modification failed")}
-                        })
-                        
+                        logging.info(
+                            f"❌ Sending modify_reservation_nack: {result.get('message', 'Modification failed')}"
+                        )
+                        await conn.send_json(
+                            {
+                                "type": "modify_reservation_nack",
+                                "timestamp": _utc_iso_now(),
+                                "data": {"message": result.get("message", "Modification failed")},
+                            }
+                        )
+
                 except Exception as e:
                     logging.error(f"Modify reservation websocket error: {e}")
-                    await conn.send_json({
-                        "type": "modify_reservation_nack", 
-                        "timestamp": _utc_iso_now(),
-                        "data": {"message": "Server error during modification"}
-                    })
-                    
+                    await conn.send_json(
+                        {
+                            "type": "modify_reservation_nack",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"message": "Server error during modification"},
+                        }
+                    )
+
             elif msg_type == "cancel_reservation":
                 # Handle reservation cancellation via websocket
                 try:
@@ -518,44 +489,49 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     wa_id = data.get("wa_id")
                     date_str = data.get("date")
                     reservation_id = data.get("reservation_id")
-                    
+
                     if not wa_id:
-                        await conn.send_json({
-                            "type": "cancel_reservation_nack", 
-                            "timestamp": _utc_iso_now(),
-                            "error": "Missing required field: wa_id"
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "cancel_reservation_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": "Missing required field: wa_id",
+                            }
+                        )
                         continue
-                    
+
                     # Import and call the cancel function
                     from app.services.assistant_functions import cancel_reservation
-                    result = cancel_reservation(
-                        wa_id=wa_id,
-                        date_str=date_str,
-                        reservation_id_to_cancel=reservation_id
-                    )
-                    
+
+                    result = cancel_reservation(wa_id=wa_id, date_str=date_str, reservation_id_to_cancel=reservation_id)
+
                     if result.get("success"):
-                        await conn.send_json({
-                            "type": "cancel_reservation_ack", 
-                            "timestamp": _utc_iso_now(),
-                            "data": result.get("data", {})
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "cancel_reservation_ack",
+                                "timestamp": _utc_iso_now(),
+                                "data": result.get("data", {}),
+                            }
+                        )
                     else:
-                        await conn.send_json({
-                            "type": "cancel_reservation_nack", 
-                            "timestamp": _utc_iso_now(),
-                            "error": result.get("message", "Cancellation failed")
-                        })
-                        
+                        await conn.send_json(
+                            {
+                                "type": "cancel_reservation_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": result.get("message", "Cancellation failed"),
+                            }
+                        )
+
                 except Exception as e:
                     logging.error(f"Cancel reservation websocket error: {e}")
-                    await conn.send_json({
-                        "type": "cancel_reservation_nack", 
-                        "timestamp": _utc_iso_now(),
-                        "error": "Server error during cancellation"
-                    })
-                    
+                    await conn.send_json(
+                        {
+                            "type": "cancel_reservation_nack",
+                            "timestamp": _utc_iso_now(),
+                            "error": "Server error during cancellation",
+                        }
+                    )
+
             elif msg_type == "conversation_send_message":
                 # Handle sending messages via websocket
                 try:
@@ -564,11 +540,43 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     message = data.get("message")
 
                     if not wa_id or not message:
-                        await conn.send_json({
-                            "type": "send_message_nack",
-                            "timestamp": _utc_iso_now(),
-                            "error": "Missing required fields: wa_id, message",
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "send_message_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": "Missing required fields: wa_id, message",
+                            }
+                        )
+                        continue
+
+                    # Enforce WhatsApp message size limit at WS ingress as well
+                    try:
+                        if not isinstance(message, str):
+                            await conn.send_json(
+                                {
+                                    "type": "send_message_nack",
+                                    "timestamp": _utc_iso_now(),
+                                    "error": "Invalid message payload",
+                                }
+                            )
+                            continue
+                        if len(message) > 4096:
+                            await conn.send_json(
+                                {
+                                    "type": "send_message_nack",
+                                    "timestamp": _utc_iso_now(),
+                                    "error": "Message too long (max 4096)",
+                                }
+                            )
+                            continue
+                    except Exception:
+                        await conn.send_json(
+                            {
+                                "type": "send_message_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": "Invalid message payload",
+                            }
+                        )
                         continue
 
                     # Import and call the message sending function (await the async call)
@@ -579,9 +587,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     # Determine success based on response type/status
                     ok = False
                     try:
-                        if isinstance(resp, tuple):
-                            ok = False
-                        elif resp is None:
+                        if isinstance(resp, tuple) or resp is None:
                             ok = False
                         else:
                             status = getattr(resp, "status_code", 500)
@@ -593,32 +599,94 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         # Persist to DB and broadcast via append_message (which handles broadcast)
                         try:
                             from app.utils.service_utils import append_message
-                            now_local = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
+
+                            now_local = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
                             date_str = now_local.strftime("%Y-%m-%d")
                             time_str = now_local.strftime("%H:%M")
                             append_message(wa_id, "secretary", message, date_str, time_str)
                         except Exception as persist_err:
                             logging.error(f"append_message failed after WS send: {persist_err}")
 
-                        await conn.send_json({
-                            "type": "send_message_ack",
-                            "timestamp": _utc_iso_now(),
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "send_message_ack",
+                                "timestamp": _utc_iso_now(),
+                            }
+                        )
                     else:
-                        await conn.send_json({
-                            "type": "send_message_nack",
-                            "timestamp": _utc_iso_now(),
-                            "error": "Failed to send message",
-                        })
+                        await conn.send_json(
+                            {
+                                "type": "send_message_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": "Failed to send message",
+                            }
+                        )
 
                 except Exception as e:
                     logging.error(f"Send message websocket error: {e}")
-                    await conn.send_json({
-                        "type": "send_message_nack",
-                        "timestamp": _utc_iso_now(),
-                        "error": "Server error during message sending",
-                    })
-                    
+                    await conn.send_json(
+                        {
+                            "type": "send_message_nack",
+                            "timestamp": _utc_iso_now(),
+                            "error": "Server error during message sending",
+                        }
+                    )
+
+            elif msg_type == "secretary_typing":
+                # Secretary typing indicator: forward to WhatsApp and broadcast UI typing state
+                try:
+                    data = payload.get("data") or {}
+                    wa_id = data.get("wa_id")
+                    typing_flag = bool(data.get("typing"))
+
+                    if not wa_id:
+                        await conn.send_json(
+                            {
+                                "type": "typing_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": "Missing required field: wa_id",
+                            }
+                        )
+                        continue
+
+                    # Broadcast typing state to UI first for responsiveness
+                    with contextlib.suppress(Exception):
+                        await manager.broadcast(
+                            "conversation_typing",
+                            {"wa_id": wa_id, "state": ("start" if typing_flag else "stop")},
+                            [wa_id],
+                        )
+
+                    # Only send WhatsApp typing when typing starts to reduce calls
+                    if typing_flag:
+                        try:
+                            from app.utils.whatsapp_utils import send_typing_indicator_for_wa
+
+                            resp = await send_typing_indicator_for_wa(wa_id)
+                            try:
+                                if isinstance(resp, tuple):
+                                    logging.debug(f"typing indicator result: {resp}")
+                            except Exception:
+                                pass
+                        except Exception as e:
+                            logging.debug(f"typing indicator exception: {e}")
+
+                    await conn.send_json(
+                        {
+                            "type": "typing_ack",
+                            "timestamp": _utc_iso_now(),
+                        }
+                    )
+                except Exception as e:
+                    logging.error(f"Secretary typing websocket error: {e}")
+                    await conn.send_json(
+                        {
+                            "type": "typing_nack",
+                            "timestamp": _utc_iso_now(),
+                            "error": "Server error during typing",
+                        }
+                    )
+
             elif msg_type == "vacation_update":
                 # Accept websocket writes to update vacation periods and persist to DB (+config)
                 try:
@@ -635,8 +703,16 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                                 title = p.get("title")
                                 if not s_raw or not e_raw:
                                     continue
-                                s_dt = datetime.datetime.fromisoformat(str(s_raw)) if "T" in str(s_raw) else datetime.datetime.strptime(str(s_raw), "%Y-%m-%d")
-                                e_dt = datetime.datetime.fromisoformat(str(e_raw)) if "T" in str(e_raw) else datetime.datetime.strptime(str(e_raw), "%Y-%m-%d")
+                                s_dt = (
+                                    datetime.datetime.fromisoformat(str(s_raw))
+                                    if "T" in str(s_raw)
+                                    else datetime.datetime.strptime(str(s_raw), "%Y-%m-%d")
+                                )
+                                e_dt = (
+                                    datetime.datetime.fromisoformat(str(e_raw))
+                                    if "T" in str(e_raw)
+                                    else datetime.datetime.strptime(str(e_raw), "%Y-%m-%d")
+                                )
                                 s_date = datetime.date(s_dt.year, s_dt.month, s_dt.day)
                                 e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
                                 if e_date < s_date:
@@ -648,7 +724,8 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                     # Persist (always update DB, even if pairs is empty to clear all periods)
                     try:
-                        from app.db import get_session, VacationPeriodModel
+                        from app.db import VacationPeriodModel, get_session
+
                         with get_session() as session:
                             session.query(VacationPeriodModel).delete(synchronize_session=False)
                             for s_date, e_date, title in pairs:
@@ -656,7 +733,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                             session.commit()
                     except Exception as e:
                         logging.error(f"DB persist failed: {e}")
-                        await conn.send_json({"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": f"db_persist_failed: {str(e)}"})
+                        await conn.send_json(
+                            {
+                                "type": "vacation_update_nack",
+                                "timestamp": _utc_iso_now(),
+                                "error": f"db_persist_failed: {str(e)}",
+                            }
+                        )
                         continue
 
                     # Broadcast updated vacations
@@ -668,65 +751,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     await manager.broadcast("vacation_period_updated", {"periods": updated})
                 except Exception as e:
                     logging.error(f"Vacation update exception: {e}")
-                    await conn.send_json({"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": "exception"})
-            elif msg_type == "get_customer":
-                # Serve customer profile (name/age) for a given wa_id
-                try:
-                    data = payload.get("data") or {}
-                    wa_id = str(data.get("wa_id") or "").strip()
-                    if not wa_id:
-                        await conn.send_json({
-                            "type": "customer_profile",
-                            "timestamp": _utc_iso_now(),
-                            "data": {"wa_id": wa_id, "name": None, "age": None},
-                        })
-                        continue
-                    from app.db import get_session, CustomerModel
-                    from datetime import date
-                    name_val = None
-                    age_val = None
-                    age_recorded_at = None
-                    with get_session() as session:
-                        row = session.get(CustomerModel, wa_id)
-                        if row:
-                            try:
-                                name_val = getattr(row, "customer_name", None)
-                            except Exception:
-                                name_val = None
-                            try:
-                                age_val = getattr(row, "age", None)
-                                recorded = getattr(row, "age_recorded_at", None)
-                                if age_val is not None:
-                                    eff = age_val
-                                    if recorded is not None:
-                                        try:
-                                            today = date.today()
-                                            years = (
-                                                today.year
-                                                - recorded.year
-                                                - ((today.month, today.day) < (recorded.month, recorded.day))
-                                            )
-                                            if years > 0:
-                                                eff = max(0, age_val + years)
-                                        except Exception:
-                                            eff = age_val
-                                    age_val = eff
-                                    age_recorded_at = recorded.isoformat() if recorded else None
-                            except Exception:
-                                age_val = None
-                                age_recorded_at = None
-                    await conn.send_json({
-                        "type": "customer_profile",
-                        "timestamp": _utc_iso_now(),
-                        "data": {"wa_id": wa_id, "name": name_val, "age": age_val, "age_recorded_at": age_recorded_at},
-                    })
-                except Exception as e:
-                    logging.error(f"WS get_customer error: {e}")
-                    await conn.send_json({
-                        "type": "customer_profile",
-                        "timestamp": _utc_iso_now(),
-                        "data": {"wa_id": str((payload.get('data') or {}).get('wa_id') or ''), "name": None, "age": None},
-                    })
+                    await conn.send_json(
+                        {"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": "exception"}
+                    )
+            # No additional message types handled here
             else:
                 # Unknown message types ignored
                 await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
@@ -738,24 +766,48 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         await manager.disconnect(conn)
 
 
-async def broadcast(event_type: str, data: Dict[str, Any], affected_entities: Optional[List[str]] = None) -> None:
+async def broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None) -> None:
     await manager.broadcast(event_type, data, affected_entities)
 
 
-def enqueue_broadcast(event_type: str, data: Dict[str, Any], affected_entities: Optional[List[str]] = None) -> None:
+def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None) -> None:
+    # Prefer scheduling on the current running loop if present (i.e., inside ASGI handlers)
     try:
-        logging.info(f"📡 enqueue_broadcast called: type={event_type}, data={data}, affected_entities={affected_entities}")
         loop = asyncio.get_running_loop()
         loop.create_task(manager.broadcast(event_type, data, affected_entities))
-        logging.info("✅ broadcast task created successfully")
+        logging.debug(f"enqueue_broadcast scheduled on running loop: {event_type}")
+        return
     except RuntimeError:
-        # No running loop; best-effort fire-and-forget using new loop in thread
-        logging.info("⚠️ No running loop, using asyncio.run fallback")
-        try:
-            asyncio.run(manager.broadcast(event_type, data, affected_entities))
-            logging.info("✅ fallback broadcast completed")
-        except Exception as e:
-            logging.error(f"❌ enqueue_broadcast failed without running loop: {e}")
+        pass
+
+    # If called from a non-async context/thread, schedule safely onto the captured main loop
+    try:
+        main_loop = manager._main_loop
+        if main_loop is not None and not main_loop.is_closed():
+            try:
+                import concurrent.futures as _cf  # local import to avoid overhead
+
+                fut: _cf.Future = asyncio.run_coroutine_threadsafe(
+                    manager.broadcast(event_type, data, affected_entities), main_loop
+                )
+
+                # Optionally attach a done callback for debugging failures without noisy logs
+                def _silent_cb(_f: _cf.Future) -> None:
+                    try:
+                        _f.result()
+                    except Exception as e:
+                        logging.debug(f"enqueue_broadcast task raised: {e}")
+
+                fut.add_done_callback(_silent_cb)
+                logging.debug(f"enqueue_broadcast scheduled on main loop: {event_type}")
+                return
+            except Exception as e:
+                logging.warning(f"enqueue_broadcast thread-safe scheduling failed: {e}")
+    except Exception:
+        pass
+
+    # Last resort: drop the event rather than blocking or spawning new loops
+    logging.debug(f"enqueue_broadcast dropped (no event loop available): {event_type}")
 
 
 def start_metrics_push_task(app: FastAPI) -> None:
@@ -768,19 +820,26 @@ def _compute_vacations() -> list:
     try:
         vacation_message = config.get("VACATION_MESSAGE", "The business is closed during this period.")
         try:
-            from app.db import get_session, VacationPeriodModel
+            from app.db import VacationPeriodModel, get_session
+
             with get_session() as session:
                 rows = session.query(VacationPeriodModel).all()
                 for r in rows:
                     try:
                         # Use start_date and end_date directly from DB
-                        start_date = datetime.datetime.combine(r.start_date, datetime.time.min).replace(tzinfo=ZoneInfo(config['TIMEZONE']))
-                        end_date = datetime.datetime.combine(r.end_date, datetime.time.max).replace(tzinfo=ZoneInfo(config['TIMEZONE']))
-                        vacation_periods.append({
-                            "start": start_date.isoformat(),
-                            "end": end_date.isoformat(),
-                            "title": str(r.title) if r.title else vacation_message,
-                        })
+                        start_date = datetime.datetime.combine(r.start_date, datetime.time.min).replace(
+                            tzinfo=ZoneInfo(config["TIMEZONE"])
+                        )
+                        end_date = datetime.datetime.combine(r.end_date, datetime.time.max).replace(
+                            tzinfo=ZoneInfo(config["TIMEZONE"])
+                        )
+                        vacation_periods.append(
+                            {
+                                "start": start_date.isoformat(),
+                                "end": end_date.isoformat(),
+                                "title": str(r.title) if r.title else vacation_message,
+                            }
+                        )
                     except Exception:
                         continue
         except Exception:
@@ -788,5 +847,3 @@ def _compute_vacations() -> list:
     except Exception:
         return []
     return vacation_periods
-
-

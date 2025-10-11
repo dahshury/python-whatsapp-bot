@@ -5,11 +5,24 @@ const config: Config = {
 	content: [
 		"./pages/**/*.{js,ts,jsx,tsx,mdx}",
 		"./components/**/*.{js,ts,jsx,tsx,mdx}",
+		"./widgets/**/*.{js,ts,jsx,tsx,mdx}",
+		"./shared/**/*.{js,ts,jsx,tsx,mdx}",
 		"./app/**/*.{js,ts,jsx,tsx,mdx}",
 		"!./components/index.ts",
 	],
 	theme: {
 		extend: {
+			boxShadow: {
+				// Map Tailwind shadow utilities to theme-driven variables
+				"2xs": "var(--shadow-2xs)",
+				xs: "var(--shadow-xs)",
+				sm: "var(--shadow-sm)",
+				DEFAULT: "var(--shadow)",
+				md: "var(--shadow-md)",
+				lg: "var(--shadow-lg)",
+				xl: "var(--shadow-xl)",
+				"2xl": "var(--shadow-2xl)",
+			},
 			colors: {
 				background: "hsl(var(--background))",
 				foreground: "hsl(var(--foreground))",

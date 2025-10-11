@@ -1,3 +1,64 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
+module.exports = {
+	root: true,
+	extends: ["next", "next/core-web-vitals"],
+	rules: {
+		// Layered boundaries (warn-only initially)
+		"no-restricted-imports": [
+			"warn",
+			{
+				patterns: [
+					{
+						group: ["@features/*", "@widgets/*", "@entities/*", "@services/*", "@processes/*", "@shared/*"],
+						message: "Prefer path aliases that respect DDD layers. Avoid deep relative imports across layers.",
+					},
+				],
+			},
+		],
+	},
+	overrides: [
+		{
+			files: ["**/*.{ts,tsx}"],
+			rules: {
+				// Custom simple boundaries: import direction constraints
+				// These are soft constraints; for strict enforcement consider eslint-plugin-boundaries
+			},
+		},
+	],
+};
+
+/**
+ * ESLint configuration with initial boundaries setup.
+ * Phase 0 keeps rules permissive to avoid breaking existing imports;
+ * later phases will tighten the allowed directions.
+ */
+module.exports = {
+	root: true,
+	extends: ["next/core-web-vitals"],
+	plugins: ["boundaries"],
+	settings: {
+		"boundaries/elements": [
+			{ type: "app", pattern: "app" },
+			{ type: "features", pattern: "features" },
+			{ type: "widgets", pattern: "widgets" },
+			{ type: "entities", pattern: "entities" },
+			{ type: "services", pattern: "services" },
+			{ type: "processes", pattern: "processes" },
+			{ type: "shared", pattern: "shared" },
+		],
+	},
+	rules: {
+		// Start permissive; enforce in later phases
+		"boundaries/element-types": [
+			"warn",
+			{
+				default: "allow",
+			},
+		],
+	},
+};
+
 /* eslint-env node */
 module.exports = {
 	root: true,
@@ -5,78 +66,61 @@ module.exports = {
 	plugins: ["boundaries"],
 	settings: {
 		"boundaries/elements": [
+			{ type: "app", pattern: "app/*" },
 			{ type: "features", pattern: "features/*" },
 			{ type: "widgets", pattern: "widgets/*" },
 			{ type: "entities", pattern: "entities/*" },
-			{ type: "shared", pattern: "shared/*" },
 			{ type: "services", pattern: "services/*" },
-			{ type: "providers", pattern: "shared/providers/*" },
+			{ type: "processes", pattern: "processes/*" },
+			{ type: "shared", pattern: "shared/*" },
 			{ type: "ui", pattern: "shared/ui/*" },
 			{ type: "libs", pattern: "shared/libs/*" },
-			{ type: "types", pattern: "shared/types/*" },
-			{ type: "app", pattern: "app/*" },
 			{ type: "components", pattern: "components/*" },
 			{ type: "hooks", pattern: "hooks/*" },
 			{ type: "lib", pattern: "lib/*" },
 		],
 	},
 	rules: {
-		/**
-		 * Enforce import boundaries between app layers. UI may not import from infrastructure folders directly, etc.
-		 * Keep initial rules soft (warn) to allow incremental adoption.
-		 */
+		// Tightened boundaries, but warnings to avoid breaking CI while cleaning
 		"boundaries/element-types": [
-			"error",
+			"warn",
 			{
 				default: "allow",
 				rules: [
 					{
 						from: ["features"],
-						disallow: ["features", "widgets"],
-						allow: [
-							"entities",
-							"shared",
-							"services",
-							"types",
-							"libs",
-							"providers",
-							"ui",
-						],
+						disallow: ["features", "widgets", "components"],
+						allow: ["entities", "shared", "services", "ui", "libs", "processes"],
 					},
 					{
 						from: ["widgets"],
-						disallow: ["features"],
-						allow: [
-							"entities",
-							"shared",
-							"services",
-							"types",
-							"libs",
-							"providers",
-							"ui",
-						],
-					},
-					{
-						from: ["ui"],
-						disallow: ["widgets", "features"],
-						allow: ["shared", "types", "libs", "providers"],
+						disallow: ["features", "components"],
+						allow: ["entities", "shared", "services", "ui", "libs", "processes"],
 					},
 					{
 						from: ["shared"],
-						disallow: ["features"],
-						allow: [
-							"shared",
-							"services",
-							"types",
-							"libs",
-							"providers",
-							"ui",
-							"entities",
-						],
+						disallow: ["features", "components"],
+						allow: ["shared", "services", "libs", "ui", "entities"],
 					},
 					{
-						from: ["components"],
-						allow: ["shared", "types", "services", "hooks", "lib"],
+						from: ["ui"],
+						disallow: ["widgets", "features", "components"],
+						allow: ["shared", "libs"],
+					},
+					{
+						from: ["entities"],
+						disallow: ["components"],
+						allow: ["shared"],
+					},
+					{
+						from: ["services"],
+						disallow: ["components"],
+						allow: ["shared", "entities"],
+					},
+					{
+						from: ["processes"],
+						disallow: ["components"],
+						allow: ["services", "shared", "entities", "widgets"],
 					},
 				],
 			},

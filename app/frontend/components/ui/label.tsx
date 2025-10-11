@@ -1,33 +1,20 @@
 "use client";
 
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
-import { useUiOverride } from "@/lib/ui-registry";
-import { cn } from "@/lib/utils";
+import { cn } from "@shared/libs/utils";
+import { Label as LabelPrimitive } from "radix-ui";
+import type * as React from "react";
 
-const labelVariants = cva(
-	"text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-);
-
-type LabelProps = React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> &
-	VariantProps<typeof labelVariants>;
-
-const BaseLabel = React.forwardRef<
-	React.ElementRef<typeof LabelPrimitive.Root>,
-	LabelProps
->(({ className, ...props }, ref) => (
-	<LabelPrimitive.Root
-		ref={ref}
-		className={cn(labelVariants(), className)}
-		{...props}
-	/>
-));
-BaseLabel.displayName = LabelPrimitive.Root.displayName;
-
-function Label(props: LabelProps) {
-	const Override = useUiOverride<LabelProps>("Label", BaseLabel);
-	return <Override {...props} />;
+function Label({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) {
+	return (
+		<LabelPrimitive.Root
+			data-slot="label"
+			className={cn(
+				"text-foreground text-sm leading-4 font-medium select-none group-data-[disabled=true]:pointer-events-none group-data-[disabled=true]:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50",
+				className
+			)}
+			{...props}
+		/>
+	);
 }
 
 export { Label };

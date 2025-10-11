@@ -3,44 +3,84 @@
   "workspaces": {
     ".": {
       "entry": ["run.py", "app/**/*.py", "scripts/**/*.py"],
-      "ignore": [".venv/**", "**/node_modules/**", "**/pnpm-lock.yaml", "**/.git/**"]
+      "ignore": [
+        ".venv/**",
+        "**/node_modules/**",
+        "**/pnpm-lock.yaml",
+        "**/.git/**",
+        "app/frontend/**"
+      ]
     },
     "app/frontend": {
       "entry": [
         "app/**/*.{ts,tsx}",
         "components/**/*.{ts,tsx}",
-        "hooks/**/*.{ts,tsx}",
-        "lib/**/*.{ts,tsx}"
+        "widgets/**/*.{ts,tsx}",
+        "features/**/*.{ts,tsx}",
+        "shared/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}",
+        "processes/**/*.{ts,tsx}",
+        "entities/**/*.{ts,tsx}",
+        "next.config.mjs",
+        "tailwind.config.ts",
+        "postcss.config.mjs"
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}",
+        "components/**/*.{ts,tsx}",
+        "widgets/**/*.{ts,tsx}",
+        "features/**/*.{ts,tsx}",
+        "shared/**/*.{ts,tsx}",
+        "services/**/*.{ts,tsx}",
+        "processes/**/*.{ts,tsx}",
+        "entities/**/*.{ts,tsx}"
       ],
       "ignore": [
-        "components/glide_custom_cells/pages/**",
+        "shared/libs/data-grid/pages/**",
         "node_modules/**",
-        "**/.next/**",
-        "**/.git/**",
-        "components/index.ts",
-        "../scripts/ci/biome-staged.mjs",
-        "../scripts/ci/md-staged.mjs"
-      ]
+        ".next/**",
+        ".git/**",
+        "**/__tests__/**",
+        "**/test/**",
+        "**/*.test.{ts,tsx,js,jsx}",
+        "**/*.spec.{ts,tsx,js,jsx}",
+        "**/*.d.ts",
+        "next-env.d.ts",
+        "types/global.d.ts"
+      ],
+      "ignoreDependencies": [
+        "@biomejs/biome",
+        "critters",
+        "eslint",
+        "eslint-config-next",
+        "postcss",
+        "postcss-load-config",
+        "tailwindcss",
+        "typescript",
+        "@fortawesome/fontawesome-free",
+        "@fortawesome/fontawesome-svg-core",
+        "@fortawesome/free-solid-svg-icons",
+        "@fortawesome/react-fontawesome",
+        "@diceui/combobox",
+        "@excalidraw/utils",
+        "color2k"
+      ],
+      "ignoreBinaries": ["python"]
     }
   },
   "ignore": [
-    ".venv/**/*",
-    "**/node_modules/**/*",
-    "**/.git/**/*",
+    ".venv/**",
+    "**/node_modules/**",
+    "**/.git/**",
+    "**/.next/**",
     "**/pnpm-lock.yaml",
-    "components/glide_custom_cells/media/**",
+    "**/uv.lock",
+    "app/frontend/shared/libs/data-grid/media/**",
     "**/*.pyc",
     "**/__pycache__/**",
-    "scripts/ci/biome-staged.mjs",
-    "scripts/ci/md-staged.mjs",
-    "scripts/ci/pre-commit.mjs",
-    "scripts/ci/mypy-staged.py"
-  ],
-  "ignoreDependencies": [
-    "critters",
-    "@biomejs/biome"
-  ],
-  "ignoreBinaries": [
-    "python"
+    "scripts/ci/**",
+    "data/**",
+    "prometheus/**",
+    "media/**"
   ]
 }

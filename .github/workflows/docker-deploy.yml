@@ -112,22 +112,8 @@ jobs:
               # Move to project directory
               cd /home/ubuntu/python-whatsapp-bot
 
-              # Ensure persistent data directory exists and migrate existing DB files into it once
-              mkdir -p data
-              # If main DB exists at project root and not yet in data/, move it (preserves inode & checksum)
-              if [ -f threads_db.sqlite ] && [ ! -f data/threads_db.sqlite ]; then
-                echo "Migrating threads_db.sqlite into ./data/"
-                mv threads_db.sqlite data/threads_db.sqlite
-              fi
-              # If WAL/SHM sidecars exist at project root and not yet in data/, move them too
-              if [ -f threads_db.sqlite-wal ] && [ ! -f data/threads_db.sqlite-wal ]; then
-                echo "Migrating WAL file into ./data/"
-                mv threads_db.sqlite-wal data/threads_db.sqlite-wal
-              fi
-              if [ -f threads_db.sqlite-shm ] && [ ! -f data/threads_db.sqlite-shm ]; then
-                echo "Migrating SHM file into ./data/"
-                mv threads_db.sqlite-shm data/threads_db.sqlite-shm
-              fi
+              # Ensure persistent data directory for Postgres exists
+              mkdir -p data/postgres
 
               # Fix permissions if needed (use sudo)
               if [ ! -w prometheus ]; then
@@ -139,18 +125,7 @@ jobs:
               if [ ! -f .env ]; then
                 echo "WARNING: .env not found"
               fi
-              # Warn if database doesn't exist in data directory
-              if [ ! -f data/threads_db.sqlite ]; then
-                echo "WARNING: data/threads_db.sqlite not found"
-              fi
-
-              # Defensive: checkpoint WAL on host copy if present before pulling/starting
-              if command -v sqlite3 >/dev/null 2>&1; then
-                if [ -f data/threads_db.sqlite ]; then
-                  echo "Host pre-checkpoint WAL (TRUNCATE)..."
-                  sqlite3 data/threads_db.sqlite 'PRAGMA wal_checkpoint(TRUNCATE);' || true
-                fi
-              fi
+              # No SQLite database is used anymore; Postgres runs as a container with a mounted data directory
 
               # First, clean up space BEFORE pulling new images
               
@@ -170,23 +145,7 @@ jobs:
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
 
-              # Attempt an in-container WAL checkpoint BEFORE stopping containers
-              if docker inspect -f '{{.State.Running}}' reservation_backend 2>/dev/null | grep -q true; then
-                echo "Checkpointing SQLite WAL inside running backend (docker exec)..."
-                docker exec -i reservation_backend sh -lc \
-                  "sqlite3 /app/data/threads_db.sqlite \"PRAGMA wal_checkpoint(RESTART); PRAGMA wal_checkpoint(TRUNCATE);\"" || true
-              fi
-
-              # Fallback: run WAL checkpoint using a one-off container with the backend image
-              if [ -f data/threads_db.sqlite ]; then
-                echo "Checkpointing SQLite WAL via one-off backend container..."
-                docker run --rm \
-                  -v "$(pwd)/data:/app/data" \
-                  --entrypoint sqlite3 \
-                  ${{ env.DOCKER_HUB_USERNAME }}/${{ env.BACKEND_REPO }}:latest \
-                  /app/data/threads_db.sqlite \
-                  "PRAGMA wal_checkpoint(RESTART); PRAGMA wal_checkpoint(TRUNCATE);" || true
-              fi
+              # SQLite checkpoint steps removed post-migration to PostgreSQL
 
               # Bring down the compose stack cleanly to avoid container/task conflicts
               echo "Stopping running containers (compose down)..."

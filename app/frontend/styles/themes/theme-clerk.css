@@ -1,0 +1,106 @@
+/* Clerk Theme - Apply by adding 'theme-clerk' class to html element */
+.theme-clerk {
+	--background: 0 0% 100%; /* #ffffff */
+	--foreground: 240 6% 8%; /* #131316 */
+	--card: 0 0% 100%; /* #ffffff */
+	--card-foreground: 0 0% 0%; /* #000000 */
+	--popover: 0 0% 100%; /* #ffffff */
+	--popover-foreground: 0 0% 0%; /* #000000 */
+	--primary: 257 67% 52%; /* #5a34d8 */
+	--primary-foreground: 0 0% 100%; /* #ffffff */
+	--secondary: 188 73% 41%; /* #1ca0b8 */
+	--secondary-foreground: 0 0% 0%; /* #000000 */
+	--muted: 300 3% 93%; /* #efeeee */
+	--muted-foreground: 330 4% 47%; /* #797375 */
+	--accent: 198 79% 66%; /* #5fc3ee */
+	--accent-foreground: 0 0% 0%; /* #000000 */
+	--destructive: 234 8% 49%; /* #757686 */
+	--destructive-foreground: 0 0% 0%; /* #000000 */
+	--border: 240 3% 89%; /* #E3E3E4 */
+	--input: 0 0% 100%; /* #ffffff */
+	--ring: 254 96% 66%; /* #7358fb */
+	--chart-1: 251 100% 67%; /* #704cff */
+	--chart-2: 195 100% 38%; /* #0091c0 */
+	--chart-3: 246 100% 80%; /* #9f96ff */
+	--chart-4: 198 100% 25%; /* #00587e */
+	--chart-5: 264 74% 39%; /* #4519b2 */
+	--sidebar: 0 0% 100%; /* #ffffff */
+	--sidebar-background: 0 0% 100%;
+	--sidebar-foreground: 0 0% 0%; /* #000000 */
+	--sidebar-primary: 257 67% 52%; /* #5a34d8 */
+	--sidebar-primary-foreground: 0 0% 100%; /* #ffffff */
+	--sidebar-accent: 0 0% 100%; /* #ffffff */
+	--sidebar-accent-foreground: 0 0% 0%; /* #000000 */
+	--sidebar-border: 0 0% 89%; /* #e2e2e2 */
+	--sidebar-ring: 254 96% 66%; /* #7358fb */
+
+	/* Fonts and radii */
+	--font-sans: "Inter", Inter, ui-sans-serif, system-ui, sans-serif;
+	--font-serif: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
+	--font-mono: "JetBrains Mono", JetBrains Mono, ui-monospace, SFMono-Regular, monospace;
+	--radius: 0.625rem;
+
+	/* Shadows */
+	--shadow-2xs: 0px 2px 4px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0px 2px 4px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0px 2px 4px 0px hsl(0 0% 0% / 0.25);
+}
+
+/* Dark mode for Clerk theme */
+.theme-clerk.dark,
+.dark .theme-clerk {
+	--background: 240 6% 8%; /* #131316 */
+	--foreground: 0 0% 100%; /* #ffffff */
+	--card: 240 5% 10%; /* #19191D */
+	--card-foreground: 0 0% 100%; /* #ffffff */
+	--popover: 240 6% 4%; /* #0d0d0f */
+	--popover-foreground: 0 0% 100%; /* #ffffff */
+	--primary: 251 100% 67%; /* #704CFF */
+	--primary-foreground: 0 0% 100%; /* #FFFFFF */
+	--secondary: 240 6% 27%; /* #43434d */
+	--secondary-foreground: 0 0% 100%; /* #FFFFFF */
+	--muted: 240 13% 9%; /* #15151c */
+	--muted-foreground: 240 4% 64%; /* #a1a1a5 */
+	--accent: 197 100% 26%; /* #006385 */
+	--accent-foreground: 0 0% 100%; /* #ffffff */
+	--destructive: 0 95% 60%; /* #F73D3D */
+	--destructive-foreground: 0 0% 0%; /* #000000 */
+	--border: 240 7% 14%; /* #212126 */
+	--input: 240 6% 23%; /* #3a3a3f */
+	--ring: 252 62% 60%; /* #6a54dc */
+	--chart-1: 251 100% 67%; /* #704cff */
+	--chart-2: 192 93% 42%; /* #08a4ce */
+	--chart-3: 246 100% 80%; /* #9f96ff */
+	--chart-4: 197 100% 26%; /* #006385 */
+	--chart-5: 264 74% 39%; /* #4519b2 */
+	--sidebar: 240 6% 8%; /* #131316 */
+	--sidebar-background: 240 6% 8%;
+	--sidebar-foreground: 0 0% 100%; /* #ffffff */
+	--sidebar-primary: 254 100% 73%; /* #8674ff */
+	--sidebar-primary-foreground: 0 0% 0%; /* #000000 */
+	--sidebar-accent: 240 7% 4%; /* #0a0a0d */
+	--sidebar-accent-foreground: 0 0% 100%; /* #ffffff */
+	--sidebar-border: 240 7% 14%; /* #212126 */
+	--sidebar-ring: 252 62% 60%; /* #6a54dc */
+
+	/* Fonts and radii */
+	--font-sans: "Inter", Inter, ui-sans-serif, system-ui, sans-serif;
+	--font-serif: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
+	--font-mono: "JetBrains Mono", JetBrains Mono, ui-monospace, SFMono-Regular, monospace;
+	--radius: 0.625rem;
+
+	/* Shadows */
+	--shadow-2xs: 0px 2px 4px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0px 2px 4px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl: 0px 2px 4px 0px hsl(0 0% 0% / 0.1), 0px 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0px 2px 4px 0px hsl(0 0% 0% / 0.25);
+}

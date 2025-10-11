@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { callPythonBackend } from "@/lib/backend";
+import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: Request) {
 	try {
@@ -7,10 +7,7 @@ export async function POST(request: Request) {
 		const wa_id = searchParams.get("wa_id");
 
 		if (!wa_id) {
-			return NextResponse.json(
-				{ success: false, message: "Missing required parameter: wa_id" },
-				{ status: 400 },
-			);
+			return NextResponse.json({ success: false, message: "Missing required parameter: wa_id" }, { status: 400 });
 		}
 
 		const body = await request.json();
@@ -23,7 +20,7 @@ export async function POST(request: Request) {
 					success: false,
 					message: "Missing required fields: role, message, date, time",
 				},
-				{ status: 400 },
+				{ status: 400 }
 			);
 		}
 
@@ -40,16 +37,13 @@ export async function POST(request: Request) {
 
 		return NextResponse.json(backendResponse);
 	} catch (error) {
-		console.error(
-			"Error appending message to conversation via Python backend:",
-			error,
-		);
+		console.error("Error appending message to conversation via Python backend:", error);
 		return NextResponse.json(
 			{
 				success: false,
 				message: `Failed to append message: ${error instanceof Error ? error.message : "Unknown error"}`,
 			},
-			{ status: 500 },
+			{ status: 500 }
 		);
 	}
 }

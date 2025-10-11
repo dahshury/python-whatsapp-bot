@@ -40,7 +40,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     zip \
     awscli \
     ca-certificates \
-    sqlite3 \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure the uv-created venv is used at runtime
@@ -72,8 +72,10 @@ COPY scripts/ /app/scripts/
 COPY LICENSE /licenses/
 COPY LICENCE.txt /licenses/
 
-# Set environment variable to point to persisted database location
-ENV DB_PATH=/app/data/threads_db.sqlite
+
+# Default DATABASE_URL inside container: target the compose service hostname
+# Note: docker compose will override this; when running the image directly, this ensures it reaches the postgres container
+ENV DATABASE_URL=postgresql+psycopg://postgres:postgres@postgres:5432/whatsapp_bot
 
 # Expose FastAPI port
 EXPOSE 8000

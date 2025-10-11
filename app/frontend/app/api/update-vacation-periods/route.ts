@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { callPythonBackend } from "@/lib/backend";
+import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: NextRequest) {
 	try {
@@ -17,9 +17,6 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json(result as unknown as Record<string, unknown>);
 	} catch (error) {
 		console.error("Error updating vacation periods:", error);
-		return NextResponse.json(
-			{ success: false, message: "Failed to update vacation periods" },
-			{ status: 500 },
-		);
+		return NextResponse.json({ success: false, message: "Failed to update vacation periods" }, { status: 500 });
 	}
 }
