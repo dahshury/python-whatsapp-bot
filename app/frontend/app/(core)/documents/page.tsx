@@ -23,6 +23,8 @@ import { useDocumentScene } from "@/widgets/document-canvas/hooks/use-document-s
 import { DocumentSavingIndicator } from "@/widgets/documents/DocumentSavingIndicator";
 import { DocumentLockOverlay } from "../../../widgets/documents/DocumentLockOverlay";
 
+const DOCS_DEBUG = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1";
+
 function DocumentsPageContent() {
 	const { resolvedTheme } = useTheme();
 	const { locale, isLocalized } = useLanguage();
@@ -35,8 +37,15 @@ function DocumentsPageContent() {
 		files?: Record<string, unknown>;
 	} | null>(null);
 
-	// Live scene for real-time viewer mirror (updates on every editor change)
-	const [liveScene, setLiveScene] = useState<{
+	// Viewer canvas API and coalesced update state (imperative mirroring)
+	const viewerApiRef = useRef<ExcalidrawImperativeAPI | null>(null);
+	const viewerRafRef = useRef<number | null>(null);
+	const pendingViewerRef = useRef<{
+		elements?: unknown[];
+		files?: Record<string, unknown> | null;
+	} | null>(null);
+	// Pending initial viewer scene if API not ready yet
+	const pendingViewerInitRef = useRef<{
 		elements?: unknown[];
 		appState?: Record<string, unknown>;
 		files?: Record<string, unknown>;
@@ -127,9 +136,10 @@ function DocumentsPageContent() {
 				if (isPendingInitialLoad && sig && sig !== editorSigRef.current) {
 					// Only mark as loaded if we received actual content, not an empty document
 					if (hasElements || waId === DEFAULT_DOCUMENT_WA_ID) {
-						console.log(
-							`[Documents] 📥 Initial load from WebSocket for waId=${waId}, updating both cameras (elements=${s.elements?.length || 0})`
-						);
+						if (DOCS_DEBUG)
+							console.log(
+								`[Documents] 📥 Initial load from WebSocket for waId=${waId}, updating both cameras (elements=${s.elements?.length || 0})`
+							);
 						editorSigRef.current = sig;
 						setScene(s);
 						viewerSigRef.current = sig;
@@ -147,26 +157,44 @@ function DocumentsPageContent() {
 							scrollY: Math.round(scrollY),
 						};
 						lastViewerCameraSigRef.current = JSON.stringify(camera);
-						console.log(
-							`[Documents] 📷 Initialized viewer camera sig=${lastViewerCameraSigRef.current.slice(0, 30)}...`
-						);
+						if (DOCS_DEBUG)
+							console.log(
+								`[Documents] 📷 Initialized viewer camera sig=${lastViewerCameraSigRef.current.slice(0, 30)}...`
+							);
 
-						setLiveScene({
-							elements: s.elements || [],
-							appState: viewerCamera,
-							files: s.files || {},
-						});
+						// Initialize viewer via API (preserve its independent camera afterwards)
+						try {
+							const initScene = {
+								elements: s.elements || [],
+								appState: viewerCamera,
+								files: s.files || {},
+							} as Record<string, unknown>;
+							const api = viewerApiRef.current as unknown as {
+								updateScene?: (s: Record<string, unknown>) => void;
+							} | null;
+							if (api?.updateScene) {
+								api.updateScene(initScene);
+							} else {
+								pendingViewerInitRef.current = initScene as unknown as {
+									elements?: unknown[];
+									appState?: Record<string, unknown>;
+									files?: Record<string, unknown>;
+								};
+							}
+						} catch {}
 						// Mark this specific waId as loaded only if we got content
 						pendingInitialLoadWaIdRef.current = null;
 					} else {
-						console.log(
-							`[Documents] ⏭️ Ignoring empty document for waId=${waId} (waiting for template copy, elements=${s.elements?.length || 0})`
-						);
+						if (DOCS_DEBUG)
+							console.log(
+								`[Documents] ⏭️ Ignoring empty document for waId=${waId} (waiting for template copy, elements=${s.elements?.length || 0})`
+							);
 					}
 				} else if (!isPendingInitialLoad) {
-					console.log(
-						`[Documents] ⏭️ Ignoring WebSocket update for waId=${waId} (editor write-only after initial load)`
-					);
+					if (DOCS_DEBUG)
+						console.log(
+							`[Documents] ⏭️ Ignoring WebSocket update for waId=${waId} (editor write-only after initial load)`
+						);
 				}
 			} catch {}
 		};
@@ -197,9 +225,10 @@ function DocumentsPageContent() {
 					if (isPendingInitialLoad && sig && sig !== editorSigRef.current) {
 						// Only mark as loaded if we received actual content, not an empty document
 						if (hasElements || waId === DEFAULT_DOCUMENT_WA_ID) {
-							console.log(
-								`[Documents] 📥 Initial scene applied from hook for waId=${waId}, updating both cameras (elements=${s.elements?.length || 0})`
-							);
+							if (DOCS_DEBUG)
+								console.log(
+									`[Documents] 📥 Initial scene applied from hook for waId=${waId}, updating both cameras (elements=${s.elements?.length || 0})`
+								);
 							editorSigRef.current = sig;
 							setScene(s);
 							viewerSigRef.current = sig;
@@ -217,24 +246,44 @@ function DocumentsPageContent() {
 								scrollY: Math.round(scrollY),
 							};
 							lastViewerCameraSigRef.current = JSON.stringify(camera);
-							console.log(
-								`[Documents] 📷 Initialized viewer camera sig (sceneApplied)=${lastViewerCameraSigRef.current.slice(0, 30)}...`
-							);
+							if (DOCS_DEBUG)
+								console.log(
+									`[Documents] 📷 Initialized viewer camera sig (sceneApplied)=${lastViewerCameraSigRef.current.slice(0, 30)}...`
+								);
 
-							setLiveScene({
-								elements: s.elements || [],
-								appState: viewerCamera,
-								files: s.files || {},
-							});
+							// Initialize viewer via API (preserve its independent camera afterwards)
+							try {
+								const initScene = {
+									elements: s.elements || [],
+									appState: viewerCamera,
+									files: s.files || {},
+								} as Record<string, unknown>;
+								const api = viewerApiRef.current as unknown as {
+									updateScene?: (s: Record<string, unknown>) => void;
+								} | null;
+								if (api?.updateScene) {
+									api.updateScene(initScene);
+								} else {
+									pendingViewerInitRef.current = initScene as unknown as {
+										elements?: unknown[];
+										appState?: Record<string, unknown>;
+										files?: Record<string, unknown>;
+									};
+								}
+							} catch {}
 							// Mark this specific waId as loaded only if we got content
 							pendingInitialLoadWaIdRef.current = null;
 						} else {
-							console.log(
-								`[Documents] ⏭️ Ignoring empty sceneApplied for waId=${waId} (waiting for template copy, elements=${s.elements?.length || 0})`
-							);
+							if (DOCS_DEBUG)
+								console.log(
+									`[Documents] ⏭️ Ignoring empty sceneApplied for waId=${waId} (waiting for template copy, elements=${s.elements?.length || 0})`
+								);
 						}
 					} else if (!isPendingInitialLoad) {
-						console.log(`[Documents] ⏭️ Ignoring sceneApplied for waId=${waId} (editor write-only after initial load)`);
+						if (DOCS_DEBUG)
+							console.log(
+								`[Documents] ⏭️ Ignoring sceneApplied for waId=${waId} (editor write-only after initial load)`
+							);
 					}
 				}
 			} catch {}
@@ -265,13 +314,14 @@ function DocumentsPageContent() {
 					persistTimerRef.current = null;
 				}
 				// Mark this waId as pending initial load
-				console.log(`[Documents] 🔄 Switching to new document waId=${next}, marking as pending initial load`);
+				if (DOCS_DEBUG)
+					console.log(`[Documents] 🔄 Switching to new document waId=${next}, marking as pending initial load`);
 				pendingInitialLoadWaIdRef.current = next;
 				// Reset viewer camera tracking for new document
 				lastViewerCameraSigRef.current = "";
 				viewerCameraRef.current = {};
 				// Initialize the customer's document with template on first selection
-				console.log(`[Documents] 🔁 ensureDocumentInitialized called from selection: waId=${next}`);
+				if (DOCS_DEBUG) console.log(`[Documents] 🔁 ensureDocumentInitialized called from selection: waId=${next}`);
 				void ensureDocumentInitialized(next);
 				setWaId(next);
 				// Document load is handled by useDocumentScene hook automatically when waId changes
@@ -298,7 +348,8 @@ function DocumentsPageContent() {
 			const nameCol = customerColumns.findIndex((c) => c.id === "name");
 			const phoneCol = customerColumns.findIndex((c) => c.id === "phone");
 
-			console.log(`[Documents] 🔓 Checking unlock: waId=${waId}, nameCol=${nameCol}, phoneCol=${phoneCol}`);
+			if (DOCS_DEBUG)
+				console.log(`[Documents] 🔓 Checking unlock: waId=${waId}, nameCol=${nameCol}, phoneCol=${phoneCol}`);
 
 			const [nameVal, phoneVal] = await Promise.all([ds.getCellData(nameCol, 0), ds.getCellData(phoneCol, 0)]);
 
@@ -307,9 +358,10 @@ function DocumentsPageContent() {
 			const waIdOk = waId && waId !== DEFAULT_DOCUMENT_WA_ID;
 			const shouldUnlock = Boolean(nameOk && phoneOk && waIdOk);
 
-			console.log(
-				`[Documents] 🔓 Unlock check: name="${nameVal}" (${nameOk ? "✅" : "❌"}), phone="${phoneVal}" (${phoneOk ? "✅" : "❌"}), waId="${waId}" (${waIdOk ? "✅" : "❌"}) → ${shouldUnlock ? "UNLOCKED 🔓" : "LOCKED 🔒"}`
-			);
+			if (DOCS_DEBUG)
+				console.log(
+					`[Documents] 🔓 Unlock check: name="${nameVal}" (${nameOk ? "✅" : "❌"}), phone="${phoneVal}" (${phoneOk ? "✅" : "❌"}), waId="${waId}" (${waIdOk ? "✅" : "❌"}) → ${shouldUnlock ? "UNLOCKED 🔓" : "LOCKED 🔒"}`
+				);
 
 			setIsUnlocked(shouldUnlock);
 		} catch (err) {
@@ -324,11 +376,12 @@ function DocumentsPageContent() {
 			try {
 				const detail = (e as CustomEvent).detail as { waId?: string };
 				const eventWaId = String(detail?.waId || "");
-				console.log(
-					`[Documents] 📥 doc:customer-loaded event: eventWaId=${eventWaId}, currentWaId=${waId}, match=${eventWaId === waId}`
-				);
+				if (DOCS_DEBUG)
+					console.log(
+						`[Documents] 📥 doc:customer-loaded event: eventWaId=${eventWaId}, currentWaId=${waId}, match=${eventWaId === waId}`
+					);
 				if (eventWaId === waId) {
-					console.log("[Documents] ✅ Customer loaded, triggering unlock check");
+					if (DOCS_DEBUG) console.log("[Documents] ✅ Customer loaded, triggering unlock check");
 					void recomputeUnlock();
 				}
 			} catch {}
@@ -407,17 +460,31 @@ function DocumentsPageContent() {
 		[originalHandleCanvasChange, isUnlocked]
 	);
 
-	// Wrap handleCanvasChange to update live viewer scene in real-time
+	// Wrap handleCanvasChange to mirror editor → viewer imperatively (rAF-coalesced)
 	// Only mirror elements and files, not viewport/panning (appState)
 	const handleCanvasChange = useCallback(
 		(elements: unknown[], appState: Record<string, unknown>, files: Record<string, unknown>) => {
-			// Update live scene with elements and files only
-			// Preserve viewer's independent viewport by not updating appState
-			setLiveScene((prev) => ({
-				elements,
-				appState: prev?.appState || {}, // Keep viewer's viewport
-				files,
-			}));
+			try {
+				// Coalesce viewer updates to next animation frame
+				pendingViewerRef.current = { elements, files };
+				if (viewerRafRef.current == null) {
+					viewerRafRef.current = requestAnimationFrame(() => {
+						viewerRafRef.current = null;
+						const pending = pendingViewerRef.current;
+						pendingViewerRef.current = null;
+						const api = viewerApiRef.current as unknown as {
+							updateScene?: (s: Record<string, unknown>) => void;
+						} | null;
+						if (api?.updateScene && pending?.elements) {
+							// Do not override viewer camera; update elements/files only
+							api.updateScene({
+								elements: pending.elements as unknown[],
+								files: (pending.files || {}) as Record<string, unknown>,
+							});
+						}
+					});
+				}
+			} catch {}
 
 			// Extract editor's camera state for explicit tracking
 			const editorCamera = {
@@ -475,6 +542,21 @@ function DocumentsPageContent() {
 		},
 		[onExcalidrawAPI, resolvedTheme]
 	);
+
+	// Viewer API ready: capture ref and apply any pending initial scene
+	const onViewerApiReady = useCallback((api: ExcalidrawImperativeAPI) => {
+		try {
+			viewerApiRef.current = api;
+			if (pendingViewerInitRef.current) {
+				const init = pendingViewerInitRef.current as unknown as Record<string, unknown>;
+				pendingViewerInitRef.current = null;
+				const apiLike = api as unknown as {
+					updateScene?: (s: Record<string, unknown>) => void;
+				};
+				apiLike?.updateScene?.(init);
+			}
+		} catch {}
+	}, []);
 
 	// Persist name/age immediately on commit with toast (skip when default doc)
 	const prevByWaRef = useRef<Map<string, { name: string; age: number | null }>>(new Map());
@@ -659,7 +741,12 @@ function DocumentsPageContent() {
 			viewerCameraRef.current = {};
 			setWaId(DEFAULT_DOCUMENT_WA_ID);
 			setScene(toSceneFromDoc(null));
-			setLiveScene(null); // Clear live viewer scene
+			try {
+				const api = viewerApiRef.current as unknown as {
+					updateScene?: (s: Record<string, unknown>) => void;
+				} | null;
+				api?.updateScene?.({ elements: [], files: {} });
+			} catch {}
 			setIsUnlocked(false);
 		} catch {}
 	}, [customerColumns, customerDataSource]);
@@ -765,8 +852,7 @@ function DocumentsPageContent() {
 									theme={themeMode}
 									langCode={locale || "en"}
 									onChange={handleViewerCanvasChange as unknown as ExcalidrawProps["onChange"]}
-									onApiReady={() => {}}
-									{...(liveScene ? { scene: liveScene } : {})}
+									onApiReady={onViewerApiReady}
 									viewModeEnabled={true}
 									zenModeEnabled={true}
 									scrollable={false}

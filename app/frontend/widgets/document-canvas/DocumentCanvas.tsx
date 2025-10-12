@@ -11,6 +11,9 @@ const Excalidraw = dynamic<ExcalidrawProps>(async () => (await import("@excalidr
 	ssr: false,
 });
 
+// Gate extra refresh/stabilization bursts behind an env flag (disabled by default)
+const ENABLE_EXTRAREFRESH = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_EXCALI_EXTRA_REFRESH === "1";
+
 function DocumentCanvasComponent({
 	theme,
 	langCode,
@@ -202,197 +205,78 @@ function DocumentCanvasComponent({
 		};
 	}, []);
 
-	// Verify canvas fills container on mount and on orientation/pageshow
+	// Verify canvas fills container (disabled by default; rely on ResizeObserver sizing)
 	useEffect(() => {
+		if (!ENABLE_EXTRAREFRESH) return;
 		if (!mountReady) return;
 		let timer: number | null = null;
-		let remaining = 15; // Reduced from 60 - trust ResizeObserver more
 		const verifyAndFix = () => {
 			try {
 				const root = containerRef.current?.querySelector(".excalidraw .canvas-container") as HTMLElement | null;
 				const canvas = containerRef.current?.querySelector(
 					"canvas.excalidraw__canvas.interactive"
 				) as HTMLCanvasElement | null;
-				if (!root || !canvas) return true;
+				if (!root || !canvas) return false;
 				const cw = Math.floor(root.clientWidth || 0);
 				const ch = Math.floor(root.clientHeight || 0);
-				if (cw <= 1 || ch <= 1) return true;
+				if (cw <= 1 || ch <= 1) return false;
 				const rect = canvas.getBoundingClientRect();
 				const sw = Math.floor(rect.width || 0);
 				const sh = Math.floor(rect.height || 0);
 				if (Math.abs(cw - sw) > 1 || Math.abs(ch - sh) > 1) {
-					// Single refresh is enough - ResizeObserver will handle cascading updates
-					const refresh = () => apiRef.current?.refresh?.();
 					try {
-						requestAnimationFrame(refresh);
+						requestAnimationFrame(() => apiRef.current?.refresh?.());
 					} catch {
-						refresh();
+						apiRef.current?.refresh?.();
 					}
 					return true;
 				}
-				// Canvas matches container - early exit
-				return false;
 			} catch {}
 			return false;
 		};
 		const runBurst = () => {
 			try {
 				const needsMore = verifyAndFix();
-				remaining -= 1;
-				if (remaining > 0 && needsMore) {
-					timer = window.setTimeout(runBurst, 100); // Slower interval
-				}
+				if (needsMore) timer = window.setTimeout(runBurst, 120);
 			} catch {}
 		};
-		// Start verification with single check, then burst if needed
 		setTimeout(() => {
-			if (verifyAndFix()) {
-				setTimeout(() => runBurst(), 50);
-			}
+			if (verifyAndFix()) runBurst();
 		}, 16);
-		const onOrientation = () => {
-			remaining = 40;
-			runBurst();
-		};
-		const onPageShow = (ev: PageTransitionEvent) => {
-			try {
-				if ((ev as PageTransitionEvent)?.persisted) {
-					remaining = 40;
-					runBurst();
-				}
-			} catch {}
-		};
-		window.addEventListener("orientationchange", onOrientation);
-		window.addEventListener("pageshow", onPageShow as unknown as EventListener);
-		// Observe the inner canvas-container for dynamic size changes
-		let innerRO: ResizeObserver | null = null;
-		let innerScheduled = false;
-		try {
-			const el = containerRef.current?.querySelector(".excalidraw .canvas-container") as Element | null;
-			if (el) {
-				innerRO = new ResizeObserver(() => {
-					if (innerScheduled) return;
-					innerScheduled = true;
-					try {
-						requestAnimationFrame(() => {
-							try {
-								apiRef.current?.refresh?.();
-								verifyAndFix();
-							} finally {
-								innerScheduled = false;
-							}
-						});
-					} catch {
-						innerScheduled = false;
-					}
-				});
-				innerRO.observe(el);
-			}
-		} catch {}
 		return () => {
 			if (timer) window.clearTimeout(timer);
-			window.removeEventListener("orientationchange", onOrientation);
-			window.removeEventListener("pageshow", onPageShow as unknown as EventListener);
-			try {
-				innerRO?.disconnect();
-			} catch {}
 		};
 	}, [mountReady]);
 
-	// Extra stabilization refreshes around context menu and page visibility
+	// Extra stabilization refreshes (disabled by default; enable only for rare cases)
 	useEffect(() => {
+		if (!ENABLE_EXTRAREFRESH) return;
 		let scheduled = false;
-		const scheduleRefreshBurst = () => {
+		const scheduleRefresh = () => {
 			if (scheduled) return;
 			scheduled = true;
 			try {
-				const doRefresh = () => {
-					// Skip while a gesture is active to avoid racing with Excalidraw internals
-					if (pointerActiveRef.current) return;
-					apiRef.current?.refresh?.();
-				};
 				requestAnimationFrame(() => {
-					doRefresh();
-					setTimeout(doRefresh, 80);
-					setTimeout(doRefresh, 160);
-					setTimeout(() => {
-						doRefresh();
-						scheduled = false;
-					}, 320);
+					if (!pointerActiveRef.current) apiRef.current?.refresh?.();
+					scheduled = false;
 				});
 			} catch {
 				scheduled = false;
 			}
 		};
-
-		const onContextMenu = () => {
-			// Single refresh burst on context menu - no interval needed
-			scheduleRefreshBurst();
-		};
+		const onContextMenu = () => scheduleRefresh();
 		const onVisibility = () => {
-			if (!document.hidden) scheduleRefreshBurst();
+			if (!document.hidden) scheduleRefresh();
 		};
-
 		document.addEventListener("contextmenu", onContextMenu, true);
 		document.addEventListener("visibilitychange", onVisibility);
-
-		// Catch pointer interactions near edges and scrolling in ancestors
-		const onPointerUp = () => scheduleRefreshBurst();
-		const onScroll = () => scheduleRefreshBurst();
-		window.addEventListener("pointerup", onPointerUp, true);
-		window.addEventListener("scroll", onScroll, true);
-
-		// Observe minimal attribute changes on the container that may affect layout
-		const target = containerRef.current as HTMLElement | null;
-		let observer: MutationObserver | null = null;
-		try {
-			if (target) {
-				observer = new MutationObserver(() => scheduleRefreshBurst());
-				observer.observe(target, {
-					attributes: true,
-					attributeFilter: ["style", "class"],
-				});
-			}
-		} catch {}
-
-		// Observe document theme class changes and refresh
-		let themeObserver: MutationObserver | null = null;
-		try {
-			themeObserver = new MutationObserver(() => scheduleRefreshBurst());
-			themeObserver.observe(document.documentElement, {
-				attributes: true,
-				attributeFilter: ["class"],
-			});
-		} catch {}
 		return () => {
 			document.removeEventListener("contextmenu", onContextMenu, true);
 			document.removeEventListener("visibilitychange", onVisibility);
-			window.removeEventListener("pointerup", onPointerUp, true);
-			window.removeEventListener("scroll", onScroll, true);
-			try {
-				observer?.disconnect();
-			} catch {}
-			try {
-				themeObserver?.disconnect();
-			} catch {}
 		};
 	}, []);
 
-	// When theme prop changes, burst refresh to ensure immediate repaint
-	useEffect(() => {
-		try {
-			const doRefresh = () => {
-				if (pointerActiveRef.current) return;
-				apiRef.current?.refresh?.();
-			};
-			requestAnimationFrame(() => {
-				doRefresh();
-				setTimeout(doRefresh, 80);
-				setTimeout(doRefresh, 160);
-				setTimeout(doRefresh, 320);
-			});
-		} catch {}
-	}, []);
+	// Theme changes are applied via updateScene in a separate effect
 
 	// Apply external scene updates when provided, avoiding redundant updates
 	useEffect(() => {
@@ -431,6 +315,18 @@ function DocumentCanvasComponent({
 											updateScene: (s: Record<string, unknown>) => void;
 										}
 									).updateScene(sceneToApply as Record<string, unknown>);
+									// Ensure binary files are applied via official API
+									try {
+										const files = (scene.files || {}) as Record<string, unknown>;
+										const vals = Object.values(files);
+										if (vals.length > 0) {
+											(
+												apiRef.current as unknown as {
+													addFiles?: (f: unknown[]) => void;
+												}
+											).addFiles?.(vals as unknown[]);
+										}
+									} catch {}
 								} catch {}
 							});
 						} catch {}
