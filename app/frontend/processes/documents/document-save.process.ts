@@ -33,11 +33,7 @@ export function computeDocumentSignature(payload: Omit<DocumentPayload, "waId">)
 
 export async function saveDocumentOnce(payload: DocumentPayload): Promise<SaveResult> {
 	try {
-		try {
-			console.log(
-				`[saveOnce] ▶️ begin: waId=${payload.waId}, elements=${Array.isArray(payload.elements) ? payload.elements.length : "?"}, hasViewerCamera=${!!payload.viewerAppState}, hasEditorCamera=${!!payload.editorAppState}`
-			);
-		} catch {}
+		// removed console logging
 		const body = normalizeForPersist(
 			payload.elements,
 			payload.appState,
@@ -49,17 +45,13 @@ export async function saveDocumentOnce(payload: DocumentPayload): Promise<SaveRe
 			waId: payload.waId,
 			document: body,
 		})) as Json;
-		try {
-			console.log(`[saveOnce] ✅ success: waId=${payload.waId}, serverKeys=${Object.keys(res || {}).join(",")}`);
-		} catch {}
+		// removed console logging
 		return {
 			success: Boolean((res as { success?: unknown })?.success) !== false,
 			...res,
 		} as SaveResult;
 	} catch (e) {
-		try {
-			console.warn(`[saveOnce] ❌ error: waId=${payload.waId}, message=${(e as Error)?.message || "unknown"}`);
-		} catch {}
+		// removed console logging
 		return { success: false, message: (e as Error)?.message } as SaveResult;
 	}
 }
@@ -126,18 +118,11 @@ export function createIdleAutosaveController(options: IdleAutosaveControllerOpti
 
 		if (!combinedSig || combinedSig === lastSavedSig) {
 			try {
-				console.log(
-					`[autosave] ⏭️ idle flush skipped: waId=${waId}, contentSig=${contentSig ? contentSig.slice(0, 8) : "<empty>"}, viewerSig=${viewerSig.slice(0, 20)}, editorSig=${editorSig.slice(0, 20)}, lastSavedSig=${lastSavedSig ? lastSavedSig.slice(0, 60) : "<none>"}`
-				);
+				// removed console logging
 			} catch {}
 			return null;
 		}
-		try {
-			console.log(
-				`[autosave] 💾 idle flush begin: waId=${waId}, contentSig=${contentSig.slice(0, 8)}, viewerSig=${viewerSig.slice(0, 20)}, editorSig=${editorSig.slice(0, 20)}`
-			);
-			onSaving?.({ waId });
-		} catch {}
+		onSaving?.({ waId });
 		const res = await saveDocumentOnce({ waId, ...payload });
 		if (res?.success) {
 			lastSavedSig = combinedSig;
@@ -164,15 +149,10 @@ export function createIdleAutosaveController(options: IdleAutosaveControllerOpti
 						detail: { wa_id: waId, scene },
 					})
 				);
-				console.log(
-					`[autosave] ✅ idle flush success: waId=${waId}, contentSig=${contentSig.slice(0, 8)}, viewerSig=${viewerSig.slice(0, 20)}, editorSig=${editorSig.slice(0, 20)}, hasViewerCamera=${!!payload.viewerAppState}, hasEditorCamera=${!!payload.editorAppState}`
-				);
+				// removed console logging
 			} catch {}
 		} else {
 			try {
-				console.warn(
-					`[autosave] ❌ idle flush failed: waId=${waId}, message=${(res as { message?: string })?.message || "unknown"}`
-				);
 				const errorMessage = (res as { message?: string })?.message;
 				if (errorMessage !== undefined) {
 					onError?.({ waId, message: errorMessage });
@@ -217,18 +197,13 @@ export function createIdleAutosaveController(options: IdleAutosaveControllerOpti
 		lastPendingSig = `${contentSig}|viewer:${viewerSig}|editor:${editorSig}`;
 
 		timer = window.setTimeout(() => {
-			console.log(
-				`[autosave] ⏰ idle timer fired: waId=${waId}, pendingSig=${lastPendingSig ? lastPendingSig.slice(0, 60) : "<none>"}, lastSavedSig=${lastSavedSig ? lastSavedSig.slice(0, 60) : "<none>"}, willFlush=${!!(lastPendingSig && lastPendingSig !== lastSavedSig)}`
-			);
 			if (lastPendingSig && lastPendingSig !== lastSavedSig) {
 				void flush({ ...payload, sig: contentSig });
 			} else {
-				console.log("[autosave] ⏭️ idle timer skipped flush: pendingSig matches lastSavedSig or is empty");
+				// removed console logging
 			}
 		}, idleMs);
-		console.log(
-			`[autosave] ⏲️ idle scheduled: waId=${waId}, delay=${idleMs}ms, pendingSig=${lastPendingSig ? lastPendingSig.slice(0, 60) : "<empty>"}, lastSavedSig=${lastSavedSig ? lastSavedSig.slice(0, 60) : "<none>"}`
-		);
+		// removed console logging
 	}
 
 	return { schedule, cancel, flushImmediate: flush } as const;

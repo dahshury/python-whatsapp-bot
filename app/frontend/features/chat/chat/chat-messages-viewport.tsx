@@ -30,6 +30,7 @@ export function ChatMessagesViewport({
 	isTyping: boolean;
 }) {
 	const [atBottom, setAtBottom] = React.useState(true);
+	const previousShowToolCalls = React.useRef(showToolCalls);
 	// Build grouped render model: pair Tool and Result messages; drop empties
 	const buildRenderItems = (items: ConversationMessage[]) => {
 		type GroupItem = {
@@ -192,6 +193,31 @@ export function ChatMessagesViewport({
 		} catch {}
 	}, [messageListRef, messagesEndRef]);
 
+	// Preserve scroll position when toggling tool calls visibility
+	React.useEffect(() => {
+		if (previousShowToolCalls.current !== showToolCalls) {
+			previousShowToolCalls.current = showToolCalls;
+
+			// Capture current scroll position
+			try {
+				const scroller = (messageListRef.current?.closest(".ScrollbarsCustom-Scroller") || null) as HTMLElement | null;
+
+				if (scroller) {
+					const wasAtBottom = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop <= 8;
+
+					// Use requestAnimationFrame to restore position after DOM updates
+					requestAnimationFrame(() => {
+						if (wasAtBottom) {
+							// If user was at bottom, keep them at bottom
+							scroller.scrollTop = scroller.scrollHeight - scroller.clientHeight;
+						}
+						// Otherwise, do nothing - layout animations will handle smooth transitions
+					});
+				}
+			} catch {}
+		}
+	}, [showToolCalls, messageListRef]);
+
 	return (
 		<div className="relative flex-1">
 			<GridPattern
@@ -239,52 +265,64 @@ export function ChatMessagesViewport({
 							</div>
 						</div>
 					) : (
-						<AnimatePresence initial={false}>
-							{filteredItems.map((item, idx) => {
-								const isGroup = (item as { type?: string }).type === "tool_group";
-								const message = (item as { message?: ConversationMessage }).message;
-								const role = message
-									? String((message as { role?: string }).role || "")
-											.trim()
-											.toLowerCase()
-									: "tool";
+						filteredItems.map((item, idx) => {
+							const isGroup = (item as { type?: string }).type === "tool_group";
+							const message = (item as { message?: ConversationMessage }).message;
+							const role = message
+								? String((message as { role?: string }).role || "")
+										.trim()
+										.toLowerCase()
+								: "tool";
+
+							// Tool groups animate in/out, messages stay static
+							if (isGroup) {
 								return (
-									<motion.div
-										key={
-											isGroup
-												? `${(item as { key: string }).key}|${idx}`
-												: `${message?.date}|${message?.time}|${role}|${String(message?.message || "").slice(0, 24)}|${idx}`
-										}
-										className={cn(
-											"message-row",
-											role === "user" && "message-row-user",
-											role === "admin" && "message-row-admin",
-											role === "assistant" && "message-row-assistant",
-											role === "secretary" && "message-row-secretary"
-										)}
-										data-message-index={idx}
-										data-message-date={(message as { date?: string } | undefined)?.date || ""}
-										data-message-time={normalizeTimeToHHmm((message as { time?: string } | undefined)?.time || "")}
-										data-role={role}
-										initial={{ opacity: 0, y: 8 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -8 }}
-										transition={{ duration: 0.18, ease: "easeOut" }}
-									>
-										{isGroup ? (
+									<AnimatePresence key={`${(item as { key: string }).key}|${idx}`}>
+										<motion.div
+											className="message-row"
+											data-message-index={idx}
+											data-role="tool"
+											style={{ overflow: "hidden" }}
+											initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+											animate={{
+												opacity: 1,
+												height: "auto",
+												marginBottom: 8,
+											}}
+											exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+											transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+										>
 											<ToolCallGroup
 												valueKey={(item as { key: string }).key}
 												toolName={(item as { name: string }).name}
 												argsText={(item as { argsText: string }).argsText || ""}
 												resultText={(item as { resultText: string }).resultText || ""}
 											/>
-										) : (
-											<MessageBubble message={message as ConversationMessage} isUser={role === "user"} />
-										)}
-									</motion.div>
+										</motion.div>
+									</AnimatePresence>
 								);
-							})}
-						</AnimatePresence>
+							}
+
+							// Messages render without animation
+							return (
+								<div
+									key={`${message?.date}|${message?.time}|${role}|${String(message?.message || "").slice(0, 24)}|${idx}`}
+									className={cn(
+										"message-row",
+										role === "user" && "message-row-user",
+										role === "admin" && "message-row-admin",
+										role === "assistant" && "message-row-assistant",
+										role === "secretary" && "message-row-secretary"
+									)}
+									data-message-index={idx}
+									data-message-date={(message as { date?: string } | undefined)?.date || ""}
+									data-message-time={normalizeTimeToHHmm((message as { time?: string } | undefined)?.time || "")}
+									data-role={role}
+								>
+									<MessageBubble message={message as ConversationMessage} isUser={role === "user"} />
+								</div>
+							);
+						})
 					)}
 					{isTyping && (
 						<div className="sticky bottom-0 z-20 px-4 pt-1 pb-2 bg-gradient-to-t from-card/95 to-card/30 backdrop-blur supports-[backdrop-filter]:bg-card/75">

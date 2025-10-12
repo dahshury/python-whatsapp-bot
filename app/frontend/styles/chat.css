@@ -216,3 +216,18 @@
 	bottom: 0.5rem;
 	right: 0.75rem;
 }
+
+/* 4) Force text cursor inside the chat input area in the calendar sidebar */
+.calendar-chat [data-slot="input-group-control"],
+.calendar-chat [data-slot="input-group-control"] .ScrollbarsCustom-Content,
+.calendar-chat [data-slot="input-group-control"] .ScrollbarsCustom-Scroller,
+.calendar-chat .tiptap,
+.calendar-chat .tiptap .ProseMirror,
+.calendar-chat .ProseMirror {
+	cursor: text;
+}
+
+/* 5) Prevent scroll anchoring/jumps when focusing the input below the messages */
+.calendar-chat .message-list {
+	overflow-anchor: none;
+}

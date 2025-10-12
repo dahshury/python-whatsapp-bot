@@ -11,8 +11,8 @@ const Excalidraw = dynamic<ExcalidrawProps>(async () => (await import("@excalidr
 	ssr: false,
 });
 
-// Gate extra refresh/stabilization bursts behind an env flag (disabled by default)
-const ENABLE_EXTRAREFRESH = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_EXCALI_EXTRA_REFRESH === "1";
+// Note: We rely on Excalidraw's internal resize/scroll handling and a single
+// ResizeObserver in useExcalidrawResize. No extra verification or refresh bursts.
 
 function DocumentCanvasComponent({
 	theme,
@@ -50,8 +50,6 @@ function DocumentCanvasComponent({
 	const [mountReady, setMountReady] = useState(false);
 	const lastAppliedSceneSigRef = useRef<string | null>(null);
 	const didNotifyApiRef = useRef<boolean>(false);
-	const prevDirRef = useRef<string | null>(null);
-	const pointerActiveRef = useRef<boolean>(false);
 
 	// Stable props to avoid unnecessary Excalidraw re-renders
 	const noopOnChange = useCallback(() => {}, []);
@@ -76,31 +74,18 @@ function DocumentCanvasComponent({
 		lastAppStateRef.current = appState;
 		lastFilesRef.current = files;
 		if (rafOnChangeRef.current != null) return;
-		try {
-			// Use startTransition to mark this update as non-urgent and avoid warning
-			rafOnChangeRef.current = requestAnimationFrame(() => {
-				rafOnChangeRef.current = null;
-				startTransition(() => {
-					try {
-						const els = (lastElementsRef.current || elements) as OnChangeArgs[0];
-						const app = (lastAppStateRef.current || appState) as OnChangeArgs[1];
-						const bin = (lastFilesRef.current || files) as OnChangeArgs[2];
-						userOnChangeRef.current?.(els, app, bin);
-					} catch {}
-				});
+		// Coalesce to a single rAF; do light work inside startTransition
+		rafOnChangeRef.current = requestAnimationFrame(() => {
+			rafOnChangeRef.current = null;
+			startTransition(() => {
+				try {
+					const els = (lastElementsRef.current || elements) as OnChangeArgs[0];
+					const app = (lastAppStateRef.current || appState) as OnChangeArgs[1];
+					const bin = (lastFilesRef.current || files) as OnChangeArgs[2];
+					userOnChangeRef.current?.(els, app, bin);
+				} catch {}
 			});
-		} catch {
-			setTimeout(() => {
-				startTransition(() => {
-					try {
-						const els = (lastElementsRef.current || elements) as OnChangeArgs[0];
-						const app = (lastAppStateRef.current || appState) as OnChangeArgs[1];
-						const bin = (lastFilesRef.current || files) as OnChangeArgs[2];
-						userOnChangeRef.current?.(els, app, bin);
-					} catch {}
-				});
-			}, 0);
-		}
+		});
 	}, []);
 	useEffect(() => {
 		return () => {
@@ -116,165 +101,48 @@ function DocumentCanvasComponent({
 	// Don't pass initialData to avoid setState during mount; set via onApiReady instead
 	const initialData = useMemo(() => ({}), []);
 
-	// Wait until container has a non-zero size AND theme class matches to mount Excalidraw
+	// Wait until container has a non-zero size to mount Excalidraw (single gate)
 	useEffect(() => {
-		let raf = 0;
-		let attempts = 0;
-		const tick = () => {
-			attempts += 1;
+		const el = containerRef.current;
+		if (!el) return;
+		const rect = el.getBoundingClientRect?.();
+		if (rect && rect.width > 2 && rect.height > 2) {
+			setMountReady(true);
+			return;
+		}
+		let resolved = false;
+		const ro = new ResizeObserver((entries) => {
 			try {
-				const rect = containerRef.current?.getBoundingClientRect?.();
-				let themeMatches = true;
-				try {
-					const wantsDark = theme === "dark";
-					const hasDark = document.documentElement.classList.contains("dark");
-					themeMatches = wantsDark === hasDark;
-				} catch {}
-				if (rect && rect.width > 2 && rect.height > 2 && themeMatches) {
-					setMountReady(true);
-					return;
-				}
-			} catch {}
-			if (attempts < 60) {
-				raf = requestAnimationFrame(tick);
-			} else {
-				// Fallback: proceed anyway and let refresh() correct the size later
-				setMountReady(true);
-			}
-		};
-		raf = requestAnimationFrame(tick);
-		return () => cancelAnimationFrame(raf);
-	}, [theme]);
-
-	// Keep canvas sized when container/viewport changes
-	useExcalidrawResize(containerRef, apiRef);
-
-	// Track active pointer/touch gestures to avoid racing our refresh bursts with internal updates
-	useEffect(() => {
-		let touchCount = 0;
-		const onDown = () => {
-			pointerActiveRef.current = true;
-		};
-		const onUp = () => {
-			setTimeout(() => {
-				if (touchCount === 0) {
-					pointerActiveRef.current = false;
-				}
-			}, 120);
-		};
-		const onTouchStart = (e: TouchEvent) => {
-			touchCount = e.touches.length;
-			if (touchCount > 0) {
-				pointerActiveRef.current = true;
-			}
-		};
-		const onTouchEnd = (e: TouchEvent) => {
-			touchCount = e.touches.length;
-			setTimeout(() => {
-				if (touchCount === 0) {
-					pointerActiveRef.current = false;
-				}
-			}, 120);
-		};
-		const onTouchCancel = () => {
-			touchCount = 0;
-			setTimeout(() => {
-				pointerActiveRef.current = false;
-			}, 120);
-		};
-		window.addEventListener("pointerdown", onDown, true);
-		window.addEventListener("pointerup", onUp, true);
-		window.addEventListener("touchstart", onTouchStart, {
-			passive: true,
-			capture: true,
-		});
-		window.addEventListener("touchend", onTouchEnd, {
-			passive: true,
-			capture: true,
-		});
-		window.addEventListener("touchcancel", onTouchCancel, {
-			passive: true,
-			capture: true,
-		});
-		return () => {
-			window.removeEventListener("pointerdown", onDown, true);
-			window.removeEventListener("pointerup", onUp, true);
-			window.removeEventListener("touchstart", onTouchStart as EventListener, true);
-			window.removeEventListener("touchend", onTouchEnd as EventListener, true);
-			window.removeEventListener("touchcancel", onTouchCancel, true);
-		};
-	}, []);
-
-	// Verify canvas fills container (disabled by default; rely on ResizeObserver sizing)
-	useEffect(() => {
-		if (!ENABLE_EXTRAREFRESH) return;
-		if (!mountReady) return;
-		let timer: number | null = null;
-		const verifyAndFix = () => {
-			try {
-				const root = containerRef.current?.querySelector(".excalidraw .canvas-container") as HTMLElement | null;
-				const canvas = containerRef.current?.querySelector(
-					"canvas.excalidraw__canvas.interactive"
-				) as HTMLCanvasElement | null;
-				if (!root || !canvas) return false;
-				const cw = Math.floor(root.clientWidth || 0);
-				const ch = Math.floor(root.clientHeight || 0);
-				if (cw <= 1 || ch <= 1) return false;
-				const rect = canvas.getBoundingClientRect();
-				const sw = Math.floor(rect.width || 0);
-				const sh = Math.floor(rect.height || 0);
-				if (Math.abs(cw - sw) > 1 || Math.abs(ch - sh) > 1) {
-					try {
-						requestAnimationFrame(() => apiRef.current?.refresh?.());
-					} catch {
-						apiRef.current?.refresh?.();
+				const target = entries[0]?.target as HTMLElement | undefined;
+				const r = target?.getBoundingClientRect?.();
+				if (r && r.width > 2 && r.height > 2) {
+					if (!resolved) {
+						resolved = true;
+						setMountReady(true);
+						try {
+							ro.disconnect();
+						} catch {}
 					}
-					return true;
 				}
 			} catch {}
-			return false;
-		};
-		const runBurst = () => {
+		});
+		try {
+			ro.observe(el as Element);
+		} catch {}
+		return () => {
 			try {
-				const needsMore = verifyAndFix();
-				if (needsMore) timer = window.setTimeout(runBurst, 120);
+				ro.disconnect();
 			} catch {}
 		};
-		setTimeout(() => {
-			if (verifyAndFix()) runBurst();
-		}, 16);
-		return () => {
-			if (timer) window.clearTimeout(timer);
-		};
-	}, [mountReady]);
-
-	// Extra stabilization refreshes (disabled by default; enable only for rare cases)
-	useEffect(() => {
-		if (!ENABLE_EXTRAREFRESH) return;
-		let scheduled = false;
-		const scheduleRefresh = () => {
-			if (scheduled) return;
-			scheduled = true;
-			try {
-				requestAnimationFrame(() => {
-					if (!pointerActiveRef.current) apiRef.current?.refresh?.();
-					scheduled = false;
-				});
-			} catch {
-				scheduled = false;
-			}
-		};
-		const onContextMenu = () => scheduleRefresh();
-		const onVisibility = () => {
-			if (!document.hidden) scheduleRefresh();
-		};
-		document.addEventListener("contextmenu", onContextMenu, true);
-		document.addEventListener("visibilitychange", onVisibility);
-		return () => {
-			document.removeEventListener("contextmenu", onContextMenu, true);
-			document.removeEventListener("visibilitychange", onVisibility);
-		};
 	}, []);
+
+	// Excalidraw handles resize/scroll internally; no manual refresh needed
+
+	// Removed global pointer/touch listeners to avoid wide event overhead (Finding #2)
+
+	// Removed manual DOM verification and refresh bursts. Rely on ResizeObserver.
+
+	// Removed extra stabilization refreshes and global listeners.
 
 	// Theme changes are applied via updateScene in a separate effect
 
@@ -287,11 +155,7 @@ function DocumentCanvasComponent({
 				(scene.appState as Record<string, unknown>) || {},
 				(scene.files as Record<string, unknown>) || {}
 			);
-			try {
-				console.log(
-					`[DocumentCanvas] 🔄 external scene prop: elements=${Array.isArray(scene.elements) ? (scene.elements as unknown[]).length : 0}, sig=${(nextSig || "").slice(0, 8)}`
-				);
-			} catch {}
+			// removed console logging
 			if (nextSig && nextSig === (lastAppliedSceneSigRef.current || null)) return;
 			// Cast to any to avoid coupling to Excalidraw internal element types
 			const doUpdate = () => {
@@ -332,11 +196,7 @@ function DocumentCanvasComponent({
 						} catch {}
 					});
 					lastAppliedSceneSigRef.current = nextSig;
-					try {
-						console.log(
-							`[DocumentCanvas] ✅ applied scene: elements=${Array.isArray(scene.elements) ? (scene.elements as unknown[]).length : 0}, sig=${(nextSig || "").slice(0, 8)}`
-						);
-					} catch {}
+					// removed console logging
 				} catch {}
 			};
 			try {
@@ -357,53 +217,9 @@ function DocumentCanvasComponent({
 		} catch {}
 	}, [scene, viewModeEnabled, zenModeEnabled]);
 
-	// Force theme and view/zen modes so external scene updates can't re-enable editing
-	useEffect(() => {
-		try {
-			if (!apiRef.current) return;
-			const apiLike = apiRef.current as unknown as {
-				updateScene?: (s: Record<string, unknown>) => void;
-			} | null;
-			requestAnimationFrame(() => {
-				apiLike?.updateScene?.({
-					appState: {
-						theme,
-						viewModeEnabled: Boolean(viewModeEnabled),
-						zenModeEnabled: Boolean(zenModeEnabled),
-					},
-				});
-			});
-		} catch {}
-	}, [theme, viewModeEnabled, zenModeEnabled]);
+	// Removed imperative forcing of theme/view/zen; controlled via component props
 
-	// Force LTR direction for Excalidraw even when using RTL languages
-	useEffect(() => {
-		if (!forceLTR) return () => {};
-		try {
-			const root = document.documentElement;
-			if (prevDirRef.current === null) prevDirRef.current = root.getAttribute("dir");
-			root.setAttribute("dir", "ltr");
-			const observer = new MutationObserver(() => {
-				try {
-					const curr = root.getAttribute("dir") || "";
-					if (curr.toLowerCase() !== "ltr") root.setAttribute("dir", "ltr");
-				} catch {}
-			});
-			observer.observe(root, { attributes: true, attributeFilter: ["dir"] });
-			return () => {
-				try {
-					observer.disconnect();
-					if (prevDirRef.current === null || prevDirRef.current === undefined) {
-						root.removeAttribute("dir");
-					} else {
-						root.setAttribute("dir", String(prevDirRef.current));
-					}
-				} catch {}
-			};
-		} catch {
-			return () => {};
-		}
-	}, [forceLTR]);
+	// Removed global LTR enforcement; rely on container-level dir only
 
 	return (
 		<div
@@ -439,36 +255,14 @@ function DocumentCanvasComponent({
 						apiRef.current = api;
 						if (!didNotifyApiRef.current) {
 							didNotifyApiRef.current = true;
-							// Apply initial theme/view/zen state via updateScene to avoid mount-time setState
-							Promise.resolve().then(() => {
-								try {
-									requestAnimationFrame(() => {
-										try {
-											(
-												api as unknown as {
-													updateScene?: (s: Record<string, unknown>) => void;
-												}
-											)?.updateScene?.({
-												appState: {
-													viewModeEnabled: Boolean(viewModeEnabled),
-													zenModeEnabled: Boolean(zenModeEnabled),
-													theme,
-												},
-											});
-										} catch {}
-										// Now notify parent onApiReady after initial state is applied
-										setTimeout(() => {
-											try {
-												onApiReady(api);
-											} catch {}
-										}, 0);
-									});
-								} catch {
-									setTimeout(() => onApiReady(api), 0);
-								}
-							});
+							// Directly notify parent when API is ready; props control view/zen/theme
+							try {
+								onApiReady(api);
+							} catch {}
 						}
 					}}
+					viewModeEnabled={Boolean(viewModeEnabled)}
+					zenModeEnabled={Boolean(zenModeEnabled)}
 				/>
 			)}
 		</div>
@@ -478,41 +272,4 @@ function DocumentCanvasComponent({
 export const DocumentCanvas = memo(DocumentCanvasComponent);
 
 // Keep Excalidraw sized on container/viewport changes
-export function useExcalidrawResize(
-	container: React.RefObject<HTMLElement | null>,
-	apiRef: React.RefObject<ExcalidrawAPI | null>
-) {
-	useEffect(() => {
-		if (!container?.current) return;
-		let scheduled = false;
-		const refresh = () => {
-			if (scheduled) return;
-			scheduled = true;
-			requestAnimationFrame(() => {
-				try {
-					apiRef.current?.refresh?.();
-				} finally {
-					scheduled = false;
-				}
-			});
-		};
-		const ro = new ResizeObserver(() => refresh());
-		try {
-			ro.observe(container.current as Element);
-		} catch {}
-		const onWin = () => refresh();
-		window.addEventListener("resize", onWin);
-		try {
-			window.visualViewport?.addEventListener?.("resize", onWin);
-		} catch {}
-		return () => {
-			try {
-				ro.disconnect();
-			} catch {}
-			window.removeEventListener("resize", onWin);
-			try {
-				window.visualViewport?.removeEventListener?.("resize", onWin);
-			} catch {}
-		};
-	}, [container, apiRef]);
-}
+// Removed useExcalidrawResize hook and .refresh usage; rely on Excalidraw's internals

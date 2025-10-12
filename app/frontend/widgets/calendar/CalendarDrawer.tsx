@@ -238,6 +238,7 @@ export function CalendarDrawer({
 													detail: { waId },
 												})
 											);
+											setOpen(false);
 										} catch {}
 									}}
 									setCurrentView={calendarState.setCurrentView}

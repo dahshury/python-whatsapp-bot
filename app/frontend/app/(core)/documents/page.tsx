@@ -23,7 +23,7 @@ import { useDocumentScene } from "@/widgets/document-canvas/hooks/use-document-s
 import { DocumentSavingIndicator } from "@/widgets/documents/DocumentSavingIndicator";
 import { DocumentLockOverlay } from "../../../widgets/documents/DocumentLockOverlay";
 
-const DOCS_DEBUG = typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1";
+// removed DOCS_DEBUG and all console logging
 
 function DocumentsPageContent() {
 	const { resolvedTheme } = useTheme();
@@ -136,10 +136,7 @@ function DocumentsPageContent() {
 				if (isPendingInitialLoad && sig && sig !== editorSigRef.current) {
 					// Only mark as loaded if we received actual content, not an empty document
 					if (hasElements || waId === DEFAULT_DOCUMENT_WA_ID) {
-						if (DOCS_DEBUG)
-							console.log(
-								`[Documents] 📥 Initial load from WebSocket for waId=${waId}, updating both cameras (elements=${s.elements?.length || 0})`
-							);
+						// removed console logging
 						editorSigRef.current = sig;
 						setScene(s);
 						viewerSigRef.current = sig;
@@ -157,10 +154,7 @@ function DocumentsPageContent() {
 							scrollY: Math.round(scrollY),
 						};
 						lastViewerCameraSigRef.current = JSON.stringify(camera);
-						if (DOCS_DEBUG)
-							console.log(
-								`[Documents] 📷 Initialized viewer camera sig=${lastViewerCameraSigRef.current.slice(0, 30)}...`
-							);
+						// removed console logging
 
 						// Initialize viewer via API (preserve its independent camera afterwards)
 						try {
@@ -185,16 +179,10 @@ function DocumentsPageContent() {
 						// Mark this specific waId as loaded only if we got content
 						pendingInitialLoadWaIdRef.current = null;
 					} else {
-						if (DOCS_DEBUG)
-							console.log(
-								`[Documents] ⏭️ Ignoring empty document for waId=${waId} (waiting for template copy, elements=${s.elements?.length || 0})`
-							);
+						// removed console logging
 					}
 				} else if (!isPendingInitialLoad) {
-					if (DOCS_DEBUG)
-						console.log(
-							`[Documents] ⏭️ Ignoring WebSocket update for waId=${waId} (editor write-only after initial load)`
-						);
+					// removed console logging
 				}
 			} catch {}
 		};
@@ -225,10 +213,7 @@ function DocumentsPageContent() {
 					if (isPendingInitialLoad && sig && sig !== editorSigRef.current) {
 						// Only mark as loaded if we received actual content, not an empty document
 						if (hasElements || waId === DEFAULT_DOCUMENT_WA_ID) {
-							if (DOCS_DEBUG)
-								console.log(
-									`[Documents] 📥 Initial scene applied from hook for waId=${waId}, updating both cameras (elements=${s.elements?.length || 0})`
-								);
+							// removed console logging
 							editorSigRef.current = sig;
 							setScene(s);
 							viewerSigRef.current = sig;
@@ -246,10 +231,7 @@ function DocumentsPageContent() {
 								scrollY: Math.round(scrollY),
 							};
 							lastViewerCameraSigRef.current = JSON.stringify(camera);
-							if (DOCS_DEBUG)
-								console.log(
-									`[Documents] 📷 Initialized viewer camera sig (sceneApplied)=${lastViewerCameraSigRef.current.slice(0, 30)}...`
-								);
+							// removed console logging
 
 							// Initialize viewer via API (preserve its independent camera afterwards)
 							try {
@@ -274,16 +256,10 @@ function DocumentsPageContent() {
 							// Mark this specific waId as loaded only if we got content
 							pendingInitialLoadWaIdRef.current = null;
 						} else {
-							if (DOCS_DEBUG)
-								console.log(
-									`[Documents] ⏭️ Ignoring empty sceneApplied for waId=${waId} (waiting for template copy, elements=${s.elements?.length || 0})`
-								);
+							// removed console logging
 						}
 					} else if (!isPendingInitialLoad) {
-						if (DOCS_DEBUG)
-							console.log(
-								`[Documents] ⏭️ Ignoring sceneApplied for waId=${waId} (editor write-only after initial load)`
-							);
+						// removed console logging
 					}
 				}
 			} catch {}
@@ -314,14 +290,13 @@ function DocumentsPageContent() {
 					persistTimerRef.current = null;
 				}
 				// Mark this waId as pending initial load
-				if (DOCS_DEBUG)
-					console.log(`[Documents] 🔄 Switching to new document waId=${next}, marking as pending initial load`);
+				// removed console logging
 				pendingInitialLoadWaIdRef.current = next;
 				// Reset viewer camera tracking for new document
 				lastViewerCameraSigRef.current = "";
 				viewerCameraRef.current = {};
 				// Initialize the customer's document with template on first selection
-				if (DOCS_DEBUG) console.log(`[Documents] 🔁 ensureDocumentInitialized called from selection: waId=${next}`);
+				// removed console logging
 				void ensureDocumentInitialized(next);
 				setWaId(next);
 				// Document load is handled by useDocumentScene hook automatically when waId changes
@@ -337,7 +312,6 @@ function DocumentsPageContent() {
 			// Skip check if no customer selected (blank document)
 			if (!waId || waId === DEFAULT_DOCUMENT_WA_ID) {
 				if (isUnlocked) {
-					console.log("[Documents] 🔓 No customer selected, locking canvas");
 					setIsUnlocked(false);
 				}
 				return;
@@ -348,8 +322,7 @@ function DocumentsPageContent() {
 			const nameCol = customerColumns.findIndex((c) => c.id === "name");
 			const phoneCol = customerColumns.findIndex((c) => c.id === "phone");
 
-			if (DOCS_DEBUG)
-				console.log(`[Documents] 🔓 Checking unlock: waId=${waId}, nameCol=${nameCol}, phoneCol=${phoneCol}`);
+			// removed console logging
 
 			const [nameVal, phoneVal] = await Promise.all([ds.getCellData(nameCol, 0), ds.getCellData(phoneCol, 0)]);
 
@@ -358,10 +331,7 @@ function DocumentsPageContent() {
 			const waIdOk = waId && waId !== DEFAULT_DOCUMENT_WA_ID;
 			const shouldUnlock = Boolean(nameOk && phoneOk && waIdOk);
 
-			if (DOCS_DEBUG)
-				console.log(
-					`[Documents] 🔓 Unlock check: name="${nameVal}" (${nameOk ? "✅" : "❌"}), phone="${phoneVal}" (${phoneOk ? "✅" : "❌"}), waId="${waId}" (${waIdOk ? "✅" : "❌"}) → ${shouldUnlock ? "UNLOCKED 🔓" : "LOCKED 🔒"}`
-				);
+			// removed console logging
 
 			setIsUnlocked(shouldUnlock);
 		} catch (err) {
@@ -376,12 +346,8 @@ function DocumentsPageContent() {
 			try {
 				const detail = (e as CustomEvent).detail as { waId?: string };
 				const eventWaId = String(detail?.waId || "");
-				if (DOCS_DEBUG)
-					console.log(
-						`[Documents] 📥 doc:customer-loaded event: eventWaId=${eventWaId}, currentWaId=${waId}, match=${eventWaId === waId}`
-					);
 				if (eventWaId === waId) {
-					if (DOCS_DEBUG) console.log("[Documents] ✅ Customer loaded, triggering unlock check");
+					// removed console logging
 					void recomputeUnlock();
 				}
 			} catch {}
@@ -422,9 +388,7 @@ function DocumentsPageContent() {
 				return; // No change, skip
 			}
 
-			console.log(
-				`[Documents] 📷 Viewer camera changed: old=${lastViewerCameraSigRef.current.slice(0, 30)}... new=${newSig.slice(0, 30)}...`
-			);
+			// removed console logging
 
 			// Update refs
 			viewerCameraRef.current = appState;
@@ -532,7 +496,6 @@ function DocumentsPageContent() {
 											theme: resolvedTheme === "dark" ? "dark" : "light",
 										},
 									});
-									console.log("[Documents] ✅ Applied scene on API ready");
 								} catch {}
 							});
 						} catch {}
@@ -577,13 +540,11 @@ function DocumentsPageContent() {
 				const name = (nameVal as string) || "";
 				const age = (ageVal as number | null) ?? null;
 
-				console.log(
-					`[Documents] 💾 persistRow called: triggeredBy=${triggeredBy}, waId=${waId}, name=${name}, age=${age}`
-				);
+				// removed console logging
 
 				// If this was a phone-only edit, show a notification but avoid PUT (API doesn't accept phone here)
 				if (triggeredBy === "phone") {
-					console.log("[Documents] 📞 Phone-only edit, showing toast without PUT");
+					// removed console logging
 					toastService.success(i18n.getMessage("saved", isLocalized));
 					return;
 				}
@@ -591,11 +552,11 @@ function DocumentsPageContent() {
 				const prev = prevByWaRef.current.get(waId);
 				const changed = !prev || prev.name !== name || prev.age !== age;
 
-				console.log(`[Documents] 🔍 Change check: prev=${JSON.stringify(prev)}, changed=${changed}`);
+				// removed console logging
 
 				if (!changed) {
 					// Nothing changed; still show a small success if user committed
-					console.log("[Documents] ✅ No changes detected, showing success toast");
+					// removed console logging
 					toastService.success(
 						triggeredBy === "age" ? i18n.getMessage("age_recorded", isLocalized) : i18n.getMessage("saved", isLocalized)
 					);
@@ -611,18 +572,18 @@ function DocumentsPageContent() {
 					inflight.name === currentSig.name &&
 					inflight.age === currentSig.age
 				) {
-					console.log("[Documents] 🔄 Identical request in-flight, skipping");
+					// removed console logging
 					return;
 				}
 
-				console.log(`[Documents] 🚀 Sending PUT request: waId=${waId}, name=${name}, age=${age}`);
+				// removed console logging
 				persistInFlightRef.current = { waId, name, age };
 				await toastService.promise(saveCustomerDocument({ waId, name, age }), {
 					loading: i18n.getMessage("saving", isLocalized),
 					success: () => i18n.getMessage(triggeredBy === "age" ? "age_recorded" : "saved", isLocalized),
 					error: () => i18n.getMessage("save_failed", isLocalized),
 				});
-				console.log(`[Documents] ✅ PUT completed successfully for waId=${waId}`);
+				// removed console logging
 				// Update last persisted snapshot
 				prevByWaRef.current.set(waId, { name, age });
 				persistInFlightRef.current = null;
@@ -635,11 +596,11 @@ function DocumentsPageContent() {
 	const handleProviderReady = useCallback(
 		async (provider: unknown) => {
 			try {
-				console.log("[Documents] 📋 Grid provider ready, loading customer data");
+				// removed console logging
 				providerRef.current = provider as DataProvider;
 				// Prefill row with name/age for current waId
 				await onDataProviderReadyFromHook(provider);
-				console.log("[Documents] 📋 Customer data loaded, checking unlock status");
+				// removed console logging
 				await recomputeUnlock();
 				// Attach commit-like hook
 				try {
@@ -655,10 +616,9 @@ function DocumentsPageContent() {
 							// Update unlock state after any change (no persistence here; UI edits persist via doc:persist)
 							// Guard: ignore provider-applied loads for a brief window after waId change
 							if ((globalThis as unknown as { __docIgnoreProviderLoad?: number }).__docIgnoreProviderLoad) {
-								console.log("[Documents] ⏭️ Ignoring cell change (guard active)");
 								return;
 							}
-							console.log(`[Documents] 📝 Cell changed: col=${colIdx}, triggering unlock check`);
+							// removed console logging
 							void recomputeUnlock();
 							// Removed: persistRow on provider data loaded to avoid duplicate PUTs
 						} catch {}
@@ -676,11 +636,9 @@ function DocumentsPageContent() {
 				const detail = (e as CustomEvent).detail as { field?: string };
 				const f = String(detail?.field || "");
 
-				console.log(`[Documents] 📥 Received doc:persist event: field=${f}`);
-
 				// Ignore transient provider-applied changes immediately after switching user
 				if (Date.now() < ignorePersistUntilRef.current) {
-					console.log("[Documents] ⏭️ Ignoring persist (user switch guard)");
+					// removed console logging
 					return;
 				}
 
@@ -689,13 +647,12 @@ function DocumentsPageContent() {
 					const suppressUntil = (globalThis as unknown as { __docSuppressPersistUntil?: number })
 						.__docSuppressPersistUntil;
 					if (typeof suppressUntil === "number" && Date.now() < suppressUntil) {
-						console.log("[Documents] 🔇 Ignoring persist (suppression flag)");
 						return;
 					}
 				} catch {}
 
 				if (f === "age" || f === "name" || f === "phone") {
-					console.log(`[Documents] ⏲️ Debouncing persist for field=${f}`);
+					// removed console logging
 					if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
 					persistTimerRef.current = window.setTimeout(() => {
 						try {
@@ -734,7 +691,7 @@ function DocumentsPageContent() {
 				}, 600);
 			} catch {}
 			// Reset to default document and mark as pending initial load
-			console.log("[Documents] 🗑️ Clearing document, resetting to default");
+			// removed console logging
 			pendingInitialLoadWaIdRef.current = DEFAULT_DOCUMENT_WA_ID;
 			// Reset viewer camera tracking when clearing
 			lastViewerCameraSigRef.current = "";

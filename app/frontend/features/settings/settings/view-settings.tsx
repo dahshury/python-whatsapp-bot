@@ -46,8 +46,8 @@ export function ViewSettings({
 		setShowToolCalls(checked);
 		toastService.success(
 			checked
-				? i18n.getMessage("settings_send_typing_on", isLocalized)
-				: i18n.getMessage("settings_send_typing_off", isLocalized)
+				? i18n.getMessage("settings_tool_calls_on", isLocalized)
+				: i18n.getMessage("settings_tool_calls_off", isLocalized)
 		);
 	};
 

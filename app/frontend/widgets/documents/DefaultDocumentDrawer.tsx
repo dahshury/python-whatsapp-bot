@@ -61,10 +61,10 @@ export function DefaultDocumentDrawer({
 	const editorSigRef = React.useRef<string | null>(null);
 	const viewerSigRef = React.useRef<string | null>(null);
 
-	// Debug log when scene changes
+	// Debug hook retained without side effects
 	React.useEffect(() => {
-		console.log("[DefaultDocumentDrawer] Scene state changed:", scene, "elements:", scene?.elements?.length);
-	}, [scene]);
+		// no-op
+	}, []);
 
 	// Use the template user's document for autosave, gated by drawer open + loaded
 	const {
@@ -87,7 +87,7 @@ export function DefaultDocumentDrawer({
 	// DRY: Common logic for applying scene updates during initial load only
 	const applySceneIfInitialLoad = React.useCallback(
 		(
-			source: string,
+			_source: string,
 			sceneData:
 				| {
 						elements?: unknown[];
@@ -114,9 +114,6 @@ export function DefaultDocumentDrawer({
 			if (isPendingInitialLoad && sig && sig !== editorSigRef.current) {
 				// Only mark as loaded if we received actual content
 				if (hasElements) {
-					console.log(
-						`[DefaultDocumentDrawer] 📥 Initial load from ${source}, updating both canvases (elements=${sceneData.elements?.length || 0})`
-					);
 					editorSigRef.current = sig;
 					setScene(sceneData);
 					viewerSigRef.current = sig;
@@ -135,9 +132,6 @@ export function DefaultDocumentDrawer({
 						scrollY: Math.round(scrollY),
 					};
 					lastViewerCameraSigRef.current = JSON.stringify(camera);
-					console.log(
-						`[DefaultDocumentDrawer] 📷 Initialized viewer camera sig=${lastViewerCameraSigRef.current.slice(0, 30)}...`
-					);
 
 					setLiveScene({
 						elements: sceneData.elements || [],
@@ -147,12 +141,10 @@ export function DefaultDocumentDrawer({
 					// Mark as loaded
 					pendingInitialLoadRef.current = false;
 				} else {
-					console.log(
-						`[DefaultDocumentDrawer] ⏭️ Ignoring empty ${source} (waiting for content, elements=${sceneData.elements?.length || 0})`
-					);
+					// no-op
 				}
 			} else if (!isPendingInitialLoad) {
-				console.log(`[DefaultDocumentDrawer] ⏭️ Ignoring ${source} (editor write-only after initial load)`);
+				// removed console logging
 			}
 		},
 		[]
@@ -160,8 +152,8 @@ export function DefaultDocumentDrawer({
 
 	// Debug: log when saveStatus changes
 	React.useEffect(() => {
-		console.log("[DefaultDocumentDrawer] Save status changed:", saveStatus);
-	}, [saveStatus]);
+		// removed console logging
+	}, []);
 
 	// Callback for viewer canvas changes (to track viewer camera)
 	const handleViewerCanvasChange = React.useCallback(
@@ -184,9 +176,7 @@ export function DefaultDocumentDrawer({
 				return; // No change, skip
 			}
 
-			console.log(
-				`[DefaultDocumentDrawer] 📷 Viewer camera changed: old=${lastViewerCameraSigRef.current.slice(0, 30)}... new=${newSig.slice(0, 30)}...`
-			);
+			// no-op
 
 			// Update refs
 			viewerCameraRef.current = appState;
@@ -213,9 +203,7 @@ export function DefaultDocumentDrawer({
 						editorCamera
 					);
 				}
-			} catch (err) {
-				console.error("[DefaultDocumentDrawer] Error triggering save for viewer camera:", err);
-			}
+			} catch {}
 		},
 		[originalHandleCanvasChange, open, isLoaded]
 	);
@@ -245,16 +233,8 @@ export function DefaultDocumentDrawer({
 		[originalHandleCanvasChange]
 	);
 
-	// Debug: log canvas changes
 	const handleCanvasChangeWithLog = React.useCallback(
 		(elements: readonly unknown[], appState: unknown, files: unknown) => {
-			console.log(
-				"[DefaultDocumentDrawer] Canvas changed:",
-				"elements:",
-				(elements as unknown[]).length,
-				"appState:",
-				appState
-			);
 			handleCanvasChange(
 				elements as unknown[] as unknown[],
 				appState as Record<string, unknown>,
@@ -312,9 +292,7 @@ export function DefaultDocumentDrawer({
 
 				const sceneData = toSceneFromDoc(detail?.document || null);
 				applySceneIfInitialLoad("WebSocket", sceneData);
-			} catch (error) {
-				console.error("[DefaultDocumentDrawer] Error in external-update:", error);
-			}
+			} catch {}
 		};
 		window.addEventListener("documents:external-update", onExternal as unknown as EventListener);
 		return () => {
@@ -351,10 +329,6 @@ export function DefaultDocumentDrawer({
 	// Load template document when drawer opens (always request fresh snapshot)
 	React.useEffect(() => {
 		if (open) {
-			console.log(
-				"[DefaultDocumentDrawer] Drawer opened, marking as pending initial load and requesting template:",
-				TEMPLATE_USER_WA_ID
-			);
 			// Mark as pending initial load
 			pendingInitialLoadRef.current = true;
 			// Reset camera tracking
@@ -362,27 +336,16 @@ export function DefaultDocumentDrawer({
 			viewerCameraRef.current = {};
 			setIsLoaded(false);
 			setLoading(true);
-			requestDocumentLoad(TEMPLATE_USER_WA_ID).then((result) => {
-				console.log("[DefaultDocumentDrawer] requestDocumentLoad result:", result);
-			});
+			requestDocumentLoad(TEMPLATE_USER_WA_ID).then(() => {});
 		}
 	}, [open]);
 
-	// Debug: log when drawer opens/closes
 	React.useEffect(() => {
-		console.log(
-			"[DefaultDocumentDrawer] Drawer state changed:",
-			open ? "OPEN" : "CLOSED",
-			"scene elements:",
-			scene?.elements?.length
-		);
-
 		// When closing, keep scene but lock saves
 		if (!open) {
-			console.log("[DefaultDocumentDrawer] Drawer closing, preserving scene (locking saves)");
 			setIsLoaded(false);
 		}
-	}, [open, scene?.elements?.length]);
+	}, [open]);
 
 	return (
 		<Sheet open={open} onOpenChange={setOpen}>

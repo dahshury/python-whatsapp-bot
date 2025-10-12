@@ -89,8 +89,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 			// Reset editor camera tracking when switching documents
 			lastSavedEditorSigRef.current = null;
 			editorAppStateRef.current = {};
-			if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-				console.log(`[useDocumentScene] 🔄 Switching to waId=${waId}, reset viewer and editor camera tracking`);
+			// removed console logging
 			if (waId === DEFAULT_DOCUMENT_WA_ID) {
 				// Default doc: nothing to load
 				startTransition(() => setLoading(false));
@@ -100,8 +99,6 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 
 			// Skip if already loaded for this waId
 			if (lastLoadedWaIdRef.current === waId) {
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log(`[useDocumentScene] ⏭️ Skipping duplicate document load for waId=${waId}`);
 				return;
 			}
 
@@ -113,7 +110,6 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 
 				// Wait for REST GET to complete with smart polling
 				const pollIntervalMs = 50;
-				const startTime = Date.now();
 
 				// Check immediately before starting polling
 				if (lastLoadedWaIdRef.current === waId) {
@@ -130,9 +126,6 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 
 					// Check if document was loaded via REST during the delay
 					if (lastLoadedWaIdRef.current === waId) {
-						const elapsed = Date.now() - startTime;
-						if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-							console.log(`[useDocumentScene] ⏭️ Document loaded via REST after ${elapsed}ms, skipping WS`);
 						return;
 					}
 
@@ -141,21 +134,10 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 
 					if (!restInFlight) {
 						// REST GET completed but didn't include document, fall back to WS
-						const elapsed = Date.now() - startTime;
-						if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-							console.log(
-								`[useDocumentScene] 📡 REST completed without document after ${elapsed}ms, requesting via WS`
-							);
 						break;
 					}
 
 					// REST is still loading, keep waiting (no timeout!)
-					const elapsed = Date.now() - startTime;
-					if (elapsed % 500 === 0) {
-						// Log every 500ms to show we're still waiting
-						if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-							console.log(`[useDocumentScene] ⏳ Waiting for REST GET... (${elapsed}ms elapsed)`);
-					}
 				}
 
 				void requestDocumentLoad(waId);
@@ -196,8 +178,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 			waId,
 			idleMs: 3000,
 			onSaving: () => {
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log(`[useDocumentScene] 💾 onSaving(idle): waId=${waId}`);
+				// removed console logging
 				isSavingRef.current = true;
 				hasLocalEditsSinceSavingRef.current = false;
 				try {
@@ -239,10 +220,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 					lastSavedEditorSigRef.current = editorSig;
 				}
 
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log(
-						`[useDocumentScene] ✅ onSaved(idle): waId=${waId}, contentSig=${(sig || "").slice(0, 8)}, viewerSig=${viewerState ? computeViewerCameraSig(viewerState).slice(0, 16) : "none"}, editorSig=${editorState ? computeViewerCameraSig(editorState).slice(0, 16) : "none"}, hasLocalEdits=${hasLocalEditsSinceSavingRef.current}`
-					);
+				// removed console logging
 
 				isSavingRef.current = false;
 				try {
@@ -263,8 +241,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 				}
 			},
 			onError: ({ message }) => {
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.warn(`[useDocumentScene] ❌ onError(idle): waId=${waId}, message=${message || "unknown"}`);
+				// removed console logging
 				isSavingRef.current = false;
 				lastScheduledSigRef.current = null;
 				try {
@@ -361,28 +338,18 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 			getFiles?: () => Record<string, unknown>;
 		} | null;
 		if (!enabled) {
-			if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-				console.log("[useDocumentScene] ⏭️ interval skip: enabled=false");
 			return () => {};
 		}
 		if (!waId) {
-			if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-				console.log("[useDocumentScene] ⏭️ interval skip: no waId");
 			return () => {};
 		}
 		if (!isUnlocked) {
-			if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-				console.log("[useDocumentScene] ⏭️ interval skip: locked");
 			return () => {};
 		}
 		if (!initialSceneAppliedRef.current) {
-			if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-				console.log("[useDocumentScene] ⏭️ interval skip: initial scene not applied yet");
 			return () => {};
 		}
 		if (!ctl || !api) {
-			if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-				console.log("[useDocumentScene] ⏭️ interval skip: controller/api missing");
 			return () => {};
 		}
 		ctl.start({
@@ -428,10 +395,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 					const newViewerSig = computeViewerCameraSig(viewerAppState);
 					viewerCameraChanged = newViewerSig !== lastSavedViewerSigRef.current;
 					viewerAppStateRef.current = viewerAppState;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log(
-							`[useDocumentScene] 📷 viewer camera sig=${newViewerSig.slice(0, 16)}, lastSaved=${(lastSavedViewerSigRef.current || "").slice(0, 16)}, changed=${viewerCameraChanged}`
-						);
+					// removed console logging
 				}
 
 				// Update editor camera if provided and check if it changed
@@ -440,20 +404,14 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 					const newEditorSig = computeViewerCameraSig(editorAppState);
 					editorCameraChanged = newEditorSig !== lastSavedEditorSigRef.current;
 					editorAppStateRef.current = editorAppState;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log(
-							`[useDocumentScene] 🎬 editor camera sig=${newEditorSig.slice(0, 16)}, lastSaved=${(lastSavedEditorSigRef.current || "").slice(0, 16)}, changed=${editorCameraChanged}`
-						);
+					// removed console logging
 				}
 
 				const s = sig || computeDocumentSignature({ elements, appState, files });
 				const contentChanged = s && s !== lastSavedSigRef.current;
 				const hasChanges = contentChanged || viewerCameraChanged || editorCameraChanged;
 
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log(
-						`[useDocumentScene] 🖊️ change: contentSig=${(s || "").slice(0, 8)}, lastSaved=${(lastSavedSigRef.current || "").slice(0, 8)}, lastScheduled=${(lastScheduledSigRef.current || "").slice(0, 8)}, contentChanged=${contentChanged}, viewerChanged=${viewerCameraChanged}, editorChanged=${editorCameraChanged}, isSaving=${isSavingRef.current}`
-					);
+				// removed console logging
 
 				// Track latest local snapshot for potential re-save after current save completes
 				latestElementsRef.current = elements;
@@ -493,8 +451,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 						sig: s,
 					});
 				} else {
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log("[useDocumentScene] ⏭️ skip schedule: already scheduled or no changes");
+					// removed console logging
 				}
 			} catch {}
 		},
@@ -503,9 +460,8 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 
 	// Log saveState transitions for diagnosis
 	useEffect(() => {
-		if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-			console.log(`[useDocumentScene] 🔔 saveState → ${saveState.status}`);
-	}, [saveState]);
+		// removed console logging
+	}, []);
 
 	// Apply external document updates received via websocket reducer event
 	useEffect(() => {
@@ -519,10 +475,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 				const target = String(detail?.wa_id || "");
 				if (!target || target !== waId) return;
 
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log(`[useDocumentScene] 📡 Received documents:external-update: waId=${waId}`);
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log(`[useDocumentScene] 📄 Document retrieved for waId=${waId}`);
+				// removed console logging
 
 				// Mark this waId as loaded to prevent duplicate WS request
 				lastLoadedWaIdRef.current = waId;
@@ -542,12 +495,10 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 					const viewerSig = computeViewerCameraSig(scene.viewerAppState);
 					lastSavedViewerSigRef.current = viewerSig;
 					viewerAppStateRef.current = scene.viewerAppState;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log(`[useDocumentScene] 📷 Loaded viewer camera: sig=${viewerSig.slice(0, 16)}`);
+					// removed console logging
 				} else {
 					lastSavedViewerSigRef.current = null;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log("[useDocumentScene] 📷 No viewer camera in loaded document");
+					// removed console logging
 				}
 
 				// Initialize editor camera signature from loaded document
@@ -555,12 +506,10 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 					const editorSig = computeViewerCameraSig(scene.editorAppState);
 					lastSavedEditorSigRef.current = editorSig;
 					editorAppStateRef.current = scene.editorAppState;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log(`[useDocumentScene] 🎬 Loaded editor camera: sig=${editorSig.slice(0, 16)}`);
+					// removed console logging
 				} else {
 					lastSavedEditorSigRef.current = null;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log("[useDocumentScene] 🎬 No editor camera in loaded document");
+					// removed console logging
 				}
 				// Clear any stale save flags so the page effect doesn't ignore this apply
 				try {
@@ -576,8 +525,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 							__docHasLocalEditsDuringSave?: boolean;
 						}
 					).__docHasLocalEditsDuringSave = false;
-					if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-						console.log("[useDocumentScene] ✅ cleared saving flags before applying external scene");
+					// removed console logging
 				} catch {}
 				try {
 					const ctl = idleControllerRef.current as unknown as {
@@ -620,8 +568,7 @@ export function useDocumentScene(waId: string, options?: UseDocumentSceneOptions
 				if (String(detail?.wa_id || "") !== waId) return;
 				initialSceneAppliedRef.current = true;
 				ignoreChangesUntilRef.current = Date.now() + 400;
-				if (typeof process !== "undefined" && process.env.NEXT_PUBLIC_DOCS_DEBUG === "1")
-					console.log("[useDocumentScene] ✅ initial scene applied (event)");
+				// removed console logging
 			} catch {}
 		};
 		window.addEventListener("documents:sceneApplied", handler as unknown as EventListener);
