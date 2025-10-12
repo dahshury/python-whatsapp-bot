@@ -23,7 +23,6 @@ import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import FullCalendar from "@fullcalendar/react";
-// biome-ignore lint/suspicious/noCommentText: Module resolution differs between dev and prod
 // @ts-expect-error Module resolution differs between dev and prod - error exists locally but not in production
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { getBusinessHours, getValidRange, SLOT_DURATION_HOURS, TIMEZONE } from "@shared/libs/calendar/calendar-config";
