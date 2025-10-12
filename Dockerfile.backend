@@ -5,7 +5,9 @@ FROM python:3.12-slim AS builder
 WORKDIR /app
 
 # Build tooling only in builder
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Use cloudflare mirror as fallback to avoid 503 errors from main Debian repos
+RUN echo "deb http://cloudflare.debian.net/debian trixie main" > /etc/apt/sources.list.d/cloudflare.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     curl \
     ca-certificates \
@@ -36,7 +38,9 @@ LABEL com.dahshury.prunable="true"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # Minimal runtime OS deps only
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Use cloudflare mirror as fallback to avoid 503 errors from main Debian repos
+RUN echo "deb http://cloudflare.debian.net/debian trixie main" > /etc/apt/sources.list.d/cloudflare.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
     zip \
     awscli \
     ca-certificates \
