@@ -107,4 +107,6 @@ node_modules
 *.sqlite
 
 data/
+# But allow frontend data context (not database data)
+!app/frontend/shared/libs/data/
 app/frontend/.prettiercache
