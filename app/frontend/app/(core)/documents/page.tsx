@@ -6,7 +6,7 @@ import { Lock, Maximize2, Minimize2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { saveCustomerDocument } from "@/shared/libs/api";
 import type { IDataSource } from "@/shared/libs/data-grid";
 import { FullscreenProvider } from "@/shared/libs/data-grid";
@@ -23,7 +23,7 @@ import { useDocumentScene } from "@/widgets/document-canvas/hooks/use-document-s
 import { DocumentSavingIndicator } from "@/widgets/documents/DocumentSavingIndicator";
 import { DocumentLockOverlay } from "../../../widgets/documents/DocumentLockOverlay";
 
-export default function DocumentsPage() {
+function DocumentsPageContent() {
 	const { resolvedTheme } = useTheme();
 	const { locale, isLocalized } = useLanguage();
 	const searchParams = useSearchParams();
@@ -855,5 +855,13 @@ export default function DocumentsPage() {
 				</div>
 			</div>
 		</SidebarInset>
+	);
+}
+
+export default function DocumentsPage() {
+	return (
+		<Suspense fallback={<div>Loading...</div>}>
+			<DocumentsPageContent />
+		</Suspense>
 	);
 }
