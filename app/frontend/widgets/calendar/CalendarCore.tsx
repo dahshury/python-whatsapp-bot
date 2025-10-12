@@ -23,7 +23,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import FullCalendar from "@fullcalendar/react";
-// @ts-expect-error - FullCalendar timegrid has a module resolution issue in strict TypeScript
+// @ts-expect-error - FullCalendar timegrid module resolution differs between dev and prod
 import timeGridPlugin from "@fullcalendar/timegrid";
 import { getBusinessHours, getValidRange, SLOT_DURATION_HOURS, TIMEZONE } from "@shared/libs/calendar/calendar-config";
 import { count } from "@shared/libs/dev-profiler";
