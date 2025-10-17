@@ -2,9 +2,14 @@ const STORAGE_KEY = "docs:selectedWaId";
 
 export function persistSelectedWaId(waId: string | null): void {
 	try {
-		if (waId) localStorage.setItem(STORAGE_KEY, String(waId));
-		else localStorage.removeItem(STORAGE_KEY);
-	} catch {}
+		if (waId) {
+			localStorage.setItem(STORAGE_KEY, String(waId));
+		} else {
+			localStorage.removeItem(STORAGE_KEY);
+		}
+	} catch (_error) {
+		// Silently ignore storage errors - not critical for operation
+	}
 }
 
 export function restoreSelectedWaId(): string | null {

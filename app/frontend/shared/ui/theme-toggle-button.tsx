@@ -2,21 +2,28 @@
 
 import { i18n } from "@shared/libs/i18n";
 import { useLanguage } from "@shared/libs/state/language-context";
-import { toastService } from "@shared/libs/toast";
+import { toastService } from "@shared/libs/toast/toast-service";
 
 import { Button } from "@ui/button";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import React from "react";
 
-import { type AnimationStart, type AnimationVariant, createAnimation } from "./theme-animations";
+import {
+	type AnimationStart,
+	type AnimationVariant,
+	createAnimation,
+} from "./theme-animations";
 
-interface ThemeToggleAnimationProps {
+// Toast display duration in milliseconds
+const TOAST_DISPLAY_DURATION = 1500;
+
+type ThemeToggleAnimationProps = {
 	variant?: AnimationVariant;
 	start?: AnimationStart;
 	showLabel?: boolean;
 	url?: string;
-}
+};
 
 export default function ThemeToggleButton({
 	variant = "circle-blur",
@@ -30,7 +37,9 @@ export default function ThemeToggleButton({
 	const styleId = "theme-transition-styles";
 
 	const updateStyles = React.useCallback((css: string, _name: string) => {
-		if (typeof window === "undefined") return;
+		if (typeof window === "undefined") {
+			return;
+		}
 
 		let styleElement = document.getElementById(styleId) as HTMLStyleElement;
 
@@ -48,7 +57,9 @@ export default function ThemeToggleButton({
 
 		updateStyles(animation.css, animation.name);
 
-		if (typeof window === "undefined") return;
+		if (typeof window === "undefined") {
+			return;
+		}
 
 		const switchTheme = () => {
 			const next = theme === "light" ? "dark" : "light";
@@ -59,8 +70,10 @@ export default function ThemeToggleButton({
 					next === "dark"
 						? i18n.getMessage("theme_mode_dark", isLocalized)
 						: i18n.getMessage("theme_mode_light", isLocalized);
-				toastService.info(title, desc, 1500);
-			} catch {}
+				toastService.info(title, desc, TOAST_DISPLAY_DURATION);
+			} catch {
+				// Silently ignore any toast display errors
+			}
 		};
 
 		if (!document.startViewTransition) {
@@ -71,10 +84,13 @@ export default function ThemeToggleButton({
 		document.startViewTransition(switchTheme);
 	}, [theme, setTheme, isLocalized, start, updateStyles, url, variant]);
 
-	const handleButtonPointerDown = React.useCallback((e: React.PointerEvent<HTMLButtonElement>) => {
-		// Prevent popover from interpreting this as an outside interaction
-		e.stopPropagation();
-	}, []);
+	const handleButtonPointerDown = React.useCallback(
+		(e: React.PointerEvent<HTMLButtonElement>) => {
+			// Prevent popover from interpreting this as an outside interaction
+			e.stopPropagation();
+		},
+		[]
+	);
 
 	const handleClick = React.useCallback(
 		(e: React.MouseEvent<HTMLButtonElement>) => {
@@ -88,23 +104,23 @@ export default function ThemeToggleButton({
 
 	return (
 		<Button
+			className="group relative h-9 w-9 p-0"
+			name="Theme Toggle Button"
 			onClick={handleClick}
 			onPointerDown={handleButtonPointerDown}
-			variant="ghost"
 			size="icon"
-			className="w-9 p-0 h-9 relative group"
-			name="Theme Toggle Button"
+			variant="ghost"
 		>
-			<SunIcon className="size-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+			<SunIcon className="dark:-rotate-90 size-[1.2rem] rotate-0 scale-100 transition-all dark:scale-0" />
 			<MoonIcon className="absolute size-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-			<span className="sr-only">Theme Toggle </span>
+			<span className="sr-only">Theme Toggle</span>
 			{showLabel && (
 				<>
-					<span className="hidden group-hover:block border rounded-full px-2 absolute -top-10">
+					<span className="-top-10 absolute hidden rounded-full border px-2 group-hover:block">
 						{" "}
 						variant = {variant}
 					</span>
-					<span className="hidden group-hover:block border rounded-full px-2 absolute -bottom-10">
+					<span className="-bottom-10 absolute hidden rounded-full border px-2 group-hover:block">
 						{" "}
 						start = {start}
 					</span>

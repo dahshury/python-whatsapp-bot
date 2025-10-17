@@ -6,7 +6,8 @@ export async function GET(req: NextRequest) {
 	try {
 		const url = new URL(req.url);
 		const future = url.searchParams.get("future") === "true";
-		const includeCancelled = url.searchParams.get("include_cancelled") === "true";
+		const includeCancelled =
+			url.searchParams.get("include_cancelled") === "true";
 		const fromDate = url.searchParams.get("from_date"); // YYYY-MM-DD format
 		const toDate = url.searchParams.get("to_date"); // YYYY-MM-DD format
 
@@ -30,8 +31,6 @@ export async function GET(req: NextRequest) {
 		// { success: true, data: Record<string, Reservation[]> }
 		return NextResponse.json(backendResponse);
 	} catch (error) {
-		console.error("Error fetching reservations from Python backend:", error);
-
 		// Return empty data structure on error to prevent breaking the frontend
 		return NextResponse.json(
 			{

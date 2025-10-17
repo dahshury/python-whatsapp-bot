@@ -1,48 +1,207 @@
-import type { SpriteMap } from "@glideapps/glide-data-grid";
-import {
-	CompactSelection,
-	type DataEditorRef,
-	type EditableGridCell,
-	type GridCell,
-	GridCellKind,
-	type GridColumn,
-	type Item,
-	type Theme,
+import type {
+	DataEditorRef,
+	DrawHeaderCallback,
+	EditableGridCell,
+	GridColumn,
+	Item,
+	Theme,
 } from "@glideapps/glide-data-grid";
-import { fetchCustomer } from "@shared/libs/api";
+import { GridCellKind } from "@glideapps/glide-data-grid";
 import { useCustomerData } from "@shared/libs/data/customer-data-context";
-import { normalizePhoneForStorage } from "@shared/libs/utils/phone-utils";
+import { headerIcons } from "@shared/libs/data-grid/constants/header-icons";
+import { createOnRowAppended } from "@shared/libs/data-grid/handlers/on-row-appended";
+import { useContainerMeasurement } from "@shared/libs/data-grid/hooks/use-container-measurement";
+import { useDeleteRows } from "@shared/libs/data-grid/hooks/use-delete-rows";
+import { useGridCellContent } from "@shared/libs/data-grid/hooks/use-grid-cell-content";
+import { useGridOnCellEdited } from "@shared/libs/data-grid/hooks/use-grid-on-cell-edited";
+import { useGridRefreshFacade } from "@shared/libs/data-grid/hooks/use-grid-refresh-facade";
+import { useGridWidth } from "@shared/libs/data-grid/hooks/use-grid-width";
+// DOC_EVENTS imported where needed by hooks
+import { useHeaderMenuClick } from "@shared/libs/data-grid/hooks/use-header-menu-click";
+import { useOverlayPosition } from "@shared/libs/data-grid/hooks/use-overlay-position";
+import { usePersistenceBootstrap } from "@shared/libs/data-grid/hooks/use-persistence-bootstrap";
+import { useReadyNotifier } from "@shared/libs/data-grid/hooks/use-ready-notifier";
+import { useRowCountSync } from "@shared/libs/data-grid/hooks/use-row-count-sync";
+import type { ColumnConfig } from "@shared/libs/data-grid/types/column-config";
+import { clearSelection as clearSelectionUtil } from "@shared/libs/data-grid/utils/selection";
+import { createGridHoverHandler } from "@shared/libs/data-grid/utils/tooltip/hover-handlers";
+import { useDataProviderReady } from "@widgets/documents/hooks/use-data-provider-ready";
+import { useDocumentsGridAutofill } from "@widgets/documents/hooks/use-documents-grid-autofill";
 import React from "react";
-import ReactDOM from "react-dom";
-import { useFullscreen } from "./contexts/FullscreenContext";
-import { GridPortalProvider, useGridPortal } from "./contexts/GridPortalContext";
-import { InMemoryDataSource } from "./core/data-sources/InMemoryDataSource";
-import type { IDataSource } from "./core/interfaces/IDataSource";
-import { useColumnMenu } from "./hooks/useColumnMenu";
-import { useColumnOperations } from "./hooks/useColumnOperations";
-import { useGridActions } from "./hooks/useGridActions";
-import { useGridColumns } from "./hooks/useGridColumns";
-import { useGridDataOperations } from "./hooks/useGridDataOperations";
-import { useGridEvents } from "./hooks/useGridEvents";
-import { useGridLifecycle } from "./hooks/useGridLifecycle";
-import { useGridPersistence } from "./hooks/useGridPersistence";
-import { useGridState } from "./hooks/useGridState";
-import { useGridTheme } from "./hooks/useGridTheme";
-import { useGridTooltips } from "./hooks/useGridTooltips";
-import { useModularGridData } from "./hooks/useModularGridData";
-import { useUndoRedo } from "./hooks/useUndoRedo";
-import { ColumnMenu } from "./menus/ColumnMenu";
-import TooltipFloat from "./Tooltip";
-import { FullscreenWrapper } from "./ui/FullscreenWrapper";
-import { GridDataEditor } from "./ui/GridDataEditor";
-import { GridThemeToggle } from "./ui/GridThemeToggle";
-import { GridToolbar } from "./ui/GridToolbar";
+import { useFullscreenSyncLegacy } from "../hooks/use-fullscreen-sync-legacy";
+import { getPinnedColumnsFromConfig } from "../utils/columns/pinned-columns";
+import { resolveGridTheme } from "../utils/theme-utils";
+import { useFullscreen } from "./contexts/fullscreen-context";
+import {
+	GridPortalProvider,
+	useGridPortal,
+} from "./contexts/grid-portal-context";
+import { InMemoryDataSource } from "./core/data-sources/in-memory-data-source";
+import type { IDataSource } from "./core/interfaces/i-data-source";
+import { GridView } from "./grid-view";
+import { useColumnHide } from "./hooks/use-column-hide";
+import { useColumnMenu } from "./hooks/use-column-menu";
+import { useColumnOperations } from "./hooks/use-column-operations";
+import { useGridActions } from "./hooks/use-grid-actions";
+import { useGridColumns } from "./hooks/use-grid-columns";
+import { useGridDataOperations } from "./hooks/use-grid-data-operations";
+import { useGridEvents } from "./hooks/use-grid-events";
+import { useGridLifecycle } from "./hooks/use-grid-lifecycle";
+import { useGridPersistence } from "./hooks/use-grid-persistence";
+import { useGridState } from "./hooks/use-grid-state";
+import { useGridTheme } from "./hooks/use-grid-theme";
+import { useGridTooltips } from "./hooks/use-grid-tooltips";
+import { useModularGridData } from "./hooks/use-modular-grid-data";
+import { useUndoRedo } from "./hooks/use-undo-redo";
+import { ColumnMenuAdapter } from "./menus/column-menu-adapter";
+import { FullscreenWrapper } from "./ui/fullscreen-wrapper";
+import { getGridContainerProps } from "./ui/grid-container";
+import { GridDataEditor } from "./ui/grid-data-editor";
+import { GridThemeToggle } from "./ui/grid-theme-toggle";
+import { GridToolbarPortal } from "./ui/grid-toolbar-portal";
+import { GridTooltipFloat } from "./ui/grid-tooltip-float";
+import { getSearchProps } from "./utils/search-props";
 
-// Column configuration interface (same as in GridDataEditor)
-interface ColumnConfig {
-	pinned?: boolean;
-	width?: number;
-	hidden?: boolean;
+// Declare regex literals at top level for performance
+const NON_DIGITS_REGEX = /[^\d]/g;
+const LEADING_PLUS_REGEX = /^\+/;
+
+function normalizePhone(value: string | undefined | null): string {
+	if (!value) {
+		return "";
+	}
+	const source = String(value).trim();
+	if (source.startsWith("+")) {
+		const digits = source
+			.replace(NON_DIGITS_REGEX, "")
+			.replace(LEADING_PLUS_REGEX, "");
+		return `+${digits}`;
+	}
+	return source.replace(NON_DIGITS_REGEX, "");
+}
+
+function findCustomerByPhone(
+	customers: Array<{ id?: string; phone?: string; name?: string | null }>,
+	normalizedPhone: string
+) {
+	for (const customer of customers) {
+		const candidate = normalizePhone(customer.phone || customer.id || "");
+		if (!candidate) {
+			continue;
+		}
+		if (
+			candidate === normalizedPhone ||
+			candidate.endsWith(normalizedPhone) ||
+			normalizedPhone.endsWith(candidate)
+		) {
+			return customer;
+		}
+	}
+	return undefined as unknown as (typeof customers)[number] | undefined;
+}
+
+// Constants for default data source dimensions
+const DEFAULT_INMEMORY_ROWS = 8;
+const DEFAULT_INMEMORY_COLS = 6;
+
+// Column configuration interface moved to shared types
+
+/**
+ * Helper: Get optional GridDataEditor props based on current settings
+ */
+function getOptionalDataEditorPropsForGrid(props: {
+	gridWidth?: number;
+	containerWidth?: number;
+	hideOuterFrame?: boolean;
+	hideHeaders?: boolean;
+	rowHeight?: number;
+	headerHeight?: number;
+	rowMarkers?: unknown;
+	disableTrailingRow?: boolean;
+	readOnly?: boolean;
+	documentsDrawHeader?: DrawHeaderCallback;
+	hoverRow?: number;
+}): Record<string, unknown> {
+	const result: Record<string, unknown> = {};
+
+	// Add dimension props
+	if (props.gridWidth !== undefined) {
+		result.gridWidth = props.gridWidth;
+	}
+	if (props.containerWidth !== undefined) {
+		result.containerWidth = props.containerWidth;
+	}
+
+	// Add frame and header props
+	if (props.hideOuterFrame) {
+		result.hideOuterFrame = true;
+	}
+	if (props.hideHeaders) {
+		result.headerHeight = 0 as unknown as number;
+	}
+
+	// Add dimension overrides
+	if (typeof props.rowHeight === "number") {
+		result.rowHeightOverride = props.rowHeight;
+	}
+	if (typeof props.headerHeight === "number") {
+		result.headerHeightOverride = props.headerHeight;
+	}
+
+	// Add row and render props
+	if (props.rowMarkers) {
+		result.rowMarkers = props.rowMarkers;
+	}
+	if (props.disableTrailingRow) {
+		result.disableTrailingRow = true;
+	}
+	if (typeof props.readOnly === "boolean") {
+		result.readOnly = props.readOnly;
+	}
+
+	// Add header renderer
+	if (props.documentsDrawHeader) {
+		result.drawHeader = props.documentsDrawHeader;
+	}
+
+	// Add hover state
+	if (props.hoverRow !== undefined) {
+		result.hoverRow = props.hoverRow;
+	}
+
+	return result;
+}
+
+/**
+ * Helper: Get cell editor onItemHovered handler
+ */
+function getItemHoveredHandlerForGrid(
+	disableTooltips: boolean,
+	handleItemHovered: (args: {
+		kind: "header" | "cell";
+		location?: [number, number];
+		bounds?: { x: number; y: number; width: number; height: number };
+	}) => void
+): (args: {
+	location: [number, number];
+	item: Item;
+	bounds?: { x: number; y: number; width: number; height: number };
+}) => void {
+	if (disableTooltips) {
+		return () => {
+			// Tooltips disabled - no-op
+		};
+	}
+	return (args: {
+		location: [number, number];
+		item: Item;
+		bounds?: { x: number; y: number; width: number; height: number };
+	}) =>
+		handleItemHovered({
+			kind: "cell" as const,
+			location: args.location,
+			...(args.bounds && { bounds: args.bounds }),
+		});
 }
 
 export default function Grid({
@@ -95,36 +254,54 @@ export default function Grid({
 	rowHeight?: number;
 	headerHeight?: number;
 	hideAppendRowPlaceholder?: boolean;
-	rowMarkers?: "none" | "both" | "number" | "checkbox" | "checkbox-visible" | "clickable-number" | "selection";
+	rowMarkers?:
+		| "none"
+		| "both"
+		| "number"
+		| "checkbox"
+		| "checkbox-visible"
+		| "clickable-number"
+		| "selection";
 	disableTrailingRow?: boolean;
 	onAddRowOverride?: () => void;
 	readOnly?: boolean;
 	disableTooltips?: boolean;
+	// New: when true, hide outer frame around grid (no border/background)
 	hideOuterFrame?: boolean;
 	/** Enable scoped behavior for the documents page grid only */
 	documentsGrid?: boolean;
 } = {}) {
+	// Ensure boolean values have defaults
+	const shouldDisableTooltips: boolean = disableTooltips === true;
+
 	// Initialize the data source - use external if provided, otherwise create default
 	const dataSource = React.useMemo(() => {
-		const result = externalDataSource || new InMemoryDataSource(8, 6);
+		const result =
+			externalDataSource ||
+			new InMemoryDataSource(DEFAULT_INMEMORY_ROWS, DEFAULT_INMEMORY_COLS);
 		return result;
 	}, [externalDataSource]);
 	const gs = useGridState();
 
 	// Column configuration mapping state (Streamlit-style)
-	const [columnConfigMapping, setColumnConfigMapping] = React.useState<Map<string, ColumnConfig>>(new Map());
-	const { theme: internalTheme, setTheme, darkTheme, lightTheme, iconColor } = useGridTheme(Boolean(externalTheme));
+	const [columnConfigMapping, setColumnConfigMapping] = React.useState<
+		Map<string, ColumnConfig>
+	>(new Map());
+	const {
+		theme: internalTheme,
+		setTheme,
+		darkTheme,
+		lightTheme,
+		iconColor,
+	} = useGridTheme(Boolean(externalTheme));
 
-	// Use external theme if provided, otherwise use internal
-	const theme = externalTheme || internalTheme;
-	const isUsingExternalTheme = Boolean(externalTheme);
-
-	// Calculate the correct icon color based on actual theme being used
-	const actualIconColor = isUsingExternalTheme
-		? isDarkMode
-			? "#e8e8e8"
-			: "#000000" // Use black in light theme, white in dark theme
-		: iconColor;
+	// Resolve theme and icon color using utility
+	const { theme, isUsingExternalTheme, actualIconColor } = resolveGridTheme(
+		externalTheme as Partial<Theme> | undefined,
+		isDarkMode,
+		(internalTheme || {}) as Theme,
+		iconColor
+	);
 
 	const { isFullscreen, toggleFullscreen } = useFullscreen();
 	const { customers } = useCustomerData();
@@ -134,63 +311,17 @@ export default function Grid({
 	const [isDataReady, setIsDataReady] = React.useState(false);
 
 	// Container width measurement (throttled, non-remounting)
-	const containerRef = React.useRef<HTMLDivElement>(null);
-	const [containerWidth, setContainerWidth] = React.useState<number | undefined>(undefined);
-	const lastWidthRef = React.useRef<number | undefined>(undefined);
-	const rafIdRef = React.useRef<number | null>(null);
-	const lastUpdateTsRef = React.useRef<number>(0);
+	const { containerRef, containerWidth } = useContainerMeasurement({
+		throttleMs: 50,
+		minDelta: 2,
+	});
 
-	React.useEffect(() => {
-		const el = containerRef.current;
-		if (!el) return;
-
-		const MIN_DELTA = 2; // px
-		const MIN_MS = 50; // throttle interval
-
-		const observer = new ResizeObserver((entries) => {
-			for (const entry of entries) {
-				let width = entry.contentRect.width;
-				if (!Number.isFinite(width) || width <= 0) continue;
-				width = Math.round(width);
-				const prev = lastWidthRef.current ?? -1;
-				if (Math.abs(width - prev) < MIN_DELTA) continue;
-				const update = () => {
-					lastWidthRef.current = width;
-					setContainerWidth(width);
-				};
-				const now = performance.now();
-				if (now - lastUpdateTsRef.current >= MIN_MS) {
-					lastUpdateTsRef.current = now;
-					update();
-				} else {
-					if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
-					rafIdRef.current = requestAnimationFrame(() => {
-						lastUpdateTsRef.current = performance.now();
-						update();
-					});
-				}
-			}
-		});
-
-		observer.observe(el);
-
-		// Initial measure
-		try {
-			const w = Math.round(el.offsetWidth || 0);
-			if (w > 0) {
-				lastWidthRef.current = w;
-				setContainerWidth(w);
-			}
-		} catch {}
-
-		return () => {
-			if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
-			observer.disconnect();
-		};
-	}, []);
+	// measurement handled by hook
 
 	// Reset toolbar hover state when fullscreen changes
-	React.useEffect(() => {}, []);
+	React.useEffect(() => {
+		// Intentionally empty - this effect is for side effect tracking only
+	}, []);
 
 	// Avoid remounting on width changes; DataEditor handles resize smoothly
 	React.useEffect(() => {
@@ -198,23 +329,16 @@ export default function Grid({
 	}, []);
 
 	// Sync legacy grid state with new fullscreen context
-	React.useEffect(() => {
-		gs.setIsFullscreen(isFullscreen);
-	}, [isFullscreen, gs.setIsFullscreen]);
+	useFullscreenSyncLegacy({
+		isFullscreen,
+		setIsFullscreen: gs.setIsFullscreen,
+	});
 
 	// Extract pinned columns from configuration mapping (legacy numeric keys only)
-	const pinnedColumns = React.useMemo(() => {
-		const pinned: number[] = [];
-		for (const [key, config] of columnConfigMapping.entries()) {
-			if (!config?.pinned) continue;
-			const match = key.match(/^col_(\d+)$/);
-			if (match?.[1]) {
-				const index = Number.parseInt(match[1], 10);
-				pinned.push(index);
-			}
-		}
-		return pinned;
-	}, [columnConfigMapping]);
+	const pinnedColumns = React.useMemo(
+		() => getPinnedColumnsFromConfig(columnConfigMapping),
+		[columnConfigMapping]
+	);
 
 	const {
 		columns,
@@ -229,75 +353,83 @@ export default function Grid({
 	const columnMenu = useColumnMenu();
 
 	// Use the new modular data system
+	const gridDataConfig = {
+		dataSource,
+		visibleColumnIndices,
+		theme,
+		darkTheme,
+		columnFormats: columnMenu.columnFormats,
+	};
 	const {
-		getCellContent: baseGetCellContent,
+		getCellContent: modularGetCellContent,
 		onCellEdited: baseOnCellEdited,
 		getRawCellContent,
 		dataProvider,
-	} = useModularGridData(dataSource, visibleColumnIndices, theme, darkTheme, columnMenu.columnFormats);
+	} = useModularGridData(
+		gridDataConfig as Parameters<typeof useModularGridData>[0]
+	);
+
+	// Documents grid autofill handler (domain-specific). Instantiate after filteredRows is defined.
 
 	// Call onDataProviderReady when data provider is ready
-	React.useEffect(() => {
-		if (dataProvider && onDataProviderReady) {
-			onDataProviderReady(dataProvider);
-		}
-	}, [dataProvider, onDataProviderReady]);
+	useDataProviderReady(dataProvider, onDataProviderReady);
 
 	// Get the editing state reference after dataProvider is created
-	const editingState = React.useMemo(() => dataProvider.getEditingState(), [dataProvider]);
+	const editingState = React.useMemo(
+		() => dataProvider.getEditingState(),
+		[dataProvider]
+	);
 
 	// Integrate state persistence using localStorage
-	const { saveState, loadState } = useGridPersistence(
+	const persistenceConfig = {
 		editingState,
 		columnsState,
 		setColumns,
-		gs.hiddenColumns,
-		gs.setHiddenColumns,
-		isInitializing
+		hiddenColumns: gs.hiddenColumns,
+		setHiddenColumns: gs.setHiddenColumns,
+		isInitializing,
+	};
+	const { saveState, loadState } = useGridPersistence(
+		persistenceConfig as Parameters<typeof useGridPersistence>[0]
 	);
 
 	// Check if there's persisted state - but only use it if no external dataSource is provided
 	const hasPersistedState = React.useMemo(() => {
 		// Don't use persisted state if we have an external dataSource
-		if (externalDataSource) return false;
+		if (externalDataSource) {
+			return false;
+		}
 		return localStorage.getItem("gridState") !== null;
 	}, [externalDataSource]);
 
-	// Load persisted state on first render - but only if no external dataSource
+	// Persistence bootstrap
+	const __persist = usePersistenceBootstrap({
+		columnsStateLength: columnsState.length,
+		hasPersistedState,
+		externalDataSource,
+		loadState,
+		dataProvider,
+	});
 	React.useEffect(() => {
-		if (!isStateLoaded && columnsState.length > 0) {
-			if (hasPersistedState && !externalDataSource) {
-				// Load persisted state only if no external dataSource
-				loadState();
-				// Clear any cached data to ensure fresh load
-				dataProvider.refresh().then(() => {
-					// Force grid to re-render after loading state
-					setGridKey((prev) => prev + 1);
-					setIsStateLoaded(true);
-					setIsDataReady(true);
-					// Allow saving after initial load is complete
-					setTimeout(() => setIsInitializing(false), 100);
-				});
-			} else {
-				// No persisted state or external dataSource provided, mark as ready immediately
-				setIsStateLoaded(true);
-				setIsDataReady(true);
-				setIsInitializing(false);
-			}
+		if (__persist.gridKey !== gridKey) {
+			setGridKey(__persist.gridKey);
 		}
-	}, [loadState, dataProvider, isStateLoaded, columnsState.length, hasPersistedState, externalDataSource]);
+		if (__persist.isStateLoaded !== isStateLoaded) {
+			setIsStateLoaded(__persist.isStateLoaded);
+		}
+		if (__persist.isInitializing !== isInitializing) {
+			setIsInitializing(__persist.isInitializing);
+		}
+		if (__persist.isDataReady !== isDataReady) {
+			setIsDataReady(__persist.isDataReady);
+		}
+	}, [__persist, gridKey, isStateLoaded, isInitializing, isDataReady]);
 
 	// Call onReady callback when grid is fully ready
-	React.useEffect(() => {
-		if (isDataReady && !isInitializing && onReady) {
-			onReady();
-		}
-	}, [isDataReady, isInitializing, onReady]);
+	useReadyNotifier(isDataReady, isInitializing, onReady);
 
 	// Update the grid state to use data source row count
-	React.useEffect(() => {
-		gs.setNumRows(dataSource.rowCount);
-	}, [dataSource.rowCount, gs]);
+	useRowCountSync(gs.setNumRows, dataSource.rowCount);
 
 	const {
 		filteredRows,
@@ -314,393 +446,145 @@ export default function Grid({
 		getRawCellContent,
 	});
 
+	// Documents grid autofill handler (domain-specific)
+	const defaultDocAuto = useDocumentsGridAutofill();
+	const docAuto = {
+		...defaultDocAuto,
+		handlePhoneEdited: ({
+			displayRow,
+			phoneValue,
+			customers: customerList,
+		}: {
+			displayRow: number;
+			phoneValue: string;
+			customers: Array<{ id?: string; phone?: string; name?: string | null }>;
+		}) => {
+			// biome-ignore lint/suspicious/noConsole: DEBUG
+			globalThis.console?.log?.("[Grid] docAuto.handlePhoneEdited", {
+				displayRow,
+				phoneValue,
+				customersCount: Array.isArray(customerList) ? customerList.length : 0,
+				filteredRows,
+				displayColumns: (displayColumns || []).map(
+					(c) => (c as { id?: string }).id
+				),
+			});
+			// Map display row to base row using current filters
+			const baseRow = filteredRows?.[displayRow] ?? displayRow;
+
+			// Resolve column index for name by id
+			const nameColIndex = displayColumns.findIndex(
+				(c) => (c as { id?: string }).id === "name"
+			);
+			if (nameColIndex < 0) {
+				return;
+			}
+
+			const normalizedInput = normalizePhone(phoneValue);
+			if (!normalizedInput) {
+				return;
+			}
+
+			// Find best match customer by phone (supports customer.id fallback)
+			const matched = findCustomerByPhone(customerList, normalizedInput);
+			if (!matched) {
+				// biome-ignore lint/suspicious/noConsole: DEBUG
+				globalThis.console?.log?.(
+					"[Grid] docAuto.handlePhoneEdited: no customer match",
+					{ normalizedInput }
+				);
+				return;
+			}
+
+			const nextName = (matched.name || "").trim();
+			if (!nextName) {
+				return;
+			}
+
+			// Build a Text cell for name column
+			const nextCell: EditableGridCell = {
+				kind: GridCellKind.Text,
+				data: nextName,
+				displayData: nextName,
+				allowOverlay: true,
+			} as unknown as EditableGridCell;
+
+			// Apply the edit through the same editing pipeline used by the grid
+			(undoOnCellEdited as unknown as (cell: Item, newVal: unknown) => void)(
+				[nameColIndex, displayRow] as unknown as Item,
+				nextCell
+			);
+
+			// Also set the underlying data provider to reflect base row change immediately
+			dataProvider.setCell(nameColIndex, baseRow, {
+				kind: GridCellKind.Text,
+				data: nextName,
+				displayData: nextName,
+				allowOverlay: true,
+			} as unknown as EditableGridCell);
+			// biome-ignore lint/suspicious/noConsole: DEBUG
+			globalThis.console?.log?.(
+				"[Grid] docAuto.handlePhoneEdited: applied name cell",
+				{
+					baseRow,
+					displayRow,
+					nameColIndex,
+					nextName,
+				}
+			);
+		},
+	};
+
 	const internalDataEditorRef = React.useRef<DataEditorRef>(null);
 	const dataEditorRef = externalDataEditorRef || internalDataEditorRef;
 
-	// Expose a minimal grid API for targeted cell refreshes without remounting
-	React.useEffect(() => {
-		try {
-			(
-				window as unknown as {
-					__docGridApi?: {
-						updateCells?: (cells: { cell: [number, number] }[]) => void;
-					};
-				}
-			).__docGridApi = {
-				updateCells: (cells: { cell: [number, number] }[]) => {
-					try {
-						dataEditorRef.current?.updateCells(cells);
-					} catch {}
-				},
-			};
-		} catch {}
-		return () => {
-			try {
-				delete (window as unknown as { __docGridApi?: unknown }).__docGridApi;
-			} catch {}
-		};
-	}, [dataEditorRef]);
-
-	// Callback to refresh specific cells without re-rendering the entire grid
-	const refreshCells = React.useCallback(
-		(cells: { cell: [number, number] }[]) => {
-			dataEditorRef.current?.updateCells(cells);
-		},
-		[dataEditorRef.current?.updateCells]
-	);
-
-	// Track absolute top-right position for toolbar overlay using viewport coords and keep it in sync on scroll/resize/size changes
-	const [overlayPosition, setOverlayPosition] = React.useState<{
-		top: number;
-		left: number;
-	} | null>(null);
-
-	React.useEffect(() => {
-		const compute = () => {
-			try {
-				const el = containerRef.current;
-				if (!el) return;
-				const rect = el.getBoundingClientRect();
-				// Anchor to grid's top-right corner; vertical alignment flush with grid top
-				setOverlayPosition({ top: rect.top, left: rect.right });
-			} catch {}
-		};
-
-		compute();
-
-		const onScroll = () => compute();
-		const onResize = () => compute();
-
-		// Attach listeners broadly so we catch scrolls within fullscreen containers too
-		const scrollTargets: Array<EventTarget | null | undefined> = [
-			window,
-			document,
-			containerRef.current,
-			typeof document !== "undefined" ? document.getElementById("grid-fullscreen-portal") : undefined,
-			typeof document !== "undefined"
-				? (document.querySelector(".glide-grid-fullscreen-container") as HTMLElement | null)
-				: undefined,
-		];
-
-		for (const target of scrollTargets) {
-			try {
-				if (target && "addEventListener" in target)
-					(target as unknown as Window).addEventListener("scroll", onScroll, {
-						capture: true,
-						passive: true,
-					} as unknown as boolean);
-			} catch {}
-		}
-
-		window.addEventListener("resize", onResize);
-
-		const ro = new ResizeObserver(() => compute());
-		try {
-			if (containerRef.current) ro.observe(containerRef.current);
-		} catch {}
-
-		return () => {
-			for (const target of scrollTargets) {
-				try {
-					if (target && "removeEventListener" in target)
-						(target as unknown as Window).removeEventListener("scroll", onScroll, true);
-				} catch {}
-			}
-			window.removeEventListener("resize", onResize);
-			try {
-				ro.disconnect();
-			} catch {}
-		};
-	}, []);
-
-	// Recompute overlay position when fullscreen toggles to ensure toolbar returns to place
-	React.useEffect(() => {
-		try {
-			const el = containerRef.current;
-			if (!el) return;
-			const rect = el.getBoundingClientRect();
-			setOverlayPosition({ top: rect.top, left: rect.right });
-		} catch {}
-	}, []);
-
-	// Force a redraw of all visible cells when display geometry changes
-	// to ensure migrated editing state is reflected immediately (avoids "None" until hover)
-	React.useEffect(() => {
-		if (!isDataReady) return;
-		try {
-			const cells: { cell: [number, number] }[] = [];
-			for (let c = 0; c < displayColumns.length; c++) {
-				for (let r = 0; r < filteredRowCount; r++) {
-					cells.push({ cell: [c as number, r as number] });
-				}
-			}
-			const t = setTimeout(() => refreshCells(cells), 30);
-			return () => clearTimeout(t);
-		} catch {}
-		return undefined;
-	}, [displayColumns.length, filteredRowCount, isDataReady, refreshCells]);
-
-	// Track previous formats to detect changes
-	const prevFormatsRef = React.useRef<Record<string, string>>({});
-
-	// Refresh cells when formats change
-	React.useEffect(() => {
-		if (!isInitializing && isDataReady && dataEditorRef.current) {
-			const cellsToRefresh: { cell: [number, number] }[] = [];
-
-			// Find columns that had format changes
-			for (let idx = 0; idx < displayColumns.length; idx++) {
-				const col = displayColumns[idx];
-				const columnId = (col as { id?: string }).id ?? `col_${idx}`;
-				const currentFormat = (columnMenu.columnFormats as Record<string, string | undefined>)[columnId];
-				const previousFormat = prevFormatsRef.current[columnId];
-
-				if (currentFormat !== previousFormat) {
-					// Refresh all cells in this column
-					for (let row = 0; row < filteredRowCount; row++) {
-						cellsToRefresh.push({ cell: [idx, row] });
-					}
-				}
-			}
-
-			if (cellsToRefresh.length > 0) {
-				refreshCells(cellsToRefresh);
-			}
-
-			// Update previous formats reference
-			prevFormatsRef.current = { ...columnMenu.columnFormats };
-		}
-	}, [
-		columnMenu.columnFormats,
-		isInitializing,
-		isDataReady,
-		displayColumns,
+	// Provide refresh facade that wires geometry and format-change redraws
+	useGridRefreshFacade({
+		displayColumns: displayColumns as unknown as unknown[],
 		filteredRowCount,
-		refreshCells,
-		dataEditorRef.current,
-	]);
+		isDataReady,
+		isInitializing,
+		dataEditorRef,
+		columnFormats: columnMenu.columnFormats as unknown as Record<
+			string,
+			string | undefined
+		>,
+	});
 
-	const getCellContent = React.useCallback(
-		(cell: Item) => {
-			// While loading or not yet ready, return LoadingCell skeletons
-			if (loading || !isDataReady || columnsState.length === 0) {
-				const [col] = cell;
-				const approxWidth = (displayColumns[col] as { width?: number } | undefined)?.width ?? 150;
-				return {
-					kind: GridCellKind.Loading,
-					skeletonWidth: Math.round(Math.max(60, Math.min(220, approxWidth * 0.65))),
-					skeletonHeight: 14,
-					skeletonWidthVariability: 40,
-				} as GridCell;
-			}
+	// Track absolute top-right position for toolbar overlay using viewport coords
+	const overlayPosition = useOverlayPosition({ containerRef, isFullscreen });
 
-			const baseCell = baseGetCellContent(filteredRows)(cell);
-			const [col] = cell;
-			const column = displayColumns[col] as { sticky?: boolean };
+	// Redraw behavior handled by useGridRefreshFacade
 
-			if (column?.sticky) {
-				if (baseCell.kind === GridCellKind.Text && (baseCell as { style?: string }).style !== "faded") {
-					return {
-						...(baseCell as { style?: string }),
-						style: "faded",
-					} as GridCell;
-				}
+	const getCellContent = useGridCellContent({
+		loading: Boolean(loading),
+		isDataReady,
+		columnsStateLength: columnsState.length,
+		displayColumns: displayColumns as unknown as Array<{
+			width?: number;
+			sticky?: boolean;
+			id?: string;
+		}>,
+		theme,
+		darkTheme,
+		baseGetCellContent: modularGetCellContent,
+		filteredRows,
+		// Center all cell content for Documents Grid
+		...(documentsGrid ? { contentAlign: "center" as const } : {}),
+	});
 
-				return {
-					...(baseCell as GridCell),
-					themeOverride: {
-						...(baseCell as { themeOverride?: Record<string, unknown> }).themeOverride,
-						textDark: theme === darkTheme ? "#a1a1aa" : "#6b7280",
-					},
-				} as GridCell;
-			}
-
-			if (
-				baseCell.kind === GridCellKind.Text &&
-				((baseCell as { style?: string }).style === "faded" ||
-					(baseCell as { themeOverride?: Record<string, unknown> }).themeOverride)
-			) {
-				const { style: _s, themeOverride: _t, ...rest } = baseCell as GridCell;
-				return { ...rest } as GridCell;
-			}
-
-			return baseCell;
-		},
-		[filteredRows, baseGetCellContent, displayColumns, theme, darkTheme, loading, isDataReady, columnsState.length]
-	);
-
-	const onCellEdited = React.useCallback(
-		(cell: Item, newVal: unknown) => {
-			const cast = newVal as EditableGridCell;
-			const [displayCol, displayRow] = cell;
-			const actualRow = filteredRows[displayRow];
-			const column = displayColumns[displayCol];
-
-			// Handle phone cell editing with customer auto-fill
-			if (column?.id === "phone" && actualRow !== undefined) {
-				const phoneCell = cast as { data?: { kind?: string; value?: string } };
-				if (phoneCell?.data?.kind === "phone-cell") {
-					const phoneNumber = phoneCell.data.value;
-
-					// Find customer by phone number
-					const customer = customers.find(
-						(c) =>
-							c.phone === phoneNumber ||
-							c.id === phoneNumber ||
-							normalizePhoneForStorage(c.phone || c.id) === normalizePhoneForStorage(phoneNumber)
-					);
-
-					// Update name field if customer found
-					if (customer) {
-						// Find name column index once
-						const nameColIndex = displayColumns.findIndex((col) => col.id === "name");
-						const ageColIndex = displayColumns.findIndex((col) => col.id === "age");
-						const hasValidName = Boolean(customer.name && customer.name !== "Unknown Customer");
-						// Consider the typed phone value valid if it normalizes to a sensible length
-						const typedPhoneNormalized = normalizePhoneForStorage(phoneNumber);
-						const hasValidPhone = typedPhoneNormalized.length >= 7;
-
-						if (nameColIndex !== -1) {
-							if (hasValidName && hasValidPhone) {
-								const nameCell: EditableGridCell = {
-									kind: GridCellKind.Text,
-									data: customer.name,
-									displayData: customer.name,
-									allowOverlay: true,
-								};
-								// Suppress persist events for programmatic fill
-								try {
-									(
-										globalThis as unknown as {
-											__docSuppressPersistUntil?: number;
-										}
-									).__docSuppressPersistUntil = Date.now() + 400;
-								} catch {}
-								baseOnCellEdited(filteredRows)([nameColIndex, displayRow], nameCell);
-							} else if (documentsGrid) {
-								// Scoped behavior: if selected customer lacks a phone, clear name so unlock won't rely on stale data
-								const clearNameCell: EditableGridCell = {
-									kind: GridCellKind.Text,
-									data: "",
-									displayData: "",
-									allowOverlay: true,
-								};
-								// Suppress persist events for programmatic clear
-								try {
-									(
-										globalThis as unknown as {
-											__docSuppressPersistUntil?: number;
-										}
-									).__docSuppressPersistUntil = Date.now() + 400;
-								} catch {}
-								baseOnCellEdited(filteredRows)([nameColIndex, displayRow], clearNameCell);
-							}
-						}
-
-						// Also try to auto-fill age if present via backend profile snapshot
-						if (ageColIndex !== -1) {
-							try {
-								// Immediately clear previous age to avoid carry-over while we fetch new profile
-								const clearAgeCell: EditableGridCell = {
-									kind: GridCellKind.Number,
-									data: null as unknown as number,
-									displayData: "",
-									allowOverlay: true,
-								};
-								// Suppress persist events for programmatic clear
-								try {
-									(
-										globalThis as unknown as {
-											__docSuppressPersistUntil?: number;
-										}
-									).__docSuppressPersistUntil = Date.now() + 400;
-								} catch {}
-								baseOnCellEdited(filteredRows)([ageColIndex, displayRow], clearAgeCell);
-
-								// Avoid duplicate REST fetches in documents page; rely on page hook to populate
-								if (!documentsGrid) {
-									const id = String(customer.id || phoneNumber);
-									fetchCustomer(id)
-										.then((resp) => {
-											try {
-												const data = (resp as { data?: { age?: number | null } })?.data;
-												const age = (data?.age ?? null) as number | null;
-												if (age !== null && Number.isFinite(age)) {
-													const ageCell: EditableGridCell = {
-														kind: GridCellKind.Number,
-														data: age as unknown as number,
-														displayData: String(age),
-														allowOverlay: true,
-													};
-													baseOnCellEdited(filteredRows)([ageColIndex, displayRow], ageCell);
-												}
-											} catch {}
-										})
-										.catch(() => {});
-								} else {
-									// Signal unlock recompute after programmatic clear
-									try {
-										window.dispatchEvent(
-											new CustomEvent("doc:customer-loaded", {
-												detail: { waId: String(customer.id || phoneNumber) },
-											})
-										);
-									} catch {}
-								}
-							} catch {}
-						}
-
-						// Emit a global event to open/select the customer's document (documents page listens)
-						try {
-							window.dispatchEvent(
-								new CustomEvent("doc:user-select", {
-									detail: { waId: customer.id || phoneNumber },
-								})
-							);
-							// Immediately prompt unlock recompute for the documents page grid only
-							if (documentsGrid) {
-								window.dispatchEvent(
-									new CustomEvent("doc:customer-loaded", {
-										detail: { waId: customer.id || phoneNumber },
-									})
-								);
-							}
-						} catch {}
-					}
-				}
-			}
-
-			baseOnCellEdited(filteredRows)(cell, cast);
-
-			// Documents page: when age/name/phone is edited, trigger an immediate persist via a global event
-			try {
-				if (documentsGrid) {
-					// Skip dispatch if a programmatic change was just applied
-					const suppressUntil = (globalThis as unknown as { __docSuppressPersistUntil?: number })
-						.__docSuppressPersistUntil;
-					if (typeof suppressUntil === "number" && Date.now() < suppressUntil) {
-						// Do not dispatch persist events sourced from programmatic grid writes
-						console.log("[Grid] 🔇 Suppressed persist event for", column?.id, "(programmatic)");
-					} else if (column?.id === "age") {
-						console.log("[Grid] ✏️ User edited age, dispatching doc:persist");
-						window.dispatchEvent(new CustomEvent("doc:persist", { detail: { field: "age" } }));
-					} else if (column?.id === "name") {
-						console.log("[Grid] ✏️ User edited name, dispatching doc:persist");
-						window.dispatchEvent(new CustomEvent("doc:persist", { detail: { field: "name" } }));
-					} else if (column?.id === "phone") {
-						console.log("[Grid] ✏️ User edited phone, dispatching doc:notify");
-						// Notify only for phone change to show a toast; persistence handled by name/age flows
-						window.dispatchEvent(new CustomEvent("doc:notify", { detail: { field: "phone" } }));
-					}
-				}
-			} catch {}
-			// Save state after each edit - but only if no external dataSource
-			if (!externalDataSource) {
-				saveState();
-			}
-		},
-		[filteredRows, baseOnCellEdited, saveState, externalDataSource, displayColumns, customers, documentsGrid]
-	);
+	const onCellEdited = useGridOnCellEdited({
+		filteredRows,
+		displayColumns: displayColumns as unknown as GridColumn[],
+		baseOnCellEdited: baseOnCellEdited as unknown as (
+			rowsMapping: number[]
+		) => (cell: [number, number], newVal: EditableGridCell) => void,
+		saveState,
+		externalDataSource,
+		documentsGrid: Boolean(documentsGrid),
+		docAuto,
+		customers,
+	});
 
 	const {
 		undo,
@@ -711,25 +595,30 @@ export default function Grid({
 		onGridSelectionChange,
 	} = useUndoRedo(dataEditorRef, getCellContent, onCellEdited, gs.setSelection);
 
-	const actions = useGridActions(
+	const actions = useGridActions({
 		columns,
-		gs.setHiddenColumns,
-		gs.selection,
-		gs.setDeletedRows,
-		filteredRows,
-		dataSource.rowCount,
-		getRawCellContent,
-		dataProvider.getDeletedRows(),
+		setHiddenColumns: gs.setHiddenColumns,
+		selection: gs.selection,
+		setDeletedRows: gs.setDeletedRows,
+		visibleRows: filteredRows,
+		numRows: dataSource.rowCount,
+		getCellContent: getRawCellContent,
+		deletedRows: dataProvider.getDeletedRows(),
 		columnsState,
 		setColumns,
-		gs.hiddenColumns
-	);
+		hiddenColumns: gs.hiddenColumns,
+	});
 
 	const getBoundsForCell = React.useCallback(
 		(col: number, row: number) => {
-			if (!dataEditorRef.current) return undefined;
+			if (!dataEditorRef.current) {
+				return;
+			}
 			const api = dataEditorRef.current as unknown as {
-				getBounds?: (c: number, r: number) => { x: number; y: number; width: number; height: number };
+				getBounds?: (
+					c: number,
+					r: number
+				) => { x: number; y: number; width: number; height: number };
 			};
 			return api.getBounds ? api.getBounds(col, row) : undefined;
 		},
@@ -765,104 +654,40 @@ export default function Grid({
 	useGridEvents(gs.setShowSearch);
 	useGridLifecycle(isFullscreen, gs.showColumnMenu, gs.setShowColumnMenu);
 
-	const handleHide = React.useCallback(
-		(columnId: string) => {
-			const idx = columns.findIndex((c) => c.id === columnId);
-			if (idx >= 0) gs.setHiddenColumns((prev) => new Set([...prev, idx]));
-		},
-		[columns, gs]
+	const handleHide = useColumnHide(
+		columns as Array<{ id: string }>,
+		gs.setHiddenColumns
 	);
 
-	const clearSelection = React.useCallback(() => {
-		gs.setSelection({
-			rows: CompactSelection.empty(),
-			columns: CompactSelection.empty(),
-		});
-		gs.setRowSelection(CompactSelection.empty());
-	}, [gs]);
+	const clearSelection = React.useCallback(() => clearSelectionUtil(gs), [gs]);
 
-	const deleteRows = React.useCallback(async () => {
-		const rowsToDelete = new Set<number>();
-		for (const r of gs.selection.rows.toArray()) {
-			const actualRow = filteredRows[r];
-			if (actualRow !== undefined) {
-				rowsToDelete.add(actualRow);
-			}
-		}
+	const deleteRows = useDeleteRows({
+		gs,
+		filteredRows,
+		dataProvider,
+		externalDataSource,
+		saveState,
+		clearSelection,
+	});
 
-		for (const row of rowsToDelete) {
-			await dataProvider.deleteRow(row);
-		}
-
-		clearSelection();
-		await dataProvider.refresh();
-		// Save state after delete - but only if no external dataSource
-		if (!externalDataSource) {
-			saveState();
-		}
-	}, [gs.selection.rows, filteredRows, dataProvider, clearSelection, saveState, externalDataSource]);
-
-	const handleItemHovered = React.useCallback(
-		(args: {
-			kind: "header" | "cell";
-			location?: [number, number];
-			bounds?: { x: number; y: number; width: number; height: number };
-		}) => {
-			if (args.kind !== "cell") {
-				// Clear row hovering state if the event indicates that
-				// the mouse is not hovering a cell
-				gs.setHoverRow(undefined);
-			} else {
-				const loc = args.location;
-				if (!loc) return;
-				const [, r] = loc;
-				gs.setHoverRow(r >= 0 ? r : undefined);
-			}
-			// Prefer bounds from event; fallback to computing via ref (both are screen-space)
-			let bounds = args.bounds;
-			try {
-				const loc = args.location;
-				if (!bounds && loc && dataEditorRef.current) {
-					const api = dataEditorRef.current as unknown as {
-						getBounds?: (col: number, row: number) => { x: number; y: number; width: number; height: number };
-					};
-					bounds = api.getBounds ? api.getBounds(loc[0], loc[1]) : undefined;
-				}
-			} catch {}
-			onTooltipHover({
-				kind: args.kind,
-				...(args.location && { location: args.location }),
-				...(bounds && { bounds }),
-			});
-		},
+	const handleItemHovered = React.useMemo(
+		() =>
+			createGridHoverHandler(
+				gs,
+				onTooltipHover,
+				dataEditorRef as unknown as React.RefObject<{
+					getBounds?: (
+						c: number,
+						r: number
+					) =>
+						| { x: number; y: number; width: number; height: number }
+						| undefined;
+				} | null>
+			),
 		[gs, onTooltipHover, dataEditorRef]
 	);
 
-	const handleHeaderMenuClick = React.useCallback(
-		(column: GridColumn, bounds: { x: number; y: number; width: number; height: number }) => {
-			if (!column) return;
-			// The bounds from glide-data-grid are already viewport coordinates when using onHeaderMenuClick
-			// Position menu so its right edge aligns with the column header's right edge
-			const menuWidth = 220; // Same as MENU_WIDTH in ColumnMenu
-			columnMenu.openMenu(
-				{
-					id: (column as { id?: string }).id,
-					name: (column as { id?: string }).id,
-					title: (column as { title?: string }).title,
-					width: (column as { width?: number }).width ?? 150,
-					isEditable: Boolean((column as { isEditable?: boolean }).isEditable),
-					isHidden: Boolean((column as { isHidden?: boolean }).isHidden),
-					isPinned: false,
-					isRequired: Boolean((column as { isRequired?: boolean }).isRequired),
-					isIndex: false,
-					indexNumber: 0,
-				} as import("./core/types").BaseColumnProps,
-				bounds.x + bounds.width - menuWidth,
-				bounds.y + bounds.height
-			);
-		},
-		[columnMenu]
-	);
+	const handleHeaderMenuClick = useHeaderMenuClick({ columnMenu });
 
 	const { handleAutosize, handlePin, handleUnpin } = useColumnOperations({
 		columns,
@@ -879,300 +704,281 @@ export default function Grid({
 		dataEditorRef,
 	});
 
-	// Calculate grid width
-	const calculatedWidth = displayColumns.reduce((sum, col) => sum + ((col as { width?: number }).width || 150), 60);
+	const gridWidth = useGridWidth({
+		isFullscreen,
+		fullWidth: Boolean(fullWidth),
+		...(containerWidth !== undefined ? { containerWidth } : {}),
+		displayColumns: displayColumns as unknown as Array<{ width?: number }>,
+	});
 
-	// For fullWidth mode:
-	// - If we have a measured container width, use it
-	// - If container width is not yet available (0 or undefined), return undefined
-	// - Otherwise use calculated width
-	const gridWidth = React.useMemo(() => {
-		if (isFullscreen) {
-			// In fullscreen mode, let GridDataEditor handle width calculation
-			return undefined;
-		}
-		if (fullWidth) {
-			// If container width is measured and valid, use it
-			if (containerWidth && containerWidth > 0) {
-				return containerWidth;
-			}
-			// Return undefined to signal that we don't have a width yet
-			return undefined;
-		}
-		// Not fullWidth mode, use calculated width
-		return calculatedWidth;
-	}, [fullWidth, containerWidth, calculatedWidth, isFullscreen]);
-
-	// Define custom header icons for scheduled time, phone, and name
-	const headerIcons = React.useMemo<SpriteMap>(() => {
-		const make = (svg: (p: { bgColor: string; fgColor: string }) => string) => svg;
-		return {
-			"icon-scheduled": make(
-				(p) =>
-					`<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<rect x="2" y="2" width="16" height="16" rx="4" fill="${p.bgColor}"/>
-					<path d="M6 5.5v2" stroke="${p.fgColor}" stroke-width="1.5" stroke-linecap="round"/>
-					<path d="M14 5.5v2" stroke="${p.fgColor}" stroke-width="1.5" stroke-linecap="round"/>
-					<rect x="4.75" y="6.75" width="10.5" height="8.5" rx="2" stroke="${p.fgColor}" stroke-width="1.5"/>
-					<path d="M10 10v-2" stroke="${p.fgColor}" stroke-width="1.5" stroke-linecap="round"/>
-					<path d="M10 10l2 2" stroke="${p.fgColor}" stroke-width="1.5" stroke-linecap="round"/>
-				</svg>`
-			),
-			"icon-phone": make(
-				(p) =>
-					`<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<rect x="2" y="2" width="16" height="16" rx="4" fill="${p.bgColor}"/>
-					<path d="M7.5 5.5h5a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z" stroke="${p.fgColor}" stroke-width="1.5"/>
-					<circle cx="10" cy="13.5" r="0.75" fill="${p.fgColor}"/>
-				</svg>`
-			),
-			"icon-name": make(
-				(p) =>
-					`<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-					<rect x="2" y="2" width="16" height="16" rx="4" fill="${p.bgColor}"/>
-					<circle cx="10" cy="8" r="2.25" stroke="${p.fgColor}" stroke-width="1.5"/>
-					<path d="M5.5 14.5c1.3-1.8 3-2.75 4.5-2.75s3.2.95 4.5 2.75" stroke="${p.fgColor}" stroke-width="1.5" stroke-linecap="round"/>
-				</svg>`
-			),
-		};
-	}, []);
+	// Header icons come from shared constants
 
 	// Always call hooks before any conditional logic
 	const globalPortalContainer = useGridPortal();
 
 	// Always render the grid; cells will render as LoadingCell while not ready
 
+	// Documents grid: center header titles via custom drawHeader
+	const documentsDrawHeader: DrawHeaderCallback | undefined = documentsGrid
+		? ({ ctx, theme: hdrTheme, rect, column }) => {
+				const { x, y, width, height } = rect;
+				ctx.save();
+				try {
+					ctx.fillStyle = String((hdrTheme as Theme).textHeader);
+					const headerFontFull = `${(hdrTheme as Theme).headerFontStyle} ${(hdrTheme as Theme).fontFamily}`;
+					ctx.font = headerFontFull;
+					ctx.textAlign = "center";
+					ctx.textBaseline = "middle";
+					ctx.fillText(
+						(column as { title?: string }).title || "",
+						x + width / 2,
+						y + height / 2
+					);
+				} finally {
+					ctx.restore();
+				}
+				return true;
+			}
+		: undefined;
+
+	const getWillChangeStyle = (): "width" | "auto" | undefined => {
+		if (!fullWidth) {
+			return;
+		}
+		return containerWidth ? "width" : "auto";
+	};
+
+	const { wrapperClass } = getGridContainerProps(
+		isFullscreen,
+		Boolean(fullWidth),
+		className
+	);
+
+	// Helper: Render theme toggle if conditions are met
+	const renderThemeToggle = () => {
+		if (
+			hideToolbar ||
+			isFullscreen ||
+			!showThemeToggle ||
+			isUsingExternalTheme
+		) {
+			return null;
+		}
+		return (
+			<GridThemeToggle
+				currentTheme={theme}
+				darkTheme={darkTheme}
+				filteredRowCount={filteredRowCount}
+				iconColor={actualIconColor}
+				lightTheme={lightTheme}
+				onThemeChange={(newTheme) => {
+					setTheme(newTheme);
+					// Force grid to refetch all cells by toggling search
+					const currentSearch = gs.searchValue;
+					gs.setSearchValue(`${currentSearch} `);
+					requestAnimationFrame(() => {
+						gs.setSearchValue(currentSearch);
+					});
+				}}
+			/>
+		);
+	};
+
+	// Helper: Render toolbar portal if conditions are met
+	const renderToolbarPortal = () => {
+		if (hideToolbar || !globalPortalContainer) {
+			return null;
+		}
+		return (
+			<GridToolbarPortal
+				canRedo={canRedo}
+				canUndo={canUndo}
+				container={globalPortalContainer}
+				hasHiddenColumns={columns.length > displayColumns.length}
+				hasSelection={actions.hasSelection}
+				isFocused={gs.isFocused || isFullscreen}
+				onAddRow={
+					onAddRowOverride ||
+					createOnRowAppended({
+						...(typeof onAppendRow === "function" ? { onAppendRow } : {}),
+						dataProvider: {
+							addRow: async () => {
+								await dataProvider.addRow();
+							},
+							deleteRow: async (row: number) => {
+								await dataProvider.deleteRow(row);
+							},
+							getColumnCount: () => dataProvider.getColumnCount(),
+						},
+						dataSource,
+						gs,
+						getRawCellContent,
+						saveState,
+						externalDataSource,
+					})
+				}
+				onClearSelection={clearSelection}
+				onDeleteRows={deleteRows}
+				onDownloadCsv={actions.handleDownloadCsv}
+				onRedo={redo}
+				onToggleColumnVisibility={actions.handleToggleColumnVisibility}
+				onToggleFullscreen={toggleFullscreen}
+				onToggleSearch={() => gs.setShowSearch((v) => !v)}
+				onUndo={undo}
+				overlay={true}
+				overlayPosition={overlayPosition}
+			/>
+		);
+	};
+
+	// Helper: Get onRowAppended handler or undefined
+	const getOnRowAppendedHandler = (): (() => void) | undefined => {
+		if (disableTrailingRow) {
+			return;
+		}
+		const handler = createOnRowAppended({
+			...(typeof onAppendRow === "function" ? { onAppendRow } : {}),
+			dataProvider: {
+				addRow: async () => {
+					await dataProvider.addRow();
+				},
+				deleteRow: async (row: number) => {
+					await dataProvider.deleteRow(row);
+				},
+				getColumnCount: () => dataProvider.getColumnCount(),
+			},
+			dataSource,
+			gs,
+			getRawCellContent,
+			saveState,
+			externalDataSource,
+		});
+		// Return as void function (ignoring the boolean return)
+		return (() => {
+			handler();
+		}) as () => void;
+	};
+
 	return (
-		<FullscreenWrapper theme={theme} darkTheme={darkTheme}>
+		<FullscreenWrapper darkTheme={darkTheme} theme={theme}>
 			<GridPortalProvider>
-				<div
-					className={`glide-grid-wrapper ${isFullscreen ? "glide-grid-wrapper-fullscreen" : "glide-grid-wrapper-centered"} ${className || ""}`}
-				>
-					{!hideToolbar && !isFullscreen && showThemeToggle && !isUsingExternalTheme && (
-						<GridThemeToggle
-							currentTheme={theme}
-							lightTheme={lightTheme}
-							darkTheme={darkTheme}
-							iconColor={actualIconColor}
-							filteredRowCount={filteredRowCount}
-							onThemeChange={(newTheme) => {
-								setTheme(newTheme);
-								// Force grid to refetch all cells by toggling search
-								const currentSearch = gs.searchValue;
-								gs.setSearchValue(`${currentSearch} `);
-								requestAnimationFrame(() => {
-									gs.setSearchValue(currentSearch);
-								});
-							}}
-						/>
-					)}
+				<GridView wrapperClass={wrapperClass}>
+					{/* Theme Toggle */}
+					{renderThemeToggle()}
 
-					{!hideToolbar &&
-						globalPortalContainer &&
-						ReactDOM.createPortal(
-							<GridToolbar
-								isFocused={gs.isFocused || isFullscreen}
-								hasSelection={actions.hasSelection}
-								canUndo={canUndo}
-								canRedo={canRedo}
-								hasHiddenColumns={columns.length > displayColumns.length}
-								onClearSelection={clearSelection}
-								onDeleteRows={deleteRows}
-								onUndo={undo}
-								onRedo={redo}
-								onAddRow={
-									onAddRowOverride ||
-									(async () => {
-										await dataProvider.addRow();
-										gs.setNumRows(dataSource.rowCount);
-										if (!externalDataSource) {
-											saveState();
-										}
-									})
-								}
-								onToggleColumnVisibility={actions.handleToggleColumnVisibility}
-								onDownloadCsv={actions.handleDownloadCsv}
-								onToggleSearch={() => gs.setShowSearch((v) => !v)}
-								onToggleFullscreen={toggleFullscreen}
-								overlay={true}
-								overlayPosition={overlayPosition}
-							/>,
-							globalPortalContainer
-						)}
+					{/* Toolbar Portal */}
+					{renderToolbarPortal()}
 
+					{/* Data Editor */}
 					<div
-						ref={containerRef}
 						className={`glide-grid-inner ${fullWidth || isFullscreen ? "glide-grid-inner-full" : "glide-grid-inner-fit"}`}
-						data-fullwidth={fullWidth}
 						data-container-width={containerWidth}
+						data-fullwidth={fullWidth}
+						ref={containerRef}
 						style={{
-							willChange: fullWidth ? (containerWidth ? "width" : "auto") : undefined,
+							willChange: getWillChangeStyle(),
 							margin: 0,
 							padding: 0,
 						}}
 					>
-						<GridDataEditor
-							key={gridKey}
-							displayColumns={displayColumns}
-							filteredRows={filteredRows}
-							filteredRowCount={filteredRowCount}
-							getCellContent={getCellContent}
-							onCellEdited={(cell, newVal: unknown) =>
-								(undoOnCellEdited as unknown as (cell: Item, newVal: unknown) => void)(cell, newVal)
-							}
-							onGridSelectionChange={onGridSelectionChange}
-							gridSelection={gs.selection}
-							{...(!disableTrailingRow
-								? {
-										onRowAppended: () => {
-											// Allow consumers to override append behavior (e.g., clear existing row)
-											try {
-												if (typeof onAppendRow === "function") {
-													onAppendRow();
-													return true;
-												}
-											} catch {}
-											(async () => {
-												try {
-													// If there is a single empty base row (template), remove it before appending
-													const baseRowCount = dataSource.rowCount;
-													if (baseRowCount === 1) {
-														const colCount = dataProvider.getColumnCount();
-														let isEmpty = true;
-														for (let c = 0; c < colCount; c++) {
-															const cell = getRawCellContent(c, 0);
-															const kind = (cell as { kind?: unknown }).kind as unknown;
-															const data = (cell as { data?: unknown }).data as {
-																kind?: string;
-																value?: unknown;
-																date?: Date;
-																displayDate?: string;
-																time?: Date;
-															};
-															const displayData = (cell as { displayData?: unknown }).displayData;
-															const hasContent =
-																(kind === GridCellKind.Custom &&
-																	data &&
-																	((data.kind === "phone-cell" &&
-																		typeof data.value === "string" &&
-																		String(data.value).trim().length > 0) ||
-																		(data.kind === "dropdown-cell" && Boolean(data.value)) ||
-																		(data.kind === "tempus-date-cell" && Boolean(data.date || data.displayDate)) ||
-																		(data.kind === "timekeeper-cell" && Boolean(data.time)))) ||
-																(kind === GridCellKind.Number &&
-																	(cell as { data?: unknown }).data !== null &&
-																	(cell as { data?: unknown }).data !== undefined) ||
-																(kind === GridCellKind.Text &&
-																	typeof (cell as { data?: unknown }).data === "string" &&
-																	String((cell as { data?: unknown }).data).trim().length > 0) ||
-																(Boolean(displayData) && String(displayData as string).trim().length > 0);
-															if (hasContent) {
-																isEmpty = false;
-																break;
-															}
-														}
-														if (isEmpty) {
-															await dataProvider.deleteRow(0);
-														}
-													}
-													await dataProvider.addRow();
-													gs.setNumRows(dataSource.rowCount);
-												} catch {}
-											})();
-											return true;
-										},
-									}
-								: {})}
-							onItemHovered={
-								disableTooltips
-									? () => {}
-									: (args: {
-											location: [number, number];
-											item: Item;
-											bounds?: {
-												x: number;
-												y: number;
-												width: number;
-												height: number;
-											};
-										}) =>
-											handleItemHovered({
-												kind: "cell",
-												location: args.location,
-												...(args.bounds && { bounds: args.bounds }),
-											})
-							}
-							onHeaderMenuClick={handleHeaderMenuClick}
-							searchValue={gs.searchValue}
-							onSearchValueChange={gs.setSearchValue}
-							showSearch={gs.showSearch}
-							onSearchClose={() => {
-								gs.setShowSearch(false);
-								gs.setSearchValue("");
-							}}
-							theme={theme}
-							darkTheme={darkTheme}
-							{...(gs.hoverRow !== undefined && { hoverRow: gs.hoverRow })}
-							dataEditorRef={dataEditorRef}
-							onMouseEnter={() => gs.setIsFocused(true)}
-							onMouseLeave={() => gs.setIsFocused(false)}
-							{...(gridWidth !== undefined && { gridWidth })}
-							fullWidth={fullWidth}
-							{...(containerWidth !== undefined && { containerWidth })}
-							{...(hideOuterFrame ? { hideOuterFrame: true } : {})}
-							// containerHeight prop omitted when undefined
-							headerIcons={headerIcons}
-							{...(hideHeaders ? { headerHeight: 0 as unknown as number } : {})}
-							{...(typeof rowHeight === "number" ? { rowHeightOverride: rowHeight } : {})}
-							{...(typeof headerHeight === "number" ? { headerHeightOverride: headerHeight } : {})}
-							showAppendRowPlaceholder={!hideAppendRowPlaceholder}
-							{...(rowMarkers ? { rowMarkers } : {})}
-							{...(disableTrailingRow ? { disableTrailingRow: true } : {})}
-							{...(typeof readOnly === "boolean" ? { readOnly } : {})}
-							// Column management props - using Streamlit-style configuration
-							columnConfigMapping={columnConfigMapping}
-							onColumnConfigChange={(mapping) => setColumnConfigMapping(mapping)}
-							clearSelection={clearSelection}
-							// Column resizing - keep existing functionality
-							onColumnResize={onColumnResize}
-						/>
+						{/* Build editor props separately to avoid type issues with exactOptionalPropertyTypes */}
+						{(() => {
+							const onRowAppendedHandler = getOnRowAppendedHandler();
+							const editorProps: Parameters<typeof GridDataEditor>[0] = {
+								displayColumns,
+								filteredRowCount,
+								filteredRows,
+								getCellContent,
+								gridSelection: gs.selection,
+								onCellEdited: (editorCell: Item, editorNewVal: unknown) =>
+									(
+										undoOnCellEdited as unknown as (
+											cell: Item,
+											newVal: unknown
+										) => void
+									)(editorCell, editorNewVal),
+								onGridSelectionChange,
+								onHeaderMenuClick: handleHeaderMenuClick,
+								onItemHovered: getItemHoveredHandlerForGrid(
+									shouldDisableTooltips,
+									handleItemHovered
+								),
+								...(onRowAppendedHandler && {
+									onRowAppended: onRowAppendedHandler,
+								}),
+								...getSearchProps(gs),
+								clearSelection,
+								columnConfigMapping,
+								darkTheme,
+								dataEditorRef,
+								fullWidth,
+								headerIcons,
+								onColumnConfigChange: (mapping: Map<string, ColumnConfig>) => {
+									setColumnConfigMapping(mapping);
+								},
+								onColumnResize,
+								onMouseEnter: () => gs.setIsFocused(true),
+								onMouseLeave: () => gs.setIsFocused(false),
+								showAppendRowPlaceholder: !hideAppendRowPlaceholder,
+								theme,
+								...((getOptionalDataEditorPropsForGrid({
+									...(gridWidth !== undefined && { gridWidth }),
+									...(containerWidth !== undefined && { containerWidth }),
+									...(hideOuterFrame !== undefined && { hideOuterFrame }),
+									...(hideHeaders !== undefined && { hideHeaders }),
+									...(rowHeight !== undefined && { rowHeight }),
+									...(headerHeight !== undefined && { headerHeight }),
+									...(rowMarkers !== undefined && { rowMarkers }),
+									...(disableTrailingRow !== undefined && {
+										disableTrailingRow,
+									}),
+									...(readOnly !== undefined && { readOnly }),
+									...(documentsDrawHeader !== undefined && {
+										documentsDrawHeader,
+									}),
+									...(gs.hoverRow !== undefined && { hoverRow: gs.hoverRow }),
+								} as Parameters<typeof getOptionalDataEditorPropsForGrid>[0]) ??
+									{}) as unknown as Record<string, unknown>),
+							};
+							return <GridDataEditor key={gridKey} {...editorProps} />;
+						})()}
 					</div>
-				</div>
+				</GridView>
 
 				{/* Floating tooltip above grid with Shadcn look (2s delayed by hook) */}
-				{!disableTooltips && tooltip?.content && (
-					<TooltipFloat
-						content={tooltip.content}
-						x={tooltip.left || 0}
-						y={tooltip.top || 0}
+				{!shouldDisableTooltips && tooltip?.content && (
+					<GridTooltipFloat
+						content={tooltip?.content}
 						visible={true}
-						{...(tooltip.fieldLabel && { fieldLabel: tooltip.fieldLabel })}
-						{...(tooltip.message && { message: tooltip.message })}
+						x={tooltip?.left || 0}
+						y={tooltip?.top || 0}
+						{...(tooltip?.fieldLabel && { fieldLabel: tooltip.fieldLabel })}
+						{...(tooltip?.message && { message: tooltip.message })}
 					/>
 				)}
 
+				{/* Column Menu */}
 				{columnMenu.menuState.isOpen && columnMenu.menuState.column && (
-					<ColumnMenu
-						column={columnMenu.menuState.column}
-						position={columnMenu.menuState.position}
-						onClose={columnMenu.closeMenu}
-						onSort={handleSort}
-						onPin={handlePin}
-						onUnpin={handleUnpin}
-						onHide={handleHide}
+					<ColumnMenuAdapter
+						columnConfigMapping={columnConfigMapping}
+						displayColumns={displayColumns as unknown as Array<{ id: string }>}
+						isDarkTheme={
+							isUsingExternalTheme ? isDarkMode : theme === darkTheme
+						}
+						menuState={columnMenu.menuState}
 						onAutosize={handleAutosize}
 						onChangeFormat={columnMenu.changeFormat}
-						isPinned={(() => {
-							const colId = columnMenu.menuState.column.id;
-							const byId = columnConfigMapping.get(colId)?.pinned === true;
-							if (byId) return "left";
-							// Fallback: legacy index-based key if present
-							const displayIdx = displayColumns.findIndex((c) => c.id === colId);
-							const legacyKey = displayIdx >= 0 ? `col_${displayIdx}` : undefined;
-							return legacyKey && columnConfigMapping.get(legacyKey)?.pinned === true ? "left" : false;
-						})()}
-						sortDirection={sortState?.columnId === columnMenu.menuState.column.id ? sortState.direction : null}
-						isDarkTheme={isUsingExternalTheme ? isDarkMode : theme === darkTheme}
+						onClose={columnMenu.closeMenu}
+						onHide={handleHide}
+						onPin={handlePin}
+						onSort={handleSort}
+						onUnpin={handleUnpin}
+						sortState={
+							sortState as unknown as {
+								columnId?: string;
+								direction?: "asc" | "desc" | null;
+							} | null
+						}
 					/>
 				)}
 			</GridPortalProvider>

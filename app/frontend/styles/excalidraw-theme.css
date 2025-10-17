@@ -85,10 +85,18 @@
 	--color-selection: hsl(var(--primary));
 
 	/* ===== SHADOWS (using our theme shadow system) ===== */
-	--shadow-island: 0px 2px 8px hsl(var(--foreground) / 0.08), 0px 4px 16px hsl(var(--foreground) / 0.05);
-	--modal-shadow: 0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px hsl(var(--foreground) / 0.08);
-	--sidebar-shadow: 0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px hsl(var(--foreground) / 0.08);
-	--library-dropdown-shadow: 0px 8px 16px hsl(var(--foreground) / 0.1), 0px 4px 8px hsl(var(--foreground) / 0.06);
+	--shadow-island:
+		0px 2px 8px hsl(var(--foreground) / 0.08), 0px 4px 16px
+		hsl(var(--foreground) / 0.05);
+	--modal-shadow:
+		0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px
+		hsl(var(--foreground) / 0.08);
+	--sidebar-shadow:
+		0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px
+		hsl(var(--foreground) / 0.08);
+	--library-dropdown-shadow:
+		0px 8px 16px hsl(var(--foreground) / 0.1), 0px 4px 8px
+		hsl(var(--foreground) / 0.06);
 
 	/* ===== SIZING ===== */
 	--default-button-size: 2rem;
@@ -129,19 +137,63 @@
 	--color-primary-light: hsl(var(--primary) / 0.12);
 	--color-primary-light-darker: hsl(var(--primary) / 0.18);
 	--color-primary-hover: color-mix(in srgb, hsl(var(--primary)) 95%, black);
-	--color-primary-contrast-offset: color-mix(in srgb, hsl(var(--primary)) 85%, black);
+	--color-primary-contrast-offset: color-mix(
+		in srgb,
+		hsl(var(--primary)) 85%,
+		black
+	);
 
 	/* ===== GRAY SCALE (mapped to theme neutrals) ===== */
-	--color-gray-10: color-mix(in srgb, hsl(var(--background)) 90%, hsl(var(--foreground)));
-	--color-gray-20: color-mix(in srgb, hsl(var(--background)) 80%, hsl(var(--foreground)));
-	--color-gray-30: color-mix(in srgb, hsl(var(--background)) 70%, hsl(var(--foreground)));
-	--color-gray-40: color-mix(in srgb, hsl(var(--background)) 60%, hsl(var(--foreground)));
-	--color-gray-50: color-mix(in srgb, hsl(var(--background)) 50%, hsl(var(--foreground)));
-	--color-gray-60: color-mix(in srgb, hsl(var(--background)) 40%, hsl(var(--foreground)));
-	--color-gray-70: color-mix(in srgb, hsl(var(--background)) 30%, hsl(var(--foreground)));
-	--color-gray-80: color-mix(in srgb, hsl(var(--background)) 20%, hsl(var(--foreground)));
-	--color-gray-85: color-mix(in srgb, hsl(var(--background)) 15%, hsl(var(--foreground)));
-	--color-gray-90: color-mix(in srgb, hsl(var(--background)) 10%, hsl(var(--foreground)));
+	--color-gray-10: color-mix(
+		in srgb,
+		hsl(var(--background)) 90%,
+		hsl(var(--foreground))
+	);
+	--color-gray-20: color-mix(
+		in srgb,
+		hsl(var(--background)) 80%,
+		hsl(var(--foreground))
+	);
+	--color-gray-30: color-mix(
+		in srgb,
+		hsl(var(--background)) 70%,
+		hsl(var(--foreground))
+	);
+	--color-gray-40: color-mix(
+		in srgb,
+		hsl(var(--background)) 60%,
+		hsl(var(--foreground))
+	);
+	--color-gray-50: color-mix(
+		in srgb,
+		hsl(var(--background)) 50%,
+		hsl(var(--foreground))
+	);
+	--color-gray-60: color-mix(
+		in srgb,
+		hsl(var(--background)) 40%,
+		hsl(var(--foreground))
+	);
+	--color-gray-70: color-mix(
+		in srgb,
+		hsl(var(--background)) 30%,
+		hsl(var(--foreground))
+	);
+	--color-gray-80: color-mix(
+		in srgb,
+		hsl(var(--background)) 20%,
+		hsl(var(--foreground))
+	);
+	--color-gray-85: color-mix(
+		in srgb,
+		hsl(var(--background)) 15%,
+		hsl(var(--foreground))
+	);
+	--color-gray-90: color-mix(
+		in srgb,
+		hsl(var(--background)) 10%,
+		hsl(var(--foreground))
+	);
 	--color-gray-100: hsl(var(--foreground));
 
 	/* ===== DISABLED STATE ===== */
@@ -162,7 +214,11 @@
 	--color-danger: hsl(var(--destructive));
 	--color-danger-dark: color-mix(in srgb, hsl(var(--destructive)) 90%, black);
 	--color-danger-darker: color-mix(in srgb, hsl(var(--destructive)) 75%, black);
-	--color-danger-darkest: color-mix(in srgb, hsl(var(--destructive)) 60%, black);
+	--color-danger-darkest: color-mix(
+		in srgb,
+		hsl(var(--destructive)) 60%,
+		black
+	);
 	--color-danger-text: hsl(var(--destructive-foreground));
 	--color-danger-background: hsl(var(--destructive) / 0.1);
 	--color-danger-icon-background: hsl(var(--destructive) / 0.15);
@@ -194,8 +250,16 @@
 
 	/* ===== SURFACE COLORS (Material Design 3 style) ===== */
 	--color-surface-high: hsl(var(--accent));
-	--color-surface-mid: color-mix(in srgb, hsl(var(--card)) 95%, hsl(var(--foreground)));
-	--color-surface-low: color-mix(in srgb, hsl(var(--card)) 97%, hsl(var(--foreground)));
+	--color-surface-mid: color-mix(
+		in srgb,
+		hsl(var(--card)) 95%,
+		hsl(var(--foreground))
+	);
+	--color-surface-low: color-mix(
+		in srgb,
+		hsl(var(--card)) 97%,
+		hsl(var(--foreground))
+	);
 	--color-surface-lowest: hsl(var(--background));
 	--color-on-surface: hsl(var(--foreground));
 	--color-brand-hover: color-mix(in srgb, hsl(var(--primary)) 95%, black);
@@ -275,10 +339,14 @@
 	--color-selection: hsl(var(--primary));
 
 	/* ===== SHADOWS (adapted for dark mode) ===== */
-	--shadow-island: 0px 2px 8px hsl(0 0% 0% / 0.3), 0px 4px 16px hsl(0 0% 0% / 0.2);
-	--modal-shadow: 0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
-	--sidebar-shadow: 0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
-	--library-dropdown-shadow: 0px 8px 16px hsl(0 0% 0% / 0.4), 0px 4px 8px hsl(0 0% 0% / 0.2);
+	--shadow-island:
+		0px 2px 8px hsl(0 0% 0% / 0.3), 0px 4px 16px hsl(0 0% 0% / 0.2);
+	--modal-shadow:
+		0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
+	--sidebar-shadow:
+		0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
+	--library-dropdown-shadow:
+		0px 8px 16px hsl(0 0% 0% / 0.4), 0px 4px 8px hsl(0 0% 0% / 0.2);
 
 	/* ===== SCROLLBAR ===== */
 	--scrollbar-thumb: hsl(var(--muted-foreground) / 0.4);
@@ -300,19 +368,63 @@
 	--color-primary-light: hsl(var(--primary) / 0.2);
 	--color-primary-light-darker: hsl(var(--primary) / 0.3);
 	--color-primary-hover: color-mix(in srgb, hsl(var(--primary)) 105%, white);
-	--color-primary-contrast-offset: color-mix(in srgb, hsl(var(--primary)) 115%, white);
+	--color-primary-contrast-offset: color-mix(
+		in srgb,
+		hsl(var(--primary)) 115%,
+		white
+	);
 
 	/* ===== GRAY SCALE (inverted for dark mode) ===== */
-	--color-gray-10: color-mix(in srgb, hsl(var(--foreground)) 90%, hsl(var(--background)));
-	--color-gray-20: color-mix(in srgb, hsl(var(--foreground)) 80%, hsl(var(--background)));
-	--color-gray-30: color-mix(in srgb, hsl(var(--foreground)) 70%, hsl(var(--background)));
-	--color-gray-40: color-mix(in srgb, hsl(var(--foreground)) 60%, hsl(var(--background)));
-	--color-gray-50: color-mix(in srgb, hsl(var(--foreground)) 50%, hsl(var(--background)));
-	--color-gray-60: color-mix(in srgb, hsl(var(--foreground)) 40%, hsl(var(--background)));
-	--color-gray-70: color-mix(in srgb, hsl(var(--foreground)) 30%, hsl(var(--background)));
-	--color-gray-80: color-mix(in srgb, hsl(var(--foreground)) 20%, hsl(var(--background)));
-	--color-gray-85: color-mix(in srgb, hsl(var(--foreground)) 15%, hsl(var(--background)));
-	--color-gray-90: color-mix(in srgb, hsl(var(--foreground)) 10%, hsl(var(--background)));
+	--color-gray-10: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 90%,
+		hsl(var(--background))
+	);
+	--color-gray-20: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 80%,
+		hsl(var(--background))
+	);
+	--color-gray-30: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 70%,
+		hsl(var(--background))
+	);
+	--color-gray-40: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 60%,
+		hsl(var(--background))
+	);
+	--color-gray-50: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 50%,
+		hsl(var(--background))
+	);
+	--color-gray-60: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 40%,
+		hsl(var(--background))
+	);
+	--color-gray-70: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 30%,
+		hsl(var(--background))
+	);
+	--color-gray-80: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 20%,
+		hsl(var(--background))
+	);
+	--color-gray-85: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 15%,
+		hsl(var(--background))
+	);
+	--color-gray-90: color-mix(
+		in srgb,
+		hsl(var(--foreground)) 10%,
+		hsl(var(--background))
+	);
 	--color-gray-100: hsl(var(--background));
 
 	/* ===== DISABLED STATE ===== */
@@ -332,8 +444,16 @@
 	/* ===== DANGER COLORS (adjusted for dark mode) ===== */
 	--color-danger: hsl(var(--destructive));
 	--color-danger-dark: color-mix(in srgb, hsl(var(--destructive)) 110%, white);
-	--color-danger-darker: color-mix(in srgb, hsl(var(--destructive)) 125%, white);
-	--color-danger-darkest: color-mix(in srgb, hsl(var(--destructive)) 140%, white);
+	--color-danger-darker: color-mix(
+		in srgb,
+		hsl(var(--destructive)) 125%,
+		white
+	);
+	--color-danger-darkest: color-mix(
+		in srgb,
+		hsl(var(--destructive)) 140%,
+		white
+	);
 	--color-danger-text: hsl(var(--destructive-foreground));
 	--color-danger-background: hsl(var(--destructive) / 0.2);
 	--color-danger-icon-background: hsl(var(--destructive) / 0.25);
@@ -488,7 +608,7 @@
 /* Position and layering fixes adapted from prior implementation, scoped to our containers */
 .excalidraw-theme-scope .excalidraw {
 	/* NOTE: position: relative was removed because it breaks position:fixed elements
-	   like the eraser cursor shadow, causing misalignment between cursor and eraser */
+     like the eraser cursor shadow, causing misalignment between cursor and eraser */
 	height: 100%;
 	width: 100%;
 }

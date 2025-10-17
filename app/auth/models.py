@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-
-
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 
 from app.db import Base
@@ -20,5 +18,3 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     # Add minimal optional profile fields here if needed in the future
     # Example:
     # username: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
-
-

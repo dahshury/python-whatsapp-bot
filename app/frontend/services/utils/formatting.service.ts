@@ -1,4 +1,19 @@
-import { getSlotTimes, SLOT_DURATION_HOURS } from "@shared/libs/calendar/calendar-config";
+import {
+	getSlotTimes,
+	SLOT_DURATION_HOURS,
+} from "@shared/libs/calendar/calendar-config";
+
+// Top-level regex patterns for performance
+const TIME_FORMAT_PATTERN = /^\d{2}:\d{2}$/;
+const DATE_FORMAT_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_24H_PATTERN =
+	/^([01]?\d|2\d):([0-5]\d)(?::[0-5]\d(?:\.\d{1,3}Z)?)?$/;
+const TIME_12H_PATTERN = /^(0?\d|1[0-2]):([0-5]\d)\s*(am|pm)$/i;
+
+// Time constants
+const MIDNIGHT_HOUR = 0;
+const NOON_HOUR = 12;
+const HOURS_IN_DAY = 24;
 
 class FormattingService {
 	/**
@@ -6,7 +21,9 @@ class FormattingService {
 	 */
 	to24h(value: string): string {
 		const v = (value || "").trim();
-		if (/^\d{2}:\d{2}$/.test(v)) return v;
+		if (TIME_FORMAT_PATTERN.test(v)) {
+			return v;
+		}
 
 		try {
 			const d = new Date(`1970-01-01T${v}`);
@@ -28,7 +45,9 @@ class FormattingService {
 			const normalized = this.to24h(hhmm);
 			const [hStr, _m] = normalized.split(":");
 			const hour = Number.parseInt(hStr || "0", 10);
-			if (!Number.isFinite(hour)) return normalized;
+			if (!Number.isFinite(hour)) {
+				return normalized;
+			}
 
 			// Build allowed slot starts based on business hours and SLOT_DURATION_HOURS
 			const date = new Date(`${dateStr}T00:00:00`);
@@ -42,7 +61,10 @@ class FormattingService {
 			const duration = Math.max(1, SLOT_DURATION_HOURS);
 			const allowed: number[] = [];
 			const startH = Math.max(0, Number.isFinite(minH) ? (minH as number) : 0);
-			const endH = Math.min(24, Number.isFinite(maxH) ? (maxH as number) : 24);
+			const endH = Math.min(
+				HOURS_IN_DAY,
+				Number.isFinite(maxH) ? (maxH as number) : HOURS_IN_DAY
+			);
 			for (let h = startH; h < endH; h += duration) {
 				allowed.push(h);
 			}
@@ -50,7 +72,9 @@ class FormattingService {
 			// Snap down to the nearest allowed slot start
 			let snapped = allowed[0] ?? hour;
 			for (const h of allowed) {
-				if (hour >= h) snapped = h;
+				if (hour >= h) {
+					snapped = h;
+				}
 			}
 			return `${String(snapped).padStart(2, "0")}:00`;
 		} catch {
@@ -59,13 +83,30 @@ class FormattingService {
 	}
 
 	/**
-	 * Parse and normalize type value
+	 * Parse and normalize reservation type.
+	 * Returns 0 for Check-up, 1 for Follow-up, NaN if unrecognized.
 	 */
 	parseType(value: string | number | undefined): number {
-		if (typeof value === "number") return value;
-		const v = String(value || "").toLowerCase();
-		if (v.includes("follow") || v.includes("مراجعة")) return 1;
-		return 0;
+		if (typeof value === "number") {
+			return value;
+		}
+		const raw = String(value ?? "").trim();
+		if (raw === "") {
+			return Number.NaN;
+		}
+		// Numeric-like strings
+		const n = Number(raw);
+		if (Number.isFinite(n)) {
+			return n as number;
+		}
+		const v = raw.toLowerCase();
+		if (v.includes("follow") || v.includes("مراجعة")) {
+			return 1;
+		}
+		if (v.includes("check") || v.includes("كشف")) {
+			return 0;
+		}
+		return Number.NaN;
 	}
 
 	/**
@@ -73,7 +114,9 @@ class FormattingService {
 	 */
 	formatDateOnly(value: unknown): string | null {
 		try {
-			if (!value) return null;
+			if (!value) {
+				return null;
+			}
 
 			if (value instanceof Date) {
 				const y = value.getFullYear();
@@ -83,11 +126,17 @@ class FormattingService {
 			}
 
 			const str = String(value).trim();
-			if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
-			if (str.includes("T")) return str.split("T")[0] || str;
+			if (DATE_FORMAT_PATTERN.test(str)) {
+				return str;
+			}
+			if (str.includes("T")) {
+				return str.split("T")[0] || str;
+			}
 
 			const d = new Date(str);
-			if (Number.isNaN(d.getTime())) return null;
+			if (Number.isNaN(d.getTime())) {
+				return null;
+			}
 
 			const y = d.getFullYear();
 			const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -99,16 +148,16 @@ class FormattingService {
 	}
 
 	/**
-	 * Format time to HH:mm format
+	 * Format time to HH:mm format - converts 12/24 hour formats
 	 */
 	formatHHmm(value: unknown): string | null {
 		try {
-			if (!value) return null;
+			if (!value) {
+				return null;
+			}
 
 			if (value instanceof Date) {
-				const hh = String(value.getHours()).padStart(2, "0");
-				const mm = String(value.getMinutes()).padStart(2, "0");
-				return `${hh}:${mm}`;
+				return this.formatTimeFromDate(value);
 			}
 
 			const str = String(value).trim();
@@ -117,33 +166,30 @@ class FormattingService {
 			if (str.includes("T")) {
 				const dTry = new Date(str);
 				if (!Number.isNaN(dTry.getTime())) {
-					const hh = String(dTry.getHours()).padStart(2, "0");
-					const mm = String(dTry.getMinutes()).padStart(2, "0");
-					return `${hh}:${mm}`;
+					return this.formatTimeFromDate(dTry);
 				}
 			}
 
 			// 24h HH:mm
-			const m1 = str.match(/^([01]?\d|2\d):([0-5]\d)(?::[0-5]\d(?:\.\d{1,3}Z)?)?$/);
-			if (m1?.[1] && m1[2]) return `${m1[1].padStart(2, "0")}:${m1[2]}`;
+			const m1 = str.match(TIME_24H_PATTERN);
+			if (m1?.[1] && m1[2]) {
+				return `${m1[1].padStart(2, "0")}:${m1[2]}`;
+			}
 
-			// 12h
-			const m2 = str.match(/^(0?\d|1[0-2]):([0-5]\d)\s*(am|pm)$/i);
+			// 12h - extract and convert
+			const m2 = str.match(TIME_12H_PATTERN);
 			if (m2?.[1] && m2[2] && m2[3]) {
 				let hours = Number.parseInt(m2[1], 10);
 				const minutes = m2[2];
 				const isPM = m2[3].toLowerCase() === "pm";
-				if (hours === 12 && !isPM) hours = 0;
-				else if (hours !== 12 && isPM) hours += 12;
+				hours = this.convertTo24HourFormat(hours, isPM);
 				return `${String(hours).padStart(2, "0")}:${minutes}`;
 			}
 
 			// Try Date parser fallback
 			const d = new Date(`1970-01-01T${str}`);
 			if (!Number.isNaN(d.getTime())) {
-				const hh = String(d.getHours()).padStart(2, "0");
-				const mm = String(d.getMinutes()).padStart(2, "0");
-				return `${hh}:${mm}`;
+				return this.formatTimeFromDate(d);
 			}
 
 			return null;
@@ -152,20 +198,42 @@ class FormattingService {
 		}
 	}
 
+	private formatTimeFromDate(d: Date): string {
+		const hh = String(d.getHours()).padStart(2, "0");
+		const mm = String(d.getMinutes()).padStart(2, "0");
+		return `${hh}:${mm}`;
+	}
+
+	private convertTo24HourFormat(hours: number, isPM: boolean): number {
+		if (hours === NOON_HOUR && !isPM) {
+			return MIDNIGHT_HOUR;
+		}
+		if (hours !== NOON_HOUR && isPM) {
+			return hours + NOON_HOUR;
+		}
+		return hours;
+	}
+
 	/**
 	 * Format time in specific timezone
 	 */
 	formatHHmmInZone(value: unknown, timeZone = "Asia/Riyadh"): string | null {
 		try {
-			if (!value) return null;
+			if (!value) {
+				return null;
+			}
 
 			// If already HH:mm, return as-is
 			const asStr = String(value).trim();
-			const m = asStr.match(/^([01]?\d|2\d):([0-5]\d)$/);
-			if (m?.[1] && m[2]) return `${m[1].padStart(2, "0")}:${m[2]}`;
+			const m = asStr.match(TIME_FORMAT_PATTERN);
+			if (m?.[1] && m[2]) {
+				return asStr;
+			}
 
 			const d = value instanceof Date ? value : new Date(asStr);
-			if (Number.isNaN(d.getTime())) return null;
+			if (Number.isNaN(d.getTime())) {
+				return null;
+			}
 
 			const fmt = new Intl.DateTimeFormat("en-GB", {
 				hour: "2-digit",

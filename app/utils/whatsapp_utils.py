@@ -12,7 +12,12 @@ from app.config import config
 from app.metrics import WHATSAPP_MESSAGE_FAILURES, WHATSAPP_MESSAGE_FAILURES_BY_REASON
 from app.utils.http_client import ensure_client_healthy
 from app.utils.realtime import enqueue_broadcast
-from app.utils.service_utils import append_message, get_all_conversations, get_lock, parse_unix_timestamp
+from app.utils.service_utils import (
+    append_message,
+    get_all_conversations,
+    get_lock,
+    parse_unix_timestamp,
+)
 
 from .logging_utils import log_http_response
 
@@ -29,7 +34,12 @@ _last_inbound_message_id_by_wa: dict[str, str] = {}
 
 def _set_last_inbound_message_id(wa_id: str, message_id: str | None) -> None:
     try:
-        if isinstance(wa_id, str) and wa_id and isinstance(message_id, str) and message_id:
+        if (
+            isinstance(wa_id, str)
+            and wa_id
+            and isinstance(message_id, str)
+            and message_id
+        ):
             _last_inbound_message_id_by_wa[wa_id] = message_id
     except Exception:
         pass
@@ -42,7 +52,9 @@ def get_last_inbound_message_id(wa_id: str) -> str | None:
         return None
 
 
-async def send_typing_indicator(message_id: str, indicator_type: str = "text", mark_read: bool = True):
+async def send_typing_indicator(
+    message_id: str, indicator_type: str = "text", mark_read: bool = True
+):
     """
     Send a typing indicator for a received WhatsApp message (optionally marking it as read).
 
@@ -86,7 +98,10 @@ async def send_typing_indicator_for_wa(wa_id: str, indicator_type: str = "text")
             return {"status": "error", "message": "Invalid wa_id"}, 400
         last_id = get_last_inbound_message_id(wa_id)
         if not last_id:
-            return {"status": "error", "message": "No recent message context for typing"}, 400
+            return {
+                "status": "error",
+                "message": "No recent message context for typing",
+            }, 400
         return await send_typing_indicator(last_id, indicator_type=indicator_type)
     except Exception as e:
         logging.error(f"Failed to send typing indicator for wa_id={wa_id}: {e}")
@@ -121,7 +136,10 @@ async def send_whatsapp_message(wa_id, text):
                     reason="message_too_long",
                     message_type="text",
                 ).inc()
-            return {"status": "error", "message": f"Message exceeds {WHATSAPP_TEXT_MAX_CHARS} characters"}, 400
+            return {
+                "status": "error",
+                "message": f"Message exceeds {WHATSAPP_TEXT_MAX_CHARS} characters",
+            }, 400
     except Exception:
         # Defensive: if validation itself fails, don't send
         return {"status": "error", "message": "Invalid message"}, 400
@@ -159,7 +177,12 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
         "recipient_type": "individual",
         "to": wa_id,
         "type": "location",
-        "location": {"latitude": latitude, "longitude": longitude, "name": name, "address": address},
+        "location": {
+            "latitude": latitude,
+            "longitude": longitude,
+            "name": name,
+            "address": address,
+        },
     }
 
     try:
@@ -177,7 +200,10 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
                     reason="empty_response",
                     message_type="location",
                 ).inc()
-            return {"status": "error", "message": "Empty response when sending location"}, 500
+            return {
+                "status": "error",
+                "message": "Empty response when sending location",
+            }, 500
 
         # Fully consume the response but don't close it
         await response.aread()
@@ -194,10 +220,15 @@ async def send_whatsapp_location(wa_id, latitude, longitude, name="", address=""
                 reason=e.__class__.__name__ or "exception",
                 message_type="location",
             ).inc()
-        return {"status": "error", "message": f"Failed to send location message: {str(e)}"}, 500
+        return {
+            "status": "error",
+            "message": f"Failed to send location message: {str(e)}",
+        }, 500
 
 
-async def send_whatsapp_template(wa_id, template_name, language="en_US", components=None):
+async def send_whatsapp_template(
+    wa_id, template_name, language="en_US", components=None
+):
     """
     Sends a template message using the WhatsApp API.
 
@@ -262,7 +293,11 @@ async def _send_whatsapp_request(payload, message_type):
     url = f"https://graph.facebook.com/{config['VERSION']}/{config['PHONE_NUMBER_ID']}/messages"
 
     logging.debug(f"WhatsApp API request URL: {url}")
-    logging.debug(f"WhatsApp API payload: {data[:200]}..." if len(data) > 200 else f"WhatsApp API payload: {data}")
+    logging.debug(
+        f"WhatsApp API payload: {data[:200]}..."
+        if len(data) > 200
+        else f"WhatsApp API payload: {data}"
+    )
 
     response = None
     try:
@@ -275,7 +310,9 @@ async def _send_whatsapp_request(payload, message_type):
         if response.status_code >= 400:
             try:
                 error_body = response.json()
-                logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {error_body}")
+                logging.error(
+                    f"WhatsApp API error {response.status_code} when sending {message_type}: {error_body}"
+                )
                 try:
                     title = None
                     if isinstance(error_body, dict):
@@ -291,7 +328,9 @@ async def _send_whatsapp_request(payload, message_type):
                 except Exception:
                     pass
             except (ValueError, TypeError):
-                logging.error(f"WhatsApp API error {response.status_code} when sending {message_type}: {response.text}")
+                logging.error(
+                    f"WhatsApp API error {response.status_code} when sending {message_type}: {response.text}"
+                )
                 with contextlib.suppress(Exception):
                     WHATSAPP_MESSAGE_FAILURES_BY_REASON.labels(
                         reason=f"http_{response.status_code}",
@@ -299,7 +338,10 @@ async def _send_whatsapp_request(payload, message_type):
                     ).inc()
 
             # Return error tuple instead of raising exception to prevent retries
-            return {"status": "error", "message": f"WhatsApp API error {response.status_code}"}, response.status_code
+            return {
+                "status": "error",
+                "message": f"WhatsApp API error {response.status_code}",
+            }, response.status_code
 
         log_http_response(response)
         return response
@@ -321,7 +363,10 @@ async def _send_whatsapp_request(payload, message_type):
         if response:
             with contextlib.suppress(Exception):
                 response.close()
-        return {"status": "error", "message": f"Connection error when sending {message_type}"}, 500
+        return {
+            "status": "error",
+            "message": f"Connection error when sending {message_type}",
+        }, 500
     except httpx.RequestError as e:
         logging.error(f"Request failed when sending {message_type}: {e}")
         if response:
@@ -345,8 +390,15 @@ async def mark_message_as_read(message_id: str):
             return {"status": "error", "message": "Invalid message_id"}, 400
 
         # Validate config quickly, reuse same endpoint as sending messages
-        if not config.get("ACCESS_TOKEN") or not config.get("PHONE_NUMBER_ID") or not config.get("VERSION"):
-            return {"status": "error", "message": "Missing WhatsApp API configuration"}, 500
+        if (
+            not config.get("ACCESS_TOKEN")
+            or not config.get("PHONE_NUMBER_ID")
+            or not config.get("VERSION")
+        ):
+            return {
+                "status": "error",
+                "message": "Missing WhatsApp API configuration",
+            }, 500
 
         payload = {
             "messaging_product": "whatsapp",
@@ -367,10 +419,17 @@ async def mark_message_as_read(message_id: str):
         if response.status_code >= 400:
             try:
                 err = response.json()
-                logging.warning(f"WhatsApp mark-as-read failed {response.status_code}: {err}")
+                logging.warning(
+                    f"WhatsApp mark-as-read failed {response.status_code}: {err}"
+                )
             except Exception:
-                logging.warning(f"WhatsApp mark-as-read failed {response.status_code}: {response.text}")
-            return {"status": "error", "message": f"WhatsApp API error {response.status_code}"}, response.status_code
+                logging.warning(
+                    f"WhatsApp mark-as-read failed {response.status_code}: {response.text}"
+                )
+            return {
+                "status": "error",
+                "message": f"WhatsApp API error {response.status_code}",
+            }, response.status_code
 
         log_http_response(response)
         return response
@@ -405,7 +464,9 @@ async def process_whatsapp_message(body, run_llm_function):
         # Idempotency: skip already processed message IDs (Meta may deliver duplicates)
         if message_id:
             if message_id in _recent_message_ids_set:
-                logging.warning(f"Duplicate delivery detected for message_id={message_id}. Skipping.")
+                logging.warning(
+                    f"Duplicate delivery detected for message_id={message_id}. Skipping."
+                )
                 return
             _recent_message_ids_queue.append(message_id)
             _recent_message_ids_set.add(message_id)
@@ -420,25 +481,39 @@ async def process_whatsapp_message(body, run_llm_function):
         if message_type in ["audio", "image"]:
             # Handle media messages
             response_text = process_text_for_whatsapp(
-                config.get("UNSUPPORTED_MEDIA_MESSAGE", "I'm sorry, I can't process audio or image files yet.")
+                config.get(
+                    "UNSUPPORTED_MEDIA_MESSAGE",
+                    "I'm sorry, I can't process audio or image files yet.",
+                )
             )
             try:
                 result = await send_whatsapp_message(wa_id, response_text)
                 if isinstance(result, tuple):
-                    logging.error(f"WhatsApp unsupported media message sending failed: {result[0]}")
+                    logging.error(
+                        f"WhatsApp unsupported media message sending failed: {result[0]}"
+                    )
                 else:
-                    logging.info(f"WhatsApp unsupported media message sent successfully to {wa_id}")
+                    logging.info(
+                        f"WhatsApp unsupported media message sent successfully to {wa_id}"
+                    )
             except Exception as e:
-                logging.error(f"Exception while sending unsupported media message to {wa_id}: {e}", exc_info=True)
+                logging.error(
+                    f"Exception while sending unsupported media message to {wa_id}: {e}",
+                    exc_info=True,
+                )
 
         try:
             message_body = message["text"]["body"]
         except KeyError:
-            logging.info(f"Unable to process message type: {message.get('type', 'unknown')}")
+            logging.info(
+                f"Unable to process message type: {message.get('type', 'unknown')}"
+            )
             message_body = None
 
         if message_body:
-            timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0]["timestamp"]
+            timestamp = body["entry"][0]["changes"][0]["value"]["messages"][0][
+                "timestamp"
+            ]
             if run_llm_function is None:
                 logging.error("No LLM function provided for processing message")
                 return
@@ -448,13 +523,17 @@ async def process_whatsapp_message(body, run_llm_function):
                 if not lock.locked():
                     with contextlib.suppress(Exception):
                         enqueue_broadcast(
-                            "conversation_typing", {"wa_id": wa_id, "state": "start"}, affected_entities=[wa_id]
+                            "conversation_typing",
+                            {"wa_id": wa_id, "state": "start"},
+                            affected_entities=[wa_id],
                         )
                     await send_typing_indicator(message_id)
             except Exception:
                 pass
 
-            response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
+            response_text = await generate_response(
+                message_body, wa_id, timestamp, run_llm_function
+            )
 
             # Only send a response if we got one back from the LLM
             if response_text:
@@ -468,10 +547,17 @@ async def process_whatsapp_message(body, run_llm_function):
                         logging.info(f"WhatsApp message sent successfully to {wa_id}")
                 except Exception as e:
                     # Don't let WhatsApp sending failures trigger LLM retries
-                    logging.error(f"Exception while sending WhatsApp message to {wa_id}: {e}", exc_info=True)
+                    logging.error(
+                        f"Exception while sending WhatsApp message to {wa_id}: {e}",
+                        exc_info=True,
+                    )
             # Regardless of success, clear typing state for UI
             with contextlib.suppress(Exception):
-                enqueue_broadcast("conversation_typing", {"wa_id": wa_id, "state": "stop"}, affected_entities=[wa_id])
+                enqueue_broadcast(
+                    "conversation_typing",
+                    {"wa_id": wa_id, "state": "stop"},
+                    affected_entities=[wa_id],
+                )
 
     except Exception as e:
         logging.error(f"Error processing WhatsApp message: {e}", exc_info=True)
@@ -524,15 +610,35 @@ async def test_whatsapp_api_config():
         if response.status_code == 400:
             # Expected for invalid phone number - this means auth is working
             if "Invalid phone number" in str(details.get("response", "")):
-                return True, "WhatsApp API configuration is valid (auth working)", details
+                return (
+                    True,
+                    "WhatsApp API configuration is valid (auth working)",
+                    details,
+                )
         elif response.status_code == 401:
-            return False, "WhatsApp API authentication failed - check ACCESS_TOKEN", details
+            return (
+                False,
+                "WhatsApp API authentication failed - check ACCESS_TOKEN",
+                details,
+            )
         elif response.status_code == 403:
-            return False, "WhatsApp API access forbidden - check business verification", details
+            return (
+                False,
+                "WhatsApp API access forbidden - check business verification",
+                details,
+            )
         elif response.status_code == 404:
-            return False, "WhatsApp API endpoint not found - check PHONE_NUMBER_ID/VERSION", details
+            return (
+                False,
+                "WhatsApp API endpoint not found - check PHONE_NUMBER_ID/VERSION",
+                details,
+            )
 
-        return False, f"Unexpected WhatsApp API response: {response.status_code}", details
+        return (
+            False,
+            f"Unexpected WhatsApp API response: {response.status_code}",
+            details,
+        )
 
     except Exception as e:
         return False, f"WhatsApp API test failed: {str(e)}", {"error": str(e)}
@@ -600,18 +706,26 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
         # Get last 5 messages to check for duplicates
         response = get_all_conversations(wa_id=wa_id, limit=5)
         if response.get("success", False):
-            messages = response.get("data", {}).get(wa_id) or response.get("data", {}).get(str(wa_id), [])
+            messages = response.get("data", {}).get(wa_id) or response.get(
+                "data", {}
+            ).get(str(wa_id), [])
 
             # Check if this message is already in the conversation history
             for msg in messages:
-                if msg["role"] == "user" and msg["message"] == message_body and msg["time"] == time_str:
+                if (
+                    msg["role"] == "user"
+                    and msg["message"] == message_body
+                    and msg["time"] == time_str
+                ):
                     logging.warning(
                         f"Duplicate message detected for wa_id={wa_id}: '{message_body}'. Skipping processing."
                     )
                     return None
 
         # Save the user message BEFORE running LLM
-        append_message(wa_id, "user", message_body, date_str=date_str, time_str=time_str)
+        append_message(
+            wa_id, "user", message_body, date_str=date_str, time_str=time_str
+        )
 
         # Call LLM function: async -> get coroutine, sync -> run in thread
         try:
@@ -623,11 +737,17 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
 
             if new_message:
                 append_message(
-                    wa_id, "assistant", new_message, date_str=assistant_date_str, time_str=assistant_time_str
+                    wa_id,
+                    "assistant",
+                    new_message,
+                    date_str=assistant_date_str,
+                    time_str=assistant_time_str,
                 )
                 return new_message
             else:
-                logging.warning(f"Empty or None response received from LLM for wa_id={wa_id}")
+                logging.warning(
+                    f"Empty or None response received from LLM for wa_id={wa_id}"
+                )
                 return None
         except Exception as e:
             logging.error(f"Error generating response: {e}")

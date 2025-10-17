@@ -4,7 +4,8 @@
  * Handles copying the default template document to new users on first document open.
  */
 
-import { fetchCustomer, saveCustomerDocument } from "@/shared/libs/api";
+import { fetchCustomer } from "@shared/libs/api/index";
+import { saveCustomerDocument } from "@/shared/libs/api";
 import { TEMPLATE_USER_WA_ID } from "./default-document";
 
 /**
@@ -19,11 +20,12 @@ export async function isDocumentInitialized(waId: string): Promise<boolean> {
 			data?: { document?: unknown };
 			document?: unknown;
 		};
-		const rawDoc = (result?.data?.document as unknown) ?? (result?.document as unknown) ?? null;
-		const doc = rawDoc as { elements?: unknown[] } | null | undefined;
-		const hasElements = Array.isArray(doc?.elements) ? (doc?.elements as unknown[])?.length > 0 : false;
-		const hasDocument = Boolean(doc !== null && doc !== undefined);
-		const initialized = Boolean(hasDocument && hasElements);
+		const rawDoc =
+			(result?.data?.document as unknown) ??
+			(result?.document as unknown) ??
+			null;
+		const hasDocument = !(rawDoc === null || rawDoc === undefined);
+		const initialized = Boolean(hasDocument);
 		return initialized;
 	} catch {
 		// If user doesn't exist or error, assume not initialized
@@ -38,7 +40,9 @@ export async function isDocumentInitialized(waId: string): Promise<boolean> {
 export async function copyTemplateToUser(waId: string): Promise<boolean> {
 	try {
 		// 1. Fetch the template document
-		const templateResp = (await fetchCustomer(TEMPLATE_USER_WA_ID)) as unknown as { data?: { document?: unknown } };
+		const templateResp = (await fetchCustomer(
+			TEMPLATE_USER_WA_ID
+		)) as unknown as { data?: { document?: unknown } };
 		const templateDoc = (templateResp?.data?.document ?? null) as {
 			elements?: unknown[];
 		} | null;
@@ -46,7 +50,7 @@ export async function copyTemplateToUser(waId: string): Promise<boolean> {
 		const templateHasElements = Array.isArray(templateDoc?.elements)
 			? (templateDoc?.elements as unknown[])?.length > 0
 			: false;
-		if (!templateDoc || !templateHasElements) {
+		if (!(templateDoc && templateHasElements)) {
 			return false;
 		}
 
@@ -56,7 +60,8 @@ export async function copyTemplateToUser(waId: string): Promise<boolean> {
 			document: templateDoc,
 		});
 
-		const success = Boolean((result as { success?: unknown })?.success) !== false;
+		const success =
+			Boolean((result as { success?: unknown })?.success) !== false;
 
 		// Proactively broadcast a local external-update so the UI can render immediately
 		if (success) {
@@ -66,7 +71,9 @@ export async function copyTemplateToUser(waId: string): Promise<boolean> {
 						detail: { wa_id: waId, document: templateDoc },
 					})
 				);
-			} catch {}
+			} catch {
+				// Ignore errors dispatching custom event
+			}
 		}
 
 		return success;
@@ -79,7 +86,9 @@ export async function copyTemplateToUser(waId: string): Promise<boolean> {
  * Ensures a user's document is initialized with the template if needed.
  * Returns true if document is ready (either already exists or was successfully copied).
  */
-export async function ensureDocumentInitialized(waId: string): Promise<boolean> {
+export async function ensureDocumentInitialized(
+	waId: string
+): Promise<boolean> {
 	// Don't try to initialize the blank document or template user
 	if (!waId || waId === "" || waId === TEMPLATE_USER_WA_ID) {
 		return true;

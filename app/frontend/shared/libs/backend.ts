@@ -16,7 +16,10 @@ function joinUrl(base: string, path: string): string {
 	return `${normalizedBase}${normalizedPath}`;
 }
 
-export async function callPythonBackend<T = unknown>(path: string, init?: RequestInit): Promise<T> {
+export async function callPythonBackend<T = unknown>(
+	path: string,
+	init?: RequestInit
+): Promise<T> {
 	const bases = resolveBackendBaseUrlCandidates();
 	let lastError: unknown;
 
@@ -50,5 +53,7 @@ export async function callPythonBackend<T = unknown>(path: string, init?: Reques
 		}
 	}
 
-	throw lastError instanceof Error ? lastError : new Error("Backend request failed for all candidates");
+	throw lastError instanceof Error
+		? lastError
+		: new Error("Backend request failed for all candidates");
 }

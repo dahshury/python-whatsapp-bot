@@ -28,19 +28,26 @@ import {
 	SlidersHorizontal,
 } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
-import * as React from "react";
+import { useRef, useState } from "react";
+
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 
-interface ToolbarItem {
-	id: string;
-	title: string;
-	icon: LucideIcon;
-	type?: never;
-}
+// Constants
+const NOTIFICATION_TIMEOUT = 1500;
 
-interface ToolbarProps {
+type ToolbarItem = {
+	id: string;
+	title?: string;
+	icon?: LucideIcon;
+	tooltipTitle?: string;
+	tooltipDescription?: string;
+	tooltipIcon?: LucideIcon;
+	type?: never;
+};
+
+type ToolbarProps = {
 	className?: string;
-}
+};
 
 const buttonVariants: Variants = {
 	initial: {
@@ -83,11 +90,95 @@ const lineVariants: Variants = {
 
 const transition = { type: "spring" as const, bounce: 0, duration: 0.4 };
 
+type ToolbarItemButtonProps = {
+	item: ToolbarItem;
+	isActive: boolean;
+	onChange: (id: string) => void;
+	iconSize: string;
+	buttonHeight: string;
+};
+
+function ToolbarItemButton({
+	item,
+	isActive,
+	onChange,
+	iconSize,
+	buttonHeight,
+}: ToolbarItemButtonProps) {
+	const ButtonIcon = item.icon;
+	const contentProvided =
+		Boolean(item.tooltipTitle) || Boolean(item.tooltipDescription);
+	const TooltipIcon = item.tooltipIcon || ButtonIcon;
+
+	const buttonEl = (
+		<button
+			aria-pressed={isActive}
+			className={cn(
+				"relative flex items-center gap-1 px-2 no-underline transition-none focus:outline-none focus:ring-0",
+				buttonHeight,
+				isActive
+					? "rounded-theme bg-accent text-accent-foreground"
+					: "bg-transparent text-muted-foreground"
+			)}
+			key={item.id}
+			onClick={() => onChange(item.id)}
+			type="button"
+		>
+			{ButtonIcon ? <ButtonIcon className={iconSize} /> : null}
+			<AnimatePresence initial={false}>
+				{isActive && item.title && (
+					<motion.span
+						animate="animate"
+						className="overflow-hidden text-[0.72rem] leading-none"
+						exit="exit"
+						initial="initial"
+						transition={{
+							type: "tween",
+							duration: 0.15,
+							ease: "easeOut",
+						}}
+						variants={spanVariants}
+					>
+						{item.title}
+					</motion.span>
+				)}
+			</AnimatePresence>
+		</button>
+	);
+
+	if (!contentProvided) {
+		return buttonEl;
+	}
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>{buttonEl}</TooltipTrigger>
+			<TooltipContent align="center" className="text-center" side="bottom">
+				{item.tooltipTitle && (
+					<p className="font-semibold">{item.tooltipTitle}</p>
+				)}
+				{item.tooltipDescription && (
+					<p className="text-muted-foreground text-xs">
+						{item.tooltipDescription}
+					</p>
+				)}
+				{TooltipIcon && (
+					<div className="mt-2 flex justify-center opacity-50">
+						<TooltipIcon className="h-3 w-3" />
+					</div>
+				)}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
 export function Toolbar({ className }: ToolbarProps) {
-	const [selected, setSelected] = React.useState<string | null>("select");
-	const [isToggled, setIsToggled] = React.useState(false);
-	const [activeNotification, setActiveNotification] = React.useState<string | null>(null);
-	const outsideClickRef = React.useRef(null);
+	const [selected, setSelected] = useState<string | null>("select");
+	const [isToggled, setIsToggled] = useState(false);
+	const [activeNotification, setActiveNotification] = useState<string | null>(
+		null
+	);
+	const outsideClickRef = useRef(null);
 
 	const toolbarItems: ToolbarItem[] = [
 		{ id: "select", title: "Select", icon: MousePointer2 },
@@ -106,40 +197,44 @@ export function Toolbar({ className }: ToolbarProps) {
 	const handleItemClick = (itemId: string) => {
 		setSelected(selected === itemId ? null : itemId);
 		setActiveNotification(itemId);
-		setTimeout(() => setActiveNotification(null), 1500);
+		setTimeout(() => setActiveNotification(null), NOTIFICATION_TIMEOUT);
 	};
 
 	return (
 		<div className="space-y-2">
 			<div
-				ref={outsideClickRef}
 				className={cn(
-					"flex items-center gap-3 p-2 relative",
+					"relative flex items-center gap-3 p-2",
 					"bg-background",
-					"border rounded-xl",
+					"rounded-xl border",
 					"transition-all duration-200",
 					className
 				)}
+				ref={outsideClickRef}
 			>
 				<AnimatePresence>
 					{activeNotification && (
 						<motion.div
-							variants={notificationVariants}
-							initial="initial"
 							animate="animate"
+							className="-top-8 -translate-x-1/2 absolute left-1/2 z-50 transform"
 							exit="exit"
+							initial="initial"
 							transition={{ duration: 0.3 }}
-							className="absolute -top-8 left-1/2 transform -translate-x-1/2 z-50"
+							variants={notificationVariants}
 						>
-							<div className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs">
-								{toolbarItems.find((item) => item.id === activeNotification)?.title} clicked!
+							<div className="rounded-full bg-primary px-3 py-1 text-primary-foreground text-xs">
+								{
+									toolbarItems.find((item) => item.id === activeNotification)
+										?.title
+								}{" "}
+								clicked!
 							</div>
 							<motion.div
-								variants={lineVariants}
-								initial="initial"
 								animate="animate"
+								className="-bottom-1 absolute left-1/2 h-[0.125rem] w-full origin-left bg-primary"
 								exit="exit"
-								className="absolute -bottom-1 left-1/2 w-full h-[0.125rem] bg-primary origin-left"
+								initial="initial"
+								variants={lineVariants}
 							/>
 						</motion.div>
 					)}
@@ -148,31 +243,38 @@ export function Toolbar({ className }: ToolbarProps) {
 				<div className="flex items-center gap-2">
 					{toolbarItems.map((item) => (
 						<motion.button
-							key={item.id}
-							variants={buttonVariants}
-							initial={false}
 							animate="animate"
-							custom={selected === item.id}
-							onClick={() => handleItemClick(item.id)}
-							transition={transition}
 							className={cn(
 								"relative flex items-center rounded-none px-3 py-2",
-								"text-sm font-medium transition-colors duration-300",
+								"font-medium text-sm transition-colors duration-300",
 								selected === item.id
-									? "bg-primary text-primary-foreground rounded-lg"
+									? "rounded-lg bg-primary text-primary-foreground"
 									: "text-muted-foreground hover:bg-muted hover:text-foreground"
 							)}
+							custom={selected === item.id}
+							initial={false}
+							key={item.id}
+							onClick={() => handleItemClick(item.id)}
+							transition={transition}
+							variants={buttonVariants}
 						>
-							<item.icon size={16} className={cn(selected === item.id && "text-primary-foreground")} />
+							{item.icon ? (
+								<item.icon
+									className={cn(
+										selected === item.id && "text-primary-foreground"
+									)}
+									size={16}
+								/>
+							) : null}
 							<AnimatePresence initial={false}>
 								{selected === item.id && (
 									<motion.span
-										variants={spanVariants}
-										initial="initial"
 										animate="animate"
-										exit="exit"
-										transition={transition}
 										className="overflow-hidden"
+										exit="exit"
+										initial="initial"
+										transition={transition}
+										variants={spanVariants}
 									>
 										{item.title}
 									</motion.span>
@@ -182,9 +284,6 @@ export function Toolbar({ className }: ToolbarProps) {
 					))}
 
 					<motion.button
-						whileHover={{ scale: 1.02 }}
-						whileTap={{ scale: 0.98 }}
-						onClick={() => setIsToggled(!isToggled)}
 						className={cn(
 							"flex items-center gap-2 px-4 py-2",
 							"rounded-xl border shadow-sm transition-all duration-200",
@@ -204,9 +303,18 @@ export function Toolbar({ className }: ToolbarProps) {
 										"hover:border-border/40",
 									]
 						)}
+						onClick={() => setIsToggled(!isToggled)}
+						whileHover={{ scale: 1.02 }}
+						whileTap={{ scale: 0.98 }}
 					>
-						{isToggled ? <Edit2 className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
-						<span className="text-sm font-medium">{isToggled ? "On" : "Off"}</span>
+						{isToggled ? (
+							<Edit2 className="h-3.5 w-3.5" />
+						) : (
+							<Lock className="h-3.5 w-3.5" />
+						)}
+						<span className="font-medium text-sm">
+							{isToggled ? "On" : "Off"}
+						</span>
 					</motion.button>
 				</div>
 			</div>
@@ -215,14 +323,14 @@ export function Toolbar({ className }: ToolbarProps) {
 }
 
 // Lightweight toolbar without animations for simple use-cases
-export interface SimpleToolbarItem {
+export type SimpleToolbarItem = {
 	id: string;
 	title?: string;
 	icon?: LucideIcon;
 	tooltipTitle?: string;
 	tooltipDescription?: string;
 	tooltipIcon?: LucideIcon;
-}
+};
 
 export function MiniToolbar({
 	items,
@@ -244,69 +352,22 @@ export function MiniToolbar({
 
 	return (
 		<div
-			className={cn("inline-flex items-center rounded-theme border divide-x bg-background", containerHeight, className)}
+			className={cn(
+				"inline-flex items-center divide-x rounded-theme border bg-background",
+				containerHeight,
+				className
+			)}
 		>
-			{items.map((item) => {
-				const isActive = value === item.id;
-				const ButtonIcon = item.icon;
-				const contentProvided = Boolean(item.tooltipTitle) || Boolean(item.tooltipDescription);
-				const TooltipIcon = item.tooltipIcon || ButtonIcon;
-
-				const buttonEl = (
-					<button
-						key={item.id}
-						type="button"
-						aria-pressed={isActive}
-						onClick={() => onChange(item.id)}
-						className={cn(
-							"relative flex items-center gap-1 px-2 no-underline focus:outline-none focus:ring-0 transition-none",
-							buttonHeight,
-							isActive ? "bg-accent text-accent-foreground rounded-theme" : "bg-transparent text-muted-foreground"
-						)}
-					>
-						{ButtonIcon ? <ButtonIcon className={iconSize} /> : null}
-						<AnimatePresence initial={false}>
-							{isActive && item.title && (
-								<motion.span
-									variants={spanVariants}
-									initial="initial"
-									animate="animate"
-									exit="exit"
-									transition={{
-										type: "tween",
-										duration: 0.15,
-										ease: "easeOut",
-									}}
-									className="overflow-hidden text-[0.72rem] leading-none"
-								>
-									{item.title}
-								</motion.span>
-							)}
-						</AnimatePresence>
-					</button>
-				);
-
-				return contentProvided ? (
-					<Tooltip key={item.id}>
-						<TooltipTrigger asChild>{buttonEl}</TooltipTrigger>
-						<TooltipContent className="py-3" sideOffset={6}>
-							<div className="flex gap-3">
-								{TooltipIcon ? (
-									<TooltipIcon className="mt-0.5 shrink-0 opacity-60" size={16} aria-hidden="true" />
-								) : null}
-								<div className="space-y-1">
-									<p className="text-[0.8125rem] font-medium">{item.tooltipTitle || item.title || item.id}</p>
-									{item.tooltipDescription ? (
-										<p className="text-muted-foreground text-xs">{item.tooltipDescription}</p>
-									) : null}
-								</div>
-							</div>
-						</TooltipContent>
-					</Tooltip>
-				) : (
-					buttonEl
-				);
-			})}
+			{items.map((item) => (
+				<ToolbarItemButton
+					buttonHeight={buttonHeight}
+					iconSize={iconSize}
+					isActive={value === item.id}
+					item={item}
+					key={item.id}
+					onChange={onChange}
+				/>
+			))}
 		</div>
 	);
 }

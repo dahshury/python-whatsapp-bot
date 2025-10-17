@@ -106,10 +106,14 @@ def main() -> None:
         # Customers
         print("  → Customers...", end=" ", flush=True)
         try:
-            rows = sqlite_conn.execute("SELECT wa_id, customer_name, age, age_recorded_at FROM customers").fetchall()
+            rows = sqlite_conn.execute(
+                "SELECT wa_id, customer_name, age, age_recorded_at FROM customers"
+            ).fetchall()
         except sqlite3.OperationalError:
             # age/age_recorded_at may not exist in old schema
-            rows = sqlite_conn.execute("SELECT wa_id, customer_name FROM customers").fetchall()
+            rows = sqlite_conn.execute(
+                "SELECT wa_id, customer_name FROM customers"
+            ).fetchall()
         if rows:
             stmt = pg_insert(CustomerModel.__table__).values([dict(r) for r in rows])
             stmt = stmt.on_conflict_do_nothing(index_elements=[CustomerModel.wa_id])
@@ -121,11 +125,17 @@ def main() -> None:
 
         # Conversation
         print("  → Conversation...", end=" ", flush=True)
-        rows = sqlite_conn.execute("SELECT id, wa_id, role, message, date, time FROM conversation").fetchall()
+        rows = sqlite_conn.execute(
+            "SELECT id, wa_id, role, message, date, time FROM conversation"
+        ).fetchall()
         if rows:
             for batch in batched(rows, 1000):
-                stmt = pg_insert(ConversationModel.__table__).values([dict(r) for r in batch])
-                stmt = stmt.on_conflict_do_nothing(index_elements=[ConversationModel.id])
+                stmt = pg_insert(ConversationModel.__table__).values(
+                    [dict(r) for r in batch]
+                )
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=[ConversationModel.id]
+                )
                 pg_session.execute(stmt)
             pg_session.commit()
             pg_session.execute(
@@ -145,7 +155,9 @@ def main() -> None:
         ).fetchall()
         if rows:
             for batch in batched(rows, 1000):
-                stmt = pg_insert(ReservationModel.__table__).values([dict(r) for r in batch])
+                stmt = pg_insert(ReservationModel.__table__).values(
+                    [dict(r) for r in batch]
+                )
                 stmt = stmt.on_conflict_do_nothing(index_elements=[ReservationModel.id])
                 pg_session.execute(stmt)
             pg_session.commit()
@@ -166,8 +178,12 @@ def main() -> None:
         ).fetchall()
         if rows:
             for batch in batched(rows, 1000):
-                stmt = pg_insert(VacationPeriodModel.__table__).values([dict(r) for r in batch])
-                stmt = stmt.on_conflict_do_nothing(index_elements=[VacationPeriodModel.id])
+                stmt = pg_insert(VacationPeriodModel.__table__).values(
+                    [dict(r) for r in batch]
+                )
+                stmt = stmt.on_conflict_do_nothing(
+                    index_elements=[VacationPeriodModel.id]
+                )
                 pg_session.execute(stmt)
             pg_session.commit()
             pg_session.execute(
@@ -188,8 +204,12 @@ def main() -> None:
             ).fetchall()
             if rows:
                 for batch in batched(rows, 1000):
-                    stmt = pg_insert(NotificationEventModel.__table__).values([dict(r) for r in batch])
-                    stmt = stmt.on_conflict_do_nothing(index_elements=[NotificationEventModel.id])
+                    stmt = pg_insert(NotificationEventModel.__table__).values(
+                        [dict(r) for r in batch]
+                    )
+                    stmt = stmt.on_conflict_do_nothing(
+                        index_elements=[NotificationEventModel.id]
+                    )
                     pg_session.execute(stmt)
                 pg_session.commit()
                 pg_session.execute(

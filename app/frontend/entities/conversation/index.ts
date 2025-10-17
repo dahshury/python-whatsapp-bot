@@ -1,1 +1,1 @@
-export * from "./model";
+export type { ConversationMessage, Conversations } from "./model";

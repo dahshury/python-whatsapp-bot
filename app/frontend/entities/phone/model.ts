@@ -1,4 +1,4 @@
-export interface PhoneOption {
+export type PhoneOption = {
 	/** International formatted phone number, usually with + prefix */
 	number: string;
 	/** Display name for the contact/customer */
@@ -11,4 +11,4 @@ export interface PhoneOption {
 	id?: string;
 	/** Optional preformatted display number to avoid recomputation during render */
 	displayNumber?: string;
-}
+};

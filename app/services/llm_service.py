@@ -29,7 +29,10 @@ class BaseLLMService(abc.ABC):
         self.thinking_budget_tokens = 1024
         self.claude_thinking = None
         if self.enable_thinking:
-            self.claude_thinking = {"type": "enabled", "budget_tokens": self.thinking_budget_tokens}
+            self.claude_thinking = {
+                "type": "enabled",
+                "budget_tokens": self.thinking_budget_tokens,
+            }
 
         # Gemini
         self.gemini_model = "gemini-2.5-pro-preview-05-06"

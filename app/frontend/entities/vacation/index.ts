@@ -1,1 +1,1 @@
-export * from "./model";
+export type { Vacation } from "./model";

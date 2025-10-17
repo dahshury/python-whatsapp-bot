@@ -13,8 +13,13 @@ export function PrayerTimesWidget() {
 	}, []);
 
 	return (
-		<div className="prayer-times-widget w-full aspect-[16/10]">
-			<iframe ref={iframeRef} title="Prayer Times" className="w-full h-full border-0 rounded-md" loading="lazy" />
+		<div className="prayer-times-widget aspect-[16/10] w-full">
+			<iframe
+				className="h-full w-full rounded-md border-0"
+				loading="lazy"
+				ref={iframeRef}
+				title="Prayer Times"
+			/>
 		</div>
 	);
 }

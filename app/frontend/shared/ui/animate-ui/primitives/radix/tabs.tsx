@@ -17,7 +17,8 @@ type TabsContextType = {
 	setValue: (value: string) => void;
 };
 
-const [TabsProvider, useTabs] = getStrictContext<TabsContextType>("TabsContext");
+const [TabsProvider, useTabs] =
+	getStrictContext<TabsContextType>("TabsContext");
 
 type TabsProps = React.ComponentProps<typeof TabsPrimitive.Root>;
 
@@ -42,14 +43,21 @@ function Tabs(props: TabsProps) {
 
 	return (
 		<TabsProvider value={{ value, setValue }}>
-			<TabsPrimitive.Root data-slot="tabs" {...props} onValueChange={setValue} />
+			<TabsPrimitive.Root
+				data-slot="tabs"
+				{...props}
+				onValueChange={setValue}
+			/>
 		</TabsProvider>
 	);
 }
 
 type TabsHighlightProps = Omit<HighlightProps, "controlledItems" | "value">;
 
-function TabsHighlight({ transition = { type: "spring", stiffness: 200, damping: 25 }, ...props }: TabsHighlightProps) {
+function TabsHighlight({
+	transition = { type: "spring", stiffness: 200, damping: 25 },
+	...props
+}: TabsHighlightProps) {
 	const { value } = useTabs();
 
 	const highlightProps: React.ComponentProps<typeof Highlight> = {
@@ -86,7 +94,8 @@ function TabsTrigger(props: TabsTriggerProps) {
 	return <TabsPrimitive.Trigger data-slot="tabs-trigger" {...props} />;
 }
 
-type TabsContentProps = React.ComponentProps<typeof TabsPrimitive.Content> & HTMLMotionProps<"div">;
+type TabsContentProps = React.ComponentProps<typeof TabsPrimitive.Content> &
+	HTMLMotionProps<"div">;
 
 function TabsContent({
 	value,
@@ -107,12 +116,12 @@ function TabsContent({
 		<AnimatePresence mode="wait">
 			<TabsPrimitive.Content {...contentProps}>
 				<motion.div
+					animate={{ opacity: 1, filter: "blur(0px)" }}
 					data-slot="tabs-content"
+					exit={{ opacity: 0, filter: "blur(4px)" }}
+					initial={{ opacity: 0, filter: "blur(4px)" }}
 					layout
 					layoutDependency={value}
-					initial={{ opacity: 0, filter: "blur(4px)" }}
-					animate={{ opacity: 1, filter: "blur(0px)" }}
-					exit={{ opacity: 0, filter: "blur(4px)" }}
 					transition={transition}
 					{...props}
 				/>
@@ -125,7 +134,10 @@ type TabsContentsProps = HTMLMotionProps<"div"> & {
 	children: React.ReactNode;
 };
 
-function TabsContents({ transition = { type: "spring", stiffness: 200, damping: 30 }, ...props }: TabsContentsProps) {
+function TabsContents({
+	transition = { type: "spring", stiffness: 200, damping: 30 },
+	...props
+}: TabsContentsProps) {
 	const { value } = useTabs();
 
 	return (
@@ -142,17 +154,17 @@ function TabsContents({ transition = { type: "spring", stiffness: 200, damping: 
 
 export {
 	Tabs,
+	TabsContent,
+	type TabsContentProps,
+	TabsContents,
+	type TabsContentsProps,
 	TabsHighlight,
 	TabsHighlightItem,
-	TabsList,
-	TabsTrigger,
-	TabsContent,
-	TabsContents,
-	type TabsProps,
-	type TabsHighlightProps,
 	type TabsHighlightItemProps,
+	type TabsHighlightProps,
+	TabsList,
 	type TabsListProps,
+	type TabsProps,
+	TabsTrigger,
 	type TabsTriggerProps,
-	type TabsContentProps,
-	type TabsContentsProps,
 };

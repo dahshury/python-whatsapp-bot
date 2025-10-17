@@ -43,7 +43,12 @@ function DialogClose(props: DialogCloseProps) {
 type DialogOverlayProps = DialogOverlayPrimitiveProps;
 
 function DialogOverlay({ className, ...props }: DialogOverlayProps) {
-	return <DialogOverlayPrimitive className={cn("fixed inset-0 z-50 bg-black/50", className)} {...props} />;
+	return (
+		<DialogOverlayPrimitive
+			className={cn("fixed inset-0 z-50 bg-black/50", className)}
+			{...props}
+		/>
+	);
 }
 
 type DialogContentProps = DialogContentPrimitiveProps & {
@@ -63,14 +68,14 @@ function DialogContent({
 			<DialogOverlay />
 			<DialogContentPrimitive
 				className={cn(
-					"bg-background fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg sm:max-w-lg",
+					"fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg sm:max-w-lg",
 					className
 				)}
 				{...props}
 			>
 				{children}
 				{showCloseButton && (
-					<DialogClosePrimitive className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+					<DialogClosePrimitive className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0">
 						<XIcon />
 						<span className="sr-only">Close</span>
 					</DialogClosePrimitive>
@@ -83,7 +88,12 @@ function DialogContent({
 type DialogHeaderProps = DialogHeaderPrimitiveProps;
 
 function DialogHeader({ className, ...props }: DialogHeaderProps) {
-	return <DialogHeaderPrimitive className={cn("flex flex-col gap-2 text-center sm:text-left", className)} {...props} />;
+	return (
+		<DialogHeaderPrimitive
+			className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+			{...props}
+		/>
+	);
 }
 
 type DialogFooterProps = DialogFooterPrimitiveProps;
@@ -91,7 +101,10 @@ type DialogFooterProps = DialogFooterPrimitiveProps;
 function DialogFooter({ className, ...props }: DialogFooterProps) {
 	return (
 		<DialogFooterPrimitive
-			className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)}
+			className={cn(
+				"flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+				className
+			)}
 			{...props}
 		/>
 	);
@@ -100,30 +113,40 @@ function DialogFooter({ className, ...props }: DialogFooterProps) {
 type DialogTitleProps = DialogTitlePrimitiveProps;
 
 function DialogTitle({ className, ...props }: DialogTitleProps) {
-	return <DialogTitlePrimitive className={cn("text-lg leading-none font-semibold", className)} {...props} />;
+	return (
+		<DialogTitlePrimitive
+			className={cn("font-semibold text-lg leading-none", className)}
+			{...props}
+		/>
+	);
 }
 
 type DialogDescriptionProps = DialogDescriptionPrimitiveProps;
 
 function DialogDescription({ className, ...props }: DialogDescriptionProps) {
-	return <DialogDescriptionPrimitive className={cn("text-muted-foreground text-sm", className)} {...props} />;
+	return (
+		<DialogDescriptionPrimitive
+			className={cn("text-muted-foreground text-sm", className)}
+			{...props}
+		/>
+	);
 }
 
 export {
 	Dialog,
-	DialogTrigger,
 	DialogClose,
-	DialogContent,
-	DialogHeader,
-	DialogFooter,
-	DialogTitle,
-	DialogDescription,
-	type DialogProps,
-	type DialogTriggerProps,
 	type DialogCloseProps,
+	DialogContent,
 	type DialogContentProps,
-	type DialogHeaderProps,
-	type DialogFooterProps,
-	type DialogTitleProps,
+	DialogDescription,
 	type DialogDescriptionProps,
+	DialogFooter,
+	type DialogFooterProps,
+	DialogHeader,
+	type DialogHeaderProps,
+	type DialogProps,
+	DialogTitle,
+	type DialogTitleProps,
+	DialogTrigger,
+	type DialogTriggerProps,
 };

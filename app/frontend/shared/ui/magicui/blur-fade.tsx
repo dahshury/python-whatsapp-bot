@@ -12,6 +12,8 @@ import { useRef } from "react";
 
 type MarginType = UseInViewOptions["margin"];
 
+const DEFAULT_BLUR_STAGGER_DELAY = 0.04;
+
 interface BlurFadeProps extends MotionProps {
 	children: React.ReactNode;
 	className?: string;
@@ -61,17 +63,17 @@ export function BlurFade({
 	return (
 		<AnimatePresence>
 			<motion.div
-				ref={ref}
-				initial="hidden"
 				animate={isInView ? "visible" : "hidden"}
+				className={className}
 				exit="hidden"
-				variants={combinedVariants}
+				initial="hidden"
+				ref={ref}
 				transition={{
-					delay: 0.04 + delay,
+					delay: DEFAULT_BLUR_STAGGER_DELAY + delay,
 					duration,
 					ease: "easeOut",
 				}}
-				className={className}
+				variants={combinedVariants}
 				{...props}
 			>
 				{children}

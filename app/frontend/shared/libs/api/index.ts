@@ -21,13 +21,23 @@ export async function fetchReservations(options?: {
 	toDate?: string;
 }): Promise<Json> {
 	const params = new URLSearchParams();
-	if (options?.future !== undefined) params.set("future", String(options.future));
-	if (options?.includeCancelled !== undefined) params.set("include_cancelled", String(options.includeCancelled));
-	if (options?.fromDate) params.set("from_date", options.fromDate);
-	if (options?.toDate) params.set("to_date", options.toDate);
+	if (options?.future !== undefined) {
+		params.set("future", String(options.future));
+	}
+	if (options?.includeCancelled !== undefined) {
+		params.set("include_cancelled", String(options.includeCancelled));
+	}
+	if (options?.fromDate) {
+		params.set("from_date", options.fromDate);
+	}
+	if (options?.toDate) {
+		params.set("to_date", options.toDate);
+	}
 	const qs = params.toString();
 	const { callPythonBackend } = await import("@shared/libs/backend");
-	return (await callPythonBackend(`/reservations${qs ? `?${qs}` : ""}`)) as Json;
+	return (await callPythonBackend(
+		`/reservations${qs ? `?${qs}` : ""}`
+	)) as Json;
 }
 
 export async function reserveTimeSlot(input: {
@@ -36,14 +46,22 @@ export async function reserveTimeSlot(input: {
 	date: string; // YYYY-MM-DD
 	time: string; // 12h or 24h, backend accepts both
 	type?: number; // 0/1
+	reservation_type?: number; // duplicate for backend compatibility
 	max_reservations?: number; // default 6
 	hijri?: boolean;
 	ar?: boolean;
 }): Promise<Json> {
 	const { callPythonBackend } = await import("@shared/libs/backend");
+	// Send both type and reservation_type to satisfy backend expectations and avoid falsy 0 pitfalls
+	const body = JSON.stringify({
+		...input,
+		...(typeof input.type === "number"
+			? { type: input.type, reservation_type: input.type }
+			: {}),
+	});
 	return (await callPythonBackend("/reserve", {
 		method: "POST",
-		body: JSON.stringify(input),
+		body,
 	})) as Json;
 }
 
@@ -103,15 +121,11 @@ export async function fetchVacations(): Promise<Json> {
 // === Customers (documents) ===
 export async function fetchCustomer(waId: string): Promise<Json> {
 	const id = encodeURIComponent(waId);
-	const startTime = performance.now();
-	console.log(`[API] 🔍 GET customers/${id}`);
 	// Use callPythonBackend to bypass Next.js proxy and call Python directly
 	const { callPythonBackend } = await import("@shared/libs/backend");
 	const result = await callPythonBackend(`/customers/${id}`, {
 		method: "GET",
 	});
-	const elapsed = performance.now() - startTime;
-	console.log(`[API] ✅ GET customers/${id} completed in ${elapsed.toFixed(1)}ms:`, result);
 	return result as Json;
 }
 
@@ -125,8 +139,6 @@ export async function saveCustomerDocument(input: {
 	const id = encodeURIComponent(input.waId);
 	const { waId: _wa, ...body } = input;
 	const payload = JSON.stringify(body);
-	const startTime = performance.now();
-	console.log(`[API] 🚀 PUT customers/${id}: size=${payload.length} bytes`);
 	// Use callPythonBackend to bypass Next.js proxy and call Python directly
 	const { callPythonBackend } = await import("@shared/libs/backend");
 	const result = await callPythonBackend(`/customers/${id}`, {
@@ -136,7 +148,5 @@ export async function saveCustomerDocument(input: {
 		},
 		body: payload,
 	});
-	const elapsed = performance.now() - startTime;
-	console.log(`[API] ✅ PUT customers/${id} completed in ${elapsed.toFixed(1)}ms`);
 	return result as Json;
 }

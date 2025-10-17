@@ -3,8 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.auth.deps import auth_backend, fastapi_users
-from app.auth.schemas import UserRead, UserCreate, UserUpdate
-
+from app.auth.schemas import UserCreate, UserRead, UserUpdate
 
 router = APIRouter()
 
@@ -26,5 +25,3 @@ router.include_router(
     prefix="/users",
     tags=["users"],
 )
-
-

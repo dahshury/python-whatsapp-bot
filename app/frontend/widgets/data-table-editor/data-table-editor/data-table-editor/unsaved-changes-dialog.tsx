@@ -1,0 +1,145 @@
+// Using custom portal-based dialog for proper centering on viewport
+
+import { Z_INDEX } from "@shared/libs/ui/z-index";
+import { Button } from "@ui/button";
+import { AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { i18n } from "@/shared/libs/i18n";
+import { Spinner } from "@/shared/ui/spinner";
+
+const RANDOM_ID_RADIX = 36;
+const RANDOM_ID_START = 2;
+
+type UnsavedChangesDialogProps = {
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	isLocalized: boolean;
+	onDiscard: () => void;
+	onSaveAndClose: () => void;
+	isSaving: boolean;
+	canSave: boolean;
+};
+
+const generateRandomId = (): string => {
+	if (typeof window === "undefined") {
+		return "ssr";
+	}
+	return Math.random().toString(RANDOM_ID_RADIX).slice(RANDOM_ID_START);
+};
+
+export function UnsavedChangesDialog({
+	open,
+	onOpenChange,
+	isLocalized,
+	onDiscard,
+	onSaveAndClose,
+	isSaving,
+	canSave,
+}: UnsavedChangesDialogProps) {
+	const [mounted, setMounted] = useState(false);
+
+	useEffect(() => {
+		setMounted(true);
+
+		// Handle escape key
+		const handleEscape = (event: KeyboardEvent) => {
+			if (event.key === "Escape" && open) {
+				onOpenChange(false);
+			}
+		};
+
+		if (open) {
+			document.addEventListener("keydown", handleEscape);
+			// Prevent body scroll when dialog is open
+			document.body.style.overflow = "hidden";
+		}
+
+		return () => {
+			document.removeEventListener("keydown", handleEscape);
+			document.body.style.overflow = "unset";
+		};
+	}, [open, onOpenChange]);
+
+	if (!mounted) {
+		return null;
+	}
+
+	const dialogContent = (
+		<>
+			{/* Backdrop */}
+			<button
+				aria-label={i18n.getMessage("close_dialog", isLocalized)}
+				className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+				onClick={() => onOpenChange(false)}
+				style={{
+					zIndex: Z_INDEX.CONFIRMATION_OVERLAY_BACKDROP,
+					pointerEvents: "auto",
+				}}
+				type="button"
+			/>
+
+			{/* Dialog Content */}
+			<div
+				className="fixed inset-0 flex items-center justify-center p-4"
+				style={{
+					zIndex: Z_INDEX.CONFIRMATION_OVERLAY_CONTENT,
+					pointerEvents: "auto",
+				}}
+			>
+				<div
+					aria-labelledby="unsaved-changes-title"
+					className="fade-in-0 zoom-in-95 mx-auto w-full max-w-md animate-in rounded-lg border bg-background p-6 shadow-lg duration-200"
+					role="dialog"
+				>
+					<div className="space-y-4">
+						<div className="flex flex-col items-center text-center">
+							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
+								<AlertTriangle
+									aria-hidden="true"
+									className="h-6 w-6 text-red-600 dark:text-red-400"
+								/>
+							</div>
+							<h2
+								className="mt-3 font-semibold text-lg"
+								id={`unsaved-changes-title-${generateRandomId()}`}
+							>
+								{i18n.getMessage("confirm_changes", isLocalized)}
+							</h2>
+							<p className="mt-2 text-muted-foreground text-sm">
+								{i18n.getMessage("unsaved_changes_prompt", isLocalized)}
+							</p>
+						</div>
+						<div className="flex items-center justify-between gap-2">
+							<div className="flex">
+								<Button onClick={() => onOpenChange(false)} variant="outline">
+									{i18n.getMessage("cancel", isLocalized)}
+								</Button>
+							</div>
+							<div className="flex gap-2">
+								<Button onClick={onDiscard} variant="outline">
+									{i18n.getMessage("discard_changes", isLocalized)}
+								</Button>
+								<Button
+									disabled={isSaving || !canSave}
+									onClick={onSaveAndClose}
+								>
+									{isSaving ? (
+										<>
+											<Spinner className="h-4 w-4" />
+											{i18n.getMessage("saving", isLocalized)}
+										</>
+									) : (
+										i18n.getMessage("save_and_close", isLocalized)
+									)}
+								</Button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</>
+	);
+
+	return open ? createPortal(dialogContent, document.body) : null;
+}

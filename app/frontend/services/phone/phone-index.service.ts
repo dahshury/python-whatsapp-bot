@@ -1,4 +1,7 @@
-import { formatNumberForDisplay, getCountryFromPhone } from "@shared/libs/utils/phone-utils";
+import {
+	formatNumberForDisplay,
+	getCountryFromPhone,
+} from "@shared/libs/utils/phone-utils";
 import type * as RPNInput from "react-phone-number-input";
 import type { PhoneOption } from "@/entities/phone";
 
@@ -10,11 +13,16 @@ export type IndexedPhoneOption = PhoneOption & {
 	__country: RPNInput.Country;
 };
 
-export function buildIndexedOptions(phoneOptions: PhoneOption[]): IndexedPhoneOption[] {
+export function buildIndexedOptions(
+	phoneOptions: PhoneOption[]
+): IndexedPhoneOption[] {
 	try {
 		return phoneOptions.map((option) => {
-			const display = option.displayNumber ?? formatNumberForDisplay(option.number);
-			const normalizedNumber = option.number.replace(/[\s\-+]/g, "").toLowerCase();
+			const display =
+				option.displayNumber ?? formatNumberForDisplay(option.number);
+			const normalizedNumber = option.number
+				.replace(/[\s\-+]/g, "")
+				.toLowerCase();
 			const searchName = (option.name || "").toLowerCase();
 			const searchLabel = (option.label || "").toLowerCase();
 			const optionCountry = getCountryFromPhone(option.number);

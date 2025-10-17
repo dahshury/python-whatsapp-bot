@@ -1,4 +1,4 @@
-interface DataTableEvent {
+type DataTableEvent = {
 	id?: string | number;
 	reservationId?: string;
 	key?: string | number;
@@ -25,9 +25,9 @@ interface DataTableEvent {
 	type?: string | number;
 	cancelled?: boolean;
 	[key: string]: unknown;
-}
+};
 
-interface CalendarEvent {
+type CalendarEvent = {
 	id: string;
 	title: string;
 	start: string | Date | undefined;
@@ -43,29 +43,87 @@ interface CalendarEvent {
 		slotTime?: string;
 		[key: string]: unknown;
 	};
+};
+
+const EMPTY_CALENDAR_EVENT: CalendarEvent = {
+	id: "",
+	title: "",
+	start: undefined,
+	end: undefined,
+	backgroundColor: "",
+	borderColor: "",
+	editable: false,
+	extendedProps: {
+		type: 0,
+		cancelled: false,
+	},
+};
+
+const TIME_SPLIT_INDEX = 5;
+
+function getEventStart(event: DataTableEvent): string | Date | undefined {
+	return event.start || event.startDate || event.date || event.begin;
 }
 
-export function convertDataTableEventToCalendarEvent(event: DataTableEvent): CalendarEvent {
-	if (!event)
-		return {
-			id: "",
-			title: "",
-			start: undefined,
-			end: undefined,
-			backgroundColor: "",
-			borderColor: "",
-			editable: false,
-			extendedProps: {
-				type: 0,
-				cancelled: false,
-			},
-		};
-	const start = event.start || event.startDate || event.date || event.begin;
-	const end = event.end || event.endDate || start;
-	const slotDate =
-		event.extendedProps?.slotDate || (typeof start === "string" ? String(start).split("T")[0] : undefined);
-	const slotTime =
-		event.extendedProps?.slotTime || (typeof start === "string" ? String(start).split("T")[1]?.slice(0, 5) : undefined);
+function getEventEnd(
+	event: DataTableEvent,
+	start: string | Date | undefined
+): string | Date | undefined {
+	return event.end || event.endDate || start;
+}
+
+function extractSlotDate(
+	start: string | Date | undefined,
+	extendedProps?: DataTableEvent["extendedProps"]
+): string | undefined {
+	if (extendedProps?.slotDate) {
+		return extendedProps.slotDate;
+	}
+	if (typeof start === "string") {
+		return String(start).split("T")[0];
+	}
+	return;
+}
+
+function extractSlotTime(
+	start: string | Date | undefined,
+	extendedProps?: DataTableEvent["extendedProps"]
+): string | undefined {
+	if (extendedProps?.slotTime) {
+		return extendedProps.slotTime;
+	}
+	if (typeof start === "string") {
+		return String(start).split("T")[1]?.slice(0, TIME_SPLIT_INDEX);
+	}
+	return;
+}
+
+function buildReservationIdProp(event: DataTableEvent): Record<string, string> {
+	const reservationId =
+		event.extendedProps?.reservationId ?? event.reservationId;
+	return reservationId ? { reservationId } : {};
+}
+
+function buildSlotDateProp(slotDate?: string): Record<string, string> {
+	return slotDate ? { slotDate } : {};
+}
+
+function buildSlotTimeProp(slotTime?: string): Record<string, string> {
+	return slotTime ? { slotTime } : {};
+}
+
+export function convertDataTableEventToCalendarEvent(
+	event: DataTableEvent
+): CalendarEvent {
+	if (!event) {
+		return EMPTY_CALENDAR_EVENT;
+	}
+
+	const start = getEventStart(event);
+	const end = getEventEnd(event, start);
+	const slotDate = extractSlotDate(start, event.extendedProps);
+	const slotTime = extractSlotTime(start, event.extendedProps);
+
 	return {
 		id: String(event.id ?? event.reservationId ?? event.key ?? Math.random()),
 		title: event.title ?? event.name ?? "",
@@ -77,13 +135,9 @@ export function convertDataTableEventToCalendarEvent(event: DataTableEvent): Cal
 		extendedProps: {
 			type: event.extendedProps?.type ?? event.type ?? 0,
 			cancelled: event.extendedProps?.cancelled ?? event.cancelled ?? false,
-			...((event.extendedProps?.reservationId ?? event.reservationId)
-				? {
-						reservationId: event.extendedProps?.reservationId ?? event.reservationId,
-					}
-				: {}),
-			...(slotDate ? { slotDate } : {}),
-			...(slotTime ? { slotTime } : {}),
+			...buildReservationIdProp(event),
+			...buildSlotDateProp(slotDate),
+			...buildSlotTimeProp(slotTime),
 			...event.extendedProps,
 		},
 	};

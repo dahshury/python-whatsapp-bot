@@ -1,12 +1,12 @@
 import { create, type StateCreator } from "zustand";
 
-export interface UndoableOperation {
+export type UndoableOperation = {
 	id: string; // Unique ID for this undo operation
 	execute: () => Promise<void>; // The function that performs the undo API call
 	description: string; // Short description for the toast, e.g., "Undo creation of reservation for X"
-}
+};
 
-interface UndoStoreState {
+type UndoStoreState = {
 	undoStack: UndoableOperation[];
 	maxStackSize: number;
 	addUndo: (operation: UndoableOperation) => void;
@@ -15,7 +15,7 @@ interface UndoStoreState {
 	peekUndo: () => UndoableOperation | undefined;
 	canUndo: () => boolean;
 	configureStackSize: (size: number) => void;
-}
+};
 
 // Define the StateCreator type for better type safety
 const undoStoreCreator: StateCreator<UndoStoreState> = (set, get) => ({
@@ -43,7 +43,9 @@ const undoStoreCreator: StateCreator<UndoStoreState> = (set, get) => ({
 	},
 	removeUndo: (operationId: string) => {
 		set((state: UndoStoreState) => ({
-			undoStack: state.undoStack.filter((op: UndoableOperation) => op.id !== operationId),
+			undoStack: state.undoStack.filter(
+				(op: UndoableOperation) => op.id !== operationId
+			),
 		}));
 	},
 	peekUndo: () => {

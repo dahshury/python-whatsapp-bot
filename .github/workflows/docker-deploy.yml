@@ -51,13 +51,13 @@ jobs:
           script: |
             # Create base directory if it doesn't exist
             mkdir -p /home/ubuntu/python-whatsapp-bot
-            
+
             # Remove existing directories that might have permission issues
             sudo rm -rf /home/ubuntu/python-whatsapp-bot/prometheus
-            
+
             # Create fresh directories with proper permissions
             mkdir -p /home/ubuntu/python-whatsapp-bot/prometheus
-            
+
             # Ensure proper ownership (use sudo)
             sudo chown -R ubuntu:ubuntu /home/ubuntu/python-whatsapp-bot
             # Create swap file if not exists (1G)
@@ -128,19 +128,19 @@ jobs:
               # No SQLite database is used anymore; Postgres runs as a container with a mounted data directory
 
               # First, clean up space BEFORE pulling new images
-              
+
               # Clean all unused volumes (not used by running containers)
               docker volume prune -f
-              
+
               # Clean all unused networks
               docker network prune -f
-              
+
               # Remove all dangling images (not used and not tagged)
               docker image prune -f
-              
+
               # Clean build cache
               docker builder prune -f
-              
+
               # Now pull the new images - this ensures we have space for them
               echo "Pulling updated images..."
               docker compose -f docker-compose.prod.yml pull
@@ -150,21 +150,21 @@ jobs:
               # Bring down the compose stack cleanly to avoid container/task conflicts
               echo "Stopping running containers (compose down)..."
               docker compose -f docker-compose.prod.yml down --remove-orphans || true
-              
+
               # Start new containers
               echo "Starting updated services..."
               docker compose -f docker-compose.prod.yml up -d --remove-orphans
-              
+
               # After new containers are running, remove ALL unused images
               echo "Removing ALL unused images to reclaim space..."
               docker image prune -a -f
-              
+
               # Final system prune to clean everything else
               echo "Final system cleanup..."
               docker system prune -f
-              
+
               echo "Deployment succeeded"
               exit 0
             done
             echo "Deployment failed after 3 attempts"
-            exit 1 
+            exit 1

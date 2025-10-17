@@ -3,103 +3,194 @@
 import { useReservationsData } from "@shared/libs/data/websocket-data-provider";
 import { i18n } from "@shared/libs/i18n";
 import { Z_INDEX } from "@shared/libs/ui/z-index";
-import * as React from "react";
+import type { FC } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Toaster } from "sonner";
 import { notificationManager } from "@/services/notifications/notification-manager.service";
 import { toastService } from "./toast-service";
 
-export const ToastRouter: React.FC = () => {
-	const { reservations } = useReservationsData();
+// Time slice constants
+const TIME_SLOT_LENGTH = 5;
+const MESSAGE_TRUNCATE_LENGTH = 100;
 
-	const resolveCustomerName = React.useCallback(
+// Helper to build reservation notification arguments
+function buildReservationNotificationArgs(
+	typedData: {
+		customer_name?: string;
+		wa_id?: string;
+		date?: string;
+		time_slot?: string;
+	},
+	isLocalized: boolean
+) {
+	return {
+		...(typedData.customer_name !== undefined && {
+			customer: typedData.customer_name,
+		}),
+		wa_id: typedData.wa_id || "",
+		date: typedData.date || "",
+		time: (typedData.time_slot || "").slice(0, TIME_SLOT_LENGTH),
+		isLocalized,
+	};
+}
+
+export const ToastRouter: FC = () => {
+	const { reservations } = useReservationsData();
+	const handleAnyRef = useRef<((ev: Event) => void) | null>(null);
+
+	const resolveCustomerName = useCallback(
 		(waId?: string, fallbackName?: string): string | undefined => {
 			try {
-				if (fallbackName && String(fallbackName).trim()) return String(fallbackName);
-				const id = String(waId || "");
-				if (!id) return undefined;
-				const list = (reservations as Record<string, Array<{ customer_name?: string }>> | undefined)?.[id] || [];
-				for (const r of list) {
-					if (r?.customer_name) return String(r.customer_name);
+				if (fallbackName && String(fallbackName).trim()) {
+					return String(fallbackName);
 				}
-			} catch {}
-			return undefined;
+				const id = String(waId || "");
+				if (!id) {
+					return;
+				}
+				const list =
+					(
+						reservations as
+							| Record<string, Array<{ customer_name?: string }>>
+							| undefined
+					)?.[id] || [];
+				for (const r of list) {
+					if (r?.customer_name) {
+						return String(r.customer_name);
+					}
+				}
+			} catch {
+				// Silent: unable to resolve customer name from reservations
+			}
+			return;
 		},
 		[reservations]
 	);
 
-	React.useEffect(() => {
-		const handleAny = (ev: Event) => {
+	const getLocalizationState = useCallback((): boolean => {
+		try {
+			const loc = localStorage.getItem("locale");
+			return Boolean(loc && loc !== "en");
+		} catch {
+			return false;
+		}
+	}, []);
+
+	const handleReservationEvent = useCallback(
+		(type: string, data: unknown, isLocalized: boolean) => {
+			const typedData = data as {
+				customer_name?: string;
+				wa_id?: string;
+				date?: string;
+				time_slot?: string;
+			};
+
+			// Guard against missing required fields
+			if (!(typedData.wa_id && typedData.date)) {
+				return;
+			}
+
+			if (type === "reservation_created") {
+				notificationManager.showReservationCreated(
+					buildReservationNotificationArgs(typedData, isLocalized)
+				);
+			} else if (
+				type === "reservation_updated" ||
+				type === "reservation_reinstated"
+			) {
+				notificationManager.showReservationModified(
+					buildReservationNotificationArgs(typedData, isLocalized)
+				);
+			} else if (type === "reservation_cancelled") {
+				notificationManager.showReservationCancelled(
+					buildReservationNotificationArgs(typedData, isLocalized)
+				);
+			}
+		},
+		[]
+	);
+
+	const handleMessageEvent = useCallback(
+		(data: unknown, isLocalized: boolean) => {
+			const messageLabel = i18n.getMessage("toast_new_message", isLocalized);
+			const waId = String(
+				(data as { wa_id?: string; waId?: string })?.wa_id ||
+					(data as { waId?: string }).waId ||
+					""
+			);
+			const name = resolveCustomerName(
+				waId,
+				(data as { customer_name?: string })?.customer_name
+			);
+			const who = name || waId;
+			const title = `${messageLabel} • ${who}`;
+			const maybeDate = (data as { date?: string }).date;
+			const maybeTime = (data as { time?: string }).time;
+			const maybeMessage = (data as { message?: string }).message;
+
+			toastService.newMessage({
+				title,
+				description: (maybeMessage || "").slice(0, MESSAGE_TRUNCATE_LENGTH),
+				wa_id: waId,
+				...(typeof maybeDate === "string" ? { date: maybeDate } : {}),
+				...(typeof maybeTime === "string" ? { time: maybeTime } : {}),
+				...(typeof maybeMessage === "string" ? { message: maybeMessage } : {}),
+				isLocalized,
+			});
+		},
+		[resolveCustomerName]
+	);
+
+	const handleEventType = useCallback(
+		(type: string, data: unknown, isLocalized: boolean) => {
+			const reservationTypes = [
+				"reservation_created",
+				"reservation_updated",
+				"reservation_reinstated",
+				"reservation_cancelled",
+			];
+
+			if (reservationTypes.includes(type)) {
+				handleReservationEvent(type, data, isLocalized);
+			} else if (type === "conversation_new_message") {
+				handleMessageEvent(data, isLocalized);
+			}
+		},
+		[handleReservationEvent, handleMessageEvent]
+	);
+
+	useEffect(() => {
+		handleAnyRef.current = (ev: Event) => {
 			try {
 				const { type, data } = (ev as CustomEvent).detail || {};
-				if (!type || !data) return;
-				const isLocalized = (() => {
-					try {
-						const loc = localStorage.getItem("locale");
-						return Boolean(loc && loc !== "en");
-					} catch {
-						return false;
-					}
-				})();
-
-				if (type === "reservation_created") {
-					notificationManager.showReservationCreated({
-						customer: data.customer_name,
-						wa_id: data.wa_id,
-						date: data.date,
-						time: (data.time_slot || "").slice(0, 5),
-						isLocalized,
-					});
-				} else if (type === "reservation_updated" || type === "reservation_reinstated") {
-					notificationManager.showReservationModified({
-						customer: data.customer_name,
-						wa_id: data.wa_id,
-						date: data.date,
-						time: (data.time_slot || "").slice(0, 5),
-						isLocalized,
-					});
-				} else if (type === "reservation_cancelled") {
-					notificationManager.showReservationCancelled({
-						customer: data.customer_name,
-						wa_id: data.wa_id,
-						date: data.date,
-						time: (data.time_slot || "").slice(0, 5),
-						isLocalized,
-					});
-				} else if (type === "conversation_new_message") {
-					const messageLabel = i18n.getMessage("toast_new_message", isLocalized);
-					const waId = String(
-						(data as { wa_id?: string; waId?: string })?.wa_id || (data as { waId?: string }).waId || ""
-					);
-					const name = resolveCustomerName(waId, (data as { customer_name?: string })?.customer_name);
-					const who = name || waId;
-					const title = `${messageLabel} • ${who}`;
-					const maybeDate = (data as { date?: string }).date;
-					const maybeTime = (data as { time?: string }).time;
-					const maybeMessage = (data as { message?: string }).message;
-					toastService.newMessage({
-						title,
-						description: (maybeMessage || "").slice(0, 100),
-						wa_id: waId,
-						...(typeof maybeDate === "string" ? { date: maybeDate } : {}),
-						...(typeof maybeTime === "string" ? { time: maybeTime } : {}),
-						...(typeof maybeMessage === "string" ? { message: maybeMessage } : {}),
-						isLocalized,
-					});
-				} else if (type === "vacation_period_updated") {
-					// silent
+				if (!(type && data)) {
+					return;
 				}
-			} catch {}
+				const isLocalized = getLocalizationState();
+				handleEventType(type, data, isLocalized);
+			} catch {
+				// Silent: error processing notification event
+			}
 		};
-		window.addEventListener("notification:add", handleAny as EventListener);
+
+		window.addEventListener(
+			"notification:add",
+			handleAnyRef.current as EventListener
+		);
 		return () => {
-			window.removeEventListener("notification:add", handleAny as EventListener);
+			if (handleAnyRef.current) {
+				window.removeEventListener(
+					"notification:add",
+					handleAnyRef.current as EventListener
+				);
+			}
 		};
-	}, [resolveCustomerName]);
+	}, [getLocalizationState, handleEventType]);
 
 	return (
 		<Toaster
-			position="bottom-right"
 			gap={8}
+			position="bottom-right"
 			style={{ zIndex: Z_INDEX.TOASTER }}
 			toastOptions={{
 				className: "sonner-toast",

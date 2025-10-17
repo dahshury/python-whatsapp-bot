@@ -3,19 +3,19 @@
 import type React from "react";
 import { ThemedScrollbar } from "@/shared/ui/themed-scrollbar";
 
-interface MainContentWrapperProps {
+type MainContentWrapperProps = {
 	children: React.ReactNode;
-}
+};
 
 export function MainContentWrapper({ children }: MainContentWrapperProps) {
 	return (
 		<ThemedScrollbar
-			className="flex-1 scrollbar-autohide main-content-scrollbar"
-			style={{ height: "100%" }}
+			className="scrollbar-autohide main-content-scrollbar flex-1"
+			disableTracksWidthCompensation={true}
 			noScrollX={true}
 			removeTrackXWhenNotUsed={true}
-			disableTracksWidthCompensation={true}
 			rtl={false}
+			style={{ height: "100%" }}
 		>
 			{children}
 		</ThemedScrollbar>

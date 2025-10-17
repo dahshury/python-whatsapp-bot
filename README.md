@@ -12,27 +12,27 @@ For the original repository and setup tutorial (Flask version), please refer to 
 
 ## Features
 
-- **Multi-Provider AI Integration**: Flexibility to use OpenAI, Anthropic Claude, or Google Gemini for message generation
-- **Modern Frontend**: Next.js 14 application with TypeScript and Tailwind CSS for responsive UI
-- **Docker Containerization**: Complete Docker setup for both development and production environments
-- **Monitoring & Metrics**: Prometheus integration with alerting capabilities and Discord notifications
-- **Advanced Analytics**: Comprehensive statistics dashboard for business insights
-- **Automated Scheduling**: Built-in job scheduler for reminders and database backups
-- **Internationalization**: Multi-language support with i18n capabilities
-- **High Performance**: Optimized with uvloop for maximum throughput
-- **Secure Authentication**: JWT-based authentication system for frontend access control
-- **Domain-Driven Architecture**: Clean architecture with domain services for better maintainability
-- **Comprehensive Testing**: Unit tests and integration tests for robust code quality
-- **Production-Ready**: Support for production deployment with robust error handling and logging
+* **Multi-Provider AI Integration**: Flexibility to use OpenAI, Anthropic Claude, or Google Gemini for message generation
+* **Modern Frontend**: Next.js 14 application with TypeScript and Tailwind CSS for responsive UI
+* **Docker Containerization**: Complete Docker setup for both development and production environments
+* **Monitoring & Metrics**: Prometheus integration with alerting capabilities and Discord notifications
+* **Advanced Analytics**: Comprehensive statistics dashboard for business insights
+* **Automated Scheduling**: Built-in job scheduler for reminders and database backups
+* **Internationalization**: Multi-language support with i18n capabilities
+* **High Performance**: Optimized with uvloop for maximum throughput
+* **Secure Authentication**: JWT-based authentication system for frontend access control
+* **Domain-Driven Architecture**: Clean architecture with domain services for better maintainability
+* **Comprehensive Testing**: Unit tests and integration tests for robust code quality
+* **Production-Ready**: Support for production deployment with robust error handling and logging
 
 ## Prerequisites
 
-- A Meta developer account. If you don't have one, [create a Meta developer account here](https://developers.facebook.com/).
-- A business app. If you don't have one, [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/).
-- Docker and Docker Compose (for containerized deployment)
-- Node.js 18+ and pnpm (for frontend development)
-- Python 3.9+ (for backend development)
-- API keys for your chosen AI provider(s): OpenAI, Anthropic, and/or Google Gemini
+* A Meta developer account. If you don't have one, [create a Meta developer account here](https://developers.facebook.com/).
+* A business app. If you don't have one, [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/).
+* Docker and Docker Compose (for containerized deployment)
+* Node.js 18+ and pnpm (for frontend development)
+* Python 3.9+ (for backend development)
+* API keys for your chosen AI provider(s): OpenAI, Anthropic, and/or Google Gemini
 
 ## Project Structure
 
@@ -113,35 +113,35 @@ For the original repository and setup tutorial (Flask version), please refer to 
 The application operates as follows:
 
 1. **Webhook Handling**:
-   - The FastAPI application listens for incoming webhooks from WhatsApp at the `/webhook` endpoint.
-   - Incoming requests are verified using signature verification to ensure authenticity.
+   * The FastAPI application listens for incoming webhooks from WhatsApp at the `/webhook` endpoint.
+   * Incoming requests are verified using signature verification to ensure authenticity.
 
-1. **Message Processing**:
-   - When a message is received, it is processed by the appropriate LLM service (OpenAI, Anthropic, or Gemini).
-   - The application uses a configurable LLM provider to generate intelligent responses based on message content.
+2. **Message Processing**:
+   * When a message is received, it is processed by the appropriate LLM service (OpenAI, Anthropic, or Gemini).
+   * The application uses a configurable LLM provider to generate intelligent responses based on message content.
 
-1. **Database Interactions**:
-   - The application uses SQLite to store conversation history, reservation details, and thread information.
-   - Multiple tables track different aspects of the business operations.
+3. **Database Interactions**:
+   * The application uses SQLite to store conversation history, reservation details, and thread information.
+   * Multiple tables track different aspects of the business operations.
 
-1. **Reservation Management**:
-   - Users can interact with the bot via WhatsApp to make, modify, or cancel reservations.
-   - Assistant functions handle these operations with natural language understanding.
+4. **Reservation Management**:
+   * Users can interact with the bot via WhatsApp to make, modify, or cancel reservations.
+   * Assistant functions handle these operations with natural language understanding.
 
-1. **Monitoring and Metrics**:
-   - Prometheus collects and stores metrics on system performance and business operations.
-   - Alerts are configured for critical conditions and sent to a Discord channel.
+5. **Monitoring and Metrics**:
+   * Prometheus collects and stores metrics on system performance and business operations.
+   * Alerts are configured for critical conditions and sent to a Discord channel.
 
-1. **Frontend Dashboard**:
-   - The Next.js application provides multiple views:
-     - Calendar view for reservation management
-     - Conversation history browser
-     - Statistics dashboard with business analytics
-     - WhatsApp message sending interface
+6. **Frontend Dashboard**:
+   * The Next.js application provides multiple views:
+     * Calendar view for reservation management
+     * Conversation history browser
+     * Statistics dashboard with business analytics
+     * WhatsApp message sending interface
 
-1. **Automated Tasks**:
-   - Background scheduler runs daily to send appointment reminders via WhatsApp.
-   - Regular database backups are performed and can be uploaded to remote storage.
+7. **Automated Tasks**:
+   * Background scheduler runs daily to send appointment reminders via WhatsApp.
+   * Regular database backups are performed and can be uploaded to remote storage.
 
 ## Architecture Overview
 
@@ -149,26 +149,26 @@ The application operates as follows:
 
 The application follows Domain-Driven Design (DDD) principles with clear separation of concerns:
 
-- **Domain Layer** (`app/services/domain/`): Contains business logic organized by domain entities
-  - `conversation/`: Handles WhatsApp conversation management
-  - `customer/`: Manages customer data and profiles
-  - `reservation/`: Core reservation business logic
-  - `notification/`: Handles various notification types
-  - `shared/`: Common domain utilities and base classes
+* **Domain Layer** (`app/services/domain/`): Contains business logic organized by domain entities
+  * `conversation/`: Handles WhatsApp conversation management
+  * `customer/`: Manages customer data and profiles
+  * `reservation/`: Core reservation business logic
+  * `notification/`: Handles various notification types
+  * `shared/`: Common domain utilities and base classes
 
-- **Service Layer**: AI providers and external integrations
+* **Service Layer**: AI providers and external integrations
 
-- **Infrastructure Layer**: Database, authentication, and external APIs
+* **Infrastructure Layer**: Database, authentication, and external APIs
 
-- **Presentation Layer**: Next.js frontend with modern React patterns
+* **Presentation Layer**: Next.js frontend with modern React patterns
 
 ### Testing Strategy
 
 The project includes comprehensive testing:
 
-- **Unit Tests** (`tests/unit/`): Test individual components and functions
-- **Integration Tests** (`tests/`): Test component interactions and API endpoints
-- **Frontend Tests**: Component and integration tests for React components
+* **Unit Tests** (`tests/unit/`): Test individual components and functions
+* **Integration Tests** (`tests/`): Test component interactions and API endpoints
+* **Frontend Tests**: Component and integration tests for React components
 
 ## Setup and Installation
 
@@ -309,17 +309,17 @@ Then configure your webhook URL as: `https://your-ngrok-url.ngrok.io/webhook`
 The application includes a complete monitoring stack:
 
 1. **Prometheus**: Collects metrics at <http://localhost:9090>
-1. **AlertManager**: Manages alert notifications at <http://localhost:9093>
-1. **Discord Alerts**: Sends formatted alert notifications to Discord
+2. **AlertManager**: Manages alert notifications at <http://localhost:9093>
+3. **Discord Alerts**: Sends formatted alert notifications to Discord
 
 ## Contributing
 
 Contributions are welcome! Please follow these steps:
 
 1. Fork the repository
-1. Create a feature branch
-1. Make your changes
-1. Submit a pull request
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ## License
 

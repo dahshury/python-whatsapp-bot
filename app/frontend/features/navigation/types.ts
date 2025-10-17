@@ -1,7 +1,7 @@
 import type * as React from "react";
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
+import type { CalendarCoreRef } from "@/widgets/calendar/types";
 
-export interface DockNavProps {
+export type DockNavProps = {
 	className?: string;
 	currentCalendarView?: string;
 	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
@@ -21,9 +21,9 @@ export interface DockNavProps {
 	hidePageLinks?: boolean;
 	hideSettings?: boolean;
 	dualModeTopDock?: boolean;
-}
+};
 
-export interface NavigationControlsProps {
+export type NavigationControlsProps = {
 	isLocalized?: boolean;
 	isCalendarPage?: boolean;
 	isPrevDisabled?: boolean;
@@ -32,9 +32,9 @@ export interface NavigationControlsProps {
 	onNext?: () => void;
 	className?: string;
 	compact?: boolean;
-}
+};
 
-export interface NavigationDateButtonProps {
+export type NavigationDateButtonProps = {
 	title?: string;
 	isLocalized?: boolean;
 	isCalendarPage?: boolean;
@@ -45,27 +45,27 @@ export interface NavigationDateButtonProps {
 	visibleEventCount?: number;
 	/** When false, hides the floating event count badge overlay */
 	showBadge?: boolean;
-}
+};
 
-export interface NavigationLinksProps {
+export type NavigationLinksProps = {
 	isLocalized?: boolean;
 	isActive?: (href: string) => boolean;
 	className?: string;
-}
+};
 
-export interface ViewMode {
+export type ViewMode = {
 	value: "default" | "freeRoam" | "dual";
 	label: string;
 	labelRTL: string;
-}
+};
 
-interface NavigationState {
+type NavigationState = {
 	mounted: boolean;
 	isHoveringDate: boolean;
 	activeTab: string;
-}
+};
 
-interface NavigationContextValue {
+type NavigationContextValue = {
 	state: NavigationState;
 	handlers: {
 		setIsHoveringDate: (value: boolean) => void;
@@ -80,7 +80,7 @@ interface NavigationContextValue {
 		isRecording: boolean;
 		isActive: (href: string) => boolean;
 	};
-}
+};
 
 export interface ExtendedNavigationContextValue extends NavigationContextValue {
 	navigation: {
@@ -99,13 +99,14 @@ export interface ExtendedNavigationContextValue extends NavigationContextValue {
 	};
 }
 
-export interface ThemeOption {
+export type ThemeOption = {
 	value: string;
 	name: string;
-	nameRTL: string;
+	/** i18n key for localized name, e.g., "theme_name_default" */
+	nameKey: string;
 	colors: {
 		primary: string;
 		secondary: string;
 	};
 	borderStyle?: string;
-}
+};

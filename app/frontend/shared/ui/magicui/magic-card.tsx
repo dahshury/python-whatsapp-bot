@@ -5,7 +5,7 @@ import { motion, useMotionTemplate, useMotionValue } from "motion/react";
 import type React from "react";
 import { useCallback, useEffect, useRef } from "react";
 
-interface MagicCardProps {
+type MagicCardProps = {
 	children?: React.ReactNode;
 	className?: string;
 	gradientSize?: number;
@@ -13,7 +13,7 @@ interface MagicCardProps {
 	gradientOpacity?: number;
 	gradientFrom?: string;
 	gradientTo?: string;
-}
+};
 
 export function MagicCard({
 	children,
@@ -76,7 +76,10 @@ export function MagicCard({
 	}, [gradientSize, mouseX, mouseY]);
 
 	return (
-		<div ref={cardRef} className={cn("group relative rounded-[inherit]", className)}>
+		<div
+			className={cn("group relative rounded-[inherit]", className)}
+			ref={cardRef}
+		>
 			<motion.div
 				className="pointer-events-none absolute inset-0 rounded-[inherit] bg-border duration-300 group-hover:opacity-100"
 				style={{

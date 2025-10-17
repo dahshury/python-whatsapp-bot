@@ -8,40 +8,71 @@ import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Progress } from "@/shared/ui/progress";
 
-interface ConversationLengthAnalysisProps {
+// Engagement level thresholds
+const ENGAGEMENT_HIGH_THRESHOLD = 20;
+const ENGAGEMENT_MEDIUM_THRESHOLD = 10;
+const MAX_ENGAGEMENT_SCORE = 100;
+const ENGAGEMENT_SCALE_DIVISOR = 30;
+
+// Animation constants
+const ANIMATION_DURATION = 0.4;
+const INITIAL_ANIMATION_Y = 20;
+const METRIC_ANIMATION_DELAY = 0.1;
+
+type ConversationLengthAnalysisProps = {
 	conversationAnalysis: ConversationAnalysis;
 	isLocalized: boolean;
-}
+};
 
-interface ConversationMetricProps {
+type ConversationMetricProps = {
 	title: string;
 	value: number;
 	unit: string;
 	icon: React.ReactNode;
 	description?: string;
-}
+};
 
-function ConversationMetric({ title, value, unit, icon, description }: ConversationMetricProps) {
+function ConversationMetric({
+	title,
+	value,
+	unit,
+	icon,
+	description,
+}: ConversationMetricProps) {
 	return (
-		<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+		<motion.div
+			animate={{ opacity: 1, y: 0 }}
+			initial={{ opacity: 0, y: INITIAL_ANIMATION_Y }}
+			transition={{ duration: ANIMATION_DURATION }}
+		>
 			<Card className="h-full">
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">{title}</CardTitle>
+					<CardTitle className="font-medium text-sm">{title}</CardTitle>
 					{icon}
 				</CardHeader>
 				<CardContent>
-					<div className="text-2xl font-bold">
+					<div className="font-bold text-2xl">
 						{value.toFixed(1)} {unit}
 					</div>
-					{description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+					{description && (
+						<p className="mt-1 text-muted-foreground text-xs">{description}</p>
+					)}
 				</CardContent>
 			</Card>
 		</motion.div>
 	);
 }
 
-export function ConversationLengthAnalysis({ conversationAnalysis, isLocalized }: ConversationLengthAnalysisProps) {
-	const { avgMessagesPerCustomer, totalMessages, uniqueCustomers, messageCountDistribution } = conversationAnalysis;
+export function ConversationLengthAnalysis({
+	conversationAnalysis,
+	isLocalized,
+}: ConversationLengthAnalysisProps) {
+	const {
+		avgMessagesPerCustomer,
+		totalMessages,
+		uniqueCustomers,
+		messageCountDistribution,
+	} = conversationAnalysis;
 
 	// Use real calculated values from the dashboard service
 	const avgMessages = messageCountDistribution.avg;
@@ -73,19 +104,21 @@ export function ConversationLengthAnalysis({ conversationAnalysis, isLocalized }
 	];
 
 	// Calculate engagement level based on average messages
-	const getEngagementLevel = (avgMessages: number) => {
-		if (avgMessages >= 20)
+	const getEngagementLevel = (avg: number) => {
+		if (avg >= ENGAGEMENT_HIGH_THRESHOLD) {
 			return {
 				level: "high",
 				color: "text-green-600",
 				label: i18n.getMessage("engagement_high", isLocalized),
 			};
-		if (avgMessages >= 10)
+		}
+		if (avg >= ENGAGEMENT_MEDIUM_THRESHOLD) {
 			return {
 				level: "medium",
 				color: "text-yellow-600",
 				label: i18n.getMessage("engagement_medium", isLocalized),
 			};
+		}
 		return {
 			level: "low",
 			color: "text-red-600",
@@ -94,81 +127,102 @@ export function ConversationLengthAnalysis({ conversationAnalysis, isLocalized }
 	};
 
 	const engagement = getEngagementLevel(avgMessagesPerCustomer);
-	const engagementScore = Math.min(100, (avgMessagesPerCustomer / 30) * 100); // Scale to 100
+	const engagementScore = Math.min(
+		MAX_ENGAGEMENT_SCORE,
+		(avgMessagesPerCustomer / ENGAGEMENT_SCALE_DIVISOR) * MAX_ENGAGEMENT_SCORE
+	);
 
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center justify-between">
-				<h2 className="text-xl font-semibold">{i18n.getMessage("conversation_analysis_title", isLocalized)}</h2>
-				<Badge variant="outline" className={engagement.color}>
+				<h2 className="font-semibold text-xl">
+					{i18n.getMessage("conversation_analysis_title", isLocalized)}
+				</h2>
+				<Badge className={engagement.color} variant="outline">
 					{engagement.label}
 				</Badge>
 			</div>
 
-			<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 				{conversationMetrics.map((metric, index) => (
 					<motion.div
-						key={metric.title}
-						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: index * 0.1, duration: 0.4 }}
+						initial={{ opacity: 0, y: INITIAL_ANIMATION_Y }}
+						key={metric.title}
+						transition={{
+							delay: METRIC_ANIMATION_DELAY * index,
+							duration: ANIMATION_DURATION,
+						}}
 					>
 						<ConversationMetric
-							title={metric.title}
-							value={metric.value}
-							unit={metric.unit}
-							icon={metric.icon}
 							description={metric.description}
+							icon={metric.icon}
+							title={metric.title}
+							unit={metric.unit}
+							value={metric.value}
 						/>
 					</motion.div>
 				))}
 			</div>
 
 			{/* Overall Statistics */}
-			<div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-sm flex items-center gap-2">
+						<CardTitle className="flex items-center gap-2 text-sm">
 							<Users className="h-4 w-4" />
 							{i18n.getMessage("conversation_overview", isLocalized)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						<div className="flex justify-between items-center">
-							<span className="text-sm text-muted-foreground">
+						<div className="flex items-center justify-between">
+							<span className="text-muted-foreground text-sm">
 								{i18n.getMessage("msg_total_messages", isLocalized)}
 							</span>
-							<span className="font-semibold">{totalMessages.toLocaleString()}</span>
+							<span className="font-semibold">
+								{totalMessages.toLocaleString()}
+							</span>
 						</div>
-						<div className="flex justify-between items-center">
-							<span className="text-sm text-muted-foreground">
+						<div className="flex items-center justify-between">
+							<span className="text-muted-foreground text-sm">
 								{i18n.getMessage("msg_unique_customers", isLocalized)}
 							</span>
-							<span className="font-semibold">{uniqueCustomers.toLocaleString()}</span>
+							<span className="font-semibold">
+								{uniqueCustomers.toLocaleString()}
+							</span>
 						</div>
-						<div className="flex justify-between items-center">
-							<span className="text-sm text-muted-foreground">
+						<div className="flex items-center justify-between">
+							<span className="text-muted-foreground text-sm">
 								{i18n.getMessage("conversation_avg_per_customer", isLocalized)}
 							</span>
-							<span className="font-semibold">{avgMessagesPerCustomer.toFixed(1)}</span>
+							<span className="font-semibold">
+								{avgMessagesPerCustomer.toFixed(1)}
+							</span>
 						</div>
 					</CardContent>
 				</Card>
 
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-sm">{i18n.getMessage("conversation_engagement", isLocalized)}</CardTitle>
+						<CardTitle className="text-sm">
+							{i18n.getMessage("conversation_engagement", isLocalized)}
+						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-2">
-							<div className="flex justify-between items-center">
-								<span className="text-sm text-muted-foreground">
-									{i18n.getMessage("conversation_engagement_level", isLocalized)}
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground text-sm">
+									{i18n.getMessage(
+										"conversation_engagement_level",
+										isLocalized
+									)}
 								</span>
-								<span className={`text-sm font-semibold ${engagement.color}`}>{engagement.label}</span>
+								<span className={`font-semibold text-sm ${engagement.color}`}>
+									{engagement.label}
+								</span>
 							</div>
-							<Progress value={engagementScore} className="h-2" />
-							<div className="flex justify-between text-xs text-muted-foreground">
+							<Progress className="h-2" value={engagementScore} />
+							<div className="flex justify-between text-muted-foreground text-xs">
 								<span>{i18n.getMessage("engagement_low", isLocalized)}</span>
 								<span>{i18n.getMessage("engagement_high", isLocalized)}</span>
 							</div>

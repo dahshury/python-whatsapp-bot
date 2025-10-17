@@ -5,10 +5,14 @@ import dynamic from "next/dynamic";
 import { Suspense, useEffect } from "react";
 import { SidebarInset, useSidebar } from "@/shared/ui/sidebar";
 
-const DashboardView = dynamic(() => import("@/features/dashboard/dashboard-view").then((m) => m.DashboardView), {
-	ssr: false,
-	loading: () => <DashboardSkeleton />,
-});
+const DashboardView = dynamic(
+	() =>
+		import("@/features/dashboard/dashboard-view").then((m) => m.DashboardView),
+	{
+		ssr: false,
+		loading: () => <DashboardSkeleton />,
+	}
+);
 
 export default function DashboardPage() {
 	const { setOpen, setOpenMobile } = useSidebar();
@@ -19,7 +23,9 @@ export default function DashboardPage() {
 		try {
 			setOpen(false);
 			setOpenMobile(false);
-		} catch {}
+		} catch {
+			// Sidebar state management may not be available in all contexts
+		}
 	}, [setOpen, setOpenMobile]);
 	return (
 		<SidebarInset>

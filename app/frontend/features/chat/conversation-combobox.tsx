@@ -1,5 +1,6 @@
 "use client";
 
+import { sortWaIdsByChatOrder } from "@processes/customers/customer-list.process";
 import { useCustomerData } from "@shared/libs/data/customer-data-context";
 import { i18n } from "@shared/libs/i18n";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
@@ -11,16 +12,23 @@ import type { Reservation } from "@/entities/event";
 import type { PhoneOption } from "@/entities/phone";
 import { CustomerStatsCard } from "@/features/dashboard/customer-stats-card";
 import { ButtonGroup } from "@/shared/ui/button-group";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/shared/ui/hover-card";
+import {
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
+} from "@/shared/ui/hover-card";
 import { PhoneCombobox } from "@/shared/ui/phone-combobox";
 
-interface ConversationComboboxProps {
+const HOVER_CARD_DELAY_MS = 1500;
+const HOVER_CARD_CLOSE_DELAY_MS = 100;
+
+type ConversationComboboxProps = {
 	conversations: Record<string, ConversationMessage[]>;
 	reservations: Record<string, Reservation[]>;
 	selectedConversationId: string | null;
 	onConversationSelect: (conversationId: string) => void;
 	isLocalized?: boolean;
-}
+};
 
 export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	conversations,
@@ -36,60 +44,53 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	const hoverCardRef = useRef<HTMLDivElement>(null);
 
 	// Use persistent chat store for managing conversation selection
-	const { selectedConversationId: persistentSelectedId, setSelectedConversation, _hasHydrated } = useSidebarChatStore();
+	const {
+		selectedConversationId: persistentSelectedId,
+		setSelectedConversation,
+		_hasHydrated,
+	} = useSidebarChatStore();
 
 	// Use centralized customer data instead of processing locally
 	const { customers } = useCustomerData();
 
 	// Only use persisted selection after hydration is complete, otherwise use prop
-	const effectiveSelectedId = _hasHydrated && persistentSelectedId ? persistentSelectedId : selectedConversationId;
+	const effectiveSelectedId =
+		_hasHydrated && persistentSelectedId
+			? persistentSelectedId
+			: selectedConversationId;
 
 	// Create conversation options from centralized customer data
 	const conversationOptions = React.useMemo(() => {
-		return customers
-			.map((customer) => {
-				const key = String(customer.phone ?? "");
-				const convList = conversations[key] ?? [];
-				const messageCount = convList.length || 0;
-				const lastMessage = convList[convList.length - 1];
-
-				return {
-					value: key,
-					label: customer.name ? `${customer.name} (${key})` : key,
-					customerName: customer.name,
-					messageCount,
-					lastMessage,
-					hasConversation: true,
-				};
-			})
-			.sort((a, b) => {
-				// Multi-criteria sorting: 1) last message time, 2) has name, 3) phone number
-
-				// 1. Sort by most recent message first (primary criteria)
-				if (a.lastMessage && b.lastMessage) {
-					const aMessageTime = new Date(`${a.lastMessage.date} ${a.lastMessage.time}`);
-					const bMessageTime = new Date(`${b.lastMessage.date} ${b.lastMessage.time}`);
-					const timeDiff = bMessageTime.getTime() - aMessageTime.getTime();
-					if (timeDiff !== 0) return timeDiff;
-				} else if (a.lastMessage && !b.lastMessage) {
-					return -1; // a has message, b doesn't - a comes first
-				} else if (!a.lastMessage && b.lastMessage) {
-					return 1; // b has message, a doesn't - b comes first
-				}
-
-				// 2. Sort by customers who have both names and numbers (secondary criteria)
-				const aHasName = !!a.customerName;
-				const bHasName = !!b.customerName;
-				if (aHasName && !bHasName) return -1; // a has name, b doesn't - a comes first
-				if (!aHasName && bHasName) return 1; // b has name, a doesn't - b comes first
-
-				// 3. Sort by phone number (tertiary criteria)
-				return a.value.localeCompare(b.value, undefined, { numeric: true });
-			});
+		const waIds = customers.map((c) => String(c.phone ?? ""));
+		const nameMap = new Map(
+			waIds.map((wa) => [
+				wa,
+				customers.find((c) => String(c.phone ?? "") === wa)?.name || "",
+			])
+		);
+		const ordered = sortWaIdsByChatOrder(waIds, conversations, (wa) =>
+			nameMap.get(wa)
+		);
+		return ordered.map((wa) => {
+			const convList = conversations[wa] ?? [];
+			const messageCount = convList.length || 0;
+			const lastMessage = convList.at(-1);
+			const customerName = nameMap.get(wa) || "";
+			return {
+				value: wa,
+				label: customerName ? `${customerName} (${wa})` : wa,
+				customerName,
+				messageCount,
+				lastMessage,
+				hasConversation: true,
+			};
+		});
 	}, [customers, conversations]);
 
 	// Current index for navigation (must be after conversationOptions is defined)
-	const currentIndex = conversationOptions.findIndex((opt) => opt.value === effectiveSelectedId);
+	const currentIndex = conversationOptions.findIndex(
+		(opt) => opt.value === effectiveSelectedId
+	);
 
 	// Enhanced conversation selection handler that updates persistent store
 	const handleConversationSelect = useCallback(
@@ -105,9 +106,13 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 
 	// Navigation handlers
 	const handlePrevious = () => {
-		if (conversationOptions.length === 0) return;
+		if (conversationOptions.length === 0) {
+			return;
+		}
 		// Move toward older items; stop at the end
-		if (currentIndex >= conversationOptions.length - 1) return;
+		if (currentIndex >= conversationOptions.length - 1) {
+			return;
+		}
 		const newIndex = currentIndex + 1;
 		const selectedOption = conversationOptions[newIndex];
 		if (selectedOption) {
@@ -116,9 +121,13 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	};
 
 	const handleNext = () => {
-		if (conversationOptions.length === 0) return;
+		if (conversationOptions.length === 0) {
+			return;
+		}
 		// Move toward newer items; stop at the start
-		if (currentIndex <= 0) return;
+		if (currentIndex <= 0) {
+			return;
+		}
 		const newIndex = currentIndex - 1;
 		const selectedOption = conversationOptions[newIndex];
 		if (selectedOption) {
@@ -127,16 +136,17 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 	};
 
 	// Clear timers when component unmounts
-	useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (hoverTimer) {
 				clearTimeout(hoverTimer);
 			}
 			if (closeTimer) {
 				clearTimeout(closeTimer);
 			}
-		};
-	}, [hoverTimer, closeTimer]);
+		},
+		[hoverTimer, closeTimer]
+	);
 
 	// Removed local search state; PhoneCombobox manages its own input
 
@@ -156,7 +166,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 
 			const timer = setTimeout(() => {
 				setShowHoverCard(true);
-			}, 1500);
+			}, HOVER_CARD_DELAY_MS);
 			setHoverTimer(timer);
 		}
 	}, [effectiveSelectedId, closeTimer, hoverTimer]);
@@ -166,7 +176,12 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 			// Check if we're moving to the hover card
 			const relatedTarget = e.relatedTarget as EventTarget | null;
 			const hoverEl = hoverCardRef.current;
-			if (relatedTarget && hoverEl && relatedTarget instanceof Node && hoverEl.contains(relatedTarget as Node)) {
+			if (
+				relatedTarget &&
+				hoverEl &&
+				relatedTarget instanceof Node &&
+				hoverEl.contains(relatedTarget as Node)
+			) {
 				// Moving to hover card, keep it open
 				return;
 			}
@@ -185,7 +200,7 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 			// Use a small delay before closing to prevent flicker
 			const timer = setTimeout(() => {
 				setShowHoverCard(false);
-			}, 100);
+			}, HOVER_CARD_CLOSE_DELAY_MS);
 
 			setCloseTimer(timer);
 		},
@@ -199,11 +214,13 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 		const enriched = customers.map((customer) => {
 			const key = String(customer.phone ?? "");
 			const convList = conversations[key] ?? [];
-			const lastMessage = convList[convList.length - 1];
+			const lastMessage = convList.at(-1);
 			let lastMessageTime = 0;
 			if (lastMessage) {
 				const t = new Date(`${lastMessage.date} ${lastMessage.time}`).getTime();
-				if (!Number.isNaN(t)) lastMessageTime = t;
+				if (!Number.isNaN(t)) {
+					lastMessageTime = t;
+				}
 			}
 			return {
 				number: key,
@@ -214,7 +231,9 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 				__lastMessageTime: lastMessageTime,
 			};
 		});
-		enriched.sort((a, b) => (b.__lastMessageTime || 0) - (a.__lastMessageTime || 0));
+		enriched.sort(
+			(a, b) => (b.__lastMessageTime || 0) - (a.__lastMessageTime || 0)
+		);
 		return enriched.map(({ __lastMessageTime, ...rest }) => rest);
 	}, [customers, conversations]);
 
@@ -222,51 +241,55 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 		<div className="space-y-2">
 			{/* Navigation Row */}
 			<ButtonGroup
-				className="flex items-stretch w-full max-w-full min-w-0 overflow-hidden"
-				orientation="horizontal"
 				aria-label={i18n.getMessage("conversation_navigation", isLocalized)}
+				className="flex w-full min-w-0 max-w-full items-stretch overflow-hidden"
+				orientation="horizontal"
 			>
 				<Button
-					variant="outline"
-					size="sm"
-					onClick={handlePrevious}
-					disabled={conversationOptions.length === 0 || currentIndex === conversationOptions.length - 1}
 					className="h-8 w-8 p-0"
+					disabled={
+						conversationOptions.length === 0 ||
+						currentIndex === conversationOptions.length - 1
+					}
+					onClick={handlePrevious}
+					size="sm"
 					title={i18n.getMessage("older", isLocalized)}
+					variant="outline"
 				>
 					<ChevronLeft className="h-4 w-4" />
 				</Button>
 
 				{/* Conversation Selector with HoverCard */}
-				<div className="flex-1 min-w-0 max-w-full overflow-hidden">
+				<div className="min-w-0 max-w-full flex-1 overflow-hidden">
 					<HoverCard open={showHoverCard}>
 						<HoverCardTrigger asChild>
 							<div className="w-full max-w-full">
 								<PhoneCombobox
-									value={effectiveSelectedId || ""}
+									className="w-full min-w-0 max-w-full"
 									onChange={handleConversationSelect}
-									placeholder={i18n.getMessage("chat_select_conversation", isLocalized)}
-									phoneOptions={phoneOptions}
-									uncontrolled={false}
-									showCountrySelector={false}
-									showNameAndPhoneWhenClosed={true}
-									size="sm"
-									className="w-full max-w-full min-w-0"
-									shrinkTextToFit={true}
-									preferPlaceholderWhenEmpty={true}
 									onMouseEnter={handleMouseEnter}
 									onMouseLeave={handleMouseLeave}
+									phoneOptions={phoneOptions}
+									placeholder={i18n.getMessage(
+										"chat_select_conversation",
+										isLocalized
+									)}
+									preferPlaceholderWhenEmpty={true}
 									rounded={false}
+									showCountrySelector={false}
+									showNameAndPhoneWhenClosed={true}
+									shrinkTextToFit={true}
+									size="sm"
+									uncontrolled={false}
+									value={effectiveSelectedId || ""}
 								/>
 							</div>
 						</HoverCardTrigger>
 
 						{effectiveSelectedId && (
 							<HoverCardContent
-								ref={hoverCardRef}
-								className="w-[18.75rem] p-0 z-50"
 								align="center"
-								sideOffset={5}
+								className="z-50 w-[18.75rem] p-0"
 								onMouseEnter={() => {
 									// Clear any close timer when entering hover card
 									if (closeTimer) {
@@ -282,22 +305,27 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 								onMouseLeave={(e: React.MouseEvent) => {
 									// Check if we're moving back to the trigger (PhoneCombobox)
 									const relatedTarget = e.relatedTarget as HTMLElement;
-									if (relatedTarget && (e.currentTarget as HTMLElement).contains(relatedTarget)) {
+									if (
+										relatedTarget &&
+										(e.currentTarget as HTMLElement).contains(relatedTarget)
+									) {
 										return;
 									}
 									// Otherwise close the hover card after a small delay
 									const timer = setTimeout(() => {
 										setShowHoverCard(false);
-									}, 100);
+									}, HOVER_CARD_CLOSE_DELAY_MS);
 									setCloseTimer(timer);
 								}}
+								ref={hoverCardRef}
+								sideOffset={5}
 							>
 								<CustomerStatsCard
-									selectedConversationId={effectiveSelectedId}
 									conversations={conversations}
-									reservations={reservations}
-									isLocalized={isLocalized}
 									isHoverCard={true}
+									isLocalized={isLocalized}
+									reservations={reservations}
+									selectedConversationId={effectiveSelectedId}
 								/>
 							</HoverCardContent>
 						)}
@@ -305,12 +333,12 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 				</div>
 
 				<Button
-					variant="outline"
-					size="sm"
-					onClick={handleNext}
-					disabled={conversationOptions.length === 0 || currentIndex === 0}
 					className="h-8 w-8 p-0"
+					disabled={conversationOptions.length === 0 || currentIndex === 0}
+					onClick={handleNext}
+					size="sm"
 					title={i18n.getMessage("more_recent", isLocalized)}
+					variant="outline"
 				>
 					<ChevronRight className="h-4 w-4" />
 				</Button>

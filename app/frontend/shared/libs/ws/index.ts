@@ -1,6 +1,3 @@
-// Centralize websocket/url helpers under shared/libs/ws
-
-export * from "@/shared/libs/ws/cache";
-export * from "@/shared/libs/ws/reducer";
-export * from "@/shared/libs/ws/types";
-export * from "@/shared/libs/ws/url";
+// Websocket utilities
+// Import specific modules directly rather than using this barrel file
+// Example: import { loadCachedState } from "@/shared/libs/ws/cache"

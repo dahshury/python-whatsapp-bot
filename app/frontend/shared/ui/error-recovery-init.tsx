@@ -17,8 +17,8 @@ export function ErrorRecoveryInit() {
 						.then(({ ErrorRecovery }) => {
 							ErrorRecovery.forceRecovery();
 						})
-						.catch((error) => {
-							console.error("Failed to load error recovery:", error);
+						.catch(() => {
+							// Silently fail if error recovery module fails to load
 						});
 				}
 			};
@@ -26,7 +26,7 @@ export function ErrorRecoveryInit() {
 			window.addEventListener("keydown", handleKeydown);
 			return () => window.removeEventListener("keydown", handleKeydown);
 		}
-		return undefined;
+		return;
 	}, []);
 
 	return null; // This component doesn't render anything

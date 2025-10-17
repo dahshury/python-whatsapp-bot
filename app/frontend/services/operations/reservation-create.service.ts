@@ -1,22 +1,42 @@
 /* eslint-disable */
+
 import { reserveTimeSlot } from "@shared/libs/api";
 import { i18n } from "@shared/libs/i18n";
-import { toastService } from "@shared/libs/toast";
+import { generateLocalOpKeys } from "@shared/libs/realtime-utils";
+import { toastService } from "@shared/libs/toast/toast-service";
+import type { LocalEchoManager } from "@shared/libs/utils/local-echo.manager";
 import { normalizePhoneForStorage } from "@shared/libs/utils/phone-utils";
-import type { ApiResponse, CalendarEvent, OperationResult, RowChange, SuccessfulOperation } from "@/entities/event";
-import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
-import type { LocalEchoManager } from "@/shared/libs/utils/local-echo.manager";
+import type {
+	ApiResponse,
+	CalendarEvent,
+	OperationResult,
+	RowChange,
+	SuccessfulOperation,
+} from "@/entities/event";
 import type { FormattingService } from "../utils/formatting.service";
 
+// Constants
+const MIN_PHONE_LENGTH = 7;
+const SHORT_TOAST_DURATION_MS = 3000;
+const LONG_TOAST_DURATION_MS = 6000;
+
 export class ReservationCreateService {
+	private readonly formattingService: FormattingService;
+	private readonly localEchoManager: LocalEchoManager;
+	private readonly isLocalized: boolean;
+
 	constructor(
-		private readonly formattingService: FormattingService,
-		private readonly localEchoManager: LocalEchoManager,
-		private readonly isLocalized: boolean
-	) {}
+		formattingService: FormattingService,
+		localEchoManager: LocalEchoManager,
+		isLocalized: boolean
+	) {
+		this.formattingService = formattingService;
+		this.localEchoManager = localEchoManager;
+		this.isLocalized = isLocalized;
+	}
 
 	async processAdditions(
-		addedRows: Array<RowChange>,
+		addedRows: RowChange[],
 		_onEventAdded?: (event: CalendarEvent) => void
 	): Promise<OperationResult> {
 		let hasErrors = false;
@@ -35,7 +55,10 @@ export class ReservationCreateService {
 
 			try {
 				// Normalize time to slot base on the backend's slot granularity
-				const slotTime = this.formattingService.normalizeToSlotBase(creationData.dStr, creationData.tStr);
+				const slotTime = this.formattingService.normalizeToSlotBase(
+					creationData.dStr,
+					creationData.tStr
+				);
 
 				// Mark local echo BEFORE API call (WebSocket arrives immediately)
 				this.markLocalEchoForCreationPreApi({
@@ -43,13 +66,23 @@ export class ReservationCreateService {
 					tStr: slotTime,
 				});
 
-				// Backend creation
+				// Backend creation: require strictly 0 or 1; show validation error otherwise
+				const parsed = Number(creationData.type);
+				if (!(parsed === 0 || parsed === 1)) {
+					throw new Error(
+						this.isLocalized
+							? "نوع الحجز غير صالح. يجب أن يكون كشف أو مراجعة."
+							: "Invalid reservation type. Must be Check-up or Follow-up."
+					);
+				}
+				const typeNumber = parsed as 0 | 1;
 				const resp = (await reserveTimeSlot({
 					id: creationData.waId,
 					title: creationData.name || creationData.waId,
 					date: creationData.dStr,
 					time: slotTime,
-					type: Number(creationData.type),
+					type: typeNumber,
+					reservation_type: typeNumber,
 					ar: this.isLocalized,
 				})) as unknown as ApiResponse;
 
@@ -82,21 +115,37 @@ export class ReservationCreateService {
 		if (st instanceof Date) {
 			// Use timezone-aware formatting
 			dStr = this.formattingService.formatDateOnly(st) || "";
-			tStr = this.formattingService.formatHHmmInZone(st, "Asia/Riyadh") || this.formattingService.formatHHmm(st) || "";
+			tStr =
+				this.formattingService.formatHHmmInZone(st, "Asia/Riyadh") ||
+				this.formattingService.formatHHmm(st) ||
+				"";
 		} else if (typeof st === "string" && st.includes("T")) {
 			const dateObj = new Date(st);
-			dStr = this.formattingService.formatDateOnly(dateObj) || st.split("T")[0] || "";
+			dStr =
+				this.formattingService.formatDateOnly(dateObj) ||
+				st.split("T")[0] ||
+				"";
 			tStr =
 				this.formattingService.formatHHmmInZone(dateObj, "Asia/Riyadh") ||
 				this.formattingService.formatHHmm(dateObj) ||
 				"";
 		} else {
 			// Backward compatibility
-			dStr = this.formattingService.formatDateOnly((row as unknown as { date?: string }).date) || "";
+			dStr =
+				this.formattingService.formatDateOnly(
+					(row as unknown as { date?: string }).date
+				) || "";
 			tStr =
-				this.formattingService.formatHHmmInZone((row as unknown as { time?: string }).time, "Asia/Riyadh") ||
-				this.formattingService.formatHHmm((row as unknown as { time?: string }).time) ||
-				this.formattingService.to24h(String((row as unknown as { time?: string }).time || "")) ||
+				this.formattingService.formatHHmmInZone(
+					(row as unknown as { time?: string }).time,
+					"Asia/Riyadh"
+				) ||
+				this.formattingService.formatHHmm(
+					(row as unknown as { time?: string }).time
+				) ||
+				this.formattingService.to24h(
+					String((row as unknown as { time?: string }).time || "")
+				) ||
 				"";
 		}
 
@@ -104,7 +153,7 @@ export class ReservationCreateService {
 		const waId = normalizePhoneForStorage((row.phone || "").toString());
 
 		// Additional validation - ensure we have a clean phone number
-		if (!waId || waId.length < 7) {
+		if (!waId || waId.length < MIN_PHONE_LENGTH) {
 			throw new Error("Invalid phone number format");
 		}
 
@@ -114,11 +163,19 @@ export class ReservationCreateService {
 		return { dStr, tStr, waId, type, name };
 	}
 
-	private validateCreationData(data: ReturnType<typeof this.prepareCreationData>) {
+	private validateCreationData(
+		data: ReturnType<typeof this.prepareCreationData>
+	) {
 		const missing: string[] = [];
-		if (!data.waId) missing.push("id/phone");
-		if (!data.name) missing.push("name");
-		if (!data.dStr || !data.tStr) missing.push("scheduled_time");
+		if (!data.waId) {
+			missing.push("id/phone");
+		}
+		if (!data.name) {
+			missing.push("name");
+		}
+		if (!(data.dStr && data.tStr)) {
+			missing.push("scheduled_time");
+		}
 
 		return {
 			isValid: missing.length === 0,
@@ -129,12 +186,16 @@ export class ReservationCreateService {
 	private showValidationError(missing: string[]): void {
 		toastService.error(
 			i18n.getMessage("missing_required_fields", this.isLocalized),
-			i18n.getMessage("please_fill_prefix", this.isLocalized) + missing.join(", "),
-			3000
+			i18n.getMessage("please_fill_prefix", this.isLocalized) +
+				missing.join(", "),
+			SHORT_TOAST_DURATION_MS
 		);
 	}
 
-	private extractErrorMessage(resp: ApiResponse, data: ReturnType<typeof this.prepareCreationData>): string {
+	private extractErrorMessage(
+		resp: ApiResponse,
+		data: ReturnType<typeof this.prepareCreationData>
+	): string {
 		const rawReason =
 			(typeof resp?.message === "string" && resp.message) ||
 			(typeof resp?.error === "string" && resp.error) ||
@@ -147,7 +208,9 @@ export class ReservationCreateService {
 		return [
 			i18n.getMessage("create_failed_verbose", this.isLocalized),
 			`${data.name || data.waId} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
-			reason ? `${i18n.getMessage("reason_label", this.isLocalized)}: ${reason}` : "",
+			reason
+				? `${i18n.getMessage("reason_label", this.isLocalized)}: ${reason}`
+				: "",
 		]
 			.filter(Boolean)
 			.join("\n");
@@ -158,7 +221,11 @@ export class ReservationCreateService {
 			const text = String(msg || "");
 			const lower = text.toLowerCase();
 			// Map common backend messages to localized i18n keys
-			if (lower.includes("not available") || lower.includes("fully booked") || lower.includes("no available slots")) {
+			if (
+				lower.includes("not available") ||
+				lower.includes("fully booked") ||
+				lower.includes("no available slots")
+			) {
 				return i18n.getMessage("slot_fully_booked", this.isLocalized === true);
 			}
 			return text;
@@ -167,7 +234,9 @@ export class ReservationCreateService {
 		}
 	}
 
-	private markLocalEchoForCreationPreApi(data: ReturnType<typeof this.prepareCreationData>): void {
+	private markLocalEchoForCreationPreApi(
+		data: ReturnType<typeof this.prepareCreationData>
+	): void {
 		// Mark local echo BEFORE API call using wa_id pattern
 		// WebSocket arrives immediately so we can't wait for reservation ID
 		const keys = generateLocalOpKeys("reservation_created", {
@@ -185,7 +254,10 @@ export class ReservationCreateService {
 		}
 	}
 
-	private handleCreationError(error: Error, data: ReturnType<typeof this.prepareCreationData>): void {
+	private handleCreationError(
+		error: Error,
+		data: ReturnType<typeof this.prepareCreationData>
+	): void {
 		const base = i18n.getMessage("create_failed", this.isLocalized);
 		const msg = this.localizeReason(error?.message || String(error) || "");
 		const desc = [
@@ -196,6 +268,6 @@ export class ReservationCreateService {
 			.filter(Boolean)
 			.join("\n");
 
-		toastService.error(base, desc, 6000);
+		toastService.error(base, desc, LONG_TOAST_DURATION_MS);
 	}
 }

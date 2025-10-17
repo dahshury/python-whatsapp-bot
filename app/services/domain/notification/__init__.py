@@ -1,1 +1,1 @@
-# Notification domain services package 
+# Notification domain services package

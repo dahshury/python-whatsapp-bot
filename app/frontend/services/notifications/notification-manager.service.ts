@@ -1,4 +1,4 @@
-import { toastService } from "@shared/libs/toast";
+import { toastService } from "@shared/libs/toast/toast-service";
 
 /**
  * Simplified notification manager - only handles WebSocket echoes
@@ -31,7 +31,7 @@ export class NotificationManager {
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
-			isLocalized: payload.isLocalized || false,
+			isLocalized: payload.isLocalized ?? false,
 		});
 	}
 
@@ -50,7 +50,7 @@ export class NotificationManager {
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
-			isLocalized: payload.isLocalized || false,
+			isLocalized: payload.isLocalized ?? false,
 		});
 	}
 
@@ -69,7 +69,7 @@ export class NotificationManager {
 			wa_id: payload.wa_id,
 			date: payload.date,
 			time: payload.time,
-			isLocalized: payload.isLocalized || false,
+			isLocalized: payload.isLocalized ?? false,
 		});
 	}
 }

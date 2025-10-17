@@ -1,8 +1,21 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import React, { type PropsWithChildren, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	type PropsWithChildren,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { i18n } from "@/shared/libs/i18n";
+
+// Word cloud configuration constants
+const WORDCLOUD_MIN_FONT_SIZE = 14;
+const WORDCLOUD_MAX_FONT_SIZE = 56;
+const WORDCLOUD_PADDING = 1;
+const WORDCLOUD_ROTATIONS = 2;
+const WORDCLOUD_TRANSITION_MS = 500;
 
 // react-wordcloud uses window; load client-side only
 const ReactWordcloud = dynamic(() => import("react-wordcloud"), {
@@ -16,13 +29,16 @@ const ReactWordcloud = dynamic(() => import("react-wordcloud"), {
 
 type WordItem = { text: string; value: number };
 
-interface WordCloudProps {
+type WordCloudProps = {
 	words: WordItem[];
 	isLocalized: boolean;
 	className?: string;
-}
+};
 
-class SafeBoundary extends React.Component<PropsWithChildren<{ fallback: React.ReactNode }>, { hasError: boolean }> {
+class SafeBoundary extends React.Component<
+	PropsWithChildren<{ fallback: React.ReactNode }>,
+	{ hasError: boolean }
+> {
 	constructor(props: PropsWithChildren<{ fallback: React.ReactNode }>) {
 		super(props);
 		this.state = { hasError: false };
@@ -30,14 +46,22 @@ class SafeBoundary extends React.Component<PropsWithChildren<{ fallback: React.R
 	static getDerivedStateFromError() {
 		return { hasError: true };
 	}
-	componentDidCatch() {}
+	componentDidCatch() {
+		// Error logging can be added here if needed
+	}
 	render() {
-		if (this.state.hasError) return this.props.fallback;
+		if (this.state.hasError) {
+			return this.props.fallback;
+		}
 		return this.props.children;
 	}
 }
 
-export function WordCloudChart({ words, isLocalized, className }: WordCloudProps) {
+export function WordCloudChart({
+	words,
+	isLocalized,
+	className,
+}: WordCloudProps) {
 	const options = useMemo(() => {
 		const computed = getComputedStyle(document.documentElement);
 		const fg = `hsl(${computed.getPropertyValue("--foreground")})`;
@@ -48,16 +72,23 @@ export function WordCloudChart({ words, isLocalized, className }: WordCloudProps
 		const c5 = `hsl(${computed.getPropertyValue("--chart-5")})`;
 		return {
 			colors: [c1, c2, c3, c4, c5, fg],
-			fontFamily: isLocalized ? "IBM Plex Sans Arabic, system-ui, sans-serif" : "Inter, system-ui, sans-serif",
-			fontSizes: [14, 56] as [number, number],
+			fontFamily: isLocalized
+				? "IBM Plex Sans Arabic, system-ui, sans-serif"
+				: "Inter, system-ui, sans-serif",
+			fontSizes: [WORDCLOUD_MIN_FONT_SIZE, WORDCLOUD_MAX_FONT_SIZE] as [
+				number,
+				number,
+			],
 			fontStyle: "normal" as const,
 			fontWeight: "bold" as const,
-			padding: 1,
-			rotations: 2,
-			rotationAngles: isLocalized ? ([0, 0] as [number, number]) : ([0, 0] as [number, number]),
+			padding: WORDCLOUD_PADDING,
+			rotations: WORDCLOUD_ROTATIONS,
+			rotationAngles: isLocalized
+				? ([0, 0] as [number, number])
+				: ([0, 0] as [number, number]),
 			scale: "sqrt" as const,
 			spiral: "rectangular" as const,
-			transitionDuration: 500,
+			transitionDuration: WORDCLOUD_TRANSITION_MS,
 		};
 	}, [isLocalized]);
 
@@ -82,7 +113,9 @@ export function WordCloudChart({ words, isLocalized, className }: WordCloudProps
 	const [canRender, setCanRender] = useState(false);
 	useEffect(() => {
 		const el = containerRef.current;
-		if (!el) return;
+		if (!el) {
+			return;
+		}
 		const update = () => {
 			const rect = el.getBoundingClientRect();
 			setCanRender(rect.width > 10 && rect.height > 10);
@@ -94,7 +127,7 @@ export function WordCloudChart({ words, isLocalized, className }: WordCloudProps
 	}, []);
 
 	const noData = (
-		<div className="h-[18.75rem] flex items-center justify-center text-muted-foreground text-sm">
+		<div className="flex h-[18.75rem] items-center justify-center text-muted-foreground text-sm">
 			{i18n.getMessage("chart_no_data", isLocalized)}
 		</div>
 	);
@@ -104,13 +137,17 @@ export function WordCloudChart({ words, isLocalized, className }: WordCloudProps
 			{ReactWordcloud ? (
 				sizedWords.length > 0 && canRender ? (
 					<SafeBoundary fallback={noData}>
-						<ReactWordcloud words={sizedWords} options={options} callbacks={callbacks} />
+						<ReactWordcloud
+							callbacks={callbacks}
+							options={options}
+							words={sizedWords}
+						/>
 					</SafeBoundary>
 				) : (
 					noData
 				)
 			) : (
-				<div className="h-[18.75rem] flex items-center justify-center text-muted-foreground text-sm">
+				<div className="flex h-[18.75rem] items-center justify-center text-muted-foreground text-sm">
 					{i18n.getMessage("chart_loading", isLocalized)}
 				</div>
 			)}

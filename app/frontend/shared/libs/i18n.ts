@@ -1,3 +1,9 @@
+// Country labels are now managed by i18n-iso-countries library in countries.ts
+
+// Humanize regex for stripping prefixes
+const HUMANIZE_PREFIX_REGEX =
+	/^(kpi_|msg_|chart_|dashboard_|response_time_|operation_|segment_|funnel_|day_|slot_)/;
+
 const en = {
 	system_error_try_later: "System error, please try again later",
 	reservation_manager: "Reservation Manager",
@@ -23,18 +29,22 @@ const en = {
 	reason_label: "reason",
 	view_default: "Default",
 	view_default_tooltip_title: "Default view",
-	view_default_tooltip_desc: "Standard single calendar layout with a balanced, familiar UI.",
+	view_default_tooltip_desc:
+		"Standard single calendar layout with a balanced, familiar UI.",
 	view_free: "Free",
 	view_free_tooltip_title: "Free roam",
-	view_free_tooltip_desc: "Flexible navigation and layout for fast, unconstrained browsing.",
+	view_free_tooltip_desc:
+		"Flexible navigation and layout for fast, unconstrained browsing.",
 	view_dual: "Dual",
 	view_dual_tooltip_title: "Dual calendar",
-	view_dual_tooltip_desc: "View two calendars side by side for comparison and parallel planning.",
+	view_dual_tooltip_desc:
+		"View two calendars side by side for comparison and parallel planning.",
 	chat_type_message: "Type a message...",
 	chat_no_conversation: "Select a conversation to start chatting",
 	chat_no_messages: "No messages in this conversation yet",
 	chat_start_conversation: "Start the conversation by sending a message",
-	chat_cannot_message_no_conversation: "You can't send messages to users who haven't started a conversation",
+	chat_cannot_message_no_conversation:
+		"You can't send messages to users who haven't started a conversation",
 	chat_messaging_unavailable: "Messaging unavailable after 24h inactivity",
 	chat_loading_conversation: "Loading conversation...",
 	chat_loading_conversations: "Loading conversations...",
@@ -73,14 +83,19 @@ const en = {
 	kpi_returning_customers: "Returning Customers",
 	kpi_avg_followups: "Avg Follow-ups",
 	kpi_performance_metrics: "Performance Metrics",
-	kpi_total_reservations_tooltip: "Total reservations in selected period vs previous similar period",
+	kpi_total_reservations_tooltip:
+		"Total reservations in selected period vs previous similar period",
 	kpi_active_customers_desc: "Customers with upcoming reservations",
-	kpi_active_customers_tooltip: "Customers who have at least one future-dated reservation",
-	kpi_cancellations_tooltip: "Cancellations within selected period vs previous similar period",
+	kpi_active_customers_tooltip:
+		"Customers who have at least one future-dated reservation",
+	kpi_cancellations_tooltip:
+		"Cancellations within selected period vs previous similar period",
 	kpi_avg_response_time_tooltip:
 		"Average time for assistant to reply to customer (customer→assistant) vs previous period",
-	kpi_avg_followups_tooltip: "Average additional follow-up bookings per returning customer vs previous period",
-	kpi_unique_customers_tooltip: "Customers whose first reservation occurred in this period vs previous similar period",
+	kpi_avg_followups_tooltip:
+		"Average additional follow-up bookings per returning customer vs previous period",
+	kpi_unique_customers_tooltip:
+		"Customers whose first reservation occurred in this period vs previous similar period",
 	// System metrics
 	kpi_cpu_usage: "CPU Usage",
 	kpi_current_usage: "Current usage",
@@ -130,7 +145,9 @@ const en = {
 	phone_add_number_label: 'Add "{value}" as new phone number',
 	phone_select_placeholder: "Select a phone number",
 	phone_new_number_label: "New Phone Number",
-	phone_unknown_label: "Unknown",
+	phone_unknown_label: "Unknown Customer",
+	phone_filter_registered: "Registered",
+	phone_filter_unknown: "Unknown",
 	// Column/format menus
 	cm_sort_asc: "Sort ascending",
 	cm_sort_desc: "Sort descending",
@@ -155,12 +172,39 @@ const en = {
 	save_failed: "Save failed",
 	locked: "Locked",
 	unsaved_changes: "Unsaved changes",
+	confirm_changes: "Confirm Changes",
 	default_contact: "Default",
+	current_contact: "Current",
+	// Theme names
+	theme_name_default: "Default",
+	theme_name_clerk: "Clerk",
+	theme_name_amethyst_haze: "Amethyst Haze",
+	theme_name_claude: "Claude",
+	theme_name_art_deco: "Art Deco",
+	theme_name_neo_brutalism: "Neo Brutalism",
+	theme_name_perpetuity: "Perpetuity",
+	theme_name_retro_arcade: "Retro Arcade",
+	theme_name_soft_pop: "Soft Pop",
+	theme_name_ghibli_studio: "Ghibli Studio",
+	theme_name_valorant: "Valorant",
+	theme_name_t3chat: "T3Chat",
+	theme_name_perplexity: "Perplexity",
+	theme_name_neomorphism: "Neomorphism",
+	unknown_theme: "Unknown Theme",
 	// Chat typing indicator
 	typing: "Typing",
 	// Document lock overlay
 	document_unlock_prompt: "Enter name and phone to unlock",
 	document_loading: "Loading document…",
+	// Document empty state
+	doc_empty_title: "Create your first drawing",
+	doc_empty_desc: "Start by adding shapes, text, or drawings to your document",
+	doc_empty_action: "Start Drawing",
+	// 404 Not Found page
+	not_found_description:
+		"The page you're looking for might have been moved or doesn't exist.",
+	not_found_go_home: "Go Home",
+	not_found_explore: "Explore",
 };
 
 const ar = {
@@ -181,7 +225,8 @@ const ar = {
 	chat_no_conversation: "اختر محادثة لبدء الدردشة",
 	chat_no_messages: "لا توجد رسائل في هذه المحادثة بعد",
 	chat_start_conversation: "ابدأ المحادثة بإرسال رسالة",
-	chat_cannot_message_no_conversation: "لا يمكنك إرسال رسائل إلى العملاء الذين لم يبدأوا محادثة",
+	chat_cannot_message_no_conversation:
+		"لا يمكنك إرسال رسائل إلى العملاء الذين لم يبدأوا محادثة",
 	chat_messaging_unavailable: "التراسل غير متاح بعد ٢٤ ساعة من الخمول",
 	chat_loading_conversation: "جارٍ تحميل المحادثة...",
 	chat_loading_conversations: "جارٍ تحميل المحادثات...",
@@ -196,6 +241,9 @@ const ar = {
 	phone_no_phone_found: "لا يوجد رقم هاتف.",
 	phone_add_number_label: 'إضافة "{value}" كرقم هاتف جديد',
 	phone_select_placeholder: "اختر رقم هاتف",
+	phone_unknown_label: "عميل غير معروف",
+	phone_filter_registered: "مسجل",
+	phone_filter_unknown: "غير معروف",
 	// Phone validation error messages
 	phoneFormatNotRecognized: "تنسيق رقم الهاتف غير معروف",
 	phoneHasInvalidCountryCode: "رمز الدولة غير صالح",
@@ -230,12 +278,38 @@ const ar = {
 	save_failed: "فشل الحفظ",
 	locked: "مقفل",
 	unsaved_changes: "تغييرات غير محفوظة",
+	confirm_changes: "تأكيد التغييرات",
 	default_contact: "افتراضي",
+	current_contact: "الحالي",
+	// Theme names
+	theme_name_default: "افتراضي",
+	theme_name_clerk: "كليرك",
+	theme_name_amethyst_haze: "ضباب الجمشت",
+	theme_name_claude: "كلود",
+	theme_name_art_deco: "آرت ديكو",
+	theme_name_neo_brutalism: "الوحشية الجديدة",
+	theme_name_perpetuity: "الخلود",
+	theme_name_retro_arcade: "أركيد ريترو",
+	theme_name_soft_pop: "بوب ارتس",
+	theme_name_ghibli_studio: "استوديو جيبلي",
+	theme_name_valorant: "فالورانت",
+	theme_name_t3chat: "تي ثري تشات",
+	theme_name_perplexity: "بيربليكسيتي",
+	theme_name_neomorphism: "نيو مورفزم",
+	unknown_theme: "سمة غير معروفة",
 	// Chat typing indicator
 	typing: "يكتب",
 	// Document lock overlay
 	document_unlock_prompt: "أدخل الاسم والهاتف لفتح القفل",
 	document_loading: "جارٍ تحميل المستند…",
+	// Document empty state
+	doc_empty_title: "أنشئ رسمك الأول",
+	doc_empty_desc: "ابدأ بإضافة أشكال أو نصوص أو رسومات إلى مستندك",
+	doc_empty_action: "ابدأ الرسم",
+	// 404 Not Found page
+	not_found_description: "الصفحة التي تبحث عنها قد تم نقلها أو غير موجودة.",
+	not_found_go_home: "العودة للرئيسية",
+	not_found_explore: "استكشاف",
 };
 
 // Chat toolbar/title and emoji search keys
@@ -270,7 +344,8 @@ Object.assign(en, {
 	settings_tool_calls_on: "Tool calls will be shown in chat",
 	settings_tool_calls_off: "Tool calls will be hidden in chat",
 	settings_send_typing: "Send Typing Indicator",
-	settings_send_typing_on: "Typing indicator will be sent to the customer while typing",
+	settings_send_typing_on:
+		"Typing indicator will be sent to the customer while typing",
 	settings_send_typing_off: "Typing indicator sending is disabled",
 	settings_message_load_limit: "Message Load Limit",
 	settings_message_load_limit_desc: "Number of messages to load by default",
@@ -293,12 +368,26 @@ Object.assign(en, {
 	older: "Older",
 	more_recent: "More Recent",
 	new_message: "New message",
-	backend_connection_ensure_localhost: "Ensure the server is running on http://localhost:8000",
+	backend_connection_ensure_localhost:
+		"Ensure the server is running on http://localhost:8000",
 	data_editor_title: "Data Editor",
 	data_editor_description: "Editor for managing reservations and customer data",
 	save_changes: "Save Changes",
-	unsaved_changes_prompt: "You have unsaved changes. Would you like to save your changes before closing?",
+	unsaved_changes_prompt:
+		"You have unsaved changes. Would you like to save your changes before closing?",
 	calendar: "Calendar",
+	// Theme label
+	theme: "Theme",
+	// Vacation periods UI
+	vacation_period: "Period",
+	vacation_days: "days",
+	vacation_recording: "Recording",
+	vacation_start: "Start",
+	vacation_end: "End",
+	vacation_stop: "Stop",
+	vacation_add: "Add vacation",
+	vacation_remove_period: "Remove period",
+	vacation_none: "No vacation periods",
 });
 
 Object.assign(ar, {
@@ -315,7 +404,8 @@ Object.assign(ar, {
 	settings_tool_calls_on: "سيتم عرض أدوات الاستدعاء في الدردشة",
 	settings_tool_calls_off: "سيتم إخفاء أدوات الاستدعاء في الدردشة",
 	settings_send_typing: "إرسال مؤشر الكتابة",
-	settings_send_typing_on: "عند تمكينه، سيتم إرسال مؤشر الكتابة إلى العميل أثناء الكتابة",
+	settings_send_typing_on:
+		"عند تمكينه، سيتم إرسال مؤشر الكتابة إلى العميل أثناء الكتابة",
 	settings_send_typing_off: "سيتم إيقاف إرسال مؤشر الكتابة",
 	settings_message_load_limit: "حد الرسائل المحملة",
 	settings_message_load_limit_desc: "عدد الرسائل التي يتم تحميلها افتراضيًا",
@@ -338,12 +428,26 @@ Object.assign(ar, {
 	older: "الأقدم",
 	more_recent: "الأحدث",
 	new_message: "رسالة جديدة",
-	backend_connection_ensure_localhost: "تأكد من أن الخادم يعمل على http://localhost:8000",
+	backend_connection_ensure_localhost:
+		"تأكد من أن الخادم يعمل على http://localhost:8000",
 	data_editor_title: "محرر البيانات",
 	data_editor_description: "محرر لإدارة الحجوزات وبيانات العملاء",
 	save_changes: "حفظ التغييرات",
-	unsaved_changes_prompt: "لديك تغييرات غير محفوظة. هل تريد حفظ التغييرات قبل الإغلاق؟",
+	unsaved_changes_prompt:
+		"لديك تغييرات غير محفوظة. هل تريد حفظ التغييرات قبل الإغلاق؟",
 	calendar: "التقويم",
+	// Theme label
+	theme: "المظهر",
+	// Vacation periods UI
+	vacation_period: "فترة",
+	vacation_days: "أيام",
+	vacation_recording: "تسجيل",
+	vacation_start: "البداية",
+	vacation_end: "النهاية",
+	vacation_stop: "إيقاف",
+	vacation_add: "إضافة إجازة",
+	vacation_remove_period: "حذف الفترة",
+	vacation_none: "لا توجد فترات إجازة",
 });
 
 // Extend English keys for charts, messages, operations, insights
@@ -465,7 +569,8 @@ Object.assign(en, {
 	msg_activity: "activity",
 	// KPI extras
 	kpi_customers_with_multiple_bookings: "Customers With Multiple Bookings",
-	kpi_additional_bookings_per_returning_customer: "Additional Bookings Per Returning Customer",
+	kpi_additional_bookings_per_returning_customer:
+		"Additional Bookings Per Returning Customer",
 	// Conversation analysis strings
 	conversation_analysis_title: "Conversation Analysis",
 	conversation_length_average: "Conversation Length Average",
@@ -485,7 +590,8 @@ Object.assign(en, {
 	response_time_max_desc: "Longest response time recorded",
 	response_time_calculated: "Calculated",
 	dashboard_demo_mode: "Demo Mode",
-	dashboard_demo_description: "You are viewing demo data. Connect the backend to load real data.",
+	dashboard_demo_description:
+		"You are viewing demo data. Connect the backend to load real data.",
 	demo_data_warning: "Demo Data Warning",
 	real_data_available: "Real Data Available",
 	dashboard_business_insights: "Business Insights",
@@ -494,8 +600,10 @@ Object.assign(en, {
 	dashboard_customer_retention_title: "Customer Retention",
 	dashboard_response_time_title: "Response Time",
 	backend_connection_error_title: "Cannot connect to backend",
-	backend_connection_error_description: "We couldn't reach the Python backend. Ensure it's running and reachable.",
-	backend_connection_error_instructions: "Click retry after confirming the server is up.",
+	backend_connection_error_description:
+		"We couldn't reach the Python backend. Ensure it's running and reachable.",
+	backend_connection_error_instructions:
+		"Click retry after confirming the server is up.",
 	backend_connection_checking: "Checking connection...",
 	backend_connection_error_retry: "Retry",
 	// Toast notifications
@@ -507,7 +615,8 @@ Object.assign(en, {
 	toast_new_message: "Message",
 	toast_request_timeout: "Request timed out",
 	// Error messages
-	slot_fully_booked: "This time slot is fully booked. Please choose another slot.",
+	slot_fully_booked:
+		"This time slot is fully booked. Please choose another slot.",
 	// Validation popover messages
 	validation_issues: "Validation Issues",
 	validation_issues_details: "Please fix these issues before saving",
@@ -518,6 +627,7 @@ Object.assign(en, {
 	field_type: "Type",
 	field_name: "Name",
 	field_age: "Age",
+	field_excalidraw: "Excalidraw Notes",
 });
 
 // Column/format menus localization
@@ -529,6 +639,11 @@ Object.assign(en, {
 	cm_hide_column: "Hide column",
 	cm_autosize_column: "Autosize column",
 	cm_format: "Format",
+	cm_copy: "Copy column",
+	cm_filter: "Filter",
+	cm_text_format: "Text format",
+	cm_number_format: "Number format",
+	cm_date_format: "Date format",
 	cm_format_automatic: "Automatic",
 	cm_format_localized: "Localized",
 	cm_format_percentage: "Percentage",
@@ -597,13 +712,19 @@ Object.assign(ar, {
 	kpi_returning_customers: "العملاء العائدون",
 	kpi_avg_followups: "متوسط المتابعات",
 	kpi_performance_metrics: "مؤشرات الأداء",
-	kpi_total_reservations_tooltip: "إجمالي الحجوزات في الفترة المحددة مقارنة بالفترة السابقة المشابهة",
+	kpi_total_reservations_tooltip:
+		"إجمالي الحجوزات في الفترة المحددة مقارنة بالفترة السابقة المشابهة",
 	kpi_active_customers_desc: "عملاء لديهم حجوزات قادمة",
-	kpi_active_customers_tooltip: "العملاء الذين لديهم حجز واحد على الأقل بتاريخ مستقبلي",
-	kpi_cancellations_tooltip: "الإلغاءات خلال الفترة المحددة مقارنة بالفترة السابقة المشابهة",
-	kpi_avg_response_time_tooltip: "متوسط زمن رد المساعد على العميل (عميل→مساعد) مقارنة بالفترة السابقة",
-	kpi_avg_followups_tooltip: "متوسط الحجوزات الإضافية للمتابعات لكل عميل عائد مقارنة بالفترة السابقة",
-	kpi_unique_customers_tooltip: "العملاء الذين كانت أول حجز لهم خلال هذه الفترة مقارنة بفترة سابقة مشابهة",
+	kpi_active_customers_tooltip:
+		"العملاء الذين لديهم حجز واحد على الأقل بتاريخ مستقبلي",
+	kpi_cancellations_tooltip:
+		"الإلغاءات خلال الفترة المحددة مقارنة بالفترة السابقة المشابهة",
+	kpi_avg_response_time_tooltip:
+		"متوسط زمن رد المساعد على العميل (عميل→مساعد) مقارنة بالفترة السابقة",
+	kpi_avg_followups_tooltip:
+		"متوسط الحجوزات الإضافية للمتابعات لكل عميل عائد مقارنة بالفترة السابقة",
+	kpi_unique_customers_tooltip:
+		"العملاء الذين كانت أول حجز لهم خلال هذه الفترة مقارنة بفترة سابقة مشابهة",
 	kpi_cpu_usage: "استخدام المعالج",
 	kpi_current_usage: "الاستخدام الحالي",
 	kpi_demo_data: "بيانات تجريبية",
@@ -677,7 +798,8 @@ Object.assign(ar, {
 	dashboard_error_title: "تعذر تحميل لوحة التحكم",
 	dashboard_try_again: "حاول مجدداً",
 	dashboard_demo_mode: "وضع العرض التجريبي",
-	dashboard_demo_description: "أنت تشاهد بيانات تجريبية. صِل بالخادم الخلفي لتحميل البيانات الحقيقية.",
+	dashboard_demo_description:
+		"أنت تشاهد بيانات تجريبية. صِل بالخادم الخلفي لتحميل البيانات الحقيقية.",
 	demo_data_warning: "تحذير بيانات تجريبية",
 	real_data_available: "بيانات حقيقية متاحة",
 	dashboard_business_insights: "رؤى الأعمال",
@@ -688,7 +810,8 @@ Object.assign(ar, {
 	backend_connection_error_title: "تعذر الاتصال بالخادم الخلفي",
 	backend_connection_error_description:
 		"لم نتمكن من الوصول إلى خادم بايثون. يرجى التأكد من تشغيله وإمكانية الوصول إليه.",
-	backend_connection_error_instructions: "انقر إعادة المحاولة بعد التأكد من تشغيل الخادم.",
+	backend_connection_error_instructions:
+		"انقر إعادة المحاولة بعد التأكد من تشغيل الخادم.",
 	backend_connection_checking: "جارٍ التحقق من الاتصال...",
 	backend_connection_error_retry: "إعادة المحاولة",
 	// Toast notifications
@@ -711,6 +834,7 @@ Object.assign(ar, {
 	field_type: "النوع",
 	field_name: "الاسم",
 	field_age: "العمر",
+	field_excalidraw: "ملاحظات Excalidraw",
 });
 
 // Column/format menus localization
@@ -722,6 +846,11 @@ Object.assign(ar, {
 	cm_hide_column: "إخفاء العمود",
 	cm_autosize_column: "تحجيم تلقائي",
 	cm_format: "تنسيق",
+	cm_copy: "نسخ العمود",
+	cm_filter: "تصفية",
+	cm_text_format: "تنسيق النص",
+	cm_number_format: "تنسيق الأرقام",
+	cm_date_format: "تنسيق التاريخ",
 	cm_format_automatic: "تلقائي",
 	cm_format_localized: "محلي",
 	cm_format_percentage: "نسبة مئوية",
@@ -739,10 +868,14 @@ Object.assign(ar, {
 });
 
 const isLocalized = () => {
-	if (typeof window === "undefined") return false;
+	if (typeof window === "undefined") {
+		return false;
+	}
 	try {
 		const loc = localStorage.getItem("locale");
-		if (loc && loc !== "en") return true;
+		if (loc && loc !== "en") {
+			return true;
+		}
 		return localStorage.getItem("isLocalized") === "true";
 	} catch {
 		return false;
@@ -752,34 +885,62 @@ const isLocalized = () => {
 export const messages = {
 	validation: {
 		// Generic required message with field name
-		required: (field: string) => (isLocalized() ? `${field} مطلوب` : `${field} is required`),
+		required: (field: string) =>
+			isLocalized() ? `${field} مطلوب` : `${field} is required`,
 		// When field name is not known
-		thisFieldIsRequired: () => (isLocalized() ? "هذا الحقل مطلوب" : "This field is required"),
+		thisFieldIsRequired: () =>
+			isLocalized() ? "هذا الحقل مطلوب" : "This field is required",
 		// Formats / validity
 		invalidFormat: () => (isLocalized() ? "تنسيق غير صالح" : "Invalid format"),
 		invalidDate: () => (isLocalized() ? "تاريخ غير صالح" : "Invalid date"),
 		invalidTime: () => (isLocalized() ? "وقت غير صالح" : "Invalid time"),
-		invalidPhone: () => (isLocalized() ? "رقم هاتف غير صالح" : "Invalid phone number"),
-		phoneFormatNotRecognized: () => (isLocalized() ? "تنسيق رقم الهاتف غير معروف" : "Phone format not recognized"),
-		phoneHasInvalidCountryCode: () => (isLocalized() ? "رمز الدولة غير صالح" : "Invalid country code"),
+		invalidPhone: () =>
+			isLocalized() ? "رقم هاتف غير صالح" : "Invalid phone number",
+		phoneFormatNotRecognized: () =>
+			isLocalized()
+				? "تنسيق رقم الهاتف غير معروف"
+				: "Phone format not recognized",
+		phoneHasInvalidCountryCode: () =>
+			isLocalized() ? "رمز الدولة غير صالح" : "Invalid country code",
 		phoneContainsInvalidCharacters: () =>
-			isLocalized() ? "رقم الهاتف يحتوي على أحرف غير صالحة" : "Phone number contains invalid characters",
-		phoneIsTooShort: () => (isLocalized() ? "رقم الهاتف قصير جداً" : "Phone number is too short"),
-		phoneIsTooLong: () => (isLocalized() ? "رقم الهاتف طويل جداً" : "Phone number is too long"),
+			isLocalized()
+				? "رقم الهاتف يحتوي على أحرف غير صالحة"
+				: "Phone number contains invalid characters",
+		phoneIsTooShort: () =>
+			isLocalized() ? "رقم الهاتف قصير جداً" : "Phone number is too short",
+		phoneIsTooLong: () =>
+			isLocalized() ? "رقم الهاتف طويل جداً" : "Phone number is too long",
 		phoneHasInvalidLengthForCountry: () =>
-			isLocalized() ? "طول رقم الهاتف غير صالح لهذه الدولة" : "Phone number length is invalid for this country",
-		phoneInvalidFormat: () => (isLocalized() ? "تنسيق رقم الهاتف غير صالح" : "Invalid phone number format"),
+			isLocalized()
+				? "طول رقم الهاتف غير صالح لهذه الدولة"
+				: "Phone number length is invalid for this country",
+		phoneInvalidFormat: () =>
+			isLocalized()
+				? "تنسيق رقم الهاتف غير صالح"
+				: "Invalid phone number format",
 		phoneMayHaveInvalidAreaCode: () =>
-			isLocalized() ? "قد يحتوي على رمز منطقة غير صالح" : "May have invalid area code",
-		phoneFormatIsInvalid: () => (isLocalized() ? "تنسيق رقم الهاتف غير صحيح" : "Phone number format is invalid"),
+			isLocalized()
+				? "قد يحتوي على رمز منطقة غير صالح"
+				: "May have invalid area code",
+		phoneFormatIsInvalid: () =>
+			isLocalized()
+				? "تنسيق رقم الهاتف غير صحيح"
+				: "Phone number format is invalid",
 		invalidName: () => (isLocalized() ? "اسم غير صالح" : "Invalid name"),
 		// Name-specific messages
 		nameRequired: () => (isLocalized() ? "الاسم مطلوب" : "Name is required"),
-		nameTooShort: () => (isLocalized() ? "يجب أن يتكون الاسم من كلمتين على الأقل" : "At least two words"),
+		nameTooShort: () =>
+			isLocalized()
+				? "يجب أن يتكون الاسم من كلمتين على الأقل"
+				: "At least two words",
 		nameInvalidCharacters: () =>
-			isLocalized() ? "الاسم يحتوي على أحرف غير صالحة" : "Name contains invalid characters",
+			isLocalized()
+				? "الاسم يحتوي على أحرف غير صالحة"
+				: "Name contains invalid characters",
 		nameWordsTooShort: () =>
-			isLocalized() ? "كل كلمة يجب أن تحتوي على حرفين على الأقل" : "Each word must be at least 2 characters",
+			isLocalized()
+				? "كل كلمة يجب أن تحتوي على حرفين على الأقل"
+				: "Each word must be at least 2 characters",
 		nameTooLong: () => (isLocalized() ? "الاسم طويل جداً" : "Name is too long"),
 	},
 	// Relative time formatting helpers
@@ -801,12 +962,14 @@ export const i18n = {
 	getMessage: (key: string, isLocalizedArg?: boolean): string => {
 		const dict = isLocalizedArg ? ar : en;
 		const direct = (dict as Record<string, string>)[key];
-		if (typeof direct === "string") return direct;
+		if (typeof direct === "string") {
+			return direct;
+		}
 
 		// Humanized fallback for unknown keys, e.g. "kpi_conversion_rate" -> "Conversion Rate"
 		const humanize = (raw: string) => {
 			const stripped = raw
-				.replace(/^(kpi_|msg_|chart_|dashboard_|response_time_|operation_|segment_|funnel_|day_|slot_)/, "")
+				.replace(HUMANIZE_PREFIX_REGEX, "")
 				.replace(/_/g, " ")
 				.trim();
 			return stripped
@@ -821,5 +984,7 @@ export const i18n = {
 };
 
 // Extend dictionaries with calendar strings if missing
-(en as Record<string, string>).calendar_events = (en as Record<string, string>).calendar_events || "events";
-(ar as Record<string, string>).calendar_events = (ar as Record<string, string>).calendar_events || "أحداث";
+(en as Record<string, string>).calendar_events =
+	(en as Record<string, string>).calendar_events || "events";
+(ar as Record<string, string>).calendar_events =
+	(ar as Record<string, string>).calendar_events || "أحداث";

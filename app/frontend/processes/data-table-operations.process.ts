@@ -1,5 +1,11 @@
 import { LocalEchoManager } from "@shared/libs/utils/local-echo.manager";
-import type { CalendarApi, CalendarEvent, OperationResult, RowChange, SuccessfulOperation } from "@/entities/event";
+import type {
+	CalendarApi,
+	CalendarEvent,
+	OperationResult,
+	RowChange,
+	SuccessfulOperation,
+} from "@/entities/event";
 import { CalendarIntegrationService } from "../services/calendar/calendar-integration.service";
 import { ReservationCancelService } from "../services/operations/reservation-cancel.service";
 import { ReservationCreateService } from "../services/operations/reservation-create.service";
@@ -16,19 +22,29 @@ export class DataTableOperationsService {
 	private readonly modifyService: ReservationModifyService;
 	private readonly createService: ReservationCreateService;
 	private readonly calendarIntegration: CalendarIntegrationService;
+	private readonly isLocalized: boolean;
+	private readonly refreshCustomerData?: (() => Promise<void>) | undefined;
 
-	constructor(
-		calendarApi: CalendarApi,
-		private readonly isLocalized: boolean,
-		private readonly refreshCustomerData?: () => Promise<void>
-	) {
+	constructor(options: {
+		calendarApi: CalendarApi;
+		gridRowToEventMap?: Map<number, CalendarEvent>;
+		slotDurationHours?: number;
+		isLocalized: boolean;
+		refreshCustomerData?: (() => Promise<void>) | undefined;
+	}) {
 		// Initialize core services
+		this.isLocalized = options.isLocalized;
+		this.refreshCustomerData = options.refreshCustomerData;
+
 		const webSocketService = new WebSocketService();
 		const formattingService = new FormattingService();
 		const localEchoManager = new LocalEchoManager();
 
 		// Initialize calendar integration
-		this.calendarIntegration = new CalendarIntegrationService(calendarApi, localEchoManager);
+		this.calendarIntegration = new CalendarIntegrationService(
+			options.calendarApi,
+			localEchoManager
+		);
 
 		// Initialize operation services with dependency injection
 		this.cancelService = new ReservationCancelService(
@@ -46,19 +62,27 @@ export class DataTableOperationsService {
 			this.isLocalized
 		);
 
-		this.createService = new ReservationCreateService(formattingService, localEchoManager, this.isLocalized);
+		this.createService = new ReservationCreateService(
+			formattingService,
+			localEchoManager,
+			this.isLocalized
+		);
 	}
 
 	/**
 	 * Process reservation cancellations
 	 */
-	async processCancellations(
+	processCancellations(
 		deletedRows: number[],
 		gridRowToEventMap: Map<number, CalendarEvent>,
 		onEventCancelled?: (eventId: string) => void,
 		_onEventAdded?: (event: CalendarEvent) => void
 	): Promise<OperationResult> {
-		return this.cancelService.processCancellations(deletedRows, gridRowToEventMap, onEventCancelled);
+		return this.cancelService.processCancellations(
+			deletedRows,
+			gridRowToEventMap,
+			onEventCancelled
+		);
 	}
 
 	/**
@@ -69,18 +93,22 @@ export class DataTableOperationsService {
 		gridRowToEventMap: Map<number, CalendarEvent>,
 		onEventModified?: (eventId: string, event: CalendarEvent) => void
 	): Promise<OperationResult> {
-		return this.modifyService.processModifications(editedRows, gridRowToEventMap, onEventModified);
+		return await this.modifyService.processModifications(
+			editedRows,
+			gridRowToEventMap,
+			onEventModified
+		);
 	}
 
 	/**
 	 * Process reservation additions
 	 */
 	async processAdditions(
-		addedRows: Array<RowChange>,
+		addedRows: RowChange[],
 		onEventAdded?: (event: CalendarEvent) => void,
 		_onEventCancelled?: (eventId: string) => void
 	): Promise<OperationResult> {
-		return this.createService.processAdditions(addedRows, onEventAdded);
+		return await this.createService.processAdditions(addedRows, onEventAdded);
 	}
 
 	/**
@@ -91,33 +119,50 @@ export class DataTableOperationsService {
 		_onEventAdded?: (event: CalendarEvent) => void
 	): void {
 		try {
-			// Reflow slots for newly created reservations to ensure deterministic sorting
-			// and spacing immediately after additions (drag/modify/cancel already reflow elsewhere).
+			// Reflow slots for all operations (create/modify/cancel) to ensure deterministic sorting
+			// and spacing immediately after changes.
 			try {
 				const seen = new Set<string>();
 				for (const op of successfulOperations || []) {
-					if (!op || op.type !== "create") continue;
+					if (!op) {
+						continue;
+					}
 					const date = (op as { data?: { date?: string } })?.data?.date;
 					const time = (op as { data?: { time?: string } })?.data?.time;
-					if (!date || !time) continue;
+					if (!(date && time)) {
+						continue;
+					}
 					const key = `${date}T${time}`;
-					if (seen.has(key)) continue;
+					if (seen.has(key)) {
+						continue;
+					}
 					seen.add(key);
-					// Best-effort: reflow the affected slot; if the event isn't mounted yet,
-					// this still stabilizes ordering of existing events. The WS echo path also reflows.
+					// Reflow affected slot after create/modify/cancel to ensure sorting
 					try {
 						this.calendarIntegration.reflowSlot(date, time);
-					} catch {}
+					} catch (_error) {
+						// Silently ignore slot reflow errors - not critical for UI
+					}
 				}
-			} catch {}
+			} catch (_error) {
+				// Silently ignore group processing errors
+			}
 
 			this.calendarIntegration.updateSize();
 			if (typeof this.refreshCustomerData === "function") {
-				void this.refreshCustomerData();
+				this.refreshCustomerData();
 			}
-		} catch {}
+		} catch (_error) {
+			// Silently ignore calendar update errors
+		}
 	}
 }
 
 // Re-export types for external consumption
-export type { CalendarApi, CalendarEvent, OperationResult, RowChange, SuccessfulOperation } from "@/entities/event";
+export type {
+	CalendarApi,
+	CalendarEvent,
+	OperationResult,
+	RowChange,
+	SuccessfulOperation,
+} from "@/entities/event";

@@ -4,8 +4,33 @@ import { Badge } from "@ui/badge";
 import { TrendingDown } from "lucide-react";
 import React, { useId } from "react";
 import { Bar, BarChart, Cell, XAxis } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
-import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/shared/ui/chart";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/shared/ui/card";
+import {
+	type ChartConfig,
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/shared/ui/chart";
+
+const MONTH_ABBREVIATION_LENGTH = 3;
+const ACTIVE_OPACITY = 1;
+const INACTIVE_OPACITY = 0.3;
+
+const getCellOpacity = (
+	activeIndex: number | null,
+	itemIndex: number
+): number => {
+	if (activeIndex === null) {
+		return ACTIVE_OPACITY;
+	}
+	return activeIndex === itemIndex ? ACTIVE_OPACITY : INACTIVE_OPACITY;
+};
 
 const chartData = [
 	{ month: "January", desktop: 186, mobile: 80 },
@@ -32,7 +57,9 @@ export function HighlightedMultipleBarChart() {
 	const patternId = useId();
 
 	const activeData = React.useMemo(() => {
-		if (activeIndex === null) return null;
+		if (activeIndex === null) {
+			return null;
+		}
 		return chartData[activeIndex];
 	}, [activeIndex]);
 
@@ -41,7 +68,10 @@ export function HighlightedMultipleBarChart() {
 			<CardHeader>
 				<CardTitle>
 					Bar Chart - Multiple
-					<Badge variant="outline" className="text-red-500 bg-red-500/10 border-none ml-2">
+					<Badge
+						className="ml-2 border-none bg-red-500/10 text-red-500"
+						variant="outline"
+					>
 						<TrendingDown className="h-4 w-4" />
 						<span>-5.2%</span>
 					</Badge>
@@ -49,7 +79,8 @@ export function HighlightedMultipleBarChart() {
 				<CardDescription>
 					{activeData ? (
 						<div>
-							{activeData.month} - Desktop: {activeData.desktop}, Mobile: {activeData.mobile}
+							{activeData.month} - Desktop: {activeData.desktop}, Mobile:{" "}
+							{activeData.mobile}
 						</div>
 					) : (
 						<span>January - June 2025</span>
@@ -58,40 +89,61 @@ export function HighlightedMultipleBarChart() {
 			</CardHeader>
 			<CardContent>
 				<ChartContainer config={chartConfig}>
-					<BarChart accessibilityLayer data={chartData} onMouseLeave={() => setActiveIndex(null)}>
-						<rect x="0" y="0" width="100%" height="85%" fill={`url(#${patternId})`} />
+					<BarChart
+						accessibilityLayer
+						data={chartData}
+						onMouseLeave={() => setActiveIndex(null)}
+					>
+						<rect
+							fill={`url(#${patternId})`}
+							height="85%"
+							width="100%"
+							x="0"
+							y="0"
+						/>
 						<defs>
 							<DottedBackgroundPattern id={patternId} />
 						</defs>
 						<XAxis
+							axisLine={false}
 							dataKey="month"
+							tickFormatter={(value) =>
+								value.slice(0, MONTH_ABBREVIATION_LENGTH)
+							}
 							tickLine={false}
 							tickMargin={10}
-							axisLine={false}
-							tickFormatter={(value) => value.slice(0, 3)}
 						/>
-						<ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
+						<ChartTooltip
+							content={<ChartTooltipContent indicator="dashed" />}
+							cursor={false}
+						/>
 						<Bar dataKey="desktop" fill="var(--color-desktop)" radius={4}>
-							{chartData.map((item, index) => (
-								<Cell
-									key={`cell-desktop-${item.month}`}
-									fillOpacity={activeIndex === null ? 1 : activeIndex === index ? 1 : 0.3}
-									stroke={activeIndex === index ? "var(--color-desktop)" : ""}
-									onMouseEnter={() => setActiveIndex(index)}
-									className="duration-200"
-								/>
-							))}
+							{chartData.map((item, index) => {
+								const cellOpacity = getCellOpacity(activeIndex, index);
+								return (
+									<Cell
+										className="duration-200"
+										fillOpacity={cellOpacity}
+										key={`cell-desktop-${item.month}`}
+										onMouseEnter={() => setActiveIndex(index)}
+										stroke={activeIndex === index ? "var(--color-desktop)" : ""}
+									/>
+								);
+							})}
 						</Bar>
 						<Bar dataKey="mobile" fill="var(--color-mobile)" radius={4}>
-							{chartData.map((item, index) => (
-								<Cell
-									key={`cell-mobile-${item.month}`}
-									fillOpacity={activeIndex === null ? 1 : activeIndex === index ? 1 : 0.3}
-									stroke={activeIndex === index ? "var(--color-mobile)" : ""}
-									onMouseEnter={() => setActiveIndex(index)}
-									className="duration-200"
-								/>
-							))}
+							{chartData.map((item, index) => {
+								const cellOpacity = getCellOpacity(activeIndex, index);
+								return (
+									<Cell
+										className="duration-200"
+										fillOpacity={cellOpacity}
+										key={`cell-mobile-${item.month}`}
+										onMouseEnter={() => setActiveIndex(index)}
+										stroke={activeIndex === index ? "var(--color-mobile)" : ""}
+									/>
+								);
+							})}
 						</Bar>
 					</BarChart>
 				</ChartContainer>
@@ -100,10 +152,21 @@ export function HighlightedMultipleBarChart() {
 	);
 }
 
-const DottedBackgroundPattern = ({ id }: { id: string }) => {
-	return (
-		<pattern id={id} x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-			<circle className="dark:text-muted/40 text-muted" cx="2" cy="2" r="1" fill="currentColor" />
-		</pattern>
-	);
-};
+const DottedBackgroundPattern = ({ id }: { id: string }) => (
+	<pattern
+		height="10"
+		id={id}
+		patternUnits="userSpaceOnUse"
+		width="10"
+		x="0"
+		y="0"
+	>
+		<circle
+			className="text-muted dark:text-muted/40"
+			cx="2"
+			cy="2"
+			fill="currentColor"
+			r="1"
+		/>
+	</pattern>
+);

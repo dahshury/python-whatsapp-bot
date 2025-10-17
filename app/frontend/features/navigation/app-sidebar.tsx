@@ -1,6 +1,9 @@
 "use client";
 
-import { useConversationsData, useReservationsData } from "@shared/libs/data/websocket-data-provider";
+import {
+	useConversationsData,
+	useReservationsData,
+} from "@shared/libs/data/websocket-data-provider";
 import { i18n } from "@shared/libs/i18n";
 import { useLanguage } from "@shared/libs/state/language-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
@@ -28,8 +31,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const isDashboardPage = pathname?.startsWith("/dashboard") ?? false;
 
 	// Use unified data provider
-	const { conversations, isLoading: conversationsLoading } = useConversationsData();
-	const { reservations, isLoading: reservationsLoading } = useReservationsData();
+	const { conversations, isLoading: conversationsLoading } =
+		useConversationsData();
+	const { reservations, isLoading: reservationsLoading } =
+		useReservationsData();
 	const chatLoading = conversationsLoading || reservationsLoading;
 
 	// Use enhanced persistent chat store
@@ -53,7 +58,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 			setChatSidebarOpen(true);
 			setLoadingConversation(false);
 		},
-		[setSelectedConversation, setActiveTab, setChatSidebarOpen, setLoadingConversation]
+		[
+			setSelectedConversation,
+			setActiveTab,
+			setChatSidebarOpen,
+			setLoadingConversation,
+		]
 	);
 
 	const setOpenState = useCallback(
@@ -69,95 +79,181 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 	const isInitialized = !chatLoading && _hasHydrated;
 
-	// Build customers list from unified data
-	const customers = useMemo(() => {
-		const customerMap = new Map();
+	// Helper to add customers from conversations
+	const addConversationCustomers = useCallback(
+		(
+			customerMap: Map<string, Record<string, string>>,
+			conversationData: Record<string, unknown>
+		): void => {
+			for (const waId of Object.keys(conversationData)) {
+				if (!customerMap.has(waId)) {
+					customerMap.set(waId, {
+						phone: waId,
+						formattedPhone: waId.startsWith("+") ? waId : `+${waId}`,
+					});
+				}
+			}
+		},
+		[]
+	);
 
-		// Add customers from conversations
-		for (const waId of Object.keys(conversations)) {
-			if (!customerMap.has(waId)) {
+	// Helper to extract customer name from reservation
+	const extractCustomerName = useCallback(
+		(customerReservations: unknown[]): string | undefined => {
+			const found = customerReservations.find((r: unknown) => {
+				const reserv = r as { customer_name?: string };
+				return !!reserv?.customer_name;
+			}) as { customer_name?: string } | undefined;
+			return found?.customer_name;
+		},
+		[]
+	);
+
+	// Helper to add or update customer entry
+	const addOrUpdateCustomer = useCallback(
+		(
+			customerMap: Map<string, Record<string, string>>,
+			waId: string,
+			customerName: string
+		): void => {
+			const existing = customerMap.get(waId);
+			if (existing) {
+				existing.name = customerName;
+			} else {
 				customerMap.set(waId, {
 					phone: waId,
+					name: customerName,
 					formattedPhone: waId.startsWith("+") ? waId : `+${waId}`,
 				});
 			}
-		}
+		},
+		[]
+	);
 
-		// Add customer names from reservations
-		for (const [waId, customerReservations] of Object.entries(reservations)) {
-			if (Array.isArray(customerReservations) && customerReservations.length > 0) {
-				const customerName = customerReservations.find((r) => !!r?.customer_name)?.customer_name;
-				if (customerName) {
-					const existing = customerMap.get(waId);
-					if (existing) {
-						existing.name = customerName;
-					} else {
-						customerMap.set(waId, {
-							phone: waId,
-							name: customerName,
-							formattedPhone: waId.startsWith("+") ? waId : `+${waId}`,
-						});
+	// Helper to add customer names from reservations
+	const addReservationCustomers = useCallback(
+		(
+			customerMap: Map<string, Record<string, string>>,
+			reservationData: Record<string, unknown>
+		): void => {
+			for (const [waId, customerReservations] of Object.entries(
+				reservationData
+			)) {
+				if (
+					Array.isArray(customerReservations) &&
+					customerReservations.length > 0
+				) {
+					const customerName = extractCustomerName(customerReservations);
+					if (customerName) {
+						addOrUpdateCustomer(customerMap, waId, customerName);
 					}
 				}
 			}
-		}
+		},
+		[extractCustomerName, addOrUpdateCustomer]
+	);
 
+	// Build customers list from unified data
+	const customers = useMemo(() => {
+		const customerMap = new Map<string, Record<string, string>>();
+		addConversationCustomers(customerMap, conversations);
+		addReservationCustomers(customerMap, reservations);
 		return Array.from(customerMap.values());
-	}, [conversations, reservations]);
+	}, [
+		conversations,
+		reservations,
+		addConversationCustomers,
+		addReservationCustomers,
+	]);
 
-	const conversationOptions = useMemo(() => {
-		return customers.map((customer) => {
-			const customerConversations = conversations[customer.phone];
-			return {
-				waId: customer.phone,
-				customerName: customer.name,
-				messageCount: customerConversations?.length || 0,
-				lastMessage: customerConversations?.[customerConversations.length - 1],
-			};
-		});
-	}, [customers, conversations]);
+	const conversationOptions = useMemo(
+		() =>
+			customers.map((customer) => {
+				const customerPhone = customer.phone;
+				const customerConversations = customerPhone
+					? conversations[customerPhone]
+					: undefined;
+				return {
+					waId: customer.phone,
+					customerName: customer.name,
+					messageCount: (customerConversations as unknown[])?.length || 0,
+					lastMessage: ((customerConversations as unknown[]) ?? [])[
+						((customerConversations as unknown[])?.length ?? 1) - 1
+					],
+				};
+			}),
+		[customers, conversations]
+	);
+
+	// Helper to check if element is an input field
+	const isInputElement = useCallback((element: Element | null): boolean => {
+		if (!element) {
+			return false;
+		}
+		return (
+			element.tagName === "INPUT" ||
+			element.tagName === "TEXTAREA" ||
+			element.getAttribute("contenteditable") === "true"
+		);
+	}, []);
+
+	// Helper to handle arrow key navigation
+	const handleArrowKeyNavigation = useCallback(
+		(_event: KeyboardEvent, key: "ArrowLeft" | "ArrowRight"): void => {
+			const currentIndex = conversationOptions.findIndex(
+				(option) => option.waId === selectedConversationId
+			);
+
+			let newIndex: number;
+			if (key === "ArrowLeft") {
+				newIndex = Math.max(0, currentIndex - 1);
+			} else {
+				newIndex = Math.min(conversationOptions.length - 1, currentIndex + 1);
+			}
+
+			const selectedConversation = conversationOptions[newIndex];
+			if (selectedConversation?.waId) {
+				setLoadingConversation(true);
+				selectConversation(selectedConversation.waId);
+			}
+		},
+		[
+			conversationOptions,
+			selectedConversationId,
+			setLoadingConversation,
+			selectConversation,
+		]
+	);
 
 	// Handle keyboard navigation
 	useEffect(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			// Only handle arrow keys when chat tab is active and no input is focused
-			if (activeTab !== "chat" || conversationOptions.length === 0) return;
-
-			const activeElement = document.activeElement;
-			if (
-				activeElement &&
-				(activeElement.tagName === "INPUT" ||
-					activeElement.tagName === "TEXTAREA" ||
-					activeElement.getAttribute("contenteditable") === "true")
-			) {
-				return; // Don't interfere with input fields
+			if (activeTab !== "chat" || conversationOptions.length === 0) {
+				return;
 			}
 
-			const currentIndex = conversationOptions.findIndex((option) => option.waId === selectedConversationId);
+			if (isInputElement(document.activeElement)) {
+				return;
+			}
 
 			if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
 				event.preventDefault();
-
-				let newIndex: number;
-				if (event.key === "ArrowLeft") {
-					// Previous conversation
-					newIndex = Math.max(0, currentIndex - 1);
-				} else {
-					// Next conversation
-					newIndex = Math.min(conversationOptions.length - 1, currentIndex + 1);
-				}
-
-				const selectedConversation = conversationOptions[newIndex];
-				if (selectedConversation?.waId) {
-					setLoadingConversation(true);
-					selectConversation(selectedConversation.waId);
-				}
+				handleArrowKeyNavigation(
+					event,
+					event.key as "ArrowLeft" | "ArrowRight"
+				);
 			}
 		};
 
 		document.addEventListener("keydown", handleKeyDown);
 		return () => document.removeEventListener("keydown", handleKeyDown);
-	}, [activeTab, conversationOptions, selectedConversationId, selectConversation, setLoadingConversation]);
+	}, [
+		activeTab,
+		conversationOptions,
+		handleArrowKeyNavigation,
+		isInputElement,
+	]);
 
 	// Auto-open sidebar when switching to chat tab or when hydrated with chat tab active
 	useEffect(() => {
@@ -174,8 +270,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	useEffect(() => {
 		if (shouldOpenChat && conversationIdToOpen) {
 			// Only open sidebar if it's currently closed, respect user's current state
-			if (!open) setOpen(true);
-			if (!openMobile) setOpenMobile(true);
+			if (!open) {
+				setOpen(true);
+			}
+			if (!openMobile) {
+				setOpenMobile(true);
+			}
 
 			// Set the conversation as selected and switch to chat tab
 			setSelectedConversation(conversationIdToOpen);
@@ -220,34 +320,36 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 	return (
 		<Sidebar {...props} className="bg-sidebar">
-			<SidebarHeader className="border-b border-sidebar-border p-4 bg-sidebar">
-				<div className="flex items-center gap-2 mb-4">
+			<SidebarHeader className="border-sidebar-border border-b bg-sidebar p-4">
+				<div className="mb-4 flex items-center gap-2">
 					<Calendar className="h-6 w-6" />
-					<span className="font-semibold">{i18n.getMessage("reservation_manager", isLocalized)}</span>
+					<span className="font-semibold">
+						{i18n.getMessage("reservation_manager", isLocalized)}
+					</span>
 				</div>
 
 				{/* Tab Navigation */}
-				<div className="flex space-x-0.5 bg-muted p-0.5 rounded-md border border-border">
+				<div className="flex space-x-0.5 rounded-md border border-border bg-muted p-0.5">
 					<button
-						type="button"
-						onClick={() => handleTabChange("calendar")}
-						className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded transition-colors ${
+						className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs transition-colors ${
 							activeTab === "calendar"
-								? "bg-background text-foreground shadow-sm border border-border"
+								? "border border-border bg-background text-foreground shadow-sm"
 								: "text-muted-foreground hover:text-foreground"
 						}`}
+						onClick={() => handleTabChange("calendar")}
+						type="button"
 					>
 						<Calendar className="h-3.5 w-3.5" />
 						{i18n.getMessage("calendar", isLocalized)}
 					</button>
 					<button
-						type="button"
-						onClick={() => handleTabChange("chat")}
-						className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs rounded transition-colors ${
+						className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs transition-colors ${
 							activeTab === "chat"
-								? "bg-background text-foreground shadow-sm border border-border"
+								? "border border-border bg-background text-foreground shadow-sm"
 								: "text-muted-foreground hover:text-foreground"
 						}`}
+						onClick={() => handleTabChange("chat")}
+						type="button"
 					>
 						<MessageSquare className="h-3.5 w-3.5" />
 						{i18n.getMessage("chat", isLocalized)}
@@ -255,7 +357,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				</div>
 			</SidebarHeader>
 
-			<SidebarContent className="p-0 bg-sidebar overflow-x-hidden">
+			<SidebarContent className="overflow-x-hidden bg-sidebar p-0">
 				{activeTab === "calendar" ? (
 					<div className="space-y-4">
 						{/* Prayer Times */}
@@ -271,10 +373,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					</div>
 				) : (
 					<ChatSidebarContent
-						selectedConversationId={selectedConversationId ?? null}
+						className={cn("flex-1", pathname === "/" && "calendar-chat")}
 						onConversationSelect={selectConversation}
 						onRefresh={refreshData}
-						className={cn("flex-1", pathname === "/" && "calendar-chat")}
+						selectedConversationId={selectedConversationId ?? null}
 					/>
 				)}
 			</SidebarContent>

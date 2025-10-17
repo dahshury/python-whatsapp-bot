@@ -9,35 +9,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Progress } from "@/shared/ui/progress";
 import { Skeleton } from "@/shared/ui/skeleton";
 
-interface OperationMetricsProps {
+// Constants
+const PERCENTAGE_MULTIPLIER = 100;
+const ANIMATION_DELAY_MULTIPLIER = 0.1;
+const ANIMATION_DURATION = 0.4;
+
+type OperationMetricsProps = {
 	prometheusMetrics: PrometheusMetrics;
 	isLocalized: boolean;
-}
+};
 
-interface OperationMetricCardProps {
+type OperationMetricCardProps = {
 	title: string;
 	icon: React.ReactNode;
 	attempts: number;
 	success: number;
 	failures: number;
 	isLocalized: boolean;
-}
+};
 
-function OperationMetricCard({ title, icon, attempts, success, failures, isLocalized }: OperationMetricCardProps) {
-	const successRate = attempts > 0 ? (success / attempts) * 100 : 0;
-	const failureRate = attempts > 0 ? (failures / attempts) * 100 : 0;
+function OperationMetricCard({
+	title,
+	icon,
+	attempts,
+	success,
+	failures,
+	isLocalized,
+}: OperationMetricCardProps) {
+	const successRate =
+		attempts > 0 ? (success / attempts) * PERCENTAGE_MULTIPLIER : 0;
+	const failureRate =
+		attempts > 0 ? (failures / attempts) * PERCENTAGE_MULTIPLIER : 0;
 
 	return (
-		<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+		<motion.div
+			animate={{ opacity: 1, y: 0 }}
+			initial={{ opacity: 0, y: 20 }}
+			transition={{ duration: ANIMATION_DURATION }}
+		>
 			<Card className="h-full">
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">{title}</CardTitle>
+					<CardTitle className="font-medium text-sm">{title}</CardTitle>
 					{icon}
 				</CardHeader>
 				<CardContent className="space-y-3">
 					<div className="flex items-center justify-between">
-						<div className="text-2xl font-bold">{attempts}</div>
-						<Badge variant="outline" className="text-xs">
+						<div className="font-bold text-2xl">{attempts}</div>
+						<Badge className="text-xs" variant="outline">
 							{i18n.getMessage("operation_attempts", isLocalized)}
 						</Badge>
 					</div>
@@ -54,14 +72,16 @@ function OperationMetricCard({ title, icon, attempts, success, failures, isLocal
 							</div>
 						</div>
 
-						<Progress value={successRate} className="h-2" />
+						<Progress className="h-2" value={successRate} />
 
-						<div className="flex justify-between text-xs text-muted-foreground">
+						<div className="flex justify-between text-muted-foreground text-xs">
 							<span>
-								{successRate.toFixed(1)}% {i18n.getMessage("operation_success", isLocalized)}
+								{successRate.toFixed(1)}%{" "}
+								{i18n.getMessage("operation_success", isLocalized)}
 							</span>
 							<span>
-								{failureRate.toFixed(1)}% {i18n.getMessage("operation_failed", isLocalized)}
+								{failureRate.toFixed(1)}%{" "}
+								{i18n.getMessage("operation_failed", isLocalized)}
 							</span>
 						</div>
 					</div>
@@ -71,14 +91,20 @@ function OperationMetricCard({ title, icon, attempts, success, failures, isLocal
 	);
 }
 
-export function OperationMetrics({ prometheusMetrics, isLocalized }: OperationMetricsProps) {
-	const hasMetrics = prometheusMetrics && Object.keys(prometheusMetrics).length > 0;
+export function OperationMetrics({
+	prometheusMetrics,
+	isLocalized,
+}: OperationMetricsProps) {
+	const hasMetrics =
+		prometheusMetrics && Object.keys(prometheusMetrics).length > 0;
 
 	if (!hasMetrics) {
 		return (
 			<div className="space-y-4">
-				<h2 className="text-xl font-semibold">{i18n.getMessage("operation_metrics_title", isLocalized)}</h2>
-				<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+				<h2 className="font-semibold text-xl">
+					{i18n.getMessage("operation_metrics_title", isLocalized)}
+				</h2>
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 					{Array.from({ length: 3 }).map((_, i) => (
 						<Card key={`operation-skeleton-card-${i + 1}`}>
 							<CardHeader className="space-y-0 pb-2">
@@ -86,7 +112,7 @@ export function OperationMetrics({ prometheusMetrics, isLocalized }: OperationMe
 							</CardHeader>
 							<CardContent>
 								<Skeleton className="h-8 w-[5rem]" />
-								<Skeleton className="h-3 w-[6.25rem] mt-2" />
+								<Skeleton className="mt-2 h-3 w-[6.25rem]" />
 							</CardContent>
 						</Card>
 					))}
@@ -106,38 +132,47 @@ export function OperationMetrics({ prometheusMetrics, isLocalized }: OperationMe
 		{
 			title: i18n.getMessage("operation_cancellations", isLocalized),
 			icon: <X className="h-4 w-4 text-muted-foreground" />,
-			attempts: prometheusMetrics.reservations_cancellation_requested_total || 0,
-			success: prometheusMetrics.reservations_cancellation_successful_total || 0,
+			attempts:
+				prometheusMetrics.reservations_cancellation_requested_total || 0,
+			success:
+				prometheusMetrics.reservations_cancellation_successful_total || 0,
 			failures: prometheusMetrics.reservations_cancellation_failed_total || 0,
 		},
 		{
 			title: i18n.getMessage("operation_modifications", isLocalized),
 			icon: <Edit className="h-4 w-4 text-muted-foreground" />,
-			attempts: prometheusMetrics.reservations_modification_requested_total || 0,
-			success: prometheusMetrics.reservations_modification_successful_total || 0,
+			attempts:
+				prometheusMetrics.reservations_modification_requested_total || 0,
+			success:
+				prometheusMetrics.reservations_modification_successful_total || 0,
 			failures: prometheusMetrics.reservations_modification_failed_total || 0,
 		},
 	];
 
 	return (
 		<div className="space-y-4">
-			<h2 className="text-xl font-semibold">{i18n.getMessage("operation_metrics_title", isLocalized)}</h2>
+			<h2 className="font-semibold text-xl">
+				{i18n.getMessage("operation_metrics_title", isLocalized)}
+			</h2>
 
-			<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 				{operations.map((operation, index) => (
 					<motion.div
-						key={operation.title}
-						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: index * 0.1, duration: 0.4 }}
+						initial={{ opacity: 0, y: 20 }}
+						key={operation.title}
+						transition={{
+							delay: index * ANIMATION_DELAY_MULTIPLIER,
+							duration: ANIMATION_DURATION,
+						}}
 					>
 						<OperationMetricCard
-							title={operation.title}
-							icon={operation.icon}
 							attempts={operation.attempts}
-							success={operation.success}
 							failures={operation.failures}
+							icon={operation.icon}
 							isLocalized={isLocalized}
+							success={operation.success}
+							title={operation.title}
 						/>
 					</motion.div>
 				))}

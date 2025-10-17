@@ -66,7 +66,14 @@ async def send_reminders_job():
                     )
                     continue
                 # Prepare template components
-                components = [{"type": "body", "parameters": [{"type": "text", "text": reservation["time_slot"]}]}]
+                components = [
+                    {
+                        "type": "body",
+                        "parameters": [
+                            {"type": "text", "text": reservation["time_slot"]}
+                        ],
+                    }
+                ]
 
                 # Prepare reminder message
                 formatted_time = parse_time(reservation["time_slot"], to_24h=False)
@@ -87,13 +94,19 @@ async def send_reminders_job():
                 # Log the message in the conversation history
                 now = datetime.datetime.now(tz=ZoneInfo(tz))
                 append_message(
-                    reservation["wa_id"], "secretary", message, now.date().isoformat(), now.strftime("%H:%M:%S")
+                    reservation["wa_id"],
+                    "secretary",
+                    message,
+                    now.date().isoformat(),
+                    now.strftime("%H:%M:%S"),
                 )
 
                 logging.info(f"Reminder sent to {reservation['wa_id']}")
             except Exception as e:
                 FUNCTION_ERRORS.labels(function="send_reminders_job").inc()
-                logging.error(f"Error processing reservation {reservation.get('wa_id', 'unknown')}: {e}")
+                logging.error(
+                    f"Error processing reservation {reservation.get('wa_id', 'unknown')}: {e}"
+                )
                 logging.error(traceback.format_exc())
                 continue
 
@@ -124,7 +137,9 @@ def run_database_backup():
         if not os.path.isfile(script_path):
             logging.error(f"Backup script not found at {script_path}")
             BACKUP_SCRIPT_FAILURES.inc()
-            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason="script_not_found", stage="preflight", exit_code="127").inc()
+            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+                reason="script_not_found", stage="preflight", exit_code="127"
+            ).inc()
             FUNCTION_ERRORS.labels(function="run_database_backup").inc()
             return
 
@@ -141,7 +156,9 @@ def run_database_backup():
         )
 
         try:
-            stdout, stderr = process.communicate(timeout=600)  # 10-minute timeout for large dumps
+            stdout, stderr = process.communicate(
+                timeout=600
+            )  # 10-minute timeout for large dumps
 
             if process.returncode == 0:
                 logging.info("Database backup completed successfully")
@@ -149,9 +166,13 @@ def run_database_backup():
                     logging.debug(f"Backup: {line}")
             else:
                 logging.error(f"Database backup failed with code {process.returncode}")
-                reason, stage, exit_code = _classify_backup_failure(stdout, stderr, process.returncode)
+                reason, stage, exit_code = _classify_backup_failure(
+                    stdout, stderr, process.returncode
+                )
                 BACKUP_SCRIPT_FAILURES.inc()
-                BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason=reason, stage=stage, exit_code=str(exit_code)).inc()
+                BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+                    reason=reason, stage=stage, exit_code=str(exit_code)
+                ).inc()
                 FUNCTION_ERRORS.labels(function="run_database_backup").inc()
                 for line in (stderr or "").splitlines():
                     logging.error(f"Backup error: {line}")
@@ -162,7 +183,9 @@ def run_database_backup():
             process.kill()
             logging.error("Database backup timed out")
             BACKUP_SCRIPT_FAILURES.inc()
-            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason="timeout", stage="timeout", exit_code="timeout").inc()
+            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+                reason="timeout", stage="timeout", exit_code="timeout"
+            ).inc()
             FUNCTION_ERRORS.labels(function="run_database_backup").inc()
 
     except Exception as e:
@@ -229,7 +252,9 @@ def _classify_backup_failure(stdout: str, stderr: str, returncode: int):
 # Define a job to manually trigger Python garbage collection
 def collect_garbage_job():
     collected = gc.collect()
-    logging.info(f"Garbage collection manually triggered: collected {collected} objects")
+    logging.info(
+        f"Garbage collection manually triggered: collected {collected} objects"
+    )
 
 
 # Listener function for APScheduler missed job events
@@ -239,7 +264,9 @@ def scheduler_listener(event):
         logging.warning(f"Run time of job {job_id} was missed")
         SCHEDULER_JOB_MISSED.inc()
         with contextlib.suppress(Exception):
-            SCHEDULER_JOB_MISSED_BY_REASON.labels(reason="missed_start_deadline", job_id=str(job_id)).inc()
+            SCHEDULER_JOB_MISSED_BY_REASON.labels(
+                reason="missed_start_deadline", job_id=str(job_id)
+            ).inc()
     elif event.code == EVENT_JOB_ERROR:
         job_id = event.job_id
         exception = event.exception
@@ -268,10 +295,14 @@ def init_scheduler(app):
 
                 # Check if process exists
                 try:
-                    os.kill(int(old_pid), 0)  # Signal 0 doesn't kill the process, just checks if it exists
+                    os.kill(
+                        int(old_pid), 0
+                    )  # Signal 0 doesn't kill the process, just checks if it exists
                 except (OSError, ProcessLookupError, ValueError):
                     # Process doesn't exist, remove stale lock
-                    logging.warning(f"Removing stale scheduler lock for non-existent PID {old_pid}")
+                    logging.warning(
+                        f"Removing stale scheduler lock for non-existent PID {old_pid}"
+                    )
                     os.remove(lock_file)
                 except Exception as e:
                     logging.warning(f"Error checking PID {old_pid}: {e}")
@@ -291,7 +322,9 @@ def init_scheduler(app):
 
     # Prevent multiple inits within the same process
     if _scheduler_initialized:
-        logging.warning(f"init_scheduler already called in pid {pid}, skipping scheduler setup")
+        logging.warning(
+            f"init_scheduler already called in pid {pid}, skipping scheduler setup"
+        )
         return
 
     logging.info(f"init_scheduler start in pid {pid}")
@@ -304,7 +337,13 @@ def init_scheduler(app):
     # Schedule job every day at 19:00
     trigger = CronTrigger(hour=19, minute=0, timezone=tz)
     logging.info(f"Adding job 'send_reminders' with trigger {trigger} in pid {pid}")
-    scheduler.add_job(send_reminders_job, trigger, id="send_reminders", replace_existing=True, misfire_grace_time=300)
+    scheduler.add_job(
+        send_reminders_job,
+        trigger,
+        id="send_reminders",
+        replace_existing=True,
+        misfire_grace_time=300,
+    )
 
     # Schedule system metrics polling every 30 seconds
     logging.info(f"Adding job 'system_metrics' interval 180s in pid {pid}")
@@ -319,25 +358,40 @@ def init_scheduler(app):
 
     # Schedule database backup job every day at 00:00
     backup_trigger = CronTrigger(hour=0, minute=0, timezone=tz)
-    logging.info(f"Adding job 'database_backup' with trigger {backup_trigger} in pid {pid}")
+    logging.info(
+        f"Adding job 'database_backup' with trigger {backup_trigger} in pid {pid}"
+    )
     scheduler.add_job(
-        run_database_backup, backup_trigger, id="database_backup", replace_existing=True, misfire_grace_time=300
+        run_database_backup,
+        backup_trigger,
+        id="database_backup",
+        replace_existing=True,
+        misfire_grace_time=300,
     )
 
     # Schedule manual garbage collection every hour
     scheduler.add_job(
-        collect_garbage_job, "interval", hours=1, id="gc_collect", replace_existing=True, misfire_grace_time=300
+        collect_garbage_job,
+        "interval",
+        hours=1,
+        id="gc_collect",
+        replace_existing=True,
+        misfire_grace_time=300,
     )
 
     scheduler.start()
     app.state.scheduler = scheduler
-    logging.info(f"Scheduler started with TIMEZONE={tz}, job count={len(scheduler.get_jobs())} in pid {pid}")
+    logging.info(
+        f"Scheduler started with TIMEZONE={tz}, job count={len(scheduler.get_jobs())} in pid {pid}"
+    )
 
     # Ensure lock file is removed when scheduler shuts down
     def _cleanup_lock():
         try:
             os.remove(lock_file)
-            logging.info(f"Removed scheduler lock file {lock_file} on shutdown in pid {pid}")
+            logging.info(
+                f"Removed scheduler lock file {lock_file} on shutdown in pid {pid}"
+            )
         except Exception as e:
             logging.warning(f"Failed to remove scheduler lock file {lock_file}: {e}")
 

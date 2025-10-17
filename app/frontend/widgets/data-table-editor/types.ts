@@ -1,6 +1,6 @@
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
+import type { CalendarCoreRef } from "@/widgets/calendar/types";
 
-export interface CalendarEvent {
+export type CalendarEvent = {
 	id: string;
 	title: string;
 	start: string;
@@ -16,18 +16,18 @@ export interface CalendarEvent {
 		cancelled?: boolean;
 		reservationId?: number | undefined;
 	};
-}
+};
 
-interface ReservationData {
+type ReservationData = {
 	id?: number;
 	date: string;
 	time: string;
 	phone: string;
 	type: number;
 	name: string;
-}
+};
 
-export interface DataTableEditorProps {
+export type DataTableEditorProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	events: CalendarEvent[];
@@ -44,9 +44,9 @@ export interface DataTableEditorProps {
 	onEventAdded?: (event: CalendarEvent) => void;
 	onEventModified?: (eventId: string, event: CalendarEvent) => void;
 	onEventCancelled?: (eventId: string) => void;
-}
+};
 
-export interface ValidationResult {
+export type ValidationResult = {
 	isValid: boolean;
 	errors: Array<{
 		row: number;
@@ -54,9 +54,9 @@ export interface ValidationResult {
 		message: string;
 		fieldName?: string;
 	}>;
-}
+};
 
-export interface EditingChanges {
+export type EditingChanges = {
 	deleted_rows?: number[];
 	edited_rows?: Record<string, Record<string, unknown>>;
 	added_rows?: Array<{
@@ -66,4 +66,4 @@ export interface EditingChanges {
 		type: string;
 		name: string;
 	}>;
-}
+};

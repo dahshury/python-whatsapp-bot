@@ -18,10 +18,16 @@ import {
 	YAxis,
 } from "recharts";
 
-// Add wrappers to avoid @types/recharts v1 typings conflict with Recharts v3
-const XAxisComp = XAxis as unknown as React.ComponentType<Record<string, unknown>>;
-const YAxisComp = YAxis as unknown as React.ComponentType<Record<string, unknown>>;
-const FunnelComp = Funnel as unknown as React.ComponentType<Record<string, unknown>>;
+// Type wrappers for Recharts compatibility
+const XAxisComp = XAxis as unknown as React.ComponentType<
+	Record<string, unknown>
+>;
+const YAxisComp = YAxis as unknown as React.ComponentType<
+	Record<string, unknown>
+>;
+const FunnelComp = Funnel as unknown as React.ComponentType<
+	Record<string, unknown>
+>;
 
 import type {
 	CustomerSegment,
@@ -35,10 +41,29 @@ import type {
 import { i18n } from "@/shared/libs/i18n";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import type { ChartConfig } from "@/shared/ui/chart";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/shared/ui/chart";
+import {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/shared/ui/chart";
 import { DailyTrendsOverview } from "./daily-trends-overview";
 
-interface TrendChartsProps {
+// Constants for chart styling
+const PATTERN_HEIGHT = 10;
+const PATTERN_WIDTH = 10;
+const PATTERN_X = "0";
+const PATTERN_Y = "0";
+const CIRCLE_RADIUS = 1;
+const CIRCLE_CX = 2;
+const CIRCLE_CY = 2;
+
+// Constants
+const BAR_RADIUS_TOP_LEFT = 4;
+const BAR_RADIUS_TOP_RIGHT = 4;
+const BAR_RADIUS_BOTTOM_LEFT = 0;
+const BAR_RADIUS_BOTTOM_RIGHT = 0;
+
+type TrendChartsProps = {
 	dailyTrends: DailyData[];
 	typeDistribution: TypeDistribution[];
 	timeSlots: TimeSlotData[];
@@ -48,7 +73,7 @@ interface TrendChartsProps {
 	customerSegments: CustomerSegment[];
 	isLocalized: boolean;
 	variant?: "full" | "compact";
-}
+};
 
 // Hook to get theme colors for charts
 function useThemeColors() {
@@ -114,9 +139,6 @@ function TrendChartsComponent({
 	const patternIdType = useId();
 	const patternIdSlots = useId();
 	const patternIdWeekly = useId();
-	const [activeIndexType, setActiveIndexType] = useState<number | null>(null);
-	const [activeIndexSlots, setActiveIndexSlots] = useState<number | null>(null);
-	const [activeIndexWeekly, setActiveIndexWeekly] = useState<number | null>(null);
 
 	const chartColors = [
 		themeColors.primary,
@@ -142,14 +164,24 @@ function TrendChartsComponent({
 
 	// Helper function to translate day names
 	const _translateDayName = (dayName: string, isShort = false) => {
-		const dayMap = {
-			Monday: isShort ? "day_mon" : "day_monday",
-			Tuesday: isShort ? "day_tue" : "day_tuesday",
-			Wednesday: isShort ? "day_wed" : "day_wednesday",
-			Thursday: isShort ? "day_thu" : "day_thursday",
-			Friday: isShort ? "day_fri" : "day_friday",
-			Saturday: isShort ? "day_sat" : "day_saturday",
-			Sunday: isShort ? "day_sun" : "day_sunday",
+		const longDayMap: Record<string, string> = {
+			Monday: "day_monday",
+			Tuesday: "day_tuesday",
+			Wednesday: "day_wednesday",
+			Thursday: "day_thursday",
+			Friday: "day_friday",
+			Saturday: "day_saturday",
+			Sunday: "day_sunday",
+		};
+
+		const shortDayMap: Record<string, string> = {
+			Monday: "day_mon",
+			Tuesday: "day_tue",
+			Wednesday: "day_wed",
+			Thursday: "day_thu",
+			Friday: "day_fri",
+			Saturday: "day_sat",
+			Sunday: "day_sun",
 			Mon: "day_mon",
 			Tue: "day_tue",
 			Wed: "day_wed",
@@ -159,43 +191,70 @@ function TrendChartsComponent({
 			Sun: "day_sun",
 		};
 
-		const key = dayMap[dayName as keyof typeof dayMap];
+		const mapToUse = isShort ? shortDayMap : longDayMap;
+		const key = mapToUse[dayName];
 		return key ? i18n.getMessage(key, isLocalized) : dayName;
+	};
+
+	// Helper to get slot type label
+	const getSlotTypeLabel = (slotType: string): string => {
+		if (slotType === "regular") {
+			return i18n.getMessage("slot_regular", isLocalized);
+		}
+		if (slotType === "saturday") {
+			return i18n.getMessage("slot_saturday", isLocalized);
+		}
+		if (slotType === "ramadan") {
+			return i18n.getMessage("slot_ramadan", isLocalized);
+		}
+		return i18n.getMessage("slot_unknown", isLocalized);
 	};
 
 	// Transform daily trends data with translated dates (memoized for performance)
 	// Currently unused by charts; preserve as internal for future use
-	useMemo(() => {
-		return dailyTrends.map((trend) => ({
-			...trend,
-			displayDate: new Date(trend.date).toLocaleDateString(isLocalized ? "ar" : "en", {
-				month: "short",
-				day: "numeric",
-			}),
-		}));
-	}, [dailyTrends, isLocalized]);
+	useMemo(
+		() =>
+			dailyTrends.map((trend) => ({
+				...trend,
+				displayDate: new Date(trend.date).toLocaleDateString(
+					isLocalized ? "ar" : "en",
+					{
+						month: "short",
+						day: "numeric",
+					}
+				),
+			})),
+		[dailyTrends, isLocalized]
+	);
 
 	// Transform type distribution with translated labels
 	const transformedTypeDistribution = typeDistribution.map((type) => ({
 		...type,
 		label:
-			type.type === 0 ? i18n.getMessage("appt_checkup", isLocalized) : i18n.getMessage("appt_followup", isLocalized),
+			type.type === 0
+				? i18n.getMessage("appt_checkup", isLocalized)
+				: i18n.getMessage("appt_followup", isLocalized),
 	}));
 
 	// Previous period comparison derived from monthlyTrends: take last two months as proxy
 	const _prevTypeDistribution = useMemo(() => {
 		try {
-			if (!Array.isArray(monthlyTrends) || monthlyTrends.length < 2)
+			if (!Array.isArray(monthlyTrends) || monthlyTrends.length < 2) {
 				return [] as Array<{ type: number; label: string; count?: number }>;
+			}
 			// Fallback heuristic: assume checkup ~ 0 type, followup ~ 1 type weights from current distribution
-			const last = monthlyTrends[monthlyTrends.length - 1];
-			const prev = monthlyTrends[monthlyTrends.length - 2];
-			if (!last || !prev) return [] as Array<{ type: number; label: string; count?: number }>;
+			const last = monthlyTrends.at(-1);
+			const prev = monthlyTrends.at(-2);
+			if (!(last && prev)) {
+				return [] as Array<{ type: number; label: string; count?: number }>;
+			}
 			const totalNow = Math.max(
 				1,
 				transformedTypeDistribution.reduce((s, t) => s + (t.count || 0), 0)
 			);
-			const nowWeights = transformedTypeDistribution.map((t) => (t.count || 0) / totalNow);
+			const nowWeights = transformedTypeDistribution.map(
+				(t) => (t.count || 0) / totalNow
+			);
 			const estimate = (total: number) =>
 				transformedTypeDistribution.map((t, idx) => ({
 					type: t.type,
@@ -210,11 +269,14 @@ function TrendChartsComponent({
 
 	// Combined dataset for dual bar chart: current vs previous for each label
 	const typeDistributionWithPrev = useMemo(() => {
-		const map = new Map<number, { label: string; current: number; previous: number }>();
+		const map = new Map<
+			number,
+			{ label: string; current: number; previous: number }
+		>();
 		for (const t of transformedTypeDistribution) {
 			map.set(t.type, { label: t.label, current: t.count || 0, previous: 0 });
 		}
-		_prevTypeDistribution.forEach((p: { type: number; label: string; count?: number }) => {
+		for (const p of _prevTypeDistribution) {
 			const entry = map.get(p.type) || {
 				label: p.label,
 				current: 0,
@@ -222,7 +284,7 @@ function TrendChartsComponent({
 			};
 			entry.previous = p.count || 0;
 			map.set(p.type, entry);
-		});
+		}
 		return Array.from(map.values());
 	}, [transformedTypeDistribution, _prevTypeDistribution]);
 
@@ -235,14 +297,7 @@ function TrendChartsComponent({
 	// Transform time slots with translated types
 	const transformedTimeSlots = _timeSlots.map((slot) => ({
 		...slot,
-		typeLabel:
-			slot.type === "regular"
-				? i18n.getMessage("slot_regular", isLocalized)
-				: slot.type === "saturday"
-					? i18n.getMessage("slot_saturday", isLocalized)
-					: slot.type === "ramadan"
-						? i18n.getMessage("slot_ramadan", isLocalized)
-						: i18n.getMessage("slot_unknown", isLocalized),
+		typeLabel: getSlotTypeLabel(slot.type),
 	}));
 
 	// Sort funnel data from highest to lowest count then translate stage names
@@ -256,10 +311,16 @@ function TrendChartsComponent({
 				translatedStage = i18n.getMessage("funnel_conversations", isLocalized);
 				break;
 			case "made reservation":
-				translatedStage = i18n.getMessage("funnel_made_reservation", isLocalized);
+				translatedStage = i18n.getMessage(
+					"funnel_made_reservation",
+					isLocalized
+				);
 				break;
 			case "returned for another":
-				translatedStage = i18n.getMessage("funnel_returned_for_another", isLocalized);
+				translatedStage = i18n.getMessage(
+					"funnel_returned_for_another",
+					isLocalized
+				);
 				break;
 			case "cancelled":
 				translatedStage = i18n.getMessage("funnel_cancelled", isLocalized);
@@ -283,22 +344,40 @@ function TrendChartsComponent({
 				translatedSegment = i18n.getMessage("segment_new_1_visit", isLocalized);
 				break;
 			case "returning (2-5 visits)":
-				translatedSegment = i18n.getMessage("segment_returning_2_5_visits", isLocalized);
+				translatedSegment = i18n.getMessage(
+					"segment_returning_2_5_visits",
+					isLocalized
+				);
 				break;
 			case "loyal (6+ visits)":
-				translatedSegment = i18n.getMessage("segment_loyal_6_plus_visits", isLocalized);
+				translatedSegment = i18n.getMessage(
+					"segment_loyal_6_plus_visits",
+					isLocalized
+				);
 				break;
 			case "new customers":
-				translatedSegment = i18n.getMessage("segment_new_customers", isLocalized);
+				translatedSegment = i18n.getMessage(
+					"segment_new_customers",
+					isLocalized
+				);
 				break;
 			case "regular customers":
-				translatedSegment = i18n.getMessage("segment_regular_customers", isLocalized);
+				translatedSegment = i18n.getMessage(
+					"segment_regular_customers",
+					isLocalized
+				);
 				break;
 			case "vip customers":
-				translatedSegment = i18n.getMessage("segment_vip_customers", isLocalized);
+				translatedSegment = i18n.getMessage(
+					"segment_vip_customers",
+					isLocalized
+				);
 				break;
 			case "inactive customers":
-				translatedSegment = i18n.getMessage("segment_inactive_customers", isLocalized);
+				translatedSegment = i18n.getMessage(
+					"segment_inactive_customers",
+					isLocalized
+				);
 				break;
 			default:
 				translatedSegment = segment.segment;
@@ -400,37 +479,51 @@ function TrendChartsComponent({
 		return (
 			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
 				{/* Daily Trends */}
-				<DailyTrendsOverview dailyTrends={dailyTrends} isLocalized={isLocalized} />
+				<DailyTrendsOverview
+					dailyTrends={dailyTrends}
+					isLocalized={isLocalized}
+				/>
 
 				{/* Appointment Type Distribution with previous period */}
 				<motion.div initial={false}>
 					<Card className="h-full">
 						<CardHeader>
-							<CardTitle>{i18n.getMessage("chart_appointment_type_distribution", isLocalized)}</CardTitle>
+							<CardTitle>
+								{i18n.getMessage(
+									"chart_appointment_type_distribution",
+									isLocalized
+								)}
+							</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div className="h-[21.875rem]">
-								<ResponsiveContainer width="100%" height="100%">
+								<ResponsiveContainer height="100%" width="100%">
 									<BarChart data={typeDistributionWithPrev}>
-										<CartesianGrid strokeDasharray="3 3" stroke={themeColors.border} />
+										<CartesianGrid
+											stroke={themeColors.border}
+											strokeDasharray="3 3"
+										/>
 										<XAxisComp
 											dataKey="label"
-											tick={{ fontSize: 12, fill: themeColors.foreground }}
 											stroke={themeColors.foreground}
+											tick={{ fontSize: 12, fill: themeColors.foreground }}
 										/>
-										<YAxisComp tick={{ fontSize: 12, fill: themeColors.foreground }} stroke={themeColors.foreground} />
+										<YAxisComp
+											stroke={themeColors.foreground}
+											tick={{ fontSize: 12, fill: themeColors.foreground }}
+										/>
 										<Tooltip contentStyle={tooltipStyle} />
 										<Bar
 											dataKey="current"
-											name={i18n.getMessage("period_current", isLocalized)}
 											fill={themeColors.primary}
 											isAnimationActive={false}
+											name={i18n.getMessage("period_current", isLocalized)}
 										/>
 										<Bar
 											dataKey="previous"
-											name={i18n.getMessage("period_previous", isLocalized)}
 											fill={themeColors.secondary}
 											isAnimationActive={false}
+											name={i18n.getMessage("period_previous", isLocalized)}
 										/>
 									</BarChart>
 								</ResponsiveContainer>
@@ -445,48 +538,75 @@ function TrendChartsComponent({
 	return (
 		<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
 			{/* Daily Trends */}
-			<DailyTrendsOverview dailyTrends={dailyTrends} isLocalized={isLocalized} />
+			<DailyTrendsOverview
+				dailyTrends={dailyTrends}
+				isLocalized={isLocalized}
+			/>
 
 			{/* Appointment Type Distribution with previous period */}
 			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
-						<CardTitle>{i18n.getMessage("chart_appointment_type_distribution", isLocalized)}</CardTitle>
+						<CardTitle>
+							{i18n.getMessage(
+								"chart_appointment_type_distribution",
+								isLocalized
+							)}
+						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<ChartContainer config={typeDistChartConfig} className="h-[21.875rem] w-full">
-							<BarChart
-								accessibilityLayer
-								data={typeDistributionWithPrev}
-								onMouseLeave={() => setActiveIndexType(null)}
-							>
-								<rect x="0" y="0" width="100%" height="85%" fill={`url(#${patternIdType})`} />
+						<ChartContainer
+							className="h-[21.875rem] w-full"
+							config={typeDistChartConfig}
+						>
+							<BarChart accessibilityLayer data={typeDistributionWithPrev}>
+								<rect
+									fill={`url(#${patternIdType})`}
+									height="85%"
+									width="100%"
+									x="0"
+									y="0"
+								/>
 								<defs>
-									<pattern id={patternIdType} x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-										<circle className="dark:text-muted/40 text-muted" cx="2" cy="2" r="1" fill="currentColor" />
+									<pattern
+										height={PATTERN_HEIGHT}
+										id={patternIdType}
+										patternUnits="userSpaceOnUse"
+										width={PATTERN_WIDTH}
+										x={PATTERN_X}
+										y={PATTERN_Y}
+									>
+										<circle
+											className="text-muted dark:text-muted/40"
+											cx={CIRCLE_CX}
+											cy={CIRCLE_CY}
+											fill="currentColor"
+											r={CIRCLE_RADIUS}
+										/>
 									</pattern>
 								</defs>
 								<CartesianGrid strokeDasharray="3 3" />
 								<XAxisComp dataKey="label" tick={{ fontSize: 12 }} />
 								<YAxisComp tick={{ fontSize: 12 }} />
-								<ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
-								<Bar dataKey="current" radius={4} fill="var(--color-current)">
-									{typeDistributionWithPrev.map((item, index) => (
+								<ChartTooltip
+									content={<ChartTooltipContent indicator="dashed" />}
+									cursor={false}
+								/>
+								<Bar dataKey="current" fill="var(--color-current)" radius={4}>
+									{typeDistributionWithPrev.map((item) => (
 										<Cell
-											key={`type-current-${item.label}`}
 											className="duration-200"
-											fillOpacity={activeIndexType === null ? 1 : activeIndexType === index ? 1 : 0.3}
-											onMouseEnter={() => setActiveIndexType(index)}
+											fillOpacity={1}
+											key={`type-current-${item.label}`}
 										/>
 									))}
 								</Bar>
-								<Bar dataKey="previous" radius={4} fill="var(--color-previous)">
-									{typeDistributionWithPrev.map((item, index) => (
+								<Bar dataKey="previous" fill="var(--color-previous)" radius={4}>
+									{typeDistributionWithPrev.map((item) => (
 										<Cell
-											key={`type-prev-${item.label}`}
 											className="duration-200"
-											fillOpacity={activeIndexType === null ? 1 : activeIndexType === index ? 1 : 0.3}
-											onMouseEnter={() => setActiveIndexType(index)}
+											fillOpacity={1}
+											key={`type-prev-${item.label}`}
 										/>
 									))}
 								</Bar>
@@ -500,28 +620,66 @@ function TrendChartsComponent({
 			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
-						<CardTitle>{i18n.getMessage("chart_popular_time_slots", isLocalized)}</CardTitle>
+						<CardTitle>
+							{i18n.getMessage("chart_popular_time_slots", isLocalized)}
+						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<ChartContainer config={timeSlotsChartConfig} className="h-[21.875rem] w-full">
-							<BarChart data={transformedTimeSlots} onMouseLeave={() => setActiveIndexSlots(null)}>
-								<rect x="0" y="0" width="100%" height="85%" fill={`url(#${patternIdSlots})`} />
+						<ChartContainer
+							className="h-[21.875rem] w-full"
+							config={timeSlotsChartConfig}
+						>
+							<BarChart data={transformedTimeSlots}>
+								<rect
+									fill={`url(#${patternIdSlots})`}
+									height="85%"
+									width="100%"
+									x="0"
+									y="0"
+								/>
 								<defs>
-									<pattern id={patternIdSlots} x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-										<circle className="dark:text-muted/40 text-muted" cx="2" cy="2" r="1" fill="currentColor" />
+									<pattern
+										height={PATTERN_HEIGHT}
+										id={patternIdSlots}
+										patternUnits="userSpaceOnUse"
+										width={PATTERN_WIDTH}
+										x={PATTERN_X}
+										y={PATTERN_Y}
+									>
+										<circle
+											className="text-muted dark:text-muted/40"
+											cx={CIRCLE_CX}
+											cy={CIRCLE_CY}
+											fill="currentColor"
+											r={CIRCLE_RADIUS}
+										/>
 									</pattern>
 								</defs>
 								<CartesianGrid strokeDasharray="3 3" />
-								<XAxisComp dataKey="time" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={60} />
+								<XAxisComp
+									angle={-45}
+									dataKey="time"
+									height={60}
+									textAnchor="end"
+									tick={{ fontSize: 11 }}
+								/>
 								<YAxisComp tick={{ fontSize: 12 }} />
 								<ChartTooltip content={<ChartTooltipContent />} />
-								<Bar dataKey="count" radius={[4, 4, 0, 0]} fill="var(--color-count)">
-									{transformedTimeSlots.map((item, index) => (
+								<Bar
+									dataKey="count"
+									fill="var(--color-count)"
+									radius={[
+										BAR_RADIUS_TOP_LEFT,
+										BAR_RADIUS_TOP_RIGHT,
+										BAR_RADIUS_BOTTOM_LEFT,
+										BAR_RADIUS_BOTTOM_RIGHT,
+									]}
+								>
+									{transformedTimeSlots.map((item) => (
 										<Cell
-											key={`slot-${item.slot}-${item.time}`}
 											className="duration-200"
-											fillOpacity={activeIndexSlots === null ? 1 : activeIndexSlots === index ? 1 : 0.3}
-											onMouseEnter={() => setActiveIndexSlots(index)}
+											fillOpacity={1}
+											key={`slot-${item.slot}-${item.time}`}
 										/>
 									))}
 								</Bar>
@@ -532,45 +690,74 @@ function TrendChartsComponent({
 			</motion.div>
 
 			{/* Weekly Activity Pattern */}
-			<motion.div initial={false} className="lg:col-span-2">
+			<motion.div className="lg:col-span-2" initial={false}>
 				<Card className="h-full">
 					<CardHeader>
-						<CardTitle>{i18n.getMessage("chart_weekly_activity_pattern", isLocalized)}</CardTitle>
+						<CardTitle>
+							{i18n.getMessage("chart_weekly_activity_pattern", isLocalized)}
+						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<ChartContainer config={weeklyActivityChartConfig} className="h-[21.875rem] w-full">
-							<BarChart
-								accessibilityLayer
-								data={transformedDayOfWeekData}
-								onMouseLeave={() => setActiveIndexWeekly(null)}
-							>
-								<rect x="0" y="0" width="100%" height="85%" fill={`url(#${patternIdWeekly})`} />
+						<ChartContainer
+							className="h-[21.875rem] w-full"
+							config={weeklyActivityChartConfig}
+						>
+							<BarChart accessibilityLayer data={transformedDayOfWeekData}>
+								<rect
+									fill={`url(#${patternIdWeekly})`}
+									height="85%"
+									width="100%"
+									x="0"
+									y="0"
+								/>
 								<defs>
-									<pattern id={patternIdWeekly} x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-										<circle className="dark:text-muted/40 text-muted" cx="2" cy="2" r="1" fill="currentColor" />
+									<pattern
+										height={PATTERN_HEIGHT}
+										id={patternIdWeekly}
+										patternUnits="userSpaceOnUse"
+										width={PATTERN_WIDTH}
+										x={PATTERN_X}
+										y={PATTERN_Y}
+									>
+										<circle
+											className="text-muted dark:text-muted/40"
+											cx={CIRCLE_CX}
+											cy={CIRCLE_CY}
+											fill="currentColor"
+											r={CIRCLE_RADIUS}
+										/>
 									</pattern>
 								</defs>
 								<CartesianGrid strokeDasharray="3 3" />
 								<XAxisComp dataKey="day" tick={{ fontSize: 12 }} />
 								<YAxisComp tick={{ fontSize: 12 }} />
-								<ChartTooltip cursor={false} content={<ChartTooltipContent indicator="dashed" />} />
-								<Bar dataKey="reservations" radius={4} fill="var(--color-reservations)">
-									{transformedDayOfWeekData.map((item, index) => (
+								<ChartTooltip
+									content={<ChartTooltipContent indicator="dashed" />}
+									cursor={false}
+								/>
+								<Bar
+									dataKey="reservations"
+									fill="var(--color-reservations)"
+									radius={4}
+								>
+									{transformedDayOfWeekData.map((item) => (
 										<Cell
-											key={`week-res-${item.day}`}
 											className="duration-200"
-											fillOpacity={activeIndexWeekly === null ? 1 : activeIndexWeekly === index ? 1 : 0.3}
-											onMouseEnter={() => setActiveIndexWeekly(index)}
+											fillOpacity={1}
+											key={`week-res-${item.day}`}
 										/>
 									))}
 								</Bar>
-								<Bar dataKey="cancellations" radius={4} fill="var(--color-cancellations)">
-									{transformedDayOfWeekData.map((item, index) => (
+								<Bar
+									dataKey="cancellations"
+									fill="var(--color-cancellations)"
+									radius={4}
+								>
+									{transformedDayOfWeekData.map((item) => (
 										<Cell
-											key={`week-can-${item.day}`}
 											className="duration-200"
-											fillOpacity={activeIndexWeekly === null ? 1 : activeIndexWeekly === index ? 1 : 0.3}
-											onMouseEnter={() => setActiveIndexWeekly(index)}
+											fillOpacity={1}
+											key={`week-can-${item.day}`}
 										/>
 									))}
 								</Bar>
@@ -584,26 +771,35 @@ function TrendChartsComponent({
 			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
-						<CardTitle>{i18n.getMessage("chart_conversion_funnel", isLocalized)}</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
+						<CardTitle>
+							{i18n.getMessage("chart_conversion_funnel", isLocalized)}
+						</CardTitle>
+						<p className="mt-1 text-muted-foreground text-sm">
 							{i18n.getMessage("chart_conversion_funnel_desc", isLocalized)}
 						</p>
 					</CardHeader>
 					<CardContent>
 						<div className="h-[21.875rem]">
-							<ResponsiveContainer width="100%" height="100%">
+							<ResponsiveContainer height="100%" width="100%">
 								<FunnelChart>
 									<FunnelComp
-										dataKey="count"
 										data={transformedFunnelData}
-										isAnimationActive={false}
+										dataKey="count"
 										fill={themeColors.primary}
+										isAnimationActive={false}
 										nameKey="stage"
 									>
-										<LabelList position="center" fill={themeColors.background} fontSize={10} />
+										<LabelList
+											fill={themeColors.background}
+											fontSize={10}
+											position="center"
+										/>
 										{/* Chart cells use index as key since data order is stable */}
 										{transformedFunnelData.map((entry, index) => (
-											<Cell key={`funnel-cell-${entry.stage}`} fill={chartColors[index % chartColors.length]} />
+											<Cell
+												fill={chartColors[index % chartColors.length]}
+												key={`funnel-cell-${entry.stage}`}
+											/>
 										))}
 									</FunnelComp>
 									<Tooltip contentStyle={tooltipStyle} />
@@ -618,23 +814,34 @@ function TrendChartsComponent({
 			<motion.div initial={false}>
 				<Card className="h-full">
 					<CardHeader>
-						<CardTitle>{i18n.getMessage("chart_customer_segments", isLocalized)}</CardTitle>
+						<CardTitle>
+							{i18n.getMessage("chart_customer_segments", isLocalized)}
+						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<ChartContainer
+							className="mx-auto max-h-[18.75rem] w-full [&_.recharts-text]:fill-background"
 							config={segmentChartConfig}
-							className="[&_.recharts-text]:fill-background mx-auto max-h-[18.75rem] w-full"
 						>
 							<PieChart>
-								<ChartTooltip content={<ChartTooltipContent nameKey="name" hideLabel />} />
-								<Pie data={segmentItems} innerRadius={30} dataKey="count" radius={10} cornerRadius={8} paddingAngle={4}>
+								<ChartTooltip
+									content={<ChartTooltipContent hideLabel nameKey="name" />}
+								/>
+								<Pie
+									cornerRadius={8}
+									data={segmentItems}
+									dataKey="count"
+									innerRadius={30}
+									paddingAngle={4}
+									radius={10}
+								>
 									<LabelList
 										dataKey="count"
-										stroke="none"
+										fill="currentColor"
 										fontSize={12}
 										fontWeight={500}
-										fill="currentColor"
 										formatter={(value: number) => value.toString()}
+										stroke="none"
 									/>
 								</Pie>
 							</PieChart>

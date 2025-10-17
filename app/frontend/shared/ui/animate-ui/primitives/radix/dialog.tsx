@@ -11,7 +11,8 @@ type DialogContextType = {
 	setIsOpen: (isOpen: boolean) => void;
 };
 
-const [DialogProvider, useDialog] = getStrictContext<DialogContextType>("DialogContext");
+const [DialogProvider, useDialog] =
+	getStrictContext<DialogContextType>("DialogContext");
 
 type DialogProps = React.ComponentProps<typeof DialogPrimitive.Root>;
 
@@ -36,7 +37,11 @@ function Dialog(props: DialogProps) {
 
 	return (
 		<DialogProvider value={{ isOpen, setIsOpen }}>
-			<DialogPrimitive.Root data-slot="dialog" {...props} onOpenChange={setIsOpen} />
+			<DialogPrimitive.Root
+				data-slot="dialog"
+				{...props}
+				onOpenChange={setIsOpen}
+			/>
 		</DialogProvider>
 	);
 }
@@ -47,29 +52,44 @@ function DialogTrigger(props: DialogTriggerProps) {
 	return <DialogPrimitive.Trigger data-slot="dialog-trigger" {...props} />;
 }
 
-type DialogPortalProps = Omit<React.ComponentProps<typeof DialogPrimitive.Portal>, "forceMount">;
+type DialogPortalProps = Omit<
+	React.ComponentProps<typeof DialogPrimitive.Portal>,
+	"forceMount"
+>;
 
 function DialogPortal(props: DialogPortalProps) {
 	const { isOpen } = useDialog();
 
 	return (
 		<AnimatePresence>
-			{isOpen && <DialogPrimitive.Portal data-slot="dialog-portal" forceMount {...props} />}
+			{isOpen && (
+				<DialogPrimitive.Portal
+					data-slot="dialog-portal"
+					forceMount
+					{...props}
+				/>
+			)}
 		</AnimatePresence>
 	);
 }
 
-type DialogOverlayProps = Omit<React.ComponentProps<typeof DialogPrimitive.Overlay>, "forceMount" | "asChild"> &
+type DialogOverlayProps = Omit<
+	React.ComponentProps<typeof DialogPrimitive.Overlay>,
+	"forceMount" | "asChild"
+> &
 	HTMLMotionProps<"div">;
 
-function DialogOverlay({ transition = { duration: 0.2, ease: "easeInOut" }, ...props }: DialogOverlayProps) {
+function DialogOverlay({
+	transition = { duration: 0.2, ease: "easeInOut" },
+	...props
+}: DialogOverlayProps) {
 	return (
-		<DialogPrimitive.Overlay data-slot="dialog-overlay" asChild forceMount>
+		<DialogPrimitive.Overlay asChild data-slot="dialog-overlay" forceMount>
 			<motion.div
-				key="dialog-overlay"
-				initial={{ opacity: 0, filter: "blur(4px)" }}
 				animate={{ opacity: 1, filter: "blur(0px)" }}
 				exit={{ opacity: 0, filter: "blur(4px)" }}
+				initial={{ opacity: 0, filter: "blur(4px)" }}
+				key="dialog-overlay"
 				transition={transition}
 				{...props}
 			/>
@@ -79,7 +99,10 @@ function DialogOverlay({ transition = { duration: 0.2, ease: "easeInOut" }, ...p
 
 type DialogFlipDirection = "top" | "bottom" | "left" | "right";
 
-type DialogContentProps = Omit<React.ComponentProps<typeof DialogPrimitive.Content>, "forceMount" | "asChild"> &
+type DialogContentProps = Omit<
+	React.ComponentProps<typeof DialogPrimitive.Content>,
+	"forceMount" | "asChild"
+> &
 	HTMLMotionProps<"div"> & {
 		from?: DialogFlipDirection;
 	};
@@ -94,7 +117,8 @@ function DialogContent({
 	transition = { type: "spring", stiffness: 150, damping: 25 },
 	...props
 }: DialogContentProps) {
-	const initialRotation = from === "bottom" || from === "left" ? "20deg" : "-20deg";
+	const initialRotation =
+		from === "bottom" || from === "left" ? "20deg" : "-20deg";
 	const isVertical = from === "top" || from === "bottom";
 	const rotateAxis = isVertical ? "rotateX" : "rotateY";
 
@@ -122,23 +146,23 @@ function DialogContent({
 	return (
 		<DialogPrimitive.Content {...contentProps}>
 			<motion.div
-				key="dialog-content"
-				data-slot="dialog-content"
-				initial={{
-					opacity: 0,
-					filter: "blur(4px)",
-					transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
-				}}
 				animate={{
 					opacity: 1,
 					filter: "blur(0px)",
 					transform: `perspective(500px) ${rotateAxis}(0deg) scale(1)`,
 				}}
+				data-slot="dialog-content"
 				exit={{
 					opacity: 0,
 					filter: "blur(4px)",
 					transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
 				}}
+				initial={{
+					opacity: 0,
+					filter: "blur(4px)",
+					transform: `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`,
+				}}
+				key="dialog-content"
 				transition={transition}
 				{...props}
 			/>
@@ -170,34 +194,38 @@ function DialogTitle(props: DialogTitleProps) {
 	return <DialogPrimitive.Title data-slot="dialog-title" {...props} />;
 }
 
-type DialogDescriptionProps = React.ComponentProps<typeof DialogPrimitive.Description>;
+type DialogDescriptionProps = React.ComponentProps<
+	typeof DialogPrimitive.Description
+>;
 
 function DialogDescription(props: DialogDescriptionProps) {
-	return <DialogPrimitive.Description data-slot="dialog-description" {...props} />;
+	return (
+		<DialogPrimitive.Description data-slot="dialog-description" {...props} />
+	);
 }
 
 export {
 	Dialog,
-	DialogPortal,
-	DialogOverlay,
 	DialogClose,
-	DialogTrigger,
-	DialogContent,
-	DialogHeader,
-	DialogFooter,
-	DialogTitle,
-	DialogDescription,
-	useDialog,
-	type DialogProps,
-	type DialogTriggerProps,
-	type DialogPortalProps,
 	type DialogCloseProps,
-	type DialogOverlayProps,
+	DialogContent,
 	type DialogContentProps,
-	type DialogHeaderProps,
-	type DialogFooterProps,
-	type DialogTitleProps,
-	type DialogDescriptionProps,
 	type DialogContextType,
+	DialogDescription,
+	type DialogDescriptionProps,
 	type DialogFlipDirection,
+	DialogFooter,
+	type DialogFooterProps,
+	DialogHeader,
+	type DialogHeaderProps,
+	DialogOverlay,
+	type DialogOverlayProps,
+	DialogPortal,
+	type DialogPortalProps,
+	type DialogProps,
+	DialogTitle,
+	type DialogTitleProps,
+	DialogTrigger,
+	type DialogTriggerProps,
+	useDialog,
 };

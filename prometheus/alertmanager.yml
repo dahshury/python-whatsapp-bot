@@ -1,62 +1,62 @@
 global:
   resolve_timeout: 5m
-  smtp_smarthost: 'smtp.example.com:587'
-  smtp_from: 'alertmanager@example.com'
-  smtp_auth_username: 'username'
-  smtp_auth_password: 'password'
+  smtp_smarthost: "smtp.example.com:587"
+  smtp_from: "alertmanager@example.com"
+  smtp_auth_username: "username"
+  smtp_auth_password: "password"
   smtp_require_tls: true
 
 route:
-  group_by: ['alertname', 'job']
+  group_by: ["alertname", "job"]
   group_wait: 0s
   group_interval: 1m
   repeat_interval: 30m
-  receiver: 'null'
+  receiver: "null"
   routes:
     - match:
         severity: critical
       group_wait: 0s
       group_interval: 30s
       repeat_interval: 5m
-      receiver: 'discord-notifications'
-    
+      receiver: "discord-notifications"
+
     - match:
         severity: warning
       group_wait: 0s
       group_interval: 1m
       repeat_interval: 10m
-      receiver: 'discord-notifications'
-    
+      receiver: "discord-notifications"
+
     - match:
         severity: info
       group_wait: 0s
       group_interval: 2m
       repeat_interval: 30m
-      receiver: 'discord-notifications'
+      receiver: "discord-notifications"
 
 inhibit_rules:
   - source_match:
-      severity: 'warning'
+      severity: "warning"
     target_match:
-      severity: 'info'
-    equal: ['job']
-  
+      severity: "info"
+    equal: ["job"]
+
   - source_match:
-      severity: 'critical'
+      severity: "critical"
     target_match:
-      severity: 'warning'
-    equal: ['job']
+      severity: "warning"
+    equal: ["job"]
 
 receivers:
-  - name: 'discord-notifications'
+  - name: "discord-notifications"
     webhook_configs:
-      - url: 'http://discord-adapter:9094'
+      - url: "http://discord-adapter:9094"
         send_resolved: true
         max_alerts: 10
-  - name: 'null'
+  - name: "null"
 
 # Slack receiver example (uncomment and configure if using Slack):
 #  - name: 'slack-notifications'
 #    slack_configs:
 #      - api_url: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL'
-#        channel: '#alerts' 
+#        channel: '#alerts'

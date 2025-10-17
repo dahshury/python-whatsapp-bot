@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-interface SidebarChatState {
+type SidebarChatState = {
 	isOpen: boolean;
 	open: (id?: string) => void;
 	close: () => void;
@@ -21,7 +21,7 @@ interface SidebarChatState {
 	clearOpenRequest: () => void;
 	openConversation: (id: string) => void;
 	setConversation: (id?: string | null) => void;
-}
+};
 
 const useSidebarChatStore = create<SidebarChatState>()(
 	persist(
@@ -44,10 +44,14 @@ const useSidebarChatStore = create<SidebarChatState>()(
 			close: () => set({ isOpen: false, isChatSidebarOpen: false }),
 			setActiveTab: (tab) => set({ activeTab: tab }),
 			setChatSidebarOpen: (open) => set({ isChatSidebarOpen: open }),
-			setSelectedConversation: (id) => set({ selectedConversationId: id ?? null }),
-			setLoadingConversation: (loading) => set({ isLoadingConversation: loading }),
-			setSelectedDocumentWaId: (id) => set({ selectedDocumentWaId: id ?? null }),
-			clearOpenRequest: () => set({ shouldOpenChat: false, conversationIdToOpen: null }),
+			setSelectedConversation: (id) =>
+				set({ selectedConversationId: id ?? null }),
+			setLoadingConversation: (loading) =>
+				set({ isLoadingConversation: loading }),
+			setSelectedDocumentWaId: (id) =>
+				set({ selectedDocumentWaId: id ?? null }),
+			clearOpenRequest: () =>
+				set({ shouldOpenChat: false, conversationIdToOpen: null }),
 			openConversation: (id) =>
 				set({
 					shouldOpenChat: true,
@@ -69,12 +73,12 @@ const useSidebarChatStore = create<SidebarChatState>()(
 				// any previously saved shapes and start from the initial state.
 				return {};
 			},
-			onRehydrateStorage: () => {
-				return () => {
-					try {
-						useSidebarChatStore.setState({ _hasHydrated: true });
-					} catch {}
-				};
+			onRehydrateStorage: () => () => {
+				try {
+					useSidebarChatStore.setState({ _hasHydrated: true });
+				} catch {
+					// Hydration errors are not critical and should not break the application
+				}
 			},
 		}
 	)

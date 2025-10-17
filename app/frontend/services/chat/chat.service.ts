@@ -1,8 +1,10 @@
 import { markLocalOperation } from "@shared/libs/utils/local-ops";
 import { WebSocketService } from "@/services/websocket/websocket.service";
 
+const LOCAL_OP_DEBOUNCE_MS = 5000;
+
 export class ChatService {
-	private ws = new WebSocketService();
+	private readonly ws = new WebSocketService();
 
 	async sendConversationMessage(waId: string, text: string): Promise<void> {
 		const now = new Date();
@@ -10,14 +12,19 @@ export class ChatService {
 		const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
 
 		// mark local op so unread counters don't increment for own send
-		markLocalOperation(`conversation_new_message:${String(waId)}:${currentDate}:${currentTime}`, 5000);
+		markLocalOperation(
+			`conversation_new_message:${String(waId)}:${currentDate}:${currentTime}`,
+			LOCAL_OP_DEBOUNCE_MS
+		);
 
 		// Try WebSocket first
 		const wsOk = await this.ws.sendMessage({
 			type: "conversation_send_message",
 			data: { wa_id: waId, message: text },
 		});
-		if (wsOk) return;
+		if (wsOk) {
+			return;
+		}
 
 		// Fallback to HTTP
 		const res = await fetch("/api/message/send", {
@@ -30,7 +37,9 @@ export class ChatService {
 			try {
 				const data = await res.json();
 				msg = data?.message || msg;
-			} catch {}
+			} catch {
+				// Silently ignore JSON parsing errors, use default message
+			}
 			throw new Error(msg);
 		}
 	}

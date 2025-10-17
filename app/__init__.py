@@ -19,8 +19,12 @@ from app.utils.realtime import start_metrics_push_task, websocket_router
 from app.views import router as webhook_router
 
 # Define metrics at module level to prevent duplicate registration
-REQUEST_COUNT = Counter("http_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"])
-REQUEST_LATENCY = Histogram("http_request_duration_seconds", "HTTP request latency", ["method", "endpoint"])
+REQUEST_COUNT = Counter(
+    "http_requests_total", "Total HTTP requests", ["method", "endpoint", "http_status"]
+)
+REQUEST_LATENCY = Histogram(
+    "http_request_duration_seconds", "HTTP request latency", ["method", "endpoint"]
+)
 
 
 def create_app() -> FastAPI:
@@ -53,7 +57,9 @@ def create_app() -> FastAPI:
         sync_client.close()
         # Stop inbound queue workers
         with suppress(Exception):
-            await stop_workers(app.state.inbound_queue_stop_event, app.state.inbound_queue_tasks)
+            await stop_workers(
+                app.state.inbound_queue_stop_event, app.state.inbound_queue_tasks
+            )
 
     app = FastAPI(default_response_class=ORJSONResponse, lifespan=lifespan)
 

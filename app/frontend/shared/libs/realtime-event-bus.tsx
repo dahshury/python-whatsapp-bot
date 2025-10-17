@@ -1,72 +1,94 @@
 "use client";
 
 import { logger } from "@shared/libs/logger";
-import * as React from "react";
-import { isLocalOperation, type LocalOpData } from "@/shared/libs/realtime-utils";
+import { isAllowedNotificationEvent } from "@shared/libs/notifications/utils";
+import { type FC, useEffect } from "react";
+import {
+	isLocalOperation,
+	type LocalOpData,
+} from "@/shared/libs/realtime-utils";
 
-interface RealtimeMessage {
+type RealtimeMessage = {
 	detail?: {
 		type?: string;
 		data?: LocalOpData;
 	};
+};
+
+function parseTimestamp(message: RealtimeMessage): number {
+	let tsNum = Date.now();
+	try {
+		const tsIso = (message?.detail as unknown as { timestamp?: string })
+			?.timestamp;
+		if (tsIso) {
+			const parsed = Date.parse(String(tsIso));
+			if (!Number.isNaN(parsed)) {
+				tsNum = parsed;
+			}
+		}
+	} catch {
+		// Use current timestamp if parsing fails
+	}
+	return tsNum;
 }
 
-export const RealtimeEventBus: React.FC = () => {
-	React.useEffect(() => {
+function dispatchNotificationEvent(
+	type: string,
+	data: LocalOpData,
+	ts: number,
+	isLocal: boolean
+): void {
+	try {
+		const notif = new CustomEvent("notification:add", {
+			detail: { type, data, ts, __local: isLocal },
+		});
+		window.dispatchEvent(notif);
+	} catch {
+		// Suppress dispatch errors
+	}
+}
+
+function processRealtimeMessage(message: RealtimeMessage): void {
+	const { type, data } = message?.detail || {};
+	if (!(type && data)) {
+		return;
+	}
+
+	try {
+		logger.debug("🔔 [RealtimeEventBus] message", type, data);
+	} catch {
+		// Suppress debug logging errors
+	}
+
+	// Suppress anything not allowed by central policy
+	try {
+		if (!isAllowedNotificationEvent(type, data as Record<string, unknown>)) {
+			return;
+		}
+	} catch {
+		// Suppress policy check errors
+	}
+
+	const isLocal = isLocalOperation(type, data);
+	const ts = parseTimestamp(message);
+	dispatchNotificationEvent(type, data, ts, isLocal);
+}
+
+export const RealtimeEventBus: FC = () => {
+	useEffect(() => {
 		const handler = (message: RealtimeMessage) => {
 			try {
-				const { type, data } = message?.detail || {};
-				if (!type || !data) return;
-				try {
-					logger.debug("🔔 [RealtimeEventBus] message", type, data);
-				} catch {}
-
-				// Suppress notification events for snapshots and ack/nack control messages
-				try {
-					const t = String(type).toLowerCase();
-					if (t === "snapshot") return;
-					// Revert: do not filter here; source filtering happens in useWebSocketData and reducer
-					if (t.endsWith("_ack") || t.endsWith("_nack")) return;
-					if (t === "ack" || t === "nack") return;
-					// Never emit notifications for typing indicators
-					if (t === "conversation_typing") return;
-					// Never emit notifications for customer document updates
-					if (t === "customer_document_updated") return;
-					// Never emit notifications for tool-call chat entries or system/assistant messages
-					if (t === "conversation_new_message") {
-						try {
-							const role = String((data as { role?: string } | undefined)?.role || "").toLowerCase();
-							// Only show notifications for user/customer messages
-							if (role !== "user" && role !== "customer") return;
-						} catch {}
-					}
-				} catch {}
-
-				const local = isLocalOperation(type, data);
-
-				// Prefer server-provided timestamp for dedupe with persisted history
-				let tsNum = Date.now();
-				try {
-					const tsIso = (message?.detail as unknown as { timestamp?: string })?.timestamp;
-					if (tsIso) {
-						const parsed = Date.parse(String(tsIso));
-						if (!Number.isNaN(parsed)) tsNum = parsed;
-					}
-				} catch {}
-				// Dispatch the notification capture event with local hint
-				try {
-					const notif = new CustomEvent("notification:add", {
-						detail: { type, data, ts: tsNum, __local: local },
-					});
-					window.dispatchEvent(notif);
-				} catch {}
-			} catch {}
+				processRealtimeMessage(message);
+			} catch {
+				// Suppress outer try-catch errors
+			}
 		};
 
 		// The ws hook already dispatches 'realtime' events internally after state updates.
 		// Here we subscribe to those and mirror the notification flow, with dedupe and local detection.
 		window.addEventListener("realtime", handler as EventListener);
-		return () => window.removeEventListener("realtime", handler as EventListener);
+		return () =>
+			window.removeEventListener("realtime", handler as EventListener);
 	}, []);
 
 	return null;

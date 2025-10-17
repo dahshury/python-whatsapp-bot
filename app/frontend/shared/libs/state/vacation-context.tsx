@@ -1,17 +1,37 @@
 "use client";
 import { useVacationsData } from "@shared/libs/data/websocket-data-provider";
 import { useLanguage } from "@shared/libs/state/language-context";
-import * as React from "react";
+import {
+	findNextFreeDate,
+	normalizeDate,
+	parseDateOnly,
+	resolveOverlaps,
+} from "@shared/libs/state/vacation-utils";
+import {
+	createContext,
+	type FC,
+	type PropsWithChildren,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import type { CalendarEvent } from "@/entities/event";
 import type { Vacation } from "@/entities/vacation";
 import { i18n } from "@/shared/libs/i18n";
 
-export interface VacationPeriod {
+// Constants for vacation period management
+const SYNC_SUPPRESSION_DURATION_MS = 2500;
+const MAX_OVERLAP_RESOLUTION_ITERATIONS = 64;
+
+export type VacationPeriod = {
 	start: Date;
 	end: Date;
-}
+};
 
-interface VacationContextValue {
+type VacationContextValue = {
 	vacationPeriods: VacationPeriod[];
 	vacationEvents: CalendarEvent[]; // Generated calendar events for vacation periods
 	recordingState: {
@@ -24,62 +44,53 @@ interface VacationContextValue {
 	startRecording: (periodIndex: number, field: "start" | "end") => void;
 	stopRecording: () => void;
 	handleDateClick?: (date: Date) => void;
-}
+};
 
-const VacationContext = React.createContext<VacationContextValue>({
+const VacationContext = createContext<VacationContextValue>({
 	vacationPeriods: [],
 	vacationEvents: [],
 	recordingState: { periodIndex: null, field: null },
 	loading: false,
-	addVacationPeriod: () => {},
-	removeVacationPeriod: (_index: number) => {},
-	startRecording: (_i: number, _f: "start" | "end") => {},
-	stopRecording: () => {},
-	handleDateClick: () => {},
+	addVacationPeriod: () => {
+		// Default no-op implementation
+	},
+	removeVacationPeriod: (_index: number) => {
+		// Default no-op implementation
+	},
+	startRecording: (_i: number, _f: "start" | "end") => {
+		// Default no-op implementation
+	},
+	stopRecording: () => {
+		// Default no-op implementation
+	},
+	handleDateClick: () => {
+		// Default no-op implementation
+	},
 });
 
-export const VacationProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-	const [vacationPeriods, setVacationPeriods] = React.useState<VacationPeriod[]>([]);
-	const [recordingState, setRecordingState] = React.useState<{
+export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
+	const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+	const [recordingState, setRecordingState] = useState<{
 		periodIndex: number | null;
 		field: "start" | "end" | null;
 	}>({ periodIndex: null, field: null });
-	const [loading] = React.useState<boolean>(false);
-	const suppressSyncUntilRef = React.useRef<number>(0);
+	const [loading] = useState<boolean>(false);
+	const suppressSyncUntilRef = useRef<number>(0);
 	// Sync with websocket-provided vacations
 	const { vacations, sendVacationUpdate } = useVacationsData();
-	React.useEffect(() => {
+
+	useEffect(() => {
 		try {
 			const now = Date.now();
 			const suppressUntil = suppressSyncUntilRef.current;
 			const isSuppressed = now < suppressUntil;
 
 			// Guard against overwriting local optimistic updates immediately after user changes
-			if (isSuppressed) return;
+			if (isSuppressed) {
+				return;
+			}
 
 			if (Array.isArray(vacations)) {
-				// Parse backend-provided dates as DATE-ONLY to avoid timezone shifts
-				// that could exclude the selected end day in some locales.
-				const parseDateOnly = (value: string): Date => {
-					try {
-						const s = String(value || "");
-						const dateOnly = s.includes("T") ? s.slice(0, 10) : s;
-						const parts = dateOnly.split("-");
-						const y = Number.parseInt(parts[0] || "", 10);
-						const m = Number.parseInt(parts[1] || "", 10);
-						const d = Number.parseInt(parts[2] || "", 10);
-						if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
-							return new Date(y, m - 1, d);
-						}
-						// Fallback: construct then normalize to local date-only
-						const tmp = new Date(value);
-						return new Date(tmp.getFullYear(), tmp.getMonth(), tmp.getDate());
-					} catch {
-						const tmp = new Date(value);
-						return new Date(tmp.getFullYear(), tmp.getMonth(), tmp.getDate());
-					}
-				};
-
 				const periods = vacations.map((p: Vacation) => ({
 					start: parseDateOnly(p.start),
 					end: parseDateOnly(p.end),
@@ -87,138 +98,92 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({ children }
 
 				setVacationPeriods(periods);
 			}
-		} catch (error) {
-			console.error("❌ [VACATION-CONTEXT] Error in websocket sync:", error);
+		} catch (_error) {
+			// Gracefully handle vacation parsing errors; fall back to empty periods
 		}
 	}, [vacations]);
 
-	const addVacationPeriod = React.useCallback(() => {
-		// Utilities for date normalization and search
-		const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-		const isInPeriod = (d: Date, p: { start: Date; end: Date }) => {
-			const dd = normalize(d).getTime();
-			const s = normalize(p.start).getTime();
-			const e = normalize(p.end).getTime();
-			return dd >= s && dd <= e;
-		};
-		const findNextFreeDate = (startDate: Date, periods: VacationPeriod[]) => {
-			let candidate = normalize(startDate);
-			while (periods.some((p) => isInPeriod(candidate, p))) {
-				// Jump to the day after the latest overlapping period's end
-				let maxEnd = candidate;
-				for (const p of periods) {
-					if (isInPeriod(candidate, p)) {
-						const endN = normalize(p.end);
-						if (endN.getTime() > maxEnd.getTime()) maxEnd = endN;
-					}
-				}
-				candidate = new Date(maxEnd.getFullYear(), maxEnd.getMonth(), maxEnd.getDate() + 1);
-			}
-			return candidate;
-		};
-
+	const addVacationPeriod = useCallback(() => {
 		setVacationPeriods((prev) => {
-			const today = normalize(new Date());
+			const today = normalizeDate(new Date());
 			const freeDay = findNextFreeDate(today, prev);
 			const next = [...prev, { start: freeDay, end: freeDay }];
 			try {
 				sendVacationUpdate?.({
 					periods: next.map((p) => ({ start: p.start, end: p.end })),
 				});
-			} catch {}
-			suppressSyncUntilRef.current = Date.now() + 2500;
+			} catch {
+				// Gracefully handle vacation update errors
+			}
+			suppressSyncUntilRef.current = Date.now() + SYNC_SUPPRESSION_DURATION_MS;
 			return next;
 		});
 	}, [sendVacationUpdate]);
 
-	const removeVacationPeriod = React.useCallback(
+	const removeVacationPeriod = useCallback(
 		(index: number) => {
 			setVacationPeriods((prev) => {
 				const next = prev.filter((_, i) => i !== index);
-
-				// Immediately update calendar with removed vacation period
 
 				try {
 					sendVacationUpdate?.({
 						periods: next.map((p) => ({ start: p.start, end: p.end })),
 					});
-				} catch {}
-				suppressSyncUntilRef.current = Date.now() + 2500;
+				} catch {
+					// Gracefully handle vacation update errors
+				}
+				suppressSyncUntilRef.current =
+					Date.now() + SYNC_SUPPRESSION_DURATION_MS;
 				return next;
 			});
 		},
 		[sendVacationUpdate]
 	);
 
-	const startRecording = React.useCallback((periodIndex: number, field: "start" | "end") => {
-		setRecordingState({ periodIndex, field });
-	}, []);
+	const startRecording = useCallback(
+		(periodIndex: number, field: "start" | "end") => {
+			setRecordingState({ periodIndex, field });
+		},
+		[]
+	);
 
-	const stopRecording = React.useCallback(() => {
+	const stopRecording = useCallback(() => {
 		setRecordingState({ periodIndex: null, field: null });
 		try {
 			sendVacationUpdate?.({
 				periods: vacationPeriods.map((p) => ({ start: p.start, end: p.end })),
 			});
-		} catch {}
-		suppressSyncUntilRef.current = Date.now() + 2500;
+		} catch {
+			// Gracefully handle vacation update errors
+		}
+		suppressSyncUntilRef.current = Date.now() + SYNC_SUPPRESSION_DURATION_MS;
 	}, [sendVacationUpdate, vacationPeriods]);
 
-	const handleDateClick = React.useCallback(
+	const handleDateClick = useCallback(
 		(date: Date) => {
 			setVacationPeriods((prev) => {
 				const idx = recordingState.periodIndex;
 				const field = recordingState.field;
-				if (idx == null || field == null || idx < 0 || idx >= prev.length) return prev;
-
-				const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-				const dayAfter = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-				const dayBefore = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate() - 1);
-				const overlaps = (a: { start: Date; end: Date }, b: { start: Date; end: Date }) => {
-					const s1 = normalize(a.start).getTime();
-					const e1 = normalize(a.end).getTime();
-					const s2 = normalize(b.start).getTime();
-					const e2 = normalize(b.end).getTime();
-					return Math.max(s1, s2) <= Math.min(e1, e2);
-				};
+				if (idx == null || field == null || idx < 0 || idx >= prev.length) {
+					return prev;
+				}
 
 				const next = [...prev];
 				const current = { ...next[idx] } as VacationPeriod;
-				const chosen = normalize(date);
+				const chosen = normalizeDate(date);
 
-				if (field === "start") {
-					current.start = chosen;
-					if (current.end && current.end < current.start) current.end = new Date(current.start);
-				} else {
-					current.end = chosen;
-					if (current.start && current.start > current.end) current.start = new Date(current.end);
-				}
+				// Update selected edge
+				updatePeriodEdge(current, chosen, field);
 
-				// Resolve overlaps deterministically by clamping the edited edge
-				let changed = true;
-				let safety = 0;
-				while (changed && safety < 64) {
-					changed = false;
-					safety += 1;
-					for (let k = 0; k < next.length; k++) {
-						if (k === idx) continue;
-						const other = next[k];
-						if (!other || !overlaps(current, other)) continue;
+				// Resolve overlaps with other periods
 
-						if (field === "start") {
-							// Move start to the day after the overlapping other's end
-							current.start = dayAfter(other.end);
-							if (current.end < current.start) current.end = new Date(current.start);
-							changed = true;
-							break;
-						}
-						// Move end to the day before the overlapping other's start
-						current.end = dayBefore(other.start);
-						if (current.end < current.start) current.start = new Date(current.end);
-						changed = true;
-						break;
-					}
-				}
+				resolveOverlaps(current, next, {
+					currentIndex: idx,
+
+					editingField: field,
+
+					maxIterations: MAX_OVERLAP_RESOLUTION_ITERATIONS,
+				});
 
 				next[idx] = current;
 
@@ -226,13 +191,19 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({ children }
 					sendVacationUpdate?.({
 						periods: next.map((p) => ({ start: p.start, end: p.end })),
 					});
-				} catch {}
-				suppressSyncUntilRef.current = Date.now() + 2500;
+				} catch {
+					// Gracefully handle vacation update errors
+				}
+				suppressSyncUntilRef.current =
+					Date.now() + SYNC_SUPPRESSION_DURATION_MS;
 				return next;
 			});
 
 			// Stop recording after capturing the date (defer to allow outside-click prevention)
-			setTimeout(() => setRecordingState({ periodIndex: null, field: null }), 0);
+			setTimeout(
+				() => setRecordingState({ periodIndex: null, field: null }),
+				0
+			);
 		},
 		[recordingState.periodIndex, recordingState.field, sendVacationUpdate]
 	);
@@ -240,24 +211,28 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({ children }
 	const { isLocalized } = useLanguage();
 
 	// Convert vacation periods to calendar events
-	const vacationEvents = React.useMemo(() => {
+	const vacationEvents = useMemo(() => {
 		const toDateOnly = (d: Date) => {
 			const yyyy = d.getFullYear();
 			const mm = String(d.getMonth() + 1).padStart(2, "0");
 			const dd = String(d.getDate()).padStart(2, "0");
 			return `${yyyy}-${mm}-${dd}`;
 		};
-		const addDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
-		const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+		const addDays = (d: Date, n: number) =>
+			new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
 		const events: CalendarEvent[] = [];
 
 		vacationPeriods.forEach((period, index) => {
 			// Split multi-day spans into per-day background/text events for robust rendering
-			const start = normalize(period.start);
-			const end = normalize(period.end);
+			const start = normalizeDate(period.start);
+			const end = normalizeDate(period.end);
 			for (
-				let cur = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+				let cur = new Date(
+					start.getFullYear(),
+					start.getMonth(),
+					start.getDate()
+				);
 				cur.getTime() <= end.getTime();
 				cur = addDays(cur, 1)
 			) {
@@ -329,4 +304,24 @@ export const VacationProvider: React.FC<React.PropsWithChildren> = ({ children }
 	);
 };
 
-export const useVacation = (): VacationContextValue => React.useContext(VacationContext);
+export const useVacation = (): VacationContextValue =>
+	useContext(VacationContext);
+
+// Helper function to update a period edge (start or end)
+function updatePeriodEdge(
+	period: VacationPeriod,
+	date: Date,
+	field: "start" | "end"
+): void {
+	if (field === "start") {
+		period.start = date;
+		if (period.end && period.end < period.start) {
+			period.end = new Date(period.start);
+		}
+	} else {
+		period.end = date;
+		if (period.start && period.start > period.end) {
+			period.start = new Date(period.end);
+		}
+	}
+}

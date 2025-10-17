@@ -1,2 +1,1 @@
-// Transitional location for HTTP helpers
-export * from "@/shared/libs/api";
+// This file is no longer used - import directly from "@/shared/libs/api" instead

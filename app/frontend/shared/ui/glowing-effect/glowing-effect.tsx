@@ -5,7 +5,8 @@ import { animate } from "motion/react";
 import type React from "react";
 import { memo, useCallback, useEffect, useRef } from "react";
 
-interface GlowingEffectProps {
+export type GlowingEffectProps = {
+	children?: React.ReactNode;
 	blur?: number;
 	inactiveZone?: number;
 	proximity?: number;
@@ -13,10 +14,125 @@ interface GlowingEffectProps {
 	variant?: "default" | "white";
 	glow?: boolean;
 	className?: string;
-	disabled?: boolean;
 	movementDuration?: number;
 	borderWidth?: number;
-}
+	disabled?: boolean;
+};
+
+// Animation ease curve values for smooth motion
+const EASE_CURVE_START = 0.16;
+const EASE_CURVE_MID = 1;
+const EASE_CURVE_CONTROL = 0.3;
+
+// Mathematical conversion factor from radians to degrees
+const RADIANS_TO_DEGREES_FACTOR = 180;
+
+const CALCULATION_CONSTANTS = {
+	CENTER_RATIO: 0.5,
+	ANGLE_CONVERSION_RADIAN_TO_DEGREES: RADIANS_TO_DEGREES_FACTOR / Math.PI,
+	ANGLE_OFFSET: 90,
+	ANGLE_CYCLE: 360,
+	ANGLE_HALF_CYCLE: 180,
+	ACTIVE_STATE_ENABLED: "1",
+	ACTIVE_STATE_DISABLED: "0",
+	INACTIVE_ZONE_DEFAULT: 0.15,
+	PROXIMITY_DEFAULT: 50,
+	MOVEMENT_DURATION_DEFAULT: 300,
+	ANIMATION_EASE_VALUES: [
+		EASE_CURVE_START,
+		EASE_CURVE_MID,
+		EASE_CURVE_CONTROL,
+		EASE_CURVE_MID,
+	] as const,
+} as const;
+
+type GlowPositionConfig = {
+	element: HTMLDivElement;
+	e: MouseEvent | { x: number; y: number } | undefined;
+	lastPosition: React.MutableRefObject<{ x: number; y: number }>;
+	inactiveZone: number;
+	proximity: number;
+	movementDuration: number;
+};
+
+const updateGlowPosition = ({
+	element,
+	e,
+	lastPosition,
+	inactiveZone,
+	proximity,
+	movementDuration,
+}: GlowPositionConfig) => {
+	if (!element) {
+		return;
+	}
+
+	const { left, top, width, height } = element.getBoundingClientRect();
+	const mouseX = e?.x ?? lastPosition.current.x;
+	const mouseY = e?.y ?? lastPosition.current.y;
+
+	if (e) {
+		lastPosition.current = { x: mouseX, y: mouseY };
+	}
+
+	const center = [
+		left + width * CALCULATION_CONSTANTS.CENTER_RATIO,
+		top + height * CALCULATION_CONSTANTS.CENTER_RATIO,
+	];
+	const distanceFromCenter = Math.hypot(
+		mouseX - (center[0] ?? 0),
+		mouseY - (center[1] ?? 0)
+	);
+	const inactiveRadius =
+		CALCULATION_CONSTANTS.CENTER_RATIO * Math.min(width, height) * inactiveZone;
+
+	if (distanceFromCenter < inactiveRadius) {
+		element.style.setProperty(
+			"--active",
+			CALCULATION_CONSTANTS.ACTIVE_STATE_DISABLED
+		);
+		return;
+	}
+
+	const isActive =
+		mouseX > left - proximity &&
+		mouseX < left + width + proximity &&
+		mouseY > top - proximity &&
+		mouseY < top + height + proximity;
+
+	element.style.setProperty(
+		"--active",
+		isActive
+			? CALCULATION_CONSTANTS.ACTIVE_STATE_ENABLED
+			: CALCULATION_CONSTANTS.ACTIVE_STATE_DISABLED
+	);
+
+	if (!isActive) {
+		return;
+	}
+
+	const currentAngle =
+		Number.parseFloat(element.style.getPropertyValue("--start")) || 0;
+	const targetAngle =
+		(CALCULATION_CONSTANTS.ANGLE_CONVERSION_RADIAN_TO_DEGREES *
+			Math.atan2(mouseY - (center[1] ?? 0), mouseX - (center[0] ?? 0))) /
+			Math.PI +
+		CALCULATION_CONSTANTS.ANGLE_OFFSET;
+
+	const angleDiff =
+		((targetAngle - currentAngle + CALCULATION_CONSTANTS.ANGLE_HALF_CYCLE) %
+			CALCULATION_CONSTANTS.ANGLE_CYCLE) -
+		CALCULATION_CONSTANTS.ANGLE_HALF_CYCLE;
+	const newAngle = currentAngle + angleDiff;
+
+	animate(currentAngle, newAngle, {
+		duration: movementDuration,
+		ease: CALCULATION_CONSTANTS.ANIMATION_EASE_VALUES,
+		onUpdate: (value) => {
+			element.style.setProperty("--start", String(value));
+		},
+	});
+};
 
 const GlowingEffect = memo(
 	({
@@ -37,7 +153,9 @@ const GlowingEffect = memo(
 
 		const handleMove = useCallback(
 			(e?: MouseEvent | { x: number; y: number }) => {
-				if (!containerRef.current) return;
+				if (!containerRef.current) {
+					return;
+				}
 
 				if (animationFrameRef.current) {
 					cancelAnimationFrame(animationFrameRef.current);
@@ -45,47 +163,16 @@ const GlowingEffect = memo(
 
 				animationFrameRef.current = requestAnimationFrame(() => {
 					const element = containerRef.current;
-					if (!element) return;
-
-					const { left, top, width, height } = element.getBoundingClientRect();
-					const mouseX = e?.x ?? lastPosition.current.x;
-					const mouseY = e?.y ?? lastPosition.current.y;
-
-					if (e) {
-						lastPosition.current = { x: mouseX, y: mouseY };
-					}
-
-					const center = [left + width * 0.5, top + height * 0.5];
-					const distanceFromCenter = Math.hypot(mouseX - (center[0] ?? 0), mouseY - (center[1] ?? 0));
-					const inactiveRadius = 0.5 * Math.min(width, height) * inactiveZone;
-
-					if (distanceFromCenter < inactiveRadius) {
-						element.style.setProperty("--active", "0");
+					if (!element) {
 						return;
 					}
-
-					const isActive =
-						mouseX > left - proximity &&
-						mouseX < left + width + proximity &&
-						mouseY > top - proximity &&
-						mouseY < top + height + proximity;
-
-					element.style.setProperty("--active", isActive ? "1" : "0");
-
-					if (!isActive) return;
-
-					const currentAngle = Number.parseFloat(element.style.getPropertyValue("--start")) || 0;
-					const targetAngle = (180 * Math.atan2(mouseY - (center[1] ?? 0), mouseX - (center[0] ?? 0))) / Math.PI + 90;
-
-					const angleDiff = ((targetAngle - currentAngle + 180) % 360) - 180;
-					const newAngle = currentAngle + angleDiff;
-
-					animate(currentAngle, newAngle, {
-						duration: movementDuration,
-						ease: [0.16, 1, 0.3, 1],
-						onUpdate: (value) => {
-							element.style.setProperty("--start", String(value));
-						},
+					updateGlowPosition({
+						element,
+						e,
+						lastPosition,
+						inactiveZone,
+						proximity,
+						movementDuration,
 					});
 				});
 			},
@@ -93,7 +180,9 @@ const GlowingEffect = memo(
 		);
 
 		useEffect(() => {
-			if (disabled) return;
+			if (disabled) {
+				return;
+			}
 
 			const handleScroll = () => handleMove();
 			const handlePointerMove = (e: PointerEvent) => handleMove(e);
@@ -116,13 +205,20 @@ const GlowingEffect = memo(
 			<>
 				<div
 					className={cn(
-						"pointer-events-none absolute -inset-px hidden rounded-[inherit] border opacity-0 transition-opacity",
+						"-inset-px pointer-events-none absolute hidden rounded-[inherit] border opacity-0 transition-opacity",
 						glow && "opacity-100",
 						variant === "white" && "border-white",
 						disabled && "!block"
 					)}
 				/>
 				<div
+					className={cn(
+						"pointer-events-none absolute inset-0 rounded-[inherit] opacity-100 transition-opacity",
+						glow && "opacity-100",
+						blur > 0 && "blur-[var(--blur)]",
+						className,
+						disabled && "!hidden"
+					)}
 					ref={containerRef}
 					style={
 						{
@@ -153,21 +249,14 @@ const GlowingEffect = memo(
                 )`,
 						} as React.CSSProperties
 					}
-					className={cn(
-						"pointer-events-none absolute inset-0 rounded-[inherit] opacity-100 transition-opacity",
-						glow && "opacity-100",
-						blur > 0 && "blur-[var(--blur)] ",
-						className,
-						disabled && "!hidden"
-					)}
 				>
 					<div
 						className={cn(
 							"glow",
 							"rounded-[inherit]",
-							'after:content-[""] after:rounded-[inherit] after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))]',
+							'after:absolute after:inset-[calc(-1*var(--glowingeffect-border-width))] after:rounded-[inherit] after:content-[""]',
 							"after:[border:var(--glowingeffect-border-width)_solid_transparent]",
-							"after:[background:var(--gradient)] after:[background-attachment:fixed]",
+							"after:[background-attachment:fixed] after:[background:var(--gradient)]",
 							"after:opacity-[var(--active)] after:transition-opacity after:duration-300",
 							"after:[mask-clip:padding-box,border-box]",
 							"after:[mask-composite:intersect]",

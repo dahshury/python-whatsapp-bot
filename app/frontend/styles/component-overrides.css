@@ -177,6 +177,27 @@
 	background-color: hsl(var(--card));
 }
 
+/* Document Viewer inline rules migrated from page.tsx */
+.viewer-canvas-container .excalidraw-modal,
+.viewer-canvas-container .welcome-screen-center,
+.viewer-canvas-container .zen-mode-transition,
+.viewer-canvas-container button[title*="Exit"],
+.viewer-canvas-container button[aria-label*="Exit"],
+.viewer-canvas-container button[title*="exit"],
+.viewer-canvas-container button[aria-label*="exit"],
+.viewer-canvas-container .zen-mode-transition-container,
+.viewer-canvas-container .disable-zen-mode,
+.viewer-canvas-container [class*="zen-mode"],
+.viewer-canvas-container [class*="fullscreen"] {
+	display: none;
+}
+.viewer-canvas-container .excalidraw {
+	cursor: grab;
+}
+.viewer-canvas-container .excalidraw:active {
+	cursor: grabbing;
+}
+
 /* Conversation Event Colors */
 .conversation-event-light {
 	background-color: hsl(var(--chart-4));

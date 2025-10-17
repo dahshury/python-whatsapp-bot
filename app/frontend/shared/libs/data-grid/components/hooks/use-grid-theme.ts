@@ -1,0 +1,200 @@
+// @ts-nocheck
+
+import type { Theme } from "@glideapps/glide-data-grid";
+import { useTheme as useNextTheme } from "next-themes";
+import React from "react";
+import { createGlideTheme } from "../utils/streamlit-glide-theme";
+
+// Create themes lazily to avoid SSR issues
+let darkTheme: Partial<Theme> | null = null;
+let lightTheme: Partial<Theme> | null = null;
+
+function getThemes() {
+	if (!(darkTheme && lightTheme)) {
+		darkTheme = createGlideTheme("dark");
+		lightTheme = createGlideTheme("light");
+	}
+	return { darkTheme, lightTheme };
+}
+
+// Theme update timing constant
+const CSS_VAR_UPDATE_DELAY_MS = 30; // Delay for CSS var updates after class change
+
+export function useGridTheme(_disableDocumentClass = false) {
+	const [theme, setTheme] = React.useState<Partial<Theme> | null>(null);
+	const { resolvedTheme } = useNextTheme();
+
+	// Initialize and sync grid theme with app color scheme (managed by next-themes)
+	React.useEffect(() => {
+		let isDark: boolean | undefined;
+		if (resolvedTheme) {
+			isDark = resolvedTheme === "dark";
+		} else if (typeof document !== "undefined") {
+			isDark = document.documentElement.classList.contains("dark");
+		} else {
+			// Use globalThis + optional chaining to avoid SSR reference errors
+			isDark = globalThis.matchMedia?.("(prefers-color-scheme: dark)")?.matches;
+		}
+		// Recreate theme from current CSS variables to capture brand theme changes
+		const computed = createGlideTheme(isDark ? "dark" : "light");
+		setTheme(computed);
+	}, [resolvedTheme]);
+
+	// React to brand theme or dark class changes on <html> in real-time
+	React.useEffect(() => {
+		if (typeof document === "undefined") {
+			// Return no-op cleanup for SSR
+			return () => {
+				// No cleanup needed for SSR
+			};
+		}
+		let raf: number | null = null;
+		const apply = () => {
+			try {
+				const isDark = document.documentElement.classList.contains("dark");
+				// Recompute from CSS variables which change with brand theme classes
+				setTheme(createGlideTheme(isDark ? "dark" : "light"));
+			} catch (_error) {
+				// Silently ignore CSS variable errors
+			}
+		};
+		const schedule = () => {
+			if (raf) {
+				cancelAnimationFrame(raf);
+			}
+			raf = requestAnimationFrame(() => {
+				// small settle delay for CSS var updates after class flip
+				setTimeout(apply, CSS_VAR_UPDATE_DELAY_MS);
+			});
+		};
+		const observer = new MutationObserver((muts) => {
+			for (const m of muts) {
+				if (m.type === "attributes" && m.attributeName === "class") {
+					schedule();
+					break;
+				}
+			}
+		});
+		try {
+			observer.observe(document.documentElement, {
+				attributes: true,
+				attributeFilter: ["class"],
+			});
+		} catch (_error) {
+			// Silently ignore observer setup errors
+		}
+		return () => {
+			try {
+				observer.disconnect();
+			} catch (_error) {
+				// Silently ignore observer disconnect errors
+			}
+			if (raf) {
+				cancelAnimationFrame(raf);
+			}
+		};
+	}, []);
+
+	// Add CSS overrides for dropdown text color based on theme
+	React.useEffect(() => {
+		if (!theme) {
+			return;
+		}
+
+		const styleId = "dropdown-theme-override";
+		const existingStyle = document.getElementById(styleId);
+
+		if (existingStyle) {
+			existingStyle.remove();
+		}
+
+		const style = document.createElement("style");
+		style.id = styleId;
+
+		const { lightTheme: baseLightTheme } = getThemes();
+		if (theme === baseLightTheme) {
+			// Light theme: ensure dropdown text is black
+			style.textContent = `
+                .gdg-growing-entry .gdg-input,
+                .gdg-growing-entry input,
+                .gdg-growing-entry select,
+                .gdg-growing-entry textarea,
+                [class*="react-select"] .gdg-input,
+                [class*="react-select"] input,
+                [class*="react-select"] [class*="singleValue"],
+                [class*="react-select"] [class*="placeholder"],
+                [class*="react-select"] [class*="option"],
+                [class*="react-select"] [class*="menu"] {
+                color: #000000;
+                }
+                
+                [class*="react-select"] [class*="menu"] {
+                background-color: #ffffff;
+                }
+                
+                [class*="react-select"] [class*="option"]:hover {
+                background-color: #f0f0f0;
+                color: #000000;
+                }
+                
+                [class*="react-select"] [class*="option--is-selected"] {
+                background-color: #4F5DFF;
+                color: #ffffff;
+                }
+            `;
+		} else {
+			// Dark theme: ensure dropdown text is light
+			style.textContent = `
+                .gdg-growing-entry .gdg-input,
+                .gdg-growing-entry input,
+                .gdg-growing-entry select,
+                .gdg-growing-entry textarea,
+                [class*="react-select"] .gdg-input,
+                [class*="react-select"] input,
+                [class*="react-select"] [class*="singleValue"],
+                [class*="react-select"] [class*="placeholder"],
+                [class*="react-select"] [class*="option"],
+                [class*="react-select"] [class*="menu"] {
+                color: #e8e8e8;
+                }
+                
+                [class*="react-select"] [class*="menu"] {
+                background-color: #2a2a2a;
+                }
+                
+                [class*="react-select"] [class*="option"]:hover {
+                background-color: #404040;
+                color: #e8e8e8;
+                }
+                
+                [class*="react-select"] [class*="option--is-selected"] {
+                background-color: #4F5DFF;
+                color: #ffffff;
+                }
+            `;
+		}
+
+		document.head.appendChild(style);
+
+		return () => {
+			const styleToRemove = document.getElementById(styleId);
+			if (styleToRemove) {
+				styleToRemove.remove();
+			}
+		};
+	}, [theme]); // Re-run when theme changes
+
+	const { darkTheme: dark } = getThemes();
+	const iconColor = theme === dark ? "#e8e8e8" : "#5f6368";
+
+	// Return the lazy-loaded themes
+	const themes = React.useMemo(() => getThemes(), []);
+
+	return {
+		theme: theme || themes.darkTheme,
+		setTheme,
+		darkTheme: themes.darkTheme,
+		lightTheme: themes.lightTheme,
+		iconColor,
+	};
+}

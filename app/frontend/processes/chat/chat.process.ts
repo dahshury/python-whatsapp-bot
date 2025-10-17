@@ -5,7 +5,10 @@
 
 import { chatService } from "@/services/chat/chat.service";
 
-export async function sendChatMessage(waId: string, text: string): Promise<void> {
+export async function sendChatMessage(
+	waId: string,
+	text: string
+): Promise<void> {
 	await chatService.sendConversationMessage(waId, text);
 }
 
@@ -21,23 +24,30 @@ export function createTypingIndicatorController(options: {
 		try {
 			const now = Date.now();
 			if (!typingStarted) {
-				void chatService.sendTyping(waId, true);
+				chatService.sendTyping(waId, true);
 				typingStarted = true;
 				lastSent = now;
 				return;
 			}
 			if (now - lastSent >= throttleMs) {
-				void chatService.sendTyping(waId, true);
+				chatService.sendTyping(waId, true);
 				lastSent = now;
 			}
-		} catch {}
+		} catch (_error) {
+			// Silently ignore typing indicator errors - they don't affect message delivery
+		}
 	}
 
 	async function stop(): Promise<void> {
 		try {
-			if (typingStarted) await chatService.sendTyping(waId, false);
-		} catch {}
-		typingStarted = false;
+			if (typingStarted) {
+				await chatService.sendTyping(waId, false);
+			}
+		} catch (_error) {
+			// Silently ignore typing stop errors - user experience not affected
+		} finally {
+			typingStarted = false;
+		}
 	}
 
 	return { onUserTyped, stop } as const;

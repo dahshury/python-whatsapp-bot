@@ -6,6 +6,9 @@ export async function GET() {
 		const data = await callPythonBackend("/notifications");
 		return NextResponse.json(data);
 	} catch (error) {
-		return NextResponse.json({ success: false, message: (error as Error).message }, { status: 500 });
+		return NextResponse.json(
+			{ success: false, message: (error as Error).message },
+			{ status: 500 }
+		);
 	}
 }

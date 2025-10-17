@@ -1,5 +1,4 @@
 import { cn } from "@shared/libs/utils";
-import * as React from "react";
 import type { PhoneOption } from "@/entities/phone";
 import { PhoneCombobox } from "@/shared/ui/phone-combobox";
 
@@ -74,33 +73,35 @@ type PhoneInputProps = {
 	placeholder?: string;
 	// New prop to control behavior
 	uncontrolled?: boolean;
+	ref?: React.RefObject<HTMLDivElement>;
 };
 
-const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> = React.forwardRef<HTMLDivElement, PhoneInputProps>(
-	(
-		{
-			className,
-			onChange,
-			value,
-			placeholder = "Select a phone number",
-			uncontrolled = false,
-			...props
-		}: PhoneInputProps,
-		ref
-	) => {
-		return (
-			<div ref={ref} className={cn("", className)} {...props} dir="ltr">
-				<PhoneCombobox
-					value={value || ""}
-					onChange={onChange || (() => {})}
-					placeholder={placeholder}
-					phoneOptions={PHONE_OPTIONS}
-					uncontrolled={uncontrolled}
-				/>
-			</div>
-		);
-	}
-);
+const PhoneInput = function PhoneInput({
+	className,
+	onChange,
+	value,
+	placeholder = "Select a phone number",
+	uncontrolled = false,
+	ref,
+	...props
+}: PhoneInputProps) {
+	return (
+		<div className={cn("", className)} ref={ref} {...props} dir="ltr">
+			<PhoneCombobox
+				onChange={
+					onChange ||
+					(() => {
+						// No-op callback for uncontrolled usage
+					})
+				}
+				phoneOptions={PHONE_OPTIONS}
+				placeholder={placeholder}
+				uncontrolled={uncontrolled}
+				value={value || ""}
+			/>
+		</div>
+	);
+};
 PhoneInput.displayName = "PhoneInput";
 
 export { PhoneInput };

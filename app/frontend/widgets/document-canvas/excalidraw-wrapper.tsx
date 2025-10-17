@@ -6,14 +6,17 @@
 // Consumers can pass supported props such as initialData, onChange, viewModeEnabled, etc.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { Excalidraw as ExcalidrawComponent } from "@excalidraw/excalidraw";
-import * as React from "react";
+import { createElement, type FC } from "react";
 
 // Thin wrapper to provide a default export component for dynamic import convenience
 // and to keep our local typing simple.
-const ExcalidrawWrapper: React.FC<Record<string, unknown>> = (props) => {
+const ExcalidrawWrapper: FC<Record<string, unknown>> = (props) => {
 	// We trust the caller to pass valid Excalidraw props at runtime
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	return React.createElement(ExcalidrawComponent as unknown as React.FC<Record<string, unknown>>, props);
+	return createElement(
+		ExcalidrawComponent as unknown as FC<Record<string, unknown>>,
+		props
+	);
 };
 
 export default ExcalidrawWrapper;

@@ -1,305 +1,305 @@
 groups:
-- name: assistant_alerts
-  rules:
-    # Alert whenever the assistant returns a 5xx HTTP error (function exception)
-    - alert: AssistantFunctionException
-      expr: |
-        increase(http_requests_total{http_status=~"5.."}[5m]) > 0
-      for: 1m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Assistant returned a 5xx error"
-        description: |
-          The assistant returned HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}.
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+  - name: assistant_alerts
+    rules:
+      # Alert whenever the assistant returns a 5xx HTTP error (function exception)
+      - alert: AssistantFunctionException
+        expr: |
+          increase(http_requests_total{http_status=~"5.."}[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Assistant returned a 5xx error"
+          description: |
+            The assistant returned HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}.
 
-    # Alert when retry count spikes above threshold
-    - alert: ExcessiveAssistantRetries
-      expr: increase(api_retry_attempts_total[5m]) > 10
-      for: 2m
-      labels:
-        severity: warning
-      annotations:
-        summary: "High retry rate in assistant safety decorator"
-        description: |
-          More than 10 retries in 5 minutes (exception_type={{ $labels.exception_type }}).
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          exception_type={{ $labels.exception_type }}
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
+            function={{ $labels.function }} exception_type={{ $labels.exception_type }}
+            provider={{ $labels.provider }} error_type={{ $labels.error_type }} tool_name={{ $labels.tool_name }} response_type={{ $labels.response_type }}
+            reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
 
-    # Alert when all retries are exhausted for a function
-    - alert: AssistantRetriesExhausted
-      expr: |
-        increase(api_retry_exhausted_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Retries exhausted in safety decorator"
-        description: |
-          All retries exhausted for function {{ $labels.function }} (exception_type={{ $labels.exception_type }}).
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          function={{ $labels.function }} exception_type={{ $labels.exception_type }}
+      # Alert when retry count spikes above threshold
+      - alert: ExcessiveAssistantRetries
+        expr: increase(api_retry_attempts_total[5m]) > 10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High retry rate in assistant safety decorator"
+          description: |
+            More than 10 retries in 5 minutes (exception_type={{ $labels.exception_type }}).
 
-    # Alert on any handled reservation failure
-    - alert: ReservationFailure
-      expr: rate(reservations_failed_by_reason_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Reservation operation failed"
-        description: |
-          A reservation attempt failed in the service.
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            exception_type={{ $labels.exception_type }}
 
-    # Alert on any handled cancellation failure
-    - alert: CancellationFailure
-      expr: rate(reservations_cancellation_failed_by_reason_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Cancellation operation failed"
-        description: |
-          A cancellation attempt failed in the service.
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
+      # Alert when all retries are exhausted for a function
+      - alert: AssistantRetriesExhausted
+        expr: |
+          increase(api_retry_exhausted_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Retries exhausted in safety decorator"
+          description: |
+            All retries exhausted for function {{ $labels.function }} (exception_type={{ $labels.exception_type }}).
 
-    # Alert on any handled modification failure
-    - alert: ModificationFailure
-      expr: rate(reservations_modification_failed_by_reason_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Modification operation failed"
-        description: |
-          A reservation modification attempt failed in the service.
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
-        
-    # Alert on any delete reservation failure
-    - alert: DeleteReservationFailure
-      expr: |
-        increase(http_requests_total{http_status=~"5..", endpoint=~"/api/reservations.*", method="DELETE"}[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Delete reservation operation failed"
-        description: |
-          A delete reservation attempt failed with HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}.
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            function={{ $labels.function }} exception_type={{ $labels.exception_type }}
 
-- name: llm_errors
-  rules:
-    # Alert on LLM API errors by provider and type
-    - alert: LLMApiError
-      expr: |
-        rate(llm_api_errors_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "LLM API Error Detected"
-        description: |
-          {{ $labels.provider }} API error ({{ $labels.error_type }}) detected
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }}
+      # Alert on any handled reservation failure
+      - alert: ReservationFailure
+        expr: rate(reservations_failed_by_reason_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Reservation operation failed"
+          description: |
+            A reservation attempt failed in the service.
 
-    # Alert on LLM retry attempts
-    - alert: LLMRetryAttempts
-      expr: |
-        rate(llm_retry_attempts_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "LLM API Retry Detected" 
-        description: |
-          {{ $labels.provider }} API retry ({{ $labels.error_type }}) detected
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          provider={{ $labels.provider }} error_type={{ $labels.error_type }}
-        
-    # Alert on LLM tool execution errors
-    - alert: LLMToolExecutionError
-      expr: |
-        rate(llm_tool_execution_errors_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "LLM Tool Execution Error"
-        description: |
-          Error executing tool '{{ $labels.tool_name }}' called by {{ $labels.provider }}
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          tool_name={{ $labels.tool_name }} provider={{ $labels.provider }}
-        
-    # Alert on empty LLM responses
-    - alert: LLMEmptyResponse
-      expr: |
-        rate(llm_empty_responses_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: info
-      annotations:
-        summary: "Empty or Invalid LLM Response"
-        description: |
-          {{ $labels.provider }} returned an {{ $labels.response_type }} response
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          provider={{ $labels.provider }} response_type={{ $labels.response_type }}
-        
-- name: application_errors
-  rules:
-    # Alert on WhatsApp message delivery failures
-    - alert: WhatsAppMessageFailure
-      expr: |
-        rate(whatsapp_message_failures_by_reason_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "WhatsApp Message Delivery Failed"
-        description: |
-          WhatsApp message delivery failed (likely marked as undeliverable)
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} message_type={{ $labels.message_type }}
-        
-    # Alert on APScheduler missed jobs
-    - alert: SchedulerJobMissed
-      expr: |
-        rate(scheduler_job_missed_by_reason_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Scheduler Job Execution Missed"
-        description: |
-          An APScheduler job missed its scheduled execution time
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} job_id={{ $labels.job_id }}
-        
-    # Alert on backup script failures
-    - alert: BackupScriptFailure
-      expr: |
-        rate(backup_script_failures_by_reason_total[5m]) > 0
-      for: 0m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Database Backup Failed (reason={{ $labels.reason }}, stage={{ $labels.stage }})"
-        description: |
-          Backup failed at stage '{{ $labels.stage }}' with reason '{{ $labels.reason }}' (exit_code={{ $labels.exit_code }}).
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
-        
-    # Alert on invalid HTTP requests
-    - alert: InvalidHTTPRequest
-      expr: |
-        rate(invalid_http_requests_by_reason_total[5m]) > 0
-      for: 1m
-      labels:
-        severity: info
-      annotations:
-        summary: "Invalid HTTP Request Received"
-        description: |
-          An invalid HTTP request was received by the application
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
-        
-    # Alert on concurrent task limits
-    - alert: ConcurrentTaskLimitReached
-      expr: |
-        rate(concurrent_task_limit_reached_by_reason_total[5m]) > 0
-      for: 1m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Maximum Concurrent Tasks Reached"
-        description: |
-          The application has reached its maximum concurrent task limit
-    # Alert on inbound durable queue backlog (preferred signal)
-    - alert: InboundQueueBacklogHigh
-      expr: |
-        avg_over_time(inbound_queue_length[5m]) > 25
-      for: 3m
-      labels:
-        severity: warning
-      annotations:
-        summary: "Inbound queue backlog is high"
-        description: |
-          The durable inbound queue length is elevated.
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
 
-    - alert: InboundQueueOldestTooOld
-      expr: |
-        avg_over_time(inbound_queue_oldest_age_seconds[5m]) > 120
-      for: 3m
-      labels:
-        severity: critical
-      annotations:
-        summary: "Inbound queue item waiting too long"
-        description: |
-          The oldest pending inbound queue item has been waiting > 120s on average over 5m.
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          
-          ---
-          severity={{ $labels.severity }} value={{ $value }}
-          job={{ $labels.job }} instance={{ $labels.instance }}
-          reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
+      # Alert on any handled cancellation failure
+      - alert: CancellationFailure
+        expr: rate(reservations_cancellation_failed_by_reason_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cancellation operation failed"
+          description: |
+            A cancellation attempt failed in the service.
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
+
+      # Alert on any handled modification failure
+      - alert: ModificationFailure
+        expr: rate(reservations_modification_failed_by_reason_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Modification operation failed"
+          description: |
+            A reservation modification attempt failed in the service.
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
+
+      # Alert on any delete reservation failure
+      - alert: DeleteReservationFailure
+        expr: |
+          increase(http_requests_total{http_status=~"5..", endpoint=~"/api/reservations.*", method="DELETE"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Delete reservation operation failed"
+          description: |
+            A delete reservation attempt failed with HTTP {{ $labels.http_status }} on endpoint {{ $labels.endpoint }}.
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            endpoint={{ $labels.endpoint }} method={{ $labels.method }} http_status={{ $labels.http_status }}
+
+  - name: llm_errors
+    rules:
+      # Alert on LLM API errors by provider and type
+      - alert: LLMApiError
+        expr: |
+          rate(llm_api_errors_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM API Error Detected"
+          description: |
+            {{ $labels.provider }} API error ({{ $labels.error_type }}) detected
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            provider={{ $labels.provider }} error_type={{ $labels.error_type }}
+
+      # Alert on LLM retry attempts
+      - alert: LLMRetryAttempts
+        expr: |
+          rate(llm_retry_attempts_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM API Retry Detected"
+          description: |
+            {{ $labels.provider }} API retry ({{ $labels.error_type }}) detected
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            provider={{ $labels.provider }} error_type={{ $labels.error_type }}
+
+      # Alert on LLM tool execution errors
+      - alert: LLMToolExecutionError
+        expr: |
+          rate(llm_tool_execution_errors_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "LLM Tool Execution Error"
+          description: |
+            Error executing tool '{{ $labels.tool_name }}' called by {{ $labels.provider }}
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            tool_name={{ $labels.tool_name }} provider={{ $labels.provider }}
+
+      # Alert on empty LLM responses
+      - alert: LLMEmptyResponse
+        expr: |
+          rate(llm_empty_responses_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: info
+        annotations:
+          summary: "Empty or Invalid LLM Response"
+          description: |
+            {{ $labels.provider }} returned an {{ $labels.response_type }} response
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            provider={{ $labels.provider }} response_type={{ $labels.response_type }}
+
+  - name: application_errors
+    rules:
+      # Alert on WhatsApp message delivery failures
+      - alert: WhatsAppMessageFailure
+        expr: |
+          rate(whatsapp_message_failures_by_reason_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "WhatsApp Message Delivery Failed"
+          description: |
+            WhatsApp message delivery failed (likely marked as undeliverable)
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} message_type={{ $labels.message_type }}
+
+      # Alert on APScheduler missed jobs
+      - alert: SchedulerJobMissed
+        expr: |
+          rate(scheduler_job_missed_by_reason_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Scheduler Job Execution Missed"
+          description: |
+            An APScheduler job missed its scheduled execution time
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} job_id={{ $labels.job_id }}
+
+      # Alert on backup script failures
+      - alert: BackupScriptFailure
+        expr: |
+          rate(backup_script_failures_by_reason_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database Backup Failed (reason={{ $labels.reason }}, stage={{ $labels.stage }})"
+          description: |
+            Backup failed at stage '{{ $labels.stage }}' with reason '{{ $labels.reason }}' (exit_code={{ $labels.exit_code }}).
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} stage={{ $labels.stage }} exit_code={{ $labels.exit_code }}
+
+      # Alert on invalid HTTP requests
+      - alert: InvalidHTTPRequest
+        expr: |
+          rate(invalid_http_requests_by_reason_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: info
+        annotations:
+          summary: "Invalid HTTP Request Received"
+          description: |
+            An invalid HTTP request was received by the application
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}
+
+      # Alert on concurrent task limits
+      - alert: ConcurrentTaskLimitReached
+        expr: |
+          rate(concurrent_task_limit_reached_by_reason_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Maximum Concurrent Tasks Reached"
+          description: |
+            The application has reached its maximum concurrent task limit
+      # Alert on inbound durable queue backlog (preferred signal)
+      - alert: InboundQueueBacklogHigh
+        expr: |
+          avg_over_time(inbound_queue_length[5m]) > 25
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Inbound queue backlog is high"
+          description: |
+            The durable inbound queue length is elevated.
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+
+      - alert: InboundQueueOldestTooOld
+        expr: |
+          avg_over_time(inbound_queue_oldest_age_seconds[5m]) > 120
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Inbound queue item waiting too long"
+          description: |
+            The oldest pending inbound queue item has been waiting > 120s on average over 5m.
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+
+            ---
+            severity={{ $labels.severity }} value={{ $value }}
+            job={{ $labels.job }} instance={{ $labels.instance }}
+            reason={{ $labels.reason }} endpoint={{ $labels.endpoint }} method={{ $labels.method }}

@@ -29,11 +29,18 @@ export function waitForNextDocumentUpdate(
 	return new Promise((resolve) => {
 		let done = false;
 		const finalize = (value: unknown) => {
-			if (done) return;
+			if (done) {
+				return;
+			}
 			done = true;
 			try {
-				window.removeEventListener("documents:external-update", listener as unknown as EventListener);
-			} catch {}
+				window.removeEventListener(
+					"documents:external-update",
+					listener as unknown as EventListener
+				);
+			} catch (_error) {
+				// Silently ignore event listener removal errors
+			}
 			clearTimeout(timer);
 			resolve(value as unknown as null);
 		};
@@ -45,12 +52,19 @@ export function waitForNextDocumentUpdate(
 					document?: Record<string, unknown> | null;
 					scene?: Record<string, unknown> | null;
 				};
-				if (String(detail?.wa_id || "") !== String(waId)) return;
+				if (String(detail?.wa_id || "") !== String(waId)) {
+					return;
+				}
 				finalize(detail);
-			} catch {}
+			} catch (_error) {
+				// Silently ignore errors processing document update event
+			}
 		};
 
-		window.addEventListener("documents:external-update", listener as unknown as EventListener);
+		window.addEventListener(
+			"documents:external-update",
+			listener as unknown as EventListener
+		);
 
 		const timer = window.setTimeout(() => finalize(null), timeoutMs);
 	});

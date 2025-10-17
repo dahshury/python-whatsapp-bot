@@ -13,8 +13,8 @@ function InputGroup({ className, ...props }: InputGroupProps) {
 	return (
 		<div
 			className={cn(
-				"group/input flex flex-col rounded-md border border-input bg-background overflow-hidden",
-				"transition-shadow focus-within:ring-1 focus-within:ring-ring focus-within:border-ring",
+				"group/input flex flex-col overflow-hidden rounded-md border border-input bg-background",
+				"transition-shadow focus-within:border-ring focus-within:ring-1 focus-within:ring-ring",
 				className
 			)}
 			{...props}
@@ -26,16 +26,21 @@ interface InputGroupAddonProps extends React.HTMLAttributes<HTMLDivElement> {
 	align?: AddonAlign;
 }
 
-function InputGroupAddon({ align = "inline-start", className, ...props }: InputGroupAddonProps) {
+function InputGroupAddon({
+	align = "inline-start",
+	className,
+	...props
+}: InputGroupAddonProps) {
 	const base = "flex items-center gap-1.5 p-1 bg-background w-full";
-	const alignCls =
-		align === "inline-end"
-			? "border-l justify-end"
-			: align === "inline-start"
-				? "border-r justify-start"
-				: align === "block-end"
-					? "border-t"
-					: "border-b";
+
+	const alignmentClasses: Record<string, string> = {
+		"inline-end": "border-l justify-end",
+		"inline-start": "border-r justify-start",
+		"block-end": "border-t",
+		"block-start": "border-b",
+	};
+
+	const alignCls = align ? (alignmentClasses[align] ?? "border-b") : "border-b";
 	return <div className={cn(base, alignCls, className)} {...props} />;
 }
 
@@ -44,53 +49,82 @@ interface InputGroupTextProps extends React.HTMLAttributes<HTMLSpanElement> {
 }
 function InputGroupText({ asChild, className, ...props }: InputGroupTextProps) {
 	const Comp: React.ElementType = asChild ? Slot : "span";
-	return <Comp className={cn("text-sm text-muted-foreground px-2", className)} {...props} />;
+	return (
+		<Comp
+			className={cn("px-2 text-muted-foreground text-sm", className)}
+			{...props}
+		/>
+	);
 }
 
 type InputGroupButtonSize = "xs" | "icon-xs" | "sm" | "icon-sm";
 
-interface InputGroupButtonProps extends Omit<React.ComponentProps<typeof Button>, "size"> {
+interface InputGroupButtonProps
+	extends Omit<React.ComponentProps<typeof Button>, "size"> {
 	size?: InputGroupButtonSize;
 }
 
-function InputGroupButton({ className, size = "xs", variant = "ghost", ...props }: InputGroupButtonProps) {
-	const sizeCls =
-		size === "xs"
-			? "h-8 px-2 text-xs"
-			: size === "icon-xs"
-				? "h-8 w-8 p-0"
-				: size === "icon-sm"
-					? "h-9 w-9 p-0"
-					: "h-9 px-3"; // sm
+function InputGroupButton({
+	className,
+	size = "xs",
+	variant = "ghost",
+	...props
+}: InputGroupButtonProps) {
+	const sizeMap: Record<string, string> = {
+		xs: "h-8 px-2 text-xs",
+		"icon-xs": "h-8 w-8 p-0",
+		"icon-sm": "h-9 w-9 p-0",
+		sm: "h-9 px-3",
+	};
 
-	return <Button variant={variant} className={cn("rounded-none", sizeCls, className)} {...props} />;
+	const sizeCls = sizeMap[size] ?? "h-9 px-3";
+
+	return (
+		<Button
+			className={cn("rounded-none", sizeCls, className)}
+			variant={variant}
+			{...props}
+		/>
+	);
 }
 
-interface InputGroupInputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
+interface InputGroupInputProps
+	extends React.InputHTMLAttributes<HTMLInputElement> {}
 
 function InputGroupInput({ className, ...props }: InputGroupInputProps) {
 	return (
 		<input
+			className={cn(
+				"flex h-9 w-full bg-transparent px-3 py-1 text-base outline-none md:text-sm",
+				className
+			)}
 			data-slot="input-group-control"
-			className={cn("flex h-9 w-full bg-transparent px-3 py-1 text-base outline-none md:text-sm", className)}
 			{...props}
 		/>
 	);
 }
 
-interface InputGroupTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
+interface InputGroupTextareaProps
+	extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
 function InputGroupTextarea({ className, ...props }: InputGroupTextareaProps) {
 	return (
 		<textarea
-			data-slot="input-group-control"
 			className={cn(
-				"flex field-sizing-content min-h-16 w-full resize-none bg-transparent px-3 py-2 text-base outline-none md:text-sm",
+				"field-sizing-content flex min-h-16 w-full resize-none bg-transparent px-3 py-2 text-base outline-none md:text-sm",
 				className
 			)}
+			data-slot="input-group-control"
 			{...props}
 		/>
 	);
 }
 
-export { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupText, InputGroupTextarea };
+export {
+	InputGroup,
+	InputGroupAddon,
+	InputGroupButton,
+	InputGroupInput,
+	InputGroupText,
+	InputGroupTextarea,
+};

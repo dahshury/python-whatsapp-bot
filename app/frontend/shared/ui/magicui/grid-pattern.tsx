@@ -3,7 +3,7 @@
 import { cn } from "@shared/libs/utils";
 import { useId } from "react";
 
-interface GridPatternProps {
+type GridPatternProps = {
 	className?: string;
 	width?: number;
 	height?: number;
@@ -11,7 +11,7 @@ interface GridPatternProps {
 	y?: number;
 	strokeDasharray?: number | string;
 	strokeWidth?: number;
-}
+};
 
 export function GridPattern({
 	className,
@@ -24,23 +24,38 @@ export function GridPattern({
 }: GridPatternProps) {
 	const reactId = useId().replace(/[:]/g, "");
 	const patternId = `grid-pattern-${reactId}`;
-	const dash = typeof strokeDasharray === "number" ? `${strokeDasharray}` : strokeDasharray;
+	const dash =
+		typeof strokeDasharray === "number"
+			? `${strokeDasharray}`
+			: strokeDasharray;
 
 	return (
-		<svg aria-hidden className={cn("h-full w-full", className)} width="100%" height="100%">
+		<svg
+			aria-hidden
+			className={cn("h-full w-full", className)}
+			height="100%"
+			width="100%"
+		>
 			<title>Grid pattern background</title>
 			<defs>
-				<pattern id={patternId} x={x} y={y} width={width} height={height} patternUnits="userSpaceOnUse">
+				<pattern
+					height={height}
+					id={patternId}
+					patternUnits="userSpaceOnUse"
+					width={width}
+					x={x}
+					y={y}
+				>
 					<path
 						d={`M ${width} 0 L 0 0 0 ${height}`}
 						fill="none"
 						stroke="currentColor"
-						strokeWidth={strokeWidth}
 						strokeDasharray={dash}
+						strokeWidth={strokeWidth}
 					/>
 				</pattern>
 			</defs>
-			<rect width="100%" height="100%" fill={`url(#${patternId})`} />
+			<rect fill={`url(#${patternId})`} height="100%" width="100%" />
 		</svg>
 	);
 }

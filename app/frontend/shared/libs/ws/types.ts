@@ -12,19 +12,19 @@ export type UpdateType =
 	| "notifications_history"
 	| "customer_document_updated";
 
-export interface WebSocketMessage {
+export type WebSocketMessage = {
 	type: UpdateType;
 	timestamp: string;
 	data: Record<string, unknown>;
 	affected_entities?: string[];
-}
+};
 
 export type VacationSnapshot = { start: string; end: string; title?: string };
 
-export interface WebSocketDataState {
+export type WebSocketDataState = {
 	reservations: Record<string, Reservation[]>;
 	conversations: Record<string, ConversationMessage[]>;
 	vacations: VacationSnapshot[];
 	isConnected: boolean;
 	lastUpdate: string | null;
-}
+};

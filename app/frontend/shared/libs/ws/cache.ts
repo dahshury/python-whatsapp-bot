@@ -4,7 +4,10 @@ export const STORAGE_KEY = "ws_snapshot_v1";
 
 export function loadCachedState(ttlMs: number): WebSocketDataState {
 	try {
-		const raw = typeof window !== "undefined" ? sessionStorage.getItem(STORAGE_KEY) : null;
+		const raw =
+			typeof window !== "undefined"
+				? sessionStorage.getItem(STORAGE_KEY)
+				: null;
 		if (raw) {
 			const parsed = JSON.parse(raw);
 			const ts: number = parsed?.__ts || 0;
@@ -12,14 +15,15 @@ export function loadCachedState(ttlMs: number): WebSocketDataState {
 				return {
 					reservations: parsed?.reservations || {},
 					conversations: parsed?.conversations || {},
-					// Keep vacation caching for instant load on refresh
-					vacations: parsed?.vacations || [],
+					vacations: Array.isArray(parsed?.vacations) ? parsed.vacations : [],
 					isConnected: false,
 					lastUpdate: parsed?.lastUpdate || null,
 				};
 			}
 		}
-	} catch {}
+	} catch {
+		// Parsing or storage access failed; return default empty state
+	}
 	return {
 		reservations: {},
 		conversations: {},
@@ -43,5 +47,7 @@ export function persistState(state: WebSocketDataState): void {
 				})
 			);
 		}
-	} catch {}
+	} catch {
+		// Storage write failed; silently ignore to prevent app crashes
+	}
 }

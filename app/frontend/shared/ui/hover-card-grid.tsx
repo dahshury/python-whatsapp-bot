@@ -1,9 +1,9 @@
 "use client";
 import type { DataEditorRef, Theme } from "@glideapps/glide-data-grid";
-import type { IDataSource } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
-import Grid from "@/shared/libs/data-grid/components/Grid";
+import type { IDataSource } from "@/shared/libs/data-grid/components/core/interfaces/i-data-source";
+import Grid from "@/shared/libs/data-grid/components/grid";
 
-interface HoverCardGridProps {
+type HoverCardGridProps = {
 	dataSource: IDataSource;
 	dataEditorRef?: React.RefObject<DataEditorRef | null>;
 	loading?: boolean;
@@ -21,7 +21,7 @@ interface HoverCardGridProps {
 	// passthrough hooks if needed
 	onReady?: () => void;
 	onDataProviderReady?: (provider: unknown) => void;
-}
+};
 
 // Minimal Grid variant for use inside hover cards: no toolbar, no row markers
 export default function HoverCardGrid({
@@ -39,8 +39,8 @@ export default function HoverCardGrid({
 }: HoverCardGridProps) {
 	return (
 		<Grid
-			showThemeToggle={false}
 			fullWidth={true}
+			showThemeToggle={false}
 			{...(theme ? { theme } : {})}
 			{...(typeof isDarkMode === "boolean" ? { isDarkMode } : {})}
 			dataSource={dataSource}
@@ -50,10 +50,10 @@ export default function HoverCardGrid({
 			{...(className ? { className } : {})}
 			{...(onReady ? { onReady } : {})}
 			{...(onDataProviderReady ? { onDataProviderReady } : {})}
-			hideToolbar={true as unknown as boolean}
-			hideAppendRowPlaceholder={true as unknown as boolean}
-			rowMarkers="none"
 			disableTrailingRow={true}
+			hideAppendRowPlaceholder={true as unknown as boolean}
+			hideToolbar={true as unknown as boolean}
+			rowMarkers="none"
 			{...(typeof rowHeight === "number" ? { rowHeight } : {})}
 			{...(typeof headerHeight === "number" ? { headerHeight } : {})}
 		/>

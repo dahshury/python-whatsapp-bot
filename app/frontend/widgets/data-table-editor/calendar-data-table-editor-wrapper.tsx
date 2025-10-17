@@ -4,23 +4,35 @@ import type { CalendarEvent as DataTableCalendarEvent } from "@widgets/data-tabl
 import dynamic from "next/dynamic";
 import React, { useCallback, useMemo } from "react";
 import type { CalendarEvent } from "@/entities/event";
-import { filterEventsForDataTable, transformEventsForDataTable } from "@/processes/calendar/calendar-events.process";
-import { GridLoadingState } from "@/shared/libs/data-grid/components/ui/GridLoadingState";
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
+import {
+	filterEventsForDataTable,
+	transformEventsForDataTable,
+} from "@/processes/calendar/calendar-events.process";
+import { GridLoadingState } from "@/shared/libs/data-grid/components/ui/grid-loading-state";
+import type { CalendarCoreRef } from "@/widgets/calendar/types";
+
+// Delay to match DataTableEditor motion exit duration
+const EDITOR_EXIT_ANIMATION_DELAY_MS = 260;
 
 // Lazy load DataTableEditor to improve initial performance
 const LazyDataTableEditor = dynamic(
 	() =>
-		import("@/widgets/data-table-editor/DataTableEditor").then((mod) => ({
+		import("@/widgets/data-table-editor/data-table-editor").then((mod) => ({
 			default: mod.DataTableEditor,
 		})),
 	{
 		ssr: false,
-		loading: () => <GridLoadingState loadingText="Loading editor..." showSkeleton={false} height={180} />,
+		loading: () => (
+			<GridLoadingState
+				height={180}
+				loadingText="Loading editor..."
+				showSkeleton={false}
+			/>
+		),
 	}
 );
 
-interface CalendarDataTableEditorWrapperProps {
+type CalendarDataTableEditorWrapperProps = {
 	editorOpen: boolean;
 	shouldLoadEditor: boolean;
 	selectedDateRange: { start: string; end: string } | null;
@@ -36,7 +48,7 @@ interface CalendarDataTableEditorWrapperProps {
 	onSave: () => Promise<void>;
 	closeEditor: () => void;
 	setShouldLoadEditor: (load: boolean) => void;
-}
+};
 
 export function CalendarDataTableEditorWrapper({
 	editorOpen,
@@ -63,31 +75,38 @@ export function CalendarDataTableEditorWrapper({
 		if (editorOpen) {
 			keepMounted.current = true;
 			setRenderOpen(true);
-			return undefined;
+			return;
 		}
 		if (keepMounted.current) {
 			// Delay unmount to let framer-motion exit run
 			const t = setTimeout(() => {
 				setRenderOpen(false);
 				keepMounted.current = false;
-			}, 260); // match DataTableEditor motion exit duration (~250ms)
+			}, EDITOR_EXIT_ANIMATION_DELAY_MS); // match DataTableEditor motion exit duration (~250ms)
 			return () => clearTimeout(t);
 		}
 		setRenderOpen(false);
-		return undefined;
+		return;
 	}, [editorOpen]);
 	// Always compute mapped events so the grid has data immediately on open
 	const mappedEvents = useMemo(
-		() => transformEventsForDataTable(filterEventsForDataTable(events, "data-table", freeRoam)),
+		() =>
+			transformEventsForDataTable(
+				filterEventsForDataTable(events, "data-table", freeRoam)
+			),
 		[events, freeRoam]
 	);
 
 	const handleOpenChange = useCallback(
 		(open: boolean) => {
 			// Ignore redundant updates to avoid render loops
-			if (open === editorOpen) return;
+			if (open === editorOpen) {
+				return;
+			}
 			onOpenChange(open);
-			if (!open) setShouldLoadEditor(false);
+			if (!open) {
+				setShouldLoadEditor(false);
+			}
 		},
 		[editorOpen, onOpenChange, setShouldLoadEditor]
 	);
@@ -98,24 +117,27 @@ export function CalendarDataTableEditorWrapper({
 	}, [onSave, closeEditor]);
 
 	// Avoid mounting the heavy editor when completely unused
-	if (!renderOpen && !shouldLoadEditor) return null;
+	if (!(renderOpen || shouldLoadEditor)) {
+		return null;
+	}
 
 	return (
 		<LazyDataTableEditor
-			open={editorOpen}
-			onOpenChange={handleOpenChange}
-			slotDurationHours={slotDurationHours}
-			freeRoam={freeRoam}
-			data={[]}
 			calendarRef={calendarRef || null}
-			onEventAdded={onEventAdded}
-			onEventModified={onEventModified}
-			onEventCancelled={onEventCancelled}
+			data={[]}
 			events={mappedEvents}
-			selectedDateRange={selectedDateRange}
+			freeRoam={freeRoam}
 			isLocalized={isLocalized ?? false}
-			onSave={handleSave}
+			onEventAdded={onEventAdded}
+			onEventCancelled={onEventCancelled}
+			// biome-ignore lint/suspicious/noEmptyBlockStatements: No-op handler for event selection in table
 			onEventClick={() => {}}
+			onEventModified={onEventModified}
+			onOpenChange={handleOpenChange}
+			onSave={handleSave}
+			open={editorOpen}
+			selectedDateRange={selectedDateRange}
+			slotDurationHours={slotDurationHours}
 		/>
 	);
 }

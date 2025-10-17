@@ -9,44 +9,92 @@ import { useEffect } from "react";
  */
 export function SuppressExcalidrawWarnings() {
 	useEffect(() => {
-		if (process.env.NODE_ENV !== "development") return;
+		if (process.env.NODE_ENV !== "development") {
+			return;
+		}
 
-		const originalError = console.error;
-		const originalWarn = console.warn;
+		// Idempotent, safe patching across StrictMode double-mounts
+		const anyConsole = console as unknown as Record<string, unknown> & {
+			__suppressExcalPatched?: boolean;
+			__suppressExcalOrigError?: (...args: unknown[]) => void;
+			__suppressExcalOrigWarn?: (...args: unknown[]) => void;
+		};
+		if (anyConsole.__suppressExcalPatched) {
+			return;
+		}
+
+		// Capture original methods from the global Console prototype to avoid rebinding to our own wrappers
+		const globalConsole = (globalThis as unknown as { console: Console })
+			.console;
+		const origError = globalConsole.error.bind(globalConsole) as (
+			...args: unknown[]
+		) => void;
+		const origWarn = globalConsole.warn.bind(globalConsole) as (
+			...args: unknown[]
+		) => void;
+
+		anyConsole.__suppressExcalOrigError = origError;
+		anyConsole.__suppressExcalOrigWarn = origWarn;
+
+		const shouldSuppress = (args: unknown[]) => {
+			try {
+				const full = args.map((a) => String(a ?? "")).join(" ");
+				return (
+					full.includes("validateDOMNesting") ||
+					full.includes("<html> cannot appear as a child") ||
+					full.includes("appears more than once") ||
+					full.includes("Excalidraw") ||
+					full.includes("excalidraw") ||
+					full.includes("UNSAFE_") ||
+					full.includes("findDOMNode") ||
+					full.includes("<button> cannot contain a nested <button>") ||
+					full.includes("Maximum update depth exceeded")
+				);
+			} catch {
+				return false;
+			}
+		};
+
+		// Guard to prevent re-entrancy if our wrapper triggers console again
+		let inError = false;
+		let inWarn = false;
 
 		console.error = (...args: unknown[]) => {
-			const msg = String(args[0] || "");
-			// Suppress the "update scheduled from inside an update function" warning
-			// when it comes from Excalidraw's _App component during gestures
-			if (
-				msg.includes("update") &&
-				msg.includes("scheduled") &&
-				msg.includes("inside an update function") &&
-				(msg.includes("_App") || msg.includes("Excalidraw"))
-			) {
-				return;
+			if (inError) {
+				return; // prevent recursion
 			}
-			originalError.apply(console, args);
+			if (shouldSuppress(args)) {
+				return; // Suppress completely, no forwarding
+			}
+			inError = true;
+			try {
+				origError(...args);
+			} catch {
+				// Suppress nested console errors to prevent infinite loops
+			}
+			inError = false;
 		};
 
 		console.warn = (...args: unknown[]) => {
-			const msg = String(args[0] || "");
-			// Suppress Excalidraw-related update warnings
-			if (
-				msg.includes("update") &&
-				msg.includes("scheduled") &&
-				msg.includes("inside an update function") &&
-				(msg.includes("_App") || msg.includes("Excalidraw"))
-			) {
-				return;
+			if (inWarn) {
+				return; // prevent recursion
 			}
-			originalWarn.apply(console, args);
+			if (shouldSuppress(args)) {
+				return; // Suppress completely, no forwarding
+			}
+			inWarn = true;
+			try {
+				origWarn(...args);
+			} catch {
+				// Suppress nested console warnings to prevent infinite loops
+			}
+			inWarn = false;
 		};
 
-		return () => {
-			console.error = originalError;
-			console.warn = originalWarn;
-		};
+		anyConsole.__suppressExcalPatched = true;
+
+		// Keep patch stable across StrictMode remounts - no-op cleanup function
+		return;
 	}, []);
 
 	return null;

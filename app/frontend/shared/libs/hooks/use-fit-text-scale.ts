@@ -1,18 +1,210 @@
 "use client";
 
-import * as React from "react";
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
-interface UseFitTextScaleOptions {
+const TARGET_SCALE_TOLERANCE = 0.02;
+
+type UseFitTextScaleOptions = {
 	minScale?: number; // minimum scale factor
 	maxScale?: number; // maximum scale factor
 	paddingPx?: number; // horizontal padding to reserve inside container
-}
+};
 
-interface UseFitTextScaleResult {
-	containerRef: React.RefObject<HTMLDivElement | null>;
-	contentRef: React.RefObject<HTMLSpanElement | null>;
+type UseFitTextScaleResult = {
+	containerRef: RefObject<HTMLDivElement | null>;
+	contentRef: RefObject<HTMLSpanElement | null>;
 	scale: number;
 	fontSizePx: number;
+};
+
+function setupMutationObserver(
+	element: HTMLElement,
+	callback: () => void
+): MutationObserver | null {
+	try {
+		const observer = new MutationObserver(callback);
+		observer.observe(element, {
+			characterData: true,
+			subtree: true,
+			childList: true,
+		});
+		return observer;
+	} catch {
+		// MutationObserver not available or initialization failed
+		return null;
+	}
+}
+
+function setupContentResizeObserver(
+	element: HTMLElement,
+	callback: () => void
+): ResizeObserver | null {
+	try {
+		if ("ResizeObserver" in window) {
+			const observer = new ResizeObserver(callback);
+			observer.observe(element);
+			return observer;
+		}
+	} catch {
+		// ResizeObserver not available or initialization failed
+	}
+	return null;
+}
+
+function setupContainerResizeObserver(
+	element: HTMLElement,
+	callback: () => void
+): ResizeObserver | null {
+	try {
+		if ("ResizeObserver" in window) {
+			const observer = new ResizeObserver(callback);
+			observer.observe(element);
+			return observer;
+		}
+	} catch {
+		// ResizeObserver not available or initialization failed
+	}
+	return null;
+}
+
+function setupHtmlAttributeObserver(
+	callback: () => void
+): MutationObserver | null {
+	try {
+		const observer = new MutationObserver(callback);
+		observer.observe(document.documentElement, {
+			attributes: true,
+			attributeFilter: ["class"],
+		});
+		return observer;
+	} catch {
+		// HTML attribute observer setup failed
+		return null;
+	}
+}
+
+function setupFontLoadingObserver(callback: () => void): {
+	loadingHandler: (() => void) | null;
+	doneHandler: (() => void) | null;
+} {
+	try {
+		const fonts = (document as unknown as { fonts?: FontFaceSet }).fonts;
+		if (fonts?.addEventListener) {
+			const loadingHandler = callback;
+			const doneHandler = callback;
+			fonts.addEventListener("loading", loadingHandler as EventListener);
+			fonts.addEventListener("loadingdone", doneHandler as EventListener);
+			return { loadingHandler, doneHandler };
+		}
+	} catch {
+		// Font loading observer setup failed
+	}
+	return { loadingHandler: null, doneHandler: null };
+}
+
+function removeFontLoadingObservers(
+	loadingHandler: (() => void) | null,
+	doneHandler: (() => void) | null
+): void {
+	try {
+		const fonts = (document as unknown as { fonts?: FontFaceSet }).fonts;
+		if (fonts?.removeEventListener) {
+			if (loadingHandler) {
+				fonts.removeEventListener("loading", loadingHandler as EventListener);
+			}
+			if (doneHandler) {
+				fonts.removeEventListener("loadingdone", doneHandler as EventListener);
+			}
+		}
+	} catch {
+		// Font loading observer cleanup failed
+	}
+}
+
+function computeScaleFactor(
+	available: number,
+	needed: number,
+	minScale: number,
+	maxScale: number
+): number {
+	if (needed <= 0 || available <= 0) {
+		return 1;
+	}
+	const raw = available / needed;
+	return Math.min(maxScale, Math.max(minScale, raw));
+}
+
+function calculateFontSize(
+	scale: number,
+	baseFont: number,
+	setFontSizePx: (size: number) => void
+): void {
+	// If target is approximately 1, avoid unnecessary inline style to let CSS control size.
+	if (Math.abs(scale - 1) < TARGET_SCALE_TOLERANCE) {
+		setFontSizePx(0);
+	} else {
+		setFontSizePx(baseFont * scale);
+	}
+}
+
+type ComputeScaleOptions = {
+	containerRef: RefObject<HTMLDivElement | null>;
+	contentRef: RefObject<HTMLSpanElement | null>;
+	setScale: (scale: number) => void;
+	setFontSizePx: (size: number) => void;
+	minScale: number;
+	maxScale: number;
+};
+
+function computeScale(options: ComputeScaleOptions): void {
+	const {
+		containerRef,
+		contentRef,
+		setScale,
+		setFontSizePx,
+		minScale,
+		maxScale,
+	} = options;
+	try {
+		const container = containerRef.current;
+		const content = contentRef.current;
+		if (!(container && content)) {
+			return;
+		}
+
+		// Measure available width minus actual computed paddings
+		const containerRect = container.getBoundingClientRect();
+		const cs = getComputedStyle(container);
+		const padL = Number.parseFloat(cs.paddingLeft || "0");
+		const padR = Number.parseFloat(cs.paddingRight || "0");
+		const available = Math.max(0, containerRect.width - (padL + padR));
+
+		// Temporarily clear inline fontSize to measure at CSS-defined size
+		const prevFontSize = content.style.fontSize;
+		content.style.fontSize = "";
+
+		// Use scrollWidth for raw text width
+		const needed = content.scrollWidth;
+		const target = computeScaleFactor(available, needed, minScale, maxScale);
+
+		setScale(target);
+		// Apply scaled font size for both downscale and upscale cases so text can grow to fill width.
+		const computed = getComputedStyle(content);
+		const baseFont = Number.parseFloat(computed.fontSize || "16");
+		if (Number.isFinite(baseFont)) {
+			calculateFontSize(target, baseFont, setFontSizePx);
+		}
+		// Restore
+		content.style.fontSize = prevFontSize;
+	} catch {
+		// Scale computation failed, keeping previous state
+	}
 }
 
 // Measures the width of the content and scales it down to fit within the container.
@@ -22,53 +214,23 @@ export function useFitTextScale({
 	maxScale = 1,
 	paddingPx: _paddingPx = 8,
 }: UseFitTextScaleOptions = {}): UseFitTextScaleResult {
-	const containerRef = React.useRef<HTMLDivElement>(null);
-	const contentRef = React.useRef<HTMLSpanElement>(null);
-	const [scale, setScale] = React.useState(1);
-	const [fontSizePx, setFontSizePx] = React.useState(0);
+	const containerRef = useRef<HTMLDivElement>(null);
+	const contentRef = useRef<HTMLSpanElement>(null);
+	const [scale, setScale] = useState(1);
+	const [fontSizePx, setFontSizePx] = useState(0);
 
-	const compute = React.useCallback(() => {
-		try {
-			const container = containerRef.current;
-			const content = contentRef.current;
-			if (!container || !content) return;
-
-			// Measure available width minus actual computed paddings
-			const containerRect = container.getBoundingClientRect();
-			const cs = getComputedStyle(container);
-			const padL = Number.parseFloat(cs.paddingLeft || "0");
-			const padR = Number.parseFloat(cs.paddingRight || "0");
-			const available = Math.max(0, containerRect.width - (padL + padR));
-
-			// Temporarily clear inline fontSize to measure at CSS-defined size
-			const prevFontSize = content.style.fontSize;
-			content.style.fontSize = "";
-
-			// Use scrollWidth for raw text width
-			const needed = content.scrollWidth;
-			if (needed <= 0 || available <= 0) return;
-
-			const raw = available / needed;
-			const target = Math.min(maxScale, Math.max(minScale, raw));
-
-			setScale(target);
-			// Apply scaled font size for both downscale and upscale cases so text can grow to fill width.
-			const computed = getComputedStyle(content);
-			const baseFont = Number.parseFloat(computed.fontSize || "16");
-			if (Number.isFinite(baseFont)) {
-				// If target is approximately 1, avoid unnecessary inline style to let CSS control size.
-				if (Math.abs(target - 1) < 0.02) {
-					setFontSizePx(0);
-				} else {
-					setFontSizePx(baseFont * target);
-				}
-			}
-			// Restore
-			content.style.fontSize = prevFontSize;
-		} catch {}
+	const compute = useCallback(() => {
+		computeScale({
+			containerRef,
+			contentRef,
+			setScale,
+			setFontSizePx,
+			minScale,
+			maxScale,
+		});
 	}, [minScale, maxScale]);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		compute();
 		const onResize = () => compute();
 		const onOrientation = () => compute();
@@ -81,58 +243,30 @@ export function useFitTextScale({
 	}, [compute]);
 
 	// Recompute when content text changes, sizes change, or theme/fonts change
-	React.useEffect(() => {
+	useEffect(() => {
 		const el = contentRef.current;
 		const container = containerRef.current;
-		if (!el) return;
-		let mo: MutationObserver | null = null;
-		let roContent: ResizeObserver | null = null;
-		let roContainer: ResizeObserver | null = null;
-		let htmlObserver: MutationObserver | null = null;
-		let fontLoadingHandler: (() => void) | null = null;
-		let fontDoneHandler: (() => void) | null = null;
-		try {
-			mo = new MutationObserver(() => compute());
-			mo.observe(el, { characterData: true, subtree: true, childList: true });
-		} catch {}
-		try {
-			if ("ResizeObserver" in window) {
-				roContent = new ResizeObserver(() => compute());
-				roContent.observe(el);
-				if (container) {
-					roContainer = new ResizeObserver(() => compute());
-					roContainer.observe(container);
-				}
-			}
-		} catch {}
-		try {
-			htmlObserver = new MutationObserver(() => compute());
-			htmlObserver.observe(document.documentElement, {
-				attributes: true,
-				attributeFilter: ["class"],
-			});
-		} catch {}
-		try {
-			const fonts = (document as unknown as { fonts?: FontFaceSet }).fonts;
-			if (fonts?.addEventListener) {
-				fontLoadingHandler = () => compute();
-				fontDoneHandler = () => compute();
-				fonts.addEventListener("loading", fontLoadingHandler as EventListener);
-				fonts.addEventListener("loadingdone", fontDoneHandler as EventListener);
-			}
-		} catch {}
+		if (!el) {
+			return;
+		}
+
+		const mo = setupMutationObserver(el, () => compute());
+		const roContent = setupContentResizeObserver(el, () => compute());
+		const roContainer =
+			container && container
+				? setupContainerResizeObserver(container, () => compute())
+				: null;
+		const htmlObserver = setupHtmlAttributeObserver(() => compute());
+		const { loadingHandler, doneHandler } = setupFontLoadingObserver(() =>
+			compute()
+		);
+
 		return () => {
 			mo?.disconnect();
 			roContent?.disconnect();
 			roContainer?.disconnect();
 			htmlObserver?.disconnect();
-			try {
-				const fonts = (document as unknown as { fonts?: FontFaceSet }).fonts;
-				if (fonts?.removeEventListener) {
-					if (fontLoadingHandler) fonts.removeEventListener("loading", fontLoadingHandler as EventListener);
-					if (fontDoneHandler) fonts.removeEventListener("loadingdone", fontDoneHandler as EventListener);
-				}
-			} catch {}
+			removeFontLoadingObservers(loadingHandler, doneHandler);
 		};
 	}, [compute]);
 

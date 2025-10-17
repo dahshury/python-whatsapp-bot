@@ -2,9 +2,14 @@
  * Tempus Dominus DOM helpers extracted for reuse and SoC
  */
 
+// Animation throttle delay in milliseconds to prevent rapid successive animation calls
+const ANIMATION_THROTTLE_DELAY_MS = 350;
+
 /** Marks the widget and all descendants with a class so click-outside logic can ignore it. */
 export function markWidgetSafe(widget: HTMLElement): void {
-	if (!widget) return;
+	if (!widget) {
+		return;
+	}
 	try {
 		if (!widget.classList.contains("click-outside-ignore")) {
 			widget.classList.add("click-outside-ignore");
@@ -54,17 +59,23 @@ export function markWidgetSafe(widget: HTMLElement): void {
 				}
 			)._glideOutsideObserver = mo;
 		}
-	} catch {}
+	} catch {
+		// Silently ignore errors when setting up observer or appending to widget
+	}
 }
 
 /** Ensures the widget is appended to document.body for consistent positioning/animation. */
 export function ensureWidgetInBody(widget: HTMLElement): void {
 	try {
-		if (!widget) return;
+		if (!widget) {
+			return;
+		}
 		if (widget.parentElement !== document.body) {
 			document.body.appendChild(widget);
 		}
-	} catch {}
+	} catch {
+		// Silently ignore errors when appending to body
+	}
 }
 
 /**
@@ -74,17 +85,25 @@ export function ensureWidgetInBody(widget: HTMLElement): void {
 export function findOrQueryWidget(instance: unknown): HTMLElement | null {
 	let widget: HTMLElement | null = null;
 	try {
-		const byDisplay = (instance as { display?: { widget?: Element } }).display?.widget;
-		if (byDisplay) widget = byDisplay as HTMLElement;
-		else {
-			const byPopover = (instance as { popover?: { tip?: Element } }).popover?.tip;
-			if (byPopover) widget = byPopover as HTMLElement;
-			else {
+		const byDisplay = (instance as { display?: { widget?: Element } }).display
+			?.widget;
+		if (byDisplay) {
+			widget = byDisplay as HTMLElement;
+		} else {
+			const byPopover = (instance as { popover?: { tip?: Element } }).popover
+				?.tip;
+			if (byPopover) {
+				widget = byPopover as HTMLElement;
+			} else {
 				const legacy = (instance as { _widget?: Element })._widget;
-				if (legacy) widget = legacy as HTMLElement;
+				if (legacy) {
+					widget = legacy as HTMLElement;
+				}
 			}
 		}
-	} catch {}
+	} catch {
+		// Silently ignore errors when finding widget by instance
+	}
 
 	if (!widget) {
 		// Prefer body-level widgets
@@ -105,7 +124,7 @@ export function findOrQueryWidget(instance: unknown): HTMLElement | null {
 
 		widget =
 			allWidgets.find((w) => window.getComputedStyle(w).display !== "none") ||
-			allWidgets[allWidgets.length - 1] ||
+			allWidgets.at(-1) ||
 			null;
 	}
 
@@ -113,19 +132,36 @@ export function findOrQueryWidget(instance: unknown): HTMLElement | null {
 }
 
 // Simple per-widget animation state using WeakMap to avoid leaks
-const widgetState = new WeakMap<HTMLElement, { last?: { action: "show" | "hide"; at: number }; visible: boolean }>();
+const widgetState = new WeakMap<
+	HTMLElement,
+	{ last?: { action: "show" | "hide"; at: number }; visible: boolean }
+>();
 
 /** Animates the Tempus Dominus widget in or out with throttling and visibility guards. */
-export function animateWidget(widget: HTMLElement, action: "show" | "hide"): void {
+export function animateWidget(
+	widget: HTMLElement,
+	action: "show" | "hide"
+): void {
 	try {
-		if (!widget) return;
-		const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-		const state = widgetState.get(widget) || { visible: false };
-		if (state.last && state.last.action === action && now - state.last.at < 350) {
+		if (!widget) {
 			return;
 		}
-		if (action === "show" && state.visible) return;
-		if (action === "hide" && !state.visible) return;
+		const now =
+			typeof performance !== "undefined" ? performance.now() : Date.now();
+		const state = widgetState.get(widget) || { visible: false };
+		if (
+			state.last &&
+			state.last.action === action &&
+			now - state.last.at < ANIMATION_THROTTLE_DELAY_MS
+		) {
+			return;
+		}
+		if (action === "show" && state.visible) {
+			return;
+		}
+		if (action === "hide" && !state.visible) {
+			return;
+		}
 
 		state.last = { action, at: now };
 
@@ -134,23 +170,34 @@ export function animateWidget(widget: HTMLElement, action: "show" | "hide"): voi
 
 		if (action === "show") {
 			requestAnimationFrame(() => {
-				widget.classList.remove("tempus-dominus-widget-animated-out", "tempus-dominus-widget-hidden");
+				widget.classList.remove(
+					"tempus-dominus-widget-animated-out",
+					"tempus-dominus-widget-hidden"
+				);
 				widget.style.animation = "none";
-				void (widget as HTMLElement).offsetHeight;
+				// Trigger reflow for animation
+				// biome-ignore lint/complexity/noVoid: Intentional reflow trigger
+				void widget.offsetHeight;
 				widget.classList.add("tempus-dominus-widget-animated-in");
 				widget.classList.add("tempus-dominus-widget-transition");
 				widget.style.opacity = "0";
 				widget.style.transition = "none";
-				void (widget as HTMLElement).offsetHeight;
+				// Trigger reflow for animation
+				// biome-ignore lint/complexity/noVoid: Intentional reflow trigger
+				void widget.offsetHeight;
 				requestAnimationFrame(() => {
-					widget.style.transition = "opacity 250ms cubic-bezier(0.16, 1, 0.3, 1)";
+					widget.style.transition =
+						"opacity 250ms cubic-bezier(0.16, 1, 0.3, 1)";
 					widget.style.opacity = "1";
 					widget.classList.add("tempus-dominus-widget-visible");
 					widgetState.set(widget, { ...state, visible: true });
 				});
 			});
 		} else {
-			widget.classList.remove("tempus-dominus-widget-animated-in", "tempus-dominus-widget-visible");
+			widget.classList.remove(
+				"tempus-dominus-widget-animated-in",
+				"tempus-dominus-widget-visible"
+			);
 			widget.classList.add("tempus-dominus-widget-animated-out");
 			widget.classList.add("tempus-dominus-widget-transition");
 			widget.classList.add("tempus-dominus-widget-hidden");
@@ -158,13 +205,18 @@ export function animateWidget(widget: HTMLElement, action: "show" | "hide"): voi
 			widget.style.opacity = "0";
 			widgetState.set(widget, { ...state, visible: false });
 		}
-	} catch {}
+	} catch {
+		// Silently ignore errors during animation
+	}
 }
 
 /** Observe creation of TD widgets and invoke callback; returns a disconnect function. */
-export function observeWidgetCreation(onCreate: (widget: HTMLElement) => void): () => void {
+export function observeWidgetCreation(
+	onCreate: (widget: HTMLElement) => void
+): () => void {
 	let mo: MutationObserver | undefined;
 	try {
+		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Widget detection requires multiple checks
 		mo = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
 				for (const node of Array.from(mutation.addedNodes)) {
@@ -177,7 +229,9 @@ export function observeWidgetCreation(onCreate: (widget: HTMLElement) => void): 
 						if (isWidget) {
 							const widget = node.classList.contains("tempus-dominus-widget")
 								? (node as HTMLElement)
-								: (node.querySelector(".tempus-dominus-widget") as HTMLElement) || (node as HTMLElement);
+								: (node.querySelector(
+										".tempus-dominus-widget"
+									) as HTMLElement) || (node as HTMLElement);
 							onCreate(widget);
 						}
 					}
@@ -185,10 +239,14 @@ export function observeWidgetCreation(onCreate: (widget: HTMLElement) => void): 
 			}
 		});
 		mo.observe(document.body, { childList: true, subtree: true });
-	} catch {}
+	} catch {
+		// Silently ignore errors when setting up widget creation observer
+	}
 	return () => {
 		try {
 			mo?.disconnect();
-		} catch {}
+		} catch {
+			// Silently ignore errors when disconnecting observer
+		}
 	};
 }

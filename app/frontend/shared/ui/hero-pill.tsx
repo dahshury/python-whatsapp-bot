@@ -11,11 +11,24 @@ interface HeroPillProps extends React.HTMLAttributes<HTMLDivElement> {
 	animate?: boolean;
 }
 
-export function HeroPill({ icon, text, className, animate = true, ...props }: HeroPillProps) {
+export function HeroPill({
+	icon,
+	text,
+	className,
+	animate = true,
+	...props
+}: HeroPillProps) {
 	return (
-		<div className={cn("mb-1", animate && "animate-slide-up-fade", className)} {...props}>
-			<p className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-background px-3 py-1 text-xs font-medium text-foreground shadow-sm shadow-black/[.12] dark:bg-accent hover:bg-accent/80 transition-colors">
-				{icon && <span className="mr-2 flex shrink-0 border-r border-border pr-2">{icon}</span>}
+		<div
+			className={cn("mb-1", animate && "animate-slide-up-fade", className)}
+			{...props}
+		>
+			<p className="inline-flex items-center justify-center whitespace-nowrap rounded-full bg-background px-3 py-1 font-medium text-foreground text-xs shadow-black/[.12] shadow-sm transition-colors hover:bg-accent/80 dark:bg-accent">
+				{icon && (
+					<span className="mr-2 flex shrink-0 border-border border-r pr-2">
+						{icon}
+					</span>
+				)}
 				{text}
 			</p>
 		</div>
@@ -25,11 +38,11 @@ export function HeroPill({ icon, text, className, animate = true, ...props }: He
 export function StarIcon() {
 	return (
 		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			width={12}
-			height={12}
+			className="transition-transform duration-300 group-hover:scale-110"
 			fill="none"
-			className="transition-transform group-hover:scale-110 duration-300"
+			height={12}
+			width={12}
+			xmlns="http://www.w3.org/2000/svg"
 		>
 			<title>Star icon</title>
 			<path

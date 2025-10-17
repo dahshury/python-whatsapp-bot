@@ -1,37 +1,61 @@
 "use client";
 
-import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import {
+	Indicator as RadioGroupIndicator,
+	Item as RadioGroupItem,
+	Root as RadioGroupRoot,
+} from "@radix-ui/react-radio-group";
 import { cn } from "@shared/libs/utils";
 import { Circle } from "lucide-react";
-import * as React from "react";
+import type {
+	ComponentPropsWithoutRef,
+	ComponentType,
+	ElementRef,
+	Ref,
+} from "react";
 import { useUiCompositeOverride } from "@/shared/libs/ui-registry";
 
-function getOverride<TProps>(ov: Record<string, unknown>, key: string): React.ComponentType<TProps> | undefined {
-	return ov[key] as unknown as React.ComponentType<TProps> | undefined;
+function getOverride<TProps>(
+	ov: Record<string, unknown>,
+	key: string
+): ComponentType<TProps> | undefined {
+	return ov[key] as unknown as ComponentType<TProps> | undefined;
 }
 
-const RadioGroup = React.forwardRef<
-	React.ElementRef<typeof RadioGroupPrimitive.Root>,
-	React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
->(({ className, ...props }, ref) => {
+const RadioGroup = ({
+	className,
+	ref,
+	...props
+}: ComponentPropsWithoutRef<typeof RadioGroupRoot> & {
+	ref?: Ref<ElementRef<typeof RadioGroupRoot> | null>;
+}) => {
 	const OV = useUiCompositeOverride("RadioGroup");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>>(
+	const Override = getOverride<ComponentPropsWithoutRef<typeof RadioGroupRoot>>(
 		OV as unknown as Record<string, unknown>,
 		"RadioGroup"
 	);
 	if (Override) {
 		return <Override className={className} {...props} />;
 	}
-	return <RadioGroupPrimitive.Root className={cn("grid gap-2", className)} {...props} ref={ref} />;
-});
-RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
+	return (
+		<RadioGroupRoot
+			className={cn("grid gap-2", className)}
+			{...props}
+			ref={ref}
+		/>
+	);
+};
+RadioGroup.displayName = RadioGroupRoot.displayName;
 
-const RadioGroupItem = React.forwardRef<
-	React.ElementRef<typeof RadioGroupPrimitive.Item>,
-	React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
->(({ className, ...props }, ref) => {
+const RadioGroupItemComponent = ({
+	className,
+	ref,
+	...props
+}: ComponentPropsWithoutRef<typeof RadioGroupItem> & {
+	ref?: Ref<ElementRef<typeof RadioGroupItem> | null>;
+}) => {
 	const OV = useUiCompositeOverride("RadioGroup");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>>(
+	const Override = getOverride<ComponentPropsWithoutRef<typeof RadioGroupItem>>(
 		OV as unknown as Record<string, unknown>,
 		"RadioGroupItem"
 	);
@@ -39,20 +63,20 @@ const RadioGroupItem = React.forwardRef<
 		return <Override className={className} {...props} />;
 	}
 	return (
-		<RadioGroupPrimitive.Item
-			ref={ref}
+		<RadioGroupItem
 			className={cn(
 				"aspect-square h-4 w-4 rounded-full border border-primary text-primary shadow focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
 				className
 			)}
+			ref={ref}
 			{...props}
 		>
-			<RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+			<RadioGroupIndicator className="flex items-center justify-center">
 				<Circle className="h-3.5 w-3.5 fill-primary" />
-			</RadioGroupPrimitive.Indicator>
-		</RadioGroupPrimitive.Item>
+			</RadioGroupIndicator>
+		</RadioGroupItem>
 	);
-});
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
+};
+RadioGroupItemComponent.displayName = "RadioGroupItem";
 
-export { RadioGroup, RadioGroupItem };
+export { RadioGroup, RadioGroupItemComponent as RadioGroupItem };

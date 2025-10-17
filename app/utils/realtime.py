@@ -63,14 +63,18 @@ class RealtimeManager:
             tab_id = None
         logging.info(f"🔗 WebSocket connection attempt from {client_host}")
         await websocket.accept()
-        conn = ClientConnection(websocket=websocket, tab_id=tab_id, client_host=client_host)
+        conn = ClientConnection(
+            websocket=websocket, tab_id=tab_id, client_host=client_host
+        )
         async with self._lock:
             # Enforce single connection per tab id: drop the previous one if exists
             if isinstance(tab_id, str) and tab_id:
                 existing = self._clients_by_tab.get(tab_id)
                 if existing and existing.websocket is not websocket:
                     try:
-                        logging.info(f"♻️ Replacing existing connection for tab={tab_id} from {existing.client_host}")
+                        logging.info(
+                            f"♻️ Replacing existing connection for tab={tab_id} from {existing.client_host}"
+                        )
                         await existing.websocket.close(code=1000)
                     except Exception:
                         pass
@@ -81,7 +85,10 @@ class RealtimeManager:
                 self._clients_by_tab[tab_id] = conn
             # Always register in clients map
             self._clients[id(websocket)] = conn
-        logging.info(f"✅ WebSocket client connected from {client_host}. Total=%d", len(self._clients))
+        logging.info(
+            f"✅ WebSocket client connected from {client_host}. Total=%d",
+            len(self._clients),
+        )
         return conn
 
     async def disconnect(self, conn: ClientConnection) -> None:
@@ -93,7 +100,10 @@ class RealtimeManager:
                     self._clients_by_tab.pop(conn.tab_id, None)
             except Exception:
                 pass
-        logging.info(f"❌ WebSocket client from {client_host} disconnected. Total=%d", len(self._clients))
+        logging.info(
+            f"❌ WebSocket client from {client_host} disconnected. Total=%d",
+            len(self._clients),
+        )
 
     async def broadcast(
         self,
@@ -152,18 +162,29 @@ class RealtimeManager:
 
                     if age_sec <= 1.0:
                         # Within suppression window
-                        if priority.get(event_type, 0) <= priority.get(str(existing_type), 0):
+                        if priority.get(event_type, 0) <= priority.get(
+                            str(existing_type), 0
+                        ):
                             logging.debug(
                                 f"🚫 Suppressing {event_type} due to recent {existing_type} for key {key} ({age_sec:.3f}s)"
                             )
                             return
                         # Replace existing with higher priority
-                        self._recent_reservation_events[key] = {"type": event_type, "ts": now_ts}
+                        self._recent_reservation_events[key] = {
+                            "type": event_type,
+                            "ts": now_ts,
+                        }
                     else:
                         # Window expired, overwrite
-                        self._recent_reservation_events[key] = {"type": event_type, "ts": now_ts}
+                        self._recent_reservation_events[key] = {
+                            "type": event_type,
+                            "ts": now_ts,
+                        }
                 else:
-                    self._recent_reservation_events[key] = {"type": event_type, "ts": now_ts}
+                    self._recent_reservation_events[key] = {
+                        "type": event_type,
+                        "ts": now_ts,
+                    }
         except Exception as e:
             logging.debug(f"reservation dedupe check failed: {e}")
         payload = {
@@ -191,7 +212,9 @@ class RealtimeManager:
                     logging.debug(f"🚫 Client filtered out event {event_type}")
             except Exception as e:
                 # Collect for removal
-                logging.warning(f"❌ WebSocket send failed: {e}. Scheduling disconnect.")
+                logging.warning(
+                    f"❌ WebSocket send failed: {e}. Scheduling disconnect."
+                )
                 to_drop.append(conn)
 
         logging.debug(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
@@ -339,23 +362,39 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 entity_ids = filt.get("entityIds") or filt.get("entity_ids")
                 conn.update_types = set(update_types) if update_types else None
                 conn.entity_ids = set(entity_ids) if entity_ids else None
-                await conn.send_json({"type": "filter_ack", "timestamp": _utc_iso_now()})
+                await conn.send_json(
+                    {"type": "filter_ack", "timestamp": _utc_iso_now()}
+                )
             elif msg_type == "ping":
                 await conn.send_json({"type": "pong", "timestamp": _utc_iso_now()})
             elif msg_type == "get_snapshot":
                 # Optional: parse range, but service functions already time-scope reasonably
                 try:
-                    from app.utils.service_utils import get_all_reservations  # lazy import to avoid circular
+                    from app.utils.service_utils import (
+                        get_all_reservations,
+                    )  # lazy import to avoid circular
 
-                    reservations_resp = get_all_reservations(future=False, include_cancelled=True)
-                    reservations = reservations_resp.get("data", {}) if isinstance(reservations_resp, dict) else {}
+                    reservations_resp = get_all_reservations(
+                        future=False, include_cancelled=True
+                    )
+                    reservations = (
+                        reservations_resp.get("data", {})
+                        if isinstance(reservations_resp, dict)
+                        else {}
+                    )
                 except Exception:
                     reservations = {}
                 try:
-                    from app.utils.service_utils import get_all_conversations  # lazy import to avoid circular
+                    from app.utils.service_utils import (
+                        get_all_conversations,
+                    )  # lazy import to avoid circular
 
                     conversations_resp = get_all_conversations()
-                    conversations = conversations_resp.get("data", {}) if isinstance(conversations_resp, dict) else {}
+                    conversations = (
+                        conversations_resp.get("data", {})
+                        if isinstance(conversations_resp, dict)
+                        else {}
+                    )
                 except Exception:
                     conversations = {}
                 try:
@@ -378,18 +417,40 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         },
                     }
                 )
-            elif msg_type in ("get_customer_document", "get_document", "get_customer_doc"):
+            elif msg_type in (
+                "get_customer_document",
+                "get_document",
+                "get_customer_doc",
+            ):
                 try:
-                    wa = (payload.get("data") or {}).get("wa_id") or payload.get("wa_id") or payload.get("waId")
+                    wa = (
+                        (payload.get("data") or {}).get("wa_id")
+                        or payload.get("wa_id")
+                        or payload.get("waId")
+                    )
                     wa = str(wa or "")
                     if not wa:
-                        await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
+                        await conn.send_json(
+                            {"type": "ignored", "timestamp": _utc_iso_now()}
+                        )
                         continue
                     try:
                         from app.db import CustomerModel, get_session
 
                         with get_session() as session:
                             row = session.get(CustomerModel, wa)
+                            # If requesting the template user and it doesn't exist, create it with empty doc
+                            if not row and wa == "__TEMPLATE__":
+                                try:
+                                    row = CustomerModel(
+                                        wa_id=wa,
+                                        customer_name="Default Template",
+                                        document={},
+                                    )
+                                    session.add(row)
+                                    session.commit()
+                                except Exception:
+                                    row = None
                             doc = getattr(row, "document", None) if row else None
                     except Exception as e:
                         logging.error(f"WS get_customer_document error: {e}")
@@ -403,7 +464,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     )
                 except Exception as e:
                     logging.error(f"WS get_customer_document exception: {e}")
-                    await conn.send_json({"type": "ignored", "timestamp": _utc_iso_now()})
+                    await conn.send_json(
+                        {"type": "ignored", "timestamp": _utc_iso_now()}
+                    )
             elif msg_type == "modify_reservation":
                 # Handle reservation modification via websocket
                 try:
@@ -468,7 +531,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                             {
                                 "type": "modify_reservation_nack",
                                 "timestamp": _utc_iso_now(),
-                                "data": {"message": result.get("message", "Modification failed")},
+                                "data": {
+                                    "message": result.get(
+                                        "message", "Modification failed"
+                                    )
+                                },
                             }
                         )
 
@@ -503,7 +570,11 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     # Import and call the cancel function
                     from app.services.assistant_functions import cancel_reservation
 
-                    result = cancel_reservation(wa_id=wa_id, date_str=date_str, reservation_id_to_cancel=reservation_id)
+                    result = cancel_reservation(
+                        wa_id=wa_id,
+                        date_str=date_str,
+                        reservation_id_to_cancel=reservation_id,
+                    )
 
                     if result.get("success"):
                         await conn.send_json(
@@ -600,12 +671,18 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         try:
                             from app.utils.service_utils import append_message
 
-                            now_local = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
+                            now_local = datetime.datetime.now(
+                                ZoneInfo(config["TIMEZONE"])
+                            )
                             date_str = now_local.strftime("%Y-%m-%d")
                             time_str = now_local.strftime("%H:%M")
-                            append_message(wa_id, "secretary", message, date_str, time_str)
+                            append_message(
+                                wa_id, "secretary", message, date_str, time_str
+                            )
                         except Exception as persist_err:
-                            logging.error(f"append_message failed after WS send: {persist_err}")
+                            logging.error(
+                                f"append_message failed after WS send: {persist_err}"
+                            )
 
                         await conn.send_json(
                             {
@@ -653,14 +730,19 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     with contextlib.suppress(Exception):
                         await manager.broadcast(
                             "conversation_typing",
-                            {"wa_id": wa_id, "state": ("start" if typing_flag else "stop")},
+                            {
+                                "wa_id": wa_id,
+                                "state": ("start" if typing_flag else "stop"),
+                            },
                             [wa_id],
                         )
 
                     # Only send WhatsApp typing when typing starts to reduce calls
                     if typing_flag:
                         try:
-                            from app.utils.whatsapp_utils import send_typing_indicator_for_wa
+                            from app.utils.whatsapp_utils import (
+                                send_typing_indicator_for_wa,
+                            )
 
                             resp = await send_typing_indicator_for_wa(wa_id)
                             try:
@@ -706,18 +788,28 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                                 s_dt = (
                                     datetime.datetime.fromisoformat(str(s_raw))
                                     if "T" in str(s_raw)
-                                    else datetime.datetime.strptime(str(s_raw), "%Y-%m-%d")
+                                    else datetime.datetime.strptime(
+                                        str(s_raw), "%Y-%m-%d"
+                                    )
                                 )
                                 e_dt = (
                                     datetime.datetime.fromisoformat(str(e_raw))
                                     if "T" in str(e_raw)
-                                    else datetime.datetime.strptime(str(e_raw), "%Y-%m-%d")
+                                    else datetime.datetime.strptime(
+                                        str(e_raw), "%Y-%m-%d"
+                                    )
                                 )
                                 s_date = datetime.date(s_dt.year, s_dt.month, s_dt.day)
                                 e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
                                 if e_date < s_date:
                                     s_date, e_date = e_date, s_date
-                                pairs.append((s_date, e_date, title if isinstance(title, str) else None))
+                                pairs.append(
+                                    (
+                                        s_date,
+                                        e_date,
+                                        title if isinstance(title, str) else None,
+                                    )
+                                )
                             except Exception as e:
                                 logging.error(f"Error processing vacation period: {e}")
                                 continue
@@ -727,9 +819,15 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         from app.db import VacationPeriodModel, get_session
 
                         with get_session() as session:
-                            session.query(VacationPeriodModel).delete(synchronize_session=False)
+                            session.query(VacationPeriodModel).delete(
+                                synchronize_session=False
+                            )
                             for s_date, e_date, title in pairs:
-                                session.add(VacationPeriodModel(start_date=s_date, end_date=e_date, title=title))
+                                session.add(
+                                    VacationPeriodModel(
+                                        start_date=s_date, end_date=e_date, title=title
+                                    )
+                                )
                             session.commit()
                     except Exception as e:
                         logging.error(f"DB persist failed: {e}")
@@ -747,12 +845,67 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         updated = _compute_vacations()
                     except Exception:
                         updated = []
-                    await conn.send_json({"type": "vacation_update_ack", "timestamp": _utc_iso_now()})
-                    await manager.broadcast("vacation_period_updated", {"periods": updated})
+                    await conn.send_json(
+                        {"type": "vacation_update_ack", "timestamp": _utc_iso_now()}
+                    )
+                    await manager.broadcast(
+                        "vacation_period_updated", {"periods": updated}
+                    )
                 except Exception as e:
                     logging.error(f"Vacation update exception: {e}")
                     await conn.send_json(
-                        {"type": "vacation_update_nack", "timestamp": _utc_iso_now(), "error": "exception"}
+                        {
+                            "type": "vacation_update_nack",
+                            "timestamp": _utc_iso_now(),
+                            "error": "exception",
+                        }
+                    )
+            elif msg_type == "customer_search":
+                # Async fuzzy search for customers (name/wa_id) using pg_trgm
+                try:
+                    payload_data = payload.get("data") or {}
+                    raw_q = str(
+                        payload_data.get("query") or payload_data.get("q") or ""
+                    ).strip()
+                    limit = int(payload_data.get("limit") or 25)
+                    if not raw_q:
+                        await conn.send_json(
+                            {
+                                "type": "customer_search_results",
+                                "timestamp": _utc_iso_now(),
+                                "data": {"items": []},
+                            }
+                        )
+                        continue
+                    # Use repository for DB search
+                    from app.services.domain.customer.customer_repository import (
+                        CustomerRepository,
+                    )
+
+                    repo = CustomerRepository()
+                    results = repo.search_customers(raw_q, limit=limit)
+                    items = [
+                        {"wa_id": c.wa_id, "name": (c.customer_name or None)}
+                        for c in results
+                    ]
+                    await conn.send_json(
+                        {
+                            "type": "customer_search_results",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"q": raw_q, "items": items},
+                        }
+                    )
+                except Exception as e:
+                    logging.error(f"customer_search error: {e}")
+                    await conn.send_json(
+                        {
+                            "type": "customer_search_results",
+                            "timestamp": _utc_iso_now(),
+                            "data": {
+                                "q": str(payload.get("data", {}).get("query") or ""),
+                                "items": [],
+                            },
+                        }
                     )
             # No additional message types handled here
             else:
@@ -766,11 +919,15 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         await manager.disconnect(conn)
 
 
-async def broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None) -> None:
+async def broadcast(
+    event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None
+) -> None:
     await manager.broadcast(event_type, data, affected_entities)
 
 
-def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None) -> None:
+def enqueue_broadcast(
+    event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None
+) -> None:
     # Prefer scheduling on the current running loop if present (i.e., inside ASGI handlers)
     try:
         loop = asyncio.get_running_loop()
@@ -818,7 +975,9 @@ def _compute_vacations() -> list:
     """Build vacation periods from DB."""
     vacation_periods = []
     try:
-        vacation_message = config.get("VACATION_MESSAGE", "The business is closed during this period.")
+        vacation_message = config.get(
+            "VACATION_MESSAGE", "The business is closed during this period."
+        )
         try:
             from app.db import VacationPeriodModel, get_session
 
@@ -827,12 +986,12 @@ def _compute_vacations() -> list:
                 for r in rows:
                     try:
                         # Use start_date and end_date directly from DB
-                        start_date = datetime.datetime.combine(r.start_date, datetime.time.min).replace(
-                            tzinfo=ZoneInfo(config["TIMEZONE"])
-                        )
-                        end_date = datetime.datetime.combine(r.end_date, datetime.time.max).replace(
-                            tzinfo=ZoneInfo(config["TIMEZONE"])
-                        )
+                        start_date = datetime.datetime.combine(
+                            r.start_date, datetime.time.min
+                        ).replace(tzinfo=ZoneInfo(config["TIMEZONE"]))
+                        end_date = datetime.datetime.combine(
+                            r.end_date, datetime.time.max
+                        ).replace(tzinfo=ZoneInfo(config["TIMEZONE"]))
                         vacation_periods.append(
                             {
                                 "start": start_date.isoformat(),

@@ -1,0 +1,17 @@
+"use client";
+
+export function Dot({ className = "" }: { className?: string }) {
+	return (
+		<svg
+			aria-hidden="true"
+			className={className}
+			fill="currentColor"
+			height="6"
+			viewBox="0 0 6 6"
+			width="6"
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			<circle cx="3" cy="3" r="3" />
+		</svg>
+	);
+}

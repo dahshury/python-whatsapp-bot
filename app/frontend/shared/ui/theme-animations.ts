@@ -1,10 +1,15 @@
 export type AnimationVariant = "circle" | "circle-blur" | "polygon" | "gif";
-export type AnimationStart = "top-left" | "top-right" | "bottom-left" | "bottom-right" | "center";
+export type AnimationStart =
+	| "top-left"
+	| "top-right"
+	| "bottom-left"
+	| "bottom-right"
+	| "center";
 
-interface Animation {
+type Animation = {
 	name: string;
 	css: string;
-}
+};
 
 const getPositionCoords = (position: AnimationStart) => {
 	switch (position) {
@@ -22,7 +27,9 @@ const getPositionCoords = (position: AnimationStart) => {
 };
 
 const generateSVG = (variant: AnimationVariant, start: AnimationStart) => {
-	if (start === "center") return;
+	if (start === "center") {
+		return;
+	}
 
 	const positionCoords = getPositionCoords(start);
 	if (!positionCoords) {
@@ -56,7 +63,11 @@ const getTransformOrigin = (start: AnimationStart) => {
 	}
 };
 
-export const createAnimation = (variant: AnimationVariant, start: AnimationStart, url?: string): Animation => {
+export const createAnimation = (
+	variant: AnimationVariant,
+	start: AnimationStart,
+	url?: string
+): Animation => {
 	const svg = generateSVG(variant, start);
 	const transformOrigin = getTransformOrigin(start);
 

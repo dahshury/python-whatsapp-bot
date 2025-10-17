@@ -7,13 +7,25 @@ import { AnimatePresence, motion } from "motion/react";
 import { JetBrains_Mono } from "next/font/google";
 import React, { type SVGProps } from "react";
 import { Bar, BarChart, XAxis } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/shared/ui/card";
 import { type ChartConfig, ChartContainer } from "@/shared/ui/chart";
 
 const jetBrainsMono = JetBrains_Mono({
 	subsets: ["latin"],
 	weight: ["400", "500", "600", "700"],
 });
+
+const MONTH_ABBREVIATION_LENGTH = 3;
+const ACTIVE_ANIMATION_DURATION = 0.5;
+const INACTIVE_ANIMATION_DURATION = 1;
+const TEXT_ANIMATION_DURATION = 0.1;
+const TEXT_OFFSET_FROM_BAR = 5;
 
 const chartData = [
 	{ month: "January", desktop: 342 },
@@ -42,10 +54,14 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function MonochromeBarChart() {
-	const [activeIndex, setActiveIndex] = React.useState<number | undefined>(undefined);
+	const [activeIndex, setActiveIndex] = React.useState<number | undefined>(
+		undefined
+	);
 
 	const activeData = React.useMemo(() => {
-		if (activeIndex === undefined) return null;
+		if (activeIndex === undefined) {
+			return null;
+		}
 		return chartData[activeIndex];
 	}, [activeIndex]);
 
@@ -53,7 +69,9 @@ export function MonochromeBarChart() {
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					<span className={cn(jetBrainsMono.className, "text-2xl tracking-tighter")}>
+					<span
+						className={cn(jetBrainsMono.className, "text-2xl tracking-tighter")}
+					>
 						${activeData ? activeData.desktop : "123"}
 					</span>
 					<Badge variant="secondary">
@@ -66,19 +84,28 @@ export function MonochromeBarChart() {
 			<CardContent>
 				<AnimatePresence mode="wait">
 					<ChartContainer config={chartConfig}>
-						<BarChart accessibilityLayer data={chartData} onMouseLeave={() => setActiveIndex(undefined)}>
+						<BarChart
+							accessibilityLayer
+							data={chartData}
+							onMouseLeave={() => setActiveIndex(undefined)}
+						>
 							<XAxis
+								axisLine={false}
 								dataKey="month"
+								tickFormatter={(value) =>
+									value.slice(0, MONTH_ABBREVIATION_LENGTH)
+								}
 								tickLine={false}
 								tickMargin={10}
-								axisLine={false}
-								tickFormatter={(value) => value.slice(0, 3)}
 							/>
 							<Bar
 								dataKey="desktop"
 								fill="var(--secondary-foreground)"
 								shape={
-									<CustomBar setActiveIndex={setActiveIndex} {...(activeIndex !== undefined && { activeIndex })} />
+									<CustomBar
+										setActiveIndex={setActiveIndex}
+										{...(activeIndex !== undefined && { activeIndex })}
+									/>
 								}
 							/>
 						</BarChart>
@@ -112,48 +139,51 @@ const CustomBar = (props: CustomBarProps) => {
 	return (
 		// biome-ignore lint/a11y/useSemanticElements: SVG g elements use role="button" for accessibility
 		<g
-			role="button"
-			tabIndex={0}
-			onMouseEnter={() => props.setActiveIndex(index)}
+			aria-label={`Bar ${index !== undefined ? index + 1 : 0}, value: ${value}`}
 			onKeyDown={(e) => {
 				if (e.key === "Enter" || e.key === " ") {
 					e.preventDefault();
 					props.setActiveIndex(index);
 				}
 			}}
-			aria-label={`Bar ${index !== undefined ? index + 1 : 0}, value: ${value}`}
+			onMouseEnter={() => props.setActiveIndex(index)}
+			role="button"
+			tabIndex={0}
 		>
 			{/* rendering the bar with custom postion and animated width */}
 			<motion.rect
+				animate={{ width: isActive ? realWidth : collapsedWidth, x: barX }}
+				fill={fill}
+				height={height}
+				initial={{ width: collapsedWidth, x: barX }}
 				style={{
 					willChange: "transform, width", // helps with performance
 				}}
-				y={y}
-				initial={{ width: collapsedWidth, x: barX }}
-				animate={{ width: isActive ? realWidth : collapsedWidth, x: barX }}
 				transition={{
-					duration: activeIndex === index ? 0.5 : 1,
+					duration:
+						activeIndex === index
+							? ACTIVE_ANIMATION_DURATION
+							: INACTIVE_ANIMATION_DURATION,
 					type: "spring",
 				}}
-				height={height}
-				fill={fill}
+				y={y}
 			/>
 			{/* Render value text on top of bar */}
 			{isActive && (
 				<motion.text
+					animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+					className={jetBrainsMono.className}
+					exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+					fill={fill}
+					initial={{ opacity: 0, y: -10, filter: "blur(3px)" }}
+					key={index}
 					style={{
 						willChange: "transform, opacity", // helps with performance
 					}}
-					className={jetBrainsMono.className}
-					key={index}
-					initial={{ opacity: 0, y: -10, filter: "blur(3px)" }}
-					animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-					exit={{ opacity: 0, y: -10, filter: "blur(3px)" }}
-					transition={{ duration: 0.1 }}
-					x={textX}
-					y={Number(y) - 5}
 					textAnchor="middle"
-					fill={fill}
+					transition={{ duration: TEXT_ANIMATION_DURATION }}
+					x={textX}
+					y={Number(y) - TEXT_OFFSET_FROM_BAR}
 				>
 					{value}
 				</motion.text>

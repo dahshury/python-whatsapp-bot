@@ -11,12 +11,14 @@ export async function POST(request: NextRequest) {
 			body: JSON.stringify({
 				start_dates,
 				durations,
-				ar: ar || false,
+				ar,
 			}),
 		});
 		return NextResponse.json(result as unknown as Record<string, unknown>);
-	} catch (error) {
-		console.error("Error updating vacation periods:", error);
-		return NextResponse.json({ success: false, message: "Failed to update vacation periods" }, { status: 500 });
+	} catch (_error) {
+		return NextResponse.json(
+			{ success: false, message: "Failed to update vacation periods" },
+			{ status: 500 }
+		);
 	}
 }

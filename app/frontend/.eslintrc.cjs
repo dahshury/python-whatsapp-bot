@@ -1,3 +1,4 @@
+"use strict";
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 module.exports = {
@@ -10,8 +11,16 @@ module.exports = {
 			{
 				patterns: [
 					{
-						group: ["@features/*", "@widgets/*", "@entities/*", "@services/*", "@processes/*", "@shared/*"],
-						message: "Prefer path aliases that respect DDD layers. Avoid deep relative imports across layers.",
+						group: [
+							"@features/*",
+							"@widgets/*",
+							"@entities/*",
+							"@services/*",
+							"@processes/*",
+							"@shared/*",
+						],
+						message:
+							"Prefer path aliases that respect DDD layers. Avoid deep relative imports across layers.",
 					},
 				],
 			},
@@ -90,12 +99,26 @@ module.exports = {
 					{
 						from: ["features"],
 						disallow: ["features", "widgets", "components"],
-						allow: ["entities", "shared", "services", "ui", "libs", "processes"],
+						allow: [
+							"entities",
+							"shared",
+							"services",
+							"ui",
+							"libs",
+							"processes",
+						],
 					},
 					{
 						from: ["widgets"],
 						disallow: ["features", "components"],
-						allow: ["entities", "shared", "services", "ui", "libs", "processes"],
+						allow: [
+							"entities",
+							"shared",
+							"services",
+							"ui",
+							"libs",
+							"processes",
+						],
 					},
 					{
 						from: ["shared"],

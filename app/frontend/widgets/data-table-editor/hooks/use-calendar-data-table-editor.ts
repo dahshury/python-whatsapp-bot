@@ -1,16 +1,16 @@
 import { useCallback, useState } from "react";
 import type { CalendarEvent } from "@/entities/event";
 
-interface DateRange {
+type DateRange = {
 	start: string;
 	end: string;
-}
+};
 
-interface EditorState {
+type EditorState = {
 	open: boolean;
 	dateRange: DateRange | null;
 	shouldLoad: boolean;
-}
+};
 
 export function useCalendarDataTableEditor() {
 	const [state, setState] = useState<EditorState>({

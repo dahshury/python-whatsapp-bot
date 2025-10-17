@@ -5,7 +5,7 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { Scrollbar, type ScrollbarProps } from "react-scrollbars-custom";
 
-export interface ThemedScrollbarProps {
+export type ThemedScrollbarProps = {
 	className?: string;
 	thumbClassName?: string;
 	trackClassName?: string;
@@ -38,7 +38,7 @@ export interface ThemedScrollbarProps {
 	minimalThumbSize?: ScrollbarProps["minimalThumbSize"];
 	maximalThumbSize?: ScrollbarProps["maximalThumbSize"];
 	rtl?: ScrollbarProps["rtl"];
-}
+};
 
 export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 	className,
@@ -76,20 +76,36 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 
 	return (
 		<Scrollbar
-			style={style}
 			className={cn("ScrollbarsCustom-themed", className)}
-			noDefaultStyles={noDefaultStyles}
+			disableTracksWidthCompensation={disableTracksWidthCompensation}
+			minimalThumbSize={minimalThumbSize}
 			mobileNative={mobileNative}
 			momentum={momentum}
-			minimalThumbSize={minimalThumbSize}
-			disableTracksWidthCompensation={disableTracksWidthCompensation}
+			noDefaultStyles={noDefaultStyles}
 			removeTracksWhenNotUsed={removeTracksWhenNotUsed}
+			style={style}
 			{...(elementRef && { elementRef })}
+			contentProps={{
+				className: "ScrollbarsCustom-Content",
+				style: { paddingBottom: 0 },
+			}}
+			scrollerProps={{
+				className: "ScrollbarsCustom-Scroller",
+				style: disableX
+					? ({ overflowX: "hidden", paddingBottom: 0 } as React.CSSProperties)
+					: undefined,
+			}}
 			thumbXProps={{
-				className: cn("ScrollbarsCustom-Thumb ScrollbarsCustom-ThumbX", thumbClassName),
+				className: cn(
+					"ScrollbarsCustom-Thumb ScrollbarsCustom-ThumbX",
+					thumbClassName
+				),
 			}}
 			thumbYProps={{
-				className: cn("ScrollbarsCustom-Thumb ScrollbarsCustom-ThumbY", thumbClassName),
+				className: cn(
+					"ScrollbarsCustom-Thumb ScrollbarsCustom-ThumbY",
+					thumbClassName
+				),
 			}}
 			trackXProps={{
 				className: cn(
@@ -97,24 +113,23 @@ export const ThemedScrollbar: React.FC<ThemedScrollbarProps> = ({
 					disableX ? "hidden" : undefined,
 					trackClassName
 				),
-				style: disableX ? ({ display: "none", height: 0 } as React.CSSProperties) : undefined,
+				style: disableX
+					? ({ display: "none", height: 0 } as React.CSSProperties)
+					: undefined,
 			}}
 			trackYProps={{
-				className: cn("ScrollbarsCustom-Track ScrollbarsCustom-TrackY", trackClassName),
+				className: cn(
+					"ScrollbarsCustom-Track ScrollbarsCustom-TrackY",
+					trackClassName
+				),
 			}}
 			wrapperProps={{
 				className: "ScrollbarsCustom-Wrapper",
 			}}
-			contentProps={{
-				className: "ScrollbarsCustom-Content",
-				style: { paddingBottom: 0 },
-			}}
-			scrollerProps={{
-				className: "ScrollbarsCustom-Scroller",
-				style: disableX ? ({ overflowX: "hidden", paddingBottom: 0 } as React.CSSProperties) : undefined,
-			}}
 			{...(rtl !== undefined && { rtl })}
-			{...Object.fromEntries(Object.entries(otherProps).filter(([_, value]) => value !== undefined))}
+			{...Object.fromEntries(
+				Object.entries(otherProps).filter(([_, value]) => value !== undefined)
+			)}
 		>
 			{children}
 		</Scrollbar>

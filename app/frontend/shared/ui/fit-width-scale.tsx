@@ -1,32 +1,40 @@
 "use client";
 
 import { cn } from "@shared/libs/utils";
-import * as React from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-interface FitWidthScaleProps {
+type FitWidthScaleProps = {
 	className?: string;
-	children: React.ReactNode;
+	children: ReactNode;
 	/** Minimum allowed scale when shrinking */
 	minScale?: number;
 	/** Maximum allowed scale; keep at 1 to avoid upscaling */
 	maxScale?: number;
-}
+};
 
 /**
  * Scales its child horizontally so that the child's natural width fits within
  * the available container width without overflow. Uses a transform scale so
  * layout around the element remains stable. SSR-safe (initial scale is 1).
  */
-export function FitWidthScale({ className = "", children, minScale = 0.7, maxScale = 1 }: FitWidthScaleProps) {
-	const containerRef = React.useRef<HTMLDivElement | null>(null);
-	const contentRef = React.useRef<HTMLDivElement | null>(null);
-	const [scale, setScale] = React.useState<number>(1);
+export function FitWidthScale({
+	className = "",
+	children,
+	minScale = 0.7,
+	maxScale = 1,
+}: FitWidthScaleProps) {
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const contentRef = useRef<HTMLDivElement | null>(null);
+	const [scale, setScale] = useState<number>(1);
 
-	const recompute = React.useCallback(() => {
+	const recompute = useCallback(() => {
 		try {
 			const container = containerRef.current;
 			const content = contentRef.current;
-			if (!container || !content) return;
+			if (!(container && content)) {
+				return;
+			}
 			// Measure widths
 			const available = container.getBoundingClientRect().width;
 			// Temporarily clear transform to read natural width
@@ -34,14 +42,18 @@ export function FitWidthScale({ className = "", children, minScale = 0.7, maxSca
 			content.style.transform = "";
 			const natural = content.getBoundingClientRect().width;
 			content.style.transform = prev;
-			if (natural <= 0 || available <= 0) return;
+			if (natural <= 0 || available <= 0) {
+				return;
+			}
 			const ratio = available / natural;
 			const next = Math.max(minScale, Math.min(maxScale, ratio));
 			setScale(next);
-		} catch {}
+		} catch {
+			// Silently fail if DOM measurement fails
+		}
 	}, [minScale, maxScale]);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		recompute();
 		const onResize = () => recompute();
 		const onOrientation = () => recompute();
@@ -51,27 +63,39 @@ export function FitWidthScale({ className = "", children, minScale = 0.7, maxSca
 		try {
 			if ("ResizeObserver" in window) {
 				ro = new ResizeObserver(() => recompute());
-				if (containerRef.current) ro.observe(containerRef.current);
+				if (containerRef.current) {
+					ro.observe(containerRef.current);
+				}
 			}
-		} catch {}
+		} catch {
+			// ResizeObserver not available in this environment
+		}
 		return () => {
 			window.removeEventListener("resize", onResize);
 			window.removeEventListener("orientationchange", onOrientation);
 			try {
 				ro?.disconnect();
-			} catch {}
+			} catch {
+				// Silently fail if observer cleanup fails
+			}
 		};
 	}, [recompute]);
 
 	return (
-		<div ref={containerRef} className={cn("w-full flex items-center justify-center overflow-visible", className)}>
+		<div
+			className={cn(
+				"flex w-full items-center justify-center overflow-visible",
+				className
+			)}
+			ref={containerRef}
+		>
 			<div
+				className="will-change-transform"
 				ref={contentRef}
 				style={{
 					transform: `scale(${scale})`,
 					transformOrigin: "center center",
 				}}
-				className="will-change-transform"
 			>
 				{children}
 			</div>

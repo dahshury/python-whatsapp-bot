@@ -1,21 +1,26 @@
 import type { DateRestrictions } from "@shared/libs/date/date-restrictions";
 import type { TempusFormat, TempusTheme } from "./tempus-dominus.types";
 
-export interface BuildOptionsParams {
+// Default stepping in minutes when env var is not set or invalid
+const DEFAULT_STEPPING_MINUTES = 120;
+
+export type BuildOptionsParams = {
 	format: TempusFormat;
 	restrictions: DateRestrictions;
 	theme: TempusTheme;
 	locale?: string; // default en-GB
 	steppingMinutes?: number; // default from env or 120
-}
+};
 
 export function getDefaultStepping(): number {
 	try {
 		const env = process.env.NEXT_PUBLIC_SLOT_DURATION_HOURS;
 		const parsed = env !== undefined ? Number(env) : Number.NaN;
-		return Number.isFinite(parsed) && parsed > 0 ? Math.max(1, Math.floor(parsed * 60)) : 120;
+		return Number.isFinite(parsed) && parsed > 0
+			? Math.max(1, Math.floor(parsed * 60))
+			: DEFAULT_STEPPING_MINUTES;
 	} catch {
-		return 120;
+		return DEFAULT_STEPPING_MINUTES;
 	}
 }
 
@@ -41,12 +46,19 @@ export function buildTempusDominusOptions({
 		seconds: false,
 	};
 
-	const formatString = isTime ? "hh:mm A" : isDate ? "dd/MM/yyyy" : "dd/MM/yyyy hh:mm A";
+	let formatString: string;
+	if (isTime) {
+		formatString = "hh:mm A";
+	} else if (isDate) {
+		formatString = "dd/MM/yyyy";
+	} else {
+		formatString = "dd/MM/yyyy hh:mm A";
+	}
 
 	const options = {
 		display: {
 			components,
-			theme: theme,
+			theme,
 			buttons: { today: true, clear: false, close: false },
 			placement: "bottom" as const,
 			keepOpen: true,

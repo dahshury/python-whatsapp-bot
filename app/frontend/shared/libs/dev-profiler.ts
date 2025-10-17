@@ -3,15 +3,25 @@
 
 export const devProfilerEnabled: boolean = false;
 
-export function count(_label: string, _every = 50): void {}
+export function count(_label: string, _every = 50): void {
+	// No-op: profiler disabled
+}
 
-export function mark(_label: string): void {}
+export function mark(_label: string): void {
+	// No-op: profiler disabled
+}
 
-export function reportTop(_limit = 10): void {}
+export function reportTop(_limit = 10): void {
+	// No-op: profiler disabled
+}
+
 export function startReporter(_intervalMs = 3000, _topN = 10): void {
+	// No-op: profiler disabled
 	return;
 }
 
-export function stopReporter(): void {}
+export function stopReporter(): void {
+	// No-op: profiler disabled
+}
 
 // Dev profiler disabled: no global debug bindings

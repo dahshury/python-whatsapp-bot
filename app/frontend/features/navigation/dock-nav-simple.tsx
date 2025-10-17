@@ -7,22 +7,22 @@ import { cn } from "@shared/libs/utils";
 import { buttonVariants } from "@ui/button";
 import { Label } from "@ui/label";
 import { Separator } from "@ui/separator";
-import { BarChart3, Settings } from "lucide-react";
+import { BarChart3, Eye, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import * as React from "react";
+import { useEffect, useState } from "react";
 import { SettingsTabs } from "@/features/settings/settings";
+import { ViewModeToolbar } from "@/features/settings/settings/view-mode-toolbar";
 import { i18n } from "@/shared/libs/i18n";
 import { Dock, DockIcon } from "@/shared/ui/dock";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { StablePopoverButton } from "@/shared/ui/stable-popover-button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
-import { getCalendarViewOptions } from "@/widgets/calendar/CalendarToolbar";
+import { getCalendarViewOptions } from "@/widgets/calendar/calendar-toolbar";
+import type { CalendarCoreRef } from "@/widgets/calendar/types";
 
-interface DockNavSimpleProps {
+type DockNavSimpleProps = {
 	className?: string;
 	currentCalendarView?: string;
 	onCalendarViewChange?: (view: string) => void;
@@ -35,9 +35,9 @@ interface DockNavSimpleProps {
 	isDualMode?: boolean;
 	settingsOpen?: boolean;
 	onSettingsOpenChange?: (open: boolean) => void;
-}
+};
 
-interface DualCalendarViewSelectorProps {
+type DualCalendarViewSelectorProps = {
 	isLocalized?: boolean;
 	leftCalendarView?: string;
 	rightCalendarView?: string;
@@ -46,6 +46,10 @@ interface DualCalendarViewSelectorProps {
 	leftCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	rightCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
 	isDualMode?: boolean;
+};
+
+function noop(): void {
+	// No-op handler
 }
 
 export function DualCalendarViewSelector({
@@ -60,65 +64,91 @@ export function DualCalendarViewSelector({
 	const viewOptions = getCalendarViewOptions(isLocalized);
 
 	return (
-		<div className="grid grid-cols-2 gap-2">
-			<div className="space-y-1.5">
-				<Label className="text-[0.72rem] text-muted-foreground text-center block leading-none">
-					{i18n.getMessage("left_calendar", isLocalized)}
-				</Label>
-				<RadioGroup
-					value={leftCalendarView ?? null}
-					onValueChange={onLeftCalendarViewChange ?? (() => {})}
-					className="grid grid-cols-2 gap-2"
-				>
-					{viewOptions.map((option) => (
-						<div
-							key={`left-${option.value}`}
-							className="border-input [&:has([data-state=checked])]:border-primary/60 relative flex flex-col gap-3 rounded-md border p-3 shadow-xs outline-none"
-						>
-							<div className="flex justify-between gap-2">
-								<RadioGroupItem
-									value={option.value}
-									id={`left-calendar-view-${option.value}`}
-									className="order-1 after:absolute after:inset-0"
-								/>
-								<option.icon className="opacity-70" size={16} aria-hidden="true" />
-							</div>
-							<Label htmlFor={`left-calendar-view-${option.value}`} className="text-[0.82rem] leading-none">
-								{option.label}
-							</Label>
-						</div>
-					))}
-				</RadioGroup>
+		<div className="space-y-3">
+			{/* View Mode Selector */}
+			<div className="flex items-center justify-between gap-2 rounded-md border bg-background/40 p-2 backdrop-blur-sm">
+				<div className="flex items-center gap-1.5">
+					<Eye className="h-3.5 w-3.5" />
+					<span className="font-medium text-[0.8rem] leading-none">
+						{i18n.getMessage("settings_view", isLocalized)}
+					</span>
+				</div>
+				<ViewModeToolbar />
 			</div>
 
-			<div className="space-y-1.5">
-				<Label className="text-[0.72rem] text-muted-foreground text-center block leading-none">
-					{i18n.getMessage("right_calendar", isLocalized)}
-				</Label>
-				<RadioGroup
-					value={rightCalendarView ?? null}
-					onValueChange={onRightCalendarViewChange ?? (() => {})}
-					className="grid grid-cols-2 gap-2"
-				>
-					{viewOptions.map((option) => (
-						<div
-							key={`right-${option.value}`}
-							className="border-input [&:has([data-state=checked])]:border-primary/60 relative flex flex-col gap-3 rounded-md border p-3 shadow-xs outline-none"
-						>
-							<div className="flex justify-between gap-2">
-								<RadioGroupItem
-									value={option.value}
-									id={`right-calendar-view-${option.value}`}
-									className="order-1 after:absolute after:inset-0"
-								/>
-								<option.icon className="opacity-70" size={16} aria-hidden="true" />
-							</div>
-							<Label htmlFor={`right-calendar-view-${option.value}`} className="text-[0.82rem] leading-none">
-								{option.label}
-							</Label>
-						</div>
-					))}
-				</RadioGroup>
+			{/* Calendar View Selectors */}
+			<div className="grid grid-cols-2 gap-2">
+				<div className="space-y-1.5">
+					<Label className="block text-center text-[0.72rem] text-muted-foreground leading-none">
+						{i18n.getMessage("left_calendar", isLocalized)}
+					</Label>
+					<RadioGroup
+						className="grid grid-cols-2 gap-2"
+						onValueChange={onLeftCalendarViewChange ?? noop}
+						value={leftCalendarView ?? null}
+					>
+						{viewOptions.map((option) => {
+							const Icon = option.icon as React.ElementType;
+							return (
+								<div
+									className="relative flex flex-col gap-3 rounded-md border border-input p-3 shadow-xs outline-none [&:has([data-state=checked])]:border-primary/60"
+									key={`left-${option.value}`}
+								>
+									<div className="flex justify-between gap-2">
+										<RadioGroupItem
+											className="order-1 after:absolute after:inset-0"
+											id={`left-calendar-view-${option.value}`}
+											value={option.value}
+										/>
+										<Icon aria-hidden="true" className="opacity-70" size={16} />
+									</div>
+									<Label
+										className="text-[0.82rem] leading-none"
+										htmlFor={`left-calendar-view-${option.value}`}
+									>
+										{option.label}
+									</Label>
+								</div>
+							);
+						})}
+					</RadioGroup>
+				</div>
+
+				<div className="space-y-1.5">
+					<Label className="block text-center text-[0.72rem] text-muted-foreground leading-none">
+						{i18n.getMessage("right_calendar", isLocalized)}
+					</Label>
+					<RadioGroup
+						className="grid grid-cols-2 gap-2"
+						onValueChange={onRightCalendarViewChange ?? noop}
+						value={rightCalendarView ?? null}
+					>
+						{viewOptions.map((option) => {
+							const Icon = option.icon as React.ElementType;
+							return (
+								<div
+									className="relative flex flex-col gap-3 rounded-md border border-input p-3 shadow-xs outline-none [&:has([data-state=checked])]:border-primary/60"
+									key={`right-${option.value}`}
+								>
+									<div className="flex justify-between gap-2">
+										<RadioGroupItem
+											className="order-1 after:absolute after:inset-0"
+											id={`right-calendar-view-${option.value}`}
+											value={option.value}
+										/>
+										<Icon aria-hidden="true" className="opacity-70" size={16} />
+									</div>
+									<Label
+										className="text-[0.82rem] leading-none"
+										htmlFor={`right-calendar-view-${option.value}`}
+									>
+										{option.label}
+									</Label>
+								</div>
+							);
+						})}
+					</RadioGroup>
+				</div>
 			</div>
 		</div>
 	);
@@ -142,16 +172,17 @@ export function DockNavSimple({
 	const { isLocalized } = useLanguage();
 	const { freeRoam, showDualCalendar } = useSettings();
 	const { theme: _theme } = useTheme();
-	const [mounted, setMounted] = React.useState(false);
-	const [activeTab, setActiveTab] = React.useState("view");
-	const [internalOpen, setInternalOpen] = React.useState(false);
+	const [mounted, setMounted] = useState(false);
+	const [activeTab, setActiveTab] = useState("view");
+	const [internalOpen, setInternalOpen] = useState(false);
 	const isControlled = typeof controlledOpen === "boolean";
-	const settingsOpen = isControlled ? (controlledOpen as boolean) : internalOpen;
-	const [suppressTooltip, setSuppressTooltip] = React.useState(false);
+	const settingsOpen = isControlled
+		? (controlledOpen as boolean)
+		: internalOpen;
 
 	const isCalendarPage = pathname === "/";
 
-	React.useEffect(() => {
+	useEffect(() => {
 		setMounted(true);
 	}, []);
 
@@ -161,15 +192,19 @@ export function DockNavSimple({
 		} else {
 			setInternalOpen(next);
 		}
-		if (!next) {
-			setSuppressTooltip(true);
-			window.setTimeout(() => setSuppressTooltip(false), 300);
-		}
 	};
 
-	// Reset to view tab if vacation tab is selected but disabled
-	const viewMode = freeRoam ? "freeRoam" : showDualCalendar ? "dual" : "default";
-	React.useEffect(() => {
+	// Determine view mode
+	let viewMode: "freeRoam" | "dual" | "default";
+	if (freeRoam) {
+		viewMode = "freeRoam";
+	} else if (showDualCalendar) {
+		viewMode = "dual";
+	} else {
+		viewMode = "default";
+	}
+
+	useEffect(() => {
 		if (activeTab === "vacation" && viewMode !== "default") {
 			setActiveTab("view");
 		}
@@ -179,99 +214,125 @@ export function DockNavSimple({
 		onCalendarViewChange?.(view);
 	};
 
-	const handleLeftCalendarViewChange = (view: string) => {
-		if (leftCalendarRef?.current) {
-			const api = leftCalendarRef.current.getApi?.();
-			if (api) {
-				const doChange = () => {
-					try {
-						// Clear constraints before changing view to avoid plugin issues
-						api.setOption("validRange", undefined);
-						api.setOption("eventConstraint", undefined);
-						api.setOption("selectConstraint", undefined);
-					} catch {}
+	// Helper to check if view is multimonth
+	const isMultiMonthView = (view: string) =>
+		view.toLowerCase() === "multimonthyear";
 
-					try {
-						api.changeView(view);
-					} catch {}
+	// Helper to check if view is timegrid
+	const isTimegridView = (view: string) =>
+		view.toLowerCase().includes("timegrid");
 
-					// Reapply constraints only for non-multimonth views
-					try {
-						const lower = (view || "").toLowerCase();
-						const isMultiMonth = lower === "multimonthyear";
-						if (!isMultiMonth) {
-							api.setOption("validRange", freeRoam ? undefined : getValidRange(freeRoam));
-							if (lower.includes("timegrid")) {
-								api.setOption("eventConstraint", freeRoam ? undefined : "businessHours");
-								api.setOption("selectConstraint", freeRoam ? undefined : "businessHours");
-							}
-						}
-						// let the layout settle
-						requestAnimationFrame(() => {
-							try {
-								api.updateSize?.();
-							} catch {}
-						});
-					} catch {}
-				};
-
-				// If view is not ready yet, delay the change slightly
-				if (!(api?.view && (api as unknown as { view: { type?: string } }).view?.type)) {
-					setTimeout(doChange, 50);
-				} else {
-					doChange();
-				}
-			}
+	// Helper to set time-based constraints
+	const setTimeGridConstraints = (apiObj: Record<string, unknown>) => {
+		try {
+			(
+				apiObj.setOption as ((key: string, value: unknown) => void) | undefined
+			)?.("eventConstraint", freeRoam ? undefined : "businessHours");
+			(
+				apiObj.setOption as ((key: string, value: unknown) => void) | undefined
+			)?.("selectConstraint", freeRoam ? undefined : "businessHours");
+		} catch {
+			// Calendar API may fail in some contexts
 		}
-		onLeftCalendarViewChange?.(view);
 	};
 
-	const handleRightCalendarViewChange = (view: string) => {
-		if (rightCalendarRef?.current) {
-			const api = rightCalendarRef.current.getApi?.();
-			if (api) {
-				const doChange = () => {
-					try {
-						api.setOption("validRange", undefined);
-						api.setOption("eventConstraint", undefined);
-						api.setOption("selectConstraint", undefined);
-					} catch {}
+	// Helper to clear calendar constraints before view change
+	const clearViewConstraints = (apiObj: Record<string, unknown>) => {
+		try {
+			(
+				apiObj.setOption as ((key: string, value: unknown) => void) | undefined
+			)?.("validRange", undefined);
+			(
+				apiObj.setOption as ((key: string, value: unknown) => void) | undefined
+			)?.("eventConstraint", undefined);
+			(
+				apiObj.setOption as ((key: string, value: unknown) => void) | undefined
+			)?.("selectConstraint", undefined);
+		} catch {
+			// Calendar API may fail in some contexts
+		}
+	};
 
-					try {
-						api.changeView(view);
-					} catch {}
+	// Helper to reapply constraints after view change
+	const reapplyViewConstraints = (
+		apiObj: Record<string, unknown>,
+		view: string
+	) => {
+		try {
+			if (isMultiMonthView(view)) {
+				return; // Skip for multimonth views
+			}
+			(
+				apiObj.setOption as ((key: string, value: unknown) => void) | undefined
+			)?.("validRange", freeRoam ? undefined : getValidRange(freeRoam));
+			if (isTimegridView(view)) {
+				setTimeGridConstraints(apiObj);
+			}
+		} catch {
+			// Calendar API may fail in some contexts
+		}
+	};
 
-					try {
-						const lower = (view || "").toLowerCase();
-						const isMultiMonth = lower === "multimonthyear";
-						if (!isMultiMonth) {
-							api.setOption("validRange", freeRoam ? undefined : getValidRange(freeRoam));
-							if (lower.includes("timegrid")) {
-								api.setOption("eventConstraint", freeRoam ? undefined : "businessHours");
-								api.setOption("selectConstraint", freeRoam ? undefined : "businessHours");
-							}
-						}
-						requestAnimationFrame(() => {
-							try {
-								api.updateSize?.();
-							} catch {}
-						});
-					} catch {}
-				};
+	// Helper to perform the actual view change
+	const performViewChange = (apiObj: Record<string, unknown>, view: string) => {
+		try {
+			(apiObj.changeView as (v: string) => void)?.(view);
+		} catch {
+			// Calendar API may fail in some contexts
+		}
+	};
 
-				if (!(api?.view && (api as unknown as { view: { type?: string } }).view?.type)) {
-					setTimeout(doChange, 50);
-				} else {
-					doChange();
+	// Helper to update layout after view change
+	const updateCalendarLayout = (apiObj: Record<string, unknown>) => {
+		try {
+			requestAnimationFrame(() => {
+				try {
+					(apiObj.updateSize as () => void)?.();
+				} catch {
+					// Calendar API may fail in some contexts
+				}
+			});
+		} catch {
+			// Calendar API may fail in some contexts
+		}
+	};
+
+	// Helper to change calendar view with proper constraints
+	const createViewChangeHandler =
+		(
+			calendarRef: React.RefObject<CalendarCoreRef | null> | null | undefined,
+			onViewChange?: (view: string) => void
+		) =>
+		(view: string) => {
+			if (calendarRef?.current?.getApi) {
+				const api = calendarRef.current.getApi();
+				if (api) {
+					const apiObj = api as unknown as Record<string, unknown>;
+					clearViewConstraints(apiObj);
+					performViewChange(apiObj, view);
+					reapplyViewConstraints(apiObj, view);
+					updateCalendarLayout(apiObj);
 				}
 			}
-		}
-		onRightCalendarViewChange?.(view);
-	};
+			onViewChange?.(view);
+		};
+
+	const handleLeftCalendarViewChange = createViewChangeHandler(
+		leftCalendarRef,
+		onLeftCalendarViewChange
+	);
+	const handleRightCalendarViewChange = createViewChangeHandler(
+		rightCalendarRef,
+		onRightCalendarViewChange
+	);
 
 	const isActive = (href: string) => {
-		if (href === "/" && pathname === "/") return true;
-		if (href !== "/" && pathname.startsWith(href)) return true;
+		if (href === "/" && pathname === "/") {
+			return true;
+		}
+		if (href !== "/" && pathname.startsWith(href)) {
+			return true;
+		}
 		return false;
 	};
 
@@ -280,98 +341,85 @@ export function DockNavSimple({
 	}
 
 	return (
-		<TooltipProvider>
-			<Dock direction="middle" className={cn("h-auto min-h-[2.25rem]", className)}>
-				<DockIcon>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Link
-								href="/dashboard"
-								aria-label={i18n.getMessage("dashboard_title", isLocalized)}
-								className={cn(
-									buttonVariants({
-										variant: isActive("/dashboard") ? "default" : "ghost",
-										size: "icon",
-									}),
-									"size-9 rounded-full transition-all duration-200",
-									isActive("/dashboard") && "shadow-lg"
-								)}
-							>
-								<BarChart3 className="size-4" />
-							</Link>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{i18n.getMessage("dashboard_title", isLocalized)}</p>
-						</TooltipContent>
-					</Tooltip>
-				</DockIcon>
+		<Dock
+			className={cn("h-auto min-h-[2.25rem]", className)}
+			direction="middle"
+		>
+			<DockIcon>
+				<Link
+					aria-label={i18n.getMessage("dashboard_title", isLocalized)}
+					className={cn(
+						buttonVariants({
+							variant: isActive("/dashboard") ? "default" : "ghost",
+							size: "icon",
+						}),
+						"size-9 rounded-full transition-all duration-200",
+						isActive("/dashboard") && "shadow-lg"
+					)}
+					href="/dashboard"
+				>
+					<BarChart3 className="size-4" />
+				</Link>
+			</DockIcon>
 
-				{/* Separator */}
-				<Separator orientation="vertical" className="h-full py-2" />
+			{/* Separator */}
+			<Separator className="h-full py-2" orientation="vertical" />
 
-				{/* Settings Popover */}
-				<DockIcon>
-					<Popover open={settingsOpen} onOpenChange={handleSettingsOpenChange}>
-						<Tooltip {...(settingsOpen || suppressTooltip ? { open: false } : {})}>
-							<TooltipTrigger asChild>
-								<PopoverTrigger asChild>
-									<StablePopoverButton
-										className="size-9 rounded-full transition-colors duration-300 ease-out"
-										aria-label={i18n.getMessage("settings", isLocalized)}
-										variant={settingsOpen ? "default" : "ghost"}
-									>
-										<Settings
-											className={cn(
-												"size-4 transform transition-transform duration-300 ease-out",
-												settingsOpen ? "rotate-90" : "rotate-0"
-											)}
-										/>
-									</StablePopoverButton>
-								</PopoverTrigger>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>{i18n.getMessage("settings", isLocalized)}</p>
-							</TooltipContent>
-						</Tooltip>
-
-						<PopoverContent
-							align="center"
-							className="w-auto max-w-[31.25rem] bg-background/70 backdrop-blur-md border-border/40"
+			{/* Settings Popover */}
+			<DockIcon>
+				<Popover onOpenChange={handleSettingsOpenChange} open={settingsOpen}>
+					<PopoverTrigger asChild>
+						<StablePopoverButton
+							aria-label={i18n.getMessage("settings", isLocalized)}
+							className="size-9 rounded-full transition-colors duration-300 ease-out"
+							variant={settingsOpen ? "default" : "ghost"}
 						>
-							{_isDualMode && viewMode === "dual" ? (
-								<SettingsTabs
-									isLocalized={isLocalized}
-									activeTab={activeTab}
-									onTabChange={setActiveTab}
-									currentCalendarView={currentCalendarView}
-									onCalendarViewChange={handleCalendarViewChange}
-									isCalendarPage={isCalendarPage}
-									customViewSelector={
-										<DualCalendarViewSelector
-											isLocalized={isLocalized}
-											leftCalendarView={leftCalendarView}
-											rightCalendarView={rightCalendarView}
-											onLeftCalendarViewChange={handleLeftCalendarViewChange}
-											onRightCalendarViewChange={handleRightCalendarViewChange}
-											leftCalendarRef={leftCalendarRef || null}
-											rightCalendarRef={rightCalendarRef || null}
-										/>
-									}
-								/>
-							) : (
-								<SettingsTabs
-									isLocalized={isLocalized}
-									activeTab={activeTab}
-									onTabChange={setActiveTab}
-									currentCalendarView={currentCalendarView}
-									onCalendarViewChange={handleCalendarViewChange}
-									isCalendarPage={isCalendarPage}
-								/>
-							)}
-						</PopoverContent>
-					</Popover>
-				</DockIcon>
-			</Dock>
-		</TooltipProvider>
+							<Settings
+								className={cn(
+									"size-4 transform transition-transform duration-300 ease-out",
+									settingsOpen ? "rotate-90" : "rotate-0"
+								)}
+							/>
+						</StablePopoverButton>
+					</PopoverTrigger>
+
+					<PopoverContent
+						align="center"
+						className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
+					>
+						{_isDualMode && viewMode === "dual" ? (
+							<SettingsTabs
+								activeTab={activeTab}
+								currentCalendarView={currentCalendarView}
+								customViewSelector={
+									<DualCalendarViewSelector
+										isLocalized={isLocalized}
+										leftCalendarRef={leftCalendarRef || null}
+										leftCalendarView={leftCalendarView}
+										onLeftCalendarViewChange={handleLeftCalendarViewChange}
+										onRightCalendarViewChange={handleRightCalendarViewChange}
+										rightCalendarRef={rightCalendarRef || null}
+										rightCalendarView={rightCalendarView}
+									/>
+								}
+								isCalendarPage={isCalendarPage}
+								isLocalized={isLocalized}
+								onCalendarViewChange={handleCalendarViewChange}
+								onTabChange={setActiveTab}
+							/>
+						) : (
+							<SettingsTabs
+								activeTab={activeTab}
+								currentCalendarView={currentCalendarView}
+								isCalendarPage={isCalendarPage}
+								isLocalized={isLocalized}
+								onCalendarViewChange={handleCalendarViewChange}
+								onTabChange={setActiveTab}
+							/>
+						)}
+					</PopoverContent>
+				</Popover>
+			</DockIcon>
+		</Dock>
 	);
 }

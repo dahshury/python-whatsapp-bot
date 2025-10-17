@@ -7,14 +7,17 @@ export async function POST(request: Request) {
 		const wa_id = searchParams.get("wa_id");
 
 		if (!wa_id) {
-			return NextResponse.json({ success: false, message: "Missing required parameter: wa_id" }, { status: 400 });
+			return NextResponse.json(
+				{ success: false, message: "Missing required parameter: wa_id" },
+				{ status: 400 }
+			);
 		}
 
 		const body = await request.json();
 		const { role, message, date, time } = body;
 
 		// Validate required fields
-		if (!role || !message || !date || !time) {
+		if (!(role && message && date && time)) {
 			return NextResponse.json(
 				{
 					success: false,
@@ -37,7 +40,6 @@ export async function POST(request: Request) {
 
 		return NextResponse.json(backendResponse);
 	} catch (error) {
-		console.error("Error appending message to conversation via Python backend:", error);
 		return NextResponse.json(
 			{
 				success: false,

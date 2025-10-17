@@ -1,3 +1,4 @@
+// biome-ignore lint: Intentional barrel file for settings exports
 export { GeneralSettings } from "./general-settings";
 export { SettingsPopover } from "./settings-popover";
 export { SettingsTabs } from "./settings-tabs";

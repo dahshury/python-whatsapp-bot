@@ -4,7 +4,16 @@ export default function DemoOne() {
 	return <UserDropdown />;
 }
 
-import { Bell, HelpCircle, Home, Lock, Mail, Settings, Shield, User } from "lucide-react";
+import {
+	Bell,
+	HelpCircle,
+	Home,
+	Lock,
+	Mail,
+	Settings,
+	Shield,
+	User,
+} from "lucide-react";
 import { ExpandableTabs } from "@/shared/ui/expandable-tabs";
 import { HeroPill, StarIcon } from "@/shared/ui/hero-pill";
 
@@ -15,7 +24,13 @@ function HeroPillDemo() {
 
 			<HeroPill
 				icon={
-					<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" className="fill-zinc-500">
+					<svg
+						className="fill-zinc-500"
+						height="12"
+						viewBox="0 0 24 24"
+						width="12"
+						xmlns="http://www.w3.org/2000/svg"
+					>
 						<title>Triangle icon</title>
 						<path d="M12 2L1 21h22L12 2z" />
 					</svg>
@@ -55,9 +70,13 @@ function CustomColorDemo() {
 
 	return (
 		<div className="flex flex-col gap-4">
-			<ExpandableTabs tabs={tabs} activeColor="text-blue-500" className="border-blue-200 dark:border-blue-800" />
+			<ExpandableTabs
+				activeColor="text-blue-500"
+				className="border-blue-200 dark:border-blue-800"
+				tabs={tabs}
+			/>
 		</div>
 	);
 }
 
-export { DefaultDemo, CustomColorDemo };
+export { CustomColorDemo, DefaultDemo };

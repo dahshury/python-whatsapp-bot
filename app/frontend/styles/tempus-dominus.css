@@ -31,11 +31,11 @@
 	font-size: 0.875rem;
 
 	/* Disable enhanced focus styles that cause auto-selection appearance
-  *:focus {
-    outline: none !important;
-    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
-  }
-  */
+   *:focus {
+     outline: none !important;
+     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+   }
+   */
 }
 
 /* Light theme specific */
@@ -555,7 +555,10 @@
 	transition: all 0.15s ease;
 }
 
-.tempus-dominus-widget .td-picker-header .td-picker-header-row button:hover:not(:disabled) {
+.tempus-dominus-widget
+	.td-picker-header
+	.td-picker-header-row
+	button:hover:not(:disabled) {
 	background-color: var(--td-hover-bg);
 	color: var(--td-hover-color);
 }
@@ -612,7 +615,10 @@
 	cursor: default;
 }
 
-.tempus-dominus-widget.tempus-dominus-widget-readonly table td [data-action]:hover {
+.tempus-dominus-widget.tempus-dominus-widget-readonly
+	table
+	td
+	[data-action]:hover {
 	background: none;
 }
 
@@ -649,8 +655,8 @@ body:has([data-radix-dialog-overlay]) .tempus-dominus-widget {
 .tempus-dominus-widget button:focus {
 	outline: none;
 	/* Disabled to prevent auto-selection appearance
-  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
-  */
+   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2) !important;
+   */
 }
 
 /* Theme-specific adjustments for different theme classes */

@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadCachedState, persistState } from "@/shared/libs/ws/cache";
 import { reduceOnMessage } from "@/shared/libs/ws/reducer";
-import type { UpdateType, WebSocketDataState, WebSocketMessage } from "@/shared/libs/ws/types";
+import type {
+	UpdateType,
+	WebSocketDataState,
+	WebSocketMessage,
+} from "@/shared/libs/ws/types";
 import { resolveWebSocketUrl } from "@/shared/libs/ws/url";
 
 // Toggle verbose WebSocket error logging via env flag (default: off)
 const WS_DEBUG = process.env.NEXT_PUBLIC_WS_DEBUG === "true";
 
-// Extend globalThis to include custom properties
-declare global {
-	interface Window {
-		__prom_metrics__?: Record<string, unknown>;
-		__wsConnection?: unknown;
-	}
-}
+// Constants
+const MILLISECONDS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const CACHE_TTL_MS =
+	MILLISECONDS_PER_SECOND * SECONDS_PER_MINUTE * MINUTES_PER_HOUR; // 1 hour
+const HEARTBEAT_INTERVAL_MS = 25_000; // 25 seconds
+const LOCK_RETRY_DELAY_MS = 150; // 150ms
+const MAX_RECONNECT_DELAY_MS = 15_000; // 15 seconds
+const RECONNECT_JITTER_MS = 300; // Random jitter up to 300ms
+const SNAPSHOT_REQUEST_DELAY_FAST_MS = 50; // First snapshot request
+const SNAPSHOT_REQUEST_DELAY_MID_MS = 200; // Second snapshot request
+const SNAPSHOT_REQUEST_DELAY_SLOW_MS = 500; // Third snapshot request
+const NORMAL_CLOSE_CODE = 1000;
+const LOCAL_OPS_TIMEOUT_MS = 5000; // 5 seconds
+const DISCONNECT_PENDING_MS = 500; // 500ms
+const SNAPSHOT_RECONNECT_DELAY_MS = 300; // Delay before sending snapshot after reconnect
 
 // Helper function to set window properties safely
 function setWindowProperty<T>(property: string, value: T): void {
@@ -24,7 +38,7 @@ function setWindowProperty<T>(property: string, value: T): void {
 
 // (Types moved to '@shared/libs/ws/types')
 
-interface UseWebSocketDataOptions {
+type UseWebSocketDataOptions = {
 	autoReconnect?: boolean;
 	maxReconnectAttempts?: number;
 	reconnectInterval?: number;
@@ -33,7 +47,7 @@ interface UseWebSocketDataOptions {
 		updateTypes?: UpdateType[];
 		entityIds?: string[];
 	};
-}
+};
 
 // Global/shared state to coordinate a single WS connection across subscribers and bundles
 // Store on globalThis to avoid duplicate sockets when modules are bundled separately (StrictMode/HMR/routes)
@@ -47,13 +61,188 @@ const __g =
 	}) || {};
 
 if (typeof globalThis !== "undefined") {
-	if (typeof __g.__wsLock !== "boolean") __g.__wsLock = false;
-	if (typeof __g.__wsInstance === "undefined") __g.__wsInstance = null;
-	if (typeof __g.__wsConnectTs !== "number") __g.__wsConnectTs = 0;
-	if (typeof __g.__wsSubs !== "number") __g.__wsSubs = 0;
+	if (typeof __g.__wsLock !== "boolean") {
+		__g.__wsLock = false;
+	}
+	if (typeof __g.__wsInstance === "undefined") {
+		__g.__wsInstance = null;
+	}
+	if (typeof __g.__wsConnectTs !== "number") {
+		__g.__wsConnectTs = 0;
+	}
+	if (typeof __g.__wsSubs !== "number") {
+		__g.__wsSubs = 0;
+	}
 }
 
 let nextInstanceId = 1;
+
+type SocketCloseHandlerOptions = {
+	event: CloseEvent;
+	wsRef: React.MutableRefObject<WebSocket | null>;
+	pingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>;
+	reconnectTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
+	connectingRef: React.MutableRefObject<boolean>;
+	autoReconnect: boolean;
+	reconnectInterval: number;
+	maxReconnectAttempts: number;
+	reconnectAttemptsRef: React.MutableRefObject<number>;
+	connect: () => void;
+	setState: (fn: (prev: WebSocketDataState) => WebSocketDataState) => void;
+};
+
+function handleSocketClose(opts: SocketCloseHandlerOptions): void {
+	const {
+		event,
+		wsRef,
+		pingIntervalRef,
+		reconnectTimeoutRef,
+		connectingRef,
+		autoReconnect,
+		reconnectInterval,
+		maxReconnectAttempts,
+		reconnectAttemptsRef,
+		connect,
+		setState,
+	} = opts;
+
+	setState((prev) => ({ ...prev, isConnected: false }));
+	if (pingIntervalRef.current) {
+		clearInterval(pingIntervalRef.current);
+		pingIntervalRef.current = null;
+	}
+	if (wsRef.current === (event.target as WebSocket)) {
+		wsRef.current = null;
+	}
+	if (__g.__wsInstance === (event.target as WebSocket)) {
+		__g.__wsInstance = null;
+	}
+	__g.__wsLock = false;
+	try {
+		setWindowProperty("__wsConnection", null);
+	} catch {
+		// Window property clear failed; silently ignore
+	}
+	connectingRef.current = false;
+	if (
+		autoReconnect &&
+		event.code !== NORMAL_CLOSE_CODE &&
+		reconnectAttemptsRef.current < maxReconnectAttempts
+	) {
+		reconnectAttemptsRef.current++;
+		const base = reconnectInterval * Math.max(1, reconnectAttemptsRef.current);
+		const delay =
+			Math.min(base, MAX_RECONNECT_DELAY_MS) +
+			Math.floor(Math.random() * RECONNECT_JITTER_MS);
+		if (reconnectTimeoutRef.current) {
+			clearTimeout(reconnectTimeoutRef.current);
+		}
+		reconnectTimeoutRef.current = setTimeout(() => connect(), delay);
+	}
+}
+
+function setupHeartbeat(
+	wsRef: React.MutableRefObject<WebSocket | null>,
+	pingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>
+): void {
+	if (!pingIntervalRef.current) {
+		pingIntervalRef.current = setInterval(() => {
+			try {
+				if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+					wsRef.current.send(JSON.stringify({ type: "ping" }));
+				}
+			} catch {
+				// Heartbeat send failed; will retry on next interval
+			}
+		}, HEARTBEAT_INTERVAL_MS);
+	}
+}
+
+type SocketEventHandlerOptions = {
+	socket: WebSocket;
+	onSocketOpen: (webSocket: WebSocket) => void;
+	processMessage: (message: WebSocketMessage) => void;
+	messageQueueRef: React.MutableRefObject<WebSocketMessage[]>;
+	connectingRef: React.MutableRefObject<boolean>;
+	handleCloseEvent: (event: CloseEvent) => void;
+};
+
+function setupSocketEventHandlers(opts: SocketEventHandlerOptions): void {
+	const {
+		socket,
+		onSocketOpen,
+		processMessage,
+		messageQueueRef,
+		connectingRef,
+		handleCloseEvent,
+	} = opts;
+
+	socket.onopen = () => onSocketOpen(socket);
+	socket.onmessage = (event) => {
+		try {
+			const message: WebSocketMessage = JSON.parse(event.data);
+			processMessage(message);
+			if (message.type === "snapshot") {
+				messageQueueRef.current = [];
+			}
+		} catch {
+			// Message parse failed; silently ignore
+		}
+	};
+	socket.onclose = (event) => {
+		handleCloseEvent(event as CloseEvent);
+	};
+	socket.onerror = () => {
+		if (WS_DEBUG) {
+			// Debug: socket error
+		}
+		connectingRef.current = false;
+		__g.__wsLock = false;
+	};
+}
+
+function clearSocketEventHandlers(socket: WebSocket): void {
+	try {
+		socket.onclose = null;
+	} catch {
+		// Event handler clear failed; silently ignore
+	}
+	try {
+		socket.onerror = null;
+	} catch {
+		// Event handler clear failed; silently ignore
+	}
+	try {
+		socket.onopen = null;
+	} catch {
+		// Event handler clear failed; silently ignore
+	}
+	try {
+		socket.onmessage = null;
+	} catch {
+		// Event handler clear failed; silently ignore
+	}
+}
+
+function isExistingInstanceUsable(): boolean {
+	return (
+		__g.__wsInstance !== null &&
+		[WebSocket.OPEN, WebSocket.CONNECTING].includes(
+			(__g.__wsInstance as WebSocket).readyState as 0 | 1
+		)
+	);
+}
+
+function isAlreadyConnecting(
+	wsRef: React.MutableRefObject<WebSocket | null>,
+	connectingRef: React.MutableRefObject<boolean>
+): boolean {
+	return (
+		wsRef.current?.readyState === WebSocket.CONNECTING ||
+		wsRef.current?.readyState === WebSocket.OPEN ||
+		connectingRef.current
+	);
+}
 
 export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	const {
@@ -66,24 +255,16 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 	// Stable per-mount instance id for debugging (only log in dev mode with WS_DEBUG=true)
 	const instanceIdRef = useRef<number>(0);
-	if (instanceIdRef.current === 0) instanceIdRef.current = nextInstanceId++;
-	if (WS_DEBUG) {
-		console.log(
-			"🔧 [DEBUG] useWebSocketData hook called, instance:",
-			instanceIdRef.current,
-			"subscribers:",
-			__g.__wsSubs as number,
-			"global lock:",
-			Boolean(__g.__wsLock),
-			"global instance:",
-			Boolean(__g.__wsInstance)
-		);
+	if (instanceIdRef.current === 0) {
+		instanceIdRef.current = nextInstanceId++;
+		if (WS_DEBUG) {
+			// Debug: instance created
+		}
 	}
 
-	// Cache TTL (keep last good snapshot to avoid UI flicker on refresh)
-	const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hour
-
-	const [state, setState] = useState<WebSocketDataState>(() => loadCachedState(CACHE_TTL_MS));
+	const [state, setState] = useState<WebSocketDataState>(() =>
+		loadCachedState(CACHE_TTL_MS)
+	);
 
 	const wsRef = useRef<WebSocket | null>(null);
 	const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -92,6 +273,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	const connectingRef = useRef(false); // Prevent multiple connection attempts
 	const isConnectedRef = useRef(false);
 	const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+	const lockRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
 	useEffect(() => {
 		isConnectedRef.current = state.isConnected;
@@ -112,117 +294,128 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			if (type === "metrics_updated" || type === "snapshot") {
 				setWindowProperty("__prom_metrics__", payload.metrics || {});
 			}
-		} catch {}
+		} catch {
+			// Metrics update failed; silently ignore
+		}
 		try {
 			setTimeout(() => {
 				try {
 					// Pass the entire message to preserve all fields (error, timestamp, etc.)
 					const evt = new CustomEvent("realtime", { detail: message });
 					window.dispatchEvent(evt);
-				} catch {}
+				} catch {
+					// Event dispatch failed; silently ignore
+				}
 			}, 0);
-		} catch {}
+		} catch {
+			// setTimeout failed; silently ignore
+		}
 
 		// Do not call notifyUpdate here to avoid duplicate toasts; handled via RealtimeEventBus -> ToastRouter
 	}, []);
 
 	// Connect to WebSocket - now stable function with auto-reconnect
+	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: WebSocket connection logic requires complex state checks
 	const connect = useCallback(() => {
-		console.log("🔧 [DEBUG] connect() called, checking global lock and instance");
+		const scheduleLockRetry = () => {
+			if (lockRetryTimeoutRef.current) {
+				return;
+			}
+			lockRetryTimeoutRef.current = setTimeout(() => {
+				lockRetryTimeoutRef.current = null;
+				connect();
+			}, LOCK_RETRY_DELAY_MS);
+		};
 
-		// First check if there's already a working or connecting global instance
-		if (
-			__g.__wsInstance &&
-			[WebSocket.OPEN, WebSocket.CONNECTING].includes((__g.__wsInstance as WebSocket).readyState as 0 | 1)
-		) {
-			console.log(
-				"🔧 [DEBUG] Reusing existing global WebSocket instance (state:",
-				(__g.__wsInstance as WebSocket).readyState,
-				")"
-			);
-			const ws = __g.__wsInstance as WebSocket;
-			wsRef.current = ws;
-			// Ensure global window reference is set even when reusing an already-open instance
+		const clearLockRetry = () => {
+			if (lockRetryTimeoutRef.current) {
+				clearTimeout(lockRetryTimeoutRef.current);
+				lockRetryTimeoutRef.current = null;
+			}
+		};
+
+		const onSocketOpen = (ws: WebSocket) => {
+			setState((prev) => ({ ...prev, isConnected: true }));
+			reconnectAttemptsRef.current = 0;
+			connectingRef.current = false;
+			__g.__wsLock = false;
+			__g.__wsInstance = ws;
+			__g.__wsConnectTs = Date.now();
+			clearLockRetry();
 			try {
 				setWindowProperty("__wsConnection", wsRef);
-			} catch {}
-			// Rebind handlers to this hook instance to avoid stale closures after StrictMode remounts
-			try {
-				ws.onmessage = (event) => {
-					try {
-						const message: WebSocketMessage = JSON.parse(event.data);
-						processMessage(message);
-						if (message.type === "snapshot") {
-							messageQueueRef.current = [];
-						}
-					} catch (error) {
-						console.warn("Error parsing WebSocket message:", error);
-					}
-				};
-				ws.onclose = (event) => {
-					console.log("🔧 [DEBUG] WebSocket onclose event:", event.code, event.reason);
-					setState((prev) => ({ ...prev, isConnected: false }));
-					if (pingIntervalRef.current) {
-						clearInterval(pingIntervalRef.current);
-						pingIntervalRef.current = null;
-					}
-					if (wsRef.current === ws) wsRef.current = null;
-					if (__g.__wsInstance === ws) {
-						if (WS_DEBUG) console.log("🔧 [DEBUG] Clearing global WebSocket instance");
-						__g.__wsInstance = null;
-					}
-					__g.__wsLock = false;
-					try {
-						setWindowProperty("__wsConnection", null);
-					} catch {}
-					connectingRef.current = false;
-
-					if (autoReconnect && event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-						reconnectAttemptsRef.current++;
-						const base = reconnectInterval * Math.max(1, reconnectAttemptsRef.current);
-						const delay = Math.min(base, 15000) + Math.floor(Math.random() * 300);
-						if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-						reconnectTimeoutRef.current = setTimeout(() => {
-							connect();
-						}, delay);
-					}
-				};
-				ws.onerror = (error) => {
-					if (WS_DEBUG) console.debug("🔧 [DEBUG] WebSocket error:", error);
-					connectingRef.current = false;
-					__g.__wsLock = false;
-				};
-				// Ensure ping heartbeat exists
-				if (!pingIntervalRef.current) {
-					pingIntervalRef.current = setInterval(() => {
-						try {
-							if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-								wsRef.current.send(JSON.stringify({ type: "ping" }));
-							}
-						} catch {}
-					}, 25000);
+			} catch {
+				// Window property set failed; silently ignore
+			}
+			setupHeartbeat(wsRef, pingIntervalRef);
+			if (filters) {
+				try {
+					ws.send(JSON.stringify({ type: "set_filter", filters }));
+				} catch {
+					// Filter send failed; silently ignore
 				}
-			} catch {}
-			// If already open, mark connected; if connecting, let onopen flip the flag
+			}
+			try {
+				ws.send(JSON.stringify({ type: "get_snapshot" }));
+			} catch {
+				// Snapshot request failed; silently ignore
+			}
+		};
+
+		// First check if there's already a working or connecting global instance
+		if (isExistingInstanceUsable()) {
+			const ws = __g.__wsInstance as WebSocket;
+			wsRef.current = ws;
+			try {
+				setWindowProperty("__wsConnection", wsRef);
+			} catch {
+				// Window property set failed; silently ignore
+			}
+			try {
+				setupSocketEventHandlers({
+					socket: ws,
+					onSocketOpen,
+					processMessage,
+					messageQueueRef,
+					connectingRef,
+					handleCloseEvent: (event) => {
+						handleSocketClose({
+							event,
+							wsRef,
+							pingIntervalRef,
+							reconnectTimeoutRef,
+							connectingRef,
+							autoReconnect,
+							reconnectInterval,
+							maxReconnectAttempts,
+							reconnectAttemptsRef,
+							connect,
+							setState,
+						});
+					},
+				});
+				setupHeartbeat(wsRef, pingIntervalRef);
+			} catch {
+				// Socket event handler setup failed; silently ignore
+			}
 			if ((__g.__wsInstance as WebSocket).readyState === WebSocket.OPEN) {
-				setState((prev) => ({ ...prev, isConnected: true }));
+				onSocketOpen(ws);
 			}
 			return;
 		}
 
 		// Prevent multiple simultaneous connection attempts (React StrictMode protection)
 		if (__g.__wsLock) {
-			console.log("🔧 [DEBUG] Global connection lock active, skipping duplicate connection attempt");
+			scheduleLockRetry();
 			return;
 		}
 
 		// Prevent multiple connections
-		if (
-			wsRef.current?.readyState === WebSocket.CONNECTING ||
-			wsRef.current?.readyState === WebSocket.OPEN ||
-			connectingRef.current
-		) {
-			if (WS_DEBUG) console.log("🔧 [DEBUG] Already connecting/connected, skipping");
+		if (isAlreadyConnecting(wsRef, connectingRef)) {
+			if (WS_DEBUG) {
+				// Debug: already connecting or connected
+			}
+			scheduleLockRetry();
 			return;
 		}
 
@@ -232,145 +425,68 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		connectingRef.current = true;
 		try {
 			const wsUrl = getWebSocketUrl();
-			if (WS_DEBUG) console.log("🔧 [DEBUG] Creating new WebSocket with URL:", wsUrl);
+			if (WS_DEBUG) {
+				// Debug: connecting to URL
+			}
 			const ws = new WebSocket(wsUrl);
-			// Set the global instance immediately so others reuse this while CONNECTING
 			__g.__wsInstance = ws;
 
-			ws.onopen = () => {
-				console.log(
-					`🔧 [DEBUG] Instance ${instanceIdRef.current}: WebSocket connected successfully, clearing global lock`
-				);
-				setState((prev) => ({ ...prev, isConnected: true }));
-				reconnectAttemptsRef.current = 0;
-				connectingRef.current = false;
-				__g.__wsLock = false; // Clear lock on successful connection
-				__g.__wsInstance = ws; // Set global instance
-				__g.__wsConnectTs = Date.now(); // Record connection time
-				try {
-					setWindowProperty("__wsConnection", wsRef);
-				} catch {}
-
-				// Start heartbeat ping to keep proxies from closing idle connections
-				try {
-					if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-					pingIntervalRef.current = setInterval(() => {
-						try {
-							if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-								wsRef.current.send(JSON.stringify({ type: "ping" }));
-							}
-						} catch {}
-					}, 25000);
-				} catch {}
-
-				// Send filters if configured, then request data snapshot
-				if (filters) {
-					ws.send(
-						JSON.stringify({
-							type: "set_filter",
-							filters,
-						})
-					);
-				}
-				// Always request snapshot on connect to ensure vacations load from DB
-				try {
-					ws.send(JSON.stringify({ type: "get_snapshot" }));
-				} catch {}
-			};
-
-			ws.onmessage = (event) => {
-				try {
-					const message: WebSocketMessage = JSON.parse(event.data);
-					processMessage(message);
-					if (message.type === "snapshot") {
-						// Clear any queued messages on full snapshot
-						messageQueueRef.current = [];
-					}
-				} catch (error) {
-					console.warn("Error parsing WebSocket message:", error);
-				}
-			};
-
-			ws.onclose = (event) => {
-				console.log("🔧 [DEBUG] WebSocket onclose event:", event.code, event.reason);
-				setState((prev) => ({ ...prev, isConnected: false }));
-				if (pingIntervalRef.current) {
-					clearInterval(pingIntervalRef.current);
-					pingIntervalRef.current = null;
-				}
-				// Only nullify if this is the same instance
-				if (wsRef.current === ws) wsRef.current = null;
-				// Clear global state if this was the global instance
-				if (__g.__wsInstance === ws) {
-					if (WS_DEBUG) console.log("🔧 [DEBUG] Clearing global WebSocket instance");
-					__g.__wsInstance = null;
-				}
-				__g.__wsLock = false; // Always clear lock on close
-				try {
-					setWindowProperty("__wsConnection", null);
-				} catch {}
-				connectingRef.current = false;
-
-				// Attempt reconnection if enabled and not a normal close
-				if (autoReconnect && event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
-					reconnectAttemptsRef.current++;
-					const base = reconnectInterval * Math.max(1, reconnectAttemptsRef.current);
-					const delay = Math.min(base, 15000) + Math.floor(Math.random() * 300); // cap 15s + jitter
-					if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-					reconnectTimeoutRef.current = setTimeout(() => {
-						connect();
-					}, delay);
-				}
-			};
-
-			ws.onerror = (error) => {
-				if (WS_DEBUG) console.debug("🔧 [DEBUG] WebSocket error:", error);
-				connectingRef.current = false;
-				__g.__wsLock = false; // Clear lock on error
-			};
-
+			setupSocketEventHandlers({
+				socket: ws,
+				onSocketOpen,
+				processMessage,
+				messageQueueRef,
+				connectingRef,
+				handleCloseEvent: (event) => {
+					handleSocketClose({
+						event,
+						wsRef,
+						pingIntervalRef,
+						reconnectTimeoutRef,
+						connectingRef,
+						autoReconnect,
+						reconnectInterval,
+						maxReconnectAttempts,
+						reconnectAttemptsRef,
+						connect,
+						setState,
+					});
+				},
+			});
+			setupHeartbeat(wsRef, pingIntervalRef);
 			wsRef.current = ws;
-		} catch (error) {
-			if (WS_DEBUG) console.debug("🔧 [DEBUG] Failed to create WebSocket connection:", error);
+		} catch {
+			// Connection creation failed; will retry after delay
 			connectingRef.current = false;
-			__g.__wsLock = false; // Clear lock on exception
+			__g.__wsLock = false;
+			scheduleLockRetry();
 		}
-	}, [getWebSocketUrl, filters, processMessage, autoReconnect, reconnectInterval, maxReconnectAttempts]);
+	}, [
+		getWebSocketUrl,
+		filters,
+		processMessage,
+		autoReconnect,
+		reconnectInterval,
+		maxReconnectAttempts,
+	]);
 
 	// Disconnect WebSocket
 	const disconnect = useCallback(() => {
-		const timeSinceConnection = Date.now() - ((__g.__wsConnectTs as number) || 0);
-		console.log(
-			`🔧 [DEBUG] Instance ${instanceIdRef.current}: disconnect() called, subscribers: ${String(__g.__wsSubs)}, time since connection: ${timeSinceConnection}ms`
-		);
-
 		if (reconnectTimeoutRef.current) {
 			clearTimeout(reconnectTimeoutRef.current);
 			reconnectTimeoutRef.current = null;
 		}
 
 		if (wsRef.current) {
-			try {
-				(wsRef.current as WebSocket).onclose = null;
-			} catch {}
-			try {
-				(wsRef.current as WebSocket).onerror = null;
-			} catch {}
-			try {
-				(wsRef.current as WebSocket).onopen = null;
-			} catch {}
-			try {
-				(wsRef.current as WebSocket).onmessage = null;
-			} catch {}
+			clearSocketEventHandlers(wsRef.current);
 			if (pingIntervalRef.current) {
 				clearInterval(pingIntervalRef.current);
 				pingIntervalRef.current = null;
 			}
 			// Normal close; prevent auto-reconnect handler from scheduling
-			wsRef.current.close(1000, "Manual disconnect");
+			wsRef.current.close(NORMAL_CLOSE_CODE, "Manual disconnect");
 			// Clear global instance if this was it
 			if (__g.__wsInstance === wsRef.current) {
-				console.log("🔧 [DEBUG] Clearing global WebSocket instance on disconnect");
 				__g.__wsInstance = null;
 			}
 			wsRef.current = null;
@@ -382,7 +498,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	}, []);
 
 	// Manual refresh now re-requests a snapshot via WebSocket only (no REST fallback)
-	const refreshData = useCallback(async () => {
+	const refreshData = useCallback(() => {
 		try {
 			if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
 				wsRef.current.send(JSON.stringify({ type: "get_snapshot" }));
@@ -392,15 +508,19 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				setTimeout(() => {
 					try {
 						wsRef.current?.send(JSON.stringify({ type: "get_snapshot" }));
-					} catch {}
-				}, 500);
+					} catch {
+						// Snapshot send failed; silently ignore
+					}
+				}, SNAPSHOT_RECONNECT_DELAY_MS);
 			}
-		} catch {}
+		} catch {
+			// Refresh failed; silently ignore
+		}
 	}, [connect]);
 
 	// Send vacation update to backend via WebSocket only
 	const sendVacationUpdate = useCallback(
-		async (payload: {
+		(payload: {
 			periods: Array<{
 				start: string | Date;
 				end: string | Date;
@@ -432,8 +552,10 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 				// Mark this as a local operation so echoed notifications are suppressed
 				try {
 					(globalThis as { __localOps?: Set<string> }).__localOps =
-						(globalThis as { __localOps?: Set<string> }).__localOps || new Set<string>();
-					const s = (globalThis as { __localOps?: Set<string> }).__localOps as Set<string>;
+						(globalThis as { __localOps?: Set<string> }).__localOps ||
+						new Set<string>();
+					const s = (globalThis as { __localOps?: Set<string> })
+						.__localOps as Set<string>;
 					// For vacation updates, echoed event type is 'vacation_period_updated' with no id/date/time
 					// NotificationsButton builds composite key as `${type}::::` when fields are missing
 					const localKey = "vacation_period_updated:::";
@@ -441,25 +563,31 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 					setTimeout(() => {
 						try {
 							s.delete(localKey);
-						} catch {}
-					}, 5000);
-				} catch {}
+						} catch {
+							// Local ops cleanup failed; silently ignore
+						}
+					}, LOCAL_OPS_TIMEOUT_MS);
+				} catch {
+					// Local ops setup failed; silently ignore
+				}
 
 				const send = () => {
 					try {
 						wsRef.current?.send(JSON.stringify(msg));
-					} catch (e) {
-						console.error("Failed to send vacation update:", e);
+					} catch {
+						// Message send failed; silently ignore
 					}
 				};
 
 				if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
 					connect();
-					setTimeout(send, 300);
+					setTimeout(send, SNAPSHOT_RECONNECT_DELAY_MS);
 				} else {
 					send();
 				}
-			} catch {}
+			} catch {
+				// Vacation update failed; silently ignore
+			}
 		},
 		[connect]
 	);
@@ -478,27 +606,32 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		};
 
 		// Multiple snapshot requests to ensure fast data load
-		setTimeout(requestSnapshot, 50);
-		setTimeout(requestSnapshot, 200);
-		setTimeout(requestSnapshot, 500);
+		for (const delay of [
+			SNAPSHOT_REQUEST_DELAY_FAST_MS,
+			SNAPSHOT_REQUEST_DELAY_MID_MS,
+			SNAPSHOT_REQUEST_DELAY_SLOW_MS,
+		]) {
+			setTimeout(requestSnapshot, delay);
+		}
 
 		const handleOnline = () => {
-			if (!isConnectedRef.current) connect();
+			if (!isConnectedRef.current) {
+				connect();
+			}
 		};
 		const handleVisibility = () => {
 			try {
 				if (document.visibilityState === "visible" && !isConnectedRef.current) {
 					connect();
 				}
-			} catch {}
+			} catch {
+				// Visibility check failed; silently ignore
+			}
 		};
 		window.addEventListener("online", handleOnline);
 		document.addEventListener("visibilitychange", handleVisibility);
 
 		return () => {
-			console.log(
-				`🔧 [DEBUG] Instance ${instanceIdRef.current}: useEffect cleanup, subscribers before cleanup: ${String(__g.__wsSubs)}`
-			);
 			__g.__wsSubs = Math.max(0, Number(__g.__wsSubs || 0) - 1);
 
 			if (reconnectTimeoutRef.current) {
@@ -516,36 +649,38 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			if (!__g.__wsSubs) {
 				__g.__wsPendingDisconnect = setTimeout(() => {
 					if (!__g.__wsSubs) {
-						console.log(
-							`🔧 [DEBUG] Instance ${instanceIdRef.current}: No subscribers remain after delay, calling disconnect`
-						);
 						disconnect();
 					}
 					__g.__wsPendingDisconnect = null;
-				}, 500);
-			} else {
-				console.log(
-					`🔧 [DEBUG] Instance ${instanceIdRef.current}: Subscribers remain (${String(__g.__wsSubs)}), skipping disconnect`
-				);
+				}, DISCONNECT_PENDING_MS);
 			}
 		};
 	}, [connect, disconnect]); // Keep stable to avoid reconnect/disconnect loop on state changes
 
 	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (reconnectTimeoutRef.current) {
 				clearTimeout(reconnectTimeoutRef.current);
 			}
-		};
-	}, []);
+		},
+		[]
+	);
 
 	// Persist snapshot to sessionStorage to avoid blank UI on refresh
 	useEffect(() => {
 		try {
 			persistState(state);
-		} catch {}
-	}, [state.reservations, state.conversations, state.vacations, state.lastUpdate, state]);
+		} catch {
+			// Persist failed; silently ignore
+		}
+	}, [
+		state.reservations,
+		state.conversations,
+		state.vacations,
+		state.lastUpdate,
+		state,
+	]);
 
 	return useMemo(
 		() => ({

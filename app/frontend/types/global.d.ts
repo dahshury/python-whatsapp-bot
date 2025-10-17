@@ -4,6 +4,13 @@ declare global {
 	var __suppressEventChangeDepth: number | undefined;
 	var __isCalendarDragging: boolean | undefined;
 	var __localOps: Set<string> | undefined;
+
+	// Window-level calendar drag/reflow guards
+	type Window = {
+		__suppressEventChangeDepth?: number;
+		__isCalendarDragging?: boolean;
+		__calendarLocalMoves?: Map<string, number>;
+	};
 }
 
 export {};

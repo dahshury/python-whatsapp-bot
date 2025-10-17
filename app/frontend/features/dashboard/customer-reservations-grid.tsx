@@ -1,23 +1,51 @@
 "use client";
 
-import { DataEditor, type GridCell, GridCellKind, type GridColumn, type Item } from "@glideapps/glide-data-grid";
+import {
+	DataEditor,
+	type GridCell,
+	GridCellKind,
+	type GridColumn,
+	type Item,
+} from "@glideapps/glide-data-grid";
 import { useTheme } from "next-themes";
 import React, { useCallback, useMemo } from "react";
 import type { Reservation } from "@/entities/event";
-import { createGlideTheme } from "@/shared/libs/data-grid/components/utils/streamlitGlideTheme";
+import { createGlideTheme } from "@/shared/libs/data-grid/components/utils/streamlit-glide-theme";
+import { getColumnsForSchema } from "@/shared/libs/data-grid/schemas/registry";
 
-interface CustomerReservationsGridProps {
+// Grid sizing constants
+const DEFAULT_COLUMN_WIDTH = 100;
+const HEADER_HEIGHT = 22;
+const ROW_HEIGHT = 24;
+const MAX_GRID_HEIGHT = 300;
+const THEME_UPDATE_DELAY_MS = 50;
+
+// Time formatting constants
+const NOON_HOUR = 12;
+const HOURS_PER_12H_FORMAT = 12;
+
+// Column width proportions and minimums
+const DATE_COLUMN_PROPORTION = 0.35;
+const DATE_COLUMN_MIN_WIDTH = 85;
+const TIME_COLUMN_PROPORTION = 0.3;
+const TIME_COLUMN_MIN_WIDTH = 70;
+
+type CustomerReservationsGridProps = {
 	reservations: Reservation[];
 	isLocalized: boolean;
-}
+};
 
-export function CustomerReservationsGrid({ reservations, isLocalized }: CustomerReservationsGridProps) {
+export function CustomerReservationsGrid({
+	reservations,
+	isLocalized,
+}: CustomerReservationsGridProps) {
 	const { theme: currentTheme } = useTheme();
 	const isDarkMode = currentTheme === "dark";
 
 	// Container ref for measuring width
 	const containerRef = React.useRef<HTMLDivElement>(null);
-	const [containerWidth, setContainerWidth] = React.useState<number>(240); // Default width
+	const [containerWidth, setContainerWidth] =
+		React.useState<number>(DEFAULT_COLUMN_WIDTH);
 
 	// Force grid to re-render when theme changes by using a key
 	const [themeKey, setThemeKey] = React.useState(0);
@@ -27,13 +55,15 @@ export function CustomerReservationsGrid({ reservations, isLocalized }: Customer
 		// Small delay to ensure CSS variables are updated
 		const timer = setTimeout(() => {
 			setThemeKey((prev) => prev + 1);
-		}, 50);
+		}, THEME_UPDATE_DELAY_MS);
 		return () => clearTimeout(timer);
 	}, []);
 
 	// Measure container width
 	React.useEffect(() => {
-		if (!containerRef.current) return;
+		if (!containerRef.current) {
+			return;
+		}
 
 		const observer = new ResizeObserver((entries) => {
 			for (const entry of entries) {
@@ -63,36 +93,42 @@ export function CustomerReservationsGrid({ reservations, isLocalized }: Customer
 			// Customize for smaller size in customer card
 			cellHorizontalPadding: 6,
 			cellVerticalPadding: 2,
-			headerHeight: 22,
-			rowHeight: 24,
+			headerHeight: HEADER_HEIGHT,
+			rowHeight: ROW_HEIGHT,
 			baseFontStyle: "12px",
 		};
 	}, [isDarkMode]);
 
 	const columns: GridColumn[] = useMemo(() => {
-		// Calculate column widths based on container width
+		const defs = getColumnsForSchema("reservationPreview", {
+			localized: isLocalized,
+		});
+		// Calculate column widths based on container width while preserving ids and titles
 		const totalWidth = containerWidth;
-		const dateWidth = Math.max(85, Math.floor(totalWidth * 0.35));
-		const timeWidth = Math.max(70, Math.floor(totalWidth * 0.3));
-		const typeWidth = Math.max(85, totalWidth - dateWidth - timeWidth);
+		const dateWidth = Math.max(
+			DATE_COLUMN_MIN_WIDTH,
+			Math.floor(totalWidth * DATE_COLUMN_PROPORTION)
+		);
+		const timeWidth = Math.max(
+			TIME_COLUMN_MIN_WIDTH,
+			Math.floor(totalWidth * TIME_COLUMN_PROPORTION)
+		);
+		const typeWidth = Math.max(
+			DATE_COLUMN_MIN_WIDTH,
+			totalWidth - dateWidth - timeWidth
+		);
 
-		return [
-			{
-				title: isLocalized ? "التاريخ" : "Date",
-				id: "date",
-				width: dateWidth,
-			},
-			{
-				title: isLocalized ? "الوقت" : "Time",
-				id: "time",
-				width: timeWidth,
-			},
-			{
-				title: isLocalized ? "النوع" : "Type",
-				id: "type",
-				width: typeWidth,
-			},
-		];
+		const widthsById: Record<string, number> = {
+			date: dateWidth,
+			time: timeWidth,
+			type: typeWidth,
+		};
+
+		return defs.map((d) => ({
+			id: d.id,
+			title: d.title || d.name,
+			width: widthsById[d.id] ?? d.width ?? DEFAULT_COLUMN_WIDTH,
+		}));
 	}, [isLocalized, containerWidth]);
 
 	const formatTime = useCallback((timeStr: string) => {
@@ -104,8 +140,8 @@ export function CustomerReservationsGrid({ reservations, isLocalized }: Customer
 			// Convert 24-hour format to 12-hour format
 			const [hours, minutes] = timeStr.split(":");
 			const hour = Number.parseInt(hours || "0", 10);
-			const ampm = hour >= 12 ? "PM" : "AM";
-			const hour12 = hour % 12 || 12;
+			const ampm = hour >= NOON_HOUR ? "PM" : "AM";
+			const hour12 = hour % HOURS_PER_12H_FORMAT || HOURS_PER_12H_FORMAT;
 			return `${hour12}:${minutes} ${ampm}`;
 		} catch {
 			return timeStr;
@@ -198,29 +234,36 @@ export function CustomerReservationsGrid({ reservations, isLocalized }: Customer
 
 	if (reservations.length === 0) {
 		return (
-			<div className="text-center py-2 text-xs text-muted-foreground">
+			<div className="py-2 text-center text-muted-foreground text-xs">
 				{isLocalized ? "لا توجد حجوزات" : "No reservations"}
 			</div>
 		);
 	}
 
 	return (
-		<div ref={containerRef} className="w-full mt-1 rounded-sm overflow-hidden glide-grid-wrapper" data-fullwidth="true">
+		<div
+			className="glide-grid-wrapper mt-1 w-full overflow-hidden rounded-sm"
+			data-fullwidth="true"
+			ref={containerRef}
+		>
 			<div className="glide-grid-inner glide-grid-inner-full glide-grid-fullwidth">
 				<DataEditor
-					key={`customer-grid-${themeKey}`}
-					getCellContent={getCellContent}
+					className="gdg-wmyidgi"
 					columns={columns}
+					getCellContent={getCellContent}
+					headerHeight={22}
+					height={Math.min(
+						MAX_GRID_HEIGHT,
+						reservations.length * ROW_HEIGHT + HEADER_HEIGHT
+					)}
+					key={`customer-grid-${themeKey}`} // Header + rows (increased max height)
+					rowHeight={ROW_HEIGHT}
+					rowMarkers="none"
 					rows={reservations.length}
-					width={containerWidth}
-					height={Math.min(300, reservations.length * 24 + 22)} // Header + rows (increased max height)
 					smoothScrollX={false}
 					smoothScrollY={false}
-					rowMarkers="none"
-					headerHeight={22}
-					rowHeight={24}
 					theme={gridTheme}
-					className="gdg-wmyidgi"
+					width={containerWidth}
 				/>
 			</div>
 		</div>

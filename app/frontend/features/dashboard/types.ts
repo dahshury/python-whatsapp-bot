@@ -1,4 +1,4 @@
-export interface DashboardStats {
+export type DashboardStats = {
 	totalReservations: number;
 	totalCancellations: number;
 	// Unique customers who had their FIRST reservation within the selected period
@@ -27,9 +27,9 @@ export interface DashboardStats {
 		// Higher is better
 		conversionRate?: { percentChange: number; isPositive: boolean };
 	};
-}
+};
 
-export interface PrometheusMetrics {
+export type PrometheusMetrics = {
 	cpu_percent?: number;
 	memory_bytes?: number;
 	process_cpu_percent?: number;
@@ -43,44 +43,44 @@ export interface PrometheusMetrics {
 	reservations_modification_requested_total?: number;
 	reservations_modification_successful_total?: number;
 	reservations_modification_failed_total?: number;
-}
+};
 
-export interface DailyData {
+export type DailyData = {
 	date: string;
 	reservations: number;
 	cancellations: number;
 	modifications: number;
-}
+};
 
-export interface TypeDistribution {
+export type TypeDistribution = {
 	type: number;
 	label: string;
 	count: number;
-}
+};
 
-export interface TimeSlotData {
+export type TimeSlotData = {
 	slot: string;
 	time: string;
 	count: number;
 	normalized: number;
 	type: "regular" | "saturday" | "ramadan" | "unknown";
 	availDays: number;
-}
+};
 
-export interface MessageHeatmapData {
+export type MessageHeatmapData = {
 	weekday: string;
 	hour: number;
 	count: number;
-}
+};
 
-export interface CustomerActivity {
+export type CustomerActivity = {
 	wa_id: string;
 	messageCount: number;
 	reservationCount: number;
 	lastActivity: string;
-}
+};
 
-export interface ConversationAnalysis {
+export type ConversationAnalysis = {
 	avgMessageLength: number;
 	avgWordsPerMessage: number;
 	avgMessagesPerCustomer: number;
@@ -96,42 +96,42 @@ export interface ConversationAnalysis {
 		median: number;
 		max: number;
 	};
-}
+};
 
-export interface WordFrequency {
+export type WordFrequency = {
 	word: string;
 	count: number;
-}
+};
 
-export interface DayOfWeekData {
+export type DayOfWeekData = {
 	day: string;
 	reservations: number;
 	cancellations: number;
 	cancelRate: number;
-}
+};
 
-export interface MonthlyTrend {
+export type MonthlyTrend = {
 	month: string;
 	reservations: number;
 	cancellations: number;
 	conversations: number;
 	growth?: number;
-}
+};
 
-export interface FunnelData {
+export type FunnelData = {
 	stage: string;
 	count: number;
 	percentage?: number;
-}
+};
 
-export interface CustomerSegment {
+export type CustomerSegment = {
 	segment: string;
 	count: number;
 	percentage: number;
 	avgReservations: number;
-}
+};
 
-export interface DashboardData {
+export type DashboardData = {
 	_isMockData?: boolean; // Optional marker to detect mock data usage
 	stats: DashboardStats;
 	prometheusMetrics: PrometheusMetrics;
@@ -146,15 +146,15 @@ export interface DashboardData {
 	monthlyTrends: MonthlyTrend[];
 	funnelData: FunnelData[];
 	customerSegments: CustomerSegment[];
-}
+};
 
-interface DateRange {
+type DateRange = {
 	from: Date;
 	to: Date;
-}
+};
 
-export interface DashboardFilters {
+export type DashboardFilters = {
 	dateRange: DateRange;
 	customerType?: "all" | "new" | "returning";
 	reservationType?: "all" | "checkup" | "followup";
-}
+};

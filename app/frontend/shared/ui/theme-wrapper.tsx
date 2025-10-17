@@ -23,11 +23,9 @@ export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 
 		// Ensure light/dark mode remains consistent with next-themes
 		// Prefer explicit selection over resolved system mode
-		const desiredMode = (nextTheme && nextTheme !== "system" ? nextTheme : resolvedTheme) as
-			| "light"
-			| "dark"
-			| "system"
-			| undefined;
+		const desiredMode = (
+			nextTheme && nextTheme !== "system" ? nextTheme : resolvedTheme
+		) as "light" | "dark" | "system" | undefined;
 		// Ensure 'dark' is controlled on html only; remove from body to keep selectors consistent
 		document.body.classList.remove("dark");
 		if (desiredMode === "dark") {
@@ -39,8 +37,11 @@ export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 
 	// Defensive guard: if user explicitly chose light, prevent any late togglers from adding 'dark'
 	useEffect(() => {
-		const explicitMode = nextTheme && nextTheme !== "system" ? nextTheme : undefined;
-		if (explicitMode !== "light") return;
+		const explicitMode =
+			nextTheme && nextTheme !== "system" ? nextTheme : undefined;
+		if (explicitMode !== "light") {
+			return;
+		}
 
 		// Immediate and next frame enforcement
 		document.documentElement.classList.remove("dark");
@@ -71,8 +72,11 @@ export function ThemeWrapper({ children }: { children: React.ReactNode }) {
 
 	// Symmetric guard: if user explicitly chose dark, ensure 'dark' stays present
 	useEffect(() => {
-		const explicitMode = nextTheme && nextTheme !== "system" ? nextTheme : undefined;
-		if (explicitMode !== "dark") return;
+		const explicitMode =
+			nextTheme && nextTheme !== "system" ? nextTheme : undefined;
+		if (explicitMode !== "dark") {
+			return;
+		}
 
 		// Immediate assert of dark class
 		document.documentElement.classList.add("dark");

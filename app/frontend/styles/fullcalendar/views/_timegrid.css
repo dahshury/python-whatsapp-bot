@@ -9,7 +9,9 @@
 /* General timegrid structure */
 .fc-timegrid .fc-daygrid-body {
 	/* the all-day daygrid within the timegrid view */
-	z-index: var(--z-calendar-day-bg-event); /* put above the timegrid-body so that more-popover is above everything */
+	z-index: var(
+		--z-calendar-day-bg-event
+	); /* put above the timegrid-body so that more-popover is above everything */
 }
 
 .fc-timegrid-divider {
@@ -98,7 +100,11 @@
 
 /* Enhanced time axis styling (time bar on the left) - moved from _week.css */
 .fc-timegrid-axis {
-	background: linear-gradient(90deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.1) 100%);
+	background: linear-gradient(
+		90deg,
+		hsl(var(--card)) 0%,
+		hsl(var(--muted) / 0.1) 100%
+	);
 	border-right: 2px solid hsl(var(--border) / 0.2);
 	/* GPU acceleration */
 	transform: translateZ(0);

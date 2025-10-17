@@ -1,13 +1,23 @@
-from app.metrics import (
-    RESERVATION_REQUESTS, RESERVATION_SUCCESSES, RESERVATION_FAILURES,
-    CANCELLATION_REQUESTS, CANCELLATION_SUCCESSES, CANCELLATION_FAILURES,
-    MODIFY_REQUESTS, MODIFY_SUCCESSES, MODIFY_FAILURES,
-    RESERVATION_FAILURES_BY_REASON, CANCELLATION_FAILURES_BY_REASON, MODIFY_FAILURES_BY_REASON,
-)
-from functools import wraps
 import logging
+from functools import wraps
+
+from app.metrics import (
+    CANCELLATION_FAILURES,
+    CANCELLATION_FAILURES_BY_REASON,
+    CANCELLATION_REQUESTS,
+    CANCELLATION_SUCCESSES,
+    MODIFY_FAILURES,
+    MODIFY_FAILURES_BY_REASON,
+    MODIFY_REQUESTS,
+    MODIFY_SUCCESSES,
+    RESERVATION_FAILURES,
+    RESERVATION_FAILURES_BY_REASON,
+    RESERVATION_REQUESTS,
+    RESERVATION_SUCCESSES,
+)
 
 # Decorators for domain-specific instrumentation
+
 
 def instrument_reservation(func):
     @wraps(func)
@@ -33,6 +43,7 @@ def instrument_reservation(func):
                 pass
             logging.error(f"Exception in {func.__name__}: {str(e)}")
             raise  # Re-raise the exception
+
     return wrapper
 
 
@@ -59,6 +70,7 @@ def instrument_cancellation(func):
                 pass
             logging.error(f"Exception in {func.__name__}: {str(e)}")
             raise  # Re-raise the exception
+
     return wrapper
 
 
@@ -85,4 +97,5 @@ def instrument_modification(func):
                 pass
             logging.error(f"Exception in {func.__name__}: {str(e)}")
             raise  # Re-raise the exception
-    return wrapper 
+
+    return wrapper

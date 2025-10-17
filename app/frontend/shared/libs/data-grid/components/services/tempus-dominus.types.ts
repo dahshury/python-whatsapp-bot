@@ -2,7 +2,7 @@ export type TempusFormat = "date" | "datetime" | "time" | undefined;
 
 export type TempusTheme = "dark" | "light";
 
-export interface TempusDominusOptions {
+export type TempusDominusOptions = {
 	display: {
 		components: {
 			calendar: boolean;
@@ -34,9 +34,9 @@ export interface TempusDominusOptions {
 	};
 	container?: HTMLElement;
 	stepping: number;
-}
+};
 
-export interface TempusDominusFacade {
+export type TempusDominusFacade = {
 	init(
 		input: HTMLInputElement,
 		opts: {
@@ -60,4 +60,4 @@ export interface TempusDominusFacade {
 	getPicked(): Date | undefined;
 	subscribe(event: unknown, handler: (e: unknown) => void): () => void;
 	dispose(): void;
-}
+};

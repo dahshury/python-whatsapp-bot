@@ -1,11 +1,11 @@
 "use client";
-import * as React from "react";
 import type { PrometheusMetrics } from "@features/dashboard/types";
+import { createContext } from "react";
 import type { ConversationMessage } from "@/entities/conversation";
 import type { Reservation } from "@/entities/event";
 import type { Vacation } from "@/entities/vacation";
 
-export interface DataShape {
+export type DataShape = {
 	conversations: Record<string, ConversationMessage[]>;
 	reservations: Record<string, Reservation[]>;
 	vacations: Vacation[];
@@ -19,16 +19,21 @@ export interface DataShape {
 		start_dates?: string;
 		durations?: string;
 	}) => Promise<void> | void;
-}
+};
 
-export const DataContext = React.createContext<DataShape>({
+const noop = (): undefined => {
+	// No operation
+	return;
+};
+
+export const DataContext = createContext<DataShape>({
 	conversations: {},
 	reservations: {},
 	vacations: [],
 	prometheusMetrics: {},
 	isLoading: false,
 	error: null,
-	refresh: async () => {},
+	refresh: async () => noop(),
 	activeRange: {},
-	sendVacationUpdate: async () => {},
+	sendVacationUpdate: async () => noop(),
 });

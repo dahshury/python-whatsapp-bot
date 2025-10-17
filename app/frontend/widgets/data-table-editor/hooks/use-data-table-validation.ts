@@ -1,12 +1,16 @@
 import type { ValidationResult } from "@widgets/data-table-editor/types";
 import type React from "react";
 import { useCallback, useMemo } from "react";
-import type { IColumnDefinition } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
-import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
+import type { IColumnDefinition } from "@/shared/libs/data-grid/components/core/interfaces/i-data-source";
+import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/data-provider";
 import type { BaseColumnProps } from "@/shared/libs/data-grid/components/core/types";
-import { useGridValidation } from "@/shared/libs/data-grid/components/hooks/useGridValidation";
+import { useGridValidation } from "@/shared/libs/data-grid/components/hooks/use-grid-validation";
 
-export function useDataTableValidation(dataProviderRef: React.RefObject<DataProvider | null>) {
+const DEFAULT_COLUMN_WIDTH = 150;
+
+export function useDataTableValidation(
+	dataProviderRef: React.RefObject<DataProvider | null>
+) {
 	// Build column list using the provider's true order and flags; fallback to sensible defaults
 	const columns: BaseColumnProps[] = useMemo(() => {
 		const provider = dataProviderRef.current as
@@ -25,7 +29,7 @@ export function useDataTableValidation(dataProviderRef: React.RefObject<DataProv
 						id: def?.id ?? def?.name ?? `col_${i}`,
 						name: def?.name ?? def?.id ?? `col_${i}`,
 						title: def?.title ?? def?.name ?? def?.id ?? `Column ${i}`,
-						width: def?.width ?? 150,
+						width: def?.width ?? DEFAULT_COLUMN_WIDTH,
 						isEditable: def?.isEditable !== false,
 						isHidden: def?.isHidden === true,
 						isRequired: def?.isRequired === true,
@@ -39,7 +43,9 @@ export function useDataTableValidation(dataProviderRef: React.RefObject<DataProv
 				}
 				return list;
 			}
-		} catch {}
+		} catch {
+			// Provider column retrieval failed; will use fallback columns
+		}
 		// Fallback order that mirrors getDataTableColumns
 		const fallback = [
 			{ name: "scheduled_time", required: true },
@@ -51,7 +57,7 @@ export function useDataTableValidation(dataProviderRef: React.RefObject<DataProv
 			id: c.name,
 			name: c.name,
 			title: c.name,
-			width: 150,
+			width: DEFAULT_COLUMN_WIDTH,
 			isEditable: true,
 			isHidden: false,
 			isRequired: Boolean(c.required),
@@ -88,11 +94,12 @@ export function useDataTableValidation(dataProviderRef: React.RefObject<DataProv
 		} | null;
 
 		const filtered = (result.errors || [])
-			.map((err) => {
+			.map((err: unknown) => {
 				let fieldName = (err as { fieldName?: string })?.fieldName;
 				if (!fieldName && provider?.getColumnDefinition) {
 					try {
-						const def = provider.getColumnDefinition(err.col) as
+						const col = (err as { col?: number }).col ?? 0;
+						const def = provider.getColumnDefinition(col) as
 							| {
 									id?: string;
 									name?: string;
@@ -101,21 +108,33 @@ export function useDataTableValidation(dataProviderRef: React.RefObject<DataProv
 							  }
 							| undefined;
 						fieldName = def?.id || def?.name || def?.title;
-					} catch {}
+					} catch {
+						// Column definition retrieval failed; will use error as-is
+					}
 				}
-				return { ...err, fieldName } as typeof err & { fieldName?: string };
+				const errAsObj = err as Record<string, unknown> & {
+					fieldName?: string;
+				};
+				return { ...errAsObj, fieldName };
 			})
-			.filter((err) => {
-				const fn = String((err as { fieldName?: string }).fieldName || "").toLowerCase();
-				if (fn !== "scheduled_time") return true;
+			.filter((err: unknown) => {
+				const fn = String(
+					(err as { fieldName?: string }).fieldName || ""
+				).toLowerCase();
+				if (fn !== "scheduled_time") {
+					return true;
+				}
 				// Ensure the cell is realized; this will create a default cell if needed
 				try {
-					const cell = provider?.getCell?.(err.col, err.row) as
+					const col = (err as { col?: number }).col ?? 0;
+					const row = (err as { row?: number }).row ?? 0;
+					const cell = provider?.getCell?.(col, row) as
 						| { data?: { kind?: string; date?: unknown } }
 						| undefined;
 					const hasDate = Boolean(
 						cell &&
-							(cell as { data?: { kind?: string; date?: unknown } }).data?.kind === "tempus-date-cell" &&
+							(cell as { data?: { kind?: string; date?: unknown } }).data
+								?.kind === "tempus-date-cell" &&
 							(cell as { data?: { kind?: string; date?: unknown } }).data?.date
 					);
 					return !hasDate;
@@ -126,13 +145,20 @@ export function useDataTableValidation(dataProviderRef: React.RefObject<DataProv
 
 		return {
 			isValid: filtered.length === 0,
-			errors: filtered.map((err) => {
-				const errWithField = err as { fieldName?: string };
+			errors: filtered.map((err: unknown) => {
+				const errWithField = err as {
+					fieldName?: string;
+					row?: number;
+					col?: number;
+					message?: string;
+				};
 				return {
-					row: err.row,
-					col: err.col,
-					message: err.message,
-					...(errWithField.fieldName ? { fieldName: errWithField.fieldName } : {}),
+					row: errWithField.row ?? 0,
+					col: errWithField.col ?? 0,
+					message: errWithField.message ?? "",
+					...(errWithField.fieldName
+						? { fieldName: errWithField.fieldName }
+						: {}),
 				};
 			}),
 		};

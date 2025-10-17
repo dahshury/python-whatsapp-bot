@@ -1,13 +1,19 @@
-import { isPossiblePhoneNumber, isValidPhoneNumber, parsePhoneNumber } from "react-phone-number-input";
+import {
+	isPossiblePhoneNumber,
+	isValidPhoneNumber,
+	parsePhoneNumber,
+} from "react-phone-number-input";
 
-export interface PhoneValidationResult {
+export type PhoneValidationResult = {
 	isValid: boolean;
 	error?: string;
-}
+};
 
 export function validatePhoneNumber(phone: string): PhoneValidationResult {
 	const trimmed = (phone || "").trim();
-	if (!trimmed) return { isValid: true };
+	if (!trimmed) {
+		return { isValid: true };
+	}
 
 	if (!isPossiblePhoneNumber(trimmed)) {
 		return { isValid: false, error: "phone_invalid_or_short" };
@@ -19,7 +25,9 @@ export function validatePhoneNumber(phone: string): PhoneValidationResult {
 			if (parsed) {
 				return { isValid: false, error: "phone_invalid_area_or_format" };
 			}
-		} catch {}
+		} catch {
+			// Invalid phone number format, already handled by validation above
+		}
 	}
 
 	return { isValid: true };

@@ -1,6 +1,7 @@
 /**
- * Re-export from the main i18n service
- * This maintains backward compatibility for grid components
+ * Import i18n messages for grid components
+ * Direct import to avoid barrel file performance issues
  */
 
+// biome-ignore lint/performance/noBarrelFile: Required re-export for backward compatibility with grid components
 export { messages } from "@/shared/libs/i18n";

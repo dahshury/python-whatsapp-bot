@@ -1,8 +1,11 @@
-import logging
 import hashlib
 import hmac
-from fastapi import Request, HTTPException
+import logging
+
+from fastapi import HTTPException, Request
+
 from app.config import config
+
 
 def validate_signature(payload: str, signature: str) -> bool:
     """
@@ -14,6 +17,7 @@ def validate_signature(payload: str, signature: str) -> bool:
         digestmod=hashlib.sha256,
     ).hexdigest()
     return hmac.compare_digest(expected_signature, signature)
+
 
 async def verify_signature(request: Request):
     """

@@ -1,4 +1,3 @@
-// Toast service and router implementations centralized here
-
+// biome-ignore lint/performance/noBarrelFile: Module public API exports
 export { ToastRouter } from "./toast-router";
-export * from "./toast-service";
+export { toastService } from "./toast-service";

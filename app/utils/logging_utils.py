@@ -21,7 +21,9 @@ def log_http_response(response):
             logging.debug(f"Body: {body}")
     except Exception:
         # Best-effort fallback to avoid crashing logging path
-        logging.debug("log_http_response encountered an exception while formatting response")
+        logging.debug(
+            "log_http_response encountered an exception while formatting response"
+        )
 
 
 def _truncate_middle(text: str, max_len: int) -> str:

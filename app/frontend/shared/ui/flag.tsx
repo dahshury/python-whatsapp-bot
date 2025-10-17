@@ -1,11 +1,11 @@
 import flags from "react-phone-number-input/flags";
 
-type CountryCode = keyof typeof flags;
-interface FlagProps {
+export type CountryCode = keyof typeof flags;
+type FlagProps = {
 	country: CountryCode | string;
 	title?: string;
 	className?: string;
-}
+};
 
 export const Flag: React.FC<FlagProps> = ({ country, title, className }) => {
 	const Cmp = flags[country as CountryCode];

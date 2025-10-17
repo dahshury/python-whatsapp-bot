@@ -7,8 +7,11 @@ export async function POST(request: Request) {
 		const { wa_id, text } = body;
 
 		// Validate required fields
-		if (!wa_id || !text) {
-			return NextResponse.json({ success: false, message: "Missing required fields: wa_id, text" }, { status: 400 });
+		if (!(wa_id && text)) {
+			return NextResponse.json(
+				{ success: false, message: "Missing required fields: wa_id, text" },
+				{ status: 400 }
+			);
 		}
 
 		// Call Python backend to send WhatsApp message
@@ -22,7 +25,6 @@ export async function POST(request: Request) {
 
 		return NextResponse.json(backendResponse);
 	} catch (error) {
-		console.error("Error sending WhatsApp message via Python backend:", error);
 		return NextResponse.json(
 			{
 				success: false,

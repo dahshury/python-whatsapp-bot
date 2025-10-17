@@ -12,7 +12,7 @@ import { DockBridgeProvider } from "@shared/libs/dock-bridge-context";
 import { LanguageProvider } from "@shared/libs/state/language-context";
 import { SettingsProvider } from "@shared/libs/state/settings-context";
 import { VacationProvider } from "@shared/libs/state/vacation-context";
-import { ToastRouter } from "@shared/libs/toast";
+import { ToastRouter } from "@shared/libs/toast/toast-router";
 import { DvhInit } from "@shared/ui/dvh-init";
 import { ErrorRecoveryInit } from "@shared/ui/error-recovery-init";
 import { MainContentWrapper } from "@shared/ui/main-content-wrapper";
@@ -65,7 +65,14 @@ export const metadata: Metadata = {
 	title: "Reservation Manager | WhatsApp Bot Dashboard",
 	description:
 		"Comprehensive reservation management system with WhatsApp integration, calendar scheduling, and real-time customer communication",
-	keywords: ["reservations", "calendar", "WhatsApp", "booking", "scheduling", "appointments"],
+	keywords: [
+		"reservations",
+		"calendar",
+		"WhatsApp",
+		"booking",
+		"scheduling",
+		"appointments",
+	],
 	authors: [{ name: "Reservation Manager Team" }],
 	icons: {
 		icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
@@ -82,20 +89,32 @@ export const viewport: Viewport = {
 	themeColor: "#2563eb",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				{/* Favicon links for better browser compatibility */}
-				<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-				<link rel="icon" href="/favicon.svg" sizes="any" />
-				<link rel="manifest" href="/site.webmanifest" />
+				<link href="/favicon.svg" rel="icon" type="image/svg+xml" />
+				<link href="/favicon.svg" rel="icon" sizes="any" />
+				<link href="/site.webmanifest" rel="manifest" />
 
 				{/* Font optimization */}
-				<link rel="dns-prefetch" href="//fonts.googleapis.com" />
-				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+				<link href="//fonts.googleapis.com" rel="dns-prefetch" />
+				<link
+					crossOrigin="anonymous"
+					href="https://fonts.gstatic.com"
+					rel="preconnect"
+				/>
 				{/* Preconnect to backend to speed up initial WebSocket handshake (localhost only) */}
-				<link rel="preconnect" href="http://localhost:8000" crossOrigin="anonymous" />
+				<link
+					crossOrigin="anonymous"
+					href="http://localhost:8000"
+					rel="preconnect"
+				/>
 				{/* Apply saved style theme class before paint to prevent FOUC */}
 				<script
 					// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>This is safe as it only applies validated theme classes from localStorage</explanation>
@@ -111,12 +130,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 					}}
 				/>
 			</head>
-			<body className={`${geist.variable} ${geistMono.variable} font-sans`} suppressHydrationWarning>
+			<body
+				className={`${geist.variable} ${geistMono.variable} font-sans`}
+				suppressHydrationWarning
+			>
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="system"
-					enableSystem
 					disableTransitionOnChange
+					enableSystem
 					storageKey="ui-theme"
 				>
 					<SuppressExcalidrawWarnings />

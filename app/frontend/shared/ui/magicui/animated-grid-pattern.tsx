@@ -4,34 +4,56 @@ import { cn } from "@shared/libs/utils";
 import { motion } from "framer-motion";
 import { memo, useId, useMemo } from "react";
 
-interface GridPatternProps {
+type GridPatternProps = {
 	className?: string;
 	width?: number;
 	height?: number;
 	x?: number;
 	y?: number;
 	strokeDasharray?: number | string;
-}
+};
 
-function GridPattern({ className, width = 40, height = 40, x = -1, y = -1, strokeDasharray = 0 }: GridPatternProps) {
+function GridPattern({
+	className,
+	width = 40,
+	height = 40,
+	x = -1,
+	y = -1,
+	strokeDasharray = 0,
+}: GridPatternProps) {
 	const patternId = useId();
-	const dash = typeof strokeDasharray === "number" ? `${strokeDasharray}` : strokeDasharray;
+	const dash =
+		typeof strokeDasharray === "number"
+			? `${strokeDasharray}`
+			: strokeDasharray;
 	return (
-		<svg aria-hidden className={cn("h-full w-full", className)} width="100%" height="100%">
+		<svg
+			aria-hidden
+			className={cn("h-full w-full", className)}
+			height="100%"
+			width="100%"
+		>
 			<title>Decorative grid pattern background</title>
 			<defs>
-				<pattern id={patternId} x={x} y={y} width={width} height={height} patternUnits="userSpaceOnUse">
+				<pattern
+					height={height}
+					id={patternId}
+					patternUnits="userSpaceOnUse"
+					width={width}
+					x={x}
+					y={y}
+				>
 					<path
 						d={`M ${width} 0 L 0 0 0 ${height}`}
 						fill="none"
-						stroke="currentColor"
-						strokeWidth="1"
-						strokeDasharray={dash}
 						opacity="0.25"
+						stroke="currentColor"
+						strokeDasharray={dash}
+						strokeWidth="1"
 					/>
 				</pattern>
 			</defs>
-			<rect width="100%" height="100%" fill={`url(#${patternId})`} />
+			<rect fill={`url(#${patternId})`} height="100%" width="100%" />
 		</svg>
 	);
 }
@@ -43,7 +65,10 @@ interface AnimatedGridPatternProps extends GridPatternProps {
 	repeatDelay?: number;
 }
 
-export const AnimatedGridPattern = memo(function AnimatedGridPattern({
+const MAX_GRID_SQUARES = 800;
+const GRID_PERCENT_RANGE = 100;
+
+function AnimatedGridPatternComponent({
 	className,
 	width = 40,
 	height = 40,
@@ -56,13 +81,14 @@ export const AnimatedGridPattern = memo(function AnimatedGridPattern({
 	repeatDelay = 0.5,
 }: AnimatedGridPatternProps) {
 	const squares = useMemo(() => {
-		const items: Array<{ key: number; x: number; y: number; delay: number }> = [];
-		const count = Math.max(0, Math.min(numSquares, 800));
+		const items: Array<{ key: number; x: number; y: number; delay: number }> =
+			[];
+		const count = Math.max(0, Math.min(numSquares, MAX_GRID_SQUARES));
 		for (let i = 0; i < count; i++) {
 			items.push({
 				key: i,
-				x: Math.random() * 100,
-				y: Math.random() * 100,
+				x: Math.random() * GRID_PERCENT_RANGE,
+				y: Math.random() * GRID_PERCENT_RANGE,
 				delay: Math.random() * duration,
 			});
 		}
@@ -70,29 +96,36 @@ export const AnimatedGridPattern = memo(function AnimatedGridPattern({
 	}, [numSquares, duration]);
 
 	return (
-		<div className={cn("relative h-full w-full text-muted-foreground/50", className)}>
+		<div
+			className={cn(
+				"relative h-full w-full text-muted-foreground/50",
+				className
+			)}
+		>
 			<GridPattern
-				width={width}
+				className="absolute inset-0"
 				height={height}
+				strokeDasharray={strokeDasharray}
+				width={width}
 				x={x}
 				y={y}
-				strokeDasharray={strokeDasharray}
-				className="absolute inset-0"
 			/>
-			<svg className="absolute inset-0 h-full w-full" width="100%" height="100%" aria-hidden>
+			<svg
+				aria-hidden
+				className="absolute inset-0 h-full w-full"
+				height="100%"
+				width="100%"
+			>
 				<title>Animated grid pattern overlay</title>
 				{squares.map((s) => (
 					<motion.rect
-						key={s.key}
-						x={`${s.x}%`}
-						y={`${s.y}%`}
-						width={2}
+						animate={{ opacity: [0, maxOpacity, 0] }}
+						fill="currentColor"
 						height={2}
+						initial={{ opacity: 0 }}
+						key={s.key}
 						rx={1}
 						ry={1}
-						fill="currentColor"
-						initial={{ opacity: 0 }}
-						animate={{ opacity: [0, maxOpacity, 0] }}
 						transition={{
 							duration,
 							repeat: Number.POSITIVE_INFINITY,
@@ -100,11 +133,16 @@ export const AnimatedGridPattern = memo(function AnimatedGridPattern({
 							delay: s.delay,
 							ease: "easeInOut",
 						}}
+						width={2}
+						x={`${s.x}%`}
+						y={`${s.y}%`}
 					/>
 				))}
 			</svg>
 		</div>
 	);
-});
+}
+
+export const AnimatedGridPattern = memo(AnimatedGridPatternComponent);
 
 export type { AnimatedGridPatternProps };

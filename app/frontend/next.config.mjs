@@ -1,9 +1,19 @@
 import path from "node:path";
 
+// Time constants
+const SECONDS_PER_25 = 25;
+const MILLISECONDS_PER_SECOND = 1000;
+const PAGE_BUFFER_INACTIVE_AGE_MS = SECONDS_PER_25 * MILLISECONDS_PER_SECOND;
+const PAGE_BUFFER_LENGTH = 2;
+const MJS_FILE_REGEX = /\.mjs$/;
+const NODE_MODULES_REGEX = /node_modules/;
+const NODE_MODULES_PATH_REGEX = /[\\/]node_modules[\\/]/;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
 	env: {
-		NEXT_PUBLIC_TIMEZONE: process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
+		NEXT_PUBLIC_TIMEZONE:
+			process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
 	},
 
 	// Allow remote images from YouTube thumbnail hosts
@@ -19,16 +29,16 @@ const nextConfig = {
 		// Reduce memory usage and prevent bundle corruption
 		onDemandEntries: {
 			// Period (in ms) where the server will keep pages in the buffer
-			maxInactiveAge: 25 * 1000,
+			maxInactiveAge: PAGE_BUFFER_INACTIVE_AGE_MS,
 			// Number of pages that should be kept simultaneously without being disposed
-			pagesBufferLength: 2,
+			pagesBufferLength: PAGE_BUFFER_LENGTH,
 		},
 		// Disable x-powered-by header
 		poweredByHeader: false,
 	}),
 
 	// Headers to improve security and performance
-	async headers() {
+	headers() {
 		return [
 			{
 				source: "/(.*)",
@@ -61,7 +71,13 @@ const nextConfig = {
 	// Webpack configuration to fix Glide Data Grid module resolution issues
 	webpack: (
 		config,
-		{ buildId: _buildId, dev: _dev, isServer: _isServer, defaultLoaders: _defaultLoaders, webpack: _webpack }
+		{
+			buildId: _buildId,
+			dev: _dev,
+			isServer: _isServer,
+			defaultLoaders: _defaultLoaders,
+			webpack: _webpack,
+		}
 	) => {
 		// Fix for Glide Data Grid module resolution
 		config.resolve.alias = {
@@ -70,7 +86,10 @@ const nextConfig = {
 			"@glideapps/glide-data-grid/dist/esm/internal/common/math.js":
 				"@glideapps/glide-data-grid/dist/esm/internal/common/math",
 			// Alias Streamlit internal lib path (~lib/*) to the copied directory
-			"~lib": path.resolve(process.cwd(), "components/glide-data-editor-streamlit/lib"),
+			"~lib": path.resolve(
+				process.cwd(),
+				"components/glide-data-editor-streamlit/lib"
+			),
 		};
 
 		// Add fallbacks for Node.js modules
@@ -84,8 +103,8 @@ const nextConfig = {
 
 		// Ensure proper module resolution for .mjs files
 		config.module.rules.push({
-			test: /\.mjs$/,
-			include: /node_modules/,
+			test: MJS_FILE_REGEX,
+			include: NODE_MODULES_REGEX,
 			type: "javascript/auto",
 		});
 
@@ -103,7 +122,7 @@ const nextConfig = {
 							reuseExistingChunk: true,
 						},
 						vendor: {
-							test: /[\\/]node_modules[\\/]/,
+							test: NODE_MODULES_PATH_REGEX,
 							name: "vendors",
 							priority: -10,
 							chunks: "all",
@@ -148,16 +167,14 @@ const nextConfig = {
 
 	// Remove console logs in production except warn/error
 	compiler: {
-		removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+		removeConsole:
+			process.env.NODE_ENV === "production"
+				? { exclude: ["error", "warn"] }
+				: false,
 	},
 
 	// Use standalone output to minimize runtime image size
-	output: "standalone",
-
-	// Disable ESLint during builds (for Docker production builds)
-	eslint: {
-		ignoreDuringBuilds: true,
-	},
+	output: process.platform === "win32" ? undefined : "standalone",
 
 	// TypeScript configuration for builds
 	typescript: {

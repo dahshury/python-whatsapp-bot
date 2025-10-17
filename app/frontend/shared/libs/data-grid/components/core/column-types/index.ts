@@ -1,22 +1,13 @@
-export * from "./DateColumnType";
-export * from "./DateTimeColumnType";
-export * from "./DropdownColumnType";
-export * from "./NumberColumnType";
-export * from "./PhoneColumnType";
-
-export * from "./TextColumnType";
-export * from "./TimeColumnType";
-
-import { ColumnTypeRegistry } from "../services/ColumnTypeRegistry";
-import { DateColumnType } from "./DateColumnType";
-import { DateTimeColumnType } from "./DateTimeColumnType";
-import { DropdownColumnType } from "./DropdownColumnType";
-import { EmailColumnType } from "./EmailColumnType";
-import { NumberColumnType } from "./NumberColumnType";
-import { PhoneColumnType } from "./PhoneColumnType";
-
-import { TextColumnType } from "./TextColumnType";
-import { TimeColumnType } from "./TimeColumnType";
+import { ColumnTypeRegistry } from "../services/column-type-registry";
+import { DateColumnType } from "./date-column-type";
+import { DateTimeColumnType } from "./date-time-column-type";
+import { DropdownColumnType } from "./dropdown-column-type";
+import { EmailColumnType } from "./email-column-type";
+import { ExcalidrawColumnType } from "./excalidraw-column-type";
+import { NumberColumnType } from "./number-column-type";
+import { PhoneColumnType } from "./phone-column-type";
+import { TextColumnType } from "./text-column-type";
+import { TimeColumnType } from "./time-column-type";
 
 export function registerDefaultColumnTypes(): void {
 	const registry = ColumnTypeRegistry.getInstance();
@@ -28,6 +19,7 @@ export function registerDefaultColumnTypes(): void {
 	registry.register(new DateTimeColumnType());
 	registry.register(new DropdownColumnType());
 	registry.register(new PhoneColumnType());
+	registry.register(new ExcalidrawColumnType());
 
 	registry.register(new EmailColumnType());
 }

@@ -1,5 +1,11 @@
 import { useRef } from "react";
 
+// Time format constants
+const HOURS_IN_12_FORMAT = 12;
+const LOCAL_OP_DEDUPE_THRESHOLD_MS = 4000; // 4 seconds
+const TIME_FORMAT_REGEX = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
+const TIME_HH_MM_REGEX = /^\d{2}:\d{2}$/;
+
 export type UpdateType =
 	| "reservation_created"
 	| "reservation_updated"
@@ -16,30 +22,64 @@ export type UpdateType =
 	| "modify_reservation_ack"
 	| "modify_reservation_nack";
 
-export function normalizeTime12To24(time12?: string | null, fallback?: string): string {
+export function normalizeTime12To24(
+	time12?: string | null,
+	fallback?: string
+): string {
 	try {
 		const t = (time12 || "").trim();
-		if (!t) return fallback || "";
-		const m = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(t);
-		if (!m) return t;
+		if (!t) {
+			return fallback || "";
+		}
+		const m = TIME_FORMAT_REGEX.exec(t);
+		if (!m) {
+			return t;
+		}
 		let h = Number.parseInt(m[1] || "0", 10);
 		const mm = m[2] || "00";
 		const ap = (m[3] || "").toUpperCase();
-		if (ap === "PM" && h < 12) h += 12;
-		if (ap === "AM" && h === 12) h = 0;
+		if (ap === "PM" && h < HOURS_IN_12_FORMAT) {
+			h += HOURS_IN_12_FORMAT;
+		}
+		if (ap === "AM" && h === HOURS_IN_12_FORMAT) {
+			h = 0;
+		}
 		return `${String(h).padStart(2, "0")}:${mm}`;
 	} catch {
 		return fallback || "";
 	}
 }
 
-export interface LocalOpData {
+export type LocalOpData = {
 	id?: string | number;
 	wa_id?: string;
 	date?: string;
 	time_slot?: string;
 	time?: string;
 	[key: string]: unknown;
+};
+
+/**
+ * Add time format variants (24-hour and 12-hour) to keys set
+ */
+function addTimeVariants(
+	keys: Set<string>,
+	options: {
+		type: string;
+		identifier: string;
+		datePart: string;
+		time24: string;
+	}
+): void {
+	const { type, identifier, datePart, time24 } = options;
+	keys.add(`${type}:${identifier}:${datePart}:${time24}`); // 24-hour format
+	// Also try common 12-hour variants the backend might send
+	if (TIME_HH_MM_REGEX.test(time24)) {
+		const time12 = convertTo12Hour(time24);
+		if (time12) {
+			keys.add(`${type}:${identifier}:${datePart}:${time12}`);
+		}
+	}
 }
 
 /**
@@ -68,20 +108,10 @@ export function generateLocalOpKeys(
 	// what format the WebSocket message will have
 
 	if (idPart) {
-		keys.add(`${type}:${idPart}:${datePart}:${time24}`); // 24-hour format
-		// Also try common 12-hour variants the backend might send
-		if (time24.match(/^\d{2}:\d{2}$/)) {
-			const time12 = convertTo12Hour(time24);
-			if (time12) keys.add(`${type}:${idPart}:${datePart}:${time12}`);
-		}
+		addTimeVariants(keys, { type, identifier: idPart, datePart, time24 });
 	}
 	if (waPart) {
-		keys.add(`${type}:${waPart}:${datePart}:${time24}`); // 24-hour format
-		// Also try common 12-hour variants the backend might send
-		if (time24.match(/^\d{2}:\d{2}$/)) {
-			const time12 = convertTo12Hour(time24);
-			if (time12) keys.add(`${type}:${waPart}:${datePart}:${time12}`);
-		}
+		addTimeVariants(keys, { type, identifier: waPart, datePart, time24 });
 	}
 
 	return Array.from(keys);
@@ -92,15 +122,20 @@ export function generateLocalOpKeys(
  */
 function convertTo12Hour(time24: string): string | null {
 	try {
-		const match = time24.match(/^(\d{1,2}):(\d{2})$/);
-		if (!match) return null;
+		const match = TIME_HH_MM_REGEX.exec(time24);
+		if (!match) {
+			return null;
+		}
 
 		let hour = Number.parseInt(match[1] || "0", 10);
 		const minute = match[2] || "00";
-		const ampm = hour >= 12 ? "PM" : "AM";
+		const ampm = hour >= HOURS_IN_12_FORMAT ? "PM" : "AM";
 
-		if (hour === 0) hour = 12;
-		else if (hour > 12) hour -= 12;
+		if (hour === 0) {
+			hour = HOURS_IN_12_FORMAT;
+		} else if (hour > HOURS_IN_12_FORMAT) {
+			hour -= HOURS_IN_12_FORMAT;
+		}
 
 		return `${hour.toString().padStart(2, "0")}:${minute} ${ampm}`;
 	} catch {
@@ -108,7 +143,10 @@ function convertTo12Hour(time24: string): string | null {
 	}
 }
 
-export function buildLocalOpCandidates(type: string, data: LocalOpData): string[] {
+export function buildLocalOpCandidates(
+	type: string,
+	data: LocalOpData
+): string[] {
 	const idPart = String(data?.id ?? "");
 	const waPart = String(data?.wa_id ?? "");
 	const datePart = String(data?.date ?? "");
@@ -146,7 +184,8 @@ export function isLocalOperation(type: string, data: LocalOpData): boolean {
 	try {
 		const candidates = buildLocalOpCandidates(type, data);
 		(globalThis as { __localOps?: Set<string> }).__localOps =
-			(globalThis as { __localOps?: Set<string> }).__localOps || new Set<string>();
+			(globalThis as { __localOps?: Set<string> }).__localOps ||
+			new Set<string>();
 
 		const localOps = (globalThis as { __localOps?: Set<string> }).__localOps;
 
@@ -155,18 +194,26 @@ export function isLocalOperation(type: string, data: LocalOpData): boolean {
 				return true;
 			}
 		}
-	} catch {}
+	} catch {
+		// Suppress local operation lookup errors
+	}
 	// Fallback: detect very recent local DnD moves tracked by calendar
 	try {
-		const moves: Map<string, number> | undefined = (globalThis as { __calendarLocalMoves?: Map<string, number> })
-			.__calendarLocalMoves;
+		const moves: Map<string, number> | undefined = (
+			globalThis as { __calendarLocalMoves?: Map<string, number> }
+		).__calendarLocalMoves;
 		const ts1 = moves?.get(String(data?.id ?? ""));
 		const ts2 = moves?.get(String(data?.wa_id ?? ""));
 		const now = Date.now();
-		if ((ts1 && now - ts1 < 4000) || (ts2 && now - ts2 < 4000)) {
+		if (
+			(ts1 && now - ts1 < LOCAL_OP_DEDUPE_THRESHOLD_MS) ||
+			(ts2 && now - ts2 < LOCAL_OP_DEDUPE_THRESHOLD_MS)
+		) {
 			return true;
 		}
-	} catch {}
+	} catch {
+		// Suppress calendar move tracking errors
+	}
 	return false;
 }
 
@@ -175,8 +222,11 @@ export function useDedupeKeyRef() {
 	const isDuplicate = (type: string, data: LocalOpData): boolean => {
 		const candidates = buildLocalOpCandidates(type, data);
 		const key =
-			candidates[0] || `${type}:${String(data?.id ?? "")}:${String(data?.date ?? "")}:${String(data?.time_slot ?? "")}`;
-		if (key && ref.current === key) return true;
+			candidates[0] ||
+			`${type}:${String(data?.id ?? "")}:${String(data?.date ?? "")}:${String(data?.time_slot ?? "")}`;
+		if (key && ref.current === key) {
+			return true;
+		}
 		ref.current = key;
 		return false;
 	};

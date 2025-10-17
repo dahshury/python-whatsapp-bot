@@ -39,7 +39,13 @@ client = OpenAI(api_key=OPENAI_API_KEY, http_client=sync_client)
 
 # Define available functions as tools for Responses API from central definitions
 FUNCTION_DEFINITIONS = [
-    {"type": "function", "name": t["name"], "description": t["description"], "parameters": t["schema"], "strict": False}
+    {
+        "type": "function",
+        "name": t["name"],
+        "description": t["description"],
+        "parameters": t["schema"],
+        "strict": False,
+    }
     for t in TOOL_DEFINITIONS
 ]
 
@@ -62,7 +68,11 @@ def map_openai_error(e):
     elif isinstance(e, BadRequestError):
         # Check if it's likely a context length issue
         error_msg = str(e).lower()
-        if "token" in error_msg or "context" in error_msg or "content too long" in error_msg:
+        if (
+            "token" in error_msg
+            or "context" in error_msg
+            or "content too long" in error_msg
+        ):
             return "context_length"
         else:
             return "bad_request"
@@ -80,17 +90,45 @@ def map_openai_error(e):
             return "timeout"
         if any(s in error_msg for s in ["quota", "rate", "limit", "too many requests"]):
             return "rate_limit"
-        if any(s in error_msg for s in ["token", "context", "content too long", "length", "too long", "over limit"]):
+        if any(
+            s in error_msg
+            for s in [
+                "token",
+                "context",
+                "content too long",
+                "length",
+                "too long",
+                "over limit",
+            ]
+        ):
             return "context_length"
-        if any(s in error_msg for s in ["auth", "unauthorized", "forbidden", "invalid api key", "key"]):
+        if any(
+            s in error_msg
+            for s in ["auth", "unauthorized", "forbidden", "invalid api key", "key"]
+        ):
             return "authentication"
         if any(
             s in error_msg
-            for s in ["connect", "network", "dns", "reset by peer", "broken pipe", "unreachable", "connection"]
+            for s in [
+                "connect",
+                "network",
+                "dns",
+                "reset by peer",
+                "broken pipe",
+                "unreachable",
+                "connection",
+            ]
         ):
             return "network"
         if any(
-            s in error_msg for s in ["5xx", "server", "internal server error", "service unavailable", "bad gateway"]
+            s in error_msg
+            for s in [
+                "5xx",
+                "server",
+                "internal server error",
+                "service unavailable",
+                "bad gateway",
+            ]
         ):
             return "server"
         return "unknown"
@@ -150,7 +188,9 @@ def run_responses(
     # Add vector store and file_search tool if configured
     if vec_id:
         # Add file_search tool with vector_store_ids
-        kwargs["tools"] = FUNCTION_DEFINITIONS + [{"type": "file_search", "vector_store_ids": [vec_id]}]
+        kwargs["tools"] = FUNCTION_DEFINITIONS + [
+            {"type": "file_search", "vector_store_ids": [vec_id]}
+        ]
 
     # Log request payload
     try:
@@ -183,7 +223,9 @@ def run_responses(
     while iteration_count < max_iterations:
         fc_items = [item for item in response.output if item.type == "function_call"]
         if not fc_items:
-            logging.debug(f"OpenAI function call loop completed after {iteration_count} iterations")
+            logging.debug(
+                f"OpenAI function call loop completed after {iteration_count} iterations"
+            )
             break
 
         iteration_count += 1
@@ -218,7 +260,9 @@ def run_responses(
                 date_str, time_str = parse_unix_timestamp(now_ts)
                 append_message(wa_id, "tool", message_html, date_str, time_str)
             except Exception as persist_err:
-                logging.error(f"Failed to persist tool call message for {fc.name}: {persist_err}")
+                logging.error(
+                    f"Failed to persist tool call message for {fc.name}: {persist_err}"
+                )
 
             if func and "wa_id" in inspect.signature(func).parameters:
                 args["wa_id"] = wa_id
@@ -250,23 +294,40 @@ def run_responses(
                         d2, t2 = parse_unix_timestamp(now_ts2)
                         append_message(wa_id, "tool", result_html, d2, t2)
                     except Exception as persist_res_err:
-                        logging.error(f"Failed to persist tool result for {fc.name}: {persist_res_err}")
+                        logging.error(
+                            f"Failed to persist tool result for {fc.name}: {persist_res_err}"
+                        )
                 except Exception as e:
                     # Use both metrics for now during transition
                     FUNCTION_ERRORS.labels(function=fc.name).inc()
-                    LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=fc.name, provider="openai").inc()
+                    LLM_TOOL_EXECUTION_ERRORS.labels(
+                        tool_name=fc.name, provider="openai"
+                    ).inc()
                     error_msg = f"Error executing {fc.name}: {str(e)}"
                     logging.error(error_msg, exc_info=True)
                     result = {"error": error_msg}
             else:
                 result = {}
-                LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=fc.name, provider="openai").inc()
+                LLM_TOOL_EXECUTION_ERRORS.labels(
+                    tool_name=fc.name, provider="openai"
+                ).inc()
                 logging.warning(f"Function {fc.name} not found in FUNCTION_MAPPING")
 
             input_items.append(
-                {"type": "function_call", "call_id": fc.call_id, "name": fc.name, "arguments": fc.arguments}
+                {
+                    "type": "function_call",
+                    "call_id": fc.call_id,
+                    "name": fc.name,
+                    "arguments": fc.arguments,
+                }
             )
-            input_items.append({"type": "function_call_output", "call_id": fc.call_id, "output": json.dumps(result)})
+            input_items.append(
+                {
+                    "type": "function_call_output",
+                    "call_id": fc.call_id,
+                    "output": json.dumps(result),
+                }
+            )
 
         # submit function call outputs
         kwargs = {
@@ -299,7 +360,9 @@ def run_responses(
                     http_status=str(http_status or ""),
                     function="run_responses_iter",
                 ).inc()
-            logging.error(f"Error creating OpenAI response in iteration {iteration_count}: {e}")
+            logging.error(
+                f"Error creating OpenAI response in iteration {iteration_count}: {e}"
+            )
             break
 
     if iteration_count >= max_iterations:
@@ -308,7 +371,9 @@ def run_responses(
         )
     # extract assistant message
     msg_items = [
-        item for item in response.output if item.type == "message" and getattr(item, "role", None) == "assistant"
+        item
+        for item in response.output
+        if item.type == "message" and getattr(item, "role", None) == "assistant"
     ]
     text = None
     if msg_items:
@@ -352,8 +417,12 @@ def run_openai(
     # Guard: OpenAI Responses API requires one of input/previous_response_id/prompt/conversation_id
     # Avoid 400 errors by short-circuiting when there is no input history yet
     if not input_chat:
-        logging.warning(f"Skipping OpenAI call for wa_id={wa_id}: no conversation input available")
-        LLM_EMPTY_RESPONSES.labels(provider="openai", response_type="missing_input").inc()
+        logging.warning(
+            f"Skipping OpenAI call for wa_id={wa_id}: no conversation input available"
+        )
+        LLM_EMPTY_RESPONSES.labels(
+            provider="openai", response_type="missing_input"
+        ).inc()
         return "", "", ""
     # Call the synchronous Responses API function
     try:

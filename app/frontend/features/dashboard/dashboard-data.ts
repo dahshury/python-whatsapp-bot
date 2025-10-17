@@ -1,91 +1,139 @@
 import type { DashboardData } from "@features/dashboard/types";
-import * as React from "react";
+import { useMemo } from "react";
 import type { ConversationMessage } from "@/entities/conversation";
 import type { Reservation } from "@/entities/event";
 
-interface ReservationItem {
+type ReservationItem = {
 	date?: string;
 	time_slot?: string;
 	time?: string;
 	start?: string;
 	[key: string]: unknown;
-}
+};
 
-interface ConversationItem {
+type ConversationItem = {
 	date?: string;
 	time?: string;
 	ts?: string;
 	datetime?: string;
 	[key: string]: unknown;
+};
+
+// Constants for date range filtering
+const END_OF_DAY_HOUR = 23;
+const END_OF_DAY_MINUTE = 59;
+const END_OF_DAY_SECOND = 59;
+const END_OF_DAY_MILLISECOND = 999;
+
+// Helper to parse ISO date/datetime
+function parseISO(value?: string | null): Date | null {
+	if (!value) {
+		return null;
+	}
+	const d = new Date(value);
+	return Number.isNaN(d.getTime()) ? null : d;
 }
 
-interface VacationItem {
-	start: string;
-	end: string;
-	[key: string]: unknown;
+// Helper to parse reservation date
+function parseReservationDate(r: ReservationItem): Date | null {
+	const iso = parseISO(r?.start);
+	if (iso) {
+		return iso;
+	}
+	const date: string | undefined = r?.date;
+	const time: string | undefined = r?.time_slot || r?.time;
+	if (date && time) {
+		return parseISO(`${date}T${time}`);
+	}
+	if (date) {
+		return parseISO(`${date}T00:00:00`);
+	}
+	return null;
 }
 
-// Expect reservations and conversations to be provided from a higher-level data context
-export function useDashboardDataFrom(state: {
-	conversations: Record<string, ConversationItem[]>;
-	reservations: Record<string, ReservationItem[]>;
-	vacations: VacationItem[];
-	activeRange?: { fromDate?: string; toDate?: string };
-}) {
-	const { conversations, reservations, activeRange } = state;
+// Helper to parse message date
+function parseMessageDate(m: ConversationItem): Date | null {
+	const iso = parseISO(m?.ts || m?.datetime);
+	if (iso) {
+		return iso;
+	}
+	const date: string | undefined = m?.date;
+	const time: string | undefined = m?.time;
+	if (date && time) {
+		return parseISO(`${date}T${time}`);
+	}
+	if (date) {
+		return parseISO(`${date}T00:00:00`);
+	}
+	return null;
+}
 
-	const dashboardData = React.useMemo<DashboardData | null>(() => {
+// Helper to check if date is within range
+function isDateInRange(
+	d: Date | null,
+	range?: { fromDate?: string; toDate?: string }
+): boolean {
+	if (!d) {
+		return false;
+	}
+	if (range?.fromDate) {
+		const from = new Date(range.fromDate);
+		if (d < from) {
+			return false;
+		}
+	}
+	if (range?.toDate) {
+		const to = new Date(range.toDate);
+		const t = new Date(
+			to.getFullYear(),
+			to.getMonth(),
+			to.getDate(),
+			END_OF_DAY_HOUR,
+			END_OF_DAY_MINUTE,
+			END_OF_DAY_SECOND,
+			END_OF_DAY_MILLISECOND
+		);
+		if (d > t) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export const useDashboardData = (state?: {
+	conversations?: Record<string, ConversationMessage[]>;
+	reservations?: Record<string, Reservation[]>;
+	activeRange?: unknown;
+}) => {
+	const { conversations, reservations, activeRange } = state || {};
+
+	const dashboardData = useMemo<DashboardData | null>(() => {
 		try {
 			const reservationEntries = Object.entries(reservations ?? {});
 			const conversationEntries = Object.entries(conversations ?? {});
 
-			const parseISO = (value?: string | null) => {
-				if (!value) return null;
-				const d = new Date(value);
-				return Number.isNaN(d.getTime()) ? null : d;
-			};
-			const parseReservationDate = (r: ReservationItem) => {
-				const iso = parseISO(r?.start);
-				if (iso) return iso;
-				const date: string | undefined = r?.date;
-				const time: string | undefined = r?.time_slot || r?.time;
-				if (date && time) return parseISO(`${date}T${time}`);
-				if (date) return parseISO(`${date}T00:00:00`);
-				return null;
-			};
-			const parseMessageDate = (m: ConversationItem) => {
-				const iso = parseISO(m?.ts || m?.datetime);
-				if (iso) return iso;
-				const date: string | undefined = m?.date;
-				const time: string | undefined = m?.time;
-				if (date && time) return parseISO(`${date}T${time}`);
-				if (date) return parseISO(`${date}T00:00:00`);
-				return null;
-			};
-
-			const withinRange = (d: Date | null) => {
-				if (!d) return false;
-				const from = activeRange?.fromDate ? new Date(activeRange.fromDate) : null;
-				const to = activeRange?.toDate ? new Date(activeRange.toDate) : null;
-				if (from) {
-					const f = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-					if (d < f) return false;
-				}
-				if (to) {
-					const t = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
-					if (d > t) return false;
-				}
-				return true;
-			};
-
-			const reservationEntriesFiltered = reservationEntries.map(([id, items]) => [
-				id,
-				(Array.isArray(items) ? items : []).filter((r) => withinRange(parseReservationDate(r))),
-			]) as [string, Reservation[]][];
-			const conversationEntriesFiltered = conversationEntries.map(([id, msgs]) => [
-				id,
-				(Array.isArray(msgs) ? msgs : []).filter((m) => withinRange(parseMessageDate(m))),
-			]) as unknown as [string, ConversationMessage[]][];
+			const reservationEntriesFiltered = reservationEntries.map(
+				([id, items]) => [
+					id,
+					(Array.isArray(items) ? items : []).filter((r) =>
+						isDateInRange(
+							parseReservationDate(r),
+							activeRange as { fromDate?: string; toDate?: string }
+						)
+					),
+				]
+			) as [string, Reservation[]][];
+			const conversationEntriesFiltered = conversationEntries.map(
+				([id, msgs]) => [
+					id,
+					(Array.isArray(msgs) ? msgs : []).filter((m) =>
+						isDateInRange(
+							parseMessageDate(m),
+							activeRange as { fromDate?: string; toDate?: string }
+						)
+					),
+				]
+			) as unknown as [string, ConversationMessage[]][];
 
 			const totalReservations = reservationEntriesFiltered.reduce(
 				(sum, [, items]) => sum + (Array.isArray(items) ? items.length : 0),
@@ -122,7 +170,9 @@ export function useDashboardDataFrom(state: {
 						conversionRate: { percentChange: 0, isPositive: true },
 					},
 				},
-				prometheusMetrics: (globalThis as { __prom_metrics__?: Record<string, unknown> }).__prom_metrics__ || {},
+				prometheusMetrics:
+					(globalThis as { __prom_metrics__?: Record<string, unknown> })
+						.__prom_metrics__ || {},
 				dailyTrends: [],
 				typeDistribution: [],
 				timeSlots: [],
@@ -131,7 +181,9 @@ export function useDashboardDataFrom(state: {
 				conversationAnalysis: {
 					avgMessageLength: 0,
 					avgWordsPerMessage: 0,
-					avgMessagesPerCustomer: uniqueCustomerIds.size ? totalMessages / uniqueCustomerIds.size : 0,
+					avgMessagesPerCustomer: uniqueCustomerIds.size
+						? totalMessages / uniqueCustomerIds.size
+						: 0,
 					totalMessages,
 					uniqueCustomers: uniqueCustomerIds.size,
 					responseTimeStats: { avg: 0, median: 0, max: 0 },
@@ -143,12 +195,15 @@ export function useDashboardDataFrom(state: {
 				funnelData: [
 					{
 						stage: "Conversations",
-						count: conversationEntriesFiltered.filter(([, msgs]) => (Array.isArray(msgs) ? msgs.length : 0) > 0).length,
+						count: conversationEntriesFiltered.filter(
+							([, msgs]) => (Array.isArray(msgs) ? msgs.length : 0) > 0
+						).length,
 					},
 					{
 						stage: "Made reservation",
-						count: reservationEntriesFiltered.filter(([, items]) => (Array.isArray(items) ? items.length : 0) > 0)
-							.length,
+						count: reservationEntriesFiltered.filter(
+							([, items]) => (Array.isArray(items) ? items.length : 0) > 0
+						).length,
 					},
 					{ stage: "Returned for another", count: 0 },
 					{ stage: "Cancelled", count: 0 },
@@ -157,11 +212,10 @@ export function useDashboardDataFrom(state: {
 			};
 
 			return dashboard;
-		} catch (e) {
-			console.error("Failed to compute dashboard data (slim):", e);
+		} catch (_e) {
 			return null;
 		}
 	}, [conversations, reservations, activeRange]);
 
 	return { dashboardData };
-}
+};

@@ -5,7 +5,15 @@ import json
 import logging
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    HTTPException,
+    Query,
+    Request,
+)
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -45,7 +53,9 @@ from app.utils.whatsapp_utils import (
     send_whatsapp_template,
     test_whatsapp_api_config,
 )
-from app.utils.whatsapp_utils import process_whatsapp_message as process_whatsapp_message_util
+from app.utils.whatsapp_utils import (
+    process_whatsapp_message as process_whatsapp_message_util,
+)
 
 router = APIRouter()
 security = HTTPBasic()
@@ -110,7 +120,9 @@ async def _process_and_release(body, run_llm_function):
 
 
 @router.post("/webhook")
-async def webhook_post(request: Request, background_tasks: BackgroundTasks, _=Depends(verify_signature)):
+async def webhook_post(
+    request: Request, background_tasks: BackgroundTasks, _=Depends(verify_signature)
+):
     """
     Process incoming webhook events from WhatsApp API.
     """
@@ -129,11 +141,21 @@ async def webhook_post(request: Request, background_tasks: BackgroundTasks, _=De
         raise HTTPException(status_code=400, detail="Invalid JSON provided")
 
     # Check for WhatsApp status update
-    if body.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {}).get("statuses"):
+    if (
+        body.get("entry", [{}])[0]
+        .get("changes", [{}])[0]
+        .get("value", {})
+        .get("statuses")
+    ):
         logging.info("Received a WhatsApp status update.")
 
         # Check for failed message delivery status
-        statuses = body.get("entry", [{}])[0].get("changes", [{}])[0].get("value", {}).get("statuses", [])
+        statuses = (
+            body.get("entry", [{}])[0]
+            .get("changes", [{}])[0]
+            .get("value", {})
+            .get("statuses", [])
+        )
         for status in statuses:
             if status.get("status") == "failed":
                 logging.warning(f"WhatsApp message delivery failed: {status}")
@@ -167,7 +189,9 @@ async def webhook_post(request: Request, background_tasks: BackgroundTasks, _=De
         # Try to acquire semaphore without blocking the response
         if task_semaphore.locked() and task_semaphore._value == 0:
             # Log current semaphore status
-            logging.warning(f"Maximum concurrent tasks reached ({MAX_CONCURRENT_TASKS}). Message processing delayed.")
+            logging.warning(
+                f"Maximum concurrent tasks reached ({MAX_CONCURRENT_TASKS}). Message processing delayed."
+            )
             CONCURRENT_TASK_LIMIT_REACHED.inc()
             with contextlib.suppress(Exception):
                 CONCURRENT_TASK_LIMIT_REACHED_BY_REASON.labels(
@@ -176,13 +200,17 @@ async def webhook_post(request: Request, background_tasks: BackgroundTasks, _=De
                     method="POST",
                 ).inc()
             # Still return 200 OK to WhatsApp API to prevent retries
-            return JSONResponse(content={"status": "ok", "note": "Processing delayed due to high load"})
+            return JSONResponse(
+                content={"status": "ok", "note": "Processing delayed due to high load"}
+            )
 
         # Log task creation
         try:
             await task_semaphore.acquire()
             llm_service = get_llm_service()
-            logging.debug(f"Semaphore acquired. Tasks in progress: {MAX_CONCURRENT_TASKS - task_semaphore._value}")
+            logging.debug(
+                f"Semaphore acquired. Tasks in progress: {MAX_CONCURRENT_TASKS - task_semaphore._value}"
+            )
 
             background_tasks.add_task(_process_and_release, body, llm_service.run)
         except Exception as e:
@@ -210,7 +238,10 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
     """
     correct_username = config["APP_ID"]
     correct_password = config["APP_SECRET"]
-    if credentials.username == correct_username and credentials.password == correct_password:
+    if (
+        credentials.username == correct_username
+        and credentials.password == correct_password
+    ):
         return True
     else:
         INVALID_HTTP_REQUESTS.inc()
@@ -242,11 +273,18 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
     # Enforce WhatsApp max length on server side as a defense-in-depth measure
     try:
         if not isinstance(text, str):
-            return JSONResponse(content={"status": "error", "message": "Invalid text"}, status_code=400)
+            return JSONResponse(
+                content={"status": "error", "message": "Invalid text"}, status_code=400
+            )
         if len(text) > 4096:
-            return JSONResponse(content={"status": "error", "message": "Message too long (max 4096)"}, status_code=400)
+            return JSONResponse(
+                content={"status": "error", "message": "Message too long (max 4096)"},
+                status_code=400,
+            )
     except Exception:
-        return JSONResponse(content={"status": "error", "message": "Invalid text"}, status_code=400)
+        return JSONResponse(
+            content={"status": "error", "message": "Invalid text"}, status_code=400
+        )
     response = await send_whatsapp_message(wa_id, text)
 
     # On success, persist the message using append_message (which also broadcasts)
@@ -306,7 +344,9 @@ async def api_send_whatsapp_template(payload: dict = Body(...)):
 async def api_test_whatsapp_config():
     """Test WhatsApp API configuration and connectivity."""
     success, message, details = await test_whatsapp_api_config()
-    return JSONResponse(content={"success": success, "message": message, "details": details})
+    return JSONResponse(
+        content={"success": success, "message": message, "details": details}
+    )
 
 
 @router.get("/conversations")
@@ -317,13 +357,23 @@ async def api_get_all_conversations(recent: str = Query(None), limit: int = Quer
 
 @router.post("/conversations/{wa_id}")
 async def api_append_message(wa_id: str, payload: dict = Body(...)):
-    append_message(wa_id, payload.get("role"), payload.get("message"), payload.get("date"), payload.get("time"))
+    append_message(
+        wa_id,
+        payload.get("role"),
+        payload.get("message"),
+        payload.get("date"),
+        payload.get("time"),
+    )
     return JSONResponse(content={"success": True})
 
 
 @router.get("/reservations")
-async def api_get_all_reservations(future: bool = Query(True), include_cancelled: bool = Query(False)):
-    reservations = get_all_reservations(future=future, include_cancelled=include_cancelled)
+async def api_get_all_reservations(
+    future: bool = Query(True), include_cancelled: bool = Query(False)
+):
+    reservations = get_all_reservations(
+        future=future, include_cancelled=include_cancelled
+    )
     return JSONResponse(content=reservations)
 
 
@@ -335,14 +385,20 @@ async def api_reserve_time_slot(payload: dict = Body(...)):
     # Extract and normalize wa_id from frontend payload
     raw_wa_id = payload.get("id") or payload.get("wa_id")  # Support both formats
     if not raw_wa_id:
-        return JSONResponse(content={"success": False, "error": "Missing wa_id/id in payload"}, status_code=400)
+        return JSONResponse(
+            content={"success": False, "error": "Missing wa_id/id in payload"},
+            status_code=400,
+        )
 
     try:
         # Validate and normalize wa_id using WaId class
         wa_id = WaId.from_any_format(raw_wa_id)
         normalized_wa_id = wa_id.plain_format  # Always plain digits format
     except Exception as e:
-        return JSONResponse(content={"success": False, "error": f"Invalid phone number: {str(e)}"}, status_code=400)
+        return JSONResponse(
+            content={"success": False, "error": f"Invalid phone number: {str(e)}"},
+            status_code=400,
+        )
 
     resp = reserve_time_slot(
         normalized_wa_id,  # Use normalized plain format
@@ -377,6 +433,9 @@ async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
 
 
 # === Customers endpoints (name/age management) ===
+TEMPLATE_USER_WA_ID = "__TEMPLATE__"
+
+
 @router.get("/customers/{wa_id}")
 async def api_get_customer(wa_id: str):
     try:
@@ -387,7 +446,18 @@ async def api_get_customer(wa_id: str):
         with get_session() as session:
             row = session.get(CustomerModel, wa_id)
             if not row:
-                return JSONResponse(content={"success": True, "data": None})
+                # Ensure the template/default document exists as a special case
+                if str(wa_id) == TEMPLATE_USER_WA_ID:
+                    try:
+                        row = CustomerModel(
+                            wa_id=wa_id, customer_name="Default Template", document={}
+                        )
+                        session.add(row)
+                        session.commit()
+                    except Exception:
+                        row = None
+                if not row:
+                    return JSONResponse(content={"success": True, "data": None})
             # Compute effective age using recorded date if available
             age = getattr(row, "age", None)
             recorded = getattr(row, "age_recorded_at", None)
@@ -397,7 +467,14 @@ async def api_get_customer(wa_id: str):
                 if recorded is not None:
                     try:
                         today = date.today()
-                        years = today.year - recorded.year - ((today.month, today.day) < (recorded.month, recorded.day))
+                        years = (
+                            today.year
+                            - recorded.year
+                            - (
+                                (today.month, today.day)
+                                < (recorded.month, recorded.day)
+                            )
+                        )
                         if years > 0:
                             effective_age = max(0, age + years)
                     except Exception:
@@ -418,7 +495,9 @@ async def api_get_customer(wa_id: str):
             )
     except Exception as e:
         logging.error(f"Error fetching customer {wa_id}: {e}")
-        return JSONResponse(content={"success": False, "message": "failed_to_load"}, status_code=500)
+        return JSONResponse(
+            content={"success": False, "message": "failed_to_load"}, status_code=500
+        )
 
 
 @router.put("/customers/{wa_id}")
@@ -439,62 +518,46 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
         if has_document and not has_name and not has_age:
             # Document-only save - optimized fast path
             try:
-                from app.db import DATABASE_URL, CustomerModel, get_session
+                from app.db import CustomerModel, get_session
 
-                # Log DB connection info once for diagnosis
-                with contextlib.suppress(Exception):
-                    logging.info(
-                        f"🔗 DB: {DATABASE_URL.split('@')[1].split('/')[0] if '@' in DATABASE_URL else 'unknown'}"
-                    )
-
-                db_start = time.perf_counter()
                 with get_session() as session:
                     # Optimized: use execute with RETURNING to avoid extra SELECT
                     from sqlalchemy import select, update
 
-                    select_start = time.perf_counter()
                     # Check if customer exists
-                    row = session.execute(select(CustomerModel.wa_id).where(CustomerModel.wa_id == wa_id)).first()
-                    select_time = (time.perf_counter() - select_start) * 1000
+                    row = session.execute(
+                        select(CustomerModel.wa_id).where(CustomerModel.wa_id == wa_id)
+                    ).first()
 
-                    update_start = time.perf_counter()
                     if row:
                         # Update existing
                         session.execute(
-                            update(CustomerModel).where(CustomerModel.wa_id == wa_id).values(document=document)
+                            update(CustomerModel)
+                            .where(CustomerModel.wa_id == wa_id)
+                            .values(document=document)
                         )
                     else:
                         # Insert new
                         row = CustomerModel(wa_id=wa_id, document=document)
                         session.add(row)
-                    update_time = (time.perf_counter() - update_start) * 1000
 
-                    commit_start = time.perf_counter()
                     session.commit()
-                    commit_time = (time.perf_counter() - commit_start) * 1000
-
-                db_time = (time.perf_counter() - db_start) * 1000
-                logging.info(
-                    f"📊 DB breakdown: select={select_time:.1f}ms, update={update_time:.1f}ms, commit={commit_time:.1f}ms"
-                )
 
                 # Broadcast lightweight notification (no document payload)
-                broadcast_start = time.perf_counter()
                 try:
-                    enqueue_broadcast("customer_document_updated", {"wa_id": wa_id}, [wa_id])
+                    enqueue_broadcast(
+                        "customer_document_updated", {"wa_id": wa_id}, [wa_id]
+                    )
                 except Exception as be:
                     logging.debug(f"Broadcast document update failed (non-fatal): {be}")
-                broadcast_time = (time.perf_counter() - broadcast_start) * 1000
-
-                total_time = (time.perf_counter() - start_time) * 1000
-                logging.info(
-                    f"⚡ Document save: total={total_time:.1f}ms (db={db_time:.1f}ms, broadcast={broadcast_time:.1f}ms)"
-                )
 
                 return JSONResponse(content={"success": True, "document": document})
             except Exception as e:
                 logging.error(f"Error saving document for {wa_id}: {e}")
-                return JSONResponse(content={"success": False, "message": "failed_to_save_document"}, status_code=500)
+                return JSONResponse(
+                    content={"success": False, "message": "failed_to_save_document"},
+                    status_code=500,
+                )
 
         # Slow path: name/age updates (uses domain service)
         service = CustomerService()
@@ -506,14 +569,18 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
             service.get_or_create_customer(wa_id, customer_name=name)
 
         if has_name:
-            result_name = service.update_customer_name(wa_id, name, ar=bool(payload.get("ar", False)))
+            result_name = service.update_customer_name(
+                wa_id, name, ar=bool(payload.get("ar", False))
+            )
             if not result_name.get("success"):
                 return JSONResponse(content=result_name, status_code=400)
 
         if has_age:
             # allow explicit null to clear age
             result_age = service.update_customer_age(
-                wa_id, age if age is not None else None, ar=bool(payload.get("ar", False))
+                wa_id,
+                age if age is not None else None,
+                ar=bool(payload.get("ar", False)),
             )
             if not result_age.get("success"):
                 return JSONResponse(content=result_age, status_code=400)
@@ -532,12 +599,17 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
                     session.commit()
                 # Broadcast lightweight notification (no document payload)
                 try:
-                    enqueue_broadcast("customer_document_updated", {"wa_id": wa_id}, [wa_id])
+                    enqueue_broadcast(
+                        "customer_document_updated", {"wa_id": wa_id}, [wa_id]
+                    )
                 except Exception as be:
                     logging.debug(f"Broadcast document update failed (non-fatal): {be}")
             except Exception as e:
                 logging.error(f"Error saving document for {wa_id}: {e}")
-                return JSONResponse(content={"success": False, "message": "failed_to_save_document"}, status_code=500)
+                return JSONResponse(
+                    content={"success": False, "message": "failed_to_save_document"},
+                    status_code=500,
+                )
 
         total_time = (time.perf_counter() - start_time) * 1000
         logging.info(f"Customer update: total={total_time:.1f}ms")
@@ -552,7 +624,9 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
         )
     except Exception as e:
         logging.error(f"Error saving customer {wa_id}: {e}")
-        return JSONResponse(content={"success": False, "message": "failed_to_save"}, status_code=500)
+        return JSONResponse(
+            content={"success": False, "message": "failed_to_save"}, status_code=500
+        )
 
 
 # Modify reservation endpoint
@@ -576,12 +650,18 @@ async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
 # Modify WhatsApp ID endpoint
 @router.post("/reservations/{wa_id}/modify_id")
 async def api_modify_id(wa_id: str, payload: dict = Body(...)):
-    resp = modify_id(payload.get("old_wa_id", wa_id), payload.get("new_wa_id"), ar=payload.get("ar", False))
+    resp = modify_id(
+        payload.get("old_wa_id", wa_id),
+        payload.get("new_wa_id"),
+        ar=payload.get("ar", False),
+    )
     return JSONResponse(content=resp)
 
 
 @router.get("/message")
-async def api_get_message(request: Request, key: str = Query(...), ar: bool = Query(False)):
+async def api_get_message(
+    request: Request, key: str = Query(...), ar: bool = Query(False)
+):
     """
     Retrieve a translated message by key via HTTP query parameters.
     """
@@ -604,7 +684,9 @@ async def api_get_vacation_periods():
     try:
         from app.db import VacationPeriodModel, get_session
 
-        vacation_message = config.get("VACATION_MESSAGE", "The business is closed during this period.")
+        vacation_message = config.get(
+            "VACATION_MESSAGE", "The business is closed during this period."
+        )
 
         periods = []
         with get_session() as session:
@@ -615,28 +697,40 @@ async def api_get_vacation_periods():
                     s_date = (
                         r.start_date
                         if isinstance(r.start_date, datetime.date)
-                        else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                        else datetime.datetime.strptime(
+                            str(r.start_date), "%Y-%m-%d"
+                        ).date()
                     )
                     if getattr(r, "end_date", None):
                         e_date = (
                             r.end_date
                             if isinstance(r.end_date, datetime.date)
-                            else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                            else datetime.datetime.strptime(
+                                str(r.end_date), "%Y-%m-%d"
+                            ).date()
                         )
                     else:
                         # for legacy rows with only duration_days
                         dur = max(1, int(getattr(r, "duration_days", 1)))
                         e_date = s_date + datetime.timedelta(days=dur - 1)
                     start_dt = datetime.datetime(
-                        s_date.year, s_date.month, s_date.day, tzinfo=ZoneInfo(config["TIMEZONE"])
+                        s_date.year,
+                        s_date.month,
+                        s_date.day,
+                        tzinfo=ZoneInfo(config["TIMEZONE"]),
                     )
                     end_dt = datetime.datetime(
-                        e_date.year, e_date.month, e_date.day, tzinfo=ZoneInfo(config["TIMEZONE"])
+                        e_date.year,
+                        e_date.month,
+                        e_date.day,
+                        tzinfo=ZoneInfo(config["TIMEZONE"]),
                     )
                     title = (
                         str(r.title)
                         if r.title
-                        else format_enhanced_vacation_message(start_dt, end_dt, vacation_message)
+                        else format_enhanced_vacation_message(
+                            start_dt, end_dt, vacation_message
+                        )
                     )
                     periods.append(
                         {
@@ -691,12 +785,17 @@ async def api_update_vacation_periods(payload: dict = Body(...)):
                     e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
                     if e_date < s_date:
                         s_date, e_date = e_date, s_date
-                    normalized.append((s_date, e_date, title if isinstance(title, str) else None))
+                    normalized.append(
+                        (s_date, e_date, title if isinstance(title, str) else None)
+                    )
                 except Exception:
                     continue
         else:
             return JSONResponse(
-                content={"success": False, "message": get_message("vacation_periods_update_failed", ar)},
+                content={
+                    "success": False,
+                    "message": get_message("vacation_periods_update_failed", ar),
+                },
                 status_code=400,
             )
 
@@ -704,20 +803,29 @@ async def api_update_vacation_periods(payload: dict = Body(...)):
         with get_session() as session:
             session.query(VacationPeriodModel).delete(synchronize_session=False)
             for s_date, e_date, title in normalized:
-                session.add(VacationPeriodModel(start_date=s_date, end_date=e_date, title=title))
+                session.add(
+                    VacationPeriodModel(start_date=s_date, end_date=e_date, title=title)
+                )
             session.commit()
 
         # Broadcast updated vacations
         with contextlib.suppress(Exception):
             enqueue_broadcast("vacation_period_updated", {"periods": []})
-        return JSONResponse(content={"success": True, "message": get_message("vacation_periods_updated", ar)})
+        return JSONResponse(
+            content={
+                "success": True,
+                "message": get_message("vacation_periods_updated", ar),
+            }
+        )
 
     except Exception as e:
         logging.error(f"Error updating vacation periods: {e}")
         return JSONResponse(
             content={
                 "success": False,
-                "message": get_message("vacation_periods_update_failed", payload.get("ar", False)),
+                "message": get_message(
+                    "vacation_periods_update_failed", payload.get("ar", False)
+                ),
             },
             status_code=500,
         )
@@ -735,13 +843,21 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
         original = payload.get("original_vacation_data")
         if not original:
             return JSONResponse(
-                content={"success": False, "message": get_message("vacation_undo_failed", ar)}, status_code=400
+                content={
+                    "success": False,
+                    "message": get_message("vacation_undo_failed", ar),
+                },
+                status_code=400,
             )
 
         periods = original.get("periods")
         if not isinstance(periods, list):
             return JSONResponse(
-                content={"success": False, "message": get_message("vacation_undo_failed", ar)}, status_code=400
+                content={
+                    "success": False,
+                    "message": get_message("vacation_undo_failed", ar),
+                },
+                status_code=400,
             )
 
         normalized: list[tuple[datetime.date, datetime.date, str | None]] = []
@@ -766,24 +882,38 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
                 e_date = datetime.date(e_dt.year, e_dt.month, e_dt.day)
                 if e_date < s_date:
                     s_date, e_date = e_date, s_date
-                normalized.append((s_date, e_date, title if isinstance(title, str) else None))
+                normalized.append(
+                    (s_date, e_date, title if isinstance(title, str) else None)
+                )
             except Exception:
                 continue
 
         with get_session() as session:
             session.query(VacationPeriodModel).delete(synchronize_session=False)
             for s_date, e_date, title in normalized:
-                session.add(VacationPeriodModel(start_date=s_date, end_date=e_date, title=title))
+                session.add(
+                    VacationPeriodModel(start_date=s_date, end_date=e_date, title=title)
+                )
             session.commit()
 
         with contextlib.suppress(Exception):
             enqueue_broadcast("vacation_period_updated", {"periods": []})
-        return JSONResponse(content={"success": True, "message": get_message("vacation_update_undone", ar)})
+        return JSONResponse(
+            content={
+                "success": True,
+                "message": get_message("vacation_update_undone", ar),
+            }
+        )
 
     except Exception as e:
         logging.error(f"Error undoing vacation update: {e}")
         return JSONResponse(
-            content={"success": False, "message": get_message("vacation_undo_failed", payload.get("ar", False))},
+            content={
+                "success": False,
+                "message": get_message(
+                    "vacation_undo_failed", payload.get("ar", False)
+                ),
+            },
             status_code=500,
         )
 
@@ -796,7 +926,9 @@ async def api_undo_reserve_time_slot(payload: dict = Body(...)):
     """
     Undo a reservation creation by cancelling the reservation.
     """
-    resp = undo_reserve_time_slot(payload.get("reservation_id"), ar=payload.get("ar", False))
+    resp = undo_reserve_time_slot(
+        payload.get("reservation_id"), ar=payload.get("ar", False)
+    )
     return JSONResponse(content=resp)
 
 
@@ -806,7 +938,9 @@ async def api_undo_cancel_reservation(payload: dict = Body(...)):
     Undo a reservation cancellation by reinstating the reservation.
     """
     resp = undo_cancel_reservation(
-        payload.get("reservation_id"), ar=payload.get("ar", False), max_reservations=payload.get("max_reservations", 5)
+        payload.get("reservation_id"),
+        ar=payload.get("ar", False),
+        max_reservations=payload.get("max_reservations", 5),
     )
     return JSONResponse(content=resp)
 
@@ -839,7 +973,12 @@ async def api_get_notifications(limit: int = 2000):
 
         limit = max(1, min(int(limit), 2000))
         with get_session() as session:
-            rows = session.query(NotificationEventModel).order_by(NotificationEventModel.id.desc()).limit(limit).all()
+            rows = (
+                session.query(NotificationEventModel)
+                .order_by(NotificationEventModel.id.desc())
+                .limit(limit)
+                .all()
+            )
             events = []
             for r in rows:
                 try:
@@ -848,7 +987,9 @@ async def api_get_notifications(limit: int = 2000):
                             "id": r.id,
                             "type": r.event_type,
                             "timestamp": r.ts_iso,
-                            "data": json.loads(r.data) if isinstance(r.data, str) else r.data,
+                            "data": json.loads(r.data)
+                            if isinstance(r.data, str)
+                            else r.data,
                         }
                     )
                 except Exception:
@@ -856,4 +997,6 @@ async def api_get_notifications(limit: int = 2000):
         return JSONResponse(content={"success": True, "data": events})
     except Exception as e:
         logging.error(f"Error loading notifications: {e}")
-        return JSONResponse(content={"success": False, "message": "failed_to_load"}, status_code=500)
+        return JSONResponse(
+            content={"success": False, "message": "failed_to_load"}, status_code=500
+        )

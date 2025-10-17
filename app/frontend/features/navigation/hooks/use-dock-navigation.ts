@@ -7,17 +7,35 @@ import { i18n } from "@shared/libs/i18n";
 import { useLanguage } from "@shared/libs/state/language-context";
 import { useSettings } from "@shared/libs/state/settings-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
-import { toastService } from "@shared/libs/toast";
+import { toastService } from "@shared/libs/toast/toast-service";
 import { usePathname, useRouter } from "next/navigation";
-import * as React from "react";
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
-import { getCalendarViewOptions } from "@/widgets/calendar/CalendarToolbar";
-import { useCalendarToolbar } from "@/widgets/calendar/hooks/useCalendarToolbar";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { getCalendarViewOptions } from "@/widgets/calendar/calendar-toolbar";
+import { useCalendarToolbar } from "@/widgets/calendar/hooks/use-calendar-toolbar";
+import type { CalendarCoreRef } from "@/widgets/calendar/types";
 
-interface UseDockNavigationProps {
+const VIEW_CHANGE_TOAST_DURATION_MS = 1500;
+
+// Helper to determine view mode based on settings
+function getViewMode(freeRoam: boolean, showDualCalendar: boolean): string {
+	if (freeRoam) {
+		return "freeRoam";
+	}
+	if (showDualCalendar) {
+		return "dual";
+	}
+	return "default";
+}
+
+type UseDockNavigationProps = {
 	calendarRef?: React.RefObject<CalendarCoreRef> | null;
 	currentCalendarView?: string;
 	onCalendarViewChange?: (view: string) => void;
+};
+
+// No-op handler for unused toggles
+function noop(): void {
+	// Handler managed by individual components
 }
 
 export function useDockNavigation({
@@ -31,16 +49,16 @@ export function useDockNavigation({
 	const { freeRoam, showDualCalendar } = useSettings();
 	const { recordingState } = useVacation();
 
-	const [mounted, setMounted] = React.useState(false);
-	const [activeTab, setActiveTab] = React.useState("view");
-	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
+	const [mounted, setMounted] = useState(false);
+	const [activeTab, setActiveTab] = useState("view");
+	const [isHoveringDate, setIsHoveringDate] = useState(false);
 
 	// Use the provided calendarRef directly
 	const isCalendarPage = pathname === "/";
 	const isDocumentsPage = pathname?.startsWith("/documents") ?? false;
 
 	// Auto-switch to general tab when not on calendar page
-	React.useEffect(() => {
+	useEffect(() => {
 		if (!isCalendarPage && activeTab === "view") {
 			setActiveTab("general");
 		}
@@ -61,104 +79,211 @@ export function useDockNavigation({
 		currentView: currentCalendarView,
 	});
 
-	const handlePrev = React.useCallback(() => {
+	const handlePrev = useCallback(() => {
 		count("dockNav:handlePrev");
 		if (calendarRef?.current?.getApi) {
 			originalHandlePrev();
 			return;
 		}
-		if (!isCalendarPage) router.push("/");
-		else originalHandlePrev();
+		if (isCalendarPage) {
+			originalHandlePrev();
+		} else {
+			router.push("/");
+		}
 	}, [isCalendarPage, router, originalHandlePrev, calendarRef]);
 
-	const handleNext = React.useCallback(() => {
+	const handleNext = useCallback(() => {
 		count("dockNav:handleNext");
 		if (calendarRef?.current?.getApi) {
 			originalHandleNext();
 			return;
 		}
-		if (!isCalendarPage) router.push("/");
-		else originalHandleNext();
+		if (isCalendarPage) {
+			originalHandleNext();
+		} else {
+			router.push("/");
+		}
 	}, [isCalendarPage, router, originalHandleNext, calendarRef]);
 
-	const handleToday = React.useCallback(() => {
+	const handleToday = useCallback(() => {
 		count("dockNav:handleToday");
 		if (calendarRef?.current?.getApi) {
 			originalHandleToday();
 			return;
 		}
-		if (!isCalendarPage) router.push("/");
-		else originalHandleToday();
+		if (isCalendarPage) {
+			originalHandleToday();
+		} else {
+			router.push("/");
+		}
 	}, [isCalendarPage, router, originalHandleToday, calendarRef]);
 
-	const handleCalendarViewChange = React.useCallback(
-		(view: string) => {
-			count("dockNav:viewChange");
-			if (isCalendarPage && calendarRef?.current) {
-				const api = calendarRef.current.getApi?.();
-				if (api) {
-					// Temporarily adjust options around multimonth transitions to avoid plugin issues
-					try {
-						// Always clear constraints before changing view
-						api.setOption("validRange", undefined);
-						api.setOption("eventConstraint", undefined);
-						api.setOption("selectConstraint", undefined);
-						// Change view first
-						api.changeView(view);
-						// Reapply constraints only for non-multimonth views
-						const lower = (view || "").toLowerCase();
-						const isMultiMonth = lower === "multimonthyear";
-						if (!isMultiMonth) {
-							api.setOption("validRange", freeRoam ? undefined : getValidRange(freeRoam));
-							// For timeGrid views only
-							if (lower.includes("timegrid")) {
-								api.setOption("eventConstraint", freeRoam ? undefined : "businessHours");
-								api.setOption("selectConstraint", freeRoam ? undefined : "businessHours");
-							}
-						}
-					} catch {}
-					try {
-						const opts = getCalendarViewOptions(isLocalized);
-						const label = (opts.find((o) => o.value === view)?.label ?? view).toString();
-						toastService.info(i18n.getMessage("view_changed", isLocalized), label, 1500);
-					} catch {}
-				}
-			}
-			onCalendarViewChange?.(view);
-		},
-		[isCalendarPage, calendarRef, onCalendarViewChange, isLocalized, freeRoam]
+	// Helper to check if view is multimonth
+	const isMultimonthView = useCallback(
+		(viewName: string): boolean => viewName.toLowerCase() === "multimonthyear",
+		[]
 	);
 
-	const isActive = React.useCallback(
+	// Helper to check if view is timegrid
+	const isTimegridView = useCallback(
+		(viewName: string): boolean => viewName.toLowerCase().includes("timegrid"),
+		[]
+	);
+
+	// Helper to clear calendar constraints
+	const clearCalendarConstraints = useCallback(
+		(apiObj: Record<string, unknown>) => {
+			try {
+				(
+					apiObj.setOption as
+						| ((key: string, value: unknown) => void)
+						| undefined
+				)?.("validRange", undefined);
+				(
+					apiObj.setOption as
+						| ((key: string, value: unknown) => void)
+						| undefined
+				)?.("eventConstraint", undefined);
+				(
+					apiObj.setOption as
+						| ((key: string, value: unknown) => void)
+						| undefined
+				)?.("selectConstraint", undefined);
+			} catch {
+				// Calendar API may fail in some contexts
+			}
+		},
+		[]
+	);
+
+	// Helper to reapply calendar constraints based on view and settings
+	const reapplyCalendarConstraints = useCallback(
+		(apiObj: Record<string, unknown>, viewName: string) => {
+			try {
+				if (isMultimonthView(viewName)) {
+					return; // Skip for multimonth views
+				}
+
+				// Always set validRange
+				(
+					apiObj.setOption as
+						| ((key: string, value: unknown) => void)
+						| undefined
+				)?.("validRange", freeRoam ? undefined : getValidRange(freeRoam));
+
+				// Set event/select constraints for timegrid views
+				if (!isTimegridView(viewName)) {
+					return;
+				}
+
+				(
+					apiObj.setOption as
+						| ((key: string, value: unknown) => void)
+						| undefined
+				)?.("eventConstraint", freeRoam ? undefined : "businessHours");
+				(
+					apiObj.setOption as
+						| ((key: string, value: unknown) => void)
+						| undefined
+				)?.("selectConstraint", freeRoam ? undefined : "businessHours");
+			} catch {
+				// Calendar API may fail in some contexts
+			}
+		},
+		[freeRoam, isMultimonthView, isTimegridView]
+	);
+
+	// Helper to notify view change via toast
+	const notifyViewChangedToUser = useCallback(
+		(viewName: string) => {
+			try {
+				const opts = getCalendarViewOptions(isLocalized);
+				const label = (
+					opts.find((o) => o.value === viewName)?.label ?? viewName
+				).toString();
+				toastService.info(
+					i18n.getMessage("view_changed", isLocalized),
+					label,
+					VIEW_CHANGE_TOAST_DURATION_MS
+				);
+			} catch {
+				// View change notification may fail in some contexts
+			}
+		},
+		[isLocalized]
+	);
+
+	const handleCalendarViewChange = useCallback(
+		(view: string) => {
+			if (!isCalendarPage) {
+				return;
+			}
+
+			const api = calendarRef?.current?.getApi?.();
+			if (!api) {
+				return;
+			}
+
+			const apiObj = api as unknown as Record<string, unknown>;
+
+			clearCalendarConstraints(apiObj);
+
+			try {
+				(apiObj.changeView as (v: string) => void)?.(view);
+			} catch {
+				// Calendar API may fail during view transitions
+			}
+
+			reapplyCalendarConstraints(apiObj, view);
+			notifyViewChangedToUser(view);
+			onCalendarViewChange?.(view);
+		},
+		[
+			isCalendarPage,
+			calendarRef,
+			onCalendarViewChange,
+			clearCalendarConstraints,
+			reapplyCalendarConstraints,
+			notifyViewChangedToUser,
+		]
+	);
+
+	const isActive = useCallback(
 		(href: string) => {
-			if (href === "/" && pathname === "/") return true;
-			if (href !== "/" && pathname.startsWith(href)) return true;
+			if (href === "/" && pathname === "/") {
+				return true;
+			}
+			if (href !== "/" && pathname.startsWith(href)) {
+				return true;
+			}
 			return false;
 		},
 		[pathname]
 	);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		setMounted(true);
 	}, []);
 
-	const viewMode = freeRoam ? "freeRoam" : showDualCalendar ? "dual" : "default";
+	const viewMode = getViewMode(freeRoam, showDualCalendar);
 
 	// Log once when calendar API becomes available
-	React.useEffect(() => {
+	useEffect(() => {
 		if (isCalendarPage && calendarRef?.current?.getApi) {
 			try {
 				const api = calendarRef.current.getApi();
 				if (api) {
 					count("dockNav:apiReady");
 				}
-			} catch {}
+			} catch {
+				// Calendar API may not be ready in some contexts
+			}
 		}
 	}, [isCalendarPage, calendarRef]);
 
 	// Keep the user's chosen tab; do not auto-switch based on view mode
 
-	return React.useMemo(
+	return useMemo(
 		() =>
 			({
 				state: {
@@ -169,9 +294,9 @@ export function useDockNavigation({
 				handlers: {
 					setIsHoveringDate,
 					setActiveTab,
-					handleLanguageToggle: () => {}, // These will be handled by individual components
-					handleThemeToggle: () => {}, // These will be handled by individual components
-					handleViewModeChange: () => {}, // These will be handled by individual components
+					handleLanguageToggle: noop,
+					handleThemeToggle: noop,
+					handleViewModeChange: noop,
 					handleCalendarViewChange,
 				},
 				computed: {

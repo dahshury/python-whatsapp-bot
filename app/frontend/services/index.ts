@@ -11,7 +11,7 @@ export type {
 	SuccessfulOperation,
 	WebSocketMessage,
 } from "@/entities/event";
-export { LocalEchoManager } from "@/shared/libs/utils/local-echo.manager";
+// biome-ignore lint/performance/noBarrelFile: services index is a legitimate entry point for efficient imports
 export { CalendarIntegrationService } from "./calendar/calendar-integration.service";
 export { ReservationCancelService } from "./operations/reservation-cancel.service";
 export { ReservationCreateService } from "./operations/reservation-create.service";

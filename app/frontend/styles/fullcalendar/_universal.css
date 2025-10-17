@@ -64,10 +64,20 @@
 }
 
 /* Typed events - hover style (centralized) */
-.fc-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event):hover,
-.fc-daygrid-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event):hover,
-.fc-timegrid-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event):hover {
-	background-image: linear-gradient(135deg, var(--fc-typed-bg) 0%, var(--fc-typed-grad-end) 100%);
+.fc-event:is(.reservation-type-0, .reservation-type-1):not(
+		.fc-list-event
+	):hover,
+.fc-daygrid-event:is(.reservation-type-0, .reservation-type-1):not(
+		.fc-list-event
+	):hover,
+.fc-timegrid-event:is(.reservation-type-0, .reservation-type-1):not(
+		.fc-list-event
+	):hover {
+	background-image: linear-gradient(
+		135deg,
+		var(--fc-typed-bg) 0%,
+		var(--fc-typed-grad-end) 100%
+	);
 	filter: saturate(1.05) brightness(1.02);
 	border-color: var(--fc-typed-border);
 	color: var(--fc-typed-text);
@@ -77,7 +87,9 @@
 /* Typed events - wrappers (centralized) */
 .fc-h-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .fc-v-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
-.fc-daygrid-block-event:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
+.fc-daygrid-block-event:is(.reservation-type-0, .reservation-type-1):not(
+		.fc-list-event
+	) {
 	background-color: var(--fc-typed-bg);
 	background-image: none;
 	border-color: var(--fc-typed-border);

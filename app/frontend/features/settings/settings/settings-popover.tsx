@@ -8,10 +8,14 @@ import React from "react";
 import { DockIcon } from "@/shared/ui/dock";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { StablePopoverButton } from "@/shared/ui/stable-popover-button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
 import { SettingsTabs } from "./settings-tabs";
 
-interface SettingsPopoverProps {
+// No-op function for empty handlers
+function noop(): void {
+	// Handler managed by parent component
+}
+
+type SettingsPopoverProps = {
 	isLocalized?: boolean;
 	activeTab?: string;
 	onTabChange?: (value: string) => void;
@@ -25,7 +29,7 @@ interface SettingsPopoverProps {
 	allowedTabs?: ReadonlyArray<"view" | "general" | "vacation">;
 	/** Hide free roam / dual calendar / default selector toolbar */
 	hideViewModeToolbar?: boolean;
-}
+};
 
 export function SettingsPopover({
 	isLocalized = false,
@@ -43,15 +47,39 @@ export function SettingsPopover({
 }: SettingsPopoverProps) {
 	const { recordingState, stopRecording } = useVacation();
 
-	// Manage popover and tooltip state to avoid tooltip showing on outside close
+	// Manage popover state to avoid tooltip showing on outside close
 	const [internalOpen, setInternalOpen] = React.useState(false);
-	const [suppressTooltip, setSuppressTooltip] = React.useState(false);
+	const suppressTimerRef = React.useRef<number | null>(null);
 
 	const isControlled = typeof controlledOpen === "boolean";
 	const open = isControlled ? (controlledOpen as boolean) : internalOpen;
 
+	// Helper to check if currently recording
+	const isRecording = React.useCallback(
+		(): boolean =>
+			recordingState?.periodIndex !== null && recordingState?.field !== null,
+		[recordingState?.periodIndex, recordingState?.field]
+	);
+
+	// Helper to stop recording if active
+	const handleStopRecording = React.useCallback((): void => {
+		try {
+			if (isRecording()) {
+				stopRecording();
+			}
+		} catch {
+			// Recording stop may fail in some contexts
+		}
+	}, [isRecording, stopRecording]);
+
 	const handleOpenChange = React.useCallback(
 		(next: boolean) => {
+			const currentOpen = isControlled
+				? (controlledOpen as boolean)
+				: internalOpen;
+			if (next === currentOpen) {
+				return;
+			}
 			if (isControlled) {
 				onOpenChange?.(next);
 			} else {
@@ -59,16 +87,20 @@ export function SettingsPopover({
 			}
 			if (!next) {
 				// If closing while recording, stop and reset recording
-				try {
-					if (recordingState?.periodIndex !== null && recordingState?.field !== null) {
-						stopRecording();
-					}
-				} catch {}
-				setSuppressTooltip(true);
-				window.setTimeout(() => setSuppressTooltip(false), 300);
+				handleStopRecording();
+				if (suppressTimerRef.current) {
+					window.clearTimeout(suppressTimerRef.current);
+					suppressTimerRef.current = null;
+				}
 			}
 		},
-		[isControlled, onOpenChange, recordingState?.periodIndex, recordingState?.field, stopRecording]
+		[
+			isControlled,
+			controlledOpen,
+			internalOpen,
+			onOpenChange,
+			handleStopRecording,
+		]
 	);
 
 	// Button animation is tied to open state (rotate 90deg when open)
@@ -76,56 +108,60 @@ export function SettingsPopover({
 	return (
 		<DockIcon>
 			<Popover
-				open={open}
+				modal={
+					!(
+						recordingState?.periodIndex !== null &&
+						recordingState?.field !== null
+					)
+				}
 				onOpenChange={handleOpenChange}
-				modal={!(recordingState?.periodIndex !== null && recordingState?.field !== null)}
+				open={open}
 			>
-				<Tooltip {...(open || suppressTooltip ? { open: false } : {})}>
-					<TooltipTrigger asChild>
-						<PopoverTrigger asChild>
-							<StablePopoverButton
-								className="size-9 rounded-full transition-colors duration-300 ease-out"
-								aria-label={i18n.getMessage("settings", isLocalized)}
-								variant={open ? "default" : "ghost"}
-							>
-								<Settings
-									className={cn(
-										"size-4 transform transition-transform duration-300 ease-out",
-										open ? "rotate-90" : "rotate-0"
-									)}
-								/>
-							</StablePopoverButton>
-						</PopoverTrigger>
-					</TooltipTrigger>
-					<TooltipContent>
-						<p>{i18n.getMessage("settings", isLocalized)}</p>
-					</TooltipContent>
-				</Tooltip>
+				<PopoverTrigger asChild>
+					<StablePopoverButton
+						aria-label={i18n.getMessage("settings", isLocalized)}
+						className="size-9 rounded-full transition-colors duration-300 ease-out"
+						variant={open ? "default" : "ghost"}
+					>
+						<Settings
+							className={cn(
+								"size-4 transform transition-transform duration-300 ease-out",
+								open ? "rotate-90" : "rotate-0"
+							)}
+						/>
+					</StablePopoverButton>
+				</PopoverTrigger>
 
 				<PopoverContent
 					align="center"
-					className="w-auto max-w-[31.25rem] bg-background/70 backdrop-blur-md border-border/40"
+					className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
 					onInteractOutside={(e) => {
 						try {
 							// While actively recording, do not close the popover on any outside interaction
-							const isRecording = recordingState?.periodIndex !== null && recordingState?.field !== null;
-							if (isRecording) {
+							const recordingActive =
+								recordingState?.periodIndex !== null &&
+								recordingState?.field !== null;
+							if (recordingActive) {
 								e.preventDefault();
 							}
-						} catch {}
+						} catch {
+							// Popover interaction handling may fail in some contexts
+						}
 					}}
 				>
 					<SettingsTabs
-						isLocalized={isLocalized}
 						activeTab={activeTab ?? "view"}
-						onTabChange={onTabChange ?? (() => {})}
-						currentCalendarView={currentCalendarView ?? "timeGridWeek"}
 						activeView={activeView ?? currentCalendarView ?? "timeGridWeek"}
-						onCalendarViewChange={onCalendarViewChange ?? (() => {})}
+						currentCalendarView={currentCalendarView ?? "timeGridWeek"}
 						isCalendarPage={isCalendarPage}
+						isLocalized={isLocalized}
+						onCalendarViewChange={onCalendarViewChange ?? noop}
+						onTabChange={onTabChange ?? noop}
 						{...(allowedTabs ? { allowedTabs } : {})}
 						{...(customViewSelector ? { customViewSelector } : {})}
-						{...(typeof hideViewModeToolbar === "boolean" ? { hideViewModeToolbar } : {})}
+						{...(typeof hideViewModeToolbar === "boolean"
+							? { hideViewModeToolbar }
+							: {})}
 					/>
 				</PopoverContent>
 			</Popover>

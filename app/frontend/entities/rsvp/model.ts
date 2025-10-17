@@ -5,31 +5,33 @@
  * Placeholder for future reservation schema and business logic.
  */
 
-export interface RSVP {
+export const RSVPStatus = {
+	PENDING: "pending",
+	CONFIRMED: "confirmed",
+	CANCELLED: "cancelled",
+	DECLINED: "declined",
+} as const;
+
+export type RSVPStatusType = (typeof RSVPStatus)[keyof typeof RSVPStatus];
+
+export type RSVP = {
 	id: string | number;
 	eventId: string;
 	customerId: string;
-	status: RSVPStatus;
+	status: RSVPStatusType;
 	createdAt: string;
 	updatedAt?: string;
-}
+};
 
-export enum RSVPStatus {
-	PENDING = "pending",
-	CONFIRMED = "confirmed",
-	CANCELLED = "cancelled",
-	DECLINED = "declined",
-}
-
-export interface ReservationRequest {
+export type ReservationRequest = {
 	customerId: string;
 	eventId: string;
 	guestCount?: number;
 	specialRequests?: string;
-}
+};
 
-export interface ReservationResponse {
+export type ReservationResponse = {
 	success: boolean;
 	rsvp?: RSVP;
 	message?: string;
-}
+};

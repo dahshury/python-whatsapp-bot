@@ -1,19 +1,19 @@
-export interface GridDimensions {
+export type GridDimensions = {
 	width: number;
 	height: number;
-}
+};
 
-export interface GridPosition {
+export type GridPosition = {
 	col: number;
 	row: number;
-}
+};
 
-export interface GridSelection {
+export type GridSelection = {
 	rows: number[];
 	columns: string[];
-}
+};
 
-export interface GridState {
+export type GridState = {
 	isFullscreen: boolean;
 	showSearch: boolean;
 	showColumnMenu: boolean;
@@ -24,9 +24,9 @@ export interface GridState {
 	hoverRow: number | undefined;
 	numRows: number;
 	initialNumRows: number;
-}
+};
 
-export interface GridThemeConfig {
+export type GridThemeConfig = {
 	accentColor: string;
 	accentFg: string;
 	bgBubble: string;
@@ -50,9 +50,9 @@ export interface GridThemeConfig {
 	textHeaderSelected: string;
 	textLight: string;
 	textMedium: string;
-}
+};
 
-export interface ColumnConfig {
+export type ColumnConfig = {
 	label?: string;
 	width?: "small" | "medium" | "large" | number;
 	help?: string;
@@ -63,9 +63,9 @@ export interface ColumnConfig {
 	alignment?: "left" | "center" | "right";
 	pinned?: boolean;
 	typeConfig?: Record<string, unknown>;
-}
+};
 
-export interface BaseColumnProps {
+export type BaseColumnProps = {
 	id: string;
 	name: string;
 	title: string;
@@ -79,27 +79,29 @@ export interface BaseColumnProps {
 	contentAlignment?: "left" | "center" | "right";
 	defaultValue?: unknown;
 	columnTypeOptions?: Record<string, unknown>;
-}
+};
 
-export interface TooltipData {
+export type TooltipData = {
 	content: string;
 	position: { x: number; y: number };
 	visible: boolean;
-}
+};
 
-export interface BrowserCapabilities {
+export type BrowserCapabilities = {
 	isTouchDevice: boolean;
 	hasCustomScrollbars: boolean;
 	supportsFileSystemAPI: boolean;
 	supportsResizeObserver: boolean;
-}
+};
 
-export const LARGE_TABLE_ROWS_THRESHOLD = 150000;
+export const LARGE_TABLE_ROWS_THRESHOLD = 150_000;
 export const DEBOUNCE_TIME_MS = 150;
 export const WEBKIT_SCROLLBAR_SIZE = 6;
 
-export enum PerformanceMode {
-	NORMAL = "normal",
-	OPTIMIZED = "optimized",
-	HIGH_PERFORMANCE = "high_performance",
-}
+export type PerformanceMode = "normal" | "optimized" | "high_performance";
+
+export const PERFORMANCE_MODE = {
+	NORMAL: "normal",
+	OPTIMIZED: "optimized",
+	HIGH_PERFORMANCE: "high_performance",
+} as const;

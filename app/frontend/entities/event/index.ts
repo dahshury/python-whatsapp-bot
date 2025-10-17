@@ -1,1 +1,16 @@
-export * from "./model";
+export type {
+	ApiResponse,
+	CalendarApi,
+	CalendarEvent,
+	CalendarEventData,
+	CalendarEventObject,
+	FullCalendarApi,
+	FullCalendarEvent,
+	FullCalendarEventChangeInfo,
+	OperationResult,
+	Reservation,
+	RowChange,
+	SuccessfulOperation,
+	WebSocketConnection,
+	WebSocketMessage,
+} from "./model";

@@ -5,7 +5,7 @@
  * Placeholder for future user schema and business logic.
  */
 
-export interface User {
+export type User = {
 	id: string;
 	waId: string;
 	name?: string;
@@ -14,13 +14,13 @@ export interface User {
 	preferences?: UserPreferences;
 	createdAt: string;
 	updatedAt?: string;
-}
+};
 
-export interface UserPreferences {
+export type UserPreferences = {
 	language?: "en" | "ar";
 	notifications?: boolean;
 	timezone?: string;
-}
+};
 
 export interface Customer extends User {
 	reservationCount?: number;
@@ -29,11 +29,11 @@ export interface Customer extends User {
 	loyaltyPoints?: number;
 }
 
-export interface UserProfile {
+export type UserProfile = {
 	user: User;
 	statistics?: {
 		reservations: number;
 		cancellations: number;
 		averageRating?: number;
 	};
-}
+};

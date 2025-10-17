@@ -4,14 +4,28 @@ import type { DailyData } from "@features/dashboard/types";
 import React from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import { i18n } from "@/shared/libs/i18n";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/shared/ui/card";
 import type { ChartConfig } from "@/shared/ui/chart";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/shared/ui/chart";
+import {
+	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
+} from "@/shared/ui/chart";
 
-interface DailyTrendsOverviewProps {
+const RADIX_36 = 36;
+const SLICE_START_INDEX = 2;
+
+type DailyTrendsOverviewProps = {
 	dailyTrends: DailyData[];
 	isLocalized: boolean;
-}
+};
 
 // Theme tokens (stable strings so we don't re-read computed styles every render)
 const COLORS = {
@@ -23,9 +37,15 @@ const COLORS = {
 	card: "hsl(var(--card))",
 } as const;
 
-export function DailyTrendsOverview({ dailyTrends, isLocalized }: DailyTrendsOverviewProps) {
+export function DailyTrendsOverview({
+	dailyTrends,
+	isLocalized,
+}: DailyTrendsOverviewProps) {
 	// Stable instance id for gradient defs
-	const instanceId = React.useMemo(() => Math.random().toString(36).slice(2), []);
+	const instanceId = React.useMemo(
+		() => Math.random().toString(RADIX_36).slice(SLICE_START_INDEX),
+		[]
+	);
 	const fillResId = `fillRes_${instanceId}`;
 	const fillCanId = `fillCan_${instanceId}`;
 	const fillModId = `fillMod_${instanceId}`;
@@ -49,9 +69,11 @@ export function DailyTrendsOverview({ dailyTrends, isLocalized }: DailyTrendsOve
 	}, [dailyTrends, isLocalized]);
 
 	const dateRangeLabel = React.useMemo(() => {
-		if (!dailyTrends || dailyTrends.length === 0) return i18n.getMessage("chart_no_data", isLocalized);
+		if (!dailyTrends || dailyTrends.length === 0) {
+			return i18n.getMessage("chart_no_data", isLocalized);
+		}
 		const first = new Date(dailyTrends[0]?.date || "");
-		const last = new Date(dailyTrends[dailyTrends.length - 1]?.date || "");
+		const last = new Date(dailyTrends.at(-1)?.date || "");
 		const fmt = (d: Date) =>
 			d.toLocaleDateString(isLocalized ? "ar" : "en", {
 				month: "short",
@@ -82,64 +104,101 @@ export function DailyTrendsOverview({ dailyTrends, isLocalized }: DailyTrendsOve
 	return (
 		<Card className="h-full">
 			<CardHeader>
-				<CardTitle>{i18n.getMessage("chart_daily_trends_overview", isLocalized)}</CardTitle>
-				<CardDescription>{i18n.getMessage("chart_showing_all_data", isLocalized)}</CardDescription>
+				<CardTitle>
+					{i18n.getMessage("chart_daily_trends_overview", isLocalized)}
+				</CardTitle>
+				<CardDescription>
+					{i18n.getMessage("chart_showing_all_data", isLocalized)}
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<ChartContainer config={chartConfig} className="h-[21.875rem] w-full">
-					<AreaChart data={chartData} margin={{ top: 16, right: 12, left: 12, bottom: 8 }}>
-						<CartesianGrid vertical={false} strokeDasharray="3 3" />
-						<XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={8} stroke={COLORS.foreground} />
-						<ChartTooltip cursor={false} content={<ChartTooltipContent />} />
+				<ChartContainer className="h-[21.875rem] w-full" config={chartConfig}>
+					<AreaChart
+						data={chartData}
+						margin={{ top: 16, right: 12, left: 12, bottom: 8 }}
+					>
+						<CartesianGrid strokeDasharray="3 3" vertical={false} />
+						<XAxis
+							axisLine={false}
+							dataKey="label"
+							stroke={COLORS.foreground}
+							tickLine={false}
+							tickMargin={8}
+						/>
+						<ChartTooltip content={<ChartTooltipContent />} cursor={false} />
 						<defs>
-							<linearGradient id={fillResId} x1="0" y1="0" x2="0" y2="1">
-								<stop offset="5%" stopColor="var(--color-reservations)" stopOpacity={0.5} />
-								<stop offset="95%" stopColor="var(--color-reservations)" stopOpacity={0.1} />
+							<linearGradient id={fillResId} x1="0" x2="0" y1="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-reservations)"
+									stopOpacity={0.5}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-reservations)"
+									stopOpacity={0.1}
+								/>
 							</linearGradient>
-							<linearGradient id={fillCanId} x1="0" y1="0" x2="0" y2="1">
-								<stop offset="5%" stopColor="var(--color-cancellations)" stopOpacity={0.5} />
-								<stop offset="95%" stopColor="var(--color-cancellations)" stopOpacity={0.1} />
+							<linearGradient id={fillCanId} x1="0" x2="0" y1="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-cancellations)"
+									stopOpacity={0.5}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-cancellations)"
+									stopOpacity={0.1}
+								/>
 							</linearGradient>
-							<linearGradient id={fillModId} x1="0" y1="0" x2="0" y2="1">
-								<stop offset="5%" stopColor="var(--color-modifications)" stopOpacity={0.5} />
-								<stop offset="95%" stopColor="var(--color-modifications)" stopOpacity={0.1} />
+							<linearGradient id={fillModId} x1="0" x2="0" y1="0" y2="1">
+								<stop
+									offset="5%"
+									stopColor="var(--color-modifications)"
+									stopOpacity={0.5}
+								/>
+								<stop
+									offset="95%"
+									stopColor="var(--color-modifications)"
+									stopOpacity={0.1}
+								/>
 							</linearGradient>
 						</defs>
 						<Area
 							dataKey="modifications"
-							type="natural"
 							fill={`url(#${fillModId})`}
 							fillOpacity={0.4}
-							stroke="var(--color-modifications)"
-							strokeWidth={0.8}
-							strokeDasharray="3 3"
 							isAnimationActive={false}
-							stackId="a"
 							name={i18n.getMessage("operation_modifications", isLocalized)}
+							stackId="a"
+							stroke="var(--color-modifications)"
+							strokeDasharray="3 3"
+							strokeWidth={0.8}
+							type="natural"
 						/>
 						<Area
 							dataKey="cancellations"
-							type="natural"
 							fill={`url(#${fillCanId})`}
 							fillOpacity={0.4}
-							stroke="var(--color-cancellations)"
-							strokeWidth={0.8}
-							strokeDasharray="3 3"
 							isAnimationActive={false}
-							stackId="a"
 							name={i18n.getMessage("kpi_cancellations", isLocalized)}
+							stackId="a"
+							stroke="var(--color-cancellations)"
+							strokeDasharray="3 3"
+							strokeWidth={0.8}
+							type="natural"
 						/>
 						<Area
 							dataKey="reservations"
-							type="natural"
 							fill={`url(#${fillResId})`}
 							fillOpacity={0.4}
-							stroke="var(--color-reservations)"
-							strokeWidth={0.8}
-							strokeDasharray="3 3"
 							isAnimationActive={false}
-							stackId="a"
 							name={i18n.getMessage("dashboard_reservations", isLocalized)}
+							stackId="a"
+							stroke="var(--color-reservations)"
+							strokeDasharray="3 3"
+							strokeWidth={0.8}
+							type="natural"
 						/>
 					</AreaChart>
 				</ChartContainer>
@@ -147,8 +206,12 @@ export function DailyTrendsOverview({ dailyTrends, isLocalized }: DailyTrendsOve
 			<CardFooter>
 				<div className="flex w-full items-start gap-2 text-sm">
 					<div className="grid gap-1">
-						<div className="leading-none font-medium">{i18n.getMessage("dashboard_trends", isLocalized)}</div>
-						<div className="text-muted-foreground leading-none">{dateRangeLabel}</div>
+						<div className="font-medium leading-none">
+							{i18n.getMessage("dashboard_trends", isLocalized)}
+						</div>
+						<div className="text-muted-foreground leading-none">
+							{dateRangeLabel}
+						</div>
 					</div>
 				</div>
 			</CardFooter>

@@ -1,11 +1,28 @@
 "use client";
 
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import {
+	Corner as ScrollAreaCorner,
+	Root as ScrollAreaRoot,
+	Scrollbar as ScrollAreaScrollbar,
+	Thumb as ScrollAreaThumb,
+	Viewport as ScrollAreaViewport,
+} from "@radix-ui/react-scroll-area";
 import { useTouchPrimary } from "@shared/libs/hooks/use-has-primary-touch";
 import { cn } from "@shared/libs/utils";
-import * as React from "react";
+import {
+	type ComponentPropsWithoutRef,
+	type ComponentRef,
+	type CSSProperties,
+	createContext,
+	type RefObject,
+	useCallback,
+	useContext,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 
-const ScrollAreaContext = React.createContext<boolean>(false);
+const ScrollAreaContext = createContext<boolean>(false);
 type Mask = {
 	top: boolean;
 	bottom: boolean;
@@ -13,33 +30,50 @@ type Mask = {
 	right: boolean;
 };
 
-const ScrollArea = React.forwardRef<
-	React.ComponentRef<typeof ScrollAreaPrimitive.Root>,
-	React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> & {
-		viewportClassName?: string;
-		/**
-		 * `maskHeight` is the height of the mask in pixels.
-		 * pass `0` to disable the mask
-		 * @default 30
-		 */
-		maskHeight?: number;
-		maskClassName?: string;
-	}
->(({ className, children, scrollHideDelay = 0, viewportClassName, maskClassName, maskHeight = 30, ...props }, ref) => {
-	const [showMask, setShowMask] = React.useState<Mask>({
+const ScrollArea = ({
+	className,
+	children,
+	scrollHideDelay = 0,
+	viewportClassName,
+	maskClassName,
+	maskHeight = 30,
+	ref,
+	...props
+}: ComponentPropsWithoutRef<typeof ScrollAreaRoot> & {
+	viewportClassName?: string;
+	/**
+	 * `maskHeight` is the height of the mask in pixels.
+	 * pass `0` to disable the mask
+	 * @default 30
+	 */
+	maskHeight?: number;
+	maskClassName?: string;
+} & {
+	ref?: RefObject<ComponentRef<typeof ScrollAreaRoot> | null>;
+}) => {
+	const [showMask, setShowMask] = useState<Mask>({
 		top: false,
 		bottom: false,
 		left: false,
 		right: false,
 	});
-	const viewportRef = React.useRef<HTMLDivElement>(null);
+	const viewportRef = useRef<HTMLDivElement>(null);
 	const isTouch = useTouchPrimary();
 
-	const checkScrollability = React.useCallback(() => {
+	const checkScrollability = useCallback(() => {
 		const element = viewportRef.current;
-		if (!element) return;
+		if (!element) {
+			return;
+		}
 
-		const { scrollTop, scrollLeft, scrollWidth, clientWidth, scrollHeight, clientHeight } = element;
+		const {
+			scrollTop,
+			scrollLeft,
+			scrollWidth,
+			clientWidth,
+			scrollHeight,
+			clientHeight,
+		} = element;
 		setShowMask((prev) => ({
 			...prev,
 			top: scrollTop > 0,
@@ -49,11 +83,15 @@ const ScrollArea = React.forwardRef<
 		}));
 	}, []);
 
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 
 		const element = viewportRef.current;
-		if (!element) return;
+		if (!element) {
+			return;
+		}
 
 		const controller = new AbortController();
 		const { signal } = controller;
@@ -76,134 +114,160 @@ const ScrollArea = React.forwardRef<
 	return (
 		<ScrollAreaContext.Provider value={isTouch}>
 			{isTouch ? (
-				<div ref={ref} data-slot="scroll-area" className={cn("relative overflow-hidden", className)} {...props}>
+				<div
+					className={cn("relative overflow-hidden", className)}
+					data-slot="scroll-area"
+					ref={ref}
+					{...props}
+				>
 					<div
-						ref={viewportRef}
+						className={cn(
+							"size-full overflow-auto rounded-[inherit]",
+							viewportClassName
+						)}
 						data-slot="scroll-area-viewport"
-						className={cn("size-full overflow-auto rounded-[inherit]", viewportClassName)}
+						ref={viewportRef}
 					>
 						{children}
 					</div>
 
-					{maskHeight > 0 && <ScrollMask showMask={showMask} className={maskClassName} maskHeight={maskHeight} />}
+					{maskHeight > 0 && (
+						<ScrollMask
+							className={maskClassName}
+							maskHeight={maskHeight}
+							showMask={showMask}
+						/>
+					)}
 				</div>
 			) : (
-				<ScrollAreaPrimitive.Root
-					ref={ref}
-					data-slot="scroll-area"
-					scrollHideDelay={scrollHideDelay}
+				<ScrollAreaRoot
 					className={cn("relative overflow-hidden", className)}
+					data-slot="scroll-area"
+					ref={ref}
+					scrollHideDelay={scrollHideDelay}
 					{...props}
 				>
-					<ScrollAreaPrimitive.Viewport
-						ref={viewportRef}
-						data-slot="scroll-area-viewport"
+					<ScrollAreaViewport
 						className={cn("size-full rounded-[inherit]", viewportClassName)}
+						data-slot="scroll-area-viewport"
+						ref={viewportRef}
 					>
 						{children}
-					</ScrollAreaPrimitive.Viewport>
+					</ScrollAreaViewport>
 
-					{maskHeight > 0 && <ScrollMask showMask={showMask} className={maskClassName} maskHeight={maskHeight} />}
+					{maskHeight > 0 && (
+						<ScrollMask
+							className={maskClassName}
+							maskHeight={maskHeight}
+							showMask={showMask}
+						/>
+					)}
 					<ScrollBar />
-					<ScrollAreaPrimitive.Corner />
-				</ScrollAreaPrimitive.Root>
+					<ScrollAreaCorner />
+				</ScrollAreaRoot>
 			)}
 		</ScrollAreaContext.Provider>
 	);
-});
+};
 
-ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName;
+ScrollArea.displayName = ScrollAreaRoot.displayName;
 
-const ScrollBar = React.forwardRef<
-	React.ComponentRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
-	React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>
->(({ className, orientation = "vertical", ...props }, ref) => {
-	const isTouch = React.useContext(ScrollAreaContext);
+const ScrollBar = ({
+	className,
+	orientation = "vertical",
+	ref,
+	...props
+}: ComponentPropsWithoutRef<typeof ScrollAreaScrollbar> & {
+	ref?: RefObject<ComponentRef<typeof ScrollAreaScrollbar> | null>;
+}) => {
+	const isTouch = useContext(ScrollAreaContext);
 
-	if (isTouch) return null;
+	if (isTouch) {
+		return null;
+	}
 
 	return (
-		<ScrollAreaPrimitive.ScrollAreaScrollbar
-			ref={ref}
-			orientation={orientation}
-			data-slot="scroll-area-scrollbar"
+		<ScrollAreaScrollbar
 			className={cn(
-				"hover:bg-muted dark:hover:bg-muted/50 data-[state=visible]:fade-in-0 data-[state=hidden]:fade-out-0 data-[state=visible]:animate-in data-[state=hidden]:animate-out flex touch-none p-px transition-[colors] duration-150 select-none",
-				orientation === "vertical" && "h-full w-2.5 border-l border-l-transparent",
-				orientation === "horizontal" && "h-2.5 flex-col border-t border-t-transparent px-1 pr-1.25",
+				"data-[state=visible]:fade-in-0 data-[state=hidden]:fade-out-0 flex touch-none select-none p-px transition-[colors] duration-150 hover:bg-muted data-[state=hidden]:animate-out data-[state=visible]:animate-in dark:hover:bg-muted/50",
+				orientation === "vertical" &&
+					"h-full w-2.5 border-l border-l-transparent",
+				orientation === "horizontal" &&
+					"h-2.5 flex-col border-t border-t-transparent px-1 pr-1.25",
 				className
 			)}
+			data-slot="scroll-area-scrollbar"
+			orientation={orientation}
+			ref={ref}
 			{...props}
 		>
-			<ScrollAreaPrimitive.ScrollAreaThumb
-				data-slot="scroll-area-thumb"
+			<ScrollAreaThumb
 				className={cn(
-					"bg-border relative flex-1 origin-center rounded-full transition-[scale]",
+					"relative flex-1 origin-center rounded-full bg-border transition-[scale]",
 					orientation === "vertical" && "my-1 active:scale-y-95",
 					orientation === "horizontal" && "active:scale-x-98"
 				)}
+				data-slot="scroll-area-thumb"
 			/>
-		</ScrollAreaPrimitive.ScrollAreaScrollbar>
+		</ScrollAreaScrollbar>
 	);
-});
+};
 
-ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;
+ScrollBar.displayName = ScrollAreaScrollbar.displayName;
 
 const ScrollMask = ({
 	showMask,
 	maskHeight,
 	className,
 	...props
-}: React.ComponentProps<"div"> & {
+}: ComponentPropsWithoutRef<"div"> & {
 	showMask: Mask;
 	maskHeight: number;
-}) => {
-	return (
-		<>
-			<div
-				{...props}
-				aria-hidden="true"
-				style={
-					{
-						"--top-fade-height": showMask.top ? `${maskHeight}px` : "0px",
-						"--bottom-fade-height": showMask.bottom ? `${maskHeight}px` : "0px",
-					} as React.CSSProperties
-				}
-				className={cn(
-					"pointer-events-none absolute inset-0 z-10",
-					"before:absolute before:inset-x-0 before:top-0 before:transition-[height,opacity] before:duration-300 before:content-['']",
-					"after:absolute after:inset-x-0 after:bottom-0 after:transition-[height,opacity] after:duration-300 after:content-['']",
-					"before:h-(--top-fade-height) after:h-(--bottom-fade-height)",
-					showMask.top ? "before:opacity-100" : "before:opacity-0",
-					showMask.bottom ? "after:opacity-100" : "after:opacity-0",
-					"before:from-background before:bg-gradient-to-b before:to-transparent",
-					"after:from-background after:bg-gradient-to-t after:to-transparent",
-					className
-				)}
-			/>
-			<div
-				{...props}
-				aria-hidden="true"
-				style={
-					{
-						"--left-fade-width": showMask.left ? `${maskHeight}px` : "0px",
-						"--right-fade-width": showMask.right ? `${maskHeight}px` : "0px",
-					} as React.CSSProperties
-				}
-				className={cn(
-					"pointer-events-none absolute inset-0 z-10",
-					"before:absolute before:inset-y-0 before:left-0 before:transition-[width,opacity] before:duration-300 before:content-['']",
-					"after:absolute after:inset-y-0 after:right-0 after:transition-[width,opacity] after:duration-300 after:content-['']",
-					"before:w-(--left-fade-width) after:w-(--right-fade-width)",
-					showMask.left ? "before:opacity-100" : "before:opacity-0",
-					showMask.right ? "after:opacity-100" : "after:opacity-0",
-					"before:from-background before:bg-gradient-to-r before:to-transparent",
-					"after:from-background after:bg-gradient-to-l after:to-transparent",
-					className
-				)}
-			/>
-		</>
-	);
-};
+}) => (
+	<>
+		<div
+			{...props}
+			aria-hidden="true"
+			className={cn(
+				"pointer-events-none absolute inset-0 z-10",
+				"before:absolute before:inset-x-0 before:top-0 before:transition-[height,opacity] before:duration-300 before:content-['']",
+				"after:absolute after:inset-x-0 after:bottom-0 after:transition-[height,opacity] after:duration-300 after:content-['']",
+				"before:h-(--top-fade-height) after:h-(--bottom-fade-height)",
+				showMask.top ? "before:opacity-100" : "before:opacity-0",
+				showMask.bottom ? "after:opacity-100" : "after:opacity-0",
+				"before:bg-gradient-to-b before:from-background before:to-transparent",
+				"after:bg-gradient-to-t after:from-background after:to-transparent",
+				className
+			)}
+			style={
+				{
+					"--top-fade-height": showMask.top ? `${maskHeight}px` : "0px",
+					"--bottom-fade-height": showMask.bottom ? `${maskHeight}px` : "0px",
+				} as CSSProperties
+			}
+		/>
+		<div
+			{...props}
+			aria-hidden="true"
+			className={cn(
+				"pointer-events-none absolute inset-0 z-10",
+				"before:absolute before:inset-y-0 before:left-0 before:transition-[width,opacity] before:duration-300 before:content-['']",
+				"after:absolute after:inset-y-0 after:right-0 after:transition-[width,opacity] after:duration-300 after:content-['']",
+				"before:w-(--left-fade-width) after:w-(--right-fade-width)",
+				showMask.left ? "before:opacity-100" : "before:opacity-0",
+				showMask.right ? "after:opacity-100" : "after:opacity-0",
+				"before:bg-gradient-to-r before:from-background before:to-transparent",
+				"after:bg-gradient-to-l after:from-background after:to-transparent",
+				className
+			)}
+			style={
+				{
+					"--left-fade-width": showMask.left ? `${maskHeight}px` : "0px",
+					"--right-fade-width": showMask.right ? `${maskHeight}px` : "0px",
+				} as CSSProperties
+			}
+		/>
+	</>
+);
 
 export { ScrollArea, ScrollBar };

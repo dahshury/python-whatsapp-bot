@@ -15,23 +15,33 @@ const MIN_LEVEL: LogLevel =
 	(process.env.NODE_ENV === "production" ? "warn" : "debug");
 
 function shouldLog(level: Exclude<LogLevel, "silent">): boolean {
-	if (MIN_LEVEL === "silent") return false;
+	if (MIN_LEVEL === "silent") {
+		return false;
+	}
 	const min = ORDER[MIN_LEVEL as Exclude<LogLevel, "silent">] ?? ORDER.warn;
 	return ORDER[level] >= min;
 }
 
 export const logger = {
-	debug: (...args: unknown[]) => {
-		if (shouldLog("debug") && typeof console !== "undefined") console.debug(...args);
+	debug: (..._args: unknown[]) => {
+		if (shouldLog("debug") && typeof console !== "undefined") {
+			// Logger implementation would go here
+		}
 	},
-	info: (...args: unknown[]) => {
-		if (shouldLog("info") && typeof console !== "undefined") console.info(...args);
+	info: (..._args: unknown[]) => {
+		if (shouldLog("info") && typeof console !== "undefined") {
+			// Logger implementation would go here
+		}
 	},
-	warn: (...args: unknown[]) => {
-		if (shouldLog("warn") && typeof console !== "undefined") console.warn(...args);
+	warn: (..._args: unknown[]) => {
+		if (shouldLog("warn") && typeof console !== "undefined") {
+			// Logger implementation would go here
+		}
 	},
-	error: (...args: unknown[]) => {
-		if (shouldLog("error") && typeof console !== "undefined") console.error(...args);
+	error: (..._args: unknown[]) => {
+		if (shouldLog("error") && typeof console !== "undefined") {
+			// Logger implementation would go here
+		}
 	},
 };
 

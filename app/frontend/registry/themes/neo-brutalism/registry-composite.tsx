@@ -1,7 +1,8 @@
 "use client";
 
 import { cn } from "@shared/libs/utils";
-import * as React from "react";
+import type React from "react";
+import { cloneElement, isValidElement } from "react";
 import type { UiCompositeRegistryMap } from "@/shared/libs/ui-registry";
 
 // Example: composite override for Popover and Tooltip parts
@@ -16,24 +17,27 @@ const Popover: Record<string, React.ComponentType<unknown>> = {
 		const { asChild, children, ...rest } = props as AnyProps & {
 			asChild?: boolean;
 		};
-		if (asChild && React.isValidElement(children)) {
+		if (asChild && isValidElement(children)) {
 			// clone with data attribute using a generic index signature to satisfy types
-			return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-				...(rest as Record<string, unknown>),
-				"data-neo-popover-trigger": true,
-			});
+			return cloneElement(
+				children as React.ReactElement<Record<string, unknown>>,
+				{
+					...(rest as Record<string, unknown>),
+					"data-neo-popover-trigger": true,
+				}
+			);
 		}
-		return <button type="button" data-neo-popover-trigger {...rest} />;
+		return <button data-neo-popover-trigger type="button" {...rest} />;
 	},
 	PopoverContent: (props: unknown) => {
 		const { className, ...rest } = props as AnyProps & { className?: string };
 		return (
 			<div
-				data-neo-popover-content
 				className={cn(
-					"rounded-md border-2 border-black bg-white p-4 text-black shadow-[6px_6px_0_0_#000] dark:bg-neutral-900 dark:text-white dark:border-white",
+					"rounded-md border-2 border-black bg-white p-4 text-black shadow-[6px_6px_0_0_#000] dark:border-white dark:bg-neutral-900 dark:text-white",
 					className
 				)}
+				data-neo-popover-content
 				{...rest}
 			/>
 		);
@@ -49,23 +53,26 @@ const Tooltip: Record<string, React.ComponentType<unknown>> = {
 		const { asChild, children, ...rest } = props as AnyProps & {
 			asChild?: boolean;
 		};
-		if (asChild && React.isValidElement(children)) {
-			return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
-				...(rest as Record<string, unknown>),
-				"data-neo-tooltip-trigger": true,
-			});
+		if (asChild && isValidElement(children)) {
+			return cloneElement(
+				children as React.ReactElement<Record<string, unknown>>,
+				{
+					...(rest as Record<string, unknown>),
+					"data-neo-tooltip-trigger": true,
+				}
+			);
 		}
-		return <button type="button" data-neo-tooltip-trigger {...rest} />;
+		return <button data-neo-tooltip-trigger type="button" {...rest} />;
 	},
 	TooltipContent: (props: unknown) => {
 		const { className, ...rest } = props as AnyProps & { className?: string };
 		return (
 			<div
-				data-neo-tooltip-content
 				className={cn(
-					"rounded-md border-2 border-black bg-white px-2 py-1 text-xs font-semibold text-black shadow-[4px_4px_0_0_#000] dark:bg-neutral-900 dark:text-white dark:border-white",
+					"rounded-md border-2 border-black bg-white px-2 py-1 font-semibold text-black text-xs shadow-[4px_4px_0_0_#000] dark:border-white dark:bg-neutral-900 dark:text-white",
 					className
 				)}
+				data-neo-tooltip-content
 				{...rest}
 			/>
 		);

@@ -1,4 +1,4 @@
-export interface ConversationMessage {
+export type ConversationMessage = {
 	role: string; // Role of the sender (user, assistant, etc.)
 	message: string; // The message content
 	time: string; // Time in HH:MM:SS format
@@ -6,8 +6,8 @@ export interface ConversationMessage {
 	// Optional fields for tool calls
 	tool_name?: string;
 	tool_args?: Record<string, unknown> | string;
-}
+};
 
-export interface Conversations {
+export type Conversations = {
 	[wa_id: string]: ConversationMessage[];
-}
+};

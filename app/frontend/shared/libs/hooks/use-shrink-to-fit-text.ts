@@ -1,34 +1,45 @@
-import * as React from "react";
+import {
+	useCallback,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState,
+} from "react";
+
+const MIN_SCALE = 0.6;
 
 export function useShrinkToFitText(enabled: boolean) {
-	const containerRef = React.useRef<HTMLDivElement | null>(null);
-	const textRef = React.useRef<HTMLDivElement | null>(null);
-	const [scale, setScale] = React.useState(1);
-	const [isMeasured, setIsMeasured] = React.useState(false);
-	const isFirstMeasurement = React.useRef(true);
+	const containerRef = useRef<HTMLDivElement | null>(null);
+	const textRef = useRef<HTMLDivElement | null>(null);
+	const [scale, setScale] = useState(1);
+	const [isMeasured, setIsMeasured] = useState(false);
+	const isFirstMeasurement = useRef(true);
 
-	const recompute = React.useCallback(() => {
+	const recompute = useCallback(() => {
 		if (!enabled) {
 			setIsMeasured(true);
 			return;
 		}
 		const container = containerRef.current;
 		const textEl = textRef.current;
-		if (!container || !textEl) return;
+		if (!(container && textEl)) {
+			return;
+		}
 
 		// Reset transform to measure natural size
 		textEl.style.transform = "";
 		textEl.style.transformOrigin = "left center";
 
 		// Force layout recalculation
-		void textEl.offsetWidth;
+		// biome-ignore lint/nursery/noUnusedExpressions: Reading offsetWidth triggers layout recalculation
+		textEl.offsetWidth;
 
 		const available = container.clientWidth;
 		const needed = textEl.scrollWidth;
 
 		if (available > 0 && needed > available) {
 			const raw = available / needed;
-			const clamped = Math.max(0.6, Math.min(1, raw));
+			const clamped = Math.max(MIN_SCALE, Math.min(1, raw));
 			setScale(clamped);
 		} else {
 			setScale(1);
@@ -42,21 +53,27 @@ export function useShrinkToFitText(enabled: boolean) {
 	}, [enabled]);
 
 	// Use useLayoutEffect for synchronous measurement before paint
-	React.useLayoutEffect(() => {
+	useLayoutEffect(() => {
 		recompute();
 	}, [recompute]);
 
-	React.useEffect(() => {
-		if (!enabled) return;
+	useEffect(() => {
+		if (!enabled) {
+			return;
+		}
 		const handle = () => recompute();
 		window.addEventListener("resize", handle);
 		return () => window.removeEventListener("resize", handle);
 	}, [recompute, enabled]);
 
-	React.useEffect(() => {
-		if (!enabled) return;
+	useEffect(() => {
+		if (!enabled) {
+			return;
+		}
 		const container = containerRef.current;
-		if (!container) return;
+		if (!container) {
+			return;
+		}
 		const ro = new ResizeObserver(() => recompute());
 		ro.observe(container);
 		return () => ro.disconnect();

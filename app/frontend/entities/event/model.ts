@@ -1,9 +1,15 @@
-export interface CalendarEvent {
+export type CalendarEvent = {
 	id: string;
 	title: string;
 	start: string; // ISO 8601 date-time string
 	end?: string; // ISO 8601 date-time string
-	display?: "auto" | "block" | "list-item" | "background" | "inverse-background" | "none";
+	display?:
+		| "auto"
+		| "block"
+		| "list-item"
+		| "background"
+		| "inverse-background"
+		| "none";
 	allDay?: boolean;
 	backgroundColor?: string;
 	borderColor?: string;
@@ -24,9 +30,9 @@ export interface CalendarEvent {
 		__vacation?: boolean;
 		[key: string]: unknown;
 	};
-}
+};
 
-export interface Reservation {
+export type Reservation = {
 	id?: number; // Database ID of the reservation
 	customer_id: string; // e.g. WhatsApp ID
 	date: string; // YYYY-MM-DD
@@ -46,7 +52,7 @@ export interface Reservation {
 		[key: string]: unknown;
 	}>;
 	[key: string]: unknown;
-}
+};
 
 export type RowChange = {
 	scheduled_time?: string | Date;
@@ -55,7 +61,7 @@ export type RowChange = {
 	name?: string;
 };
 
-export interface SuccessfulOperation {
+export type SuccessfulOperation = {
 	type: "create" | "modify" | "cancel";
 	id: string; // wa_id or event id
 	data?: {
@@ -64,18 +70,18 @@ export interface SuccessfulOperation {
 		time?: string;
 		type?: number;
 	};
-}
+};
 
-export interface CalendarApi {
+export type CalendarApi = {
 	getEventById?: (id: string) => CalendarEventObject | null;
 	getEvents?: () => CalendarEventObject[];
 	addEvent?: (event: Partial<CalendarEvent>) => CalendarEventObject | null;
 	updateSize?: () => void;
 	rerenderEvents?: () => void;
 	view?: { type?: string };
-}
+};
 
-export interface CalendarEventObject {
+export type CalendarEventObject = {
 	id: string;
 	title: string;
 	start: string;
@@ -88,21 +94,80 @@ export interface CalendarEventObject {
 	setDates?: (start: Date, end: Date | null) => void;
 	moveStart?: (delta: { milliseconds: number }) => void;
 	remove?: () => void;
-}
+};
 
-export interface WebSocketMessage {
+// FullCalendar interop types (moved from calendar-event-handlers)
+export type FullCalendarEvent = {
+	id: string;
+	title?: string;
+	start?: Date;
+	end?: Date;
+	startStr?: string;
+	endStr?: string;
+	extendedProps?: Record<string, unknown>;
+	setExtendedProp?: (key: string, value: unknown) => void;
+	remove?: () => void;
+};
+
+export type FullCalendarApi = {
+	getEvents: () => Array<{
+		id: string;
+		title: string;
+		start: Date;
+		end?: Date;
+		extendedProps?: Record<string, unknown>;
+		remove: () => void;
+	}>;
+	getEventById?: (id: string) => FullCalendarEvent | null;
+	refetchEvents: () => void;
+	[key: string]: unknown;
+};
+
+export type CalendarEventData = {
+	id: string;
+	title?: string;
+	start?: string;
+	end?: string;
+	extendedProps?: Record<string, unknown>;
+};
+
+export type FullCalendarEventChangeInfo = {
+	event: {
+		id: string;
+		title: string;
+		start: Date;
+		end?: Date | undefined;
+		startStr?: string;
+		endStr?: string;
+		extendedProps?: Record<string, unknown>;
+	};
+	oldEvent?:
+		| {
+				id: string;
+				title: string;
+				start: Date;
+				end?: Date | undefined;
+				startStr?: string;
+				endStr?: string;
+				extendedProps?: Record<string, unknown>;
+		  }
+		| undefined;
+	revert?: (() => void) | undefined;
+};
+
+export type WebSocketMessage = {
 	type: string;
 	data: Record<string, unknown>;
-}
+};
 
-export interface WebSocketConnection {
+export type WebSocketConnection = {
 	current?: {
 		readyState: number;
 		send: (message: string) => void;
 	};
-}
+};
 
-export interface ApiResponse {
+export type ApiResponse = {
 	success: boolean;
 	id?: string | number;
 	reservationId?: string | number;
@@ -113,18 +178,27 @@ export interface ApiResponse {
 	message?: string;
 	error?: string;
 	detail?: string;
-}
+};
 
-export interface OperationResult {
+export type OperationResult = {
 	hasErrors: boolean;
 	successfulOperations: SuccessfulOperation[];
-}
+};
 
 declare global {
-	interface GlobalThis {
+	type GlobalThis = {
 		__wsConnection?: WebSocketConnection;
 		__localOps?: Set<string>;
 		__suppressEventChangeDepth?: number;
 		__calendarLastModifyContext?: Map<string, Record<string, unknown>>;
-	}
+	};
+
+	// Extend WebSocketService with cancellation helper
+	type WebSocketService = {
+		cancelReservation(
+			waId: string,
+			date: string,
+			opts?: { isLocalized?: boolean }
+		): Promise<ApiResponse>;
+	};
 }

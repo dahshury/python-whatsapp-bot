@@ -1,0 +1,1 @@
+export const PHONE_VISIBLE_LIMIT_NO_SEARCH = 120;

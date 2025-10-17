@@ -1,1 +1,1 @@
-export * from "./model";
+export type { PhoneOption } from "./model";

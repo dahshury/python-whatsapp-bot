@@ -1,18 +1,27 @@
 "use client";
 
-import { VacationPeriods } from "@features/settings/vacation-periods";
 import { i18n } from "@shared/libs/i18n";
 import { useSettings } from "@shared/libs/state/settings-context";
 import { cn } from "@shared/libs/utils";
 import { Plane, Settings2, View } from "lucide-react";
-import * as React from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/animate-ui/components/radix/tabs";
+import { useCallback, useMemo } from "react";
+import {
+	Tabs,
+	TabsContent,
+	TabsList,
+	TabsTrigger,
+} from "@/shared/ui/animate-ui/components/radix/tabs";
+import { VacationPeriods } from "../vacation-periods";
 import { GeneralSettings } from "./general-settings";
 import { ThemeSelector } from "./theme-selector";
-import { ViewModeToolbar } from "./view-mode-toolbar";
 import { ViewSettings } from "./view-settings";
 
-interface SettingsTabsProps {
+// No-op function for empty handlers
+function noop(): void {
+	// Handler managed by parent component
+}
+
+type SettingsTabsProps = {
 	isLocalized?: boolean;
 	activeTab?: string;
 	onTabChange?: (value: string) => void;
@@ -26,23 +35,75 @@ interface SettingsTabsProps {
 	 * it takes precedence over isCalendarPage for determining visibility.
 	 */
 	allowedTabs?: ReadonlyArray<"view" | "general" | "vacation">;
-	/** Hide the ViewModeToolbar (free roam / dual / default) controls. */
+	/** Hide free roam / dual calendar / default selector toolbar */
 	hideViewModeToolbar?: boolean;
-}
+};
 
 // View mode selection is handled by ViewModeToolbar
+
+// Helper to determine which tabs to display
+function getVisibleTabs(
+	allowedTabs: readonly string[] | undefined,
+	isCalendarPage: boolean
+) {
+	const showViewTab = Array.isArray(allowedTabs)
+		? allowedTabs.includes("view")
+		: isCalendarPage;
+	const showVacationTab = Array.isArray(allowedTabs)
+		? allowedTabs.includes("vacation")
+		: isCalendarPage;
+	const showGeneralTab = Array.isArray(allowedTabs)
+		? allowedTabs.includes("general")
+		: true;
+
+	return { showViewTab, showVacationTab, showGeneralTab };
+}
+
+// Helper to get default tab based on visible tabs
+function getDefaultTab(
+	showViewTab: boolean,
+	showGeneralTab: boolean,
+	showVacationTab: boolean
+): string {
+	if (showViewTab) {
+		return "view";
+	}
+	if (showGeneralTab) {
+		return "general";
+	}
+	if (showVacationTab) {
+		return "vacation";
+	}
+	return "view";
+}
+
+// Constants
+const TAB_TEXT_SIZE = "text-[0.8rem]";
+const TAB_COUNT_THREE = 3;
+const TAB_COUNT_TWO = 2;
+
+// Helper to calculate grid columns based on visible tab count
+function getGridColsClass(tabCount: number): string {
+	if (tabCount === TAB_COUNT_THREE) {
+		return "grid-cols-3";
+	}
+	if (tabCount === TAB_COUNT_TWO) {
+		return "grid-cols-2";
+	}
+	return "grid-cols-1";
+}
 
 export function SettingsTabs({
 	isLocalized = false,
 	activeTab = "view",
 	onTabChange,
-	currentCalendarView,
-	activeView,
-	onCalendarViewChange,
+	currentCalendarView: _currentCalendarView,
+	activeView: _activeView,
+	onCalendarViewChange: _onCalendarViewChange,
 	customViewSelector,
 	isCalendarPage = true,
 	allowedTabs,
-	hideViewModeToolbar = false,
+	hideViewModeToolbar,
 }: SettingsTabsProps) {
 	useSettings();
 	// View mode change logic lives in ViewModeToolbar
@@ -50,94 +111,112 @@ export function SettingsTabs({
 	// Removed auto-switching tabs when not on calendar page to avoid update loops.
 
 	// Determine which tabs to show
-	const showViewTab = Array.isArray(allowedTabs) ? allowedTabs.includes("view") : isCalendarPage;
-	const showVacationTab = Array.isArray(allowedTabs) ? allowedTabs.includes("vacation") : isCalendarPage;
-	const showGeneralTab = Array.isArray(allowedTabs) ? allowedTabs.includes("general") : true;
+	const { showViewTab, showVacationTab, showGeneralTab } = getVisibleTabs(
+		allowedTabs,
+		isCalendarPage
+	);
 
 	// Ensure active tab is valid when some tabs are hidden (e.g., dashboard page)
-	const defaultTab = showViewTab ? "view" : showGeneralTab ? "general" : showVacationTab ? "vacation" : "view";
-	const computedActiveTab = React.useMemo(() => {
-		const allowed = [] as string[];
-		if (showGeneralTab) allowed.push("general");
-		if (showViewTab) allowed.push("view");
-		if (showVacationTab) allowed.push("vacation");
+	const defaultTab = getDefaultTab(
+		showViewTab,
+		showGeneralTab,
+		showVacationTab
+	);
+
+	// Helper to compute active tab value
+	const computeActiveTab = useCallback(() => {
+		const allowed: string[] = [];
+		if (showGeneralTab) {
+			allowed.push("general");
+		}
+		if (showViewTab) {
+			allowed.push("view");
+		}
+		if (showVacationTab) {
+			allowed.push("vacation");
+		}
 		return allowed.includes(activeTab) ? activeTab : defaultTab;
-	}, [activeTab, showViewTab, showVacationTab, showGeneralTab, defaultTab]);
+	}, [activeTab, showGeneralTab, showViewTab, showVacationTab, defaultTab]);
+
+	const computedActiveTab = useMemo(
+		() => computeActiveTab(),
+		[computeActiveTab]
+	);
+
+	const tabCount =
+		(showViewTab ? 1 : 0) +
+		(showGeneralTab ? 1 : 0) +
+		(showVacationTab ? 1 : 0);
+	const gridColsClass = getGridColsClass(tabCount);
 
 	return (
-		<Tabs value={computedActiveTab} onValueChange={onTabChange ?? (() => {})}>
+		<Tabs onValueChange={onTabChange ?? noop} value={computedActiveTab}>
 			<TabsList
 				className={cn(
-					"grid w-full bg-muted/40 backdrop-blur-sm gap-0",
-					(() => {
-						const count = (showViewTab ? 1 : 0) + (showGeneralTab ? 1 : 0) + (showVacationTab ? 1 : 0);
-						return count === 3 ? "grid-cols-3" : count === 2 ? "grid-cols-2" : "grid-cols-1";
-					})()
+					"grid w-full gap-0 bg-muted/40 backdrop-blur-sm",
+					gridColsClass
 				)}
 			>
 				{showViewTab && (
-					<TabsTrigger value="view" className="py-1">
-						<View className="h-3.5 w-3.5 mr-1.5" />
-						<span className="text-[0.8rem] leading-none">{i18n.getMessage("tab_view", isLocalized)}</span>
+					<TabsTrigger className="py-1" value="view">
+						<View className="mr-1.5 h-3.5 w-3.5" />
+						<span className={`${TAB_TEXT_SIZE} leading-none`}>
+							{i18n.getMessage("tab_view", isLocalized)}
+						</span>
 					</TabsTrigger>
 				)}
 				{showGeneralTab && (
-					<TabsTrigger value="general" className="py-1">
-						<Settings2 className="h-3.5 w-3.5 mr-1.5" />
-						<span className="text-[0.8rem] leading-none">{i18n.getMessage("tab_general", isLocalized)}</span>
+					<TabsTrigger className="py-1" value="general">
+						<Settings2 className="mr-1.5 h-3.5 w-3.5" />
+						<span className={`${TAB_TEXT_SIZE} leading-none`}>
+							{i18n.getMessage("tab_general", isLocalized)}
+						</span>
 					</TabsTrigger>
 				)}
 				{showVacationTab && (
-					<TabsTrigger value="vacation" className="w-full relative py-1">
-						<Plane className="h-3.5 w-3.5 mr-1.5" />
-						<span className="text-[0.8rem] leading-none">{i18n.getMessage("tab_vacation", isLocalized)}</span>
+					<TabsTrigger className="relative w-full py-1" value="vacation">
+						<Plane className="mr-1.5 h-3.5 w-3.5" />
+						<span className={`${TAB_TEXT_SIZE} leading-none`}>
+							{i18n.getMessage("tab_vacation", isLocalized)}
+						</span>
 					</TabsTrigger>
 				)}
 			</TabsList>
 
 			{showGeneralTab && (
-				<TabsContent value="general" className="pt-3 space-y-3">
+				<TabsContent className="space-y-3 pt-3" value="general">
 					<GeneralSettings isLocalized={isLocalized} />
 					<ThemeSelector isLocalized={isLocalized} />
 				</TabsContent>
 			)}
 
 			{showViewTab && (
-				<TabsContent value="view" className="pt-3 space-y-3">
+				<TabsContent className="space-y-3 pt-3" value="view">
 					{customViewSelector ? (
-						<div className="space-y-2 rounded-md border p-2 bg-background/40 backdrop-blur-sm">
-							<div className="flex items-center justify-between">
-								<div className="flex items-center gap-1.5">
-									<View className="h-3.5 w-3.5" />
-									<span className="text-[0.8rem] font-medium leading-none">
-										{i18n.getMessage("settings_view", isLocalized)}
-									</span>
-								</div>
-								{!hideViewModeToolbar && <ViewModeToolbar />}
-							</div>
-
-							{customViewSelector}
-						</div>
+						customViewSelector
 					) : (
 						<ViewSettings
+							{...(typeof _activeView === "string" && {
+								activeView: _activeView,
+							})}
+							{...(typeof _currentCalendarView === "string" && {
+								currentCalendarView: _currentCalendarView,
+							})}
+							{...(hideViewModeToolbar !== undefined && {
+								hideViewModeToolbar,
+							})}
 							isLocalized={isLocalized}
-							{...(currentCalendarView ? { currentCalendarView } : {})}
-							{...(activeView ? { activeView } : {})}
-							{...(onCalendarViewChange ? { onCalendarViewChange } : {})}
-							hideViewModeToolbar={hideViewModeToolbar}
-							hideChatSettings={Array.isArray(allowedTabs) && allowedTabs.length === 1 && allowedTabs.includes("view")}
+							{...(typeof _onCalendarViewChange === "function" && {
+								onCalendarViewChange: _onCalendarViewChange,
+							})}
 						/>
 					)}
 				</TabsContent>
 			)}
 
 			{showVacationTab && (
-				<TabsContent value="vacation" className="pt-3">
-					<div className="space-y-3">
-						<div className="rounded-md border p-2 bg-background/40 backdrop-blur-sm">
-							{computedActiveTab === "vacation" && <VacationPeriods />}
-						</div>
-					</div>
+				<TabsContent className="space-y-3 pt-3" value="vacation">
+					<VacationPeriods />
 				</TabsContent>
 			)}
 		</Tabs>

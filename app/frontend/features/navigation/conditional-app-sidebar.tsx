@@ -7,6 +7,8 @@ export function ConditionalAppSidebar() {
 	const pathname = usePathname();
 	const isDashboardPage = pathname?.startsWith("/dashboard") ?? false;
 	const isDocumentsPage = pathname === "/documents";
-	if (isDashboardPage || isDocumentsPage) return null;
+	if (isDashboardPage || isDocumentsPage) {
+		return null;
+	}
 	return <AppSidebar />;
 }

@@ -36,7 +36,9 @@ CLAIM_STALE_AFTER_SECONDS = 300  # re-claim abandoned items after 5 minutes
 MAX_PROCESSING_ATTEMPTS = 3
 
 
-def enqueue_inbound(payload: dict[str, object], message_id: str | None, wa_id: str | None) -> tuple[bool, int | None]:
+def enqueue_inbound(
+    payload: dict[str, object], message_id: str | None, wa_id: str | None
+) -> tuple[bool, int | None]:
     """
     Persist inbound webhook payload into the DB-backed queue.
     Returns (created, id) where created indicates new insert (False if duplicate by message_id).
@@ -51,7 +53,9 @@ def enqueue_inbound(payload: dict[str, object], message_id: str | None, wa_id: s
         if message_id:
             existing_id = (
                 session.execute(
-                    select(InboundMessageQueueModel.id).where(InboundMessageQueueModel.message_id == message_id)
+                    select(InboundMessageQueueModel.id).where(
+                        InboundMessageQueueModel.message_id == message_id
+                    )
                 )
                 .scalars()
                 .first()
@@ -78,7 +82,9 @@ def _update_queue_metrics(session: Session) -> None:
     try:
         pending_count = (
             session.execute(
-                select(func.count(InboundMessageQueueModel.id)).where(InboundMessageQueueModel.status == "pending")
+                select(func.count(InboundMessageQueueModel.id)).where(
+                    InboundMessageQueueModel.status == "pending"
+                )
             )
             .scalars()
             .first()
@@ -96,7 +102,9 @@ def _update_queue_metrics(session: Session) -> None:
             .first()
         )
         if oldest is not None:
-            age = (datetime.datetime.utcnow() - oldest.replace(tzinfo=None)).total_seconds()
+            age = (
+                datetime.datetime.utcnow() - oldest.replace(tzinfo=None)
+            ).total_seconds()
             INBOUND_QUEUE_OLDEST_AGE_SECONDS.set(max(0, age))
         else:
             INBOUND_QUEUE_OLDEST_AGE_SECONDS.set(0)
@@ -165,7 +173,9 @@ async def worker_loop(stop_event: asyncio.Event) -> None:
                 payload_text: str = str(getattr(item, "payload", ""))
                 try:
                     decoded = json.loads(payload_text)
-                    payload_obj = decoded if isinstance(decoded, dict) else {"_raw": decoded}
+                    payload_obj = (
+                        decoded if isinstance(decoded, dict) else {"_raw": decoded}
+                    )
                 except Exception:
                     payload_obj = {"_raw": payload_text}
 
@@ -217,7 +227,9 @@ def spawn_workers(num_workers: int) -> tuple[asyncio.Event, list[asyncio.Task[No
     return stop_event, tasks
 
 
-async def stop_workers(stop_event: asyncio.Event, tasks: list[asyncio.Task[None]]) -> None:
+async def stop_workers(
+    stop_event: asyncio.Event, tasks: list[asyncio.Task[None]]
+) -> None:
     try:
         stop_event.set()
         for t in tasks:

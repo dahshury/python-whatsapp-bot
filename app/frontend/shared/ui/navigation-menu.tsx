@@ -1,23 +1,40 @@
-import * as NavigationMenuPrimitive from "@radix-ui/react-navigation-menu";
+import {
+	Content as NavigationMenuContentPrimitive,
+	Indicator as NavigationMenuIndicatorPrimitive,
+	Item as NavigationMenuItemPrimitive,
+	Link as NavigationMenuLinkPrimitive,
+	List as NavigationMenuListPrimitive,
+	Root as NavigationMenuRootPrimitive,
+	Trigger as NavigationMenuTriggerPrimitive,
+	Viewport as NavigationMenuViewportPrimitive,
+} from "@radix-ui/react-navigation-menu";
 import { cn } from "@shared/libs/utils";
 import { cva } from "class-variance-authority";
 import { ChevronDown } from "lucide-react";
-import * as React from "react";
+import type * as React from "react";
 import { useUiCompositeOverride } from "@/shared/libs/ui-registry";
 
-function getOverride<TProps>(ov: Record<string, unknown>, key: string): React.ComponentType<TProps> | undefined {
+function getOverride<TProps>(
+	ov: Record<string, unknown>,
+	key: string
+): React.ComponentType<TProps> | undefined {
 	return ov[key] as unknown as React.ComponentType<TProps> | undefined;
 }
 
-const NavigationMenu = React.forwardRef<
-	React.ElementRef<typeof NavigationMenuPrimitive.Root>,
-	React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Root>
->(({ className, children, ...props }, ref) => {
+const NavigationMenu = ({
+	className,
+	children,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof NavigationMenuRootPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<
+		typeof NavigationMenuRootPrimitive
+	> | null>;
+}) => {
 	const OV = useUiCompositeOverride("NavigationMenu");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Root>>(
-		OV,
-		"NavigationMenu"
-	);
+	const Override = getOverride<
+		React.ComponentPropsWithoutRef<typeof NavigationMenuRootPrimitive>
+	>(OV, "NavigationMenu");
 	if (Override) {
 		return (
 			<Override className={className} {...props}>
@@ -26,45 +43,61 @@ const NavigationMenu = React.forwardRef<
 		);
 	}
 	return (
-		<NavigationMenuPrimitive.Root
+		<NavigationMenuRootPrimitive
+			className={cn(
+				"relative z-10 flex max-w-max flex-1 items-center justify-center",
+				className
+			)}
 			ref={ref}
-			className={cn("relative z-10 flex max-w-max flex-1 items-center justify-center", className)}
 			{...props}
 		>
 			{children}
 			<NavigationMenuViewport />
-		</NavigationMenuPrimitive.Root>
+		</NavigationMenuRootPrimitive>
 	);
-});
-NavigationMenu.displayName = NavigationMenuPrimitive.Root.displayName;
+};
+NavigationMenu.displayName = NavigationMenuRootPrimitive.displayName;
 
-const NavigationMenuList = React.forwardRef<
-	React.ElementRef<typeof NavigationMenuPrimitive.List>,
-	React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.List>
->(({ className, ...props }, ref) => (
-	<NavigationMenuPrimitive.List
+const NavigationMenuList = ({
+	className,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof NavigationMenuListPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<
+		typeof NavigationMenuListPrimitive
+	> | null>;
+}) => (
+	<NavigationMenuListPrimitive
+		className={cn(
+			"group flex flex-1 list-none items-center justify-center space-x-1",
+			className
+		)}
 		ref={ref}
-		className={cn("group flex flex-1 list-none items-center justify-center space-x-1", className)}
 		{...props}
 	/>
-));
-NavigationMenuList.displayName = NavigationMenuPrimitive.List.displayName;
+);
+NavigationMenuList.displayName = NavigationMenuListPrimitive.displayName;
 
-const NavigationMenuItem = NavigationMenuPrimitive.Item;
+const NavigationMenuItem = NavigationMenuItemPrimitive;
 
 const navigationMenuTriggerStyle = cva(
-	"group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50"
+	"group inline-flex h-10 w-max items-center justify-center rounded-md bg-background px-4 py-2 font-medium text-sm transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 data-[active]:bg-accent/50 data-[state=open]:bg-accent/50"
 );
 
-const NavigationMenuTrigger = React.forwardRef<
-	React.ElementRef<typeof NavigationMenuPrimitive.Trigger>,
-	React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>
->(({ className, children, ...props }, ref) => {
+const NavigationMenuTrigger = ({
+	className,
+	children,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof NavigationMenuTriggerPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<
+		typeof NavigationMenuTriggerPrimitive
+	> | null>;
+}) => {
 	const OV = useUiCompositeOverride("NavigationMenu");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Trigger>>(
-		OV,
-		"NavigationMenuTrigger"
-	);
+	const Override = getOverride<
+		React.ComponentPropsWithoutRef<typeof NavigationMenuTriggerPrimitive>
+	>(OV, "NavigationMenuTrigger");
 	if (Override) {
 		return (
 			<Override className={className} {...props}>
@@ -73,65 +106,73 @@ const NavigationMenuTrigger = React.forwardRef<
 		);
 	}
 	return (
-		<NavigationMenuPrimitive.Trigger
-			ref={ref}
+		<NavigationMenuTriggerPrimitive
 			className={cn(navigationMenuTriggerStyle(), "group", className)}
+			ref={ref}
 			{...props}
 		>
 			{children}{" "}
 			<ChevronDown
-				className="relative top-[0.0625rem] ml-1 h-3 w-3 transition duration-200 group-data-[state=open]:rotate-180"
 				aria-hidden="true"
+				className="relative top-[0.0625rem] ml-1 h-3 w-3 transition duration-200 group-data-[state=open]:rotate-180"
 			/>
-		</NavigationMenuPrimitive.Trigger>
+		</NavigationMenuTriggerPrimitive>
 	);
-});
-NavigationMenuTrigger.displayName = NavigationMenuPrimitive.Trigger.displayName;
+};
+NavigationMenuTrigger.displayName = NavigationMenuTriggerPrimitive.displayName;
 
-const NavigationMenuContent = React.forwardRef<
-	React.ElementRef<typeof NavigationMenuPrimitive.Content>,
-	React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Content>
->(({ className, ...props }, ref) => {
+const NavigationMenuContent = ({
+	className,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof NavigationMenuContentPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<
+		typeof NavigationMenuContentPrimitive
+	> | null>;
+}) => {
 	const OV = useUiCompositeOverride("NavigationMenu");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Content>>(
-		OV,
-		"NavigationMenuContent"
-	);
+	const Override = getOverride<
+		React.ComponentPropsWithoutRef<typeof NavigationMenuContentPrimitive>
+	>(OV, "NavigationMenuContent");
 	if (Override) {
 		return <Override className={className} {...props} />;
 	}
 	return (
-		<NavigationMenuPrimitive.Content
-			ref={ref}
+		<NavigationMenuContentPrimitive
 			className={cn(
-				"left-0 top-0 w-full data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 md:absolute md:w-auto ",
+				"data-[motion^=from-]:fade-in data-[motion^=to-]:fade-out data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 top-0 left-0 w-full data-[motion^=from-]:animate-in data-[motion^=to-]:animate-out md:absolute md:w-auto",
 				className
 			)}
+			ref={ref}
 			{...props}
 		/>
 	);
-});
-NavigationMenuContent.displayName = NavigationMenuPrimitive.Content.displayName;
+};
+NavigationMenuContent.displayName = NavigationMenuContentPrimitive.displayName;
 
-const NavigationMenuLink = NavigationMenuPrimitive.Link;
+const NavigationMenuLink = NavigationMenuLinkPrimitive;
 
-const NavigationMenuViewport = React.forwardRef<
-	React.ElementRef<typeof NavigationMenuPrimitive.Viewport>,
-	React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Viewport>
->(({ className, ...props }, ref) => {
+const NavigationMenuViewport = ({
+	className,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof NavigationMenuViewportPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<
+		typeof NavigationMenuViewportPrimitive
+	> | null>;
+}) => {
 	const OV = useUiCompositeOverride("NavigationMenu");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Viewport>>(
-		OV,
-		"NavigationMenuViewport"
-	);
+	const Override = getOverride<
+		React.ComponentPropsWithoutRef<typeof NavigationMenuViewportPrimitive>
+	>(OV, "NavigationMenuViewport");
 	if (Override) {
 		return <Override className={className} {...props} />;
 	}
 	return (
-		<div className={cn("absolute left-0 top-full flex justify-center")}>
-			<NavigationMenuPrimitive.Viewport
+		<div className={cn("absolute top-full left-0 flex justify-center")}>
+			<NavigationMenuViewportPrimitive
 				className={cn(
-					"origin-top-center relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 md:w-[var(--radix-navigation-menu-viewport-width)]",
+					"data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90 relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full origin-top-center overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=open]:animate-in md:w-[var(--radix-navigation-menu-viewport-width)]",
 					className
 				)}
 				ref={ref}
@@ -139,44 +180,50 @@ const NavigationMenuViewport = React.forwardRef<
 			/>
 		</div>
 	);
-});
-NavigationMenuViewport.displayName = NavigationMenuPrimitive.Viewport.displayName;
+};
+NavigationMenuViewport.displayName =
+	NavigationMenuViewportPrimitive.displayName;
 
-const NavigationMenuIndicator = React.forwardRef<
-	React.ElementRef<typeof NavigationMenuPrimitive.Indicator>,
-	React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Indicator>
->(({ className, ...props }, ref) => {
+const NavigationMenuIndicator = ({
+	className,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof NavigationMenuIndicatorPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<
+		typeof NavigationMenuIndicatorPrimitive
+	> | null>;
+}) => {
 	const OV = useUiCompositeOverride("NavigationMenu");
-	const Override = getOverride<React.ComponentPropsWithoutRef<typeof NavigationMenuPrimitive.Indicator>>(
-		OV,
-		"NavigationMenuIndicator"
-	);
+	const Override = getOverride<
+		React.ComponentPropsWithoutRef<typeof NavigationMenuIndicatorPrimitive>
+	>(OV, "NavigationMenuIndicator");
 	if (Override) {
 		return <Override className={className} {...props} />;
 	}
 	return (
-		<NavigationMenuPrimitive.Indicator
-			ref={ref}
+		<NavigationMenuIndicatorPrimitive
 			className={cn(
-				"top-full z-[1] flex h-1.5 items-end justify-center overflow-hidden data-[state=visible]:animate-in data-[state=hidden]:animate-out data-[state=hidden]:fade-out data-[state=visible]:fade-in",
+				"data-[state=hidden]:fade-out data-[state=visible]:fade-in top-full z-[1] flex h-1.5 items-end justify-center overflow-hidden data-[state=hidden]:animate-out data-[state=visible]:animate-in",
 				className
 			)}
+			ref={ref}
 			{...props}
 		>
 			<div className="relative top-[60%] h-2 w-2 rotate-45 rounded-tl-sm bg-border shadow-md" />
-		</NavigationMenuPrimitive.Indicator>
+		</NavigationMenuIndicatorPrimitive>
 	);
-});
-NavigationMenuIndicator.displayName = NavigationMenuPrimitive.Indicator.displayName;
+};
+NavigationMenuIndicator.displayName =
+	NavigationMenuIndicatorPrimitive.displayName;
 
 export {
-	navigationMenuTriggerStyle,
 	NavigationMenu,
-	NavigationMenuList,
-	NavigationMenuItem,
 	NavigationMenuContent,
-	NavigationMenuTrigger,
-	NavigationMenuLink,
 	NavigationMenuIndicator,
+	NavigationMenuItem,
+	NavigationMenuLink,
+	NavigationMenuList,
+	NavigationMenuTrigger,
+	navigationMenuTriggerStyle,
 	NavigationMenuViewport,
 };

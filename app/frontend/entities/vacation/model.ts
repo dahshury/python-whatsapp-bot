@@ -1,5 +1,5 @@
-export interface Vacation {
+export type Vacation = {
 	id: string;
 	start: string;
 	end: string;
-}
+};

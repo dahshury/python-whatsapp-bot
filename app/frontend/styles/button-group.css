@@ -2,9 +2,12 @@
 
 /* Vertical orientation: remove inner radii and collapse borders */
 [data-button-group][data-orientation="vertical"] > *:not(:first-child) button,
-[data-button-group][data-orientation="vertical"] > *:not(:first-child) [role="button"],
+[data-button-group][data-orientation="vertical"]
+	> *:not(:first-child)
+	[role="button"],
 [data-button-group][data-orientation="vertical"] > button:not(:first-child),
-[data-button-group][data-orientation="vertical"] > a[role="button"]:not(:first-child) {
+[data-button-group][data-orientation="vertical"]
+	> a[role="button"]:not(:first-child) {
 	margin-top: -1px; /* collapse adjacent borders */
 }
 
@@ -22,9 +25,12 @@
 
 /* Horizontal orientation (not used here, but provided for completeness) */
 [data-button-group][data-orientation="horizontal"] > *:not(:first-child) button,
-[data-button-group][data-orientation="horizontal"] > *:not(:first-child) [role="button"],
+[data-button-group][data-orientation="horizontal"]
+	> *:not(:first-child)
+	[role="button"],
 [data-button-group][data-orientation="horizontal"] > button:not(:first-child),
-[data-button-group][data-orientation="horizontal"] > a[role="button"]:not(:first-child) {
+[data-button-group][data-orientation="horizontal"]
+	> a[role="button"]:not(:first-child) {
 	margin-left: -1px;
 }
 

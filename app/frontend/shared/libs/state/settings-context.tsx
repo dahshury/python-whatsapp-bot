@@ -1,10 +1,22 @@
 "use client";
-import React from "react";
+import {
+	createContext,
+	type FC,
+	type PropsWithChildren,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 // Style theme used for UI accent themes (e.g., "theme-default", "theme-claude").
 // This is intentionally separate from color scheme (light/dark/system), which is handled by next-themes.
 export type Theme = string;
-export interface SettingsState {
+
+// Default chat message limit
+const DEFAULT_CHAT_MESSAGE_LIMIT = 50;
+
+export type SettingsState = {
 	theme: Theme; // style theme class, e.g., "theme-default"
 	setTheme: (theme: Theme) => void;
 	freeRoam: boolean;
@@ -18,80 +30,115 @@ export interface SettingsState {
 	// Whether to send WhatsApp typing indicator while secretary is typing
 	sendTypingIndicator: boolean;
 	setSendTypingIndicator: (value: boolean) => void;
-}
+};
 
-const SettingsContext = React.createContext<SettingsState | undefined>(undefined);
+const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
-const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
-	const [theme, setTheme] = React.useState<Theme>(() => {
+const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
+	const [theme, setTheme] = useState<Theme>(() => {
 		if (typeof window !== "undefined") {
-			const storedStyleTheme = localStorage.getItem("styleTheme") as Theme | null;
-			if (storedStyleTheme) return storedStyleTheme;
+			const storedStyleTheme = localStorage.getItem(
+				"styleTheme"
+			) as Theme | null;
+			if (storedStyleTheme) {
+				return storedStyleTheme;
+			}
 			const legacyTheme = localStorage.getItem("theme");
 			if (legacyTheme?.startsWith("theme-")) {
 				try {
 					localStorage.setItem("styleTheme", legacyTheme);
-				} catch {}
+				} catch {
+					// Gracefully handle storage quota or privacy mode errors; fallback to default theme
+				}
 				return legacyTheme as Theme;
 			}
 		}
 		return "theme-default";
 	});
-	const [freeRoam, setFreeRoam] = React.useState<boolean>(false);
-	const [showDualCalendar, setShowDualCalendar] = React.useState<boolean>(false);
-	const [showToolCalls, setShowToolCalls] = React.useState<boolean>(true);
-	const [chatMessageLimit, setChatMessageLimit] = React.useState<number>(50);
-	const [sendTypingIndicator, setSendTypingIndicator] = React.useState<boolean>(false);
+	const [freeRoam, setFreeRoam] = useState<boolean>(false);
+	const [showDualCalendar, setShowDualCalendar] = useState<boolean>(false);
+	const [showToolCalls, setShowToolCalls] = useState<boolean>(true);
+	const [chatMessageLimit, setChatMessageLimit] = useState<number>(
+		DEFAULT_CHAT_MESSAGE_LIMIT
+	);
+	const [sendTypingIndicator, setSendTypingIndicator] =
+		useState<boolean>(false);
 
 	// Load persisted non-theme settings on mount
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		const storedFreeRoam = localStorage.getItem("freeRoam");
-		if (storedFreeRoam != null) setFreeRoam(storedFreeRoam === "true");
+		if (storedFreeRoam != null) {
+			setFreeRoam(storedFreeRoam === "true");
+		}
 		const storedDual = localStorage.getItem("showDualCalendar");
-		if (storedDual != null) setShowDualCalendar(storedDual === "true");
+		if (storedDual != null) {
+			setShowDualCalendar(storedDual === "true");
+		}
 		const storedToolCalls = localStorage.getItem("showToolCalls");
-		if (storedToolCalls != null) setShowToolCalls(storedToolCalls === "true");
+		if (storedToolCalls != null) {
+			setShowToolCalls(storedToolCalls === "true");
+		}
 		const storedLimit = localStorage.getItem("chatMessageLimit");
-		if (storedLimit != null) setChatMessageLimit(Number(storedLimit));
+		if (storedLimit != null) {
+			setChatMessageLimit(Number(storedLimit));
+		}
 		const storedTyping = localStorage.getItem("sendTypingIndicator");
-		if (storedTyping != null) setSendTypingIndicator(storedTyping === "true");
+		if (storedTyping != null) {
+			setSendTypingIndicator(storedTyping === "true");
+		}
 	}, []);
 
 	// Persist style theme only; dark/light is managed by next-themes with its own storage key
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		try {
 			localStorage.setItem("styleTheme", theme);
-		} catch {}
+		} catch {
+			// Gracefully handle storage quota or privacy mode errors
+		}
 	}, [theme]);
 
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		localStorage.setItem("freeRoam", String(freeRoam));
 	}, [freeRoam]);
 
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		localStorage.setItem("showDualCalendar", String(showDualCalendar));
 	}, [showDualCalendar]);
 
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		localStorage.setItem("showToolCalls", String(showToolCalls));
 	}, [showToolCalls]);
 
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		localStorage.setItem("chatMessageLimit", String(chatMessageLimit));
 	}, [chatMessageLimit]);
 
-	React.useEffect(() => {
-		if (typeof window === "undefined") return;
+	useEffect(() => {
+		if (typeof window === "undefined") {
+			return;
+		}
 		localStorage.setItem("sendTypingIndicator", String(sendTypingIndicator));
 	}, [sendTypingIndicator]);
 
-	const value = React.useMemo<SettingsState>(
+	const value = useMemo<SettingsState>(
 		() => ({
 			theme,
 			setTheme,
@@ -106,14 +153,27 @@ const SettingsProvider: React.FC<React.PropsWithChildren> = ({ children }) => {
 			sendTypingIndicator,
 			setSendTypingIndicator,
 		}),
-		[theme, freeRoam, showDualCalendar, showToolCalls, chatMessageLimit, sendTypingIndicator]
+		[
+			theme,
+			freeRoam,
+			showDualCalendar,
+			showToolCalls,
+			chatMessageLimit,
+			sendTypingIndicator,
+		]
 	);
-	return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
+	return (
+		<SettingsContext.Provider value={value}>
+			{children}
+		</SettingsContext.Provider>
+	);
 };
 
 function useSettings(): SettingsState {
-	const ctx = React.useContext(SettingsContext);
-	if (!ctx) throw new Error("useSettings must be used within SettingsProvider");
+	const ctx = useContext(SettingsContext);
+	if (!ctx) {
+		throw new Error("useSettings must be used within SettingsProvider");
+	}
 	return ctx;
 }
 

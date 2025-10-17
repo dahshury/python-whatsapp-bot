@@ -1,11 +1,13 @@
-import * as React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function useScrollSelectedIntoView<T extends HTMLElement>() {
-	const selectedRef = React.useRef<T | null>(null);
-	const [isOpen, setIsOpen] = React.useState(false);
+	const selectedRef = useRef<T | null>(null);
+	const [isOpen, setIsOpen] = useState(false);
 
-	React.useEffect(() => {
-		if (!isOpen) return;
+	useEffect(() => {
+		if (!isOpen) {
+			return;
+		}
 		queueMicrotask(() => {
 			try {
 				selectedRef.current?.scrollIntoView({
@@ -13,7 +15,9 @@ export function useScrollSelectedIntoView<T extends HTMLElement>() {
 					inline: "nearest",
 					behavior: "auto",
 				});
-			} catch {}
+			} catch {
+				// Ignore errors from scrollIntoView
+			}
 		});
 	}, [isOpen]);
 

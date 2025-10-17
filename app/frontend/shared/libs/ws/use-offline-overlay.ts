@@ -1,10 +1,10 @@
-import * as React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-interface OfflineOverlayState {
+type OfflineOverlayState = {
 	showOffline: boolean;
 	isRetrying: boolean;
 	handleRetry: () => void;
-}
+};
 
 type MaybeWS = {
 	isConnected?: boolean;
@@ -14,13 +14,19 @@ type MaybeWS = {
 	vacations?: unknown;
 };
 
-export function useOfflineOverlay(ws: MaybeWS | null | undefined): OfflineOverlayState {
-	const [showOffline, setShowOffline] = React.useState<boolean>(false);
-	const [isRetrying, setIsRetrying] = React.useState<boolean>(false);
-	const disconnectedSinceRef = React.useRef<number | null>(null);
-	const retryTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+const OFFLINE_THRESHOLD_WITH_DATA_MS = 6000; // 6 seconds threshold when data exists
+const OFFLINE_THRESHOLD_NO_DATA_MS = 2000; // 2 seconds threshold when no data
+const RETRY_TIMEOUT_MS = 2500; // Retry state reset timeout
 
-	React.useEffect(() => {
+export function useOfflineOverlay(
+	ws: MaybeWS | null | undefined
+): OfflineOverlayState {
+	const [showOffline, setShowOffline] = useState<boolean>(false);
+	const [isRetrying, setIsRetrying] = useState<boolean>(false);
+	const disconnectedSinceRef = useRef<number | null>(null);
+	const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+	useEffect(() => {
 		const hasAnyData = (() => {
 			try {
 				const resv = (ws as MaybeWS)?.reservations || {};
@@ -32,15 +38,18 @@ export function useOfflineOverlay(ws: MaybeWS | null | undefined): OfflineOverla
 					(Array.isArray(vac) ? (vac as unknown[]).length : 0) > 0
 				);
 			} catch {
+				// Data check failed; assume no data
 				return false;
 			}
 		})();
 
 		const isConnecting = (() => {
 			try {
-				const ref = (globalThis as { __wsConnection?: { current?: WebSocket } }).__wsConnection;
+				const ref = (globalThis as { __wsConnection?: { current?: WebSocket } })
+					.__wsConnection;
 				return ref?.current?.readyState === WebSocket.CONNECTING;
 			} catch {
+				// Connection check failed; assume not connecting
 				return false;
 			}
 		})();
@@ -55,19 +64,25 @@ export function useOfflineOverlay(ws: MaybeWS | null | undefined): OfflineOverla
 			disconnectedSinceRef.current = Date.now();
 		}
 		const elapsed = Date.now() - (disconnectedSinceRef.current || Date.now());
-		const thresholdMs = hasAnyData ? 6000 : 2000;
+		const thresholdMs = hasAnyData
+			? OFFLINE_THRESHOLD_WITH_DATA_MS
+			: OFFLINE_THRESHOLD_NO_DATA_MS;
 		const t = setTimeout(
 			() => {
 				const stillDisconnected = !(ws as MaybeWS)?.isConnected;
-				if (stillDisconnected) setShowOffline(true);
+				if (stillDisconnected) {
+					setShowOffline(true);
+				}
 			},
 			Math.max(0, thresholdMs - elapsed)
 		);
 		return () => clearTimeout(t);
 	}, [ws]);
 
-	const handleRetry = React.useCallback(() => {
-		if (isRetrying) return;
+	const handleRetry = useCallback(() => {
+		if (isRetrying) {
+			return;
+		}
 		setIsRetrying(true);
 		if (retryTimeoutRef.current) {
 			clearTimeout(retryTimeoutRef.current);
@@ -75,14 +90,16 @@ export function useOfflineOverlay(ws: MaybeWS | null | undefined): OfflineOverla
 		}
 		try {
 			(ws as MaybeWS)?.connect?.();
-		} catch {}
+		} catch {
+			// Connection attempt failed; will retry after timeout
+		}
 		retryTimeoutRef.current = setTimeout(() => {
 			setIsRetrying(false);
 			retryTimeoutRef.current = null;
-		}, 2500);
+		}, RETRY_TIMEOUT_MS);
 	}, [ws, isRetrying]);
 
-	React.useEffect(() => {
+	useEffect(() => {
 		if (isRetrying && (ws as MaybeWS)?.isConnected) {
 			setIsRetrying(false);
 			if (retryTimeoutRef.current) {
@@ -92,14 +109,15 @@ export function useOfflineOverlay(ws: MaybeWS | null | undefined): OfflineOverla
 		}
 	}, [isRetrying, ws]);
 
-	React.useEffect(() => {
-		return () => {
+	useEffect(
+		() => () => {
 			if (retryTimeoutRef.current) {
 				clearTimeout(retryTimeoutRef.current);
 				retryTimeoutRef.current = null;
 			}
-		};
-	}, []);
+		},
+		[]
+	);
 
 	return { showOffline, isRetrying, handleRetry };
 }

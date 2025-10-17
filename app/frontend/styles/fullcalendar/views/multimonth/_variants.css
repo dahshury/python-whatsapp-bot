@@ -77,7 +77,9 @@
 	border-right-style: hidden;
 }
 
-.fc-multimonth-singlecol .fc-multimonth-month:last-child .fc-multimonth-daygrid-table {
+.fc-multimonth-singlecol
+	.fc-multimonth-month:last-child
+	.fc-multimonth-daygrid-table {
 	border-bottom-style: hidden;
 }
 
@@ -166,5 +168,10 @@
 }
 
 .fc-multimonth::-webkit-scrollbar-thumb:active {
-	background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 50%, hsl(var(--secondary)) 100%);
+	background: linear-gradient(
+		135deg,
+		hsl(var(--primary)) 0%,
+		hsl(var(--accent)) 50%,
+		hsl(var(--secondary)) 100%
+	);
 }

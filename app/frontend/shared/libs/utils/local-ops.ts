@@ -7,11 +7,15 @@ export function markLocalOperation(key: string, ttlMs = 5000): void {
 			() => {
 				try {
 					g.__localOps?.delete(key);
-				} catch {}
+				} catch {
+					// Silently ignore cleanup errors in timer callback
+				}
 			},
 			Math.max(0, ttlMs)
 		);
-	} catch {}
+	} catch {
+		// Silently ignore initialization errors
+	}
 }
 
 export function isLocalOperation(key: string): boolean {
@@ -19,6 +23,7 @@ export function isLocalOperation(key: string): boolean {
 		const g = globalThis as unknown as { __localOps?: Set<string> };
 		return !!g.__localOps?.has(key);
 	} catch {
+		// Return false on any lookup error
 		return false;
 	}
 }

@@ -3,14 +3,20 @@
 import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { useEffect } from "react";
 
+const DEFAULT_OVERLAY_Z_INDEX = 1000;
+
 export function PortalBootstrap(): null {
 	useEffect(() => {
 		try {
 			const body = document.body;
-			if (!body) return;
+			if (!body) {
+				return;
+			}
 
 			// Ensure dialog overlay portal exists
-			let dialog = document.getElementById("dialog-overlay-portal") as HTMLDivElement | null;
+			let dialog = document.getElementById(
+				"dialog-overlay-portal"
+			) as HTMLDivElement | null;
 			if (!dialog) {
 				dialog = document.createElement("div");
 				dialog.id = "dialog-overlay-portal";
@@ -20,11 +26,15 @@ export function PortalBootstrap(): null {
 				top: "0px",
 				left: "0px",
 				pointerEvents: "none",
-				zIndex: String(Z_INDEX.DIALOG_OVERLAY_PORTAL ?? 1000),
+				zIndex: String(
+					Z_INDEX.DIALOG_OVERLAY_PORTAL ?? DEFAULT_OVERLAY_Z_INDEX
+				),
 				width: "0px",
 				height: "0px",
 			} as Partial<CSSStyleDeclaration>);
-			if (!dialog.isConnected) body.appendChild(dialog);
+			if (!dialog.isConnected) {
+				body.appendChild(dialog);
+			}
 
 			// Ensure Glide overlay editor portal exists and is the last child of body
 			let portal = document.getElementById("portal") as HTMLDivElement | null;
@@ -34,7 +44,9 @@ export function PortalBootstrap(): null {
 			}
 			// Append (or move) as last child
 			body.appendChild(portal);
-		} catch {}
+		} catch {
+			// Silently ignore if portal setup fails
+		}
 	}, []);
 
 	return null;

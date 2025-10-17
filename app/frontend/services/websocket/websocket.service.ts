@@ -1,11 +1,33 @@
-import { cancelReservation as httpCancelReservation, modifyReservation } from "@shared/libs/api";
+import {
+	cancelReservation as httpCancelReservation,
+	modifyReservation,
+} from "@shared/libs/api";
 import type { ApiResponse, WebSocketMessage } from "@/entities/event";
+
+type CancelReservationMethod = {
+	cancelReservation: (
+		waId: string,
+		date: string,
+		opts?: { isLocalized?: boolean }
+	) => Promise<ApiResponse>;
+};
+
+type WSConfirmationDetail = {
+	type?: string;
+	data?: Record<string, unknown>;
+	error?: string;
+};
+
+type WSConfirmationResult = {
+	success: boolean;
+	message?: string;
+};
 
 class WebSocketService {
 	/**
 	 * Send a message via WebSocket with HTTP fallback
 	 */
-	async sendMessage(message: WebSocketMessage): Promise<boolean> {
+	sendMessage(message: WebSocketMessage): Promise<boolean> {
 		return new Promise((resolve) => {
 			try {
 				const wsRef = (globalThis as GlobalThis).__wsConnection;
@@ -21,6 +43,13 @@ class WebSocketService {
 		});
 	}
 
+	searchCustomers(query: string, limit = 25): Promise<boolean> {
+		return this.sendMessage({
+			type: "customer_search",
+			data: { query, limit },
+		});
+	}
+
 	/**
 	 * Wait for WebSocket confirmation (ack/nack)
 	 */
@@ -30,60 +59,39 @@ class WebSocketService {
 		date: string;
 		time: string;
 		timeoutMs?: number;
-	}): Promise<{ success: boolean; message?: string }> {
-		const { reservationId, waId, date, timeoutMs = 10000 } = args;
+	}): Promise<WSConfirmationResult> {
+		const { reservationId, waId, date, timeoutMs = 10_000 } = args;
 
 		return new Promise((resolve) => {
 			let resolved = false;
+			let timeoutId: NodeJS.Timeout;
 
 			const handler = (ev: Event) => {
-				try {
-					const detail = (ev as CustomEvent).detail as
-						| { type?: string; data?: Record<string, unknown>; error?: string }
-						| undefined;
-					const t = detail?.type;
-					const d = detail?.data || {};
-
-					// Listen for direct WebSocket ack/nack responses
-					if (t === "modify_reservation_ack") {
-						if (!resolved) {
-							resolved = true;
-							window.removeEventListener("realtime", handler as EventListener);
+				this.handleWSConfirmationEvent({
+					ev,
+					reservationId,
+					waId,
+					date,
+					resolved,
+					onResolved: (newResolved: boolean, result: WSConfirmationResult) => {
+						resolved = newResolved;
+						if (newResolved) {
 							clearTimeout(timeoutId);
-							resolve({ success: true, message: String(d.message || "") });
+							resolve(result);
 						}
-					} else if (t === "modify_reservation_nack") {
-						if (!resolved) {
-							resolved = true;
-							window.removeEventListener("realtime", handler as EventListener);
-							clearTimeout(timeoutId);
-							const errorMessage = detail?.error || d.message || "Operation failed";
-							resolve({ success: false, message: String(errorMessage) });
-						}
-					}
-					// Fallback: listen for reservation_updated broadcasts
-					else if (
-						(t === "reservation_updated" || t === "reservation_reinstated") &&
-						((reservationId != null && String(d.id) === String(reservationId)) ||
-							(waId != null && String(d.wa_id ?? d.waId) === String(waId) && String(d.date) === String(date)))
-					) {
-						if (!resolved) {
-							resolved = true;
-							window.removeEventListener("realtime", handler as EventListener);
-							clearTimeout(timeoutId);
-							resolve({ success: true });
-						}
-					}
-				} catch {}
+					},
+				});
 			};
 
 			// Set up timeout
-			const timeoutId = setTimeout(() => {
+			timeoutId = setTimeout(() => {
 				if (!resolved) {
 					resolved = true;
 					try {
 						window.removeEventListener("realtime", handler as EventListener);
-					} catch {}
+					} catch {
+						// Silently ignore event listener removal errors
+					}
 					resolve({ success: false, message: "Request timeout" });
 				}
 			}, timeoutMs);
@@ -98,6 +106,75 @@ class WebSocketService {
 				});
 			}
 		});
+	}
+
+	private handleWSConfirmationEvent(options: {
+		ev: Event;
+		reservationId: string | number | undefined;
+		waId: string | number | undefined;
+		date: string;
+		resolved: boolean;
+		onResolved: (isResolved: boolean, result: WSConfirmationResult) => void;
+	}): void {
+		try {
+			const detail = (options.ev as CustomEvent).detail as
+				| WSConfirmationDetail
+				| undefined;
+			const t = detail?.type;
+			const d = detail?.data || {};
+
+			// Listen for direct WebSocket ack/nack responses
+			if (t === "modify_reservation_ack") {
+				if (!options.resolved) {
+					options.onResolved(true, {
+						success: true,
+						message: String(d.message || ""),
+					});
+				}
+			} else if (t === "modify_reservation_nack") {
+				if (!options.resolved) {
+					const errorMessage = detail?.error || d.message || "Operation failed";
+					options.onResolved(true, {
+						success: false,
+						message: String(errorMessage),
+					});
+				}
+			} // Fallback: listen for reservation_updated broadcasts
+			else if (this.shouldResolveFromBroadcast(t, d, options)) {
+				options.onResolved(true, { success: true });
+			}
+		} catch {
+			// Silently ignore event detail parsing errors
+		}
+	}
+
+	private shouldResolveFromBroadcast(
+		eventType: unknown,
+		eventData: Record<string, unknown>,
+		options: {
+			reservationId: string | number | undefined;
+			waId: string | number | undefined;
+			date: string;
+			resolved: boolean;
+		}
+	): boolean {
+		if (
+			eventType !== "reservation_updated" &&
+			eventType !== "reservation_reinstated"
+		) {
+			return false;
+		}
+		if (options.resolved) {
+			return false;
+		}
+		const idMatches =
+			options.reservationId != null &&
+			String(eventData.id) === String(options.reservationId);
+		const waIdAndDateMatch =
+			options.waId != null &&
+			String(eventData.wa_id ?? eventData.waId) === String(options.waId) &&
+			String(eventData.date) === String(options.date);
+		return idMatches || waIdAndDateMatch;
 	}
 
 	/**
@@ -115,6 +192,12 @@ class WebSocketService {
 		},
 		opts?: { isLocalized?: boolean }
 	): Promise<ApiResponse> {
+		// biome-ignore lint/suspicious/noConsole: DEBUG
+		globalThis.console?.log?.("[WebSocketService] modifyReservation()", {
+			waId,
+			updates,
+			opts,
+		});
 		// Try WebSocket first
 		const wsSuccess = await this.sendMessage({
 			type: "modify_reservation",
@@ -127,8 +210,12 @@ class WebSocketService {
 				reservation_id: updates.reservationId,
 				approximate: updates.approximate,
 				// pass localization preference through to backend for ack/nack messages
-				ar: opts?.isLocalized || false,
+				ar: opts?.isLocalized,
 			},
+		});
+		// biome-ignore lint/suspicious/noConsole: DEBUG
+		globalThis.console?.log?.("[WebSocketService] sendMessage result", {
+			wsSuccess,
 		});
 
 		if (wsSuccess) {
@@ -139,6 +226,11 @@ class WebSocketService {
 				date: updates.date,
 				time: updates.time,
 			});
+			// biome-ignore lint/suspicious/noConsole: DEBUG
+			globalThis.console?.log?.(
+				"[WebSocketService] WS confirmation received",
+				confirmation
+			);
 
 			return {
 				success: confirmation.success,
@@ -147,22 +239,24 @@ class WebSocketService {
 		}
 
 		// Fallback to HTTP API
-		return (await modifyReservation(waId, updates)) as unknown as ApiResponse;
+		const httpResp = (await modifyReservation(
+			waId,
+			updates
+		)) as unknown as ApiResponse;
+		// biome-ignore lint/suspicious/noConsole: DEBUG
+		globalThis.console?.log?.(
+			"[WebSocketService] HTTP fallback modifyReservation()",
+			httpResp
+		);
+		return httpResp;
 	}
 }
 
-export { WebSocketService };
+// Note: WebSocketService is extended via global interface in @/entities/event
 
-/**
- * Extend WebSocketService with cancellation helper
- */
-declare module "../websocket/websocket.service" {
-	interface WebSocketService {
-		cancelReservation(waId: string, date: string, opts?: { isLocalized?: boolean }): Promise<ApiResponse>;
-	}
-}
-
-WebSocketService.prototype.cancelReservation = async function (
+(
+	WebSocketService.prototype as unknown as CancelReservationMethod
+).cancelReservation = async function (
 	this: WebSocketService,
 	waId: string,
 	date: string,
@@ -170,14 +264,20 @@ WebSocketService.prototype.cancelReservation = async function (
 ): Promise<ApiResponse> {
 	const wsSuccess = await this.sendMessage({
 		type: "cancel_reservation",
-		data: { wa_id: waId, date, ar: opts?.isLocalized || false },
+		data: { wa_id: waId, date, ar: opts?.isLocalized },
 	});
-	if (wsSuccess) return { success: true } as ApiResponse;
+	if (wsSuccess) {
+		return { success: true } as ApiResponse;
+	}
 	// Fallback to HTTP
 	const payload: { id: string; date: string; isLocalized?: boolean } = {
 		id: waId,
 		date,
-		...(typeof opts?.isLocalized === "boolean" ? { isLocalized: opts.isLocalized } : {}),
+		...(typeof opts?.isLocalized === "boolean"
+			? { isLocalized: opts.isLocalized }
+			: {}),
 	};
 	return (await httpCancelReservation(payload)) as unknown as ApiResponse;
 };
+
+export { WebSocketService };

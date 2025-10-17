@@ -6,9 +6,16 @@ import { useMotionValueEvent, useSpring } from "framer-motion";
 import { TrendingUp } from "lucide-react";
 import { AnimatePresence } from "motion/react";
 import { JetBrains_Mono } from "next/font/google";
-import React from "react";
+import type { FC } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bar, BarChart, Cell, ReferenceLine, XAxis } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/ui/card";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/shared/ui/card";
 import { type ChartConfig, ChartContainer } from "@/shared/ui/chart";
 
 const jetBrainsMono = JetBrains_Mono({
@@ -17,6 +24,23 @@ const jetBrainsMono = JetBrains_Mono({
 });
 
 const CHART_MARGIN = 35;
+const MONTH_ABBREVIATION_LENGTH = 3;
+const TICK_MARGIN = 10;
+const BAR_RADIUS = 4;
+const RECT_HEIGHT = 18;
+const RECT_RX = 4;
+const LABEL_Y_OFFSET = -9;
+const TEXT_X_OFFSET = 6;
+const TEXT_Y_OFFSET = 4;
+const CHARACTER_WIDTH = 8;
+const CHARACTER_PADDING = 10;
+const OPACITY_ACTIVE = 1;
+const OPACITY_INACTIVE = 0.2;
+const REFERENCE_LINE_OPACITY = 0.4;
+const STROKE_DASH_ARRAY = "3 3";
+const STROKE_WIDTH = 1;
+const SPRING_STIFFNESS = 100;
+const SPRING_DAMPING = 20;
 
 const chartData = [
 	{ month: "January", desktop: 342 },
@@ -45,11 +69,15 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export function ValueLineBarChart() {
-	const [activeIndex, setActiveIndex] = React.useState<number | undefined>(undefined);
+	const [activeIndex, setActiveIndex] = useState<number | undefined>(undefined);
 
-	const maxValueIndex = React.useMemo(() => {
+	const maxValueIndex = useMemo(() => {
 		// if user is moving mouse over bar then set value to the bar value
-		if (activeIndex !== undefined && activeIndex >= 0 && activeIndex < chartData.length) {
+		if (
+			activeIndex !== undefined &&
+			activeIndex >= 0 &&
+			activeIndex < chartData.length
+		) {
 			const data = chartData[activeIndex];
 			if (data) {
 				return { index: activeIndex, value: data.desktop };
@@ -57,25 +85,24 @@ export function ValueLineBarChart() {
 		}
 		// if no active index then set value to max value
 		return chartData.reduce(
-			(max, data, index) => {
-				return data.desktop > max.value ? { index, value: data.desktop } : max;
-			},
+			(max, data, index) =>
+				data.desktop > max.value ? { index, value: data.desktop } : max,
 			{ index: 0, value: 0 }
 		);
 	}, [activeIndex]);
 
 	const maxValueIndexSpring = useSpring(maxValueIndex.value, {
-		stiffness: 100,
-		damping: 20,
+		stiffness: SPRING_STIFFNESS,
+		damping: SPRING_DAMPING,
 	});
 
-	const [springyValue, setSpringyValue] = React.useState(maxValueIndex.value);
+	const [springyValue, setSpringyValue] = useState(maxValueIndex.value);
 
 	useMotionValueEvent(maxValueIndexSpring, "change", (latest) => {
 		setSpringyValue(Number(latest.toFixed(0)));
 	});
 
-	React.useEffect(() => {
+	useEffect(() => {
 		maxValueIndexSpring.set(maxValueIndex.value);
 	}, [maxValueIndex.value, maxValueIndexSpring]);
 
@@ -83,7 +110,11 @@ export function ValueLineBarChart() {
 		<Card>
 			<CardHeader>
 				<CardTitle className="flex items-center gap-2">
-					<span className={cn(jetBrainsMono.className, "text-2xl tracking-tighter")}>${maxValueIndex.value}</span>
+					<span
+						className={cn(jetBrainsMono.className, "text-2xl tracking-tighter")}
+					>
+						${maxValueIndex.value}
+					</span>
 					<Badge variant="secondary">
 						<TrendingUp className="h-4 w-4" />
 						<span>5.2%</span>
@@ -97,35 +128,45 @@ export function ValueLineBarChart() {
 						<BarChart
 							accessibilityLayer
 							data={chartData}
-							onMouseLeave={() => setActiveIndex(undefined)}
 							margin={{
 								left: CHART_MARGIN,
 							}}
+							onMouseLeave={() => setActiveIndex(undefined)}
 						>
 							<XAxis
-								dataKey="month"
-								tickLine={false}
-								tickMargin={10}
 								axisLine={false}
-								tickFormatter={(value) => value.slice(0, 3)}
+								dataKey="month"
+								tickFormatter={(value) =>
+									value.slice(0, MONTH_ABBREVIATION_LENGTH)
+								}
+								tickLine={false}
+								tickMargin={TICK_MARGIN}
 							/>
-							<Bar dataKey="desktop" fill="var(--color-desktop)" radius={4}>
+							<Bar
+								dataKey="desktop"
+								fill="var(--color-desktop)"
+								radius={BAR_RADIUS}
+							>
 								{chartData.map((item, index) => (
 									<Cell
 										className="duration-200"
-										opacity={index === maxValueIndex.index ? 1 : 0.2}
 										key={item.month}
 										onMouseEnter={() => setActiveIndex(index)}
+										opacity={
+											index === maxValueIndex.index
+												? OPACITY_ACTIVE
+												: OPACITY_INACTIVE
+										}
 									/>
 								))}
 							</Bar>
 							<ReferenceLine
-								opacity={0.4}
-								y={springyValue}
-								stroke="var(--secondary-foreground)"
-								strokeWidth={1}
-								strokeDasharray="3 3"
 								label={<CustomReferenceLabel value={maxValueIndex.value} />}
+								opacity={REFERENCE_LINE_OPACITY}
+								stroke="var(--secondary-foreground)"
+								strokeDasharray={STROKE_DASH_ARRAY}
+								strokeWidth={STROKE_WIDTH}
+								y={springyValue}
 							/>
 						</BarChart>
 					</ChartContainer>
@@ -135,30 +176,41 @@ export function ValueLineBarChart() {
 	);
 }
 
-interface CustomReferenceLabelProps {
+type CustomReferenceLabelProps = {
 	viewBox?: {
 		x?: number;
 		y?: number;
 	};
 	value: number;
-}
+};
 
-const CustomReferenceLabel: React.FC<CustomReferenceLabelProps> = (props) => {
+const CustomReferenceLabel: FC<CustomReferenceLabelProps> = (props) => {
 	const { viewBox, value } = props;
 	const x = viewBox?.x ?? 0;
 	const y = viewBox?.y ?? 0;
 
 	// we need to change width based on value length
-	const width = React.useMemo(() => {
-		const characterWidth = 8; // Average width of a character in pixels
-		const padding = 10;
-		return value.toString().length * characterWidth + padding;
-	}, [value]);
+	const width = useMemo(
+		() => value.toString().length * CHARACTER_WIDTH + CHARACTER_PADDING,
+		[value]
+	);
 
 	return (
 		<>
-			<rect x={x - CHART_MARGIN} y={y - 9} width={width} height={18} fill="var(--secondary-foreground)" rx={4} />
-			<text fontWeight={600} x={x - CHART_MARGIN + 6} y={y + 4} fill="var(--primary-foreground)">
+			<rect
+				fill="var(--secondary-foreground)"
+				height={RECT_HEIGHT}
+				rx={RECT_RX}
+				width={width}
+				x={x - CHART_MARGIN}
+				y={y + LABEL_Y_OFFSET}
+			/>
+			<text
+				fill="var(--primary-foreground)"
+				fontWeight={600}
+				x={x - CHART_MARGIN + TEXT_X_OFFSET}
+				y={y + TEXT_Y_OFFSET}
+			>
 				{value}
 			</text>
 		</>

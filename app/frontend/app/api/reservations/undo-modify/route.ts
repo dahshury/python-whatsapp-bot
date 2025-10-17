@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/shared/libs/backend";
 
-interface UndoModifyResponse {
+type UndoModifyResponse = {
 	success: boolean;
 	message?: string;
 	data?: unknown;
-}
+};
 // import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path
 
 export async function POST(request: Request) {
@@ -15,7 +15,11 @@ export async function POST(request: Request) {
 		// It should match the structure expected by the Python modify_reservation function's parameters.
 		const { reservationId, originalData, ar } = body;
 
-		if (typeof reservationId !== "number" || typeof originalData !== "object" || originalData === null) {
+		if (
+			typeof reservationId !== "number" ||
+			typeof originalData !== "object" ||
+			originalData === null
+		) {
 			return NextResponse.json(
 				{
 					success: false,
@@ -37,36 +41,39 @@ export async function POST(request: Request) {
 			max_reservations: 6, // Frontend allows 6 per slot for calendar operations
 			approximate: false, // For undo, we want exact revert, no approximation
 			hijri: false, // Default value for undo operations
-			ar: ar || false,
+			ar,
 			reservation_id_to_modify: reservationId, // Crucial: target specific reservation
 		};
 
 		if (!payloadForPython.wa_id) {
-			return NextResponse.json({ success: false, message: "originalData is missing wa_id." }, { status: 400 });
+			return NextResponse.json(
+				{ success: false, message: "originalData is missing wa_id." },
+				{ status: 400 }
+			);
 		}
 
-		// Call Python backend to modify reservation back to original data
-		console.log(
-			`API CALL (Python Backend): modify_reservation (for undo) for ID: ${reservationId} with original data:`,
-			payloadForPython
+		const pythonResponse = await callPythonBackend<UndoModifyResponse>(
+			"/undo-modify",
+			{
+				method: "POST",
+				body: JSON.stringify(payloadForPython),
+			}
 		);
-
-		const pythonResponse = await callPythonBackend<UndoModifyResponse>("/undo-modify", {
-			method: "POST",
-			body: JSON.stringify(payloadForPython),
-		});
-
-		console.log("Python backend response for undo-modify:", pythonResponse);
 
 		if (pythonResponse?.success) {
 			return NextResponse.json(pythonResponse);
 		}
-		const errorMessage = pythonResponse?.message || "Undo modification failed in backend.";
-		console.error("Undo modification failed:", errorMessage, pythonResponse);
-		return NextResponse.json({ success: false, message: errorMessage }, { status: 500 });
+		const errorMessage =
+			pythonResponse?.message || "Undo modification failed in backend.";
+		return NextResponse.json(
+			{ success: false, message: errorMessage },
+			{ status: 500 }
+		);
 	} catch (error: unknown) {
-		console.error("Error in /api/reservations/undo-modify API:", error);
-		const errorMessage = error instanceof Error ? error.message : "Internal server error during undo modify.";
+		const errorMessage =
+			error instanceof Error
+				? error.message
+				: "Internal server error during undo modify.";
 		return NextResponse.json(
 			{
 				success: false,

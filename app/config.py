@@ -63,7 +63,9 @@ def update_env_variable(key: str, value: str) -> bool:
         value (str): The new value to set
     """
     # Get the .env file path
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    env_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"
+    )
 
     # Check if .env file exists
     if not os.path.exists(env_path):
@@ -98,7 +100,9 @@ def update_env_variable(key: str, value: str) -> bool:
     return True
 
 
-def update_vacation_settings(start_date: str | None, end_date: str | None, message: str | None) -> tuple[bool, str]:
+def update_vacation_settings(
+    start_date: str | None, end_date: str | None, message: str | None
+) -> tuple[bool, str]:
     # Deprecated: vacations now stored in DB only. Keep VACATION_MESSAGE support.
     if message:
         update_env_variable("VACATION_MESSAGE", message)

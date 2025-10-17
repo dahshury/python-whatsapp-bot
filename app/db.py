@@ -20,7 +20,14 @@ from sqlalchemy import (
 from sqlalchemy.engine import Engine
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
-from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, scoped_session, sessionmaker
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    Session,
+    mapped_column,
+    scoped_session,
+    sessionmaker,
+)
 
 try:
     from sqlalchemy.dialects.postgresql import JSONB as _JSON_TYPE
@@ -68,13 +75,17 @@ def _normalize_database_url(url: str) -> str:
                 userinfo = f"{userinfo}@"
             port = f":{parsed.port}" if parsed.port else ""
             new_netloc = f"{userinfo}postgres{port}"
-            return urllib.parse.urlunsplit((parsed.scheme, new_netloc, parsed.path, parsed.query, parsed.fragment))
+            return urllib.parse.urlunsplit(
+                (parsed.scheme, new_netloc, parsed.path, parsed.query, parsed.fragment)
+            )
         return url
     except Exception:
         return url
 
 
-DATABASE_URL = _normalize_database_url(os.environ.get("DATABASE_URL") or _default_database_url())
+DATABASE_URL = _normalize_database_url(
+    os.environ.get("DATABASE_URL") or _default_database_url()
+)
 
 
 def _derive_async_url(url: str) -> str:
@@ -101,11 +112,17 @@ engine: Engine = create_engine(
     future=True,
     pool_pre_ping=True,
 )
-SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, expire_on_commit=False))
+SessionLocal = scoped_session(
+    sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+)
 
 # Async engine/session for libraries that require AsyncSession (e.g., fastapi-users)
-async_engine: AsyncEngine = create_async_engine(_derive_async_url(DATABASE_URL), echo=False, future=True)
-AsyncSessionLocal = sessionmaker(bind=async_engine, class_=_AsyncSession, autoflush=False, expire_on_commit=False)
+async_engine: AsyncEngine = create_async_engine(
+    _derive_async_url(DATABASE_URL), echo=False, future=True
+)
+AsyncSessionLocal = sessionmaker(
+    bind=async_engine, class_=_AsyncSession, autoflush=False, expire_on_commit=False
+)
 
 
 class Base(DeclarativeBase):
@@ -131,7 +148,9 @@ class ConversationModel(Base):
     __tablename__ = "conversation"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    wa_id: Mapped[str] = mapped_column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
+    wa_id: Mapped[str] = mapped_column(
+        String, ForeignKey("customers.wa_id"), nullable=False, index=True
+    )
     role: Mapped[str | None] = mapped_column(String, nullable=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     date: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -147,20 +166,28 @@ class ReservationModel(Base):
     __tablename__ = "reservations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    wa_id: Mapped[str] = mapped_column(String, ForeignKey("customers.wa_id"), nullable=False, index=True)
+    wa_id: Mapped[str] = mapped_column(
+        String, ForeignKey("customers.wa_id"), nullable=False, index=True
+    )
     date: Mapped[str] = mapped_column(String, nullable=False, index=True)
     time_slot: Mapped[str] = mapped_column(String, nullable=False, index=True)
     type: Mapped[int] = mapped_column(Integer, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="active")
     cancelled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp()
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
 
     __table_args__ = (
         CheckConstraint("type IN (0, 1)", name="ck_reservations_type"),
-        CheckConstraint("status IN ('active','cancelled')", name="ck_reservations_status"),
+        CheckConstraint(
+            "status IN ('active','cancelled')", name="ck_reservations_status"
+        ),
         Index("idx_reservations_wa_id", "wa_id"),
         Index("idx_reservations_date_time", "date", "time_slot"),
         Index("idx_reservations_status", "status"),
@@ -177,14 +204,24 @@ class VacationPeriodModel(Base):
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     duration_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     title: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp()
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
 
     __table_args__ = (
-        CheckConstraint("duration_days IS NULL OR duration_days >= 1", name="ck_vacation_duration_positive"),
-        CheckConstraint("end_date IS NULL OR start_date <= end_date", name="ck_vacation_start_before_end"),
+        CheckConstraint(
+            "duration_days IS NULL OR duration_days >= 1",
+            name="ck_vacation_duration_positive",
+        ),
+        CheckConstraint(
+            "end_date IS NULL OR start_date <= end_date",
+            name="ck_vacation_start_before_end",
+        ),
         Index("idx_vacations_start", "start_date"),
         Index("idx_vacations_end", "end_date"),
     )
@@ -199,7 +236,9 @@ class NotificationEventModel(Base):
     ts_iso: Mapped[str] = mapped_column(String, nullable=False, index=True)
     # Raw payload as JSON string (so frontend can reconstruct message-specific text)
     data: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=text("CURRENT_TIMESTAMP")
+    )
 
     __table_args__ = (
         Index("idx_notification_events_type_ts", "event_type", "ts_iso"),
@@ -216,14 +255,22 @@ class InboundMessageQueueModel(Base):
     # Minimal fields needed to re-process
     wa_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     payload: Mapped[str] = mapped_column(Text, nullable=False)
-    status: Mapped[str] = mapped_column(String, nullable=False, default="pending")  # pending|processing|done|failed
+    status: Mapped[str] = mapped_column(
+        String, nullable=False, default="pending"
+    )  # pending|processing|done|failed
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.current_timestamp(), index=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
     # When claimed by a worker
-    locked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    locked_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True, index=True
+    )
 
     __table_args__ = (
         # De-duplication for known message ids (skip NULLs to allow inserts when unknown)
@@ -257,18 +304,34 @@ def init_models() -> None:
                 conn.exec_driver_sql(
                     "CREATE UNIQUE INDEX IF NOT EXISTS uq_inbound_message_queue_message_id_not_null ON inbound_message_queue (message_id) WHERE message_id IS NOT NULL;"
                 )
-            conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age INTEGER;")
-            conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age_recorded_at DATE;")
+            conn.exec_driver_sql(
+                "ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age INTEGER;"
+            )
+            conn.exec_driver_sql(
+                "ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age_recorded_at DATE;"
+            )
             # Try JSONB first (Postgres), fallback to JSON for other engines
             try:
-                conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSONB;")
+                conn.exec_driver_sql(
+                    "ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSONB;"
+                )
             except Exception:
                 with contextlib.suppress(Exception):
-                    conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSON;")
+                    conn.exec_driver_sql(
+                        "ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSON;"
+                    )
             with contextlib.suppress(Exception):
                 conn.exec_driver_sql(
                     "UPDATE customers SET age_recorded_at = CURRENT_DATE WHERE age_recorded_at IS NULL AND age IS NOT NULL;"
                 )
+
+            # Ensure text-search helpers and indexes (pg_trgm + Arabic normalization)
+            try:
+                from app.db_migrations.text_search import ensure_text_search_objects
+
+                ensure_text_search_objects(conn)
+            except Exception:
+                pass
     except Exception:
         # Best-effort migration; ignore if fails in restricted contexts
         pass
