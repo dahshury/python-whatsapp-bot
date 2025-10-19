@@ -1,5 +1,5 @@
 import type React from "react";
-import Tooltip from "../tooltip";
+import Tooltip from "../Tooltip";
 
 type GridTooltipFloatProps = {
 	content: string;

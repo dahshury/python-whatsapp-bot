@@ -1,8 +1,8 @@
 "use client";
 
-import { useReservationsData } from "@shared/libs/data/websocket-data-provider";
 import { i18n } from "@shared/libs/i18n";
 import { isAllowedNotificationEvent } from "@shared/libs/notifications/utils";
+import { useReservations } from "@shared/libs/query/reservations.hooks";
 import { useLanguage } from "@shared/libs/state/language-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { Badge } from "@ui/badge";
@@ -86,7 +86,11 @@ function formatTimeAgo(isLocalized: boolean, ts: number): string {
 
 function NotificationInboxPopover() {
 	const { isLocalized } = useLanguage();
-	const { reservations } = useReservationsData();
+	const reservationsQuery = useReservations();
+	const reservations = (reservationsQuery.data?.data || {}) as Record<
+		string,
+		Array<{ customer_name?: string; date?: string }>
+	>;
 	const [open, setOpen] = useState(false);
 	const [isMounted, setIsMounted] = useState(false);
 

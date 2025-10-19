@@ -98,13 +98,14 @@ const LegendItemSwatch = ({
 );
 
 // Legend Trigger Button Component
-const LegendTriggerButton = ({
-	filteredItems,
-	className,
-}: {
-	filteredItems: ReturnType<typeof createLegendItems>;
-	className: string;
-}) => (
+// biome-ignore lint: Required for Radix UI asChild pattern
+const LegendTriggerButton = React.forwardRef<
+	HTMLButtonElement,
+	{
+		filteredItems: ReturnType<typeof createLegendItems>;
+		className: string;
+	}
+>(({ filteredItems, className }, ref) => (
 	<Button
 		aria-label="Show color legend"
 		className={cn(
@@ -113,6 +114,7 @@ const LegendTriggerButton = ({
 			"calendar-legend-trigger",
 			className
 		)}
+		ref={ref}
 		type="button"
 		variant="ghost"
 	>
@@ -137,7 +139,8 @@ const LegendTriggerButton = ({
 			))}
 		</div>
 	</Button>
-);
+));
+LegendTriggerButton.displayName = "LegendTriggerButton";
 
 // Keyboard shortcuts grid component
 const ShortcutsGrid = ({ isLocalized }: { isLocalized: boolean }) => (
@@ -350,12 +353,10 @@ export function CalendarLegend({
 	return (
 		<Popover onOpenChange={setOpen} open={open}>
 			<PopoverTrigger asChild>
-				<div>
-					<LegendTriggerButton
-						className={className}
-						filteredItems={filteredItems}
-					/>
-				</div>
+				<LegendTriggerButton
+					className={className}
+					filteredItems={filteredItems}
+				/>
 			</PopoverTrigger>
 			<PopoverContent
 				align="start"

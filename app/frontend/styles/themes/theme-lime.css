@@ -1,0 +1,115 @@
+/* Lime Theme - A vibrant green-focused modern theme */
+/* To enable: Add className="theme-lime" to html or body tag */
+
+.theme-lime {
+	--background: 0 0% 15%; /* hsl(0 0% 15%) - very dark */
+	--foreground: 0 0% 99%; /* hsl(0 0% 99%) - near white */
+	--card: 0 0% 18%; /* hsl(0 0% 18%) - dark card */
+	--card-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--popover: 0 0% 27%; /* hsl(0 0% 27%) - lighter popup */
+	--popover-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--primary: 129 65% 59%; /* hsl(129 65% 59%) - bright lime green */
+	--primary-foreground: 0 0% 21%; /* hsl(0 0% 21%) - dark text on lime */
+	--secondary: 0 0% 27%; /* hsl(0 0% 27%) - neutral gray */
+	--secondary-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--muted: 0 0% 27%; /* hsl(0 0% 27%) - muted background */
+	--muted-foreground: 0 0% 71%; /* hsl(0 0% 71%) - muted text */
+	--accent: 0 0% 21%; /* hsl(0 0% 21%) - dark accent */
+	--accent-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--destructive: 22 100% 50%; /* hsl(22 100% 50%) - red/orange */
+	--destructive-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--border: 0 0% 28%; /* hsl(0 0% 28%) - dark border */
+	--input: 0 0% 33%; /* hsl(0 0% 33%) - input field */
+	--ring: 129 65% 59% / 0.15; /* hsl(129 65% 59% / 0.15) - lime ring */
+	--chart-1: 131 60% 65%; /* hsl(131 60% 65%) - bright lime */
+	--chart-2: 124 50% 65%; /* hsl(124 50% 65%) - light lime */
+	--chart-3: 120 40% 70%; /* hsl(120 40% 70%) - pale lime */
+	--chart-4: 131 60% 60%; /* hsl(131 60% 60%) - medium lime */
+	--chart-5: 132 45% 57%; /* hsl(132 45% 57%) - deep lime */
+	--sidebar: 0 0% 21%; /* hsl(0 0% 21%) - very dark sidebar */
+	--sidebar-background: 0 0% 21%; /* hsl(0 0% 21%) */
+	--sidebar-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--sidebar-primary: 264 70% 50%; /* hsl(264 70% 50%) - purple accent */
+	--sidebar-primary-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--sidebar-accent: 0 0% 27%; /* hsl(0 0% 27%) */
+	--sidebar-accent-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--sidebar-border: 0 0% 28%; /* hsl(0 0% 28%) */
+	--sidebar-ring: 0 0% 44%; /* hsl(0 0% 44%) */
+	--font-sans: "DM Sans", var(--font-sans-stack);
+	--font-serif: var(--font-serif-stack);
+	--font-mono: var(--font-mono-stack);
+	--radius: 0.5rem;
+	--shadow-2xs: 3px 3px 0px 0px hsl(0 0% 100% / 0.03);
+	--shadow-xs: 3px 3px 0px 0px hsl(0 0% 100% / 0.03);
+	--shadow-sm:
+		3px 3px 0px 0px hsl(0 0% 100% / 0.08), 3px 1px 2px -1px
+		hsl(0 0% 100% / 0.08);
+	--shadow:
+		3px 3px 0px 0px hsl(0 0% 100% / 0.08), 3px 1px 2px -1px
+		hsl(0 0% 100% / 0.08);
+	--shadow-md:
+		3px 3px 0px 0px hsl(0 0% 100% / 0.08), 3px 2px 4px -1px
+		hsl(0 0% 100% / 0.08);
+	--shadow-lg:
+		3px 3px 0px 0px hsl(0 0% 100% / 0.08), 3px 4px 6px -1px
+		hsl(0 0% 100% / 0.08);
+	--shadow-xl:
+		3px 3px 0px 0px hsl(0 0% 100% / 0.08), 3px 8px 10px -1px
+		hsl(0 0% 100% / 0.08);
+	--shadow-2xl: 3px 3px 0px 0px hsl(0 0% 100% / 0.13);
+}
+
+/* Light mode for Lime theme */
+.theme-lime.light,
+.light .theme-lime {
+	--background: 0 0% 99%; /* hsl(0 0% 99%) - near white */
+	--foreground: 132 15% 27%; /* hsl(132 15% 27%) - dark lime green */
+	--card: 121 5% 99%; /* hsl(121 5% 99%) - off-white with green tint */
+	--card-foreground: 132 15% 27%; /* hsl(132 15% 27%) */
+	--popover: 121 5% 99%; /* hsl(121 5% 99%) */
+	--popover-foreground: 132 15% 27%; /* hsl(132 15% 27%) */
+	--primary: 131 60% 60%; /* hsl(131 60% 60%) - bright lime */
+	--primary-foreground: 132 15% 27%; /* hsl(132 15% 27%) */
+	--secondary: 122 20% 97%; /* hsl(122 20% 97%) - very light lime */
+	--secondary-foreground: 132 15% 27%; /* hsl(132 15% 27%) */
+	--muted: 121 5% 90%; /* hsl(121 5% 90%) - light gray */
+	--muted-foreground: 132 15% 27%; /* hsl(132 15% 27%) */
+	--accent: 121 10% 95%; /* hsl(121 10% 95%) - very light */
+	--accent-foreground: 132 15% 27%; /* hsl(132 15% 27%) */
+	--destructive: 27 70% 58%; /* hsl(27 70% 58%) - red/orange */
+	--destructive-foreground: 0 0% 100%; /* hsl(0 0% 100%) - white */
+	--border: 132 15% 27%; /* hsl(132 15% 27%) - dark border */
+	--input: 132 15% 27%; /* hsl(132 15% 27%) - input field */
+	--ring: 131 60% 60% / 0.15; /* hsl(131 60% 60% / 0.15) - lime ring */
+	--chart-1: 131 60% 60%; /* hsl(131 60% 60%) */
+	--chart-2: 127 50% 65%; /* hsl(127 50% 65%) */
+	--chart-3: 124 50% 65%; /* hsl(124 50% 65%) */
+	--chart-4: 131 60% 65%; /* hsl(131 60% 65%) */
+	--chart-5: 132 45% 57%; /* hsl(132 45% 57%) */
+	--sidebar: 0 0% 99%; /* hsl(0 0% 99%) - white sidebar */
+	--sidebar-background: 0 0% 99%; /* hsl(0 0% 99%) */
+	--sidebar-foreground: 0 0% 15%; /* hsl(0 0% 15%) - dark text */
+	--sidebar-primary: 0 0% 21%; /* hsl(0 0% 21%) - dark primary */
+	--sidebar-primary-foreground: 0 0% 99%; /* hsl(0 0% 99%) */
+	--sidebar-accent: 0 0% 97%; /* hsl(0 0% 97%) - very light */
+	--sidebar-accent-foreground: 0 0% 21%; /* hsl(0 0% 21%) */
+	--sidebar-border: 0 0% 92%; /* hsl(0 0% 92%) - light border */
+	--sidebar-ring: 0 0% 71%; /* hsl(0 0% 71%) */
+	--font-sans: "Host Grotesk", var(--font-sans-stack);
+	--font-serif: var(--font-serif-stack);
+	--font-mono: var(--font-mono-stack);
+	--radius: 0.5rem;
+	--shadow-2xs: 2.5px 2.5px 0px 0px hsl(0 0% 0% / 1);
+	--shadow-xs: 2.5px 2.5px 0px 0px hsl(0 0% 0% / 1);
+	--shadow-sm:
+		2.5px 2.5px 0px 0px hsl(0 0% 0% / 1), 2.5px 1px 2px -1px hsl(0 0% 0% / 1);
+	--shadow:
+		2.5px 2.5px 0px 0px hsl(0 0% 0% / 1), 2.5px 1px 2px -1px hsl(0 0% 0% / 1);
+	--shadow-md:
+		2.5px 2.5px 0px 0px hsl(0 0% 0% / 1), 2.5px 2px 4px -1px hsl(0 0% 0% / 1);
+	--shadow-lg:
+		2.5px 2.5px 0px 0px hsl(0 0% 0% / 1), 2.5px 4px 6px -1px hsl(0 0% 0% / 1);
+	--shadow-xl:
+		2.5px 2.5px 0px 0px hsl(0 0% 0% / 1), 2.5px 8px 10px -1px hsl(0 0% 0% / 1);
+	--shadow-2xl: 2.5px 2.5px 0px 0px hsl(0 0% 0% / 2.5);
+}

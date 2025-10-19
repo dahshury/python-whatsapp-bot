@@ -350,9 +350,38 @@ async def api_test_whatsapp_config():
 
 
 @router.get("/conversations")
-async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):
-    conversations = get_all_conversations(recent=recent, limit=limit)
-    return JSONResponse(content=conversations)
+async def api_get_all_conversations(
+    wa_id: str | None = Query(None),
+    recent: str | None = Query(None),
+    limit: int = Query(50),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
+):
+    # If wa_id is provided, return only that conversation (optionally limited)
+    try:
+        from app.utils.service_utils import get_all_conversations
+
+        base = get_all_conversations(wa_id=wa_id, recent=recent, limit=limit)
+        data = base.get("data", {}) if isinstance(base, dict) else {}
+        # If a range is specified, filter by date inclusive
+        if from_date or to_date:
+            fd = str(from_date) if from_date else None
+            td = str(to_date) if to_date else None
+            filtered: dict[str, list[dict]] = {}
+            for k, msgs in (data or {}).items():
+                out = []
+                for m in (msgs or []):
+                    d = str(m.get("date") or "")
+                    if (not fd or d >= fd) and (not td or d <= td):
+                        out.append(m)
+                filtered[k] = out
+            data = filtered
+        return JSONResponse(content={"success": True, "data": data})
+    except Exception as e:
+        return JSONResponse(
+            content={"success": False, "message": f"Failed to fetch conversations: {e}", "data": {}},
+            status_code=500,
+        )
 
 
 @router.post("/conversations/{wa_id}")
@@ -369,12 +398,77 @@ async def api_append_message(wa_id: str, payload: dict = Body(...)):
 
 @router.get("/reservations")
 async def api_get_all_reservations(
-    future: bool = Query(True), include_cancelled: bool = Query(False)
+    future: bool = Query(True),
+    include_cancelled: bool = Query(False),
+    from_date: str | None = Query(None),
+    to_date: str | None = Query(None),
 ):
+    # If explicit range provided, filter results on server
     reservations = get_all_reservations(
         future=future, include_cancelled=include_cancelled
     )
+    try:
+        if from_date or to_date:
+            data = reservations.get("data", {}) if isinstance(reservations, dict) else {}
+            fd = str(from_date) if from_date else None
+            td = str(to_date) if to_date else None
+            def in_range(d: str) -> bool:
+                if fd and d < fd:
+                    return False
+                if td and d > td:
+                    return False
+                return True
+            filtered: dict[str, list[dict]] = {}
+            for wa, items in (data or {}).items():
+                filtered[wa] = [r for r in (items or []) if in_range(str(r.get("date") or ""))]
+            return JSONResponse(content={"success": True, "data": filtered})
+    except Exception:
+        # Fall through to return unfiltered
+        pass
     return JSONResponse(content=reservations)
+
+# Batch fetch customer names by wa_id
+@router.get("/customers/names")
+async def api_get_customer_names(wa_ids: str = Query("")):
+    try:
+        from app.db import CustomerModel, get_session
+        from sqlalchemy import select
+        from app.utils.service_utils import fix_unicode_sequence
+
+        # Parse comma-separated wa_ids; allow empty
+        raw = str(wa_ids or "").strip()
+        if not raw:
+            return JSONResponse(content={"success": True, "data": {}})
+
+        ids = [w.strip() for w in raw.split(",") if w.strip()]
+        if not ids:
+            return JSONResponse(content={"success": True, "data": {}})
+
+        with get_session() as session:
+            stmt = select(CustomerModel.wa_id, CustomerModel.customer_name).where(
+                CustomerModel.wa_id.in_(ids)
+            )
+            rows = session.execute(stmt).all()
+
+        name_map: dict[str, str | None] = {}
+        # Initialize all requested ids to None to preserve order/keys when missing
+        for wa in ids:
+            name_map[str(wa)] = None
+        for wa, name in rows:
+            # Normalize/repair unicode if needed
+            fixed = fix_unicode_sequence(name) if name is not None else None
+            name_map[str(wa)] = fixed
+
+        return JSONResponse(content={"success": True, "data": name_map})
+    except Exception as e:
+        return JSONResponse(
+            content={
+                "success": False,
+                "message": f"Failed to fetch customer names: {e}",
+                "data": {},
+            },
+            status_code=500,
+        )
 
 
 # Reservation creation endpoint

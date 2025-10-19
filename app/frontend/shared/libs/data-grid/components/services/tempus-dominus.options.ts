@@ -14,10 +14,13 @@ export type BuildOptionsParams = {
 
 export function getDefaultStepping(): number {
 	try {
-		const env = process.env.NEXT_PUBLIC_SLOT_DURATION_HOURS;
-		const parsed = env !== undefined ? Number(env) : Number.NaN;
-		return Number.isFinite(parsed) && parsed > 0
-			? Math.max(1, Math.floor(parsed * 60))
+		// eslint-disable-next-line @typescript-eslint/no-var-requires
+		const cfg = require("@shared/config") as {
+			runtimeConfig?: { slotDurationHours?: number };
+		};
+		const hours = Number(cfg?.runtimeConfig?.slotDurationHours || 0);
+		return Number.isFinite(hours) && hours > 0
+			? Math.max(1, Math.floor(hours * 60))
 			: DEFAULT_STEPPING_MINUTES;
 	} catch {
 		return DEFAULT_STEPPING_MINUTES;

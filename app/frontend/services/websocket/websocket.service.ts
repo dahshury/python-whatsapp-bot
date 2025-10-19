@@ -66,13 +66,14 @@ class WebSocketService {
 			let resolved = false;
 			let timeoutId: NodeJS.Timeout;
 
-			const handler = (ev: Event) => {
+			const handler: EventListener = (ev: Event) => {
 				this.handleWSConfirmationEvent({
 					ev,
 					reservationId,
 					waId,
 					date,
 					resolved,
+					handler,
 					onResolved: (newResolved: boolean, result: WSConfirmationResult) => {
 						resolved = newResolved;
 						if (newResolved) {
@@ -108,6 +109,7 @@ class WebSocketService {
 		});
 	}
 
+	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Event handler must check multiple event types and conditions
 	private handleWSConfirmationEvent(options: {
 		ev: Event;
 		reservationId: string | number | undefined;
@@ -115,6 +117,7 @@ class WebSocketService {
 		date: string;
 		resolved: boolean;
 		onResolved: (isResolved: boolean, result: WSConfirmationResult) => void;
+		handler: EventListener;
 	}): void {
 		try {
 			const detail = (options.ev as CustomEvent).detail as
@@ -126,6 +129,11 @@ class WebSocketService {
 			// Listen for direct WebSocket ack/nack responses
 			if (t === "modify_reservation_ack") {
 				if (!options.resolved) {
+					try {
+						window.removeEventListener("realtime", options.handler);
+					} catch {
+						// Silently ignore event listener removal errors
+					}
 					options.onResolved(true, {
 						success: true,
 						message: String(d.message || ""),
@@ -133,6 +141,11 @@ class WebSocketService {
 				}
 			} else if (t === "modify_reservation_nack") {
 				if (!options.resolved) {
+					try {
+						window.removeEventListener("realtime", options.handler);
+					} catch {
+						// Silently ignore event listener removal errors
+					}
 					const errorMessage = detail?.error || d.message || "Operation failed";
 					options.onResolved(true, {
 						success: false,
@@ -141,6 +154,11 @@ class WebSocketService {
 				}
 			} // Fallback: listen for reservation_updated broadcasts
 			else if (this.shouldResolveFromBroadcast(t, d, options)) {
+				try {
+					window.removeEventListener("realtime", options.handler);
+				} catch {
+					// Silently ignore event listener removal errors
+				}
 				options.onResolved(true, { success: true });
 			}
 		} catch {

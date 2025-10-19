@@ -1,28 +1,28 @@
+import { zApiResponse } from "@shared/validation/api/response.schema";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callPythonBackend } from "@/shared/libs/backend";
 
-type UndoVacationUpdateResponse = {
-	success: boolean;
-	message?: string;
-	data?: unknown;
-};
+const zUndoVacationBody = z.object({
+	originalVacationData: z.record(z.unknown()),
+	ar: z.boolean().optional(),
+});
+
+const zUndoVacationResponse = zApiResponse(z.object({}).passthrough());
 
 export async function POST(request: Request) {
 	try {
-		const body = await request.json();
-		const { originalVacationData, ar } = body; // ar is optional for language
-
-		if (!originalVacationData || typeof originalVacationData !== "object") {
+		const json = await request.json().catch(() => ({}));
+		const parsed = zUndoVacationBody.safeParse(json);
+		if (!parsed.success) {
 			return NextResponse.json(
-				{
-					success: false,
-					message: "Invalid original vacation data provided.",
-				},
+				{ success: false, message: parsed.error.message },
 				{ status: 400 }
 			);
 		}
+		const { originalVacationData, ar } = parsed.data;
 
-		const pythonResponse = await callPythonBackend<UndoVacationUpdateResponse>(
+		const pythonResponse = await callPythonBackend(
 			"/undo-vacation-update",
 			{
 				method: "POST",
@@ -30,7 +30,8 @@ export async function POST(request: Request) {
 					original_vacation_data: originalVacationData,
 					ar,
 				}),
-			}
+			},
+			zUndoVacationResponse
 		);
 
 		if (pythonResponse.success) {

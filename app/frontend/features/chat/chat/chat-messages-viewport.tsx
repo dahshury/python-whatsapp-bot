@@ -244,32 +244,48 @@ function RenderItemComponent({ item, idx }: { item: RenderItem; idx: number }) {
 		);
 	}
 
-	// Render message
+	// Render message with smooth enter/exit + layout animations
 	const msgItem = item as MsgItem;
 	const message = msgItem.message;
 	const role = String((message as { role?: string }).role || "")
 		.trim()
 		.toLowerCase();
 
+	const messageKey = `${message?.date}|${message?.time}|${role}|${String(
+		message?.message || ""
+	).slice(0, 24)}|${idx}`;
+
 	return (
-		<div
-			className={cn(
-				"message-row",
-				role === "user" && "message-row-user",
-				role === "admin" && "message-row-admin",
-				role === "assistant" && "message-row-assistant",
-				role === "secretary" && "message-row-secretary"
-			)}
-			data-message-date={(message as { date?: string } | undefined)?.date || ""}
-			data-message-index={idx}
-			data-message-time={normalizeTimeToHHmm(
-				(message as { time?: string } | undefined)?.time || ""
-			)}
-			data-role={role}
-			key={`${message?.date}|${message?.time}|${role}|${String(message?.message || "").slice(0, 24)}|${idx}`}
-		>
-			<MessageBubble isUser={role === "user"} message={message} />
-		</div>
+		<AnimatePresence>
+			<motion.div
+				animate={{ opacity: 1, y: 0 }}
+				className={cn(
+					"message-row",
+					role === "user" && "message-row-user",
+					role === "admin" && "message-row-admin",
+					role === "assistant" && "message-row-assistant",
+					role === "secretary" && "message-row-secretary"
+				)}
+				data-message-date={
+					(message as { date?: string } | undefined)?.date || ""
+				}
+				data-message-index={idx}
+				data-message-time={normalizeTimeToHHmm(
+					(message as { time?: string } | undefined)?.time || ""
+				)}
+				data-role={role}
+				exit={{ opacity: 0, y: -6 }}
+				initial={{ opacity: 0, y: 6 }}
+				key={messageKey}
+				layout
+				transition={{
+					duration: _ANIMATION_DURATION_SHORT,
+					ease: _ANIMATION_EASE_CUBIC_ALT,
+				}}
+			>
+				<MessageBubble isUser={role === "user"} message={message} />
+			</motion.div>
+		</AnimatePresence>
 	);
 }
 

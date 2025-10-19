@@ -12,8 +12,16 @@ export type DataShape = {
 	prometheusMetrics: PrometheusMetrics;
 	isLoading: boolean;
 	error: string | null;
-	refresh: (range?: { fromDate?: string; toDate?: string }) => Promise<void>;
+	refresh: (range?: {
+		fromDate?: string;
+		toDate?: string;
+		includeConversations?: boolean;
+	}) => Promise<void>;
 	activeRange?: { fromDate?: string; toDate?: string };
+	loadConversationMessages?: (
+		waId: string,
+		range?: { fromDate?: string; toDate?: string; limit?: number }
+	) => Promise<void>;
 	sendVacationUpdate?: (payload: {
 		periods?: Array<{ start: string | Date; end: string | Date }>;
 		start_dates?: string;
@@ -35,5 +43,6 @@ export const DataContext = createContext<DataShape>({
 	error: null,
 	refresh: async () => noop(),
 	activeRange: {},
+	loadConversationMessages: async () => noop(),
 	sendVacationUpdate: async () => noop(),
 });

@@ -39,6 +39,97 @@ export class DataProvider implements IDataProvider {
 		);
 		this.editingState.setColumnDefinitions(this.columnDefinitions);
 		this.columnTypeRegistry = ColumnTypeRegistry.getInstance();
+
+		// Pre-load original values for all cells to prevent lazy-loading issues
+		this.preloadOriginalValues();
+	}
+
+	/**
+	 * Pre-load original values for all cells in the data source.
+	 * This prevents the EditingState from treating edits as additions
+	 * due to undefined original values.
+	 */
+	private preloadOriginalValues(): void {
+		// Only preload for InMemoryDataSource to avoid expensive async operations
+		if (this.dataSource.id !== "in-memory") {
+			return;
+		}
+
+		const inMemorySource = this.dataSource as { data?: unknown[][] };
+		if (!inMemorySource.data) {
+			return;
+		}
+
+		try {
+			// Create row context helper (reused for all rows)
+			const createRowContext = (currentRow: number): IRowContext => ({
+				row: currentRow,
+				getRowCellData: (targetCol: number) => {
+					if (
+						inMemorySource.data &&
+						inMemorySource.data[currentRow] &&
+						inMemorySource.data[currentRow][targetCol] !== undefined
+					) {
+						return inMemorySource.data[currentRow][targetCol];
+					}
+					return;
+				},
+			});
+
+			for (let row = 0; row < this.dataSource.rowCount; row++) {
+				const rowData = inMemorySource.data[row];
+				if (!rowData) {
+					continue;
+				}
+
+				const rowContext = createRowContext(row);
+
+				for (let col = 0; col < this.dataSource.columnCount; col++) {
+					const value = rowData[col];
+					const column = this.columnDefinitions[col];
+					if (!column) {
+						continue;
+					}
+
+					const formattedColumn = this.applyColumnFormat(column);
+					const columnType = this.columnTypeRegistry.get(
+						formattedColumn.dataType
+					);
+					if (!columnType) {
+						continue;
+					}
+
+					// Create a proper cell and extract its value (matches getCell() behavior)
+					const cell = columnType.createCell({
+						value,
+						column: formattedColumn,
+						theme: this.theme,
+						isDarkTheme: this.isDarkTheme,
+						rowContext,
+					});
+
+					// Store the transformed cell value (not raw value!)
+					const cellValue = columnType.getCellValue(cell);
+					this.editingState.storeOriginalValue(row, col, cellValue);
+				}
+			}
+
+			// biome-ignore lint/suspicious/noConsole: DEBUG
+			globalThis.console?.log?.(
+				"[DataProvider] Preloaded original values for",
+				this.dataSource.rowCount,
+				"rows ×",
+				this.dataSource.columnCount,
+				"cols"
+			);
+		} catch (error) {
+			// biome-ignore lint/suspicious/noConsole: DEBUG
+			globalThis.console?.warn?.(
+				"[DataProvider] Failed to preload original values:",
+				error
+			);
+			// Silently ignore preload errors - fallback to lazy loading
+		}
 	}
 
 	setOnCellDataLoaded(callback: (col: number, row: number) => void): void {
@@ -321,6 +412,8 @@ export class DataProvider implements IDataProvider {
 		} catch {
 			// Ignore errors syncing row count
 		}
+		// Pre-load original values after refresh to prevent lazy-loading issues
+		this.preloadOriginalValues();
 	}
 
 	updateTheme(theme: Partial<Theme>, isDarkTheme: boolean): void {

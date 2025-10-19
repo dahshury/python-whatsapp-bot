@@ -1,33 +1,36 @@
+import { zApiResponse } from "@shared/validation/api/response.schema";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callPythonBackend } from "@/shared/libs/backend";
 
-type UndoModifyResponse = {
-	success: boolean;
-	message?: string;
-	data?: unknown;
-};
+const zOriginalData = z.object({
+	wa_id: z.string().min(1),
+	date: z.string().min(1),
+	time_slot: z.string().min(1),
+	customer_name: z.string().nullable().optional(),
+	type: z.number().optional(),
+});
+
+const zUndoModifyBody = z.object({
+	reservationId: z.number(),
+	originalData: zOriginalData,
+	ar: z.boolean().optional(),
+});
+
+const zUndoModifyResponse = zApiResponse(z.object({}).passthrough());
 // import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path
 
 export async function POST(request: Request) {
 	try {
-		const body = await request.json();
-		// originalData contains the state of the reservation BEFORE it was modified.
-		// It should match the structure expected by the Python modify_reservation function's parameters.
-		const { reservationId, originalData, ar } = body;
-
-		if (
-			typeof reservationId !== "number" ||
-			typeof originalData !== "object" ||
-			originalData === null
-		) {
+		const json = await request.json().catch(() => ({}));
+		const parsed = zUndoModifyBody.safeParse(json);
+		if (!parsed.success) {
 			return NextResponse.json(
-				{
-					success: false,
-					message: "Invalid reservationId or originalData provided.",
-				},
+				{ success: false, message: parsed.error.message },
 				{ status: 400 }
 			);
 		}
+		const { reservationId, originalData, ar } = parsed.data;
 
 		// The Python `modify_reservation` function expects parameters like:
 		// wa_id, new_date, new_time_slot, new_name, new_type, max_reservations, approximate, hijri, ar, reservation_id_to_modify
@@ -52,12 +55,13 @@ export async function POST(request: Request) {
 			);
 		}
 
-		const pythonResponse = await callPythonBackend<UndoModifyResponse>(
+		const pythonResponse = await callPythonBackend(
 			"/undo-modify",
 			{
 				method: "POST",
 				body: JSON.stringify(payloadForPython),
-			}
+			},
+			zUndoModifyResponse
 		);
 
 		if (pythonResponse?.success) {

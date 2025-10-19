@@ -1,25 +1,28 @@
+import { zApiResponse } from "@shared/validation/api/response.schema";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callPythonBackend } from "@/shared/libs/backend";
 
-type UndoCancelResponse = {
-	success: boolean;
-	message?: string;
-	data?: unknown;
-};
+const zUndoCancelBody = z.object({
+	reservationId: z.number(),
+	ar: z.boolean().optional(),
+});
+
+const zUndoCancelResponse = zApiResponse(z.object({}).passthrough());
 
 export async function POST(request: Request) {
 	try {
-		const body = await request.json();
-		const { reservationId, ar } = body; // ar is optional
-
-		if (typeof reservationId !== "number") {
+		const json = await request.json().catch(() => ({}));
+		const parsed = zUndoCancelBody.safeParse(json);
+		if (!parsed.success) {
 			return NextResponse.json(
-				{ success: false, message: "Invalid reservationId provided." },
+				{ success: false, message: parsed.error.message },
 				{ status: 400 }
 			);
 		}
+		const { reservationId, ar } = parsed.data;
 
-		const pythonResponse = await callPythonBackend<UndoCancelResponse>(
+		const pythonResponse = await callPythonBackend(
 			"/undo-cancel",
 			{
 				method: "POST",
@@ -28,7 +31,8 @@ export async function POST(request: Request) {
 					ar,
 					max_reservations: 6,
 				}),
-			}
+			},
+			zUndoCancelResponse
 		);
 
 		if (pythonResponse.success) {

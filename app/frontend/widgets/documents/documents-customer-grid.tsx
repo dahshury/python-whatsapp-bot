@@ -7,7 +7,7 @@ import type { IDataSource } from "@/shared/libs/data-grid";
 import { createGlideTheme, FullscreenProvider } from "@/shared/libs/data-grid";
 
 const ClientGrid = dynamic(
-	() => import("@/shared/libs/data-grid/components/grid"),
+	() => import("@/shared/libs/data-grid/components/Grid"),
 	{
 		ssr: false,
 	}

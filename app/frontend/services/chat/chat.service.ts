@@ -1,4 +1,6 @@
 import { markLocalOperation } from "@shared/libs/utils/local-ops";
+import { zApiResponse } from "@shared/validation/api/response.schema";
+import { z } from "zod";
 import { WebSocketService } from "@/services/websocket/websocket.service";
 
 const LOCAL_OP_DEBOUNCE_MS = 5000;
@@ -35,10 +37,25 @@ export class ChatService {
 		if (!res.ok) {
 			let msg = "Failed to send message";
 			try {
-				const data = await res.json();
-				msg = data?.message || msg;
+				const ct = res.headers.get("content-type") || "";
+				if (ct.includes("application/json")) {
+					const schema = zApiResponse(z.object({}).passthrough());
+					const data = (await res.json().catch(() => ({}))) as unknown;
+					const parsed = schema.safeParse(data);
+					if (parsed.success) {
+						msg =
+							parsed.data.message ||
+							(parsed.data as { error?: string }).error ||
+							(parsed.data as { detail?: string }).detail ||
+							msg;
+					} else {
+						msg = parsed.error.message || msg;
+					}
+				} else {
+					msg = await res.text();
+				}
 			} catch {
-				// Silently ignore JSON parsing errors, use default message
+				// Silently ignore parsing errors, use default message
 			}
 			throw new Error(msg);
 		}

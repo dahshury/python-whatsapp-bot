@@ -124,21 +124,47 @@ export function convertDataTableEventToCalendarEvent(
 	const slotDate = extractSlotDate(start, event.extendedProps);
 	const slotTime = extractSlotTime(start, event.extendedProps);
 
+	// Extract customer name from various possible sources
+	const extractedCustomerName = event.extendedProps?.customerName;
+	const customerName: string =
+		(typeof event.title === "string" ? event.title : null) ??
+		(typeof event.name === "string" ? event.name : null) ??
+		(typeof (event as { customer_name?: string }).customer_name === "string"
+			? (event as { customer_name?: string }).customer_name
+			: null) ??
+		(typeof extractedCustomerName === "string"
+			? extractedCustomerName
+			: null) ??
+		"";
+
+	// biome-ignore lint/suspicious/noConsole: DEBUG
+	globalThis.console?.log?.(
+		`[CalendarConverter] Converting event: id=${event.id} customer_name="${(event as { customer_name?: string }).customer_name}" title="${event.title}" → customerName="${customerName}" | Full input:`,
+		JSON.parse(JSON.stringify(event)),
+		"| Output extendedProps will have customerName=",
+		customerName
+	);
+
 	return {
 		id: String(event.id ?? event.reservationId ?? event.key ?? Math.random()),
-		title: event.title ?? event.name ?? "",
+		title: String(customerName ?? ""),
 		start,
 		end,
 		backgroundColor: event.backgroundColor ?? event.bgColor ?? "",
 		borderColor: event.borderColor ?? event.bgColor ?? "",
 		editable: event.editable !== false,
 		extendedProps: {
+			...event.extendedProps, // ✅ Spread first
 			type: event.extendedProps?.type ?? event.type ?? 0,
 			cancelled: event.extendedProps?.cancelled ?? event.cancelled ?? false,
+			customerName, // ✅ Then set customerName (won't be overwritten)
+			// IMPORTANT: Do not fall back to id here; that breaks phone resolution
+			waId:
+				(event.extendedProps?.waId as string | undefined) ??
+				(event.extendedProps as { wa_id?: string } | undefined)?.wa_id,
 			...buildReservationIdProp(event),
 			...buildSlotDateProp(slotDate),
 			...buildSlotTimeProp(slotTime),
-			...event.extendedProps,
 		},
 	};
 }

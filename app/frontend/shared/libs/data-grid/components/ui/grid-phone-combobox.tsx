@@ -280,7 +280,18 @@ const GridPhoneCombobox: React.FC<GridPhoneComboboxProps> = ({
 				/>
 
 				{/* Right: Dropdown trigger with existing customers */}
-				<Popover modal={false} onOpenChange={setIsPhoneOpen} open={isPhoneOpen}>
+				<Popover
+					modal={false}
+					onOpenChange={(open) => {
+						// Defer close to avoid unmount during active pointer/drag events
+						if (open) {
+							setIsPhoneOpen(true);
+							return;
+						}
+						requestAnimationFrame(() => setIsPhoneOpen(false));
+					}}
+					open={isPhoneOpen}
+				>
 					<PopoverTrigger asChild>
 						<Button
 							aria-label="Open phone options"

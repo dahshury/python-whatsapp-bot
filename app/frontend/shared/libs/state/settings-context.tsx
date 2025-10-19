@@ -1,20 +1,16 @@
 "use client";
 import {
+	type Theme,
+	useSettingsStore,
+} from "@shared/libs/store/settings-store";
+import {
 	createContext,
 	type FC,
 	type PropsWithChildren,
 	useContext,
 	useEffect,
 	useMemo,
-	useState,
 } from "react";
-
-// Style theme used for UI accent themes (e.g., "theme-default", "theme-claude").
-// This is intentionally separate from color scheme (light/dark/system), which is handled by next-themes.
-export type Theme = string;
-
-// Default chat message limit
-const DEFAULT_CHAT_MESSAGE_LIMIT = 50;
 
 export type SettingsState = {
 	theme: Theme; // style theme class, e.g., "theme-default"
@@ -35,61 +31,42 @@ export type SettingsState = {
 const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
 const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
-	const [theme, setTheme] = useState<Theme>(() => {
-		if (typeof window !== "undefined") {
-			const storedStyleTheme = localStorage.getItem(
-				"styleTheme"
-			) as Theme | null;
-			if (storedStyleTheme) {
-				return storedStyleTheme;
-			}
-			const legacyTheme = localStorage.getItem("theme");
-			if (legacyTheme?.startsWith("theme-")) {
-				try {
-					localStorage.setItem("styleTheme", legacyTheme);
-				} catch {
-					// Gracefully handle storage quota or privacy mode errors; fallback to default theme
-				}
-				return legacyTheme as Theme;
-			}
-		}
-		return "theme-default";
-	});
-	const [freeRoam, setFreeRoam] = useState<boolean>(false);
-	const [showDualCalendar, setShowDualCalendar] = useState<boolean>(false);
-	const [showToolCalls, setShowToolCalls] = useState<boolean>(true);
-	const [chatMessageLimit, setChatMessageLimit] = useState<number>(
-		DEFAULT_CHAT_MESSAGE_LIMIT
+	const theme = useSettingsStore((s) => s.theme);
+	const setTheme = useSettingsStore((s) => s.setTheme);
+	const freeRoam = useSettingsStore((s) => s.freeRoam);
+	const setFreeRoam = useSettingsStore((s) => s.setFreeRoam);
+	const showDualCalendar = useSettingsStore((s) => s.showDualCalendar);
+	const setShowDualCalendar = useSettingsStore((s) => s.setShowDualCalendar);
+	const showToolCalls = useSettingsStore((s) => s.showToolCalls);
+	const setShowToolCalls = useSettingsStore((s) => s.setShowToolCalls);
+	const chatMessageLimit = useSettingsStore((s) => s.chatMessageLimit);
+	const setChatMessageLimit = useSettingsStore((s) => s.setChatMessageLimit);
+	const sendTypingIndicator = useSettingsStore((s) => s.sendTypingIndicator);
+	const setSendTypingIndicator = useSettingsStore(
+		(s) => s.setSendTypingIndicator
 	);
-	const [sendTypingIndicator, setSendTypingIndicator] =
-		useState<boolean>(false);
 
-	// Load persisted non-theme settings on mount
+	// Hydrate theme from legacy key once
 	useEffect(() => {
 		if (typeof window === "undefined") {
 			return;
 		}
-		const storedFreeRoam = localStorage.getItem("freeRoam");
-		if (storedFreeRoam != null) {
-			setFreeRoam(storedFreeRoam === "true");
+		const storedStyleTheme = localStorage.getItem("styleTheme") as Theme | null;
+		if (storedStyleTheme) {
+			setTheme(storedStyleTheme);
+			return;
 		}
-		const storedDual = localStorage.getItem("showDualCalendar");
-		if (storedDual != null) {
-			setShowDualCalendar(storedDual === "true");
+		const legacyTheme = localStorage.getItem("theme");
+		if (legacyTheme?.startsWith("theme-")) {
+			try {
+				localStorage.setItem("styleTheme", legacyTheme);
+			} catch {
+				// ignore
+			}
+			setTheme(legacyTheme as Theme);
 		}
-		const storedToolCalls = localStorage.getItem("showToolCalls");
-		if (storedToolCalls != null) {
-			setShowToolCalls(storedToolCalls === "true");
-		}
-		const storedLimit = localStorage.getItem("chatMessageLimit");
-		if (storedLimit != null) {
-			setChatMessageLimit(Number(storedLimit));
-		}
-		const storedTyping = localStorage.getItem("sendTypingIndicator");
-		if (storedTyping != null) {
-			setSendTypingIndicator(storedTyping === "true");
-		}
-	}, []);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [setTheme]);
 
 	// Persist style theme only; dark/light is managed by next-themes with its own storage key
 	useEffect(() => {
@@ -99,44 +76,9 @@ const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
 		try {
 			localStorage.setItem("styleTheme", theme);
 		} catch {
-			// Gracefully handle storage quota or privacy mode errors
+			// ignore
 		}
 	}, [theme]);
-
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		localStorage.setItem("freeRoam", String(freeRoam));
-	}, [freeRoam]);
-
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		localStorage.setItem("showDualCalendar", String(showDualCalendar));
-	}, [showDualCalendar]);
-
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		localStorage.setItem("showToolCalls", String(showToolCalls));
-	}, [showToolCalls]);
-
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		localStorage.setItem("chatMessageLimit", String(chatMessageLimit));
-	}, [chatMessageLimit]);
-
-	useEffect(() => {
-		if (typeof window === "undefined") {
-			return;
-		}
-		localStorage.setItem("sendTypingIndicator", String(sendTypingIndicator));
-	}, [sendTypingIndicator]);
 
 	const value = useMemo<SettingsState>(
 		() => ({
@@ -155,11 +97,17 @@ const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
 		}),
 		[
 			theme,
+			setTheme,
 			freeRoam,
+			setFreeRoam,
 			showDualCalendar,
+			setShowDualCalendar,
 			showToolCalls,
+			setShowToolCalls,
 			chatMessageLimit,
+			setChatMessageLimit,
 			sendTypingIndicator,
+			setSendTypingIndicator,
 		]
 	);
 	return (
@@ -178,3 +126,4 @@ function useSettings(): SettingsState {
 }
 
 export { SettingsProvider, useSettings };
+export type { Theme } from "@shared/libs/store/settings-store";

@@ -2,9 +2,8 @@
 
 import type { DataEditorRef, Theme } from "@glideapps/glide-data-grid";
 import type React from "react";
-import { FullscreenProvider } from "@/shared/libs/data-grid/components/contexts/fullscreen-context";
-import type { IDataSource } from "@/shared/libs/data-grid/components/core/interfaces/i-data-source";
-import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/data-provider";
+import type { DataProvider, IDataSource } from "@/shared/libs/data-grid";
+import { FullscreenProvider } from "@/shared/libs/data-grid";
 
 type ValidationError = {
 	row: number;

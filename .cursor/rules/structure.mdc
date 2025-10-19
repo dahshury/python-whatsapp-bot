@@ -1,0 +1,1140 @@
+---
+alwaysApply: true
+---
+
+### `entities/` - Domain Models (DDD Core)
+
+**Purpose**: Pure domain models, types, and interfaces. NO UI components. NO side effects.
+
+**Structure**:
+
+```
+entities/
+├── conversation/
+│  ├── index.ts          # Exports
+│  └── model.ts          # Types and interfaces
+├── event/
+│  ├── index.ts
+│  └── model.ts
+├── phone/
+│  ├── index.ts
+│  └── model.ts
+└── [domain]/
+   ├── index.ts
+   └── model.ts
+```
+
+**Rules**:
+
+- ✅ DO export types and interfaces
+- ✅ DO export constants (domain-specific)
+- ✅ DO use TypeScript `type` (not `interface`)
+- ✅ DO keep files <100 lines (types only)
+- ❌ DON'T import React or components
+- ❌ DON'T import from `features/`, `widgets/`, `services/`, `processes/`
+- ❌ DON'T include business logic beyond type definitions
+- ❌ DON'T use side effects or hooks
+
+**Example - Good**:
+
+```typescript
+// entities/conversation/model.ts
+export type ConversationMessage = {
+  role: string;
+  message: string;
+  time: string;
+  date: string;
+  tool_name?: string;
+  tool_args?: Record<string, unknown> | string;
+};
+
+export type Conversations = {
+  [wa_id: string]: ConversationMessage[];
+};
+```
+
+**Example - Bad**:
+
+```typescript
+// ❌ DON'T: React imports
+import { useState } from 'react';
+// ❌ DON'T: Side effects
+export async function fetchConversation(id) { ... }
+// ❌ DON'T: UI components
+export function ConversationCard() { ... }
+```
+
+---
+
+### `features/` - Feature Modules
+
+**Purpose**: Self-contained feature implementations combining UI, hooks, and business logic.
+
+**Structure**:
+
+```
+features/
+├── chat/
+│  ├── chat/              # Main feature components
+│  │  ├── chat.tsx        # Primary component
+│  │  ├── chat-input.tsx  # Sub-component
+│  │  └── chat-messages.tsx
+│  ├── hooks/             # Feature-specific hooks
+│  │  ├── use-chat-state.ts
+│  │  └── use-messages.ts
+│  ├── chat-sidebar-content.tsx
+│  └── index.ts           # Exports
+├── dashboard/
+├── navigation/
+└── settings/
+```
+
+**Rules**:
+
+- ✅ DO organize by feature, not by type
+- ✅ DO create `hooks/` subfolder for feature hooks
+- ✅ DO keep related components together
+- ✅ DO export from `index.ts`
+- ✅ DO keep individual files <300 lines
+- ❌ DON'T create deep nesting (max 2 levels)
+- ❌ DON'T import from other `features/`
+- ❌ DON'T share hooks between features (extract to `shared/libs/hooks/`)
+- ❌ DON'T exceed 500 lines per file
+
+**File Size Guidelines**:
+
+- Page/container component: 150-250 lines
+- Sub-component: 100-200 lines
+- Hook: 50-150 lines
+- If larger → split into smaller files
+
+**Example - Good**:
+
+```typescript
+// features/chat/hooks/use-chat-state.ts - ~80 lines
+export function useChatState() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState("");
+
+  // 50-70 lines of hook logic
+}
+
+// features/chat/chat/chat.tsx - ~120 lines
+export function Chat() {
+  const { messages, inputValue } = useChatState();
+  return (
+    <div>
+      <ChatMessages messages={messages} />
+      <ChatInput />
+    </div>
+  );
+}
+```
+
+**Example - Bad**:
+
+```typescript
+// ❌ DON'T: 800 lines in one file
+export function Chat() {
+  // Chat state management
+  // Message rendering
+  // Input handling
+  // WebSocket integration
+  // Formatting logic
+  // Error handling
+  // ... 750+ more lines ...
+}
+```
+
+---
+
+### `widgets/` - Complex Reusable UI Components
+
+**Purpose**: Self-contained, isolated UI components with their own state and business logic. More complex than design system components, less feature-specific than `features/`.
+
+**Structure**:
+
+```
+widgets/
+├── calendar/
+│  ├── components/        # Calendar sub-components
+│  ├── hooks/             # Calendar-specific hooks
+│  ├── types/             # Calendar types
+│  ├── calendar.tsx       # Main component
+│  └── index.ts
+├── data-grid/
+├── documents/
+└── [widget-name]/
+   ├── components/
+   ├── hooks/
+   ├── types/
+   ├── [widget-name].tsx
+   └── index.ts
+```
+
+**Rules**:
+
+- ✅ DO treat each widget as a self-contained module
+- ✅ DO organize complex widgets by feature within the widget folder
+- ✅ DO keep each file <300 lines
+- ✅ DO export main component from `index.ts`
+- ✅ DO use local `types/` for widget-specific types
+- ❌ DON'T import from `features/`
+- ❌ DON'T share widget code (move to `shared/` if reusable)
+- ❌ DON'T exceed 500 lines per file
+- ❌ DON'T duplicate functionality from other widgets
+
+**When to Use Widgets vs Features**:
+
+- **Widget**: Reusable across multiple features (e.g., data-grid, calendar)
+- **Feature**: Specific to one feature area (e.g., chat, dashboard)
+
+**Example - Good**:
+
+```typescript
+// widgets/calendar/hooks/use-calendar-state.ts - ~100 lines
+export function useCalendarState() { ... }
+
+// widgets/calendar/components/calendar-header.tsx - ~80 lines
+export function CalendarHeader() { ... }
+
+// widgets/calendar/calendar.tsx - ~150 lines
+export function Calendar() { ... }
+```
+
+---
+
+### `services/` - External Service Integrations
+
+**Purpose**: API clients, WebSocket handlers, and external service wrappers. Single responsibility per service.
+
+**Structure**:
+
+```
+services/
+├── chat/
+│  ├── chat.service.ts          # Chat API client
+│  └── index.ts
+├── calendar/
+│  ├── calendar-dnd.service.ts  # Drag & drop logic
+│  ├── calendar-layout.service.ts
+│  └── index.ts
+├── websocket/
+│  ├── websocket.service.ts     # WebSocket client
+│  ├── events.ts                # Event types
+│  └── types.ts                 # Service types
+├── phone/
+├── customers/
+├── notifications/
+└── index.ts                    # Central exports
+```
+
+**Rules**:
+
+- ✅ DO create one service per domain
+- ✅ DO keep services focused on external communication
+- ✅ DO export from service-level `index.ts`
+- ✅ DO use dependency injection for flexibility
+- ✅ DO keep methods focused (<50 lines per method ideally)
+- ❌ DON'T put UI logic in services
+- ❌ DON'T mix multiple external APIs in one file
+- ❌ DON'T import from `features/`, `widgets/`, `app/`
+- ❌ DON'T exceed 500 lines per file
+
+**Example - Good**:
+
+```typescript
+// services/chat/chat.service.ts - ~80 lines
+import { WebSocketService } from "@/services/websocket/websocket.service";
+
+export class ChatService {
+  private readonly ws = new WebSocketService();
+
+  async sendMessage(waId: string, text: string): Promise<void> {
+    const wsOk = await this.ws.sendMessage({
+      type: "conversation_send_message",
+      data: { wa_id: waId, message: text },
+    });
+
+    if (wsOk) return;
+
+    // Fallback to HTTP
+    const res = await fetch("/api/message/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wa_id: waId, text }),
+    });
+    if (!res.ok) throw new Error("Failed to send message");
+  }
+}
+```
+
+---
+
+### `processes/` - Business Process Orchestration
+
+**Purpose**: Cross-cutting business workflows, event coordination, and process logic that doesn't belong in individual services or features.
+
+**Structure**:
+
+```
+processes/
+├── calendar/
+│  ├── calendar-dnd.process.ts       # Drag & drop process
+│  ├── calendar-events.process.ts    # Event handling
+│  └── calendar-sorting.process.ts   # Sorting logic
+├── chat/
+│  └── chat.process.ts
+├── documents/
+│  ├── document-load.process.ts
+│  ├── document-save.process.ts
+│  └── document-events.process.ts
+├── reservations/
+└── data-table-operations.process.ts
+```
+
+**Rules**:
+
+- ✅ DO focus on orchestration logic (not data transformation)
+- ✅ DO coordinate between multiple services
+- ✅ DO keep processes focused (<300 lines per file)
+- ✅ DO use naming pattern: `[domain]-[operation].process.ts`
+- ❌ DON'T put UI logic in processes
+- ❌ DON'T duplicate logic from services
+- ❌ DON'T make processes feature-specific
+- ❌ DON'T exceed 500 lines per file
+
+---
+
+### `shared/libs/` - Reusable Utilities and Libraries
+
+**Purpose**: Shared, reusable code that doesn't belong to any specific feature or domain.
+
+**Structure**:
+
+```
+shared/libs/
+├── hooks/                    # Global custom hooks
+│  ├── use-websocket-data.ts
+│  ├── use-debounce.ts
+│  └── index.ts
+├── utils/                    # Utility functions
+│  ├── formatting.ts
+│  ├── validation.ts
+│  └── index.ts
+├── data/                     # Global data management
+│  ├── websocket-data-provider.tsx
+│  └── index.ts
+├── ws/                       # WebSocket utilities
+├── calendar/                 # Calendar utilities
+├── data-grid/                # Grid utilities
+└── [domain]/                 # Domain-specific utilities
+```
+
+**Rules**:
+
+- ✅ DO extract repeated logic here
+- ✅ DO keep utilities pure and side-effect free when possible
+- ✅ DO use consistent naming: `use-*` for hooks, `*-utils`, `*-helpers`
+- ✅ DO keep individual files <200 lines
+- ✅ DO export everything from `index.ts`
+- ❌ DON'T import from `features/`, `widgets/`, `app/`
+- ❌ DON'T put UI components here (use `shared/ui/`)
+- ❌ DON'T exceed 500 lines per file
+- ❌ DON'T create domain-specific logic (belongs in `entities/` or `services/`)
+
+**Example - Good**:
+
+```typescript
+// shared/libs/hooks/use-debounce.ts - ~40 lines
+export function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+```
+
+---
+
+### `shared/ui/` - Design System Components
+
+**Purpose**: Reusable, low-level UI components that form the design system.
+
+**Rules**:
+
+- ✅ DO keep components pure and focused on presentation
+- ✅ DO accept props for all dynamic behavior
+- ✅ DO keep individual files <150 lines
+- ✅ DO document component APIs with comments
+- ❌ DON'T include business logic
+- ❌ DON'T import from `features/`, `widgets/`, `services/`
+- ❌ DON'T exceed 500 lines per file
+
+---
+
+### `shared/config/` - Configuration Management
+
+**Purpose**: Centralized configuration, constants, and environment setup.
+
+**Rules**:
+
+- ✅ DO keep configuration centralized
+- ✅ DO use environment variables appropriately
+- ❌ DON'T mix configuration with logic
+- ❌ DON'T import from `features/`, `widgets/`, `app/`
+
+---
+
+### `shared/validation/` - Validation Schemas
+
+**Purpose**: Centralized validation rules and schemas (Zod, etc.).
+
+**Rules**:
+
+- ✅ DO keep validation logic pure and testable
+- ✅ DO export schemas as named exports
+- ❌ DON'T duplicate validation logic
+- ❌ DON'T mix validation with UI
+
+---
+
+### `styles/` - Global Styles
+
+**Purpose**: Global CSS, theme definitions, and style utilities.
+
+**Structure**:
+
+```
+styles/
+├── base.css                  # Base styles and resets
+├── utilities.css             # Utility classes
+├── themes/                   # Theme definitions
+│  ├── theme-golden-hour.css
+│  ├── theme-lime.css
+│  └── theme-supabase.css
+├── components/               # Component-specific overrides
+├── fullcalendar/             # Library overrides
+└── [library-name]/           # Third-party library styles
+```
+
+**Rules**:
+
+- ✅ DO organize by purpose or library
+- ✅ DO use Tailwind utilities first
+- ✅ DO keep theme variables consistent
+- ❌ DON'T create monolithic style files (split by concern)
+- ❌ DON'T mix unrelated styles
+
+---
+
+## File Size Guidelines (500-Line Absolute Limit)
+
+| File Type       | Ideal  | Maximum | Action at Max          |
+| --------------- | ------ | ------- | ---------------------- |
+| Component       | 80-150 | 300     | MUST SPLIT             |
+| Hook            | 40-80  | 200     | MUST SPLIT             |
+| Service         | 60-100 | 300     | MUST SPLIT             |
+| Type Definition | 20-50  | 100     | MUST SPLIT             |
+| Utility         | 30-60  | 200     | MUST SPLIT             |
+| **ANY FILE**    | -      | **500** | **MANDATORY REFACTOR** |
+
+**Action Items**:
+
+- **200-300 lines**: Start planning a split
+- **300-400 lines**: Active refactoring consideration
+- **400-500 lines**: Urgent refactoring needed
+- **>500 lines**: VIOLATION - refactor immediately
+
+---
+
+## Import Flow Rules
+
+### Allowed Imports (✅ DO)
+
+```
+app/           → features/, widgets/, services/, shared/
+features/      → widgets/, entities/, services/, shared/, processes/
+widgets/       → entities/, services/, shared/, processes/
+services/      → entities/, shared/
+processes/     → entities/, services/, shared/
+shared/        → (nothing) ← Pure utilities
+entities/      → (nothing) ← Pure types
+```
+
+### Forbidden Imports (❌ DON'T)
+
+```
+shared/        → features/, widgets/, services/, app/
+entities/      → features/, widgets/, services/, app/, processes/
+services/      → features/, widgets/, app/
+processes/     → features/, widgets/, app/
+features/ A    → features/ B (cross-feature imports)
+widgets/       → features/ (widgets are generic, features are specific)
+```
+
+---
+
+## Single Responsibility Principle (SRP) - Code-Level Enforcement
+
+Every file, function, hook, component, and service must have ONE clear reason to change. This is different from file organization—it's about the **responsibility inside each file**.
+
+### SRP Violation Indicators
+
+A file/function/hook violates SRP when it has **multiple reasons to change**:
+
+- Needs changes when UI layout changes AND when business logic changes
+- Needs changes when API response format changes AND when UI state changes
+- Needs changes when validation rules change AND when data formatting changes
+- Uses multiple libraries for different purposes in one file
+- Handles multiple independent workflows or domains
+- Has methods/functions that don't use each other's state/logic
+
+### Function-Level SRP
+
+**✅ Single Responsibility**:
+
+```typescript
+// One responsibility: calculate total price
+export function calculateTotal(items: CartItem[]): number {
+  return items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+}
+
+// One responsibility: format currency
+export function formatPrice(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount);
+}
+
+// One responsibility: apply discount
+export function applyDiscount(total: number, discountPercent: number): number {
+  return total * (1 - discountPercent / 100);
+}
+```
+
+**❌ Multiple Responsibilities** (violation):
+
+```typescript
+// ❌ DON'T: Calculation + formatting + validation + API call
+export function getOrderTotal(items: CartItem[], applyTax: boolean): string {
+  if (!items || items.length === 0) throw new Error("Invalid items");
+
+  let total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  if (applyTax) total *= 1.08;
+
+  const response = await fetch("/api/pricing/validate", {
+    method: "POST",
+    body: JSON.stringify({ total }),
+  });
+  const validated = await response.json();
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(validated.finalTotal);
+}
+```
+
+**Split into**:
+
+```typescript
+// Separate functions, each with one responsibility
+export function calculateOrderTotal(items: CartItem[], applyTax: boolean): number { ... }
+export function validatePrice(amount: number): Promise<number> { ... }
+export function formatCurrency(amount: number): string { ... }
+```
+
+### Hook-Level SRP
+
+**✅ Single Responsibility**:
+
+```typescript
+// One responsibility: manage form state
+export function useFormState(initialValue: string) {
+  const [value, setValue] = useState(initialValue);
+  const reset = () => setValue(initialValue);
+  return { value, setValue, reset };
+}
+
+// One responsibility: fetch data
+export function useFetchData(url: string) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(url)
+      .then((r) => r.json())
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, [url]);
+
+  return { data, loading };
+}
+```
+
+**❌ Multiple Responsibilities** (violation):
+
+```typescript
+// ❌ DON'T: State management + data fetching + validation + formatting
+export function useOrder(orderId: string) {
+  const [order, setOrder] = useState(null);
+  const [validated, setValidated] = useState(false);
+  const [formatted, setFormatted] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/orders/${orderId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const isValid = data.items.length > 0 && data.total > 0;
+        setValidated(isValid);
+        setOrder(data);
+        setFormatted(`Order #${data.id}: $${(data.total * 1.1).toFixed(2)}`);
+        setLoading(false);
+      });
+  }, [orderId]);
+
+  return { order, validated, formatted, loading };
+}
+```
+
+**Split into**:
+
+```typescript
+export function useFetchOrder(orderId: string) { ... } // Fetching only
+export function useValidateOrder(order: Order) { ... } // Validation only
+export function useFormatOrder(order: Order) { ... }   // Formatting only
+```
+
+### Component-Level SRP
+
+**✅ Single Responsibility**:
+
+```typescript
+// One responsibility: render product card UI
+export function ProductCard({ product, onSelect }: Props) {
+  return (
+    <div onClick={() => onSelect(product.id)}>
+      <img src={product.image} alt={product.name} />
+      <h3>{product.name}</h3>
+      <p>${product.price}</p>
+    </div>
+  );
+}
+
+// One responsibility: manage product selection state
+export function ProductSelector() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const product = useProduct(selectedId);
+
+  return <ProductCard product={product} onSelect={setSelectedId} />;
+}
+```
+
+**❌ Multiple Responsibilities** (violation):
+
+```typescript
+// ❌ DON'T: Rendering + state + data fetching + validation + error handling
+export function ProductCard({ productId }: { productId: string }) {
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
+
+  useEffect(() => {
+    fetch(`/api/products/${productId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.id || !data.price) {
+          setError("Invalid product");
+          return;
+        }
+        setProduct(data);
+      })
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [productId]);
+
+  if (loading) return <Skeleton />;
+  if (error) return <ErrorAlert message={error} />;
+
+  return (
+    <div>
+      <img src={product.image} />
+      <VariantSelector
+        options={product.variants}
+        onSelect={setSelectedVariant}
+      />
+      <AddToCartButton product={product} variant={selectedVariant} />
+    </div>
+  );
+}
+```
+
+**Split into**:
+
+```typescript
+export function ProductCardDisplay({ product, onVariantSelect }: Props) { ... } // Presentation
+export function useProductData(productId: string) { ... } // Data fetching
+export function ProductCardContainer({ productId }: Props) { ... } // Orchestration
+```
+
+### Service/Class-Level SRP
+
+**✅ Single Responsibility**:
+
+```typescript
+// One responsibility: API communication
+export class OrderApiService {
+  async getOrder(id: string) {
+    return fetch(`/api/orders/${id}`).then((r) => r.json());
+  }
+  async createOrder(data: OrderData) {
+    return fetch("/api/orders", { method: "POST", body: JSON.stringify(data) });
+  }
+}
+
+// One responsibility: business rules
+export class OrderValidator {
+  validateOrder(order: Order): boolean {
+    return (
+      order.items.length > 0 && order.total > 0 && order.customerId !== null
+    );
+  }
+}
+
+// One responsibility: data transformation
+export class OrderFormatter {
+  formatForDisplay(order: Order): FormattedOrder {
+    return {
+      id: order.id,
+      total: `$${order.total.toFixed(2)}`,
+      itemCount: order.items.length,
+    };
+  }
+}
+```
+
+**❌ Multiple Responsibilities** (violation):
+
+```typescript
+// ❌ DON'T: API + validation + formatting + caching + analytics in one class
+export class OrderService {
+  private cache = new Map();
+
+  async getOrder(id: string) {
+    if (this.cache.has(id)) return this.cache.get(id);
+
+    const data = await fetch(`/api/orders/${id}`).then((r) => r.json());
+
+    if (!data.items.length) throw new Error("Invalid order");
+
+    const formatted = `Order #${data.id}: $${(data.total * 1.1).toFixed(2)}`;
+
+    this.cache.set(id, { ...data, formatted });
+
+    analytics.track("order_fetched", { id, total: data.total });
+
+    return this.cache.get(id);
+  }
+}
+```
+
+**Split into**:
+
+```typescript
+export class OrderApiService { ... }      // API only
+export class OrderValidator { ... }       // Validation only
+export class OrderFormatter { ... }       // Formatting only
+export class OrderCache { ... }           // Caching only
+export class OrderAnalytics { ... }       // Analytics only
+```
+
+### SRP Decision Tree
+
+When deciding whether to split a function/hook/component:
+
+```
+Does it have multiple reasons to change?
+├─ YES → SPLIT IT
+│  ├─ Extract UI rendering → separate presentation component
+│  ├─ Extract state logic → separate custom hook
+│  ├─ Extract business logic → separate utility/service
+│  └─ Extract data fetching → separate custom hook/service
+│
+└─ NO → Consider these indicators:
+   ├─ Is it >150 lines? → Consider splitting
+   ├─ Does it use nested functions? → Consider extracting them
+   ├─ Are there multiple conditional branches handling different features? → SPLIT
+   ├─ Can I describe it in 1 sentence without "and"? → Keep it together
+   └─ Would a test require mocking >3 things? → SPLIT
+```
+
+### When NOT to Split
+
+✅ **OK to keep together**:
+
+- Related state that changes together (form fields + validation state)
+- A hook that manages one piece of state and provides computed values
+- UI component with internal state for visual state only (isOpen, hoveredId)
+- Utility function that applies multiple transformations in sequence to the same data type
+
+---
+
+## Refactoring Strategy for Monolithic Files
+
+When a file exceeds 500 lines, follow this strategy:
+
+### Step 1: Identify Sections
+
+Break the file into logical sections (components, hooks, types, utils).
+
+### Step 2: Extract by Type
+
+1. Extract types → `entities/` or create `.types.ts`
+2. Extract constants → create `.constants.ts`
+3. Extract hooks → `shared/libs/hooks/` or `widgets/{name}/hooks/`
+4. Extract utilities → `shared/libs/utils/`
+5. Extract sub-components → create separate `.tsx` files
+
+### Step 3: Update Imports
+
+- Update parent component imports
+- Update all dependents
+- Verify no circular dependencies
+
+### Step 4: Verify
+
+- Check file size < 500 lines
+- Run linting: `npx ultracite check`
+- Run type checking: `pnpm tsc --noEmit`
+
+### Example Refactoring
+
+**Before (850 lines in Grid.tsx)**:
+
+```typescript
+// Grid.tsx - 850 lines
+// Contains:
+// - GridState interface (15 lines)
+// - GRID_CONSTANTS (20 lines)
+// - useGridState hook (100 lines)
+// - GridCell component (120 lines)
+// - GridRow component (80 lines)
+// - Grid component (500+ lines)
+// - Utility functions (15 lines)
+```
+
+**After (Multiple files)**:
+
+```
+shared/libs/
+├── data-grid/
+│  ├── grid.types.ts         (30 lines)
+│  ├── grid.constants.ts     (25 lines)
+│  └── index.ts
+
+shared/libs/hooks/
+└── use-grid-state.ts        (100 lines)
+
+widgets/data-table-editor/
+├── components/
+│  ├── grid-cell.tsx         (120 lines)
+│  └── grid-row.tsx          (80 lines)
+├── hooks/
+│  └── use-grid-state.ts     (100 lines)
+├── grid.tsx                 (250 lines) ✅ Now <500
+└── index.ts
+```
+
+---
+
+## Naming Conventions
+
+### Components
+
+- Main component: `PascalCase.tsx` (e.g., `Chat.tsx`)
+- Sub-component: `kebab-case.tsx` (e.g., `chat-input.tsx`)
+- Wrapper/Container: `{Feature}View.tsx` (e.g., `ChatView.tsx`)
+
+### Hooks
+
+- Custom hooks: `use{Purpose}.ts` (e.g., `useChatState.ts`)
+- Global hooks: Placed in `shared/libs/hooks/`
+- Feature hooks: Placed in `features/{feature}/hooks/`
+- Widget hooks: Placed in `widgets/{widget}/hooks/`
+
+### Services
+
+- Service classes: `{Domain}.service.ts` (e.g., `Chat.service.ts`)
+- Process files: `{domain}-{operation}.process.ts` (e.g., `calendar-dnd.process.ts`)
+- Utility files: `{purpose}.utils.ts` (e.g., `formatting.utils.ts`)
+
+### Types
+
+- Type files: `{domain}.types.ts` or `{purpose}.types.ts`
+- Entity models: `model.ts` in `entities/{domain}/`
+- Constants: `{domain}.constants.ts`
+
+### Files
+
+- Index files: `index.ts` (for exports)
+- Config files: `{purpose}.config.ts`
+- Constants: `{domain}.constants.ts`
+- Schemas: `{purpose}.schema.ts` (Zod, etc.)
+
+---
+
+## Common Patterns and Examples
+
+### Pattern 1: Feature Module
+
+```
+features/chat/
+├── hooks/
+│  ├── use-chat-state.ts      (60 lines)
+│  ├── use-messages.ts         (40 lines)
+│  └── index.ts
+├── chat/
+│  ├── chat.tsx                (120 lines)
+│  ├── chat-input.tsx          (60 lines)
+│  ├── chat-messages.tsx       (90 lines)
+│  └── index.ts
+├── chat-sidebar-content.tsx   (80 lines)
+├── index.ts
+└── types.ts                   (30 lines)
+```
+
+### Pattern 2: Widget Module
+
+```
+widgets/calendar/
+├── components/
+│  ├── calendar-header.tsx     (80 lines)
+│  ├── calendar-day.tsx        (70 lines)
+│  └── index.ts
+├── hooks/
+│  ├── use-calendar-state.ts   (100 lines)
+│  ├── use-calendar-nav.ts     (50 lines)
+│  └── index.ts
+├── calendar.tsx               (150 lines)
+├── types/calendar.types.ts    (40 lines)
+└── index.ts
+```
+
+### Pattern 3: Service Module
+
+```
+services/chat/
+├── chat.service.ts            (80 lines)
+├── types.ts                   (20 lines)
+└── index.ts
+```
+
+### Pattern 4: Shared Utility Library
+
+```
+shared/libs/
+├── hooks/
+│  ├── use-debounce.ts         (40 lines)
+│  ├── use-throttle.ts         (40 lines)
+│  └── index.ts
+├── utils/
+│  ├── formatting.ts           (60 lines)
+│  ├── validation.ts           (50 lines)
+│  └── index.ts
+└── index.ts
+```
+
+---
+
+## DO's and DON'Ts Summary
+
+### DO ✅
+
+- DO keep files <500 lines ALWAYS
+- DO organize by feature/domain first, then by type
+- DO use TypeScript strict mode
+- DO export everything from `index.ts` files
+- DO follow the dependency flow (inward only)
+- DO split files proactively before hitting 500 lines
+- DO extract repeated logic to `shared/libs/`
+- DO use type-only imports: `import type { ... }`
+- DO create sub-folders for complex widgets/features
+- DO document complex logic with comments
+- DO use dependency injection for flexibility
+- DO test refactored code immediately
+
+### DON'T ❌
+
+- DON'T create monolithic files (>500 lines)
+- DON'T import across feature boundaries
+- DON'T put business logic in UI components (without extracting to hooks/services)
+- DON'T import from outer layers into inner layers (breaks DDD)
+- DON'T create circular dependencies
+- DON'T mix concerns (UI + business logic + data fetching in one file)
+- DON'T put React/UI code in `entities/` or `services/`
+- DON'T duplicate logic (extract to `shared/libs/`)
+- DON'T use `any` type in TypeScript
+- DON'T create deeply nested file structures (max 2-3 levels)
+- DON'T put all exports in one file (organize by concern)
+- DON'T ignore linting errors (enforce Biome/Ultracite rules)
+
+---
+
+## Refactoring Checklist
+
+When refactoring a monolithic file to follow this structure:
+
+- [ ] File size goal: <500 lines for main file
+- [ ] Types extracted to `entities/` or `.types.ts` file
+- [ ] Custom hooks extracted to `hooks/` folder
+- [ ] Utilities extracted to `shared/libs/`
+- [ ] Sub-components split into separate files
+- [ ] Import statements updated in all files
+- [ ] No circular dependencies introduced
+- [ ] All imports follow the dependency flow
+- [ ] TypeScript compilation: `pnpm tsc --noEmit` ✅
+- [ ] Linting passes: `npx ultracite check` ✅
+- [ ] Each file serves a single purpose
+- [ ] File naming follows conventions
+- [ ] `index.ts` exports all public members
+
+---
+
+## Enforcement and Validation
+
+### Automated Checks
+
+```bash
+# Type checking
+pnpm tsc --noEmit
+
+# Linting and code quality
+npx ultracite check app/frontend/
+
+# Line counting (identify violations)
+wc -l app/frontend/**/*.tsx app/frontend/**/*.ts
+```
+
+### Pre-Commit Validation
+
+- NO file may exceed 500 lines
+- ALL TypeScript files must pass `pnpm tsc --noEmit`
+- ALL files must pass `npx ultracite check`
+- NO circular dependencies allowed
+- Import flow must match specified rules
+
+### LLM Compliance Requirements
+
+LLMs generating code must:
+
+1. **ALWAYS check file size** before editing - if >500 lines, split it
+2. **NEVER create circular dependencies**
+3. **ALWAYS follow import flow rules** - no outward imports from inner layers
+4. **ALWAYS extract repeated logic** to `shared/libs/`
+5. **ALWAYS place code in the correct folder** according to DDD rules
+6. **ALWAYS create sub-files** when a component/hook/service grows large
+7. **ALWAYS run linting** after any changes
+8. **ALWAYS verify file sizes** after refactoring
+
+---
+
+## File Size Validation Script
+
+Add this to your workflow to catch violations:
+
+```bash
+#!/bin/bash
+# Check for files exceeding 500 lines
+
+echo "Checking for files exceeding 500 lines..."
+found=0
+
+while IFS= read -r file; do
+  lines=$(wc -l < "$file")
+  if [ "$lines" -gt 500 ]; then
+    echo "❌ VIOLATION: $file ($lines lines)"
+    found=$((found + 1))
+  fi
+done < <(find app/frontend -type f \( -name "*.tsx" -o -name "*.ts" \) ! -path "*/node_modules/*")
+
+if [ $found -eq 0 ]; then
+  echo "✅ All files are within 500-line limit"
+  exit 0
+else
+  echo "❌ Found $found files exceeding 500-line limit"
+  exit 1
+fi
+```
+
+---
+
+## Quick Reference
+
+| Need             | Location                                      | Example                                      |
+| ---------------- | --------------------------------------------- | -------------------------------------------- |
+| Domain type      | `entities/{domain}/`                          | `entities/conversation/model.ts`             |
+| UI component     | `features/` or `widgets/`                     | `features/chat/chat.tsx`                     |
+| Custom hook      | `shared/libs/hooks/` or `features/{f}/hooks/` | `shared/libs/hooks/use-debounce.ts`          |
+| Utility function | `shared/libs/`                                | `shared/libs/utils/formatting.ts`            |
+| Service/API      | `services/`                                   | `services/chat/chat.service.ts`              |
+| Business process | `processes/`                                  | `processes/calendar/calendar-dnd.process.ts` |
+| Design component | `shared/ui/`                                  | `shared/ui/button.tsx`                       |
+| Route/page       | `app/`                                        | `app/(core)/dashboard/page.tsx`              |
+| Configuration    | `shared/config/`                              | `shared/config/theme.config.ts`              |
+| Global styles    | `styles/`                                     | `styles/themes/theme-golden-hour.css`        |
+
+---
+
+## Migration Path (Existing Code)
+
+If you have existing monolithic files:
+
+1. **Audit**: List all files >500 lines
+2. **Prioritize**: Start with files in `features/` and `widgets/`
+3. **Plan**: Use the refactoring strategy outlined above
+4. **Execute**: Follow the step-by-step refactoring process
+5. **Validate**: Run linting and type checking after each file
+6. **Document**: Keep notes on patterns discovered
+
+---
+
+## Example: Complete Feature Refactoring
+
+**Before**: `features/chat/Chat.tsx` (620 lines)
+
+```typescript
+// VIOLATION: 620 lines in single file
+```
+
+**After**: Organized structure
+
+```
+features/chat/
+├── chat/
+│  ├── chat.tsx               (180 lines)
+│  ├── chat-input.tsx         (90 lines)
+│  ├── chat-messages.tsx      (110 lines)
+│  └── index.ts               (5 lines)
+├── chat-sidebar-content.tsx  (70 lines)
+├── hooks/
+│  ├── use-chat-state.ts      (75 lines)
+│  ├── use-messages-load.ts   (60 lines)
+│  └── index.ts               (5 lines)
+├── types.ts                  (40 lines)
+└── index.ts                  (15 lines)
+```
+
+**Total**: 650 lines split into 10 files, each <200 lines ✅
+
+---
+
+**This rule enforces architectural discipline. Adhere strictly. No exceptions. No monolithic files.**

@@ -1,19 +1,18 @@
+import {
+	zApiResponse,
+	zVacationsArray,
+} from "@shared/validation/api/response.schema";
 import { type NextRequest, NextResponse } from "next/server";
 import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function GET(_request: NextRequest) {
 	try {
-		// Call Python backend (helper tries backend:8000 then localhost:8000)
-		const resp = await callPythonBackend<{ success?: boolean; data?: unknown }>(
-			"/vacations"
+		const resp = await callPythonBackend(
+			"/vacations",
+			{ method: "GET" },
+			zApiResponse(zVacationsArray)
 		);
-		if (resp && typeof resp === "object" && "data" in resp) {
-			return NextResponse.json({
-				success: true,
-				data: (resp as { success?: boolean; data?: unknown }).data ?? [],
-			});
-		}
-		return NextResponse.json({ success: true, data: resp ?? [] });
+		return NextResponse.json(resp);
 	} catch (error) {
 		// If backend is not reachable, return empty array instead of error
 		if (error instanceof TypeError && error.message.includes("fetch")) {

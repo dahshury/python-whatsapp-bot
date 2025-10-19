@@ -1,5 +1,6 @@
 "use client";
 
+import { QueryErrorResetBoundary } from "@tanstack/react-query";
 import { Button } from "@ui/button";
 import { AlertCircle } from "lucide-react";
 import React from "react";
@@ -50,46 +51,70 @@ export class ErrorBoundary extends React.Component<
 
 	render() {
 		const { hasError, error, isRecovering } = this.state;
+		const Fallback = this.props.fallback;
 
 		if (hasError && error) {
-			return (
-				<div className="flex h-full min-h-[37.5rem] w-full flex-col items-center justify-center rounded-lg bg-card p-6 shadow-sm">
-					<AlertCircle className="mb-4 h-12 w-12 text-destructive" />
-					<h2 className="font-semibold text-2xl text-foreground">
-						Something went wrong
-					</h2>
-					<div className="mt-4 max-w-2xl rounded-md border border-destructive/30 bg-destructive/10 p-4">
-						<p className="whitespace-pre-wrap font-mono text-destructive text-sm">
-							{error.message}
-						</p>
-						{error.stack && (
-							<details className="mt-2">
-								<summary className="cursor-pointer font-medium text-destructive text-sm">
-									Error details
-								</summary>
-								<pre className="mt-2 overflow-x-auto text-destructive/80 text-xs">
-									{error.stack}
-								</pre>
-							</details>
+			if (Fallback) {
+				return (
+					<QueryErrorResetBoundary>
+						{({ reset }) => (
+							<Fallback
+								error={error}
+								retry={() => {
+									reset();
+									this.setState({ hasError: false, error: undefined });
+								}}
+							/>
 						)}
-					</div>
-					<p className="text-muted-foreground">
-						Please refresh the page or try again.
-					</p>
-					<div className="mt-6 flex gap-2">
-						<Button onClick={() => window.location.reload()} variant="default">
-							Refresh Page
-						</Button>
-						<Button
-							onClick={() =>
-								this.setState({ hasError: false, error: undefined })
-							}
-							variant="outline"
-						>
-							Try Again
-						</Button>
-					</div>
-				</div>
+					</QueryErrorResetBoundary>
+				);
+			}
+			return (
+				<QueryErrorResetBoundary>
+					{({ reset }) => (
+						<div className="flex h-full min-h-[37.5rem] w-full flex-col items-center justify-center rounded-lg bg-card p-6 shadow-sm">
+							<AlertCircle className="mb-4 h-12 w-12 text-destructive" />
+							<h2 className="font-semibold text-2xl text-foreground">
+								Something went wrong
+							</h2>
+							<div className="mt-4 max-w-2xl rounded-md border border-destructive/30 bg-destructive/10 p-4">
+								<p className="whitespace-pre-wrap font-mono text-destructive text-sm">
+									{error.message}
+								</p>
+								{error.stack && (
+									<details className="mt-2">
+										<summary className="cursor-pointer font-medium text-destructive text-sm">
+											Error details
+										</summary>
+										<pre className="mt-2 overflow-x-auto text-destructive/80 text-xs">
+											{error.stack}
+										</pre>
+									</details>
+								)}
+							</div>
+							<p className="text-muted-foreground">
+								Please refresh the page or try again.
+							</p>
+							<div className="mt-6 flex gap-2">
+								<Button
+									onClick={() => window.location.reload()}
+									variant="default"
+								>
+									Refresh Page
+								</Button>
+								<Button
+									onClick={() => {
+										reset();
+										this.setState({ hasError: false, error: undefined });
+									}}
+									variant="outline"
+								>
+									Try Again
+								</Button>
+							</div>
+						</div>
+					)}
+				</QueryErrorResetBoundary>
 			);
 		}
 

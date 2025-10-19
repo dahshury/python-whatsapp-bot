@@ -1,3 +1,8 @@
+import { zConversationsQuery } from "@shared/validation/api/requests/queries.schema";
+import {
+	zApiResponse,
+	zConversationsMap,
+} from "@shared/validation/api/response.schema";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/shared/libs/backend";
@@ -5,23 +10,21 @@ import { callPythonBackend } from "@/shared/libs/backend";
 export async function GET(req: NextRequest) {
 	try {
 		const url = new URL(req.url);
-		const fromDate = url.searchParams.get("from_date"); // YYYY-MM-DD format
-		const toDate = url.searchParams.get("to_date"); // YYYY-MM-DD format
-
-		// Build parameters for Python backend
-		const params = new URLSearchParams();
-
-		// Add date range filtering if provided
-		if (fromDate) {
-			params.append("from_date", fromDate);
+		const qp = Object.fromEntries(url.searchParams.entries());
+		const parsed = zConversationsQuery.safeParse(qp);
+		if (!parsed.success) {
+			return NextResponse.json(
+				{ success: false, message: parsed.error.message, data: {} },
+				{ status: 400 }
+			);
 		}
-		if (toDate) {
-			params.append("to_date", toDate);
-		}
+		const params = new URLSearchParams(parsed.data as Record<string, string>);
 
-		// Make request to Python backend with date filtering
+		// Make request to Python backend with date filtering and validate response
 		const backendResponse = await callPythonBackend(
-			params.toString() ? `/conversations?${params}` : "/conversations"
+			params.toString() ? `/conversations?${params}` : "/conversations",
+			{ method: "GET" },
+			zApiResponse(zConversationsMap)
 		);
 
 		// The Python backend should return the data in the expected format

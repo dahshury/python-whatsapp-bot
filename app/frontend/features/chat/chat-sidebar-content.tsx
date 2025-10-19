@@ -13,6 +13,7 @@ import {
 import { i18n } from "@shared/libs/i18n";
 import { useLanguage } from "@shared/libs/state/language-context";
 import { useSettings } from "@shared/libs/state/settings-context";
+import { useChatTypingStore } from "@shared/libs/store/chat-typing-store";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { toastService } from "@shared/libs/toast/toast-service";
 import { cn } from "@shared/libs/utils";
@@ -85,7 +86,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	// scrolling refs managed by useChatScroll below
 
 	// Source canonical data directly from the websocket provider
-	const { conversations } = useConversationsData();
+	const { conversations, loadConversationMessages } = useConversationsData();
 	const { reservations } = useReservationsData();
 
 	// Local state for additional messages (not optimistic - only added on success)
@@ -99,6 +100,35 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 	const currentConversation = selectedConversationId
 		? ((conversations[selectedConversationId] || []) as ConversationMessage[])
 		: [];
+
+	// Lazy-load conversation messages only when a conversation is selected and existing cache is empty
+	useEffect(() => {
+		if (!selectedConversationId) {
+			return;
+		}
+		const cached = conversations?.[selectedConversationId];
+		if (Array.isArray(cached) && cached.length > 0) {
+			return;
+		}
+		// Fetch only this conversation's messages (most recent slice initially)
+		const now = new Date();
+		const y = now.getFullYear();
+		const m = now.getMonth();
+		const from = new Date(y, m, 1);
+		const to = new Date(y, m + 1, 0);
+		const toIso = (d: Date) =>
+			`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+		loadConversationMessages?.(selectedConversationId, {
+			fromDate: toIso(from),
+			toDate: toIso(to),
+			limit: chatMessageLimit,
+		});
+	}, [
+		selectedConversationId,
+		conversations,
+		loadConversationMessages,
+		chatMessageLimit,
+	]);
 
 	// Combine real messages with additional messages for this conversation
 	const conversationAdditional = selectedConversationId
@@ -122,15 +152,65 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 
 	const hasMoreMessages = sortedMessages.length > limitedMessages.length;
 
+	const LOAD_MORE_MIN_DAYS = 7;
+	const LOAD_MORE_MAX_DAYS = 31;
+
+	const computeOlderRange = useCallback(
+		(
+			oldestDateStr: string | undefined,
+			daysWindow: number
+		): { fromDate: string; toDate: string } | null => {
+			if (!oldestDateStr) {
+				return null;
+			}
+			const parts = oldestDateStr.split("-");
+			const y = Number(parts[0]);
+			const m = Number(parts[1]) - 1;
+			const d = Number(parts[2]);
+			const base = new Date(y, m, d);
+			const prev = new Date(base);
+			prev.setDate(prev.getDate() - daysWindow);
+			const toIso = (dt: Date) =>
+				`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+			return { fromDate: toIso(prev), toDate: toIso(base) };
+		},
+		[]
+	);
 	const handleLoadMore = useCallback(() => {
 		setIsLoadingMore(true);
-		// Use RAF to ensure state updates before scroll calculation
+		// Increase local window immediately for snappy UX
 		requestAnimationFrame(() => {
 			setLoadedMessageCount((prev) => prev + chatMessageLimit);
-			// Reset loading flag after a brief delay
-			setTimeout(() => setIsLoadingMore(false), LOADING_STATE_DELAY_MS);
 		});
-	}, [chatMessageLimit]);
+		// Also request older messages if available (expand range backwards by limit days)
+		try {
+			if (selectedConversationId && loadConversationMessages) {
+				const oldest = sortedMessages.at(0);
+				const windowDays = Math.max(
+					LOAD_MORE_MIN_DAYS,
+					Math.min(LOAD_MORE_MAX_DAYS, chatMessageLimit)
+				);
+				const range = computeOlderRange(oldest?.date, windowDays);
+				if (range) {
+					loadConversationMessages(selectedConversationId, {
+						fromDate: range.fromDate,
+						toDate: range.toDate,
+						limit: chatMessageLimit,
+					});
+				}
+			}
+		} catch {
+			// ignore fetch errors
+		} finally {
+			setTimeout(() => setIsLoadingMore(false), LOADING_STATE_DELAY_MS);
+		}
+	}, [
+		chatMessageLimit,
+		selectedConversationId,
+		loadConversationMessages,
+		sortedMessages,
+		computeOlderRange,
+	]);
 
 	// Reset loaded count when conversation changes
 	useEffect(() => {
@@ -164,20 +244,37 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			);
 	}, []);
 
-	// Listen for typing indicator
+	// Typing indicator from store
 	useEffect(() => {
-		const handler = (e: Event) => {
+		if (!selectedConversationId) {
+			setIsTyping(false);
+			return;
+		}
+		const unsub = useChatTypingStore.subscribe(
+			(s) =>
+				selectedConversationId
+					? s.typingByConversation[selectedConversationId]
+					: undefined,
+			(typing) => setIsTyping(Boolean(typing))
+		);
+		// initialize
+		try {
+			const cur =
+				useChatTypingStore.getState().typingByConversation[
+					selectedConversationId
+				];
+			setIsTyping(Boolean(cur));
+		} catch {
+			setIsTyping(false);
+		}
+		return () => {
 			try {
-				const { typing } = (e as CustomEvent).detail || {};
-				setIsTyping(Boolean(typing));
+				unsub();
 			} catch {
-				// Event parsing may fail in some contexts
+				// ignore
 			}
 		};
-		window.addEventListener("chat:typing", handler as EventListener);
-		return () =>
-			window.removeEventListener("chat:typing", handler as EventListener);
-	}, []);
+	}, [selectedConversationId]);
 
 	// Listen for editor typing state (with typing indicator controller)
 	useEffect(() => {
@@ -191,22 +288,22 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			waId: selectedConversationId,
 		});
 
-		const onEditorTyping = () => {
-			ctl.onUserTyped();
-		};
-
-		// Listen to content changes; BasicChatInput attaches TipTap editor inside
-		const handler = (e: Event) => {
-			try {
-				const t = (e as CustomEvent).detail?.type;
-				if (t === "chat:editor_update") {
-					onEditorTyping();
+		// Subscribe to typing store; forward to backend typing controller
+		const unsub = useChatTypingStore.subscribe(
+			(s) =>
+				selectedConversationId
+					? s.typingByConversation[selectedConversationId]
+					: undefined,
+			(typing) => {
+				try {
+					if (typing) {
+						ctl.onUserTyped();
+					}
+				} catch {
+					// ignore
 				}
-			} catch {
-				// Event handling may fail in some contexts
 			}
-		};
-		window.addEventListener("chat:editor_event", handler as EventListener);
+		);
 
 		// When component unmounts or conversation changes, send a stop
 		return () => {
@@ -215,7 +312,11 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			} catch {
 				// Stop command may fail if controller is already stopped
 			}
-			window.removeEventListener("chat:editor_event", handler as EventListener);
+			try {
+				unsub();
+			} catch {
+				// ignore
+			}
 		};
 	}, [sendTypingIndicator, selectedConversationId]);
 
@@ -292,7 +393,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 		: i18n.getMessage("chat_no_conversation", isLocalized);
 
 	// Show combobox only when we have data
-	const shouldShowCombobox = Object.keys(conversations).length > 0;
+	const shouldShowCombobox = true;
 
 	if (!selectedConversationId) {
 		return (
@@ -311,19 +412,13 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 
 				{/* Header with Omnibox */}
 				<div className="border-sidebar-border border-b bg-card p-3">
-					{shouldShowCombobox ? (
-						<ConversationCombobox
-							conversations={conversations}
-							isLocalized={isLocalized}
-							onConversationSelect={onConversationSelect}
-							reservations={reservations}
-							selectedConversationId={selectedConversationId}
-						/>
-					) : (
-						<div className="py-2 text-center text-muted-foreground text-xs">
-							{i18n.getMessage("chat_loading_conversations", isLocalized)}
-						</div>
-					)}
+					<ConversationCombobox
+						conversations={conversations}
+						isLocalized={isLocalized}
+						onConversationSelect={onConversationSelect}
+						reservations={reservations}
+						selectedConversationId={selectedConversationId}
+					/>
 				</div>
 
 				{/* Empty State */}
@@ -415,6 +510,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 				isSending={isSending}
 				onSend={handleSendMessage}
 				placeholder={inputPlaceholder}
+				waId={selectedConversationId || undefined}
 			/>
 		</div>
 	);

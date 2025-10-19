@@ -384,27 +384,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     )
                 except Exception:
                     reservations = {}
-                try:
-                    from app.utils.service_utils import (
-                        get_all_conversations,
-                    )  # lazy import to avoid circular
-
-                    conversations_resp = get_all_conversations()
-                    conversations = (
-                        conversations_resp.get("data", {})
-                        if isinstance(conversations_resp, dict)
-                        else {}
-                    )
-                except Exception:
-                    conversations = {}
+                # Do not include conversations in snapshot to avoid mass loading
+                conversations = {}
                 try:
                     vacations = _compute_vacations()
                 except Exception:
                     vacations = []
-                try:
-                    metrics = _parse_prometheus_text(generate_latest().decode("utf-8"))
-                except Exception:
-                    metrics = {}
+                # Intentionally exclude metrics from snapshot; metrics are pushed separately
                 await conn.send_json(
                     {
                         "type": "snapshot",
@@ -413,7 +399,6 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                             "reservations": reservations,
                             "conversations": conversations,
                             "vacations": vacations,
-                            "metrics": metrics,
                         },
                     }
                 )

@@ -149,9 +149,10 @@ function processReservationGroup(
 			const cancelled = Boolean(r.cancelled);
 			const type = Number(r.type ?? 0);
 			const isConversation = type === CONVERSATION_EVENT_TYPE;
+			const customerName = r.customer_name ?? String(waId);
 			const eventData: Record<string, unknown> = {
 				id: String(r.id ?? waId),
-				title: r.customer_name ?? String(waId),
+				title: customerName,
 				start: `${baseDate}T${startTime}`,
 				end: `${baseDate}T${endTime}`,
 				editable: !(isConversation || cancelled),
@@ -164,6 +165,11 @@ function processReservationGroup(
 					baseTime: baseTimeBound,
 				}),
 			};
+
+			// biome-ignore lint/suspicious/noConsole: DEBUG
+			globalThis.console?.log?.(
+				`[ReservationProcess] Creating event: id=${eventData.id} customer_name="${r.customer_name}" → title="${customerName}" | extendedProps.customerName="${(eventData.extendedProps as { customerName?: string })?.customerName}"`
+			);
 			if (cancelled) {
 				eventData.textColor = "#908584";
 			}
@@ -187,6 +193,7 @@ function buildExtendedProps(props: {
 		type,
 		cancelled,
 		waId,
+		customerName: r.customer_name ?? String(waId), // ✅ Add customerName!
 		slotDate: baseDate,
 		slotTime: baseTime,
 		...(typeof (r as { id?: unknown }).id !== "undefined"

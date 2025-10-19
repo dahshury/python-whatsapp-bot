@@ -2,6 +2,7 @@
 
 import { i18n } from "@shared/libs/i18n";
 import { useSettings } from "@shared/libs/state/settings-context";
+import { useChatTypingStore } from "@shared/libs/store/chat-typing-store";
 import {
 	SingleAsteriskBold,
 	SingleTildeStrike,
@@ -58,22 +59,17 @@ type PastedSlice = {
 	content: Array<{ textContent: string }>;
 };
 
-// Helper to dispatch typing indicator event
-function dispatchTypingIndicatorEvent(): void {
-	try {
-		const evt = new CustomEvent("chat:editor_event", {
-			detail: { type: "chat:editor_update" },
-		});
-		window.dispatchEvent(evt);
-	} catch {
-		// Typing indicator event dispatch may fail in some contexts
-	}
-}
-
 // Helper to notify about typing if enabled
-function notifyTypingIfEnabled(sendTypingIndicator: boolean): void {
-	if (sendTypingIndicator) {
-		dispatchTypingIndicatorEvent();
+function notifyTypingIfEnabled(
+	sendTypingIndicator: boolean,
+	waId?: string
+): void {
+	if (sendTypingIndicator && waId) {
+		try {
+			useChatTypingStore.getState().notifyTyped(waId);
+		} catch {
+			// ignore store errors
+		}
 	}
 }
 
@@ -117,8 +113,7 @@ function extractPastedText(slice: PastedSlice): string {
 function handleEditorPaste(
 	view: EditorPasteView,
 	slice: PastedSlice,
-	maxChars: number,
-	sendTypingIndicator: boolean
+	options: { maxChars: number; sendTypingIndicator: boolean; waId?: string }
 ): boolean {
 	const pastedText = extractPastedText(slice);
 	const currentText = view.state.doc.textContent;
@@ -126,18 +121,26 @@ function handleEditorPaste(
 	const newText =
 		currentText.slice(0, from) + pastedText + currentText.slice(to);
 
-	if (countCharacters(newText) > maxChars) {
-		insertTruncatedText({ view, pastedText, currentText, from, to, maxChars });
-		notifyTypingIfEnabled(sendTypingIndicator);
+	if (countCharacters(newText) > options.maxChars) {
+		insertTruncatedText({
+			view,
+			pastedText,
+			currentText,
+			from,
+			to,
+			maxChars: options.maxChars,
+		});
+		notifyTypingIfEnabled(options.sendTypingIndicator, options.waId);
 		return true;
 	}
 
-	notifyTypingIfEnabled(sendTypingIndicator);
+	notifyTypingIfEnabled(options.sendTypingIndicator, options.waId);
 	return false;
 }
 
 export const BasicChatInput: React.FC<{
 	onSend: (text: string) => void;
+	waId?: string;
 	disabled?: boolean;
 	placeholder?: string;
 	isSending?: boolean;
@@ -146,6 +149,7 @@ export const BasicChatInput: React.FC<{
 	isLocalized?: boolean;
 }> = ({
 	onSend,
+	waId,
 	disabled = false,
 	placeholder = "Type message...",
 	isSending = false,
@@ -197,11 +201,8 @@ export const BasicChatInput: React.FC<{
 				}
 				// Notify typing listeners if enabled
 				try {
-					if (sendTypingIndicator) {
-						const evt = new CustomEvent("chat:editor_event", {
-							detail: { type: "chat:editor_update" },
-						});
-						window.dispatchEvent(evt);
+					if (sendTypingIndicator && waId) {
+						useChatTypingStore.getState().notifyTyped(waId);
 					}
 				} catch {
 					// Keyboard event handling may fail in some contexts
@@ -212,8 +213,11 @@ export const BasicChatInput: React.FC<{
 				return handleEditorPaste(
 					view as EditorPasteView,
 					slice as unknown as PastedSlice,
-					WHATSAPP_TEXT_MAX_CHARS,
-					sendTypingIndicator
+					{
+						maxChars: WHATSAPP_TEXT_MAX_CHARS,
+						sendTypingIndicator,
+						waId,
+					}
 				);
 			},
 		},
@@ -329,6 +333,8 @@ export const BasicChatInput: React.FC<{
 			}
 			editor?.chain().focus().insertContent(emoji).run();
 		} finally {
+			// Consider emoji insertion as typing
+			notifyTypingIfEnabled(sendTypingIndicator, waId);
 			setEmojiOpen(false);
 		}
 	};

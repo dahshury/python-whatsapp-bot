@@ -1,10 +1,8 @@
 "use client";
 
-import {
-	useConversationsData,
-	useReservationsData,
-} from "@shared/libs/data/websocket-data-provider";
 import { i18n } from "@shared/libs/i18n";
+import { useConversations } from "@shared/libs/query/conversations.hooks";
+import { useReservations } from "@shared/libs/query/reservations.hooks";
 import { useLanguage } from "@shared/libs/state/language-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { cn } from "@shared/libs/utils";
@@ -30,12 +28,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const pathname = usePathname();
 	const isDashboardPage = pathname?.startsWith("/dashboard") ?? false;
 
-	// Use unified data provider
-	const { conversations, isLoading: conversationsLoading } =
-		useConversationsData();
-	const { reservations, isLoading: reservationsLoading } =
-		useReservationsData();
-	const chatLoading = conversationsLoading || reservationsLoading;
+	// Load via React Query
+	const conversationsQuery = useConversations();
+	const reservationsQuery = useReservations();
+	const conversations = (conversationsQuery.data?.data || {}) as Record<
+		string,
+		unknown[]
+	>;
+	const reservations = (reservationsQuery.data?.data || {}) as Record<
+		string,
+		unknown[]
+	>;
+	const chatLoading = Boolean(
+		conversationsQuery.isLoading || reservationsQuery.isLoading
+	);
 
 	// Use enhanced persistent chat store
 	const {
@@ -260,6 +266,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 		if (isInitialized) {
 			if (activeTab === "chat") {
 				setOpenState(true);
+				// Do not load any conversation messages on open
 			} else {
 				setOpenState(false);
 			}

@@ -1,8 +1,14 @@
+import { useWsStore } from "@shared/libs/store/ws-store";
+// Dev logger (safe in production due to internal gating)
+import { devInfo, devLog, devWarn } from "@shared/libs/utils/dev-logger";
+import { zWebSocketMessage } from "@shared/validation/ws/message.schema";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Vacation } from "@/entities/vacation";
 import { loadCachedState, persistState } from "@/shared/libs/ws/cache";
 import { reduceOnMessage } from "@/shared/libs/ws/reducer";
 import type {
 	UpdateType,
+	VacationSnapshot,
 	WebSocketDataState,
 	WebSocketMessage,
 } from "@/shared/libs/ws/types";
@@ -180,7 +186,12 @@ function setupSocketEventHandlers(opts: SocketEventHandlerOptions): void {
 	socket.onopen = () => onSocketOpen(socket);
 	socket.onmessage = (event) => {
 		try {
-			const message: WebSocketMessage = JSON.parse(event.data);
+			const raw = JSON.parse(event.data);
+			const parsed = zWebSocketMessage.safeParse(raw);
+			if (!parsed.success) {
+				return; // Invalid message; ignore
+			}
+			const message = parsed.data as unknown as WebSocketMessage;
 			processMessage(message);
 			if (message.type === "snapshot") {
 				messageQueueRef.current = [];
@@ -193,9 +204,7 @@ function setupSocketEventHandlers(opts: SocketEventHandlerOptions): void {
 		handleCloseEvent(event as CloseEvent);
 	};
 	socket.onerror = () => {
-		if (WS_DEBUG) {
-			// Debug: socket error
-		}
+		// Suppress noisy socket error logs; handled via reconnect flow
 		connectingRef.current = false;
 		__g.__wsLock = false;
 	};
@@ -244,6 +253,15 @@ function isAlreadyConnecting(
 	);
 }
 
+// Helper function to transform VacationSnapshot to Vacation with generated IDs
+function transformVacationSnapshots(snapshots: VacationSnapshot[]): Vacation[] {
+	return snapshots.map((snapshot, index) => ({
+		id: `${snapshot.start}-${snapshot.end}-${index}`,
+		start: snapshot.start,
+		end: snapshot.end,
+	}));
+}
+
 export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	const {
 		autoReconnect = true,
@@ -286,36 +304,62 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 	const processMessage = useCallback((message: WebSocketMessage) => {
 		const { type, data } = message;
 
-		setState((prev) => reduceOnMessage(prev, message));
+		// Minimal inline logging to avoid increasing complexity
+		if (process.env.NODE_ENV !== "production") {
+			try {
+				devLog("WS message", {
+					type,
+					keys: Object.keys((data || {}) as Record<string, unknown>),
+				});
+			} catch {
+				// ignore
+			}
+		}
+
+		setState((prev) => {
+			const next = reduceOnMessage(prev, message);
+			try {
+				const store = useWsStore.getState();
+				if (next.conversations !== prev.conversations) {
+					store.setConversations(next.conversations);
+				}
+				if (next.reservations !== prev.reservations) {
+					store.setReservations(next.reservations);
+				}
+				if (next.vacations !== prev.vacations) {
+					store.setVacations(transformVacationSnapshots(next.vacations));
+				}
+			} catch {
+				// Store sync failed; ignore
+			}
+			return next;
+		});
 
 		// Metrics and realtime event fan-out
 		try {
 			const payload = data as { metrics?: Record<string, unknown> };
-			if (type === "metrics_updated" || type === "snapshot") {
+			// Only handle metrics from explicit metrics updates; snapshots omit metrics on calendar
+			if (type === "metrics_updated") {
 				setWindowProperty("__prom_metrics__", payload.metrics || {});
 			}
 		} catch {
 			// Metrics update failed; silently ignore
 		}
-		try {
-			setTimeout(() => {
-				try {
-					// Pass the entire message to preserve all fields (error, timestamp, etc.)
-					const evt = new CustomEvent("realtime", { detail: message });
-					window.dispatchEvent(evt);
-				} catch {
-					// Event dispatch failed; silently ignore
-				}
-			}, 0);
-		} catch {
-			// setTimeout failed; silently ignore
-		}
+		setTimeout(() => {
+			try {
+				// Pass the entire message to preserve all fields (error, timestamp, etc.)
+				const evt = new CustomEvent("realtime", { detail: message });
+				window.dispatchEvent(evt);
+			} catch {
+				// Event dispatch failed; silently ignore
+			}
+		}, 0);
 
 		// Do not call notifyUpdate here to avoid duplicate toasts; handled via RealtimeEventBus -> ToastRouter
 	}, []);
 
-	// Connect to WebSocket - now stable function with auto-reconnect
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: WebSocket connection logic requires complex state checks
+	// Connect to WebSocket - split into inner function to keep wrapper simple
+	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: WS connection requires multiple branches
 	const connect = useCallback(() => {
 		const scheduleLockRetry = () => {
 			if (lockRetryTimeoutRef.current) {
@@ -323,6 +367,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			}
 			lockRetryTimeoutRef.current = setTimeout(() => {
 				lockRetryTimeoutRef.current = null;
+				// Recurse via current closure to avoid rebuilding deps
 				connect();
 			}, LOCK_RETRY_DELAY_MS);
 		};
@@ -334,6 +379,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			}
 		};
 
+		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: event wiring
 		const onSocketOpen = (ws: WebSocket) => {
 			setState((prev) => ({ ...prev, isConnected: true }));
 			reconnectAttemptsRef.current = 0;
@@ -342,10 +388,17 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			__g.__wsInstance = ws;
 			__g.__wsConnectTs = Date.now();
 			clearLockRetry();
+			if (process.env.NODE_ENV !== "production") {
+				try {
+					devInfo("WS open", { url: ws.url });
+				} catch {
+					// ignore
+				}
+			}
 			try {
 				setWindowProperty("__wsConnection", wsRef);
 			} catch {
-				// Window property set failed; silently ignore
+				// ignore
 			}
 			setupHeartbeat(wsRef, pingIntervalRef);
 			if (filters) {
@@ -412,9 +465,6 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 
 		// Prevent multiple connections
 		if (isAlreadyConnecting(wsRef, connectingRef)) {
-			if (WS_DEBUG) {
-				// Debug: already connecting or connected
-			}
 			scheduleLockRetry();
 			return;
 		}
@@ -425,41 +475,49 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		connectingRef.current = true;
 		try {
 			const wsUrl = getWebSocketUrl();
-			if (WS_DEBUG) {
-				// Debug: connecting to URL
+			if (process.env.NODE_ENV !== "production") {
+				try {
+					devInfo("WS connecting", { url: wsUrl });
+				} catch {
+					// ignore
+				}
 			}
 			const ws = new WebSocket(wsUrl);
 			__g.__wsInstance = ws;
-
+			const onClose = (event: CloseEvent) =>
+				handleSocketClose({
+					event,
+					wsRef,
+					pingIntervalRef,
+					reconnectTimeoutRef,
+					connectingRef,
+					autoReconnect,
+					reconnectInterval,
+					maxReconnectAttempts,
+					reconnectAttemptsRef,
+					connect,
+					setState,
+				});
 			setupSocketEventHandlers({
 				socket: ws,
 				onSocketOpen,
 				processMessage,
 				messageQueueRef,
 				connectingRef,
-				handleCloseEvent: (event) => {
-					handleSocketClose({
-						event,
-						wsRef,
-						pingIntervalRef,
-						reconnectTimeoutRef,
-						connectingRef,
-						autoReconnect,
-						reconnectInterval,
-						maxReconnectAttempts,
-						reconnectAttemptsRef,
-						connect,
-						setState,
-					});
-				},
+				handleCloseEvent: onClose,
 			});
 			setupHeartbeat(wsRef, pingIntervalRef);
 			wsRef.current = ws;
-		} catch {
+		} catch (err) {
 			// Connection creation failed; will retry after delay
 			connectingRef.current = false;
 			__g.__wsLock = false;
 			scheduleLockRetry();
+			try {
+				devWarn("WS connect error", err as unknown);
+			} catch {
+				// ignore
+			}
 		}
 	}, [
 		getWebSocketUrl,
@@ -681,6 +739,18 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 		state.lastUpdate,
 		state,
 	]);
+
+	// Sync Zustand store on state changes (covers initial cache load)
+	useEffect(() => {
+		try {
+			const store = useWsStore.getState();
+			store.setReservations(state.reservations);
+			store.setConversations(state.conversations);
+			store.setVacations(transformVacationSnapshots(state.vacations));
+		} catch {
+			// ignore
+		}
+	}, [state.reservations, state.conversations, state.vacations]);
 
 	return useMemo(
 		() => ({

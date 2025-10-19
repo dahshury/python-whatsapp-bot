@@ -1,18 +1,20 @@
+import { zModifyIdBody } from "@shared/validation/api/requests/modify-id.schema";
+import { zApiResponse } from "@shared/validation/api/response.schema";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: Request) {
 	try {
-		const body = await request.json();
-		const { old_id, new_id, ar } = body;
-
-		// Validate required fields
-		if (!(old_id && new_id)) {
+		const json = await request.json().catch(() => ({}));
+		const parsed = zModifyIdBody.safeParse(json);
+		if (!parsed.success) {
 			return NextResponse.json(
-				{ success: false, message: "Missing required fields: old_id, new_id" },
+				{ success: false, message: parsed.error.message },
 				{ status: 400 }
 			);
 		}
+		const { old_id, new_id, ar } = parsed.data;
 
 		// Call the Python backend with parameters that match modify_id function
 		// The endpoint expects a wa_id in the URL (which can be anything) and both old and new IDs in the body
@@ -25,7 +27,8 @@ export async function POST(request: Request) {
 					new_wa_id: new_id, // New WhatsApp ID
 					ar, // Arabic language flag
 				}),
-			}
+			},
+			zApiResponse(z.record(z.unknown()))
 		);
 
 		return NextResponse.json(backendResponse);

@@ -9,20 +9,34 @@ import { CustomerDataProvider } from "@shared/libs/data/customer-data-context";
 import { UnifiedDataProvider } from "@shared/libs/data/unified-data-provider";
 import { WebSocketDataProvider } from "@shared/libs/data/websocket-data-provider";
 import { DockBridgeProvider } from "@shared/libs/dock-bridge-context";
+import { applyQueryDefaults } from "@shared/libs/query/query-defaults";
+import { QueryHydration } from "@shared/libs/query/query-hydration";
+import {
+	prefetchConversationList,
+	prefetchReservations,
+} from "@shared/libs/query/query-prefetch";
+import { QueryProvider } from "@shared/libs/query/query-provider";
 import { LanguageProvider } from "@shared/libs/state/language-context";
 import { SettingsProvider } from "@shared/libs/state/settings-context";
 import { VacationProvider } from "@shared/libs/state/vacation-context";
 import { ToastRouter } from "@shared/libs/toast/toast-router";
+import { BackendConnectionOverlayBridge } from "@shared/libs/ui/backend-connection-overlay-bridge";
+import { toIsoDate } from "@shared/libs/utils/date-utils";
 import { DvhInit } from "@shared/ui/dvh-init";
 import { ErrorRecoveryInit } from "@shared/ui/error-recovery-init";
 import { MainContentWrapper } from "@shared/ui/main-content-wrapper";
 import { ThemeWrapper } from "@shared/ui/theme-wrapper";
 import { UndoManager } from "@shared/ui/undo-manager";
+import { dehydrate, QueryClient } from "@tanstack/react-query";
 import { ConditionalAppSidebar } from "@/features/navigation/conditional-app-sidebar";
 import { PersistentDockHeader } from "@/features/navigation/persistent-dock-header";
 import { THEME_OPTIONS } from "@/features/settings/settings/theme-data";
 import { BackendConnectionProvider } from "@/shared/libs/backend-connection-provider";
 import { RealtimeEventBus } from "@/shared/libs/realtime-event-bus";
+import {
+	ErrorBoundaryWrapper,
+	RootErrorFallback,
+} from "@/shared/ui/error-components";
 import { PortalBootstrap } from "@/shared/ui/portal-bootstrap";
 import { SidebarProvider } from "@/shared/ui/sidebar";
 import { SuppressExcalidrawWarnings } from "@/shared/ui/suppress-excalidraw-warnings";
@@ -89,11 +103,41 @@ export const viewport: Viewport = {
 	themeColor: "#2563eb",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
+	// Server-side prefetch: conversations and reservations within ±5 days
+	const client = new QueryClient();
+	applyQueryDefaults(client);
+	try {
+		const now = new Date();
+		const HOURS_PER_DAY = 24;
+		const MINUTES_PER_HOUR = 60;
+		const SECONDS_PER_MINUTE = 60;
+		const MILLISECONDS_PER_SECOND = 1000;
+		const DAYS_RANGE = 5; // Prefetch within ±5 days as requested
+		const fiveDaysMs =
+			DAYS_RANGE *
+			HOURS_PER_DAY *
+			MINUTES_PER_HOUR *
+			SECONDS_PER_MINUTE *
+			MILLISECONDS_PER_SECOND;
+		const fromDate = toIsoDate(new Date(now.getTime() - fiveDaysMs));
+		const toDate = toIsoDate(new Date(now.getTime() + fiveDaysMs));
+		await Promise.all([
+			prefetchConversationList(client, { fromDate, toDate }),
+			prefetchReservations(client, { fromDate, toDate }),
+		]);
+	} catch {
+		// Ignore prefetch errors to avoid blocking layout
+	}
+	const dehydratedState = dehydrate(client, {
+		// Avoid hydrating queries that were still pending on the server
+		// to prevent dev-only warnings when they later reject (e.g., cancellations).
+		shouldDehydrateQuery: (q) => q.state.status === "success",
+	});
 	return (
 		<html lang="en" suppressHydrationWarning>
 			<head>
@@ -134,58 +178,69 @@ export default function RootLayout({
 				className={`${geist.variable} ${geistMono.variable} font-sans`}
 				suppressHydrationWarning
 			>
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="system"
-					disableTransitionOnChange
-					enableSystem
-					storageKey="ui-theme"
+				<ErrorBoundaryWrapper
+					component="RootLayout"
+					fallback={RootErrorFallback}
+					feature="root"
 				>
-					<SuppressExcalidrawWarnings />
-					<ErrorRecoveryInit />
-					<LanguageProvider>
-						<SettingsProvider>
-							<UiThemeBridge>
-								<SpacemanThemeBridge>
-									<BackendConnectionProvider>
-										<WebSocketDataProvider>
-											<UnifiedDataProvider>
-												<ThemeWrapper>
-													<VacationProvider>
-														<CustomerDataProvider>
-															<DockBridgeProvider>
-																<DvhInit />
-																<div
-																	className="flex flex-col"
-																	style={{
-																		minHeight: "var(--doc-dvh, 100dvh)",
-																	}}
-																>
-																	<div className="flex flex-1 overflow-hidden">
-																		<SidebarProvider>
-																			<ConditionalAppSidebar />
-																			<MainContentWrapper>
-																				<PersistentDockHeader />
-																				{children}
-																			</MainContentWrapper>
-																		</SidebarProvider>
-																	</div>
-																</div>
-																<RealtimeEventBus />
-																<ToastRouter />
-															</DockBridgeProvider>
-														</CustomerDataProvider>
-													</VacationProvider>
-													<UndoManager />
-												</ThemeWrapper>
-											</UnifiedDataProvider>
-										</WebSocketDataProvider>
-									</BackendConnectionProvider>
-								</SpacemanThemeBridge>
-							</UiThemeBridge>
-						</SettingsProvider>
-					</LanguageProvider>
-				</ThemeProvider>
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="system"
+						disableTransitionOnChange
+						enableSystem
+						storageKey="ui-theme"
+					>
+						<SuppressExcalidrawWarnings />
+						<ErrorRecoveryInit />
+						<LanguageProvider>
+							<SettingsProvider>
+								<UiThemeBridge>
+									<SpacemanThemeBridge>
+										<BackendConnectionProvider>
+											<QueryProvider>
+												<QueryHydration state={dehydratedState}>
+													<WebSocketDataProvider>
+														<UnifiedDataProvider>
+															<ThemeWrapper>
+																<VacationProvider>
+																	<CustomerDataProvider>
+																		<DockBridgeProvider>
+																			<DvhInit />
+																			<div
+																				className="flex flex-col"
+																				style={{
+																					minHeight: "var(--doc-dvh, 100dvh)",
+																				}}
+																			>
+																				<div className="flex flex-1 overflow-hidden">
+																					<SidebarProvider>
+																						<ConditionalAppSidebar />
+																						<MainContentWrapper>
+																							<PersistentDockHeader />
+																							{children}
+																						</MainContentWrapper>
+																					</SidebarProvider>
+																				</div>
+																			</div>
+																			<RealtimeEventBus />
+																			<BackendConnectionOverlayBridge />
+																			<ToastRouter />
+																		</DockBridgeProvider>
+																	</CustomerDataProvider>
+																</VacationProvider>
+																<UndoManager />
+															</ThemeWrapper>
+														</UnifiedDataProvider>
+													</WebSocketDataProvider>
+												</QueryHydration>
+											</QueryProvider>
+										</BackendConnectionProvider>
+									</SpacemanThemeBridge>
+								</UiThemeBridge>
+							</SettingsProvider>
+						</LanguageProvider>
+					</ThemeProvider>
+				</ErrorBoundaryWrapper>
 				<PortalBootstrap />
 			</body>
 		</html>

@@ -1,4 +1,4 @@
-// biome-ignore lint/performance/noBarrelFile: Module public API exports
+// biome-ignore lint/performance/noBarrelFile: This module intentionally re-exports public API for convenience
 export {
 	FullscreenProvider,
 	useFullscreen,
@@ -7,7 +7,7 @@ export { InMemoryDataSource } from "./components/core/data-sources/in-memory-dat
 export type { IDataSource } from "./components/core/interfaces/i-data-source";
 export * from "./components/core/interfaces/i-data-source";
 export * from "./components/core/services/data-provider";
-export { default as Grid } from "./components/grid";
+export { default as Grid } from "./components/Grid";
 export * from "./components/ui/grid-loading-state";
 export { createGlideTheme } from "./components/utils/streamlit-glide-theme";
 export * from "./state/editing-state";

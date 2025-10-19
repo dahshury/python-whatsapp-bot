@@ -13,8 +13,22 @@ function getPhoneFromExtendedProps(extendedProps: unknown): string {
 		return "";
 	}
 	const obj = extendedProps as Record<string, unknown>;
-	const val = obj.phone ?? obj.waId;
-	return typeof val === "string" ? val : "";
+	const candidates = [
+		obj.phone,
+		obj.waId,
+		(obj as { wa_id?: unknown }).wa_id,
+		(obj as { waid?: unknown }).waid,
+		(obj as { phoneNumber?: unknown }).phoneNumber,
+	];
+	for (const c of candidates) {
+		if (typeof c === "string" && c.trim().length > 0) {
+			return c.trim();
+		}
+		if (typeof c === "number") {
+			return String(c);
+		}
+	}
+	return "";
 }
 
 function formatPhoneNumber(phoneNumber: string): string {
@@ -30,6 +44,15 @@ function filterEventByTimeRange(
 	slotDurationHours: number,
 	freeRoam: boolean
 ): boolean {
+	// Never include conversation events in the data grid
+	const marker = Number(
+		(event.extendedProps as { type?: unknown } | undefined)?.type ??
+			(event as unknown as { type?: unknown }).type ??
+			Number.NaN
+	);
+	if (Number.isFinite(marker) && marker === 2) {
+		return false;
+	}
 	if (event.type === "conversation") {
 		return false;
 	}
@@ -73,7 +96,13 @@ function getEventValue(
 ): unknown {
 	const eventDate = new Date(event.start);
 	let phoneNumber = getPhoneFromExtendedProps(event.extendedProps);
+	const before = phoneNumber;
 	phoneNumber = formatPhoneNumber(phoneNumber);
+	// biome-ignore lint/suspicious/noConsole: DEBUG
+	globalThis.console?.log?.(
+		`[DataSource] phone resolve: eventId=${event.id} candidates→resolved: "${before}"→"${phoneNumber}" | extendedProps:`,
+		JSON.parse(JSON.stringify(event.extendedProps || {}))
+	);
 
 	switch (columnId) {
 		case "scheduled_time":
@@ -87,11 +116,59 @@ function getEventValue(
 			}
 			return type === 0 ? "Check-up" : "Follow-up";
 		}
-		case "name":
-			return event.title || event.extendedProps?.customerName || "";
+		case "name": {
+			return resolveCustomerName(event);
+		}
 		default:
 			return null;
 	}
+}
+
+function resolveCustomerName(event: CalendarEvent): string {
+	const explicitName = event.extendedProps?.customerName;
+	if (typeof explicitName === "string" && explicitName.trim().length > 0) {
+		return explicitName;
+	}
+	if (typeof event.title === "string" && event.title.trim().length > 0) {
+		return event.title;
+	}
+	const waId =
+		(event.extendedProps?.waId as string | undefined) ??
+		((event.extendedProps as { wa_id?: string } | undefined)?.wa_id as
+			| string
+			| undefined) ??
+		(event.id as string | undefined) ??
+		"";
+	const fallback = formatPhoneNumber(waId);
+	// biome-ignore lint/suspicious/noConsole: DEBUG
+	globalThis.console?.log?.(
+		`[DataSource] resolveCustomerName fallback used for eventId=${event.id}: waId="${waId}" → "${fallback}" | Full event:`,
+		JSON.parse(JSON.stringify(event))
+	);
+	return fallback;
+}
+
+function getStabilizedNameValue(
+	event: CalendarEvent,
+	lastNameByIdRef: React.RefObject<Map<string, string>>
+): string {
+	const name = resolveCustomerName(event);
+	if (name?.trim()) {
+		const map = lastNameByIdRef.current;
+		if (map) {
+			map.set(String(event.id), name);
+		}
+		return name;
+	}
+	const prev = lastNameByIdRef.current?.get(String(event.id));
+	if (prev?.trim()) {
+		// biome-ignore lint/suspicious/noConsole: DEBUG
+		globalThis.console?.log?.(
+			`[DataSource] using stabilized previous name for eventId=${event.id}: "${prev}"`
+		);
+		return prev;
+	}
+	return name;
 }
 
 export function useDataTableDataSource(args: {
@@ -111,6 +188,7 @@ export function useDataTableDataSource(args: {
 		isLocalized: isLocalizedArg,
 	} = args;
 	const gridRowToEventMapRef = useRef<Map<number, CalendarEvent>>(new Map());
+	const lastNameByIdRef = useRef<Map<string, string>>(new Map());
 	const mapper = useMemo(() => createDataSourceMapper<CalendarEvent>(), []);
 
 	const _isLocalized = isLocalizedArg ?? false;
@@ -152,7 +230,9 @@ export function useDataTableDataSource(args: {
 					return dateA.getTime() - dateB.getTime();
 				},
 				getValue: (event: CalendarEvent, columnId: string) =>
-					getEventValue(event, columnId, _isLocalized),
+					columnId === "name"
+						? getStabilizedNameValue(event, lastNameByIdRef)
+						: getEventValue(event, columnId, _isLocalized),
 			};
 
 			const newDataSource = mapper.mapToDataSource(
@@ -179,7 +259,12 @@ export function useDataTableDataSource(args: {
 				rows: filteredEvents.map((ev, idx) => ({
 					row: idx,
 					eventId: ev.id,
-					waId: ev.extendedProps?.waId || ev.id,
+					waId:
+						(ev.extendedProps?.waId as string | undefined) ??
+						((ev.extendedProps as { wa_id?: string } | undefined)?.wa_id as
+							| string
+							| undefined) ??
+						ev.id,
 					start: ev.start,
 				})),
 			});
@@ -260,12 +345,16 @@ function areEventsEqual(
 		const bExt = b.extendedProps || {};
 
 		if (
-			aExt.customerName !== bExt.customerName ||
-			aExt.phone !== bExt.phone ||
-			aExt.waId !== bExt.waId ||
-			aExt.type !== bExt.type ||
-			aExt.cancelled !== bExt.cancelled ||
-			aExt.reservationId !== bExt.reservationId
+			(aExt as { customerName?: unknown }).customerName !==
+				(bExt as { customerName?: unknown }).customerName ||
+			(aExt as { phone?: unknown }).phone !==
+				(bExt as { phone?: unknown }).phone ||
+			(aExt as { waId?: unknown }).waId !== (bExt as { waId?: unknown }).waId ||
+			(aExt as { type?: unknown }).type !== (bExt as { type?: unknown }).type ||
+			(aExt as { cancelled?: unknown }).cancelled !==
+				(bExt as { cancelled?: unknown }).cancelled ||
+			(aExt as { reservationId?: unknown }).reservationId !==
+				(bExt as { reservationId?: unknown }).reservationId
 		) {
 			return false;
 		}

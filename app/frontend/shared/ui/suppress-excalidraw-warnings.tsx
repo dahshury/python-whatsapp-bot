@@ -48,7 +48,13 @@ export function SuppressExcalidrawWarnings() {
 					full.includes("UNSAFE_") ||
 					full.includes("findDOMNode") ||
 					full.includes("<button> cannot contain a nested <button>") ||
-					full.includes("Maximum update depth exceeded")
+					full.includes("Maximum update depth exceeded") ||
+					// TanStack Query dev-only hydration noise
+					full.includes(
+						"A query that was dehydrated as pending ended up rejecting"
+					) ||
+					(full.includes("CancelledError") &&
+						full.includes("dehydrated as pending"))
 				);
 			} catch {
 				return false;

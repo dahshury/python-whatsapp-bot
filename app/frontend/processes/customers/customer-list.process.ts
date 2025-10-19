@@ -45,19 +45,10 @@ export function buildBaseCustomers(
 			customerMap.set(waId, { id: waId, name: "", phone: waId });
 		}
 	}
-	// enrich names from reservations
-	for (const [waId, list] of Object.entries(reservations || {})) {
-		const arr = Array.isArray(list) ? list : [];
-		const name = arr.find((r) =>
-			(r?.customer_name || "").trim()
-		)?.customer_name;
-		if (name) {
-			const existing = customerMap.get(waId);
-			if (existing) {
-				customerMap.set(waId, { ...existing, name });
-			} else {
-				customerMap.set(waId, { id: waId, name, phone: waId });
-			}
+	// also seed wa_ids from reservations without trusting reservation names
+	for (const waId of Object.keys(reservations || {})) {
+		if (!customerMap.has(waId)) {
+			customerMap.set(waId, { id: waId, name: "", phone: waId });
 		}
 	}
 	return Array.from(customerMap.values());

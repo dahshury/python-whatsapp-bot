@@ -279,6 +279,19 @@ export class CalendarDnDService {
 					payload.title = event.title;
 				}
 				updateEvent(String(event.id), payload);
+
+				// Emit a local success toast now that the server confirmed
+				try {
+					toastService.reservationModified({
+						customer: event.title || "",
+						wa_id: String(waId),
+						date: String(newDate),
+						time: newTime,
+						isLocalized: this.isLocalized,
+					});
+				} catch {
+					// Ignore toast errors
+				}
 			} catch {
 				// Ignore errors
 			}

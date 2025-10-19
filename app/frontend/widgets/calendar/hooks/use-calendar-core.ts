@@ -76,10 +76,11 @@ export function useCalendarCore({
 	});
 
 	// Calendar events management
+	const excludeConv = excludeConversations === true ? true : !freeRoam;
 	const eventsState = useCalendarEvents({
 		freeRoam,
 		isLocalized,
-		...(excludeConversations ? { excludeConversations: true } : {}),
+		...(excludeConv ? { excludeConversations: true } : {}),
 	});
 
 	// Filter cancelled, align and sort within slots, then adjust free roam editability

@@ -1,0 +1,108 @@
+/* Golden Hour Theme - A warm, sunset-inspired theme with burnt orange and golden tones */
+/* To enable: Add className="theme-golden-hour" to html or body tag */
+
+.theme-golden-hour {
+	--background: 38 38% 97%; /* hsl(38 38% 97%) - #fdfaf5 - warm cream */
+	--foreground: 28 8% 23%; /* hsl(28 8% 23%) - #3c3328 - dark brown */
+	--card: 60 100% 100%; /* hsl(60 100% 100%) - #fffffa - near white */
+	--card-foreground: 0 0% 0%; /* hsl(0 0% 0%) - black */
+	--popover: 60 100% 100%; /* hsl(60 100% 100%) - #fffffa */
+	--popover-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--primary: 25 68% 39%; /* hsl(25 68% 39%) - #ad5200 - burnt orange */
+	--primary-foreground: 0 0% 100%; /* hsl(0 0% 100%) - white */
+	--secondary: 10 79% 54%; /* hsl(10 79% 54%) - #e04a31 - red-orange */
+	--secondary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--muted: 28 42% 93%; /* hsl(28 42% 93%) - #f3ede5 - light tan */
+	--muted-foreground: 28 11% 47%; /* hsl(28 11% 47%) - #7d7366 - muted brown */
+	--accent: 41 100% 60%; /* hsl(41 100% 60%) - #ffc857 - golden yellow */
+	--accent-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--destructive: 28 15% 58%; /* hsl(28 15% 58%) - #9b8771 - beige-brown */
+	--destructive-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--border: 28 40% 87%; /* hsl(28 40% 87%) - #eae0d4 - light border */
+	--input: 28 19% 77%; /* hsl(28 19% 77%) - #c9c0b4 - tan input */
+	--ring: 23 62% 50% / 0.15; /* hsl(23 62% 50% / 0.15) - burnt orange ring */
+	--chart-1: 25 75% 43%; /* hsl(25 75% 43%) - #d26e03 - orange */
+	--chart-2: 35 76% 40%; /* hsl(35 76% 40%) - #b7891b - olive */
+	--chart-3: 23 100% 67%; /* hsl(23 100% 67%) - #ffa663 - light orange */
+	--chart-4: 28 100% 23%; /* hsl(28 100% 23%) - #744e00 - dark brown */
+	--chart-5: 20 100% 27%; /* hsl(20 100% 27%) - #893800 - dark orange */
+	--sidebar: 38 38% 97%; /* hsl(38 38% 97%) - #fdfaf5 */
+	--sidebar-background: 38 38% 97%; /* hsl(38 38% 97%) */
+	--sidebar-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--sidebar-primary: 25 68% 39%; /* hsl(25 68% 39%) - #ad5200 */
+	--sidebar-primary-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+	--sidebar-accent: 60 100% 100%; /* hsl(60 100% 100%) - #fffffa */
+	--sidebar-accent-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--sidebar-border: 28 40% 87%; /* hsl(28 40% 87%) - #eae0d4 */
+	--sidebar-ring: 23 62% 50%; /* hsl(23 62% 50%) - #cf7030 */
+	--font-sans: "Nunito Sans", Inter, var(--font-sans-stack);
+	--font-serif: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
+	--font-mono: "JetBrains Mono", ui-monospace, var(--font-mono-stack);
+	--radius: 0.375rem;
+	--shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm:
+		0 1px 2px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0 1px 2px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md:
+		0 2px 4px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg:
+		0 4px 6px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl:
+		0 8px 10px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0 20px 25px 0px hsl(0 0% 0% / 0.15);
+}
+
+/* Dark mode for Golden Hour theme */
+.theme-golden-hour.dark,
+.dark .theme-golden-hour {
+	--background: 28 30% 13%; /* hsl(28 30% 13%) - #241d13 - very dark brown */
+	--foreground: 38 38% 97%; /* hsl(38 38% 97%) - #fdfaf5 - cream text */
+	--card: 28 40% 9%; /* hsl(28 40% 9%) - #1d160c - dark card */
+	--card-foreground: 0 0% 100%; /* hsl(0 0% 100%) - white */
+	--popover: 28 40% 9%; /* hsl(28 40% 9%) - #1d160c */
+	--popover-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+	--primary: 32 68% 60%; /* hsl(32 68% 60%) - #db9741 - golden */
+	--primary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--secondary: 6 100% 69%; /* hsl(6 100% 69%) - #ff857a - coral */
+	--secondary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--muted: 28 41% 11%; /* hsl(28 41% 11%) - #1f180e - dark muted */
+	--muted-foreground: 28 8% 64%; /* hsl(28 8% 64%) - #a49e95 - light gray */
+	--accent: 41 100% 20%; /* hsl(41 100% 20%) - #654b00 - dark gold */
+	--accent-foreground: 0 0% 100%; /* hsl(0 0% 100%) - white */
+	--destructive: 19 51% 68%; /* hsl(19 51% 68%) - #d3aa92 - tan */
+	--destructive-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--border: 28 24% 18%; /* hsl(28 24% 18%) - #30281d - dark border */
+	--input: 28 11% 27%; /* hsl(28 11% 27%) - #4a4136 - dark input */
+	--ring: 33 74% 42% / 0.15; /* hsl(33 74% 42% / 0.15) - golden ring */
+	--chart-1: 32 64% 42%; /* hsl(32 64% 42%) - #b97a26 - gold */
+	--chart-2: 38 45% 40%; /* hsl(38 45% 40%) - #9f8038 - olive */
+	--chart-3: 32 100% 65%; /* hsl(32 100% 65%) - #ffb55a - light gold */
+	--chart-4: 41 100% 20%; /* hsl(41 100% 20%) - #654b00 - dark gold */
+	--chart-5: 20 100% 23%; /* hsl(20 100% 23%) - #774400 - dark orange */
+	--sidebar: 28 30% 13%; /* hsl(28 30% 13%) - #241d13 */
+	--sidebar-background: 28 30% 13%; /* hsl(28 30% 13%) */
+	--sidebar-foreground: 0 0% 100%; /* hsl(0 0% 100%) - white */
+	--sidebar-primary: 32 68% 60%; /* hsl(32 68% 60%) - #db9741 */
+	--sidebar-primary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+	--sidebar-accent: 28 48% 7%; /* hsl(28 48% 7%) - #1b140a */
+	--sidebar-accent-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+	--sidebar-border: 28 24% 18%; /* hsl(28 24% 18%) - #30281d */
+	--sidebar-ring: 33 74% 42%; /* hsl(33 74% 42%) - #ba7818 */
+	--font-sans: "Nunito Sans", Inter, var(--font-sans-stack);
+	--font-serif: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
+	--font-mono: "JetBrains Mono", ui-monospace, var(--font-mono-stack);
+	--radius: 0.375rem;
+	--shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.2);
+	--shadow-xs: 0 1px 2px 0px hsl(0 0% 0% / 0.2);
+	--shadow-sm:
+		0 1px 2px 0px hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+	--shadow: 0 1px 2px 0px hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+	--shadow-md:
+		0 2px 4px 0px hsl(0 0% 0% / 0.3), 0 2px 4px -1px hsl(0 0% 0% / 0.3);
+	--shadow-lg:
+		0 4px 6px 0px hsl(0 0% 0% / 0.3), 0 4px 6px -1px hsl(0 0% 0% / 0.3);
+	--shadow-xl:
+		0 8px 10px 0px hsl(0 0% 0% / 0.3), 0 8px 10px -1px hsl(0 0% 0% / 0.3);
+	--shadow-2xl: 0 20px 25px 0px hsl(0 0% 0% / 0.4);
+}

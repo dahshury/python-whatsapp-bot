@@ -3,6 +3,9 @@
  * Global persistence across the app (not per user/document)
  */
 
+import { zLibraryItems } from "@shared/validation/domain/excalidraw.schema";
+import { safeParseJson } from "@shared/validation/json";
+
 export type LibraryItem = {
 	id: string;
 	status: "published" | "unpublished";
@@ -24,8 +27,8 @@ export function getGlobalLibraryItems(): LibraryItems {
 		if (!stored) {
 			return [];
 		}
-		const parsed = JSON.parse(stored) as LibraryItems;
-		return Array.isArray(parsed) ? parsed : [];
+		const parsed = safeParseJson(zLibraryItems, stored);
+		return parsed.success ? parsed.data : [];
 	} catch (_error) {
 		return [];
 	}

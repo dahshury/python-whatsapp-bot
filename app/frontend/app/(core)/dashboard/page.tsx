@@ -3,6 +3,10 @@
 import { DashboardSkeleton } from "@features/dashboard/dashboard-skeleton";
 import dynamic from "next/dynamic";
 import { Suspense, useEffect } from "react";
+import {
+	DashboardErrorFallback,
+	ErrorBoundaryWrapper,
+} from "@/shared/ui/error-components";
 import { SidebarInset, useSidebar } from "@/shared/ui/sidebar";
 
 const DashboardView = dynamic(
@@ -29,13 +33,19 @@ export default function DashboardPage() {
 	}, [setOpen, setOpenMobile]);
 	return (
 		<SidebarInset>
-			<div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
-				<div className="mx-auto w-full max-w-7xl">
-					<Suspense fallback={<DashboardSkeleton />}>
-						<DashboardView />
-					</Suspense>
+			<ErrorBoundaryWrapper
+				component="DashboardPage"
+				fallback={DashboardErrorFallback}
+				feature="dashboard"
+			>
+				<div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+					<div className="mx-auto w-full max-w-7xl">
+						<Suspense fallback={<DashboardSkeleton />}>
+							<DashboardView />
+						</Suspense>
+					</div>
 				</div>
-			</div>
+			</ErrorBoundaryWrapper>
 		</SidebarInset>
 	);
 }

@@ -2,6 +2,7 @@ import type { DataTableOperationsService as _D } from "@processes/data-table-ope
 import { DataTableOperationsService } from "@processes/data-table-operations.process";
 import { i18n } from "@shared/libs/i18n";
 import { toastService } from "@shared/libs/toast/toast-service";
+import { safeParseJson } from "@shared/validation/json";
 import type {
 	CalendarEvent,
 	EditingChanges,
@@ -9,6 +10,7 @@ import type {
 } from "@widgets/data-table-editor/types";
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
+import { z } from "zod";
 import type {
 	CalendarApi as LibCalendarApi,
 	CalendarEvent as LibCalendarEvent,
@@ -152,7 +154,21 @@ function prepareOperationData(args: {
 	const editingState = provider.getEditingState();
 	const baseColumns = buildBaseColumnsFromProvider(provider);
 	const changesJson = editingState.toJson(baseColumns);
-	const changes: EditingChanges = JSON.parse(changesJson);
+	const zEditingChanges = z
+		.object({
+			edited_rows: z.record(z.unknown()).optional(),
+			added_rows: z.array(z.unknown()).optional(),
+			deleted_rows: z.array(z.number()).optional(),
+		})
+		.passthrough();
+	const parsed = safeParseJson(zEditingChanges, changesJson);
+	const changes: EditingChanges = (parsed.success
+		? parsed.data
+		: {
+				edited_rows: {},
+				added_rows: [],
+				deleted_rows: [],
+			}) as unknown as EditingChanges;
 	// biome-ignore lint/suspicious/noConsole: DEBUG
 	globalThis.console?.log?.("[SaveHandler] prepareOperationData", {
 		edited_rows: changes?.edited_rows,

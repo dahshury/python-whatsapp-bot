@@ -7,6 +7,7 @@ import {
 	parseDateOnly,
 	resolveOverlaps,
 } from "@shared/libs/state/vacation-utils";
+import { useVacationEditorStore } from "@shared/libs/store/vacation-editor-store";
 import {
 	createContext,
 	type FC,
@@ -15,7 +16,6 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
-	useRef,
 	useState,
 } from "react";
 import type { CalendarEvent } from "@/entities/event";
@@ -69,45 +69,64 @@ const VacationContext = createContext<VacationContextValue>({
 });
 
 export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
-	const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
-	const [recordingState, setRecordingState] = useState<{
-		periodIndex: number | null;
-		field: "start" | "end" | null;
-	}>({ periodIndex: null, field: null });
+	const vacationPeriods = useVacationEditorStore((s) => s.vacationPeriods);
+	const setVacationPeriods = useVacationEditorStore(
+		(s) => s.setVacationPeriods
+	);
+	const recordingState = useVacationEditorStore((s) => s.recordingState);
+	const startRecordingStore = useVacationEditorStore((s) => s.startRecording);
+	const stopRecordingStore = useVacationEditorStore((s) => s.stopRecording);
+	const setSuppressSyncUntil = useVacationEditorStore(
+		(s) => s.setSuppressSyncUntil
+	);
+	const suppressSyncUntil = useVacationEditorStore((s) => s.suppressSyncUntil);
 	const [loading] = useState<boolean>(false);
-	const suppressSyncUntilRef = useRef<number>(0);
 	// Sync with websocket-provided vacations
 	const { vacations, sendVacationUpdate } = useVacationsData();
 
 	useEffect(() => {
 		try {
 			const now = Date.now();
-			const suppressUntil = suppressSyncUntilRef.current;
-			const isSuppressed = now < suppressUntil;
-
-			// Guard against overwriting local optimistic updates immediately after user changes
+			const isSuppressed = now < suppressSyncUntil;
 			if (isSuppressed) {
 				return;
 			}
-
 			if (Array.isArray(vacations)) {
 				const periods = vacations.map((p: Vacation) => ({
 					start: parseDateOnly(p.start),
 					end: parseDateOnly(p.end),
 				}));
-
 				setVacationPeriods(periods);
 			}
 		} catch (_error) {
 			// Gracefully handle vacation parsing errors; fall back to empty periods
 		}
-	}, [vacations]);
+	}, [vacations, suppressSyncUntil, setVacationPeriods]);
 
 	const addVacationPeriod = useCallback(() => {
-		setVacationPeriods((prev) => {
-			const today = normalizeDate(new Date());
-			const freeDay = findNextFreeDate(today, prev);
-			const next = [...prev, { start: freeDay, end: freeDay }];
+		const today = normalizeDate(new Date());
+		const freeDay = findNextFreeDate(today, vacationPeriods);
+		const next = [...vacationPeriods, { start: freeDay, end: freeDay }];
+		setVacationPeriods(next);
+		try {
+			sendVacationUpdate?.({
+				periods: next.map((p) => ({ start: p.start, end: p.end })),
+			});
+		} catch {
+			// Gracefully handle vacation update errors
+		}
+		setSuppressSyncUntil(Date.now() + SYNC_SUPPRESSION_DURATION_MS);
+	}, [
+		sendVacationUpdate,
+		vacationPeriods,
+		setVacationPeriods,
+		setSuppressSyncUntil,
+	]);
+
+	const removeVacationPeriod = useCallback(
+		(index: number) => {
+			const next = vacationPeriods.filter((_, i) => i !== index);
+			setVacationPeriods(next);
 			try {
 				sendVacationUpdate?.({
 					periods: next.map((p) => ({ start: p.start, end: p.end })),
@@ -115,40 +134,25 @@ export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
 			} catch {
 				// Gracefully handle vacation update errors
 			}
-			suppressSyncUntilRef.current = Date.now() + SYNC_SUPPRESSION_DURATION_MS;
-			return next;
-		});
-	}, [sendVacationUpdate]);
-
-	const removeVacationPeriod = useCallback(
-		(index: number) => {
-			setVacationPeriods((prev) => {
-				const next = prev.filter((_, i) => i !== index);
-
-				try {
-					sendVacationUpdate?.({
-						periods: next.map((p) => ({ start: p.start, end: p.end })),
-					});
-				} catch {
-					// Gracefully handle vacation update errors
-				}
-				suppressSyncUntilRef.current =
-					Date.now() + SYNC_SUPPRESSION_DURATION_MS;
-				return next;
-			});
+			setSuppressSyncUntil(Date.now() + SYNC_SUPPRESSION_DURATION_MS);
 		},
-		[sendVacationUpdate]
+		[
+			sendVacationUpdate,
+			vacationPeriods,
+			setVacationPeriods,
+			setSuppressSyncUntil,
+		]
 	);
 
 	const startRecording = useCallback(
 		(periodIndex: number, field: "start" | "end") => {
-			setRecordingState({ periodIndex, field });
+			startRecordingStore(periodIndex, field);
 		},
-		[]
+		[startRecordingStore]
 	);
 
 	const stopRecording = useCallback(() => {
-		setRecordingState({ periodIndex: null, field: null });
+		stopRecordingStore();
 		try {
 			sendVacationUpdate?.({
 				periods: vacationPeriods.map((p) => ({ start: p.start, end: p.end })),
@@ -156,56 +160,65 @@ export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
 		} catch {
 			// Gracefully handle vacation update errors
 		}
-		suppressSyncUntilRef.current = Date.now() + SYNC_SUPPRESSION_DURATION_MS;
-	}, [sendVacationUpdate, vacationPeriods]);
+		setSuppressSyncUntil(Date.now() + SYNC_SUPPRESSION_DURATION_MS);
+	}, [
+		sendVacationUpdate,
+		vacationPeriods,
+		stopRecordingStore,
+		setSuppressSyncUntil,
+	]);
 
 	const handleDateClick = useCallback(
 		(date: Date) => {
-			setVacationPeriods((prev) => {
-				const idx = recordingState.periodIndex;
-				const field = recordingState.field;
-				if (idx == null || field == null || idx < 0 || idx >= prev.length) {
-					return prev;
-				}
+			const idx = recordingState.periodIndex;
+			const field = recordingState.field;
+			if (
+				idx == null ||
+				field == null ||
+				idx < 0 ||
+				idx >= vacationPeriods.length
+			) {
+				return;
+			}
 
-				const next = [...prev];
-				const current = { ...next[idx] } as VacationPeriod;
-				const chosen = normalizeDate(date);
+			const next = [...vacationPeriods];
+			const current = { ...next[idx] } as VacationPeriod;
+			const chosen = normalizeDate(date);
 
-				// Update selected edge
-				updatePeriodEdge(current, chosen, field);
+			// Update selected edge
+			updatePeriodEdge(current, chosen, field);
 
-				// Resolve overlaps with other periods
-
-				resolveOverlaps(current, next, {
-					currentIndex: idx,
-
-					editingField: field,
-
-					maxIterations: MAX_OVERLAP_RESOLUTION_ITERATIONS,
-				});
-
-				next[idx] = current;
-
-				try {
-					sendVacationUpdate?.({
-						periods: next.map((p) => ({ start: p.start, end: p.end })),
-					});
-				} catch {
-					// Gracefully handle vacation update errors
-				}
-				suppressSyncUntilRef.current =
-					Date.now() + SYNC_SUPPRESSION_DURATION_MS;
-				return next;
+			// Resolve overlaps with other periods
+			resolveOverlaps(current, next, {
+				currentIndex: idx,
+				editingField: field,
+				maxIterations: MAX_OVERLAP_RESOLUTION_ITERATIONS,
 			});
 
+			next[idx] = current;
+			setVacationPeriods(next);
+
+			try {
+				sendVacationUpdate?.({
+					periods: next.map((p) => ({ start: p.start, end: p.end })),
+				});
+			} catch {
+				// Gracefully handle vacation update errors
+			}
+			setSuppressSyncUntil(Date.now() + SYNC_SUPPRESSION_DURATION_MS);
+
 			// Stop recording after capturing the date (defer to allow outside-click prevention)
-			setTimeout(
-				() => setRecordingState({ periodIndex: null, field: null }),
-				0
-			);
+			setTimeout(() => stopRecordingStore(), 0);
 		},
-		[recordingState.periodIndex, recordingState.field, sendVacationUpdate]
+		[
+			recordingState.periodIndex,
+			recordingState.field,
+			vacationPeriods,
+			setVacationPeriods,
+			sendVacationUpdate,
+			stopRecordingStore,
+			setSuppressSyncUntil,
+		]
 	);
 
 	const { isLocalized } = useLanguage();

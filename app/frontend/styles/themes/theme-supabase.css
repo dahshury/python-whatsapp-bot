@@ -1,0 +1,108 @@
+/* Supabase Theme - A fresh, modern open-source database theme */
+/* To enable: Add className="theme-supabase" to html or body tag */
+
+.theme-supabase {
+	--background: 0 0% 99%; /* hsl(0 0% 99%) - #fcfcfc */
+	--foreground: 0 0% 9%; /* hsl(0 0% 9%) - #171717 */
+	--card: 0 0% 99%; /* hsl(0 0% 99%) - #fcfcfc */
+	--card-foreground: 0 0% 9%; /* hsl(0 0% 9%) - #171717 */
+	--popover: 0 0% 99%; /* hsl(0 0% 99%) - #fcfcfc */
+	--popover-foreground: 0 0% 32%; /* hsl(0 0% 32%) - #525252 */
+	--primary: 152 54% 60%; /* hsl(152 54% 60%) - #72e3ad - mint green */
+	--primary-foreground: 145 31% 15%; /* hsl(145 31% 15%) - #1e2723 */
+	--secondary: 0 0% 99%; /* hsl(0 0% 99%) - #fdfdfd */
+	--secondary-foreground: 0 0% 9%; /* hsl(0 0% 9%) - #171717 */
+	--muted: 0 0% 93%; /* hsl(0 0% 93%) - #ededed */
+	--muted-foreground: 0 0% 13%; /* hsl(0 0% 13%) - #202020 */
+	--accent: 0 0% 93%; /* hsl(0 0% 93%) - #ededed */
+	--accent-foreground: 0 0% 13%; /* hsl(0 0% 13%) - #202020 */
+	--destructive: 9 75% 45%; /* hsl(9 75% 45%) - #ca3214 */
+	--destructive-foreground: 0 100% 99%; /* hsl(0 100% 99%) - #fffcfc */
+	--border: 0 0% 87%; /* hsl(0 0% 87%) - #dfdfdf */
+	--input: 0 0% 96%; /* hsl(0 0% 96%) - #f6f6f6 */
+	--ring: 152 54% 60% / 0.15; /* hsl(152 54% 60% / 0.15) - mint ring */
+	--chart-1: 152 54% 60%; /* hsl(152 54% 60%) - #72e3ad - mint */
+	--chart-2: 217 98% 61%; /* hsl(217 98% 61%) - #3b82f6 - blue */
+	--chart-3: 259 90% 66%; /* hsl(259 90% 66%) - #8b5cf6 - purple */
+	--chart-4: 38 92% 50%; /* hsl(38 92% 50%) - #f59e0b - amber */
+	--chart-5: 160 84% 39%; /* hsl(160 84% 39%) - #10b981 - emerald */
+	--sidebar: 0 0% 99%; /* hsl(0 0% 99%) - #fcfcfc */
+	--sidebar-background: 0 0% 99%; /* hsl(0 0% 99%) - #fcfcfc */
+	--sidebar-foreground: 0 0% 44%; /* hsl(0 0% 44%) - #707070 */
+	--sidebar-primary: 152 54% 60%; /* hsl(152 54% 60%) - #72e3ad */
+	--sidebar-primary-foreground: 145 31% 15%; /* hsl(145 31% 15%) - #1e2723 */
+	--sidebar-accent: 0 0% 93%; /* hsl(0 0% 93%) - #ededed */
+	--sidebar-accent-foreground: 0 0% 13%; /* hsl(0 0% 13%) - #202020 */
+	--sidebar-border: 0 0% 87%; /* hsl(0 0% 87%) - #dfdfdf */
+	--sidebar-ring: 152 54% 60%; /* hsl(152 54% 60%) - #72e3ad */
+	--font-sans: "Outfit", Inter, var(--font-sans-stack);
+	--font-serif: Georgia, Cambria, "Times New Roman", serif;
+	--font-mono: "JetBrains Mono", ui-monospace, var(--font-mono-stack);
+	--radius: 0.5rem;
+	--shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-xs: 0 1px 2px 0px hsl(0 0% 0% / 0.05);
+	--shadow-sm:
+		0 1px 2px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow: 0 1px 2px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
+	--shadow-md:
+		0 2px 4px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
+	--shadow-lg:
+		0 4px 6px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
+	--shadow-xl:
+		0 8px 10px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
+	--shadow-2xl: 0 20px 25px 0px hsl(0 0% 0% / 0.15);
+}
+
+/* Dark mode for Supabase theme */
+.theme-supabase.dark,
+.dark .theme-supabase {
+	--background: 0 0% 7%; /* hsl(0 0% 7%) - #121212 */
+	--foreground: 213 26% 91%; /* hsl(213 26% 91%) - #e2e8f0 */
+	--card: 0 0% 9%; /* hsl(0 0% 9%) - #171717 */
+	--card-foreground: 213 26% 91%; /* hsl(213 26% 91%) - #e2e8f0 */
+	--popover: 0 0% 14%; /* hsl(0 0% 14%) - #242424 */
+	--popover-foreground: 0 0% 66%; /* hsl(0 0% 66%) - #a9a9a9 */
+	--primary: 152 100% 19%; /* hsl(152 100% 19%) - #006239 - dark green */
+	--primary-foreground: 145 24% 87%; /* hsl(145 24% 87%) - #dde8e3 */
+	--secondary: 0 0% 14%; /* hsl(0 0% 14%) - #242424 */
+	--secondary-foreground: 0 0% 98%; /* hsl(0 0% 98%) - #fafafa */
+	--muted: 0 0% 12%; /* hsl(0 0% 12%) - #1f1f1f */
+	--muted-foreground: 0 0% 64%; /* hsl(0 0% 64%) - #a2a2a2 */
+	--accent: 0 0% 19%; /* hsl(0 0% 19%) - #313131 */
+	--accent-foreground: 0 0% 98%; /* hsl(0 0% 98%) - #fafafa */
+	--destructive: 11 57% 22%; /* hsl(11 57% 22%) - #541c15 */
+	--destructive-foreground: 20 8% 93%; /* hsl(20 8% 93%) - #ede9e8 */
+	--border: 0 0% 16%; /* hsl(0 0% 16%) - #292929 */
+	--input: 0 0% 14%; /* hsl(0 0% 14%) - #242424 */
+	--ring: 142 71% 61% / 0.15; /* hsl(142 71% 61% / 0.15) - light green ring */
+	--chart-1: 142 71% 61%; /* hsl(142 71% 61%) - #4ade80 - light green */
+	--chart-2: 217 98% 69%; /* hsl(217 98% 69%) - #60a5fa - bright blue */
+	--chart-3: 259 94% 77%; /* hsl(259 94% 77%) - #a78bfa - bright purple */
+	--chart-4: 38 92% 68%; /* hsl(38 92% 68%) - #fbbf24 - bright amber */
+	--chart-5: 170 97% 52%; /* hsl(170 97% 52%) - #2dd4bf - cyan */
+	--sidebar: 0 0% 7%; /* hsl(0 0% 7%) - #121212 */
+	--sidebar-background: 0 0% 7%; /* hsl(0 0% 7%) - #121212 */
+	--sidebar-foreground: 0 0% 54%; /* hsl(0 0% 54%) - #898989 */
+	--sidebar-primary: 152 100% 19%; /* hsl(152 100% 19%) - #006239 */
+	--sidebar-primary-foreground: 145 24% 87%; /* hsl(145 24% 87%) - #dde8e3 */
+	--sidebar-accent: 0 0% 19%; /* hsl(0 0% 19%) - #313131 */
+	--sidebar-accent-foreground: 0 0% 98%; /* hsl(0 0% 98%) - #fafafa */
+	--sidebar-border: 0 0% 16%; /* hsl(0 0% 16%) - #292929 */
+	--sidebar-ring: 142 71% 61%; /* hsl(142 71% 61%) - #4ade80 */
+	--font-sans: "Outfit", Inter, var(--font-sans-stack);
+	--font-serif: Georgia, Cambria, "Times New Roman", serif;
+	--font-mono: "JetBrains Mono", ui-monospace, var(--font-mono-stack);
+	--radius: 0.5rem;
+	--shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.2);
+	--shadow-xs: 0 1px 2px 0px hsl(0 0% 0% / 0.2);
+	--shadow-sm:
+		0 1px 2px 0px hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+	--shadow: 0 1px 2px 0px hsl(0 0% 0% / 0.3), 0 1px 2px -1px hsl(0 0% 0% / 0.3);
+	--shadow-md:
+		0 2px 4px 0px hsl(0 0% 0% / 0.3), 0 2px 4px -1px hsl(0 0% 0% / 0.3);
+	--shadow-lg:
+		0 4px 6px 0px hsl(0 0% 0% / 0.3), 0 4px 6px -1px hsl(0 0% 0% / 0.3);
+	--shadow-xl:
+		0 8px 10px 0px hsl(0 0% 0% / 0.3), 0 8px 10px -1px hsl(0 0% 0% / 0.3);
+	--shadow-2xl: 0 20px 25px 0px hsl(0 0% 0% / 0.4);
+}

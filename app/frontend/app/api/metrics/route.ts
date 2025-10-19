@@ -1,3 +1,4 @@
+import { zMetrics } from "@shared/validation/domain/metrics.schema";
 import { NextResponse } from "next/server";
 
 // Regex for splitting lines (handles both \n and \r\n)
@@ -62,7 +63,14 @@ export async function GET() {
 				}
 				const text = await res.text();
 				const data = parsePrometheusText(text);
-				return NextResponse.json({ success: true, data });
+				const parsed = zMetrics.safeParse(data);
+				if (!parsed.success) {
+					return NextResponse.json(
+						{ success: false, message: parsed.error.message, data: {} },
+						{ status: 500 }
+					);
+				}
+				return NextResponse.json({ success: true, data: parsed.data });
 			} catch (err) {
 				lastError = err;
 			}

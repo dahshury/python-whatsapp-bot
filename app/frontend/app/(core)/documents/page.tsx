@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 // CalendarDrawer trigger is removed on this page (icon exists elsewhere)
 //
 import { useTheme } from "next-themes";
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 //
 import type { IDataSource } from "@/shared/libs/data-grid";
 //
@@ -13,6 +13,10 @@ import type { IDataSource } from "@/shared/libs/data-grid";
 import { DEFAULT_DOCUMENT_WA_ID } from "@/shared/libs/documents";
 import { useLanguage } from "@/shared/libs/state/language-context";
 import { useThemeMode } from "@/shared/libs/ui/use-theme-mode";
+import {
+	DocumentErrorFallback,
+	ErrorBoundaryWrapper,
+} from "@/shared/ui/error-components";
 //
 import { SidebarInset } from "@/shared/ui/sidebar";
 import { useDocumentCustomerRow } from "@/widgets/document-canvas/hooks/use-document-customer-row";
@@ -120,69 +124,67 @@ function DocumentsPageContent() {
 	});
 
 	return (
-		<SidebarInset>
-			<div className="flex flex-1 flex-col gap-3 px-4 pt-1 pb-4">
-				{/* Header spacer (calendar icon exists elsewhere) */}
-				<div className="flex items-center justify-end gap-2" />
+		<div className="flex flex-1 flex-col gap-3 px-4 pt-1 pb-4">
+			{/* Header spacer (calendar icon exists elsewhere) */}
+			<div className="flex items-center justify-end gap-2" />
 
-				{/* Work area: grid + editor canvas */}
+			{/* Work area: grid + editor canvas */}
+			<div
+				className={`flex-1 rounded-lg border border-border/50 bg-card/50 p-2 ${
+					isFullscreen ? "rounded-none border-0 p-0" : ""
+				}`}
+				ref={fsContainerRef}
+			>
 				<div
-					className={`flex-1 rounded-lg border border-border/50 bg-card/50 p-2 ${
-						isFullscreen ? "rounded-none border-0 p-0" : ""
-					}`}
-					ref={fsContainerRef}
+					className="flex min-h-0 flex-col gap-2"
+					style={{ height: isFullscreen ? "100vh" : "calc(100vh - 6.5rem)" }}
 				>
-					<div
-						className="flex min-h-0 flex-col gap-2"
-						style={{ height: isFullscreen ? "100vh" : "calc(100vh - 6.5rem)" }}
-					>
-						{/* Top: customer form */}
-						<div
-							className="flex min-h-0 flex-col"
-							style={{ flex: "2.3 2.3 0%" }}
-						>
-							<DocumentsCustomerForm
-								dataSource={customerDataSource as unknown as IDataSource}
-								loading={customerLoading}
-								onClearAction={handleClear}
-								onProviderReadyAction={handleProviderReady}
-							/>
-						</div>
+					{/* Top: customer form */}
+					<div className="flex min-h-0 flex-col" style={{ flex: "2.3 2.3 0%" }}>
+						<DocumentsCustomerForm
+							dataSource={customerDataSource as unknown as IDataSource}
+							loading={customerLoading}
+							onClearAction={handleClear}
+							onProviderReadyAction={handleProviderReady}
+						/>
+					</div>
 
-						{/* Bottom: editor canvas */}
-						<div
-							className="flex min-h-0 flex-col"
-							style={{ flex: "7.7 7.7 0%" }}
-						>
-							<DocumentEditor
-								enterFullscreen={enterFullscreen}
-								exitFullscreen={exitFullscreen}
-								isFullscreen={isFullscreen}
-								isLocalized={isLocalized}
-								isUnlocked={isUnlocked}
-								langCode={locale || "en"}
-								loading={loading}
-								onApiReady={onEditorApiReady}
-								onChange={
-									handleEditorChange as unknown as ExcalidrawProps["onChange"]
-								}
-								saveStatus={saveStatus}
-								scene={scene}
-								theme={themeMode}
-								waId={waId}
-							/>
-						</div>
+					{/* Bottom: editor canvas */}
+					<div className="flex min-h-0 flex-col" style={{ flex: "7.7 7.7 0%" }}>
+						<DocumentEditor
+							enterFullscreen={enterFullscreen}
+							exitFullscreen={exitFullscreen}
+							isFullscreen={isFullscreen}
+							isLocalized={isLocalized}
+							isUnlocked={isUnlocked}
+							langCode={locale || "en"}
+							loading={loading}
+							onApiReady={onEditorApiReady}
+							onChange={
+								handleEditorChange as unknown as ExcalidrawProps["onChange"]
+							}
+							saveStatus={saveStatus}
+							scene={scene}
+							theme={themeMode}
+							waId={waId}
+						/>
 					</div>
 				</div>
 			</div>
-		</SidebarInset>
+		</div>
 	);
 }
 
 export default function DocumentsPage() {
 	return (
-		<Suspense fallback={<div>Loading...</div>}>
-			<DocumentsPageContent />
-		</Suspense>
+		<SidebarInset>
+			<ErrorBoundaryWrapper
+				component="DocumentsPage"
+				fallback={DocumentErrorFallback}
+				feature="documents"
+			>
+				<DocumentsPageContent />
+			</ErrorBoundaryWrapper>
+		</SidebarInset>
 	);
 }

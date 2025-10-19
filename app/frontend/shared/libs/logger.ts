@@ -3,6 +3,8 @@
 
 type LogLevel = "debug" | "info" | "warn" | "error" | "silent";
 
+import { runtimeConfig } from "@shared/config";
+
 const ORDER: Record<Exclude<LogLevel, "silent">, number> = {
 	debug: 10,
 	info: 20,
@@ -11,7 +13,7 @@ const ORDER: Record<Exclude<LogLevel, "silent">, number> = {
 };
 
 const MIN_LEVEL: LogLevel =
-	(process.env.NEXT_PUBLIC_LOG_LEVEL?.toLowerCase() as LogLevel) ||
+	(runtimeConfig.logLevel as LogLevel) ||
 	(process.env.NODE_ENV === "production" ? "warn" : "debug");
 
 function shouldLog(level: Exclude<LogLevel, "silent">): boolean {

@@ -3,48 +3,20 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "app/frontend/*"
-      ],
-      "@libs/*": [
-        "app/frontend/shared/libs/*"
-      ],
-      "@ui/*": [
-        "app/frontend/shared/ui/*"
-      ],
-      "@widgets/*": [
-        "app/frontend/widgets/*"
-      ],
-      "@features/*": [
-        "app/frontend/features/*"
-      ],
-      "@processes/*": [
-        "app/frontend/processes/*"
-      ],
-      "@services/*": [
-        "app/frontend/services/*"
-      ],
-      "@entities/*": [
-        "app/frontend/entities/*"
-      ],
-      "@shared/*": [
-        "app/frontend/shared/*"
-      ],
-      "@shared/ui/*": [
-        "app/frontend/shared/ui/*"
-      ],
-      "@shared/libs/*": [
-        "app/frontend/shared/libs/*"
-      ],
-      "@shared/libs/hooks/*": [
-        "app/frontend/shared/libs/hooks/*"
-      ],
-      "@shared/config/*": [
-        "app/frontend/shared/config/*"
-      ],
-      "@shared/validation/*": [
-        "app/frontend/shared/validation/*"
-      ]
+      "@/*": ["app/frontend/*"],
+      "@libs/*": ["app/frontend/shared/libs/*"],
+      "@ui/*": ["app/frontend/shared/ui/*"],
+      "@widgets/*": ["app/frontend/widgets/*"],
+      "@features/*": ["app/frontend/features/*"],
+      "@processes/*": ["app/frontend/processes/*"],
+      "@services/*": ["app/frontend/services/*"],
+      "@entities/*": ["app/frontend/entities/*"],
+      "@shared/*": ["app/frontend/shared/*"],
+      "@shared/ui/*": ["app/frontend/shared/ui/*"],
+      "@shared/libs/*": ["app/frontend/shared/libs/*"],
+      "@shared/libs/hooks/*": ["app/frontend/shared/libs/hooks/*"],
+      "@shared/config/*": ["app/frontend/shared/config/*"],
+      "@shared/validation/*": ["app/frontend/shared/validation/*"]
     },
     "strictNullChecks": true
   }

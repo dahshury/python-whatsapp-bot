@@ -1,4 +1,5 @@
-export const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Riyadh";
+import { runtimeConfig } from "@shared/config";
+export const TIMEZONE = runtimeConfig.timezone || "Asia/Riyadh";
 export const SLOT_DURATION_HOURS = 2; // Streamlit used 2-hour slot intervals
 
 // Day constants

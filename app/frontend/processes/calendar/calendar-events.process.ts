@@ -70,15 +70,32 @@ export function filterEventsForDataTable(
 ): CalendarEvent[] {
 	const freeRoam = typeof arg2 === "boolean" ? arg2 : Boolean(arg3);
 	return events.filter((ev) => {
-		const type = (ev as unknown as { type?: string }).type;
-		const cancelled = ev.extendedProps?.cancelled;
-		if (type === "conversation") {
-			return false;
+		try {
+			// Exclude conversation events unconditionally
+			const ext = (ev?.extendedProps || {}) as {
+				type?: unknown;
+				cancelled?: boolean;
+			};
+			const marker = Number(
+				ext.type ?? (ev as unknown as { type?: unknown }).type ?? Number.NaN
+			);
+			if (Number.isFinite(marker) && marker === 2) {
+				return false;
+			}
+
+			// Also exclude by string tag if present
+			const tag = (ev as unknown as { type?: string }).type;
+			if (typeof tag === "string" && tag.toLowerCase() === "conversation") {
+				return false;
+			}
+
+			if (!freeRoam && ext.cancelled === true) {
+				return false;
+			}
+			return true;
+		} catch {
+			return true;
 		}
-		if (!freeRoam && cancelled === true) {
-			return false;
-		}
-		return true;
 	});
 }
 
@@ -111,6 +128,10 @@ export function transformEventsForDataTable(
 		const ext = (e.extendedProps || {}) as Record<string, unknown>;
 		const waId = (ext.waId ?? ext.wa_id) as string | undefined;
 		const typeNumber = extractTypeNumber(ext);
+		// If this is a conversation marker event, skip mapping entirely
+		if (Number.isFinite(typeNumber) && (typeNumber as number) === 2) {
+			return null as unknown as DataTableEvent; // filtered out below
+		}
 		const out: DataTableEvent = {
 			id: String(e.id),
 			title: String((e as { title?: string }).title || ""),

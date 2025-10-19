@@ -107,6 +107,7 @@ export class CalendarIntegrationService {
 			title?: string;
 			type?: number;
 			cancelled?: boolean;
+			waId?: string;
 		}
 	): void {
 		const evObj = this.getEventById(eventId);
@@ -119,12 +120,17 @@ export class CalendarIntegrationService {
 			this.localEchoManager.withSuppressedEventChange(() => {
 				if (updates.title !== undefined) {
 					evObj.setProp?.("title", updates.title);
+					// ✅ Also set customerName in extendedProps to match title
+					evObj.setExtendedProp?.("customerName", updates.title);
 				}
 				if (updates.type !== undefined) {
 					evObj.setExtendedProp?.("type", Number(updates.type));
 				}
 				if (updates.cancelled !== undefined) {
 					evObj.setExtendedProp?.("cancelled", updates.cancelled);
+				}
+				if (typeof updates.waId === "string" && updates.waId.length > 0) {
+					evObj.setExtendedProp?.("waId", updates.waId);
 				}
 			});
 		} catch {

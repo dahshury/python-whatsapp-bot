@@ -89,13 +89,14 @@ export function CalendarDataTableEditorWrapper({
 		return;
 	}, [editorOpen]);
 	// Always compute mapped events so the grid has data immediately on open
-	const mappedEvents = useMemo(
-		() =>
-			transformEventsForDataTable(
-				filterEventsForDataTable(events, "data-table", freeRoam)
-			),
-		[events, freeRoam]
-	);
+	const mappedEvents = useMemo(() => {
+		const filtered = filterEventsForDataTable(events, "data-table", freeRoam);
+		const mapped = transformEventsForDataTable(filtered);
+		// Guard: filter out any nulls returned for conversation markers
+		return (mapped as unknown[]).filter(
+			Boolean
+		) as unknown as DataTableCalendarEvent[];
+	}, [events, freeRoam]);
 
 	const handleOpenChange = useCallback(
 		(open: boolean) => {

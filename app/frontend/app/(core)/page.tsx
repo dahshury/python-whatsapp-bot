@@ -135,6 +135,10 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { filterEventsForCalendar } from "@/processes/calendar/calendar-events.process";
+import {
+	CalendarErrorFallback,
+	ErrorBoundaryWrapper,
+} from "@/shared/ui/error-components";
 import { SidebarInset } from "@/shared/ui/sidebar";
 import { CalendarContainer } from "@/widgets/calendar/calendar-container";
 import { CalendarSkeleton } from "@/widgets/calendar/calendar-skeleton";
@@ -267,6 +271,7 @@ export default function HomePage() {
 	const eventsState = useCalendarEvents({
 		freeRoam,
 		isLocalized,
+		...(freeRoam ? {} : { excludeConversations: true }),
 	});
 
 	// Get vacation events from context
@@ -280,9 +285,26 @@ export default function HomePage() {
 
 	// Merge vacation events with main events
 	const allEvents = React.useMemo(() => {
+		// When leaving freeRoam, conversations should not be present; filteredEvents already excludes them
 		const merged = [...filteredEvents, ...vacationEvents];
 		return merged;
 	}, [filteredEvents, vacationEvents]);
+
+	// Force a range refresh when freeRoam changes or view changes
+	React.useEffect(() => {
+		try {
+			const api = calendarRef.current?.getApi?.();
+			if (!api) {
+				return;
+			}
+			const current = api.getDate() as unknown as Date;
+			// Nudge the calendar to re-run onDatesSet without changing date
+			api.gotoDate(current);
+		} catch {
+			// ignore
+		}
+		// Only on freeRoam toggle to avoid redundant work on every minor change
+	}, []);
 
 	// Stage G: Add simple height management and updateSize wiring
 	const [calendarHeight, setCalendarHeight] = React.useState<number | "auto">(
@@ -523,151 +545,157 @@ export default function HomePage() {
 	return (
 		<SidebarInset style={{ minHeight: "var(--calendar-dvh, 100vh)" }}>
 			{/* Removed duplicate fixed trigger to avoid two sidebar buttons; header SidebarTrigger remains */}
-			{(() => {
-				// Calculate wrapper height class based on calendar state
-				const getWrapperHeightClass = (): string => {
+			<ErrorBoundaryWrapper
+				component="HomePage"
+				fallback={CalendarErrorFallback}
+				feature="calendar"
+			>
+				{(() => {
+					// Calculate wrapper height class based on calendar state
+					const getWrapperHeightClass = (): string => {
+						if (!mounted) {
+							return "h-[calc(100vh-4rem)]";
+						}
+
+						const isSingleExpanding =
+							calendarState.currentView === "multiMonthYear" ||
+							calendarState.currentView === "listMonth";
+						const isDualExpanding = isSingleExpanding;
+
+						if (showDualCalendar) {
+							return isDualExpanding ? "" : "h-[calc(100vh-4rem)]";
+						}
+						return isSingleExpanding ? "" : "h-[calc(100vh-4rem)]";
+					};
+
+					const wrapperHeightClass = getWrapperHeightClass();
+
+					// Avoid hydration mismatch: don't render the calendar until mounted on client
 					if (!mounted) {
-						return "h-[calc(100vh-4rem)]";
+						return (
+							<div
+								className={
+									"flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 px-4 pt-1 pb-4"
+								}
+							>
+								<CalendarContainer
+									isHydrated={false}
+									isRefreshing={false}
+									loading={true}
+								>
+									<div className="flex-1 rounded-lg border border-border/50 bg-card/50 p-2">
+										<CalendarSkeleton />
+									</div>
+								</CalendarContainer>
+							</div>
+						);
 					}
 
-					const isSingleExpanding =
-						calendarState.currentView === "multiMonthYear" ||
-						calendarState.currentView === "listMonth";
-					const isDualExpanding = isSingleExpanding;
-
-					if (showDualCalendar) {
-						return isDualExpanding ? "" : "h-[calc(100vh-4rem)]";
-					}
-					return isSingleExpanding ? "" : "h-[calc(100vh-4rem)]";
-				};
-
-				const wrapperHeightClass = getWrapperHeightClass();
-
-				// Avoid hydration mismatch: don't render the calendar until mounted on client
-				if (!mounted) {
 					return (
 						<div
-							className={
-								"flex h-[calc(100vh-4rem)] flex-1 flex-col gap-3 px-4 pt-1 pb-4"
-							}
+							className={`flex flex-1 flex-col gap-3 px-4 pt-1 pb-0 ${wrapperHeightClass}`}
 						>
 							<CalendarContainer
-								isHydrated={false}
-								isRefreshing={false}
-								loading={true}
+								isHydrated={true}
+								isRefreshing={isRefreshing}
+								loading={false}
 							>
 								<div className="flex-1 rounded-lg border border-border/50 bg-card/50 p-2">
-									<CalendarSkeleton />
+									{showDualCalendar ? (
+										<DualCalendarComponent
+											events={allEvents}
+											freeRoam={freeRoam}
+											initialLeftView={calendarState.currentView}
+											initialRightView={rightCalendarView}
+											loading={eventsState.loading}
+											onLeftViewChange={calendarState.setCurrentView}
+											onRefreshData={handleRefreshWithBlur}
+											onRightViewChange={setRightCalendarView}
+											ref={handleDualCalendarRef}
+										/>
+									) : (
+										<CalendarMainContent
+											calendarHeight={calendarHeight}
+											calendarRef={calendarRef}
+											callbacks={callbacks}
+											contextMenu={contextMenu}
+											conversations={mappedConversations}
+											currentDate={calendarState.currentDate}
+											currentView={calendarState.currentView}
+											dataTableEditor={{
+												handleEditReservation: () => {
+													// Handler provided by context
+												},
+											}}
+											dragHandlers={dragHandlers}
+											events={filteredEvents}
+											freeRoam={freeRoam}
+											handleCancelReservation={
+												eventHandlers.handleCancelReservation
+											}
+											handleEventChange={eventHandlers.handleEventChange}
+											handleOpenConversation={(id: string) =>
+												openConversationFromStore(id)
+											}
+											handleOpenDocument={handleOpenDocument}
+											handleUpdateSize={handleCalendarUpdateSize}
+											handleViewDetails={() => {
+												// View details handler not implemented yet
+											}}
+											hoverCard={hoverCard}
+											isHydrated={true}
+											isLocalized={isLocalized}
+											isVacationDate={isVacationDate}
+											onViewChange={calendarState.setCurrentView}
+											processedEvents={allEvents}
+											reservations={mappedReservations}
+											setCalendarHeight={setCalendarHeight}
+											setCurrentDate={calendarState.setCurrentDate}
+											setCurrentView={calendarState.setCurrentView}
+											slotTimes={calendarState.slotTimes}
+											slotTimesKey={calendarState.slotTimesKey}
+										/>
+									)}
+
+									{/* Stage M: enable DataTable editor with real state */}
+									<CalendarDataTableEditorWrapper
+										calendarRef={calendarRef}
+										closeEditor={dataTableEditor.closeEditor}
+										editorOpen={dataTableEditor.editorOpen}
+										events={allEvents}
+										freeRoam={freeRoam}
+										isLocalized={isLocalized}
+										onEventAdded={
+											eventHandlers.handleEventAdded ??
+											(() => {
+												// No-op fallback
+											})
+										}
+										onEventCancelled={
+											eventHandlers.handleEventCancelled ??
+											(() => {
+												// No-op fallback
+											})
+										}
+										onEventModified={
+											eventHandlers.handleEventModified ??
+											(() => {
+												// No-op fallback
+											})
+										}
+										onOpenChange={dataTableEditor.setEditorOpen}
+										onSave={handleRefreshWithBlur}
+										selectedDateRange={dataTableEditor.selectedDateRange}
+										setShouldLoadEditor={dataTableEditor.setShouldLoadEditor}
+										shouldLoadEditor={dataTableEditor.shouldLoadEditor}
+										slotDurationHours={SLOT_DURATION_HOURS}
+									/>
 								</div>
 							</CalendarContainer>
 						</div>
 					);
-				}
-
-				return (
-					<div
-						className={`flex flex-1 flex-col gap-3 px-4 pt-1 pb-0 ${wrapperHeightClass}`}
-					>
-						<CalendarContainer
-							isHydrated={true}
-							isRefreshing={isRefreshing}
-							loading={false}
-						>
-							<div className="flex-1 rounded-lg border border-border/50 bg-card/50 p-2">
-								{showDualCalendar ? (
-									<DualCalendarComponent
-										events={allEvents}
-										freeRoam={freeRoam}
-										initialLeftView={calendarState.currentView}
-										initialRightView={rightCalendarView}
-										loading={eventsState.loading}
-										onLeftViewChange={calendarState.setCurrentView}
-										onRefreshData={handleRefreshWithBlur}
-										onRightViewChange={setRightCalendarView}
-										ref={handleDualCalendarRef}
-									/>
-								) : (
-									<CalendarMainContent
-										calendarHeight={calendarHeight}
-										calendarRef={calendarRef}
-										callbacks={callbacks}
-										contextMenu={contextMenu}
-										conversations={mappedConversations}
-										currentDate={calendarState.currentDate}
-										currentView={calendarState.currentView}
-										dataTableEditor={{
-											handleEditReservation: () => {
-												// Handler provided by context
-											},
-										}}
-										dragHandlers={dragHandlers}
-										events={filteredEvents}
-										freeRoam={freeRoam}
-										handleCancelReservation={
-											eventHandlers.handleCancelReservation
-										}
-										handleEventChange={eventHandlers.handleEventChange}
-										handleOpenConversation={(id: string) =>
-											openConversationFromStore(id)
-										}
-										handleOpenDocument={handleOpenDocument}
-										handleUpdateSize={handleCalendarUpdateSize}
-										handleViewDetails={() => {
-											// View details handler not implemented yet
-										}}
-										hoverCard={hoverCard}
-										isHydrated={true}
-										isLocalized={isLocalized}
-										isVacationDate={isVacationDate}
-										onViewChange={calendarState.setCurrentView}
-										processedEvents={allEvents}
-										reservations={mappedReservations}
-										setCalendarHeight={setCalendarHeight}
-										setCurrentDate={calendarState.setCurrentDate}
-										setCurrentView={calendarState.setCurrentView}
-										slotTimes={calendarState.slotTimes}
-										slotTimesKey={calendarState.slotTimesKey}
-									/>
-								)}
-
-								{/* Stage M: enable DataTable editor with real state */}
-								<CalendarDataTableEditorWrapper
-									calendarRef={calendarRef}
-									closeEditor={dataTableEditor.closeEditor}
-									editorOpen={dataTableEditor.editorOpen}
-									events={allEvents}
-									freeRoam={freeRoam}
-									isLocalized={isLocalized}
-									onEventAdded={
-										eventHandlers.handleEventAdded ??
-										(() => {
-											// No-op fallback
-										})
-									}
-									onEventCancelled={
-										eventHandlers.handleEventCancelled ??
-										(() => {
-											// No-op fallback
-										})
-									}
-									onEventModified={
-										eventHandlers.handleEventModified ??
-										(() => {
-											// No-op fallback
-										})
-									}
-									onOpenChange={dataTableEditor.setEditorOpen}
-									onSave={handleRefreshWithBlur}
-									selectedDateRange={dataTableEditor.selectedDateRange}
-									setShouldLoadEditor={dataTableEditor.setShouldLoadEditor}
-									shouldLoadEditor={dataTableEditor.shouldLoadEditor}
-									slotDurationHours={SLOT_DURATION_HOURS}
-								/>
-							</div>
-						</CalendarContainer>
-					</div>
-				);
-			})()}
+				})()}
+			</ErrorBoundaryWrapper>
 			{/** Toaster is provided globally via ToastRouter in `app/layout.tsx` */}
 		</SidebarInset>
 	);

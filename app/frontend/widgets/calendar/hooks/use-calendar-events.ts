@@ -16,6 +16,7 @@ import {
 	profileTimeEnd,
 	profileTimeStart,
 } from "@shared/libs/utils/calendar-profiler";
+import { devGroup, devGroupEnd, devLog } from "@shared/libs/utils/dev-logger";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarEvent } from "@/entities/event";
 import {
@@ -324,6 +325,7 @@ export function useCalendarEvents(
 	const sanitizedDiagnosticRef = useRef<Record<string, unknown> | null>(null);
 	const emptyRunGuardRef = useRef<boolean>(false);
 
+	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: diagnostic logging + branching
 	const processEvents = useCallback((): void => {
 		try {
 			const inputSig = computeDataSignatureImpl(
@@ -350,6 +352,20 @@ export function useCalendarEvents(
 				diagnostic: sanitizedDiagnosticRef.current,
 			});
 
+			if (process.env.NODE_ENV !== "production") {
+				try {
+					devGroup("Calendar process");
+					devLog("loading", isDataLoading);
+					devLog("error", dataError);
+					devLog("diag", sanitizedDiagnosticRef.current);
+					devLog("excludeConversations", options.excludeConversations ?? false);
+					devLog("inputSig", inputSig);
+					devGroupEnd();
+				} catch {
+					// ignore logging errors
+				}
+			}
+
 			// Check if we should skip processing
 			if (
 				shouldSkipProcessing({
@@ -373,6 +389,7 @@ export function useCalendarEvents(
 			let nextLoading = isDataLoading;
 
 			// Helper to generate processed events
+			// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: diagnostic branching is verbose but temporary for debugging
 			const generateProcessedEventsIfValid = () => {
 				if (
 					!validateProcessingInputsImpl({
@@ -384,6 +401,23 @@ export function useCalendarEvents(
 						excludeConversations: options.excludeConversations ?? false,
 					})
 				) {
+					if (process.env.NODE_ENV !== "production") {
+						try {
+							devGroup("Calendar process:skipped");
+							devLog("reasons", {
+								isDataLoading,
+								dataError,
+								missingReservations: !reservations,
+								missingVacations: !vacationPeriods,
+								missingConversations: !(
+									options.excludeConversations || conversations
+								),
+							});
+							devGroupEnd();
+						} catch {
+							// ignore
+						}
+					}
 					if (dataError) {
 						nextLoading = false;
 						nextError = dataError;
@@ -418,6 +452,17 @@ export function useCalendarEvents(
 						...(options.ageByWaId ? { ageByWaId: options.ageByWaId } : {}),
 					}
 				);
+
+				if (process.env.NODE_ENV !== "production") {
+					try {
+						devGroup("Calendar process:result");
+						devLog("reservationEntries.count", reservationEntries.length);
+						devLog("events.count", processedEvents.length);
+						devGroupEnd();
+					} catch {
+						// ignore
+					}
+				}
 
 				nextEvents = processedEvents;
 				nextLoading = false;

@@ -9,6 +9,8 @@ import {
 	areValuesEqual,
 	getCellValue,
 } from "@shared/libs/data-grid/utils/value";
+import { zEditingState } from "@shared/validation/data-grid/editing-state.schema";
+import { safeParseJson } from "@shared/validation/json";
 import type { IColumnDefinition } from "../components/core/interfaces/i-data-source";
 import { ColumnTypeRegistry } from "../components/core/services/column-type-registry";
 import type { BaseColumnProps } from "../components/core/types";
@@ -133,7 +135,7 @@ function processEditedRow(args: ProcessEditedRowArgs): void {
 	} = args;
 
 	const editedRow: Record<string, unknown> = {};
-	const hasOriginalData = false;
+	const mutableHasOriginalData: MutableBoolean = { value: false };
 
 	for (const [colIndex, cell] of row) {
 		const column = columnsByIndex.get(colIndex);
@@ -149,16 +151,24 @@ function processEditedRow(args: ProcessEditedRowArgs): void {
 			colIndex,
 			getOriginalCellValue,
 			editedRow,
-			mutableHasOriginalData: { value: hasOriginalData },
+			mutableHasOriginalData,
 		} as const;
 
 		updateEditedRowWithCell(colDef ? { ...updateArgs, colDef } : updateArgs);
 	}
 
 	if (Object.keys(editedRow).length > 0) {
+		// biome-ignore lint/suspicious/noConsole: DEBUG
+		globalThis.console?.log?.(
+			`[EditingState] Saving row ${rowIndex}: hasOriginalData=`,
+			mutableHasOriginalData.value,
+			"editedRow=",
+			editedRow
+		);
+
 		saveEditedRow({
 			editedRow,
-			hasOriginalData,
+			hasOriginalData: mutableHasOriginalData.value,
 			rowIndex,
 			row,
 			columnsByIndex,
@@ -200,6 +210,19 @@ function updateEditedRowWithCell(args: {
 	const isPhonePrefix =
 		typeof originalValue === "string" &&
 		PHONE_PREFIX_REGEX.test(originalValue.trim());
+
+	// biome-ignore lint/suspicious/noConsole: DEBUG
+	globalThis.console?.log?.(
+		`[EditingState] Checking cell (${rowIndex},${colIndex}):`,
+		"cellValue=",
+		cellValue,
+		"originalValue=",
+		originalValue,
+		"isPhonePrefix=",
+		isPhonePrefix,
+		"hasOriginal=",
+		originalValue != null && originalValue !== "" && !isPhonePrefix
+	);
 
 	if (originalValue != null && originalValue !== "" && !isPhonePrefix) {
 		mutableHasOriginalData.value = true;
@@ -306,7 +329,10 @@ export function deserializeEditingState(args: {
 	deletedRows: number[];
 } {
 	const { json, columns, columnDefinitions, theme, isDarkTheme } = args;
-	const editingState = JSON.parse(json);
+	const parsed = safeParseJson(zEditingState, json);
+	const editingState = parsed.success
+		? parsed.data
+		: { edited_rows: {}, added_rows: [], deleted_rows: [] };
 	// biome-ignore lint/suspicious/noConsole: DEBUG
 	globalThis.console?.log?.(
 		"[EditingState] deserializeEditingState",
@@ -324,6 +350,8 @@ export function deserializeEditingState(args: {
 	for (const key of Object.keys(editingState.edited_rows || {})) {
 		const rowIndex = Number(key);
 		const editedRow = editingState.edited_rows[key];
+		if (editedRow === undefined) continue;
+
 		const editedRowArgs = {
 			rowIndex,
 			editedRow,

@@ -1,7 +1,7 @@
 "use client";
 import type { DataEditorRef, Theme } from "@glideapps/glide-data-grid";
-import type { IDataSource } from "@/shared/libs/data-grid/components/core/interfaces/i-data-source";
-import Grid from "@/shared/libs/data-grid/components/grid";
+import type { IDataSource } from "@/shared/libs/data-grid";
+import { Grid } from "@/shared/libs/data-grid";
 
 type CalendarEditorGridProps = {
 	// Required inputs for the calendar editor use-case

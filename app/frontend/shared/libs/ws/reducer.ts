@@ -4,6 +4,9 @@ import type {
 	WebSocketDataState,
 	WebSocketMessage,
 } from "@shared/libs/ws/types";
+import { zConversationMessage } from "@shared/validation/domain/conversation.schema";
+import { zReservation } from "@shared/validation/domain/reservation.schema";
+import { z } from "zod";
 import type { ConversationMessage } from "@/entities/conversation";
 import type { Reservation } from "@/entities/event";
 
@@ -118,6 +121,13 @@ function handleReservationMutation(
 	const next = { ...prev };
 	const d = data as { wa_id?: string; waId?: string; id?: string | number };
 	const waIdKey: string | undefined = d.wa_id || d.waId;
+
+	// biome-ignore lint/suspicious/noConsole: DEBUG
+	globalThis.console?.log?.(
+		`[WS] handleReservationMutation: waId=${waIdKey} id=${d.id} | Full data:`,
+		JSON.parse(JSON.stringify(data))
+	);
+
 	if (waIdKey) {
 		const byCustomer = Array.isArray(next.reservations[waIdKey])
 			? [...next.reservations[waIdKey]]
@@ -125,7 +135,11 @@ function handleReservationMutation(
 		const index = byCustomer.findIndex(
 			(r: Reservation) => String(r.id) === String(d.id)
 		);
-		const reservation = data as unknown as Reservation;
+		// Data validated earlier at WS boundary. Keep a narrow fallback parse.
+		const maybe = zReservation.safeParse(data);
+		const reservation = (
+			maybe.success ? maybe.data : (data as unknown)
+		) as Reservation;
 		if (index >= 0) {
 			byCustomer[index] = reservation;
 		} else {
@@ -197,7 +211,11 @@ function handleConversationNewMessage(
 		const customerConversations = Array.isArray(next.conversations[waId])
 			? [...next.conversations[waId]]
 			: [];
-		customerConversations.push(data as unknown as ConversationMessage);
+		const maybe = zConversationMessage.safeParse(data);
+		const msg = (
+			maybe.success ? maybe.data : (data as unknown)
+		) as ConversationMessage;
+		customerConversations.push(msg);
 		next.conversations = {
 			...next.conversations,
 			[waId]: customerConversations,
@@ -211,10 +229,29 @@ function handleVacationPeriodUpdated(
 	data: Record<string, unknown>
 ): WebSocketDataState {
 	const next = { ...prev };
-	const maybe = data as { periods?: VacationSnapshot[] } | VacationSnapshot[];
-	next.vacations = Array.isArray(maybe)
-		? (maybe as VacationSnapshot[])
-		: maybe.periods || [];
+	const zVacationData = z.union([
+		z.array(
+			z
+				.object({ start: z.string().optional(), end: z.string().optional() })
+				.passthrough()
+		),
+		z.object({
+			periods: z.array(
+				z
+					.object({ start: z.string().optional(), end: z.string().optional() })
+					.passthrough()
+			),
+		}),
+	]);
+	const parsed = zVacationData.safeParse(data);
+	if (parsed.success) {
+		if (Array.isArray(parsed.data)) {
+			next.vacations = parsed.data as unknown as VacationSnapshot[];
+		} else {
+			next.vacations = (parsed.data.periods ||
+				[]) as unknown as VacationSnapshot[];
+		}
+	}
 	return next;
 }
 
@@ -255,14 +292,30 @@ function handleSnapshot(
 	data: Record<string, unknown>
 ): WebSocketDataState {
 	const next = { ...prev };
-	const d = data as {
-		reservations?: Record<string, Reservation[]>;
-		conversations?: Record<string, ConversationMessage[]>;
-		vacations?: VacationSnapshot[];
-	};
-	next.reservations = d.reservations || {};
-	next.conversations = d.conversations || {};
-	next.vacations = d.vacations || [];
+	const zSnapshotPayload = z.object({
+		reservations: z.record(z.array(zReservation)).optional(),
+		conversations: z.record(z.array(zConversationMessage)).optional(),
+		vacations: z
+			.array(
+				z
+					.object({ start: z.string().optional(), end: z.string().optional() })
+					.passthrough()
+			)
+			.optional(),
+	});
+	const parsed = zSnapshotPayload.safeParse(data);
+	if (parsed.success) {
+		const d = parsed.data;
+		next.reservations = (d.reservations || {}) as unknown as Record<
+			string,
+			Reservation[]
+		>;
+		next.conversations = (d.conversations || {}) as unknown as Record<
+			string,
+			ConversationMessage[]
+		>;
+		next.vacations = (d.vacations || []) as unknown as VacationSnapshot[];
+	}
 	return next;
 }
 

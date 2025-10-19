@@ -1,7 +1,9 @@
 import type { EventApi, EventChangeArg } from "@fullcalendar/core";
 import type { CalendarCallbacks } from "@shared/libs/calendar/calendar-callbacks";
 import { calculateCalendarHeight } from "@shared/libs/calendar/calendar-view-utils";
+import { useReservationsData } from "@shared/libs/data/websocket-data-provider";
 import type React from "react";
+import { useRef } from "react";
 import type { ConversationMessage } from "@/entities/conversation";
 import type { CalendarEvent, Reservation } from "@/entities/event";
 import { CalendarCore, type CalendarCoreRef } from "./calendar-core";
@@ -119,7 +121,39 @@ export function CalendarMainContent({
 	droppable,
 	onEventReceive,
 }: CalendarMainContentProps) {
+	const { refresh: refreshRange } = useReservationsData();
+	const SECONDS_PER_MINUTE = 60;
+	const MINUTES_PER_HOUR = 60;
+	const HOURS_PER_DAY = 24;
+	const MS_PER_SECOND = 1000;
+	const MS_PER_DAY =
+		HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MS_PER_SECOND;
+	const SUBTRACT_ONE_DAY = MS_PER_DAY;
 	const _isLocalized = isLocalized ?? false;
+	const lastRangeKeyRef = useRef<string>("");
+	const isRangeLoadingRef = useRef<boolean>(false);
+
+	const triggerRangeRefresh = (
+		fromDate: string,
+		toDate: string,
+		includeConversations: boolean
+	) => {
+		if (isRangeLoadingRef.current) {
+			return;
+		}
+		isRangeLoadingRef.current = true;
+		refreshRange({
+			fromDate,
+			toDate,
+			...(includeConversations ? { includeConversations: true } : {}),
+		})
+			.catch(() => {
+				// Range refresh failure is non-fatal; realtime may still populate data
+			})
+			.finally(() => {
+				isRangeLoadingRef.current = false;
+			});
+	};
 	return (
 		<>
 			<CalendarCore
@@ -188,11 +222,47 @@ export function CalendarMainContent({
 						callbacks.eventClick(info);
 					}
 				}}
-				{...(onViewChange && { onViewChange })}
+				onViewChange={(viewType: string) => {
+					try {
+						lastRangeKeyRef.current = "";
+					} catch {
+						// ignore
+					}
+					if (onViewChange) {
+						onViewChange(viewType);
+					}
+				}}
 				{...(contextMenu?.handleContextMenu
 					? { onContextMenu: contextMenu.handleContextMenu }
 					: {})}
 				onDatesSet={(info) => {
+					// When navigating, request async data for the visible date range
+					try {
+						const start = info.view?.currentStart as Date | undefined;
+						const end = info.view?.currentEnd as Date | undefined;
+						if (start && end) {
+							const toIsoDate = (d: Date) => {
+								const yyyy = d.getFullYear();
+								const mm = String(d.getMonth() + 1).padStart(2, "0");
+								const dd = String(d.getDate()).padStart(2, "0");
+								return `${yyyy}-${mm}-${dd}`;
+							};
+							const fromDate = toIsoDate(start);
+							// currentEnd is exclusive in FullCalendar; subtract one day for inclusive
+							const inclusiveEnd = new Date(end.getTime() - SUBTRACT_ONE_DAY);
+							const toDate = toIsoDate(inclusiveEnd);
+							const nextKey = `${fromDate}|${toDate}|${freeRoam ? 1 : 0}`;
+							if (lastRangeKeyRef.current === nextKey) {
+								// Skip redundant refresh for the same visible range
+							} else {
+								lastRangeKeyRef.current = nextKey;
+								// Include conversations only in free-roam; otherwise exclude
+								triggerRangeRefresh(fromDate, toDate, freeRoam);
+							}
+						}
+					} catch {
+						// Ignore range computation errors
+					}
 					if (isHydrated && info.view.type !== currentView) {
 						setCurrentView(info.view.type);
 						if (onViewChange) {

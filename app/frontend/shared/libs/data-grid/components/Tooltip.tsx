@@ -1,3 +1,4 @@
+// biome-ignore lint/style/useFilenamingConvention: PascalCase filename kept for consistency with public API
 import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { CircleAlert } from "lucide-react";
 import type React from "react";

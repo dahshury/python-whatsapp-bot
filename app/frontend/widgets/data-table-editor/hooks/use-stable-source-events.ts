@@ -146,6 +146,7 @@ export function useStableSourceEvents({
 		previousEventsRef.current = sourceEvents;
 	}, [sourceEvents]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: gridRowToEventMapRef intentionally omitted to prevent infinite loops
 	React.useLayoutEffect(() => {
 		try {
 			if (!open) {
@@ -189,13 +190,7 @@ export function useStableSourceEvents({
 		} catch {
 			setSourceEvents(events);
 		}
-	}, [
-		events,
-		open,
-		gridRowToEventMapRef?.current,
-		dataProviderRef,
-		gridRowToEventMapRef,
-	]);
+	}, [events, open, dataProviderRef]);
 
 	return { sourceEvents } as const;
 }

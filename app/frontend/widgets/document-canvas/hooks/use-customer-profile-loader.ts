@@ -1,14 +1,12 @@
 "use client";
 
-import { fetchCustomer } from "@shared/libs/api/index";
+import { useCustomer } from "@shared/libs/query/customers.hooks";
+import { queryKeys } from "@shared/libs/query/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { onCustomerProfile } from "@/processes/customers/customer-events.process";
 import { getDocGridApi } from "@/shared/libs/data-grid/components/utils/grid-api";
 import { clearEditingAndCacheForCells } from "@/shared/libs/data-grid/components/utils/provider-state";
-import {
-	beginRestGuard,
-	endRestGuard,
-} from "@/shared/libs/http/inflight-guard";
 
 type ProviderRef = { current: unknown | null };
 
@@ -96,51 +94,78 @@ function updateGridDisplay(
 	}
 }
 
-async function fetchAndApplyCustomerData(
+type ApplyArgs = {
+	record?: CustomerData;
+	waId: string;
+	provider: unknown;
+	indices: ReturnType<typeof getCellIndices>;
+	dataSource: DataSourceShape;
+};
+
+async function applyFromCustomerRecord(args: ApplyArgs): Promise<boolean> {
+	const { record, waId, provider, indices, dataSource } = args;
+	const customerData = record || {};
+	const restName = (customerData.name ??
+		customerData.customer_name ??
+		"") as string;
+	const restAge = (customerData.age ?? null) as number | null;
+	const restDocument = customerData.document || null;
+	if (restDocument) {
+		window.dispatchEvent(
+			new CustomEvent("documents:external-update", {
+				detail: { wa_id: waId, document: restDocument },
+			})
+		);
+	}
+	await applyCellData(dataSource, indices, restName, restAge);
+	await validateCellData(indices.nameCol, indices.ageCol, dataSource);
+	updateGridDisplay(
+		provider,
+		indices.nameCol,
+		indices.ageCol,
+		indices.phoneCol
+	);
+	window.dispatchEvent(
+		new CustomEvent("doc:customer-loaded", { detail: { waId } })
+	);
+	return true;
+}
+
+function buildApplySequence(
 	waId: string,
 	provider: unknown,
-	{ nameCol, ageCol, phoneCol }: ReturnType<typeof getCellIndices>,
-	customerDataSource: DataSourceShape
-): Promise<boolean> {
-	try {
-		beginRestGuard("__docRestInFlight");
-		const resp = (await fetchCustomer(waId)) as unknown as {
-			data?: CustomerData;
-		};
-		const customerData = resp?.data || {};
-		const restName = (customerData.name ??
-			customerData.customer_name ??
-			"") as string;
-		const restAge = (customerData.age ?? null) as number | null;
-		const restDocument = customerData.document || null;
-
-		endRestGuard("__docRestInFlight");
-
-		if (restDocument) {
-			window.dispatchEvent(
-				new CustomEvent("documents:external-update", {
-					detail: { wa_id: waId, document: restDocument },
-				})
-			);
-		}
-
-		await applyCellData(
-			customerDataSource,
-			{ nameCol, ageCol, phoneCol },
-			restName,
-			restAge
-		);
-		await validateCellData(nameCol, ageCol, customerDataSource);
-		updateGridDisplay(provider, nameCol, ageCol, phoneCol);
-
-		window.dispatchEvent(
-			new CustomEvent("doc:customer-loaded", { detail: { waId } })
-		);
-		return true;
-	} catch (_error) {
-		endRestGuard("__docRestInFlight");
-		return false;
-	}
+	indices: ReturnType<typeof getCellIndices>,
+	dataSource: DataSourceShape
+) {
+	return {
+		applyCached: async (cached?: { data?: CustomerData }) => {
+			if (cached?.data) {
+				await applyFromCustomerRecord({
+					record: cached.data,
+					waId,
+					provider,
+					indices,
+					dataSource,
+				});
+				return true;
+			}
+			return false;
+		},
+		applyFresh: async (fresh?: { data?: CustomerData }) => {
+			const record = fresh?.data;
+			if (record) {
+				const ok = await applyFromCustomerRecord({
+					record,
+					waId,
+					provider,
+					indices,
+					dataSource,
+				});
+				return ok;
+			}
+			return false;
+		},
+	};
 }
 
 export function useCustomerProfileLoader(params: {
@@ -152,6 +177,8 @@ export function useCustomerProfileLoader(params: {
 	const { waId, customerColumns, customerDataSource, providerRef } = params;
 	const [customerLoading, setCustomerLoading] = useState(false);
 	const [customerError, setCustomerError] = useState<string | null>(null);
+	const queryClient = useQueryClient();
+	const customerQuery = useCustomer(waId);
 
 	const onDataProviderReady = useCallback(
 		async (provider: unknown) => {
@@ -164,18 +191,41 @@ export function useCustomerProfileLoader(params: {
 				setCustomerLoading(true);
 				let resolved = false;
 				const cellIndices = getCellIndices(customerColumns);
-
-				const success = await fetchAndApplyCustomerData(
+				const seq = buildApplySequence(
 					waId,
 					provider,
 					cellIndices,
 					customerDataSource
 				);
 
-				if (success) {
-					resolved = true;
-					setCustomerError(null);
-					setCustomerLoading(false);
+				// Try cache first for instant population
+				const cached = queryClient.getQueryData(
+					queryKeys.customers.detail(waId)
+				) as { data?: CustomerData } | undefined;
+				try {
+					const applied = await seq.applyCached(cached);
+					if (applied) {
+						resolved = true;
+					}
+				} catch {
+					// ignore cache apply errors
+				}
+
+				// Then ensure fresh data via query result
+				try {
+					const fresh = customerQuery.data as
+						| { data?: CustomerData }
+						| undefined;
+					const ok = await seq.applyFresh(fresh);
+					if (ok) {
+						resolved = true;
+						setCustomerError(null);
+						setCustomerLoading(false);
+					}
+				} catch (error) {
+					setCustomerError(
+						(error as Error)?.message || "Failed to load customer"
+					);
 				}
 
 				const off = onCustomerProfile(
@@ -187,7 +237,6 @@ export function useCustomerProfileLoader(params: {
 					}) => {
 						try {
 							resolved = true;
-							// Intentional: we don't await this async operation
 							applyCellData(
 								customerDataSource,
 								cellIndices,
@@ -232,7 +281,14 @@ export function useCustomerProfileLoader(params: {
 				setCustomerLoading(false);
 			}
 		},
-		[waId, customerColumns, customerDataSource, providerRef]
+		[
+			waId,
+			customerColumns,
+			customerDataSource,
+			providerRef,
+			queryClient,
+			customerQuery,
+		]
 	);
 
 	return { onDataProviderReady, customerLoading, customerError } as const;

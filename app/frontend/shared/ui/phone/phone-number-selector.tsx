@@ -1,11 +1,9 @@
 import { sortWaIdsByChatOrder } from "@processes/customers/customer-list.process";
-import {
-	useConversationsData,
-	useReservationsData,
-} from "@shared/libs/data/websocket-data-provider";
 import { useSpinnerVisibility } from "@shared/libs/hooks/use-spinner-visibility";
 import { i18n } from "@shared/libs/i18n";
 import { getLocalizedCountryOptions } from "@shared/libs/phone/countries";
+import { useConversations } from "@shared/libs/query/conversations.hooks";
+import { useReservations } from "@shared/libs/query/reservations.hooks";
 import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { Button, Button as UIButton } from "@ui/button";
 import {
@@ -214,9 +212,18 @@ const usePhoneNumberSelectorState = (props: PhoneNumberSelectorBaseProps) => {
 		[isLocalized]
 	);
 
-	// Load conversations/reservations early so memo hooks can depend safely
-	const { conversations } = useConversationsData();
-	const { reservations } = useReservationsData();
+	// Load conversations/reservations via TanStack Query
+	// Limit to last 50 recents for performance and UX
+	const conversationsQuery = useConversations({ recent: "month", limit: 50 });
+	const reservationsQuery = useReservations();
+	const conversations = (conversationsQuery.data?.data || {}) as Record<
+		string,
+		Array<{ date?: string; ts?: string; time?: string; datetime?: string }>
+	>;
+	const reservations = (reservationsQuery.data?.data || {}) as Record<
+		string,
+		Array<{ date?: string }>
+	>;
 
 	const matchesCountry = React.useCallback(
 		(option: IndexedPhoneOption) => {
@@ -377,45 +384,6 @@ const usePhoneNumberSelectorState = (props: PhoneNumberSelectorBaseProps) => {
 		]
 	);
 
-	// Available countries from current dataset (apply search + other filters, but ignore country filter)
-	const availableCountries = React.useMemo(() => {
-		const options = getLocalizedCountryOptions(isLocalized);
-		const labelByCode = new Map<string, string>(
-			options.map((o) => [String(o.value).toUpperCase(), o.label] as const)
-		);
-		// Choose pool: if searching, use visiblePhones (search-limited), otherwise use full normalizedAll
-		const basePool = isSearchMode ? visiblePhones : normalizedAll;
-		// Apply top filter and date filter only (ignore country filter to show all available choices)
-		const filteredPool = basePool
-			.filter((p) => matchesTopFilter(p))
-			.filter((p) => matchesDateFilter(p));
-		const counts = new Map<string, number>();
-		for (const p of filteredPool) {
-			const raw = String(
-				(p as unknown as { __country?: string })?.__country || ""
-			);
-			const codeUpper = raw.trim().toUpperCase();
-			if (!codeUpper) {
-				continue;
-			}
-			counts.set(codeUpper, (counts.get(codeUpper) || 0) + 1);
-		}
-		return Array.from(counts.entries())
-			.sort((a, b) => a[0].localeCompare(b[0]))
-			.map(([code, count]) => ({
-				code: code as CountryCode,
-				count,
-				label: labelByCode.get(code) || code,
-			}));
-	}, [
-		isLocalized,
-		isSearchMode,
-		visiblePhones,
-		normalizedAll,
-		matchesTopFilter,
-		matchesDateFilter,
-	]);
-
 	const recentPhones: IndexedPhoneOption[] = React.useMemo(() => {
 		try {
 			const waIds = sectionPool.map((p) => p.number);
@@ -447,6 +415,55 @@ const usePhoneNumberSelectorState = (props: PhoneNumberSelectorBaseProps) => {
 			return [];
 		}
 	}, [sectionPool, conversations]);
+
+	// Available countries from current dataset (apply search + other filters, but ignore country filter)
+	const availableCountries = React.useMemo(() => {
+		const options = getLocalizedCountryOptions(isLocalized);
+		const labelByCode = new Map<string, string>(
+			options.map((o) => [String(o.value).toUpperCase(), o.label] as const)
+		);
+		// Choose pool:
+		// - If searching: use visiblePhones (search-limited)
+		// - Else prefer recentPhones if available, otherwise fallback to all
+		let basePool: IndexedPhoneOption[];
+		if (isSearchMode) {
+			basePool = visiblePhones;
+		} else if (recentPhones.length > 0) {
+			basePool = recentPhones;
+		} else {
+			basePool = normalizedAll;
+		}
+		// Apply top filter and date filter only (ignore country filter to show all available choices)
+		const filteredPool = basePool
+			.filter((p) => matchesTopFilter(p))
+			.filter((p) => matchesDateFilter(p));
+		const counts = new Map<string, number>();
+		for (const p of filteredPool) {
+			const raw = String(
+				(p as unknown as { __country?: string })?.__country || ""
+			);
+			const codeUpper = raw.trim().toUpperCase();
+			if (!codeUpper) {
+				continue;
+			}
+			counts.set(codeUpper, (counts.get(codeUpper) || 0) + 1);
+		}
+		return Array.from(counts.entries())
+			.sort((a, b) => a[0].localeCompare(b[0]))
+			.map(([code, count]) => ({
+				code: code as CountryCode,
+				count,
+				label: labelByCode.get(code) || code,
+			}));
+	}, [
+		isLocalized,
+		isSearchMode,
+		visiblePhones,
+		recentPhones,
+		normalizedAll,
+		matchesTopFilter,
+		matchesDateFilter,
+	]);
 
 	const [allPageCount, setAllPageCount] = React.useState(PHONE_LIST_PAGE_SIZE);
 
@@ -687,7 +704,7 @@ const FilterControls: React.FC<{
 									value={countryBadgeSearch}
 								/>
 								<CommandList dir="ltr">
-									<ThemedScrollbar className="h-72" rtl={false}>
+									<ThemedScrollbar className="h-72" native={true} rtl={false}>
 										<CommandEmpty>
 											{i18n.getMessage("phone_no_country_found", isLocalized)}
 										</CommandEmpty>
@@ -859,7 +876,7 @@ const CountryFilterMenu: React.FC<{
 					value={countrySubmenuSearch}
 				/>
 				<CommandList dir="ltr">
-					<ThemedScrollbar className="h-72" rtl={false}>
+					<ThemedScrollbar className="h-72" native={true} rtl={false}>
 						<CommandEmpty>
 							{i18n.getMessage("phone_no_country_found", isLocalized)}
 						</CommandEmpty>
@@ -1110,7 +1127,7 @@ export const PhoneNumberSelectorContent: React.FC<
 			/>
 
 			<CommandList dir="ltr">
-				<ThemedScrollbar className="h-72" rtl={false}>
+				<ThemedScrollbar className="h-72" native={true} rtl={false}>
 					{showSpinner ? (
 						<div className="flex items-center justify-center p-4">
 							<Loader2 className="size-4 animate-spin" />

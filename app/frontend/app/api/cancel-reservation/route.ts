@@ -1,18 +1,22 @@
+import { zCancelReservationBody } from "@shared/validation/api/requests/cancel-reservation.schema";
+import {
+	zApiResponse,
+	zReservationsMap,
+} from "@shared/validation/api/response.schema";
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: Request) {
 	try {
-		const body = await request.json();
-		const { id, date, isLocalized } = body;
-
-		// Validate required fields
-		if (!(id && date)) {
+		const json = await request.json().catch(() => ({}));
+		const parsed = zCancelReservationBody.safeParse(json);
+		if (!parsed.success) {
 			return NextResponse.json(
-				{ success: false, message: "Missing required fields: id, date" },
+				{ success: false, message: parsed.error.message },
 				{ status: 400 }
 			);
 		}
+		const { id, date, isLocalized } = parsed.data;
 
 		// Use the correct Python backend endpoint structure: POST /reservations/{wa_id}/cancel
 		const backendResponse = await callPythonBackend(
@@ -24,7 +28,8 @@ export async function POST(request: Request) {
 					hijri: false, // Default to Gregorian calendar
 					ar: isLocalized, // Use the passed language setting
 				}),
-			}
+			},
+			zApiResponse(zReservationsMap)
 		);
 
 		return NextResponse.json(backendResponse);

@@ -4,6 +4,7 @@ import {
 	mergeCustomerOverlays,
 	sortCustomersByLastMessage,
 } from "@processes/customers/customer-list.process";
+import { fetchCustomerNames } from "@shared/libs/api";
 import {
 	useConversationsData,
 	useReservationsData,
@@ -152,6 +153,69 @@ export const CustomerDataProvider: FC<PropsWithChildren> = ({ children }) => {
 	}, [baseCustomers, customerOverrides, deletedCustomers, conversations]);
 
 	const loading = conversationsLoading || reservationsLoading;
+
+	// Enrich base customers with names from backend for wa_ids that lack names
+	useEffect(() => {
+		const missing = baseCustomers
+			.filter((c) => !String(c.name || "").trim())
+			.map((c) => c.id)
+			.filter(Boolean);
+		// biome-ignore lint/suspicious/noConsole: temporary debug logging
+		console.log(
+			"[CustomerDataProvider] Enrichment check: baseCustomers=",
+			baseCustomers.length,
+			"missing=",
+			missing.length
+		);
+		if (missing.length === 0) {
+			return;
+		}
+		let aborted = false;
+		const controller = new AbortController();
+		fetchCustomerNames(missing, controller.signal)
+			.then((resp) => {
+				try {
+					if (aborted) {
+						return;
+					}
+					const map =
+						(resp as { data?: Record<string, string | null> }).data || {};
+					// biome-ignore lint/suspicious/noConsole: temporary debug logging
+					console.log(
+						"[CustomerDataProvider] Fetched",
+						Object.keys(map).length,
+						"names, non-null:",
+						Object.values(map).filter(Boolean).length
+					);
+					setCustomerOverrides((prev) => {
+						const next = new Map(prev);
+						for (const [wa, name] of Object.entries(map)) {
+							if ((name || "").trim()) {
+								next.set(wa, { ...(next.get(wa) || {}), name: String(name) });
+							}
+						}
+						// biome-ignore lint/suspicious/noConsole: temporary debug logging
+						console.log(
+							"[CustomerDataProvider] Overrides updated, size:",
+							next.size
+						);
+						return next;
+					});
+				} catch (err) {
+					// biome-ignore lint/suspicious/noConsole: temporary debug logging
+					console.error("[CustomerDataProvider] Enrichment error:", err);
+				}
+			})
+			.catch((err) => {
+				// biome-ignore lint/suspicious/noConsole: temporary debug logging
+				console.error("[CustomerDataProvider] Fetch error:", err);
+			});
+		return () => {
+			aborted = true;
+			controller.abort();
+		};
+		// Only when baseCustomers changes; overrides/deletes are applied separately
+	}, [baseCustomers]);
 
 	const refresh = useCallback(async () => {
 		// No-op: unified provider manages refresh; expose to satisfy consumers

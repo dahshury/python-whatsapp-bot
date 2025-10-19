@@ -87,7 +87,7 @@ export const PhoneCountrySelector: FC<CountrySelectorProps> = ({
 						value={search}
 					/>
 					<CommandList dir="ltr">
-						<ThemedScrollbar className="h-72" rtl={false}>
+						<ThemedScrollbar className="h-72" native={true} rtl={false}>
 							<CommandEmpty>
 								{i18n.getMessage("phone_no_country_found", isLocalized)}
 							</CommandEmpty>

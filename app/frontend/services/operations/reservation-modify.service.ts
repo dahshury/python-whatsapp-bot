@@ -112,8 +112,9 @@ class ReservationModifyService {
 		onEventModified?: (eventId: string, event: CalendarEvent) => void
 	): Promise<{ success: boolean; operation?: SuccessfulOperation }> {
 		// Proactively suppress calendar eventChange during the entire save cycle
+		// Use longer suppression to cover WebSocket round-trip time
 		try {
-			const SUPPRESS_EVENT_CHANGE_MS = 1250;
+			const SUPPRESS_EVENT_CHANGE_MS = 2500;
 			(
 				globalThis as unknown as { __suppressCalendarEventChangeUntil?: number }
 			).__suppressCalendarEventChangeUntil =
@@ -240,17 +241,6 @@ class ReservationModifyService {
 			return { success: false };
 		}
 
-		// Suppress calendar eventChange for a short window; we're about to update calendar programmatically
-		try {
-			const SUPPRESS_EVENT_CHANGE_MS = 750;
-			(
-				globalThis as unknown as { __suppressCalendarEventChangeUntil?: number }
-			).__suppressCalendarEventChangeUntil =
-				Date.now() + SUPPRESS_EVENT_CHANGE_MS;
-		} catch {
-			// Ignore suppression flag errors
-		}
-
 		// Notify callback
 		const extendedProps: {
 			type: number;
@@ -271,7 +261,11 @@ class ReservationModifyService {
 			title: modificationData.titleNew,
 			start: `${modificationData.dateStrNew}T${slotTime}:00`,
 			end: `${modificationData.dateStrNew}T${slotTime}:00`,
-			extendedProps,
+			extendedProps: {
+				...extendedProps,
+				// Ensure waId propagates so downstream grid can resolve phone immediately
+				waId: modificationData.waId,
+			},
 		});
 
 		// Reflow new slot to apply deterministic ordering and spacing (use normalized slot time)
@@ -309,6 +303,19 @@ class ReservationModifyService {
 		// Store context and mark local echo
 		this.storeModificationContext(modificationData, original);
 		this.markLocalEchoForModification(resp, modificationData, original);
+
+		// Show success notification
+		try {
+			toastService.reservationModified({
+				customer: modificationData.titleNew,
+				wa_id: modificationData.waId,
+				date: modificationData.dateStrNew,
+				time: slotTime,
+				isLocalized: this.isLocalized,
+			});
+		} catch {
+			// Silently ignore toast notification errors
+		}
 
 		return { success: true, operation };
 	}
@@ -406,6 +413,7 @@ class ReservationModifyService {
 			title: modificationData.titleNew,
 			type: Number(modificationData.typeNew),
 			cancelled: false,
+			waId: modificationData.waId,
 		});
 
 		// Update timing

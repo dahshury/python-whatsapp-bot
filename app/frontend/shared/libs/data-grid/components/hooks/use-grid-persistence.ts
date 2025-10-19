@@ -1,5 +1,7 @@
 import type { GridColumn } from "@glideapps/glide-data-grid";
+import { safeParseJson } from "@shared/validation/json";
 import React from "react";
+import { z } from "zod";
 import type { EditingState } from "../../state/editing-state";
 import type { BaseColumnProps } from "../core/types";
 
@@ -68,7 +70,24 @@ export function useGridPersistence(options: GridPersistenceOptions) {
 	const loadState = React.useCallback(() => {
 		const savedState = localStorage.getItem(GRID_STATE_KEY);
 		if (savedState) {
-			const state = JSON.parse(savedState);
+			const zPersistedState = z
+				.object({
+					edits: z.string().optional(),
+					columns: z.array(z.unknown()).optional(),
+					columnDefinitions: z.array(z.unknown()).optional(),
+					hiddenColumns: z.array(z.number()).optional(),
+				})
+				.passthrough();
+			const parsed = safeParseJson(zPersistedState, savedState);
+			if (!parsed.success) {
+				return;
+			}
+			const state = parsed.data as unknown as {
+				edits?: string;
+				columns?: GridColumn[];
+				columnDefinitions?: BaseColumnProps[];
+				hiddenColumns?: number[];
+			};
 
 			// Basic validation – if no columns stored, skip restoring to avoid blank grid
 			if (!state.columns || state.columns.length === 0) {
@@ -86,18 +105,20 @@ export function useGridPersistence(options: GridPersistenceOptions) {
 						width:
 							(col as { width?: number }).width ||
 							DEFAULT_PERSISTED_COLUMN_WIDTH,
-						isEditable: (col as { isEditable?: boolean }).isEditable,
+						isEditable: (col as { isEditable?: boolean }).isEditable ?? false,
 						isHidden: false,
-						isPinned: (col as { sticky?: boolean }).sticky,
-						isRequired: (col as { isRequired?: boolean }).isRequired,
+						isPinned: (col as { sticky?: boolean }).sticky ?? false,
+						isRequired: (col as { isRequired?: boolean }).isRequired ?? false,
 						isIndex: false,
 						indexNumber: index,
-						contentAlignment: "left",
+						contentAlignment: "left" as const,
 						defaultValue: undefined,
 						columnTypeOptions: {},
 					})
 				);
-			editingState.fromJson(state.edits, baseColumnPropsLoaded);
+			if (state.edits) {
+				editingState.fromJson(state.edits, baseColumnPropsLoaded);
+			}
 
 			// Safeguard: skip applying hidden columns if it would hide everything
 			const hiddenCols: number[] = state.hiddenColumns || [];

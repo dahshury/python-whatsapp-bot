@@ -1,3 +1,4 @@
+// biome-ignore lint/style/useFilenamingConvention: PascalCase filename kept for public API compatibility
 import type {
 	DataEditorRef,
 	DrawHeaderCallback,

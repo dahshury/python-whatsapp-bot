@@ -2,6 +2,7 @@
 
 import { useReservationsData } from "@shared/libs/data/websocket-data-provider";
 import { i18n } from "@shared/libs/i18n";
+import { isLocalOperation } from "@shared/libs/realtime-utils";
 import { Z_INDEX } from "@shared/libs/ui/z-index";
 import type { FC } from "react";
 import { useCallback, useEffect, useRef } from "react";
@@ -83,10 +84,16 @@ export const ToastRouter: FC = () => {
 				wa_id?: string;
 				date?: string;
 				time_slot?: string;
+				id?: string | number;
 			};
 
 			// Guard against missing required fields
 			if (!(typedData.wa_id && typedData.date)) {
+				return;
+			}
+
+			// Check if this is a local operation and suppress notification if it is
+			if (isLocalOperation(type, typedData)) {
 				return;
 			}
 

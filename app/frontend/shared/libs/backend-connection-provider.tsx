@@ -1,15 +1,9 @@
 "use client";
 import {
-	createContext,
-	type PropsWithChildren,
-	useContext,
-	useState,
-} from "react";
-
-type BackendConnectionState = {
-	isConnected: boolean;
-	lastError?: string;
-};
+	type BackendConnectionState,
+	useBackendConnectionStore,
+} from "@shared/libs/store/backend-connection-store";
+import { createContext, type PropsWithChildren, useContext } from "react";
 
 const BackendConnectionContext = createContext<BackendConnectionState>({
 	isConnected: true,
@@ -18,9 +12,12 @@ const BackendConnectionContext = createContext<BackendConnectionState>({
 export const BackendConnectionProvider: React.FC<PropsWithChildren> = ({
 	children,
 }) => {
-	const [state] = useState<BackendConnectionState>({ isConnected: true });
+	const isConnected = useBackendConnectionStore((s) => s.isConnected);
+	const lastError = useBackendConnectionStore((s) => s.lastError);
+	const value: BackendConnectionState =
+		lastError !== undefined ? { isConnected, lastError } : { isConnected };
 	return (
-		<BackendConnectionContext.Provider value={state}>
+		<BackendConnectionContext.Provider value={value}>
 			{children}
 		</BackendConnectionContext.Provider>
 	);

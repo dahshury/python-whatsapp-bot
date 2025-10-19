@@ -1,26 +1,29 @@
+import { zApiResponse } from "@shared/validation/api/response.schema";
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { callPythonBackend } from "@/shared/libs/backend";
 
-type UndoCreateResponse = {
-	success: boolean;
-	message?: string;
-	data?: unknown;
-};
+const zUndoCreateBody = z.object({
+	reservationId: z.number(),
+	ar: z.boolean().optional(),
+});
+
+const zUndoCreateResponse = zApiResponse(z.object({}).passthrough());
 // import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path as needed
 
 export async function POST(request: Request) {
 	try {
-		const body = await request.json();
-		const { reservationId, ar } = body; // ar is optional for language
-
-		if (typeof reservationId !== "number") {
+		const json = await request.json().catch(() => ({}));
+		const parsed = zUndoCreateBody.safeParse(json);
+		if (!parsed.success) {
 			return NextResponse.json(
-				{ success: false, message: "Invalid reservationId provided." },
+				{ success: false, message: parsed.error.message },
 				{ status: 400 }
 			);
 		}
+		const { reservationId, ar } = parsed.data;
 
-		const pythonResponse = await callPythonBackend<UndoCreateResponse>(
+		const pythonResponse = await callPythonBackend(
 			"/undo-reserve",
 			{
 				method: "POST",
@@ -28,7 +31,8 @@ export async function POST(request: Request) {
 					reservation_id: reservationId,
 					ar,
 				}),
-			}
+			},
+			zUndoCreateResponse
 		);
 
 		if (pythonResponse.success) {
