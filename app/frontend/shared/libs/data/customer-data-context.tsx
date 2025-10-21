@@ -219,7 +219,13 @@ export const CustomerDataProvider: FC<PropsWithChildren> = ({ children }) => {
 		return () => {
 			aborted = true;
 			try {
-				controller.abort("cleanup");
+				if (!controller.signal.aborted) {
+					const cleanupReason =
+						typeof DOMException === "function"
+							? new DOMException("abort during cleanup", "AbortError")
+							: "cleanup";
+					controller.abort(cleanupReason);
+				}
 			} catch (_abortError) {
 				// AbortController may already be settled; ignore to avoid noisy errors
 			}

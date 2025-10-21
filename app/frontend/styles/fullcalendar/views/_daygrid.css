@@ -141,6 +141,10 @@
 	left: 0;
 	right: 0;
 	margin-top: 0;
+	top: calc(
+		var(--calendar-day-header-height) +
+			var(--calendar-day-header-spacing, 0.25rem)
+	);
 }
 
 .fc-daygrid-body-unbalanced .fc-daygrid-day-events {

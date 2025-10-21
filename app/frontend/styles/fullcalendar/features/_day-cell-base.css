@@ -72,7 +72,8 @@
 
 /* Fix day events container to allow more link overflow - minimal overrides only */
 .fc {
-	--calendar-day-header-height: 1rem;
+	--calendar-day-header-height: 1.35rem;
+	--calendar-day-header-spacing: 0.25rem;
 }
 
 .fc .fc-daygrid-day-events {
@@ -101,9 +102,15 @@
 	position: static;
 	display: flex;
 	flex-direction: row-reverse;
+	align-items: flex-end;
+	min-height: var(--calendar-day-header-height);
 	padding: 0.2em 0.3em;
 	font-size: 0.75em;
 	color: hsl(var(--muted-foreground));
+}
+
+.fc-multimonth .fc-daygrid-day-top {
+	padding-bottom: var(--calendar-day-header-spacing);
 }
 
 /* Day number styling */
@@ -146,5 +153,19 @@
 }
 
 .fc-daygrid-body-balanced .fc-daygrid-day-events {
-	top: var(--calendar-day-header-height);
+	top: calc(
+		var(--calendar-day-header-height) + var(--calendar-day-header-spacing)
+	);
+}
+
+.fc-multimonth .fc-daygrid-day-events {
+	margin-top: var(--calendar-day-header-spacing);
+	padding: 0 0.35rem 0.25rem;
+}
+
+.fc .fc-daygrid-more-link {
+	margin-top: calc(var(--calendar-day-header-spacing) * 0.5);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }

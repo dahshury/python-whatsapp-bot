@@ -8,7 +8,7 @@
 
 "use client";
 
-import type { EventApi } from "@fullcalendar/core";
+import type { EventApi, MoreLinkContentArg } from "@fullcalendar/core";
 import arLocale from "@fullcalendar/core/locales/ar-sa";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -32,7 +32,7 @@ import type {
 	CalendarCoreRef,
 } from "@widgets/calendar/types";
 import { getCalendarClassNames } from "@widgets/calendar/utils/view-class-names";
-import { type RefObject, useMemo, useRef } from "react";
+import { type RefObject, useCallback, useMemo, useRef } from "react";
 import { buildConstraintsProp } from "./config/constraints";
 import { buildValidRangeProp } from "./config/valid-range";
 import { buildViewsProp } from "./config/views";
@@ -138,6 +138,13 @@ const CalendarCoreComponent = ({
 	const dayGridMaxRows = isMultiMonthYear ? 2 : true;
 	const dayGridMaxEvents = isMultiMonthYear ? 2 : true;
 	const eventStackLimit = isMultiMonthYear ? 1 : 3;
+	const renderMoreLinkLabel = useCallback(
+		(arg: MoreLinkContentArg) =>
+			arg.view.type === "multiMonthYear"
+				? `${arg.num} res`
+				: arg.text ?? arg.shortText ?? `+${arg.num} more`,
+		[]
+	);
 
 	// Freeze external event updates while dragging to prevent snap-back
 	const renderEvents = useRenderEvents(sanitizedEvents);
@@ -369,6 +376,7 @@ const CalendarCoreComponent = ({
 					fixedWeekCount={false}
 					locale={isLocalized ? arLocale : "en"}
 					moreLinkClick="popover"
+					moreLinkContent={renderMoreLinkLabel}
 					multiMonthMaxColumns={MULTIMONTH_MAX_COLUMNS}
 					multiMonthMinWidth={MULTIMONTH_MIN_WIDTH}
 					showNonCurrentDates={false}
