@@ -29,7 +29,7 @@ export const NavigationLinks = React.memo(
 										variant: isDocumentsActive ? "default" : "ghost",
 										size: "icon",
 									}),
-									"size-9 rounded-full transition-all duration-200 sm:size-10",
+									"size-9 px-4 rounded-full transition-all duration-200 sm:size-10",
 									isDocumentsActive && "shadow-lg",
 									className
 								)}
@@ -56,7 +56,7 @@ export const NavigationLinks = React.memo(
 										variant: isDashboardActive ? "default" : "ghost",
 										size: "icon",
 									}),
-									"size-9 rounded-full transition-all duration-200 sm:size-10",
+									"size-9 px-4 rounded-full transition-all duration-200 sm:size-10",
 									isDashboardActive && "shadow-lg",
 									className
 								)}
@@ -93,7 +93,7 @@ export const CalendarLink = React.memo(
 						variant: "ghost",
 						size: "icon",
 					}),
-					"size-9 rounded-full transition-all duration-200",
+					"size-9 rounded-full px-4 transition-all duration-200",
 					className
 				)}
 				href="/"

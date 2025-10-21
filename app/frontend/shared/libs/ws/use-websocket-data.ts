@@ -316,24 +316,7 @@ export function useWebSocketData(options: UseWebSocketDataOptions = {}) {
 			}
 		}
 
-		setState((prev) => {
-			const next = reduceOnMessage(prev, message);
-			try {
-				const store = useWsStore.getState();
-				if (next.conversations !== prev.conversations) {
-					store.setConversations(next.conversations);
-				}
-				if (next.reservations !== prev.reservations) {
-					store.setReservations(next.reservations);
-				}
-				if (next.vacations !== prev.vacations) {
-					store.setVacations(transformVacationSnapshots(next.vacations));
-				}
-			} catch {
-				// Store sync failed; ignore
-			}
-			return next;
-		});
+		setState((prev) => reduceOnMessage(prev, message));
 
 		// Metrics and realtime event fan-out
 		try {

@@ -174,10 +174,10 @@ export const CustomerDataProvider: FC<PropsWithChildren> = ({ children }) => {
 		const controller = new AbortController();
 		fetchCustomerNames(missing, controller.signal)
 			.then((resp) => {
+				if (aborted || controller.signal.aborted) {
+					return;
+				}
 				try {
-					if (aborted) {
-						return;
-					}
 					const map =
 						(resp as { data?: Record<string, string | null> }).data || {};
 					// biome-ignore lint/suspicious/noConsole: temporary debug logging
@@ -207,12 +207,22 @@ export const CustomerDataProvider: FC<PropsWithChildren> = ({ children }) => {
 				}
 			})
 			.catch((err) => {
+				if (aborted || controller.signal.aborted) {
+					return;
+				}
+				if (err instanceof DOMException && err.name === "AbortError") {
+					return;
+				}
 				// biome-ignore lint/suspicious/noConsole: temporary debug logging
 				console.error("[CustomerDataProvider] Fetch error:", err);
 			});
 		return () => {
 			aborted = true;
-			controller.abort();
+			try {
+				controller.abort("cleanup");
+			} catch (_abortError) {
+				// AbortController may already be settled; ignore to avoid noisy errors
+			}
 		};
 		// Only when baseCustomers changes; overrides/deletes are applied separately
 	}, [baseCustomers]);

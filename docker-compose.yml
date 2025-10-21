@@ -103,3 +103,15 @@ services:
     ports:
       - "9094:9094"
     restart: on-failure
+
+  # Convenience bundle to launch backend together with its database dependency.
+  backend-with-db:
+    image: alpine:3.19
+    container_name: reservation_backend_with_db
+    depends_on:
+      postgres:
+        condition: service_started
+      backend:
+        condition: service_started
+    command: ["/bin/sh", "-c", "echo 'Backend and Postgres are running'; tail -f /dev/null"]
+    restart: "no"
