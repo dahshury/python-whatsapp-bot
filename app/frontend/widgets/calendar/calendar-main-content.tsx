@@ -132,6 +132,8 @@ export function CalendarMainContent({
 	const _isLocalized = isLocalized ?? false;
 	const lastRangeKeyRef = useRef<string>("");
 	const isRangeLoadingRef = useRef<boolean>(false);
+	const hoverCardsDisabled =
+		disableHoverCards || currentView === "multiMonthYear";
 
 	const triggerRangeRefresh = (
 		fromDate: string,
@@ -290,7 +292,8 @@ export function CalendarMainContent({
 						}
 					}
 				}}
-				{...(disableHoverCards
+
+				{...(hoverCardsDisabled
 					? {}
 					: {
 							onEventMouseEnter: (arg: {
@@ -304,7 +307,7 @@ export function CalendarMainContent({
 									jsEvent: arg?.jsEvent as MouseEvent,
 								}),
 						})}
-				{...(disableHoverCards
+				{...(hoverCardsDisabled
 					? {}
 					: {
 							onEventMouseLeave: (arg: {
@@ -324,7 +327,7 @@ export function CalendarMainContent({
 				{...(dragHandlers?.handleEventDragStop
 					? { onEventDragStop: dragHandlers.handleEventDragStop }
 					: {})}
-				{...(disableHoverCards
+				{...(hoverCardsDisabled
 					? {}
 					: { onEventMouseDown: hoverCard.closeHoverCardImmediately })}
 				onNavDate={setCurrentDate}
@@ -349,7 +352,7 @@ export function CalendarMainContent({
 			/>
 
 			{/* Hover Card for Events */}
-			{!disableHoverCards &&
+			{!hoverCardsDisabled &&
 				hoverCard.hoveredEventId &&
 				hoverCard.hoverCardPosition &&
 				!dragHandlers.isDragging && (

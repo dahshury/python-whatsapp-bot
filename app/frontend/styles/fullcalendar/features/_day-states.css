@@ -1,17 +1,45 @@
 /* Day States Feature - Shared state styles for all calendar views */
 
 /* TODAY'S DATE STYLING */
-.fc-multimonth :where(.fc-daygrid-day.fc-day-today),
-.fc-daygrid :where(.fc-daygrid-day.fc-day-today) {
-	/* Add subtle background tint like in week view */
+.fc-multimonth :where(.fc-daygrid-day.fc-day-today) {
+	background: hsl(var(--primary) / 0.04);
+	z-index: var(--z-calendar-event);
+	position: relative;
+}
+
+.fc-multimonth :where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
+	background: hsl(var(--card));
+	border: 1px solid hsl(var(--primary) / 0.25);
+	box-shadow: none;
+	transform: none;
+}
+
+.fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+	position: relative;
+	font-weight: 700;
+	color: hsl(var(--primary));
+	text-shadow: none;
+}
+
+.fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	left: -4px;
+	width: 4px;
+	height: 4px;
+	border-radius: 50%;
+	box-shadow: 0 0 4px hsl(var(--primary) / 0.4);
+}
+
+.fc-daygrid:not(.fc-multimonth) :where(.fc-daygrid-day.fc-day-today) {
 	background: hsl(var(--primary) / 0.03);
 	z-index: var(--z-calendar-event);
 	position: relative;
 }
 
-.fc-multimonth
-	:where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame),
-.fc-daygrid
+.fc-daygrid:not(.fc-multimonth)
 	:where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
 	background: linear-gradient(
 		135deg,
@@ -30,9 +58,7 @@
 	position: relative;
 }
 
-/* Today's number - more prominent */
-.fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
-.fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+.fc-daygrid:not(.fc-multimonth) .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
 	position: relative;
 	font-weight: 900;
 	color: hsl(var(--primary));
@@ -40,17 +66,14 @@
 	z-index: var(--z-calendar-events);
 }
 
-/* Today indicator dot - more prominent */
-.fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after,
-.fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
+.fc-daygrid:not(.fc-multimonth) .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
 	content: "";
 	position: absolute;
-	bottom: 1px;
-	left: 50%;
-	transform: translateX(-50%);
+	top: 50%;
+	transform: translateY(-50%);
+	left: -5px;
 	width: 4px;
 	height: 4px;
-	background: hsl(var(--primary));
 	border-radius: 50%;
 	box-shadow: 0 0 4px hsl(var(--primary) / 0.5);
 	z-index: var(--z-calendar-events);
@@ -58,8 +81,14 @@
 
 /* Today with selection */
 .fc-multimonth .fc-daygrid-day.fc-day-today.fc-day-selected:not(.fc-day-past)
-	.fc-daygrid-day-frame,
-.fc-daygrid
+	.fc-daygrid-day-frame {
+	background: hsl(var(--primary) / 0.12);
+	border: 1px solid hsl(var(--accent) / 0.4);
+	box-shadow: none;
+	z-index: var(--z-calendar-event);
+}
+
+.fc-daygrid:not(.fc-multimonth)
 	.fc-daygrid-day.fc-day-today.fc-day-selected:not(.fc-day-past)
 	.fc-daygrid-day-frame {
 	background: linear-gradient(

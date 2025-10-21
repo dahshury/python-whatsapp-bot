@@ -16,7 +16,6 @@
 }
 
 /* DAY CELL FRAME - The inner container with visual styling */
-.fc-multimonth .fc-daygrid-day-frame,
 .fc-daygrid .fc-daygrid-day-frame {
 	border: 1px solid hsl(var(--border) / 0.15);
 	border-radius: calc(var(--radius) * 0.75);
@@ -44,17 +43,21 @@
 	z-index: var(--z-fc-day-cell-base);
 }
 
-/* Enhanced frame styling for multimonth view specifically */
+/* Lightweight frame styling for multimonth view */
 .fc-multimonth .fc-daygrid-day-frame {
-	z-index: var(--z-fc-day-cell-base);
+	border: 1px solid hsl(var(--border) / 0.1);
+	border-radius: calc(var(--radius) * 0.5);
+	background: hsl(var(--card));
+	box-shadow: none;
+	overflow: hidden;
+	height: 100%;
+	width: 100%;
 	position: relative;
+	display: flex;
+	flex-direction: column;
 }
 
 /* Future days default gradient */
-.fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(
-		.vacation-day
-	):not(.fc-day-disabled)
-	.fc-daygrid-day-frame,
 .fc-daygrid
 	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(.vacation-day):not(
 		.fc-day-disabled

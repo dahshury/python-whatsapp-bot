@@ -134,6 +134,10 @@ const CalendarCoreComponent = ({
 		});
 		return out;
 	}, [optimizedEvents, currentView]);
+	const isMultiMonthYear = currentView === "multiMonthYear";
+	const dayGridMaxRows = isMultiMonthYear ? 2 : true;
+	const dayGridMaxEvents = isMultiMonthYear ? 2 : true;
+	const eventStackLimit = isMultiMonthYear ? 1 : 3;
 
 	// Freeze external event updates while dragging to prevent snap-back
 	const renderEvents = useRenderEvents(sanitizedEvents);
@@ -343,8 +347,9 @@ const CalendarCoreComponent = ({
 					// View-specific overrides for multiMonthYear
 					aspectRatio={ASPECT_RATIO}
 					// Dynamic slot times
-					dayMaxEventRows={true}
-					dayMaxEvents={true}
+					dayMaxEventRows={dayGridMaxRows}
+					dayMaxEvents={dayGridMaxEvents}
+					eventMaxStack={eventStackLimit}
 					// Localization and Timezone (critical - matches Python implementation)
 					direction={"ltr"}
 					displayEventTime={true}

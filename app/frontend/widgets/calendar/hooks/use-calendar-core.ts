@@ -86,9 +86,12 @@ export function useCalendarCore({
 	// Filter cancelled, align and sort within slots, then adjust free roam editability
 	const processedEvents = useMemo(() => {
 		const filtered = filterEventsForCalendar(eventsState.events, freeRoam);
+		if (calendarState.currentView === "multiMonthYear") {
+			return filtered;
+		}
 		const aligned = alignAndSortEventsForCalendar(filtered, freeRoam);
 		return processEventsForFreeRoam(aligned, freeRoam);
-	}, [eventsState.events, freeRoam]);
+	}, [eventsState.events, freeRoam, calendarState.currentView]);
 
 	// View/height calculation - no callback needed, useCalendarInitialization handles it
 	const { calculateHeight } = useCalendarResize(calendarState.currentView);
