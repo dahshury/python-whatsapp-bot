@@ -332,7 +332,6 @@ function finalizeSave(args: {
 	if (provider) {
 		const editingState = provider.getEditingState();
 		editingState.clearMemory();
-		provider.refresh();
 	}
 }
 
@@ -445,6 +444,12 @@ export function useDataTableSaveHandler({
 					successfulOperations,
 					...(onAddedAdapter !== undefined && { onAddedAdapter }),
 				});
+			} else if (hasErrors) {
+				try {
+					dataProviderRef.current?.refresh();
+				} catch {
+					// Refresh failed; rely on subsequent websocket updates
+				}
 			}
 
 			return !hasErrors;

@@ -4,11 +4,13 @@ import { reserveTimeSlot } from "@shared/libs/api";
 import { i18n } from "@shared/libs/i18n";
 import { generateLocalOpKeys } from "@shared/libs/realtime-utils";
 import { toastService } from "@shared/libs/toast/toast-service";
+import { useWsStore } from "@shared/libs/store/ws-store";
 import type { LocalEchoManager } from "@shared/libs/utils/local-echo.manager";
 import { normalizePhoneForStorage } from "@shared/libs/utils/phone-utils";
 import type {
 	ApiResponse,
 	CalendarEvent,
+	Reservation,
 	OperationResult,
 	RowChange,
 	SuccessfulOperation,
@@ -88,6 +90,50 @@ export class ReservationCreateService {
 
 				if (!resp?.success) {
 					throw new Error(this.extractErrorMessage(resp, creationData));
+				}
+
+				const rawReservationId =
+					(resp?.data as { reservation_id?: number | string } | undefined)
+						?.reservation_id ??
+					(resp as { reservationId?: number | string }).reservationId ??
+					(resp as { id?: number | string }).id;
+				const normalizedReservationId =
+					typeof rawReservationId === "number"
+						? rawReservationId
+						: typeof rawReservationId === "string" &&
+								!Number.isNaN(Number(rawReservationId))
+							? Number(rawReservationId)
+							: undefined;
+
+				const createdReservation: Reservation = {
+					...(typeof normalizedReservationId === "number"
+						? { id: normalizedReservationId }
+						: {}),
+					customer_id: creationData.waId,
+					date: creationData.dStr,
+					time_slot: slotTime,
+					customer_name: creationData.name || creationData.waId,
+					type: typeNumber,
+					cancelled: false,
+				};
+
+				try {
+					const store = useWsStore.getState();
+					const existingList = store.reservations[creationData.waId] ?? [];
+					const alreadyPresent = existingList.some((reservation) =>
+						createdReservation.id !== undefined && reservation.id !== undefined
+							? String(reservation.id) === String(createdReservation.id)
+							: reservation.date === createdReservation.date &&
+							  reservation.time_slot === createdReservation.time_slot
+					);
+					if (!alreadyPresent) {
+						store.setReservations({
+							...store.reservations,
+							[creationData.waId]: [...existingList, createdReservation],
+						});
+					}
+				} catch {
+					// Optimistic state update failed; rely on websocket snapshot
 				}
 
 				// Track successful operation
