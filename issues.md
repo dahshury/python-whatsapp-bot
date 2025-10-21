@@ -48,9 +48,9 @@
 
 | Issue                           | Description                                                                                                      |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-g| Layout Overlaps             | Day numbers overlap with events in year/month views.                                                             |
+| Layout Overlaps             | Day numbers overlap with events in year/month views.                                                             |
 | “More…” Button Misalignment | The “More…” button (for overflow events) extends beyond cell boundaries.                                         |
-| Event Click Inconsistency   | Clicking different parts of an event does not consistently trigger the click event.                              |
+| Event Click Inconsistency   | Clicking different parts of an event does not consistently trigger the click event. 👍                              |
 
 ---
 

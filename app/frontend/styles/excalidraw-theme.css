@@ -555,7 +555,6 @@
 .excalidraw-fullscreen-button:active {
 	background-color: var(--button-active-bg);
 	border-color: var(--button-active-border);
-	transform: scale(0.95);
 }
 
 .excalidraw-fullscreen-button .ToolIcon__icon {
@@ -605,22 +604,6 @@
 	outline-offset: 2px;
 }
 
-/* Position and layering fixes adapted from prior implementation, scoped to our containers */
-.excalidraw-theme-scope .excalidraw {
-	/* NOTE: position: relative was removed because it breaks position:fixed elements
-     like the eraser cursor shadow, causing misalignment between cursor and eraser */
-	height: 100%;
-	width: 100%;
-}
-.excalidraw-theme-scope .excalidraw .popover,
-.excalidraw-theme-scope .excalidraw .context-menu {
-	position: fixed;
-	z-index: var(--z-context-menu, 2147483000);
-}
-.excalidraw-theme-scope .excalidraw .popover:has(.context-menu) {
-	position: absolute;
-	z-index: var(--z-context-menu, 2147483000);
-}
 
 /* ===== THEME-SPECIFIC ENHANCEMENTS ===== */
 /* All themes automatically inherit the comprehensive variable mapping above */

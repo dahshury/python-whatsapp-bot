@@ -68,8 +68,12 @@
 }
 
 /* Fix day events container to allow more link overflow - minimal overrides only */
+.fc {
+	--calendar-day-header-height: 1rem;
+}
+
 .fc .fc-daygrid-day-events {
-	overflow: visible;
+	overflow: hidden;
 	z-index: var(--z-calendar-events);
 }
 
@@ -133,7 +137,11 @@
 /* Event container - minimal overrides only */
 .fc-multimonth .fc-daygrid-day-events,
 .fc-daygrid .fc-daygrid-day-events {
-	margin-top: 0;
+	margin-top: var(--calendar-day-header-height);
 	z-index: var(--z-fc-day-cell-content);
-	overflow: visible;
+	overflow: hidden;
+}
+
+.fc-daygrid-body-balanced .fc-daygrid-day-events {
+	top: var(--calendar-day-header-height);
 }

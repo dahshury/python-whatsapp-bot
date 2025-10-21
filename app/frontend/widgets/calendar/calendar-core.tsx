@@ -343,8 +343,8 @@ const CalendarCoreComponent = ({
 					// View-specific overrides for multiMonthYear
 					aspectRatio={ASPECT_RATIO}
 					// Dynamic slot times
-					dayMaxEventRows={true}
-					dayMaxEvents={true}
+					dayMaxEventRows={2}
+					dayMaxEvents={2}
 					// Localization and Timezone (critical - matches Python implementation)
 					direction={"ltr"}
 					displayEventTime={true}
