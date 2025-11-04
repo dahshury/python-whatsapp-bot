@@ -39,11 +39,8 @@
 }
 
 /* Note: Console error suppression is handled via JavaScript in layout.tsx */
-/* biome-ignore lint: Tailwind directives are intentional */
 @tailwind base;
-/* biome-ignore lint: Tailwind directives are intentional */
 @tailwind components;
-/* biome-ignore lint: Tailwind directives are intentional */
 @tailwind utilities;
 
 /* Main Global Styles Entry Point */
@@ -92,11 +89,9 @@ body {
 
 @layer base {
 	* {
-		/* biome-ignore lint: Tailwind directives are intentional */
 		@apply border-border;
 	}
 	body {
-		/* biome-ignore lint: Tailwind directives are intentional */
 		@apply bg-background text-foreground;
 	}
 }

@@ -1,36 +1,54 @@
-"use client";
+'use client'
 
-import * as React from "react";
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
+import {
+	createContext,
+	type ReactNode,
+	type RefObject,
+	useContext,
+	useMemo,
+	useState,
+} from 'react'
+import type { CalendarCoreRef } from '@/features/calendar'
 
 export type DockBridgeState = {
-	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
-	currentCalendarView?: string;
-	onCalendarViewChange?: (view: string) => void;
+	calendarRef?: RefObject<CalendarCoreRef | null> | null
+	currentCalendarView?: string
+	onCalendarViewChange?: (view: string) => void
 	// Dual calendar additions
-	rightCalendarRef?: React.RefObject<CalendarCoreRef | null> | null;
-	rightCalendarView?: string;
-	onRightCalendarViewChange?: (view: string) => void;
-};
+	rightCalendarRef?: React.RefObject<CalendarCoreRef | null> | null
+	rightCalendarView?: string
+	onRightCalendarViewChange?: (view: string) => void
+}
 
 type DockBridgeContextValue = {
-	state: DockBridgeState;
-	setState: (next: DockBridgeState | ((prev: DockBridgeState) => DockBridgeState)) => void;
-	reset: () => void;
-};
+	state: DockBridgeState
+	setState: (
+		next: DockBridgeState | ((prev: DockBridgeState) => DockBridgeState)
+	) => void
+	reset: () => void
+}
 
-const DockBridgeContext = React.createContext<DockBridgeContextValue | null>(null);
+const DockBridgeContext = createContext<DockBridgeContextValue | null>(null)
 
-export function DockBridgeProvider({ children }: { children: React.ReactNode }) {
-	const [state, setState] = React.useState<DockBridgeState>({});
+export function DockBridgeProvider({ children }: { children: ReactNode }) {
+	const [state, setState] = useState<DockBridgeState>({})
 
-	const value = React.useMemo<DockBridgeContextValue>(() => ({ state, setState, reset: () => setState({}) }), [state]);
+	const value = useMemo<DockBridgeContextValue>(
+		() => ({ state, setState, reset: () => setState({}) }),
+		[state]
+	)
 
-	return <DockBridgeContext.Provider value={value}>{children}</DockBridgeContext.Provider>;
+	return (
+		<DockBridgeContext.Provider value={value}>
+			{children}
+		</DockBridgeContext.Provider>
+	)
 }
 
 export function useDockBridge(): DockBridgeContextValue {
-	const ctx = React.useContext(DockBridgeContext);
-	if (!ctx) throw new Error("useDockBridge must be used within DockBridgeProvider");
-	return ctx;
+	const ctx = useContext(DockBridgeContext)
+	if (!ctx) {
+		throw new Error('useDockBridge must be used within DockBridgeProvider')
+	}
+	return ctx
 }

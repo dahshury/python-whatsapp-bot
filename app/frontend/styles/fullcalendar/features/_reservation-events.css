@@ -138,7 +138,8 @@
 .fc-event.reservation-event:not(.conversation-event) .fc-event-main,
 .fc-event.reservation-event:not(.conversation-event) .fc-event-main-frame,
 .fc-daygrid-event.reservation-event:not(.conversation-event) .fc-event-main,
-.fc-timegrid-event.reservation-event:not(.conversation-event) .fc-event-main-frame {
+.fc-timegrid-event.reservation-event:not(.conversation-event)
+	.fc-event-main-frame {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
@@ -162,29 +163,29 @@
 /* Colors are sourced from variables in _variables.css and applied in _universal.css */
 
 /* Default (light): black stroke for all non-vacation events */
-.fc-event.reservation-event:not(.vacation-text-event),
-.fc-event.conversation-event:not(.vacation-text-event),
-.fc-timegrid-event.reservation-event:not(.vacation-text-event),
-.fc-timegrid-event.conversation-event:not(.vacation-text-event),
-.fc-daygrid-event.reservation-event:not(.vacation-text-event),
-.fc-daygrid-event.conversation-event:not(.vacation-text-event) {
+.fc-event.reservation-event,
+.fc-event.conversation-event,
+.fc-timegrid-event.reservation-event,
+.fc-timegrid-event.conversation-event,
+.fc-daygrid-event.reservation-event,
+.fc-daygrid-event.conversation-event {
 	border-width: var(--fc-event-stroke-width);
 	border-color: #000;
 }
 
 /* Dark theme: white stroke for all non-vacation events */
-.dark .fc-event.reservation-event:not(.vacation-text-event),
-.dark .fc-event.conversation-event:not(.vacation-text-event),
-.dark .fc-timegrid-event.reservation-event:not(.vacation-text-event),
-.dark .fc-timegrid-event.conversation-event:not(.vacation-text-event),
-.dark .fc-daygrid-event.reservation-event:not(.vacation-text-event),
-.dark .fc-daygrid-event.conversation-event:not(.vacation-text-event) {
+.dark .fc-event.reservation-event,
+.dark .fc-event.conversation-event,
+.dark .fc-timegrid-event.reservation-event,
+.dark .fc-timegrid-event.conversation-event,
+.dark .fc-daygrid-event.reservation-event,
+.dark .fc-daygrid-event.conversation-event {
 	border-width: var(--fc-event-stroke-width);
 	border-color: #fff;
 }
 
 /* Fallback: ensure ALL non-vacation events invert stroke with theme */
-.dark .fc-event:not(.vacation-text-event) {
+.dark .fc-event {
 	border-width: var(--fc-event-stroke-width);
 	border-color: #fff;
 }

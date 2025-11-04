@@ -72,29 +72,30 @@ class AssistantFunctionService:
     
     def reserve_time_slot(self, wa_id: str, customer_name: str, date_str: str, 
                          time_slot: str, reservation_type: int, hijri: bool = False,
-                         max_reservations: int = 5, ar: bool = False) -> Dict[str, Any]:
+                         max_reservations: int = 5, ar: bool = False, _call_source: str = "assistant") -> Dict[str, Any]:
         """Reserve a time slot for a customer."""
         return self.reservation_service.reserve_time_slot(
             wa_id, customer_name, date_str, time_slot, reservation_type,
-            hijri, max_reservations, ar
+            hijri, max_reservations, ar, _call_source
         )
     
     def modify_reservation(self, wa_id: str, new_date: Optional[str] = None, 
                           new_time_slot: Optional[str] = None, new_name: Optional[str] = None,
                           new_type: Optional[int] = None, max_reservations: int = 5,
                           approximate: bool = False, hijri: bool = False, ar: bool = False,
-                          reservation_id_to_modify: Optional[int] = None) -> Dict[str, Any]:
+                          reservation_id_to_modify: Optional[int] = None, _call_source: str = "assistant") -> Dict[str, Any]:
         """Modify an existing reservation."""
         return self.reservation_service.modify_reservation(
             wa_id, new_date, new_time_slot, new_name, new_type,
-            max_reservations, approximate, hijri, ar, reservation_id_to_modify
+            max_reservations, approximate, hijri, ar, reservation_id_to_modify,
+            _internal_call_context=None, _call_source=_call_source
         )
     
     def cancel_reservation(self, wa_id: str, date_str: Optional[str] = None,
                           hijri: bool = False, ar: bool = False,
-                          reservation_id_to_cancel: Optional[int] = None) -> Dict[str, Any]:
+                          reservation_id_to_cancel: Optional[int] = None, _call_source: str = "assistant") -> Dict[str, Any]:
         """Cancel a customer reservation."""
-        return self.reservation_service.cancel_reservation(wa_id, date_str, hijri, ar, reservation_id_to_cancel)
+        return self.reservation_service.cancel_reservation(wa_id, date_str, hijri, ar, reservation_id_to_cancel, _call_source)
     
     # Availability operations
     
@@ -181,7 +182,7 @@ def modify_reservation(wa_id: str, new_date: Optional[str] = None,
                       new_time_slot: Optional[str] = None, new_name: Optional[str] = None,
                       new_type: Optional[int] = None, max_reservations: int = 5,
                       approximate: bool = False, hijri: bool = False, ar: bool = False,
-                      reservation_id_to_modify: Optional[int] = None) -> Dict[str, Any]:
+                      reservation_id_to_modify: Optional[int] = None, _call_source: str = "assistant") -> Dict[str, Any]:
     """
     Modify the reservation for an existing customer.
 
@@ -196,13 +197,14 @@ def modify_reservation(wa_id: str, new_date: Optional[str] = None,
         hijri (bool): Flag indicating if the provided date is in Hijri format
         ar (bool): If True, returns error messages in Arabic
         reservation_id_to_modify (int, optional): Specific ID of the reservation to modify.
+        _call_source (str, optional): Source of the call ("assistant" or "frontend")
         
     Returns:
         dict: Result of the modification operation with success status, message, reservation_id, and original_data.
     """
     return _service.modify_reservation(
         wa_id, new_date, new_time_slot, new_name, new_type,
-        max_reservations, approximate, hijri, ar, reservation_id_to_modify
+        max_reservations, approximate, hijri, ar, reservation_id_to_modify, _call_source
     )
 
 
@@ -222,7 +224,7 @@ def get_customer_reservations(wa_id: str, include_past: bool = False) -> Dict[st
 
 def reserve_time_slot(wa_id: str, customer_name: str, date_str: str, 
                      time_slot: str, reservation_type: int, hijri: bool = False,
-                     max_reservations: int = 5, ar: bool = False) -> Dict[str, Any]:
+                     max_reservations: int = 5, ar: bool = False, _call_source: str = "assistant") -> Dict[str, Any]:
     """
     Reserve a time slot for a customer.
     
@@ -235,19 +237,20 @@ def reserve_time_slot(wa_id: str, customer_name: str, date_str: str,
         hijri (bool, optional): If True, treats the input date as Hijri
         max_reservations (int, optional): Maximum allowed reservations per time slot
         ar (bool, optional): If True, returns error messages in Arabic
+        _call_source (str, optional): Source of the call ("assistant" or "frontend")
     
     Returns:
         dict: Result of the reservation operation with success status and details
     """
     return _service.reserve_time_slot(
         wa_id, customer_name, date_str, time_slot, reservation_type,
-        hijri, max_reservations, ar
+        hijri, max_reservations, ar, _call_source
     )
 
 
 def cancel_reservation(wa_id: str, date_str: Optional[str] = None,
                       hijri: bool = False, ar: bool = False,
-                      reservation_id_to_cancel: Optional[int] = None) -> Dict[str, Any]:
+                      reservation_id_to_cancel: Optional[int] = None, _call_source: str = "assistant") -> Dict[str, Any]:
     """
     Cancel a reservation or all reservations for a customer using soft deletion.
     
@@ -257,11 +260,12 @@ def cancel_reservation(wa_id: str, date_str: Optional[str] = None,
         hijri (bool, optional): Flag indicating if the provided date is in Hijri format
         ar (bool, optional): If True, returns messages in Arabic
         reservation_id_to_cancel (int, optional): Specific ID of the reservation to cancel.
+        _call_source (str, optional): Source of the call ("assistant" or "frontend")
         
     Returns:
         dict: Result of the cancellation operation with success status, message and cancelled_ids.
     """
-    return _service.cancel_reservation(wa_id, date_str, hijri, ar, reservation_id_to_cancel)
+    return _service.cancel_reservation(wa_id, date_str, hijri, ar, reservation_id_to_cancel, _call_source)
 
 
 def get_available_time_slots(date_str: str, max_reservations: int = 5, hijri: bool = False) -> Dict[str, Any]:

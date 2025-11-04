@@ -2,9 +2,12 @@
 
 /* Vertical orientation: remove inner radii and collapse borders */
 [data-button-group][data-orientation="vertical"] > *:not(:first-child) button,
-[data-button-group][data-orientation="vertical"] > *:not(:first-child) [role="button"],
+[data-button-group][data-orientation="vertical"]
+	> *:not(:first-child)
+	[role="button"],
 [data-button-group][data-orientation="vertical"] > button:not(:first-child),
-[data-button-group][data-orientation="vertical"] > a[role="button"]:not(:first-child) {
+[data-button-group][data-orientation="vertical"]
+	> a[role="button"]:not(:first-child) {
 	margin-top: -1px; /* collapse adjacent borders */
 }
 
@@ -20,22 +23,53 @@
 	border-top-right-radius: 0;
 }
 
-/* Horizontal orientation (not used here, but provided for completeness) */
+/* Horizontal orientation with RTL support */
 [data-button-group][data-orientation="horizontal"] > *:not(:first-child) button,
-[data-button-group][data-orientation="horizontal"] > *:not(:first-child) [role="button"],
 [data-button-group][data-orientation="horizontal"] > button:not(:first-child),
-[data-button-group][data-orientation="horizontal"] > a[role="button"]:not(:first-child) {
-	margin-left: -1px;
+[data-button-group][data-orientation="horizontal"]
+	> *:not(:first-child)
+	[role="button"],
+[data-button-group][data-orientation="horizontal"]
+	> a[role="button"]:not(:first-child) {
+	margin-inline-start: -1px;
+	margin-left: -1px; /* fallback for older browsers */
 }
 
 [data-button-group][data-orientation="horizontal"] > *:first-child button,
-[data-button-group][data-orientation="horizontal"] > button:first-child {
+[data-button-group][data-orientation="horizontal"] > button:first-child,
+[data-button-group][data-orientation="horizontal"]
+	> *:first-child
+	[role="button"],
+[data-button-group][data-orientation="horizontal"]
+	> a[role="button"]:first-child {
+	border-start-end-radius: 0;
+	border-end-end-radius: 0;
 	border-top-right-radius: 0;
 	border-bottom-right-radius: 0;
 }
 
 [data-button-group][data-orientation="horizontal"] > *:last-child button,
-[data-button-group][data-orientation="horizontal"] > button:last-child {
+[data-button-group][data-orientation="horizontal"] > button:last-child,
+[data-button-group][data-orientation="horizontal"]
+	> *:last-child
+	[role="button"],
+[data-button-group][data-orientation="horizontal"]
+	> a[role="button"]:last-child {
+	border-start-start-radius: 0;
+	border-end-start-radius: 0;
 	border-top-left-radius: 0;
 	border-bottom-left-radius: 0;
+}
+
+[data-button-group][data-orientation="horizontal"]
+	> *:not(:first-child):not(:last-child)
+	button,
+[data-button-group][data-orientation="horizontal"]
+	> button:not(:first-child):not(:last-child),
+[data-button-group][data-orientation="horizontal"]
+	> *:not(:first-child):not(:last-child)
+	[role="button"],
+[data-button-group][data-orientation="horizontal"]
+	> a[role="button"]:not(:first-child):not(:last-child) {
+	border-radius: 0;
 }

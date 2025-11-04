@@ -1,15 +1,16 @@
-"use client";
+'use client'
 
-import { cn } from "@shared/libs/utils";
-import * as React from "react";
+import { cn } from '@shared/libs/utils'
+import type { ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-interface FitWidthScaleProps {
-	className?: string;
-	children: React.ReactNode;
+type FitWidthScaleProps = {
+	className?: string
+	children: ReactNode
 	/** Minimum allowed scale when shrinking */
-	minScale?: number;
+	minScale?: number
 	/** Maximum allowed scale; keep at 1 to avoid upscaling */
-	maxScale?: number;
+	maxScale?: number
 }
 
 /**
@@ -17,64 +18,92 @@ interface FitWidthScaleProps {
  * the available container width without overflow. Uses a transform scale so
  * layout around the element remains stable. SSR-safe (initial scale is 1).
  */
-export function FitWidthScale({ className = "", children, minScale = 0.7, maxScale = 1 }: FitWidthScaleProps) {
-	const containerRef = React.useRef<HTMLDivElement | null>(null);
-	const contentRef = React.useRef<HTMLDivElement | null>(null);
-	const [scale, setScale] = React.useState<number>(1);
+export function FitWidthScale({
+	className = '',
+	children,
+	minScale = 0.7,
+	maxScale = 1,
+}: FitWidthScaleProps) {
+	const containerRef = useRef<HTMLDivElement | null>(null)
+	const contentRef = useRef<HTMLDivElement | null>(null)
+	const [scale, setScale] = useState<number>(1)
 
-	const recompute = React.useCallback(() => {
+	const recompute = useCallback(() => {
 		try {
-			const container = containerRef.current;
-			const content = contentRef.current;
-			if (!container || !content) return;
-			// Measure widths
-			const available = container.getBoundingClientRect().width;
-			// Temporarily clear transform to read natural width
-			const prev = content.style.transform;
-			content.style.transform = "";
-			const natural = content.getBoundingClientRect().width;
-			content.style.transform = prev;
-			if (natural <= 0 || available <= 0) return;
-			const ratio = available / natural;
-			const next = Math.max(minScale, Math.min(maxScale, ratio));
-			setScale(next);
-		} catch {}
-	}, [minScale, maxScale]);
-
-	React.useEffect(() => {
-		recompute();
-		const onResize = () => recompute();
-		const onOrientation = () => recompute();
-		window.addEventListener("resize", onResize);
-		window.addEventListener("orientationchange", onOrientation);
-		let ro: ResizeObserver | null = null;
-		try {
-			if ("ResizeObserver" in window) {
-				ro = new ResizeObserver(() => recompute());
-				if (containerRef.current) ro.observe(containerRef.current);
+			const container = containerRef.current
+			const content = contentRef.current
+			if (!(container && content)) {
+				return
 			}
-		} catch {}
+			// Measure widths
+			const available = container.getBoundingClientRect().width
+			// Temporarily clear transform to read natural width
+			const prev = content.style.transform
+			content.style.transform = ''
+			const natural = content.getBoundingClientRect().width
+			content.style.transform = prev
+			if (natural <= 0 || available <= 0) {
+				return
+			}
+			const ratio = available / natural
+			const next = Math.max(minScale, Math.min(maxScale, ratio))
+			setScale(next)
+		} catch {
+			// Scale computation failed - keep current scale
+		}
+	}, [minScale, maxScale])
+
+	useEffect(() => {
+		recompute()
+		const onResize = () => recompute()
+		const onOrientation = () => recompute()
+		window.addEventListener('resize', onResize)
+		window.addEventListener('orientationchange', onOrientation)
+		let ro: ResizeObserver | null = null
+		try {
+			if ('ResizeObserver' in window) {
+				// Use requestAnimationFrame to prevent ResizeObserver loop errors
+				ro = new ResizeObserver(() => {
+					requestAnimationFrame(() => {
+						recompute()
+					})
+				})
+				if (containerRef.current) {
+					ro.observe(containerRef.current)
+				}
+			}
+		} catch {
+			// ResizeObserver setup failed - continue with window event listeners
+		}
 		return () => {
-			window.removeEventListener("resize", onResize);
-			window.removeEventListener("orientationchange", onOrientation);
+			window.removeEventListener('resize', onResize)
+			window.removeEventListener('orientationchange', onOrientation)
 			try {
-				ro?.disconnect();
-			} catch {}
-		};
-	}, [recompute]);
+				ro?.disconnect()
+			} catch {
+				// ResizeObserver cleanup failed - continue cleanup
+			}
+		}
+	}, [recompute])
 
 	return (
-		<div ref={containerRef} className={cn("w-full flex items-center justify-center overflow-visible", className)}>
+		<div
+			className={cn(
+				'flex w-full items-center justify-center overflow-visible',
+				className
+			)}
+			ref={containerRef}
+		>
 			<div
+				className="will-change-transform"
 				ref={contentRef}
 				style={{
 					transform: `scale(${scale})`,
-					transformOrigin: "center center",
+					transformOrigin: 'center center',
 				}}
-				className="will-change-transform"
 			>
 				{children}
 			</div>
 		</div>
-	);
+	)
 }

@@ -1,50 +1,59 @@
-"use client";
+'use client'
 
-import type { ExtendedNavigationContextValue } from "@features/navigation/types";
-import { getValidRange } from "@shared/libs/calendar/calendar-config";
-import { count } from "@shared/libs/dev-profiler";
-import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useSettings } from "@shared/libs/state/settings-context";
-import { useVacation } from "@shared/libs/state/vacation-context";
-import { toastService } from "@shared/libs/toast";
-import { usePathname, useRouter } from "next/navigation";
-import * as React from "react";
-import type { CalendarCoreRef } from "@/widgets/calendar/CalendarCore";
-import { getCalendarViewOptions } from "@/widgets/calendar/CalendarToolbar";
-import { useCalendarToolbar } from "@/widgets/calendar/hooks/useCalendarToolbar";
+import { getValidRange } from '@shared/libs/calendar/calendar-config'
+import { count } from '@shared/libs/dev-profiler'
+import { i18n } from '@shared/libs/i18n'
+import { useLanguage } from '@shared/libs/state/language-context'
+import { useSettings } from '@shared/libs/state/settings-context'
+import { useVacation } from '@shared/libs/state/vacation-context'
+import { toastService } from '@shared/libs/toast'
+import { usePathname, useRouter } from 'next/navigation'
+import {
+	type RefObject,
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+} from 'react'
+import type { CalendarCoreRef } from '@/features/calendar'
+import { getCalendarViewOptions, useCalendarToolbar } from '@/features/calendar'
 
-interface UseDockNavigationProps {
-	calendarRef?: React.RefObject<CalendarCoreRef> | null;
-	currentCalendarView?: string;
-	onCalendarViewChange?: (view: string) => void;
+// Toast notification display duration in milliseconds
+const TOAST_DURATION_MS = 1500
+
+import type { ExtendedNavigationContextValue } from '@/features/navigation/types'
+
+type UseDockNavigationProps = {
+	calendarRef?: RefObject<CalendarCoreRef> | null
+	currentCalendarView?: string
+	onCalendarViewChange?: (view: string) => void
 }
 
 export function useDockNavigation({
 	calendarRef,
-	currentCalendarView = "multiMonthYear",
+	currentCalendarView = 'multiMonthYear',
 	onCalendarViewChange,
 }: UseDockNavigationProps): ExtendedNavigationContextValue {
-	const pathname = usePathname();
-	const router = useRouter();
-	const { isLocalized } = useLanguage();
-	const { freeRoam, showDualCalendar } = useSettings();
-	const { recordingState } = useVacation();
+	const pathname = usePathname()
+	const router = useRouter()
+	const { isLocalized } = useLanguage()
+	const { freeRoam, showDualCalendar } = useSettings()
+	const { recordingState } = useVacation()
 
-	const [mounted, setMounted] = React.useState(false);
-	const [activeTab, setActiveTab] = React.useState("view");
-	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
+	const [mounted, setMounted] = useState(false)
+	const [activeTab, setActiveTab] = useState('view')
+	const [isHoveringDate, setIsHoveringDate] = useState(false)
 
 	// Use the provided calendarRef directly
-	const isCalendarPage = pathname === "/";
-	const isDocumentsPage = pathname?.startsWith("/documents") ?? false;
+	const isCalendarPage = pathname === '/'
+	const isDocumentsPage = pathname?.startsWith('/documents') ?? false
 
 	// Auto-switch to general tab when not on calendar page
-	React.useEffect(() => {
-		if (!isCalendarPage && activeTab === "view") {
-			setActiveTab("general");
+	useEffect(() => {
+		if (!isCalendarPage && activeTab === 'view') {
+			setActiveTab('general')
 		}
-	}, [isCalendarPage, activeTab]);
+	}, [isCalendarPage, activeTab])
 
 	const {
 		title,
@@ -59,106 +68,148 @@ export function useDockNavigation({
 	} = useCalendarToolbar({
 		calendarRef: calendarRef ? calendarRef : null,
 		currentView: currentCalendarView,
-	});
+	})
 
-	const handlePrev = React.useCallback(() => {
-		count("dockNav:handlePrev");
+	const handlePrev = useCallback(() => {
+		count('dockNav:handlePrev')
 		if (calendarRef?.current?.getApi) {
-			originalHandlePrev();
-			return;
+			originalHandlePrev()
+			return
 		}
-		if (!isCalendarPage) router.push("/");
-		else originalHandlePrev();
-	}, [isCalendarPage, router, originalHandlePrev, calendarRef]);
+		if (isCalendarPage) {
+			originalHandlePrev()
+		} else {
+			router.push('/')
+		}
+	}, [isCalendarPage, router, originalHandlePrev, calendarRef])
 
-	const handleNext = React.useCallback(() => {
-		count("dockNav:handleNext");
+	const handleNext = useCallback(() => {
+		count('dockNav:handleNext')
 		if (calendarRef?.current?.getApi) {
-			originalHandleNext();
-			return;
+			originalHandleNext()
+			return
 		}
-		if (!isCalendarPage) router.push("/");
-		else originalHandleNext();
-	}, [isCalendarPage, router, originalHandleNext, calendarRef]);
+		if (isCalendarPage) {
+			originalHandleNext()
+		} else {
+			router.push('/')
+		}
+	}, [isCalendarPage, router, originalHandleNext, calendarRef])
 
-	const handleToday = React.useCallback(() => {
-		count("dockNav:handleToday");
+	const handleToday = useCallback(() => {
+		count('dockNav:handleToday')
 		if (calendarRef?.current?.getApi) {
-			originalHandleToday();
-			return;
+			originalHandleToday()
+			return
 		}
-		if (!isCalendarPage) router.push("/");
-		else originalHandleToday();
-	}, [isCalendarPage, router, originalHandleToday, calendarRef]);
+		if (isCalendarPage) {
+			originalHandleToday()
+		} else {
+			router.push('/')
+		}
+	}, [isCalendarPage, router, originalHandleToday, calendarRef])
 
-	const handleCalendarViewChange = React.useCallback(
+	const handleCalendarViewChange = useCallback(
 		(view: string) => {
-			count("dockNav:viewChange");
+			count('dockNav:viewChange')
 			if (isCalendarPage && calendarRef?.current) {
-				const api = calendarRef.current.getApi?.();
+				const api = calendarRef.current.getApi?.()
 				if (api) {
 					// Temporarily adjust options around multimonth transitions to avoid plugin issues
 					try {
 						// Always clear constraints before changing view
-						api.setOption("validRange", undefined);
-						api.setOption("eventConstraint", undefined);
-						api.setOption("selectConstraint", undefined);
+						api.setOption('validRange', undefined)
+						api.setOption('eventConstraint', undefined)
+						api.setOption('selectConstraint', undefined)
 						// Change view first
-						api.changeView(view);
+						api.changeView(view)
 						// Reapply constraints only for non-multimonth views
-						const lower = (view || "").toLowerCase();
-						const isMultiMonth = lower === "multimonthyear";
+						const lower = (view || '').toLowerCase()
+						const isMultiMonth = lower === 'multimonthyear'
 						if (!isMultiMonth) {
-							api.setOption("validRange", freeRoam ? undefined : getValidRange(freeRoam));
+							api.setOption(
+								'validRange',
+								freeRoam ? undefined : getValidRange(freeRoam)
+							)
 							// For timeGrid views only
-							if (lower.includes("timegrid")) {
-								api.setOption("eventConstraint", freeRoam ? undefined : "businessHours");
-								api.setOption("selectConstraint", freeRoam ? undefined : "businessHours");
+							if (lower.includes('timegrid')) {
+								api.setOption(
+									'eventConstraint',
+									freeRoam ? undefined : 'businessHours'
+								)
+								api.setOption(
+									'selectConstraint',
+									freeRoam ? undefined : 'businessHours'
+								)
 							}
 						}
-					} catch {}
+					} catch {
+						// Silently ignore errors when setting calendar options (calendar API may be unavailable)
+					}
 					try {
-						const opts = getCalendarViewOptions(isLocalized);
-						const label = (opts.find((o) => o.value === view)?.label ?? view).toString();
-						toastService.info(i18n.getMessage("view_changed", isLocalized), label, 1500);
-					} catch {}
+						const opts = getCalendarViewOptions(isLocalized)
+						const label = (
+							opts.find((o) => o.value === view)?.label ?? view
+						).toString()
+						toastService.info(
+							i18n.getMessage('view_changed', isLocalized),
+							label,
+							TOAST_DURATION_MS
+						)
+					} catch {
+						// Silently ignore errors when showing toast notification (toast service may be unavailable)
+					}
 				}
 			}
-			onCalendarViewChange?.(view);
+			onCalendarViewChange?.(view)
 		},
 		[isCalendarPage, calendarRef, onCalendarViewChange, isLocalized, freeRoam]
-	);
+	)
 
-	const isActive = React.useCallback(
+	const isActive = useCallback(
 		(href: string) => {
-			if (href === "/" && pathname === "/") return true;
-			if (href !== "/" && pathname.startsWith(href)) return true;
-			return false;
+			if (href === '/' && pathname === '/') {
+				return true
+			}
+			if (href !== '/' && pathname.startsWith(href)) {
+				return true
+			}
+			return false
 		},
 		[pathname]
-	);
+	)
 
-	React.useEffect(() => {
-		setMounted(true);
-	}, []);
+	useEffect(() => {
+		setMounted(true)
+	}, [])
 
-	const viewMode = freeRoam ? "freeRoam" : showDualCalendar ? "dual" : "default";
+	// Determine view mode: freeRoam takes precedence, then dual calendar, then default
+	let viewMode: 'freeRoam' | 'dual' | 'default'
+	if (freeRoam) {
+		viewMode = 'freeRoam'
+	} else if (showDualCalendar) {
+		viewMode = 'dual'
+	} else {
+		viewMode = 'default'
+	}
 
 	// Log once when calendar API becomes available
-	React.useEffect(() => {
+	useEffect(() => {
 		if (isCalendarPage && calendarRef?.current?.getApi) {
 			try {
-				const api = calendarRef.current.getApi();
+				const api = calendarRef.current.getApi()
 				if (api) {
-					count("dockNav:apiReady");
+					count('dockNav:apiReady')
 				}
-			} catch {}
+			} catch {
+				// Silently ignore errors when checking calendar API availability
+			}
 		}
-	}, [isCalendarPage, calendarRef]);
+	}, [isCalendarPage, calendarRef])
 
 	// Keep the user's chosen tab; do not auto-switch based on view mode
 
-	return React.useMemo(
+	return useMemo(
 		() =>
 			({
 				state: {
@@ -169,9 +220,15 @@ export function useDockNavigation({
 				handlers: {
 					setIsHoveringDate,
 					setActiveTab,
-					handleLanguageToggle: () => {}, // These will be handled by individual components
-					handleThemeToggle: () => {}, // These will be handled by individual components
-					handleViewModeChange: () => {}, // These will be handled by individual components
+					handleLanguageToggle: () => {
+						// These will be handled by individual components
+					},
+					handleThemeToggle: () => {
+						// These will be handled by individual components
+					},
+					handleViewModeChange: () => {
+						// These will be handled by individual components
+					},
 					handleCalendarViewChange,
 				},
 				computed: {
@@ -216,5 +273,5 @@ export function useDockNavigation({
 			isLocalized,
 			visibleEventCount,
 		]
-	);
+	)
 }

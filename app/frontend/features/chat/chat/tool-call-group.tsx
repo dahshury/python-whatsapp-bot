@@ -1,111 +1,152 @@
-"use client";
+'use client'
 
-import { ChevronDownIcon, FileInput, FileOutput, Wrench } from "lucide-react";
-import * as React from "react";
+import { ChevronDownIcon, FileInput, FileOutput, Wrench } from 'lucide-react'
+import { useMemo } from 'react'
 import {
 	Accordion,
 	AccordionContent,
 	AccordionItem,
 	AccordionTrigger,
-} from "@/shared/ui/animate-ui/components/radix/accordion";
-import { CodeBlock } from "@/shared/ui/code-block";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
+} from '@/shared/ui/animate-ui/components/radix/accordion'
+import { CodeBlock } from '@/shared/ui/code-block'
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from '@/shared/ui/collapsible'
 
-export interface ToolCallGroupProps {
-	valueKey: string;
-	toolName: string;
-	argsText: string;
-	resultText: string;
+export type ToolCallGroupProps = {
+	valueKey: string
+	toolName: string
+	argsText: string
+	resultText: string
 }
 
 // Decode HTML entities
 function decodeHtml(html: string): string {
 	try {
-		const txt = document.createElement("textarea");
-		txt.innerHTML = html;
-		return txt.value;
+		const txt = document.createElement('textarea')
+		txt.innerHTML = html
+		return txt.value
 	} catch {
-		return html;
+		return html
 	}
 }
 
 // Pretty-print JSON if possible
 function formatCode(text: string): string {
 	try {
-		const parsed = JSON.parse(text);
-		return JSON.stringify(parsed, null, 2);
+		const parsed = JSON.parse(text)
+		return JSON.stringify(parsed, null, 2)
 	} catch {
-		return text;
+		return text
 	}
 }
 
 // Detect language from content
 function detectLanguage(text: string): string {
 	try {
-		JSON.parse(text);
-		return "json";
+		JSON.parse(text)
+		return 'json'
 	} catch {
-		return "javascript";
+		return 'javascript'
 	}
 }
 
-export function ToolCallGroup({ valueKey, toolName, argsText, resultText }: ToolCallGroupProps) {
-	const decodedArgs = React.useMemo(() => (argsText?.trim() ? formatCode(decodeHtml(argsText)) : ""), [argsText]);
-	const decodedResult = React.useMemo(
-		() => (resultText?.trim() ? formatCode(decodeHtml(resultText)) : ""),
+export function ToolCallGroup({
+	valueKey,
+	toolName,
+	argsText,
+	resultText,
+}: ToolCallGroupProps) {
+	const decodedArgs = useMemo(
+		() => (argsText?.trim() ? formatCode(decodeHtml(argsText)) : ''),
+		[argsText]
+	)
+	const decodedResult = useMemo(
+		() => (resultText?.trim() ? formatCode(decodeHtml(resultText)) : ''),
 		[resultText]
-	);
+	)
 
-	const argsLanguage = React.useMemo(() => (decodedArgs ? detectLanguage(decodedArgs) : "json"), [decodedArgs]);
-	const resultLanguage = React.useMemo(() => (decodedResult ? detectLanguage(decodedResult) : "json"), [decodedResult]);
+	const argsLanguage = useMemo(
+		() => (decodedArgs ? detectLanguage(decodedArgs) : 'json'),
+		[decodedArgs]
+	)
+	const resultLanguage = useMemo(
+		() => (decodedResult ? detectLanguage(decodedResult) : 'json'),
+		[decodedResult]
+	)
 
 	return (
 		<div className="w-full">
-			<Accordion type="single" collapsible className="w-full">
-				<AccordionItem value={valueKey} className="border-0">
+			<Accordion className="w-full" collapsible type="single">
+				<AccordionItem className="border-0" value={valueKey}>
 					<AccordionTrigger
+						className="[&>svg]:-order-1 justify-start gap-2 py-1.5 text-[13px] leading-5 outline-none hover:no-underline"
 						showArrow={true}
-						className="justify-start gap-2 py-1.5 text-[13px] leading-5 outline-none hover:no-underline [&>svg]:-order-1"
 					>
 						<span className="flex items-center gap-2">
-							<Wrench size={14} className="shrink-0 opacity-60" aria-hidden="true" />
+							<Wrench
+								aria-hidden="true"
+								className="shrink-0 opacity-60"
+								size={14}
+							/>
 							<span className="font-medium">{`Tool: ${toolName}`}</span>
 						</span>
 					</AccordionTrigger>
 					<AccordionContent className="p-0 pb-0">
 						{decodedArgs?.trim() && (
-							<Collapsible className="border-t py-2 ps-4 pe-3" defaultOpen={true}>
-								<CollapsibleTrigger className="flex gap-2 text-[13px] leading-5 font-medium [&[data-state=open]>svg]:rotate-180">
+							<Collapsible
+								className="border-t py-2 ps-4 pe-3"
+								defaultOpen={true}
+							>
+								<CollapsibleTrigger className="flex gap-2 font-medium text-[13px] leading-5 [&[data-state=open]>svg]:rotate-180">
 									<ChevronDownIcon
-										size={14}
-										className="shrink-0 opacity-60 transition-transform duration-200"
 										aria-hidden="true"
+										className="shrink-0 opacity-60 transition-transform duration-200"
+										size={14}
 									/>
 									<span className="flex items-center gap-2">
-										<FileInput size={14} className="shrink-0 opacity-60" aria-hidden="true" />
+										<FileInput
+											aria-hidden="true"
+											className="shrink-0 opacity-60"
+											size={14}
+										/>
 										<span>Arguments</span>
 									</span>
 								</CollapsibleTrigger>
-								<CollapsibleContent className="text-muted-foreground data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden ps-4 text-xs transition-all mt-1.5">
-									<CodeBlock language={argsLanguage} code={decodedArgs} showLineNumbers={false} />
+								<CollapsibleContent className="mt-1.5 overflow-hidden ps-4 text-muted-foreground text-xs transition-all data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+									<CodeBlock
+										code={decodedArgs}
+										language={argsLanguage}
+										showLineNumbers={false}
+									/>
 								</CollapsibleContent>
 							</Collapsible>
 						)}
 						<Collapsible className="border-t py-2 ps-4 pe-3" defaultOpen={true}>
-							<CollapsibleTrigger className="flex gap-2 text-[13px] leading-5 font-medium [&[data-state=open]>svg]:rotate-180">
+							<CollapsibleTrigger className="flex gap-2 font-medium text-[13px] leading-5 [&[data-state=open]>svg]:rotate-180">
 								<ChevronDownIcon
-									size={14}
-									className="shrink-0 opacity-60 transition-transform duration-200"
 									aria-hidden="true"
+									className="shrink-0 opacity-60 transition-transform duration-200"
+									size={14}
 								/>
 								<span className="flex items-center gap-2">
-									<FileOutput size={14} className="shrink-0 opacity-60" aria-hidden="true" />
+									<FileOutput
+										aria-hidden="true"
+										className="shrink-0 opacity-60"
+										size={14}
+									/>
 									<span>Result</span>
 								</span>
 							</CollapsibleTrigger>
-							<CollapsibleContent className="text-muted-foreground data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden ps-4 text-xs transition-all mt-1.5">
+							<CollapsibleContent className="mt-1.5 overflow-hidden ps-4 text-muted-foreground text-xs transition-all data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
 								{decodedResult?.trim() ? (
-									<CodeBlock language={resultLanguage} code={decodedResult} showLineNumbers={false} />
+									<CodeBlock
+										code={decodedResult}
+										language={resultLanguage}
+										showLineNumbers={false}
+									/>
 								) : (
 									<div className="text-[11px] opacity-60">No result</div>
 								)}
@@ -115,5 +156,5 @@ export function ToolCallGroup({ valueKey, toolName, argsText, resultText }: Tool
 				</AccordionItem>
 			</Accordion>
 		</div>
-	);
+	)
 }

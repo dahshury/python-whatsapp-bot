@@ -17,7 +17,6 @@
 
 	/* use !important to prevent issues with browser extensions that change fonts */
 	font-family: "fcicons", sans-serif;
-	speak: none;
 	font-style: normal;
 	font-weight: normal;
 	font-variant: normal;
@@ -30,29 +29,36 @@
 }
 
 .fc-icon-chevron-left:before {
-	content: "e900";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e900";
 }
 
 .fc-icon-chevron-right:before {
-	content: "e901";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e901";
 }
 
 .fc-icon-chevrons-left:before {
-	content: "e902";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e902";
 }
 
 .fc-icon-chevrons-right:before {
-	content: "e903";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e903";
 }
 
 .fc-icon-minus-square:before {
-	content: "e904";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e904";
 }
 
 .fc-icon-plus-square:before {
-	content: "e905";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e905";
 }
 
 .fc-icon-x:before {
-	content: "e906";
+	/* biome-ignore lint: icon font glyph */
+	content: "\e906";
 }

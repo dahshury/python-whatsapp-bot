@@ -1,28 +1,37 @@
-import { i18n } from "@shared/libs/i18n";
-import { getLocalizedCountryOptions } from "@shared/libs/phone/countries";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { getSizeClasses } from "@shared/libs/ui/size";
-import { cn } from "@shared/libs/utils";
-import { Button } from "@ui/button";
-import { CheckCircle2, ChevronsUpDown } from "lucide-react";
-import * as React from "react";
-import type * as RPNInput from "react-phone-number-input";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/shared/ui/command";
-import { Flag as FlagComponent } from "@/shared/ui/flag";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { ThemedScrollbar } from "@/shared/ui/themed-scrollbar";
+import { i18n } from '@shared/libs/i18n'
+import { getLocalizedCountryOptions } from '@shared/libs/phone/countries'
+import { useLanguage } from '@shared/libs/state/language-context'
+import { getSizeClasses } from '@shared/libs/ui/size'
+import { cn } from '@shared/libs/utils'
+import { Button } from '@ui/button'
+import { CheckCircle2, ChevronsUpDown } from 'lucide-react'
+import React, { type RefObject } from 'react'
+import type * as RPNInput from 'react-phone-number-input'
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from '@/shared/ui/command'
+import { Flag as FlagComponent } from '@/shared/ui/flag'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { ThemedScrollbar } from '@/shared/ui/themed-scrollbar'
 
-interface CountrySelectorProps {
-	country: RPNInput.Country | undefined;
-	setCountry: (c: RPNInput.Country) => void;
-	search: string;
-	setSearch: (s: string) => void;
-	isOpen: boolean;
-	setIsOpen: (open: boolean) => void;
-	selectedRef?: React.RefObject<HTMLDivElement | null>;
-	disabled?: boolean;
-	size?: "sm" | "default" | "lg";
-	className?: string;
+type CountrySelectorProps = {
+	country: RPNInput.Country | undefined
+	setCountry: (c: RPNInput.Country) => void
+	search: string
+	setSearch: (s: string) => void
+	isOpen: boolean
+	setIsOpen: (open: boolean) => void
+	selectedRef?: RefObject<HTMLDivElement | null>
+	disabled?: boolean
+	size?: 'sm' | 'default' | 'lg'
+	className?: string
+	/** Optional: Only show countries that exist in this list */
+	availableCountries?: Set<RPNInput.Country>
 }
 
 export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
@@ -34,25 +43,33 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 	setIsOpen,
 	selectedRef,
 	disabled,
-	size = "default",
+	size = 'default',
 	className,
+	availableCountries,
 }) => {
-	const { isLocalized } = useLanguage();
-	const countryOptions = React.useMemo(() => getLocalizedCountryOptions(isLocalized), [isLocalized]);
+	const { isLocalized } = useLanguage()
+	const countryOptions = React.useMemo(() => {
+		const allOptions = getLocalizedCountryOptions(isLocalized)
+		// Filter to only show countries that exist in availableCountries
+		if (availableCountries && availableCountries.size > 0) {
+			return allOptions.filter((option) => availableCountries.has(option.value))
+		}
+		return allOptions
+	}, [isLocalized, availableCountries])
 
 	return (
-		<Popover open={isOpen} onOpenChange={setIsOpen}>
+		<Popover onOpenChange={setIsOpen} open={isOpen}>
 			<PopoverTrigger asChild>
 				<Button
-					dir="ltr"
-					type="button"
-					variant="outline"
-					disabled={disabled}
 					className={cn(
-						"flex gap-1 rounded-e-none rounded-s-lg border-r-0 focus:z-10",
+						'flex gap-1 rounded-s-lg rounded-e-none border-r-0 focus:z-10',
 						getSizeClasses(size),
 						className
 					)}
+					dir="ltr"
+					disabled={disabled}
+					type="button"
+					variant="outline"
 				>
 					{country ? (
 						<FlagComponent country={country} title={country} />
@@ -62,34 +79,57 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 					<ChevronsUpDown className="-mr-2 size-4 opacity-50" />
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent className={cn("w-[18.75rem] p-0", "click-outside-ignore")} dir="ltr">
-				<Command shouldFilter={false} dir="ltr">
+			<PopoverContent
+				className={cn('w-[18.75rem] p-0', 'click-outside-ignore')}
+				dir="ltr"
+			>
+				<Command dir="ltr" shouldFilter={false}>
 					<CommandInput
-						value={search}
-						onValueChange={setSearch}
-						placeholder={i18n.getMessage("phone_country_search_placeholder", isLocalized)}
 						dir="ltr"
+						onValueChange={setSearch}
+						placeholder={i18n.getMessage(
+							'phone_country_search_placeholder',
+							isLocalized
+						)}
+						value={search}
 					/>
 					<CommandList dir="ltr">
 						<ThemedScrollbar className="h-72" rtl={false}>
-							<CommandEmpty>{i18n.getMessage("phone_no_country_found", isLocalized)}</CommandEmpty>
+							<CommandEmpty>
+								{i18n.getMessage('phone_no_country_found', isLocalized)}
+							</CommandEmpty>
 							<CommandGroup dir="ltr">
 								{countryOptions
-									.filter((option) => option.label.toLowerCase().includes(search.toLowerCase()))
+									.filter((option) => {
+										const searchLower = search.toLowerCase()
+										// Search in both label and searchText (which includes both languages)
+										return (
+											option.label.toLowerCase().includes(searchLower) ||
+											('searchText' in option &&
+												option.searchText.includes(searchLower))
+										)
+									})
 									.map((option) => (
 										<CommandItem
+											className="gap-2"
+											data-option-country={option.value}
 											key={option.value}
 											value={option.value}
+											{...(country === option.value && selectedRef
+												? {
+														ref: selectedRef as RefObject<HTMLDivElement | null>,
+													}
+												: {})}
 											onSelect={() => setCountry(option.value)}
-											className="gap-2"
-											ref={
-												country === option.value ? (selectedRef as React.RefObject<HTMLDivElement | null>) : undefined
-											}
-											data-option-country={option.value}
 										>
-											<FlagComponent country={option.value} title={option.label} />
+											<FlagComponent
+												country={option.value}
+												title={option.label}
+											/>
 											<span className="flex-1 text-sm">{option.label}</span>
-											{country === option.value && <CheckCircle2 className="ms-auto size-4 text-primary" />}
+											{country === option.value && (
+												<CheckCircle2 className="ms-auto size-4 text-primary" />
+											)}
 										</CommandItem>
 									))}
 							</CommandGroup>
@@ -98,5 +138,5 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
 				</Command>
 			</PopoverContent>
 		</Popover>
-	);
-};
+	)
+}

@@ -19,7 +19,6 @@
         "features/**/*.{ts,tsx}",
         "shared/**/*.{ts,tsx}",
         "services/**/*.{ts,tsx}",
-        "processes/**/*.{ts,tsx}",
         "entities/**/*.{ts,tsx}",
         "next.config.mjs",
         "tailwind.config.ts",
@@ -32,7 +31,6 @@
         "features/**/*.{ts,tsx}",
         "shared/**/*.{ts,tsx}",
         "services/**/*.{ts,tsx}",
-        "processes/**/*.{ts,tsx}",
         "entities/**/*.{ts,tsx}"
       ],
       "ignore": [

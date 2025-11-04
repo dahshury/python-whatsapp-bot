@@ -1,15 +1,43 @@
-"use client";
+'use client'
 
-import type { ExcalidrawImperativeAPI, ExcalidrawProps } from "@excalidraw/excalidraw/types";
-import dynamic from "next/dynamic";
-import { memo, startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { computeSceneSignature } from "@/shared/libs/documents/scene-utils";
+import type {
+	ExcalidrawImperativeAPI,
+	ExcalidrawProps,
+} from '@excalidraw/excalidraw/types'
+import { cn } from '@shared/libs/utils'
+import dynamic from 'next/dynamic'
+import {
+	memo,
+	startTransition,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from 'react'
+import { computeSceneSignature } from '@/shared/libs/documents/scene-utils'
+import { logger } from '@/shared/libs/logger'
 
-type ExcalidrawAPI = ExcalidrawImperativeAPI;
+type ExcalidrawAPI = ExcalidrawImperativeAPI
 
-const Excalidraw = dynamic<ExcalidrawProps>(async () => (await import("@excalidraw/excalidraw")).Excalidraw, {
-	ssr: false,
-});
+const logDocumentCanvasWarning = (context: string, error: unknown) => {
+	logger.warn(`[DocumentCanvas] ${context}`, error)
+}
+
+const noopOnChangeHandler: NonNullable<ExcalidrawProps['onChange']> = (
+	_elements,
+	_appState,
+	_files
+) => {
+	// Intentionally noop to keep a stable default onChange reference
+}
+
+const Excalidraw = dynamic<ExcalidrawProps>(
+	async () => (await import('@excalidraw/excalidraw')).Excalidraw,
+	{
+		ssr: false,
+	}
+)
 
 // Note: We rely on Excalidraw's internal resize/scroll handling and a single
 // ResizeObserver in useExcalidrawResize. No extra verification or refresh bursts.
@@ -28,113 +56,164 @@ function DocumentCanvasComponent({
 	hideToolbar,
 	hideHelpIcon,
 }: {
-	theme: "light" | "dark";
-	langCode: string;
-	onChange?: ExcalidrawProps["onChange"];
-	onApiReady: (api: ExcalidrawAPI) => void;
-	viewModeEnabled?: boolean;
-	zenModeEnabled?: boolean;
-	uiOptions?: ExcalidrawProps["UIOptions"];
+	theme: 'light' | 'dark'
+	langCode: string
+	onChange?: ExcalidrawProps['onChange']
+	onApiReady: (api: ExcalidrawAPI) => void
+	viewModeEnabled?: boolean
+	zenModeEnabled?: boolean
+	uiOptions?: ExcalidrawProps['UIOptions']
 	scene?: {
-		elements?: unknown[];
-		appState?: Record<string, unknown>;
-		files?: Record<string, unknown>;
-	};
-	scrollable?: boolean;
-	forceLTR?: boolean;
-	hideToolbar?: boolean;
-	hideHelpIcon?: boolean;
+		elements?: unknown[]
+		appState?: Record<string, unknown>
+		files?: Record<string, unknown>
+	}
+	scrollable?: boolean
+	forceLTR?: boolean
+	hideToolbar?: boolean
+	hideHelpIcon?: boolean
 }) {
-	const containerRef = useRef<HTMLDivElement | null>(null);
-	const apiRef = useRef<ExcalidrawAPI | null>(null);
-	const [mountReady, setMountReady] = useState(false);
-	const lastAppliedSceneSigRef = useRef<string | null>(null);
-	const didNotifyApiRef = useRef<boolean>(false);
+	const containerRef = useRef<HTMLDivElement | null>(null)
+	const apiRef = useRef<ExcalidrawAPI | null>(null)
+	const [mountReady, setMountReady] = useState(false)
+	const lastAppliedSceneSigRef = useRef<string | null>(null)
+	const didNotifyApiRef = useRef<boolean>(false)
+
+	// Track if component is mounted to prevent state updates on unmounted component
+	const isMountedRef = useRef<boolean>(true)
+	useEffect(
+		() => () => {
+			isMountedRef.current = false
+		},
+		[]
+	)
 
 	// Stable props to avoid unnecessary Excalidraw re-renders
-	const noopOnChange = useCallback(() => {}, []);
-	const mergedOnChange = (onChange || (noopOnChange as NonNullable<ExcalidrawProps["onChange"]>)) as NonNullable<
-		ExcalidrawProps["onChange"]
-	>;
+	const mergedOnChange = (onChange || noopOnChangeHandler) as NonNullable<
+		ExcalidrawProps['onChange']
+	>
 
 	// Defer and coalesce onChange to the next animation frame to avoid scheduling
 	// state updates during Excalidraw's own render/update cycle
-	type OnChange = NonNullable<ExcalidrawProps["onChange"]>;
-	type OnChangeArgs = Parameters<OnChange>;
-	const userOnChangeRef = useRef<OnChange>(mergedOnChange);
+	type OnChange = NonNullable<ExcalidrawProps['onChange']>
+	type OnChangeArgs = Parameters<OnChange>
+	const userOnChangeRef = useRef<OnChange>(mergedOnChange)
 	useEffect(() => {
-		userOnChangeRef.current = mergedOnChange;
-	}, [mergedOnChange]);
-	const lastElementsRef = useRef<OnChangeArgs[0] | null>(null);
-	const lastAppStateRef = useRef<OnChangeArgs[1] | null>(null);
-	const lastFilesRef = useRef<OnChangeArgs[2] | null>(null);
-	const rafOnChangeRef = useRef<number | null>(null);
-	const deferredOnChange = useCallback<OnChange>((elements, appState, files) => {
-		lastElementsRef.current = elements;
-		lastAppStateRef.current = appState;
-		lastFilesRef.current = files;
-		if (rafOnChangeRef.current != null) return;
-		// Coalesce to a single rAF; do light work inside startTransition
-		rafOnChangeRef.current = requestAnimationFrame(() => {
-			rafOnChangeRef.current = null;
-			startTransition(() => {
-				try {
-					const els = (lastElementsRef.current || elements) as OnChangeArgs[0];
-					const app = (lastAppStateRef.current || appState) as OnChangeArgs[1];
-					const bin = (lastFilesRef.current || files) as OnChangeArgs[2];
-					userOnChangeRef.current?.(els, app, bin);
-				} catch {}
-			});
-		});
-	}, []);
-	useEffect(() => {
-		return () => {
+		userOnChangeRef.current = mergedOnChange
+	}, [mergedOnChange])
+	const lastElementsRef = useRef<OnChangeArgs[0] | null>(null)
+	const lastAppStateRef = useRef<OnChangeArgs[1] | null>(null)
+	const lastFilesRef = useRef<OnChangeArgs[2] | null>(null)
+	const rafOnChangeRef = useRef<number | null>(null)
+	const deferredOnChange = useCallback<OnChange>(
+		(elements, appState, files) => {
+			lastElementsRef.current = elements
+			lastAppStateRef.current = appState
+			lastFilesRef.current = files
+			if (rafOnChangeRef.current != null) {
+				return
+			}
+			// Coalesce to a single rAF; do light work inside startTransition
+			rafOnChangeRef.current = requestAnimationFrame(() => {
+				rafOnChangeRef.current = null
+				startTransition(() => {
+					try {
+						const els = (lastElementsRef.current || elements) as OnChangeArgs[0]
+						const app = (lastAppStateRef.current || appState) as OnChangeArgs[1]
+						const bin = (lastFilesRef.current || files) as OnChangeArgs[2]
+						userOnChangeRef.current?.(els, app, bin)
+					} catch (error) {
+						logDocumentCanvasWarning(
+							'Deferred onChange handler execution failed',
+							error
+						)
+					}
+				})
+			})
+		},
+		[]
+	)
+	useEffect(
+		() => () => {
 			if (rafOnChangeRef.current != null) {
 				try {
-					cancelAnimationFrame(rafOnChangeRef.current);
-				} catch {}
-				rafOnChangeRef.current = null;
+					cancelAnimationFrame(rafOnChangeRef.current)
+				} catch (error) {
+					logDocumentCanvasWarning(
+						'Failed to cancel pending animation frame during cleanup',
+						error
+					)
+				}
+				rafOnChangeRef.current = null
 			}
-		};
-	}, []);
+		},
+		[]
+	)
 
 	// Don't pass initialData to avoid setState during mount; set via onApiReady instead
-	const initialData = useMemo(() => ({}), []);
+	const initialData = useMemo(() => ({}), [])
 
 	// Wait until container has a non-zero size to mount Excalidraw (single gate)
 	useEffect(() => {
-		const el = containerRef.current;
-		if (!el) return;
-		const rect = el.getBoundingClientRect?.();
-		if (rect && rect.width > 2 && rect.height > 2) {
-			setMountReady(true);
-			return;
+		const el = containerRef.current
+		if (!el) {
+			return
 		}
-		let resolved = false;
+		const rect = el.getBoundingClientRect?.()
+		if (rect && rect.width > 2 && rect.height > 2) {
+			if (isMountedRef.current) {
+				setMountReady(true)
+			}
+			return
+		}
+		let resolved = false
 		const ro = new ResizeObserver((entries) => {
-			try {
-				const target = entries[0]?.target as HTMLElement | undefined;
-				const r = target?.getBoundingClientRect?.();
-				if (r && r.width > 2 && r.height > 2) {
-					if (!resolved) {
-						resolved = true;
-						setMountReady(true);
+			// Use requestAnimationFrame to prevent ResizeObserver loop errors
+			requestAnimationFrame(() => {
+				try {
+					const target = entries[0]?.target as HTMLElement | undefined
+					const r = target?.getBoundingClientRect?.()
+					if (r && r.width > 2 && r.height > 2 && !resolved) {
+						resolved = true
+						if (isMountedRef.current) {
+							setMountReady(true)
+						}
 						try {
-							ro.disconnect();
-						} catch {}
+							ro.disconnect()
+						} catch (error) {
+							logDocumentCanvasWarning(
+								'Disconnecting ResizeObserver after mount readiness failed',
+								error
+							)
+						}
 					}
+				} catch (error) {
+					logDocumentCanvasWarning(
+						'Processing ResizeObserver entry for mount readiness failed',
+						error
+					)
 				}
-			} catch {}
-		});
+			})
+		})
 		try {
-			ro.observe(el as Element);
-		} catch {}
+			ro.observe(el as Element)
+		} catch (error) {
+			logDocumentCanvasWarning(
+				'Observing document canvas container for resize events failed',
+				error
+			)
+		}
 		return () => {
 			try {
-				ro.disconnect();
-			} catch {}
-		};
-	}, []);
+				ro.disconnect()
+			} catch (error) {
+				logDocumentCanvasWarning(
+					'Disconnecting ResizeObserver during cleanup failed',
+					error
+				)
+			}
+		}
+	}, [])
 
 	// Excalidraw handles resize/scroll internally; no manual refresh needed
 
@@ -148,74 +227,115 @@ function DocumentCanvasComponent({
 
 	// Apply external scene updates when provided, avoiding redundant updates
 	useEffect(() => {
-		try {
-			if (!apiRef.current || !scene) return;
-			const nextSig = computeSceneSignature(
-				(scene.elements as unknown[]) || [],
-				(scene.appState as Record<string, unknown>) || {},
-				(scene.files as Record<string, unknown>) || {}
-			);
-			// removed console logging
-			if (nextSig && nextSig === (lastAppliedSceneSigRef.current || null)) return;
-			// Cast to any to avoid coupling to Excalidraw internal element types
-			const doUpdate = () => {
-				try {
-					// Preserve viewModeEnabled and zenModeEnabled when updating scene
-					const sceneToApply = {
-						...scene,
-						appState: {
-							...(scene.appState || {}),
-							viewModeEnabled: Boolean(viewModeEnabled),
-							zenModeEnabled: Boolean(zenModeEnabled),
-						},
-					};
-					// Defer update to avoid flushSync inside lifecycle
-					Promise.resolve().then(() => {
-						try {
-							requestAnimationFrame(() => {
-								try {
-									(
-										apiRef.current as unknown as {
-											updateScene: (s: Record<string, unknown>) => void;
-										}
-									).updateScene(sceneToApply as Record<string, unknown>);
-									// Ensure binary files are applied via official API
-									try {
-										const files = (scene.files || {}) as Record<string, unknown>;
-										const vals = Object.values(files);
-										if (vals.length > 0) {
-											(
-												apiRef.current as unknown as {
-													addFiles?: (f: unknown[]) => void;
-												}
-											).addFiles?.(vals as unknown[]);
-										}
-									} catch {}
-								} catch {}
-							});
-						} catch {}
-					});
-					lastAppliedSceneSigRef.current = nextSig;
-					// removed console logging
-				} catch {}
-			};
+		if (!(apiRef.current && scene)) {
+			return
+		}
+		const nextSig = computeSceneSignature(
+			(scene.elements as unknown[]) || [],
+			(scene.appState as Record<string, unknown>) || {},
+			(scene.files as Record<string, unknown>) || {}
+		)
+		if (nextSig && nextSig === (lastAppliedSceneSigRef.current || null)) {
+			return
+		}
+		const sceneToApply = {
+			...scene,
+			appState: {
+				...(scene.appState || {}),
+				viewModeEnabled: Boolean(viewModeEnabled),
+				zenModeEnabled: Boolean(zenModeEnabled),
+			},
+		}
+		const applySceneUpdate = () => {
 			try {
-				if (typeof requestAnimationFrame === "function") {
+				const api = apiRef.current as unknown as {
+					updateScene: (s: Record<string, unknown>) => void
+					addFiles?: (f: unknown[]) => void
+				}
+				api.updateScene(sceneToApply as Record<string, unknown>)
+				const files = (scene.files || {}) as Record<string, unknown>
+				const values = Object.values(files)
+				if (values.length > 0) {
+					try {
+						api.addFiles?.(values as unknown[])
+					} catch (error) {
+						logDocumentCanvasWarning(
+							'Applying binary files to Excalidraw scene failed',
+							error
+						)
+					}
+				}
+			} catch (error) {
+				logDocumentCanvasWarning(
+					'Applying Excalidraw scene update failed',
+					error
+				)
+			}
+		}
+		const scheduleSceneApplication = () =>
+			Promise.resolve()
+				.then(() => {
+					if (typeof requestAnimationFrame === 'function') {
+						requestAnimationFrame(() => {
+							try {
+								applySceneUpdate()
+							} catch (error) {
+								logDocumentCanvasWarning(
+									'Applying Excalidraw scene inside animation frame failed',
+									error
+								)
+							}
+						})
+					} else {
+						applySceneUpdate()
+					}
+				})
+				.catch((error) => {
+					logDocumentCanvasWarning(
+						'Deferred Excalidraw scene update promise rejected',
+						error
+					)
+					applySceneUpdate()
+				})
+		const invokeUpdate = () => {
+			try {
+				scheduleSceneApplication()
+				lastAppliedSceneSigRef.current = nextSig
+			} catch (error) {
+				logDocumentCanvasWarning(
+					'Scheduling Excalidraw scene application failed',
+					error
+				)
+			}
+		}
+		const scheduleUpdateInvocation = () => {
+			const enqueue = () => setTimeout(invokeUpdate, 0)
+			if (typeof requestAnimationFrame === 'function') {
+				try {
 					requestAnimationFrame(() => {
 						try {
-							requestAnimationFrame(() => setTimeout(doUpdate, 0));
-						} catch {
-							setTimeout(doUpdate, 0);
+							requestAnimationFrame(enqueue)
+						} catch (error) {
+							logDocumentCanvasWarning(
+								'Scheduling nested animation frame for Excalidraw scene update failed',
+								error
+							)
+							enqueue()
 						}
-					});
-				} else {
-					setTimeout(doUpdate, 0);
+					})
+				} catch (error) {
+					logDocumentCanvasWarning(
+						'Scheduling animation frame for Excalidraw scene update failed',
+						error
+					)
+					enqueue()
 				}
-			} catch {
-				setTimeout(doUpdate, 0);
+			} else {
+				enqueue()
 			}
-		} catch {}
-	}, [scene, viewModeEnabled, zenModeEnabled]);
+		}
+		scheduleUpdateInvocation()
+	}, [scene, viewModeEnabled, zenModeEnabled])
 
 	// Removed imperative forcing of theme/view/zen; controlled via component props
 
@@ -223,53 +343,68 @@ function DocumentCanvasComponent({
 
 	return (
 		<div
+			className={cn(
+				'excali-theme-scope',
+				'h-full',
+				'w-full',
+				hideToolbar && 'excal-preview-hide-ui',
+				hideHelpIcon && 'excal-hide-help'
+			)}
+			dir={forceLTR ? 'ltr' : undefined}
 			ref={containerRef}
-			className={`excali-theme-scope w-full h-full${hideToolbar ? " excal-preview-hide-ui" : ""}${hideHelpIcon ? " excal-hide-help" : ""}`}
 			style={{
 				// Prevent scroll chaining into the canvas on touch devices so
 				// the page can scroll back when keyboard toggles
-				overflow: scrollable ? "auto" : "hidden",
-				overscrollBehavior: "contain",
-				touchAction: "manipulation",
+				overflow: scrollable ? 'auto' : 'hidden',
+				overscrollBehavior: 'contain',
+				touchAction: 'manipulation',
 				// NOTE: contain and willChange removed because they create a new containing block
 				// that breaks position:fixed elements (like the eraser cursor shadow)
 			}}
-			dir={forceLTR ? "ltr" : undefined}
 		>
 			{hideToolbar ? (
 				<style>
 					{
-						".excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}"
+						'.excal-preview-hide-ui .App-toolbar{display:none!important;}\n.excal-preview-hide-ui .App-toolbar-content{display:none!important;}\n.excal-preview-hide-ui .main-menu-trigger{display:none!important;}'
 					}
 				</style>
 			) : null}
-			{hideHelpIcon ? <style>{".excal-hide-help .help-icon{display:none!important;}"}</style> : <style>{""}</style>}
+			{hideHelpIcon ? (
+				<style>{'.excal-hide-help .help-icon{display:none!important;}'}</style>
+			) : (
+				<style>{''}</style>
+			)}
 			{mountReady && (
 				<Excalidraw
-					theme={theme}
 					langCode={langCode as unknown as string}
 					onChange={deferredOnChange}
+					theme={theme}
 					{...(uiOptions ? { UIOptions: uiOptions } : {})}
-					initialData={initialData}
 					excalidrawAPI={(api: ExcalidrawImperativeAPI) => {
-						apiRef.current = api;
+						apiRef.current = api
 						if (!didNotifyApiRef.current) {
-							didNotifyApiRef.current = true;
+							didNotifyApiRef.current = true
 							// Directly notify parent when API is ready; props control view/zen/theme
 							try {
-								onApiReady(api);
-							} catch {}
+								onApiReady(api)
+							} catch (error) {
+								logDocumentCanvasWarning(
+									'Notifying parent of Excalidraw API readiness failed',
+									error
+								)
+							}
 						}
 					}}
+					initialData={initialData}
 					viewModeEnabled={Boolean(viewModeEnabled)}
 					zenModeEnabled={Boolean(zenModeEnabled)}
 				/>
 			)}
 		</div>
-	);
+	)
 }
 
-export const DocumentCanvas = memo(DocumentCanvasComponent);
+export const DocumentCanvas = memo(DocumentCanvasComponent)
 
 // Keep Excalidraw sized on container/viewport changes
 // Removed useExcalidrawResize hook and .refresh usage; rely on Excalidraw's internals

@@ -2,13 +2,11 @@
 
 /* Enhanced event styling in multiMonth view */
 .fc-multimonth .fc-event {
-	/* biome-ignore lint: Tailwind apply */
 	@apply text-xs leading-tight;
 	box-shadow: none;
 }
 
 .fc-multimonth .fc-event-title {
-	/* biome-ignore lint: Tailwind apply */
 	@apply truncate;
 }
 

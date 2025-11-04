@@ -1,34 +1,58 @@
-import { useCallback } from "react";
+import { useCallback } from 'react'
 
-export function calculateCalendarHeight(currentView: string): number | "auto" {
+export function calculateCalendarHeight(currentView: string): number | 'auto' {
 	// Views that should naturally expand and let the page scroll
-	if (currentView === "multiMonthYear" || currentView === "listMonth") {
-		return "auto";
+	if (currentView === 'multiMonthYear' || currentView === 'listMonth') {
+		return 'auto'
 	}
 
 	// Viewport-based heights for grid views
 	try {
-		const viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900;
-		const headerHeight = 64; // top header
-		const containerPadding = 32; // p-4 top+bottom in page wrapper
-		const available = Math.max(viewportHeight - headerHeight - containerPadding, 600);
+		const DEFAULT_VIEWPORT_HEIGHT = 900
+		const HEADER_HEIGHT = 64 // top header
+		const CONTAINER_PADDING = 32 // p-4 top+bottom in page wrapper
+		const MIN_CALENDAR_HEIGHT = 600
+		const viewportHeight =
+			typeof window !== 'undefined'
+				? window.innerHeight
+				: DEFAULT_VIEWPORT_HEIGHT
+		const available = Math.max(
+			viewportHeight - HEADER_HEIGHT - CONTAINER_PADDING,
+			MIN_CALENDAR_HEIGHT
+		)
 
-		if (currentView?.includes("timeGrid")) return available; // week/day time grid
-		if (currentView?.includes("dayGrid")) return available; // month grid
+		if (currentView?.includes('timeGrid')) {
+			return available // week/day time grid
+		}
+		if (currentView?.includes('dayGrid')) {
+			return available // month grid
+		}
 	} catch {
 		// SSR or no window - fall back to sane defaults
-		if (currentView?.includes("timeGrid")) return 720;
-		if (currentView?.includes("dayGrid")) return 650;
+		const FALLBACK_TIME_GRID_HEIGHT = 720
+		const FALLBACK_DAY_GRID_HEIGHT = 650
+		if (currentView?.includes('timeGrid')) {
+			return FALLBACK_TIME_GRID_HEIGHT
+		}
+		if (currentView?.includes('dayGrid')) {
+			return FALLBACK_DAY_GRID_HEIGHT
+		}
 	}
 
-	return 640;
+	const DEFAULT_CALENDAR_HEIGHT = 640
+	return DEFAULT_CALENDAR_HEIGHT
 }
 
-export function useCalendarResize(currentView: string, onHeightChange?: () => void) {
+export function useCalendarResize(
+	currentView: string,
+	onHeightChange?: () => void
+) {
 	const calculateHeight = useCallback(() => {
-		if (onHeightChange) onHeightChange();
-		return calculateCalendarHeight(currentView);
-	}, [currentView, onHeightChange]);
+		if (onHeightChange) {
+			onHeightChange()
+		}
+		return calculateCalendarHeight(currentView)
+	}, [currentView, onHeightChange])
 
-	return { calculateHeight };
+	return { calculateHeight }
 }

@@ -1,13 +1,13 @@
 {
-	"extends": ["next/core-web-vitals", "next/typescript"],
-	"rules": {
-		"@typescript-eslint/prefer-ts-expect-error": "off",
-		"@typescript-eslint/ban-ts-comment": [
-			"error",
-			{
-				"ts-ignore": "allow-with-description",
-				"minimumDescriptionLength": 10
-			}
-		]
-	}
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "@typescript-eslint/prefer-ts-expect-error": "off",
+    "@typescript-eslint/ban-ts-comment": [
+      "error",
+      {
+        "ts-ignore": "allow-with-description",
+        "minimumDescriptionLength": 10
+      }
+    ]
+  }
 }

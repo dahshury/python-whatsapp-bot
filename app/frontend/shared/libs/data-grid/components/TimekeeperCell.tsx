@@ -1,29 +1,39 @@
-import { type CustomRenderer, drawTextCell, GridCellKind } from "@glideapps/glide-data-grid";
-import * as ReactDOM from "react-dom";
-import TimeKeeper from "react-timekeeper";
-import { useClickOutsideIgnore } from "./hooks/useClickOutsideIgnore";
-import { useTimekeeperEditor } from "./hooks/useTimekeeperEditor";
-import type { TimekeeperCell, TimekeeperCellProps } from "./models/TimekeeperCellTypes";
-import { ensureFadeInAnimation, timekeeperClassNames } from "./styles/timekeeperStyles";
-import { TIME_REGEX_12, TIME_REGEX_24 } from "./utils/timeUtils";
+import {
+	type CustomRenderer,
+	drawTextCell,
+	GridCellKind,
+} from '@glideapps/glide-data-grid'
+import { createPortal } from 'react-dom'
+import TimeKeeper from 'react-timekeeper'
+import { useClickOutsideIgnore } from './hooks/useClickOutsideIgnore'
+import { useTimekeeperEditor } from './hooks/useTimekeeperEditor'
+import type {
+	TimekeeperCell,
+	TimekeeperCellProps,
+} from './models/TimekeeperCellTypes'
+import {
+	ensureFadeInAnimation,
+	timekeeperClassNames,
+} from './styles/timekeeperStyles'
+import { TIME_REGEX_12, TIME_REGEX_24 } from './utils/timeUtils'
 
 // Clock Icon Component
 const ClockIcon = () => (
 	<svg
-		width="16"
-		height="16"
-		viewBox="0 0 24 24"
+		aria-label="Clock icon"
 		fill="none"
+		height="16"
+		role="img"
 		stroke="currentColor"
 		strokeWidth="2"
-		role="img"
-		aria-label="Clock icon"
+		viewBox="0 0 24 24"
+		width="16"
 	>
 		<title>Clock</title>
 		<circle cx="12" cy="12" r="10" />
 		<polyline points="12 6 12 12 16 14" />
 	</svg>
-);
+)
 
 // TimeKeeper Renderer Component
 const TimeKeeperRenderer = ({
@@ -35,125 +45,126 @@ const TimeKeeperRenderer = ({
 	timekeeperError,
 	setTimekeeperError,
 }: {
-	timeRestrictionService?: unknown;
-	memoizedTimeValue?: string;
-	staticTimeKeeperKey?: string;
-	handleDoneClick: () => void;
-	data?: unknown;
-	timekeeperError?: string;
-	setTimekeeperError: (error?: string) => void;
+	timeRestrictionService?: unknown
+	memoizedTimeValue?: string
+	staticTimeKeeperKey?: string
+	handleDoneClick: () => void
+	data?: unknown
+	timekeeperError?: string
+	setTimekeeperError: (error?: string) => void
 }) => {
 	if (timekeeperError) {
 		return (
 			<div className={timekeeperClassNames.errorContainer}>
 				<p>Time picker unavailable</p>
 				<button
-					type="button"
-					onClick={() => setTimekeeperError(undefined)}
 					className={timekeeperClassNames.retryButton}
+					onClick={() => setTimekeeperError(undefined)}
+					type="button"
 				>
 					Retry
 				</button>
 			</div>
-		);
+		)
 	}
 
 	try {
 		// Validate all props before passing to TimeKeeper
-		const validatedTime = memoizedTimeValue;
-		const timekeeperData = data as { use24Hour?: boolean; selectedDate?: Date };
-		const validatedHour24Mode = Boolean(timekeeperData.use24Hour);
+		const validatedTime = memoizedTimeValue
+		const timekeeperData = data as { use24Hour?: boolean; selectedDate?: Date }
+		const validatedHour24Mode = Boolean(timekeeperData.use24Hour)
 
-		if (!validatedTime || typeof validatedTime !== "string") {
-			throw new Error("Invalid time value for TimeKeeper");
+		if (!validatedTime || typeof validatedTime !== 'string') {
+			throw new Error('Invalid time value for TimeKeeper')
 		}
 
-		// Debug logging
-		console.log("TimeKeeper restrictions:", {
-			selectedDate: timekeeperData.selectedDate,
-			dateString: timekeeperData.selectedDate ? timekeeperData.selectedDate.toDateString() : "No date",
-			dayOfWeek: timekeeperData.selectedDate ? timekeeperData.selectedDate.getDay() : "No date",
-			hasCustomValidator: !!timeRestrictionService,
-			cellData: data,
-		});
-
 		// Pass a dummy disabledTimeRange to trigger validation (if we have a custom validator)
-		const disabledTimeRange = timeRestrictionService ? { from: "00:00", to: "00:01" } : undefined;
+		const disabledTimeRange = timeRestrictionService
+			? { from: '00:00', to: '00:01' }
+			: undefined
 
 		if (timeRestrictionService) {
-			const dayOfWeek = timekeeperData.selectedDate?.getDay();
-			if (dayOfWeek === 6) {
-				console.log("Using time restrictions for Saturday - 4PM-9PM enabled, 10PM+ disabled");
-			} else if (dayOfWeek === 0) {
-				console.log("Using time restrictions for Sunday - 11AM-3PM enabled");
+			const SATURDAY = 6
+			const SUNDAY = 0
+			const dayOfWeek = timekeeperData.selectedDate?.getDay()
+			if (dayOfWeek === SATURDAY) {
+				// Saturday time restrictions handled by service
+			} else if (dayOfWeek === SUNDAY) {
+				// Sunday time restrictions handled by service
 			} else {
-				console.log("Using time restrictions for weekday - 12PM-3PM enabled");
+				// Weekday time restrictions handled by service
 			}
-			console.log("DisabledTimeRange will be passed as:", disabledTimeRange);
 		}
 
 		return (
 			<TimeKeeper
-				key={staticTimeKeeperKey}
-				time={validatedTime}
-				onChange={() => {}} // No-op since we handle time changes via done button
-				hour24Mode={validatedHour24Mode}
-				switchToMinuteOnHourSelect={true}
 				closeOnMinuteSelect={false}
-				doneButton={(timeData) => (
+				coarseMinutes={(() => {
+					const COARSE_MINUTES_INTERVAL = 120
+					return COARSE_MINUTES_INTERVAL
+				})()}
+				disabledTimeRange={disabledTimeRange || null} // No-op since we handle time changes via done button
+				doneButton={(_timeData) => (
 					<button
-						type="button"
 						className={`${timekeeperClassNames.doneButton} ${timekeeperClassNames.clickOutsideIgnore}`}
 						onClick={() => {
-							console.log("Custom done button clicked!", timeData);
-							handleDoneClick();
+							handleDoneClick()
 						}}
+						type="button"
 					>
 						Done
 					</button>
 				)}
-				coarseMinutes={120}
-				disabledTimeRange={disabledTimeRange || null}
+				hour24Mode={validatedHour24Mode}
+				key={staticTimeKeeperKey}
+				onChange={() => {
+					// TimeKeeper onChange intentionally ignored; we handle changes via done button
+				}}
+				switchToMinuteOnHourSelect={true}
+				time={validatedTime}
 			/>
-		);
+		)
 	} catch (error) {
-		console.error("Error in TimeKeeperRenderer:", error);
-		const errorMessage = error instanceof Error ? error.message : "Unknown error";
-		setTimekeeperError("Failed to load time picker");
+		const errorMessage =
+			error instanceof Error ? error.message : 'Unknown error'
+		setTimekeeperError('Failed to load time picker')
 		return (
 			<div className={timekeeperClassNames.errorContainer}>
 				<p>Error: {errorMessage}</p>
 				<button
-					type="button"
-					onClick={() => setTimekeeperError(undefined)}
 					className={timekeeperClassNames.retryButton}
+					onClick={() => setTimekeeperError(undefined)}
+					type="button"
 				>
 					Retry
 				</button>
 			</div>
-		);
+		)
 	}
-};
+}
 
 // Main renderer definition
 const renderer: CustomRenderer<TimekeeperCell> = {
 	kind: GridCellKind.Custom,
-	isMatch: (c): c is TimekeeperCell => (c.data as { kind?: string }).kind === "timekeeper-cell",
+	isMatch: (c): c is TimekeeperCell =>
+		(c.data as { kind?: string }).kind === 'timekeeper-cell',
 
 	draw: (args, cell) => {
-		const { displayTime } = cell.data;
-		drawTextCell(args, displayTime || "", cell.contentAlign);
-		return true;
+		const { displayTime } = cell.data
+		drawTextCell(args, displayTime || '', cell.contentAlign)
+		return true
 	},
 
 	measure: (ctx, cell, theme) => {
-		const { displayTime } = cell.data;
-		return ctx.measureText(displayTime || "").width + theme.cellHorizontalPadding * 2;
+		const { displayTime } = cell.data
+		return (
+			ctx.measureText(displayTime || '').width + theme.cellHorizontalPadding * 2
+		)
 	},
 
 	provideEditor: () => ({
 		editor: (props) => {
-			const { data } = props.value;
+			const { data } = props.value
 
 			// Use our custom hook for all editor logic
 			const {
@@ -176,10 +187,14 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 				setTimekeeperError,
 			} = useTimekeeperEditor({
 				data,
-				onChange: props.onChange as unknown as (value: TimekeeperCellProps) => void,
-				onFinishedEditing: props.onFinishedEditing as unknown as (value: TimekeeperCellProps) => void,
+				onChange: props.onChange as unknown as (
+					value: TimekeeperCellProps
+				) => void,
+				onFinishedEditing: props.onFinishedEditing as unknown as (
+					value: TimekeeperCellProps
+				) => void,
 				value: props.value as unknown as TimekeeperCellProps,
-			});
+			})
 
 			// Use click outside ignore hook
 			useClickOutsideIgnore({
@@ -187,104 +202,129 @@ const renderer: CustomRenderer<TimekeeperCell> = {
 				wrapperRef,
 				iconButtonRef,
 				portalRef,
-			});
+			})
 
 			return (
-				<div ref={wrapperRef} className={timekeeperClassNames.wrapper}>
+				<div className={timekeeperClassNames.wrapper} ref={wrapperRef}>
 					<input
+						className={timekeeperClassNames.editor}
+						onBlur={handleBlur}
+						onChange={handleInputChange}
+						onKeyDown={handleKeyDown}
+						placeholder={data.use24Hour ? 'HH:MM' : 'h:mm am/pm'}
 						ref={inputRef}
 						type="text"
-						value={localDisplayTime || ""}
-						onChange={handleInputChange}
-						onBlur={handleBlur}
-						onKeyDown={handleKeyDown}
-						className={timekeeperClassNames.editor}
-						placeholder={data.use24Hour ? "HH:MM" : "h:mm am/pm"}
+						value={localDisplayTime || ''}
 					/>
 					<button
-						ref={iconButtonRef}
-						type="button"
+						className={timekeeperClassNames.iconButton}
 						onClick={handleIconClick}
 						onMouseDown={(e) => {
-							e.preventDefault();
-						}}
-						className={timekeeperClassNames.iconButton}
-						style={{
-							backgroundColor: showPicker ? "rgba(0, 0, 0, 0.1)" : "transparent",
+							e.preventDefault()
 						}}
 						onMouseEnter={(e) => {
-							e.currentTarget.style.opacity = "1";
-							e.currentTarget.style.backgroundColor = showPicker ? "rgba(0, 0, 0, 0.1)" : "transparent";
+							const OPACITY_FULL = '1'
+							const BACKGROUND_ALPHA = 0.1
+							e.currentTarget.style.opacity = OPACITY_FULL
+							e.currentTarget.style.backgroundColor = showPicker
+								? `rgba(0, 0, 0, ${BACKGROUND_ALPHA})`
+								: 'transparent'
 						}}
 						onMouseLeave={(e) => {
-							e.currentTarget.style.opacity = "0.7";
-							e.currentTarget.style.backgroundColor = showPicker ? "rgba(0, 0, 0, 0.1)" : "transparent";
+							const OPACITY_NORMAL = 0.7
+							const BACKGROUND_ALPHA = 0.1
+							e.currentTarget.style.opacity = String(OPACITY_NORMAL)
+							e.currentTarget.style.backgroundColor = showPicker
+								? `rgba(0, 0, 0, ${BACKGROUND_ALPHA})`
+								: 'transparent'
 						}}
+						ref={iconButtonRef}
+						style={{
+							backgroundColor: (() => {
+								const BACKGROUND_ALPHA = 0.1
+								return showPicker
+									? `rgba(0, 0, 0, ${BACKGROUND_ALPHA})`
+									: 'transparent'
+							})(),
+						}}
+						type="button"
 					>
 						<ClockIcon />
 					</button>
 
 					{showPicker &&
-						ReactDOM.createPortal(
+						createPortal(
 							<div
-								ref={portalRef}
-								data-timekeeper-portal="true"
 								className={`${timekeeperClassNames.portal} ${timekeeperClassNames.clickOutsideIgnore}`}
+								data-timekeeper-portal="true"
+								ref={portalRef}
 								style={{
 									top: `${pickerPosition.top}px`,
 									left: `${pickerPosition.left}px`,
 								}}
 							>
 								<TimeKeeperRenderer
-									timeRestrictionService={timeRestrictionService}
+									data={data}
+									handleDoneClick={handleDoneClick}
 									memoizedTimeValue={memoizedTimeValue}
 									staticTimeKeeperKey={staticTimeKeeperKey}
-									handleDoneClick={handleDoneClick}
-									data={data}
-									{...(timekeeperError && { timekeeperError: timekeeperError })}
-									setTimekeeperError={(e?: string) => setTimekeeperError(e ?? null)}
+									timeRestrictionService={timeRestrictionService}
+									{...(timekeeperError && { timekeeperError })}
+									setTimekeeperError={(e?: string) =>
+										setTimekeeperError(e ?? null)
+									}
 								/>
 							</div>,
 							document.body
 						)}
 				</div>
-			);
+			)
 		},
 	}),
 
 	onPaste: (val, data) => {
 		if (TIME_REGEX_24.test(val) || TIME_REGEX_12.test(val)) {
-			const date = new Date(1970, 0, 1);
+			const EPOCH_YEAR = 1970
+			const EPOCH_MONTH = 0
+			const EPOCH_DAY = 1
+			const SECONDS_DEFAULT = 0
+			const MILLISECONDS_DEFAULT = 0
+			const date = new Date(EPOCH_YEAR, EPOCH_MONTH, EPOCH_DAY)
 			if (TIME_REGEX_24.test(val)) {
-				const [hours, minutes] = val.split(":").map(Number);
+				const [hours, minutes] = val.split(':').map(Number)
 				if (hours !== undefined && minutes !== undefined) {
-					date.setHours(hours, minutes, 0, 0);
+					date.setHours(hours, minutes, SECONDS_DEFAULT, MILLISECONDS_DEFAULT)
 				}
 			} else {
-				const match = val.match(TIME_REGEX_12);
+				const match = val.match(TIME_REGEX_12)
 				if (match?.[1] && match[2] && match[3]) {
-					let hours = Number.parseInt(match[1], 10);
-					const minutes = Number.parseInt(match[2], 10);
-					const isPM = match[3].toLowerCase() === "pm";
-					if (hours === 12 && !isPM) hours = 0;
-					else if (hours !== 12 && isPM) hours += 12;
-					date.setHours(hours, minutes, 0, 0);
+					const NOON_HOUR = 12
+					const MIDNIGHT_HOUR = 0
+					const HOURS_IN_HALF_DAY = 12
+					let hours = Number.parseInt(match[1], 10)
+					const minutes = Number.parseInt(match[2], 10)
+					const isPM = match[3].toLowerCase() === 'pm'
+					if (hours === NOON_HOUR && !isPM) {
+						hours = MIDNIGHT_HOUR
+					} else if (hours !== NOON_HOUR && isPM) {
+						hours += HOURS_IN_HALF_DAY
+					}
+					date.setHours(hours, minutes, SECONDS_DEFAULT, MILLISECONDS_DEFAULT)
 				}
 			}
-			const displayTime = val;
+			const displayTime = val
 			return {
 				...(data as TimekeeperCellProps),
-				kind: "timekeeper-cell",
+				kind: 'timekeeper-cell',
 				time: date,
 				displayTime,
-			};
+			}
 		}
-		return undefined;
+		return
 	},
-};
+}
 
 // Ensure animations are loaded
-ensureFadeInAnimation();
+ensureFadeInAnimation()
 
-export default renderer;
-export type { TimekeeperCell, TimekeeperCellProps };
+export default renderer

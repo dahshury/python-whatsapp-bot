@@ -343,21 +343,10 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
             elif msg_type == "ping":
                 await conn.send_json({"type": "pong", "timestamp": _utc_iso_now()})
             elif msg_type == "get_snapshot":
-                # Optional: parse range, but service functions already time-scope reasonably
-                try:
-                    from app.utils.service_utils import get_all_reservations  # lazy import to avoid circular
-
-                    reservations_resp = get_all_reservations(future=False, include_cancelled=True)
-                    reservations = reservations_resp.get("data", {}) if isinstance(reservations_resp, dict) else {}
-                except Exception:
-                    reservations = {}
-                try:
-                    from app.utils.service_utils import get_all_conversations  # lazy import to avoid circular
-
-                    conversations_resp = get_all_conversations()
-                    conversations = conversations_resp.get("data", {}) if isinstance(conversations_resp, dict) else {}
-                except Exception:
-                    conversations = {}
+                # WebSocket snapshot only includes vacations and metrics
+                # Reservations and conversations are loaded on-demand via TanStack Query
+                # Components query only what they need when they need it
+                # Real-time updates come through WebSocket events which invalidate TanStack Query cache
                 try:
                     vacations = _compute_vacations()
                 except Exception:
@@ -371,8 +360,6 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         "type": "snapshot",
                         "timestamp": _utc_iso_now(),
                         "data": {
-                            "reservations": reservations,
-                            "conversations": conversations,
                             "vacations": vacations,
                             "metrics": metrics,
                         },
@@ -447,6 +434,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         approximate=approximate,
                         ar=ar,  # Pass Arabic flag to get translated error messages
                         reservation_id_to_modify=reservation_id,
+                        _call_source="frontend",  # Tag as frontend-initiated
                     )
 
                     logging.info(f"📥 modify_reservation result: {result}")
@@ -503,7 +491,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     # Import and call the cancel function
                     from app.services.assistant_functions import cancel_reservation
 
-                    result = cancel_reservation(wa_id=wa_id, date_str=date_str, reservation_id_to_cancel=reservation_id)
+                    result = cancel_reservation(wa_id=wa_id, date_str=date_str, reservation_id_to_cancel=reservation_id, _call_source="frontend")
 
                     if result.get("success"):
                         await conn.send_json(
@@ -742,13 +730,13 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         )
                         continue
 
-                    # Broadcast updated vacations
+                    # Broadcast updated vacations (always frontend-initiated)
                     try:
                         updated = _compute_vacations()
                     except Exception:
                         updated = []
                     await conn.send_json({"type": "vacation_update_ack", "timestamp": _utc_iso_now()})
-                    await manager.broadcast("vacation_period_updated", {"periods": updated})
+                    await broadcast("vacation_period_updated", {"periods": updated}, source="frontend")
                 except Exception as e:
                     logging.error(f"Vacation update exception: {e}")
                     await conn.send_json(
@@ -766,16 +754,23 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         await manager.disconnect(conn)
 
 
-async def broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None) -> None:
+async def broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None, source: str | None = None) -> None:
+    # Include source in data if provided to track event origin (assistant vs frontend)
+    if source:
+        data = {**data, "_source": source}
     await manager.broadcast(event_type, data, affected_entities)
 
 
-def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None) -> None:
+def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None, source: str | None = None) -> None:
+    # Include source in data if provided to track event origin (assistant vs frontend)
+    if source:
+        data = {**data, "_source": source}
+    
     # Prefer scheduling on the current running loop if present (i.e., inside ASGI handlers)
     try:
         loop = asyncio.get_running_loop()
         loop.create_task(manager.broadcast(event_type, data, affected_entities))
-        logging.debug(f"enqueue_broadcast scheduled on running loop: {event_type}")
+        logging.debug(f"enqueue_broadcast scheduled on running loop: {event_type} (source={source})")
         return
     except RuntimeError:
         pass
@@ -799,7 +794,7 @@ def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: 
                         logging.debug(f"enqueue_broadcast task raised: {e}")
 
                 fut.add_done_callback(_silent_cb)
-                logging.debug(f"enqueue_broadcast scheduled on main loop: {event_type}")
+                logging.debug(f"enqueue_broadcast scheduled on main loop: {event_type} (source={source})")
                 return
             except Exception as e:
                 logging.warning(f"enqueue_broadcast thread-safe scheduling failed: {e}")

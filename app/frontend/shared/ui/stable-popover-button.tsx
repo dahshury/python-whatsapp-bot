@@ -1,38 +1,43 @@
-import { cn } from "@shared/libs/utils";
-import { Button, type buttonVariants } from "@ui/button";
-import type { VariantProps } from "class-variance-authority";
-import * as React from "react";
+import { cn } from '@shared/libs/utils'
+import { Button, type buttonVariants } from '@ui/button'
+import type { VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 
-type ButtonProps = React.ComponentProps<"button"> &
+type ButtonProps = React.ComponentProps<'button'> &
 	VariantProps<typeof buttonVariants> & {
-		asChild?: boolean;
-	};
+		asChild?: boolean
+	}
 
 export interface StablePopoverButtonProps extends ButtonProps {
-	children: React.ReactNode;
+	children: React.ReactNode
 }
 
 /**
  * A stable button component specifically designed for use with PopoverTrigger.
  * This component prevents flashing/flickering issues when used as a trigger for Popover components.
  */
-export const StablePopoverButton = React.forwardRef<HTMLButtonElement, StablePopoverButtonProps>(
-	({ className, children, ...props }, ref) => {
-		return (
-			<Button
-				ref={ref}
-				className={cn(
-					// Disable all transitions and animations
-					"transition-none",
-					"combobox-trigger-stable",
-					className
-				)}
-				{...props}
-			>
-				{children}
-			</Button>
-		);
-	}
-);
+export const StablePopoverButton = ({
+	className,
+	children,
+	ref,
+	...props
+}: StablePopoverButtonProps & {
+	ref?: React.RefObject<HTMLButtonElement | null>
+}) => {
+	return (
+		<Button
+			className={cn(
+				// Disable all transitions and animations
+				'transition-none',
+				'combobox-trigger-stable',
+				className
+			)}
+			ref={ref}
+			{...props}
+		>
+			{children}
+		</Button>
+	)
+}
 
-StablePopoverButton.displayName = "StablePopoverButton";
+StablePopoverButton.displayName = 'StablePopoverButton'

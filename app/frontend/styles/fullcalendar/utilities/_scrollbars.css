@@ -19,27 +19,22 @@
 
 /* WebKit (Chrome/Safari/Edge) */
 .fc-list-view .fc-scroller::-webkit-scrollbar {
-	/* biome-ignore lint: Tailwind apply */
 	@apply w-2 h-2;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-track {
-	/* biome-ignore lint: Tailwind apply */
 	@apply bg-muted/30 rounded;
 }
 
 .bg-sidebar .fc-list-view .fc-scroller::-webkit-scrollbar-track {
-	/* biome-ignore lint: Tailwind apply */
 	@apply bg-transparent;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-thumb {
-	/* biome-ignore lint: Tailwind apply */
 	@apply bg-muted-foreground/40 rounded-full;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-thumb:hover {
-	/* biome-ignore lint: Tailwind apply */
 	@apply bg-muted-foreground/60;
 }
 

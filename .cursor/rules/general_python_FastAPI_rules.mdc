@@ -1,0 +1,105 @@
+---
+description: Python Backend Rules
+globs: "**/*.py"
+alwaysApply: false
+---
+
+You are an expert in Python, FastAPI, and scalable API development.
+
+Environment
+
+- Python 3.12
+
+Key Principles
+
+- Write concise, technical responses with accurate Python examples.
+- Use functional, declarative programming; avoid classes where possible.
+- Prefer iteration and modularization over code duplication.
+- Use descriptive variable names with auxiliary verbs (e.g., is_active, has_permission).
+- Use lowercase with underscores for directories and files (e.g., routers/user_routes.py).
+- Favor explicit exports for routes and utilities (e.g., `__all__`).
+- Use the Receive an Object, Return an Object (RORO) pattern.
+
+Python/FastAPI
+
+- Use def for pure functions and async def for asynchronous operations.
+- Use type hints for all function signatures. Prefer Pydantic models over raw dictionaries for input validation.
+- File structure: exported router, sub-routes, utilities, static content, types (models, schemas).
+- Use concise, one-line syntax for simple conditional statements (e.g., if condition: do_something()).
+
+Error Handling and Validation
+
+- Prioritize error handling and edge cases:
+  - Handle errors and edge cases at the beginning of functions.
+  - Use early returns for error conditions to avoid deeply nested if statements.
+  - Place the happy path last in the function for improved readability.
+  - Avoid unnecessary else statements; use the if-return pattern instead.
+  - Use guard clauses to handle preconditions and invalid states early.
+  - Implement proper error logging and user-friendly error messages.
+  - Use custom error types or error factories for consistent error handling.
+  - Catch narrow exceptions with try/except; avoid blanket except clauses.
+  - Validate and sanitize inputs at system boundaries (HTTP, DB, external services).
+
+Dependencies
+
+- FastAPI
+- Pydantic v2
+- Async database libraries like asyncpg or aiomysql
+- SQLAlchemy 2.0 (if using ORM features)
+- PostgreSQL (primary database)
+- Poetry for dependency management and virtual environments
+- Alembic for database migrations
+- fastapi-users for user management
+- fastapi-jwt-auth for authentication
+- fastapi-mail for email sending
+- fastapi-cache for caching
+- fastapi-limiter for rate limiting
+- fastapi-pagination for pagination
+
+Configuration
+
+- Use `.env` and `.env.example` for environment variables; never commit secrets.
+- Load and validate settings via Pydantic Settings at startup.
+
+FastAPI-Specific Guidelines
+
+- Use functional components (plain functions) and Pydantic models for input validation and response schemas.
+- Use declarative route definitions with clear return type annotations.
+- Minimize @app.on_event("startup") and @app.on_event("shutdown"); prefer lifespan context managers for managing startup and shutdown events.
+- Use middleware for logging, performance, error monitoring, and unexpected error handling.
+- Optimize for performance using async functions for I/O-bound tasks, caching strategies, and lazy loading.
+- Use HTTPException for expected errors and model them as specific HTTP responses.
+- Use Pydantic's BaseModel for consistent input/output validation and response schemas.
+
+Performance Optimization
+
+- Minimize blocking I/O operations; use asynchronous operations for all database calls and external API requests.
+- Implement caching for static and frequently accessed data using tools like Redis or in-memory stores.
+- Optimize data serialization and deserialization with Pydantic.
+- Use lazy loading techniques for large datasets and substantial API responses.
+
+General Python Best Practices
+
+- Follow PEP 8 for formatting.
+- Use docstrings to document modules, functions, and classes.
+- Keep code simple and clear; avoid unnecessary complexity.
+- Prefer list comprehensions when appropriate.
+- Write unit and integration tests.
+- Avoid global variables; use dependency injection and parameters instead.
+
+Key Conventions
+
+1. Rely on FastAPI’s dependency injection system for managing state and shared resources.
+2. Prioritize API performance metrics (response time, latency, throughput).
+3. Limit blocking operations in routes:
+   - Favor asynchronous and non-blocking flows.
+   - Use dedicated async functions for database and external API operations.
+   - Structure routes and dependencies clearly to optimize readability and maintainability.
+4. Follow RESTful API design principles.
+5. Configure CORS appropriately for local development and production.
+
+Testing and Deployment
+
+- Use Docker and docker compose (v2) for orchestration; avoid the deprecated `docker-compose` CLI.
+
+Refer to FastAPI documentation for Data Models, Path Operations, and Middleware for best practices.

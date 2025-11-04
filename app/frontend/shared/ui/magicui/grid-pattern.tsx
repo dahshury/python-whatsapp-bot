@@ -1,16 +1,16 @@
-"use client";
+'use client'
 
-import { cn } from "@shared/libs/utils";
-import { useId } from "react";
+import { cn } from '@shared/libs/utils'
+import { useId } from 'react'
 
-interface GridPatternProps {
-	className?: string;
-	width?: number;
-	height?: number;
-	x?: number;
-	y?: number;
-	strokeDasharray?: number | string;
-	strokeWidth?: number;
+type GridPatternProps = {
+	className?: string
+	width?: number
+	height?: number
+	x?: number
+	y?: number
+	strokeDasharray?: number | string
+	strokeWidth?: number
 }
 
 export function GridPattern({
@@ -22,27 +22,40 @@ export function GridPattern({
 	strokeDasharray = 0,
 	strokeWidth = 1,
 }: GridPatternProps) {
-	const reactId = useId().replace(/[:]/g, "");
-	const patternId = `grid-pattern-${reactId}`;
-	const dash = typeof strokeDasharray === "number" ? `${strokeDasharray}` : strokeDasharray;
+	const reactId = useId().replace(/[:]/g, '')
+	const patternId = `grid-pattern-${reactId}`
+	const dash =
+		typeof strokeDasharray === 'number' ? `${strokeDasharray}` : strokeDasharray
 
 	return (
-		<svg aria-hidden className={cn("h-full w-full", className)} width="100%" height="100%">
+		<svg
+			aria-hidden
+			className={cn('h-full w-full', className)}
+			height="100%"
+			width="100%"
+		>
 			<title>Grid pattern background</title>
 			<defs>
-				<pattern id={patternId} x={x} y={y} width={width} height={height} patternUnits="userSpaceOnUse">
+				<pattern
+					height={height}
+					id={patternId}
+					patternUnits="userSpaceOnUse"
+					width={width}
+					x={x}
+					y={y}
+				>
 					<path
 						d={`M ${width} 0 L 0 0 0 ${height}`}
 						fill="none"
 						stroke="currentColor"
-						strokeWidth={strokeWidth}
 						strokeDasharray={dash}
+						strokeWidth={strokeWidth}
 					/>
 				</pattern>
 			</defs>
-			<rect width="100%" height="100%" fill={`url(#${patternId})`} />
+			<rect fill={`url(#${patternId})`} height="100%" width="100%" />
 		</svg>
-	);
+	)
 }
 
-export type { GridPatternProps };
+export type { GridPatternProps }

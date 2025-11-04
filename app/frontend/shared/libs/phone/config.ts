@@ -1,1 +1,1 @@
-export const DEFAULT_COUNTRY = "SA" as const;
+export const DEFAULT_COUNTRY = 'SA' as const

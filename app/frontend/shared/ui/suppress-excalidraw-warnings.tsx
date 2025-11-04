@@ -1,6 +1,6 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
+import { useEffect } from 'react'
 
 /**
  * Suppresses known Excalidraw dev-only warnings that are harmless in production.
@@ -9,45 +9,49 @@ import { useEffect } from "react";
  */
 export function SuppressExcalidrawWarnings() {
 	useEffect(() => {
-		if (process.env.NODE_ENV !== "development") return;
+		if (process.env.NODE_ENV !== 'development') {
+			return
+		}
 
-		const originalError = console.error;
-		const originalWarn = console.warn;
+		// biome-ignore lint/suspicious/noConsole: Intentional suppression - storing references to console methods
+		const originalError = console.error
+		// biome-ignore lint/suspicious/noConsole: Intentional suppression - storing references to console methods
+		const originalWarn = console.warn
 
 		console.error = (...args: unknown[]) => {
-			const msg = String(args[0] || "");
+			const msg = String(args[0] || '')
 			// Suppress the "update scheduled from inside an update function" warning
 			// when it comes from Excalidraw's _App component during gestures
 			if (
-				msg.includes("update") &&
-				msg.includes("scheduled") &&
-				msg.includes("inside an update function") &&
-				(msg.includes("_App") || msg.includes("Excalidraw"))
+				msg.includes('update') &&
+				msg.includes('scheduled') &&
+				msg.includes('inside an update function') &&
+				(msg.includes('_App') || msg.includes('Excalidraw'))
 			) {
-				return;
+				return
 			}
-			originalError.apply(console, args);
-		};
+			originalError.apply(console, args)
+		}
 
 		console.warn = (...args: unknown[]) => {
-			const msg = String(args[0] || "");
+			const msg = String(args[0] || '')
 			// Suppress Excalidraw-related update warnings
 			if (
-				msg.includes("update") &&
-				msg.includes("scheduled") &&
-				msg.includes("inside an update function") &&
-				(msg.includes("_App") || msg.includes("Excalidraw"))
+				msg.includes('update') &&
+				msg.includes('scheduled') &&
+				msg.includes('inside an update function') &&
+				(msg.includes('_App') || msg.includes('Excalidraw'))
 			) {
-				return;
+				return
 			}
-			originalWarn.apply(console, args);
-		};
+			originalWarn.apply(console, args)
+		}
 
 		return () => {
-			console.error = originalError;
-			console.warn = originalWarn;
-		};
-	}, []);
+			console.error = originalError
+			console.warn = originalWarn
+		}
+	}, [])
 
-	return null;
+	return null
 }

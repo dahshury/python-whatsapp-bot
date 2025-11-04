@@ -1,24 +1,39 @@
-"use client";
+'use client'
 
-import * as ProgressPrimitive from "@radix-ui/react-progress";
-import { cn } from "@shared/libs/utils";
-import * as React from "react";
+import {
+	Indicator as ProgressIndicatorPrimitive,
+	Root as ProgressRootPrimitive,
+} from '@radix-ui/react-progress'
+import { cn } from '@shared/libs/utils'
+import type * as React from 'react'
 
-const Progress = React.forwardRef<
-	React.ElementRef<typeof ProgressPrimitive.Root>,
-	React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value, ...props }, ref) => (
-	<ProgressPrimitive.Root
+const Progress = ({
+	className,
+	value,
+	ref,
+	...props
+}: React.ComponentPropsWithoutRef<typeof ProgressRootPrimitive> & {
+	ref?: React.RefObject<React.ElementRef<typeof ProgressRootPrimitive> | null>
+}) => (
+	<ProgressRootPrimitive
+		className={cn(
+			'relative h-2 w-full overflow-hidden rounded-full bg-primary/20',
+			className
+		)}
 		ref={ref}
-		className={cn("relative h-2 w-full overflow-hidden rounded-full bg-primary/20", className)}
 		{...props}
 	>
-		<ProgressPrimitive.Indicator
+		<ProgressIndicatorPrimitive
 			className="h-full w-full flex-1 bg-primary transition-all"
-			style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
+			style={{
+				transform: (() => {
+					const PERCENTAGE_MAX = 100
+					return `translateX(-${PERCENTAGE_MAX - (value || 0)}%)`
+				})(),
+			}}
 		/>
-	</ProgressPrimitive.Root>
-));
-Progress.displayName = ProgressPrimitive.Root.displayName;
+	</ProgressRootPrimitive>
+)
+Progress.displayName = ProgressRootPrimitive.displayName
 
-export { Progress };
+export { Progress }

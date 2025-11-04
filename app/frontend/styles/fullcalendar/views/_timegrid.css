@@ -9,7 +9,9 @@
 /* General timegrid structure */
 .fc-timegrid .fc-daygrid-body {
 	/* the all-day daygrid within the timegrid view */
-	z-index: var(--z-calendar-day-bg-event); /* put above the timegrid-body so that more-popover is above everything */
+	z-index: var(
+		--z-calendar-day-bg-event
+	); /* put above the timegrid-body so that more-popover is above everything */
 }
 
 .fc-timegrid-divider {
@@ -98,7 +100,11 @@
 
 /* Enhanced time axis styling (time bar on the left) - moved from _week.css */
 .fc-timegrid-axis {
-	background: linear-gradient(90deg, hsl(var(--card)) 0%, hsl(var(--muted) / 0.1) 100%);
+	background: linear-gradient(
+		90deg,
+		hsl(var(--card)) 0%,
+		hsl(var(--muted) / 0.1) 100%
+	);
 	border-right: 2px solid hsl(var(--border) / 0.2);
 	/* GPU acceleration */
 	transform: translateZ(0);
@@ -171,12 +177,22 @@
 	position: absolute; /* top/bottom will be set by JS */
 	left: 0;
 	right: 0;
+	z-index: var(
+		--z-calendar-day-bg-event
+	); /* Below events, matches parent col-bg */
+	pointer-events: none; /* Don't capture clicks - allow events to be clickable */
 }
 
 /* Column events */
 .fc-timegrid-col-events {
 	z-index: var(--z-calendar-day-bg-highlight);
 	/* child event segs have z-indexes that are scoped within this div */
+	pointer-events: none; /* Don't capture clicks - let child events handle them */
+}
+
+/* Re-enable pointer events on event harnesses within col-events */
+.fc-timegrid-col-events .fc-timegrid-event-harness {
+	pointer-events: auto;
 }
 
 /* Now indicator container */
@@ -207,6 +223,10 @@
 /* Event harness */
 .fc-timegrid-event-harness {
 	position: absolute; /* top/left/right/bottom will all be set by JS */
+	z-index: var(
+		--z-calendar-event
+	) !important; /* Override FullCalendar's inline z-index - ensure harness is above background layers */
+	pointer-events: auto; /* Allow clicks on harness to reach events */
 }
 
 .fc-timegrid-event-harness > .fc-timegrid-event {
@@ -215,6 +235,10 @@
 	bottom: 0; /* " */
 	left: 0;
 	right: 0;
+	z-index: var(
+		--z-calendar-event
+	) !important; /* Ensure event is clickable and above background */
+	pointer-events: auto; /* Make event clickable */
 }
 
 .fc-timegrid-event-harness-inset .fc-timegrid-event,
@@ -231,6 +255,15 @@
 .fc-timegrid :where(.fc-timegrid-event) {
 	/* events need to be root */
 	margin-bottom: 1px; /* give some space from bottom */
+}
+
+/* Ensure all fc-event elements in timegrid are clickable - including conversation events */
+.fc-timegrid .fc-event,
+.fc-timegrid-event-harness .fc-event {
+	z-index: var(--z-calendar-event) !important;
+	pointer-events: auto !important;
+	cursor: pointer;
+	position: relative; /* Establish stacking context */
 }
 
 .fc-timegrid-event .fc-event-main {
@@ -334,7 +367,7 @@
 
 /* Conversation events show start time like others; end revealed on Alt-hover (handled globally) */
 
-/* COMPREHENSIVE: Ensure all timegrid event text elements have transparent backgrounds */
+/* COMPREHENSIVE: Ensure all timegrid event text elements have transparent backgrounds and don't block clicks */
 .fc-timegrid-event .fc-event-main,
 .fc-timegrid-event .fc-event-main-frame,
 .fc-timegrid-event .fc-event-time,
@@ -346,6 +379,12 @@
 	text-shadow: none;
 	outline: none;
 	border: none;
+	pointer-events: none; /* Don't block clicks - let parent event handle them */
+}
+
+/* Re-enable pointer events on the actual event element */
+.fc-timegrid-event {
+	pointer-events: auto !important;
 }
 
 /* Time grid hack - use popover z-index

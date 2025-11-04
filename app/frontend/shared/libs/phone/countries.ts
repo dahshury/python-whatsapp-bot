@@ -1,96 +1,146 @@
-import type * as RPNInput from "react-phone-number-input";
-import { getCountryCallingCode } from "react-phone-number-input";
-import countryLabelsAr from "react-phone-number-input/locale/ar.json";
-import countryLabelsEn from "react-phone-number-input/locale/en.json";
+import { i18n } from '@shared/libs/i18n'
+import type * as RPNInput from 'react-phone-number-input'
+import { getCountries, getCountryCallingCode } from 'react-phone-number-input'
+import countryLabelsAr from 'react-phone-number-input/locale/ar.json'
+import countryLabelsEn from 'react-phone-number-input/locale/en.json'
 
-export const COUNTRY_OPTIONS = [
-	{ code: "US", name: "United States", callingCode: "1" },
-	{ code: "GB", name: "United Kingdom", callingCode: "44" },
-	{ code: "DE", name: "Germany", callingCode: "49" },
-	{ code: "FR", name: "France", callingCode: "33" },
-	{ code: "JP", name: "Japan", callingCode: "81" },
-	{ code: "AU", name: "Australia", callingCode: "61" },
-	{ code: "BR", name: "Brazil", callingCode: "55" },
-	{ code: "IN", name: "India", callingCode: "91" },
-	{ code: "CN", name: "China", callingCode: "86" },
-	{ code: "RU", name: "Russia", callingCode: "7" },
-	{ code: "CA", name: "Canada", callingCode: "1" },
-	{ code: "MX", name: "Mexico", callingCode: "52" },
-	{ code: "ES", name: "Spain", callingCode: "34" },
-	{ code: "IT", name: "Italy", callingCode: "39" },
-	{ code: "NL", name: "Netherlands", callingCode: "31" },
-	{ code: "SE", name: "Sweden", callingCode: "46" },
-	{ code: "NO", name: "Norway", callingCode: "47" },
-	{ code: "DK", name: "Denmark", callingCode: "45" },
-	{ code: "FI", name: "Finland", callingCode: "358" },
-	{ code: "PL", name: "Poland", callingCode: "48" },
-	{ code: "CZ", name: "Czech Republic", callingCode: "420" },
-	{ code: "AT", name: "Austria", callingCode: "43" },
-	{ code: "CH", name: "Switzerland", callingCode: "41" },
-	{ code: "BE", name: "Belgium", callingCode: "32" },
-	{ code: "PT", name: "Portugal", callingCode: "351" },
-	{ code: "GR", name: "Greece", callingCode: "30" },
-	{ code: "HU", name: "Hungary", callingCode: "36" },
-	{ code: "TR", name: "Turkey", callingCode: "90" },
-	{ code: "ZA", name: "South Africa", callingCode: "27" },
-	{ code: "EG", name: "Egypt", callingCode: "20" },
-	{ code: "NG", name: "Nigeria", callingCode: "234" },
-	{ code: "KE", name: "Kenya", callingCode: "254" },
-	{ code: "AE", name: "UAE", callingCode: "971" },
-	{ code: "SG", name: "Singapore", callingCode: "65" },
-	{ code: "MY", name: "Malaysia", callingCode: "60" },
-	{ code: "TH", name: "Thailand", callingCode: "66" },
-	{ code: "ID", name: "Indonesia", callingCode: "62" },
-	{ code: "PH", name: "Philippines", callingCode: "63" },
-	{ code: "VN", name: "Vietnam", callingCode: "84" },
-	{ code: "KR", name: "South Korea", callingCode: "82" },
-	{ code: "TW", name: "Taiwan", callingCode: "886" },
-	{ code: "HK", name: "Hong Kong", callingCode: "852" },
-	{ code: "AR", name: "Argentina", callingCode: "54" },
-	{ code: "CL", name: "Chile", callingCode: "56" },
-	{ code: "CO", name: "Colombia", callingCode: "57" },
-	{ code: "PE", name: "Peru", callingCode: "51" },
-	{ code: "VE", name: "Venezuela", callingCode: "58" },
-	{ code: "UY", name: "Uruguay", callingCode: "598" },
-	{ code: "NZ", name: "New Zealand", callingCode: "64" },
-	{ code: "IL", name: "Israel", callingCode: "972" },
-	{ code: "SA", name: "Saudi Arabia", callingCode: "966" },
-	{ code: "PK", name: "Pakistan", callingCode: "92" },
-	{ code: "BD", name: "Bangladesh", callingCode: "880" },
-	{ code: "LK", name: "Sri Lanka", callingCode: "94" },
-	{ code: "MM", name: "Myanmar", callingCode: "95" },
-] as const;
+// Get all countries from react-phone-number-input library
+// This includes all 245 supported countries
+const ALL_COUNTRIES = getCountries() as RPNInput.Country[]
 
-export const CALLING_CODE_TO_COUNTRY: Record<string, RPNInput.Country> = (() => {
-	const map: Record<string, RPNInput.Country> = {};
-	for (const c of COUNTRY_OPTIONS) {
-		if (!map[c.callingCode]) map[c.callingCode] = c.code as RPNInput.Country;
-	}
-	return map;
-})();
+// Legacy list removed - all countries now come from react-phone-number-input library
 
-export const CALLING_CODES_SORTED: string[] = Object.keys(CALLING_CODE_TO_COUNTRY).sort((a, b) => b.length - a.length);
+export const CALLING_CODE_TO_COUNTRY: Record<string, RPNInput.Country> =
+	(() => {
+		const map: Record<string, RPNInput.Country> = {}
+		// Use all countries from library instead of hardcoded list
+		for (const countryCode of ALL_COUNTRIES) {
+			try {
+				const callingCode = String(getCountryCallingCode(countryCode))
+				if (!map[callingCode]) {
+					map[callingCode] = countryCode
+				}
+			} catch {
+				// Skip invalid countries
+			}
+		}
+		return map
+	})()
+
+export const CALLING_CODES_SORTED: string[] = Object.keys(
+	CALLING_CODE_TO_COUNTRY
+).sort((a, b) => b.length - a.length)
 
 export const getCountryLabel = (countryCode: RPNInput.Country): string => {
-	const country = COUNTRY_OPTIONS.find((c) => c.code === countryCode);
-	if (country) {
-		return `${country.name} (+${country.callingCode})`;
+	try {
+		const callingCode = getCountryCallingCode(countryCode)
+		const labels: Record<string, string> = countryLabelsEn as Record<
+			string,
+			string
+		>
+		const localizedName = labels[countryCode] || countryCode
+		return `${localizedName} (+${callingCode})`
+	} catch {
+		const labels: Record<string, string> = countryLabelsEn as Record<
+			string,
+			string
+		>
+		return labels[countryCode] || countryCode
 	}
-	return `${countryCode} (+${getCountryCallingCode(countryCode)})`;
-};
+}
 
+/**
+ * Get localized country options for all countries.
+ * Uses translations from common.json (key: `country_${countryCode}`),
+ * falls back to react-phone-number-input locale files if not found.
+ * Includes searchable text in both languages for multilingual search.
+ *
+ * @param isLocalized - Whether to use Arabic (true) or English (false) translations
+ * @returns Array of country options with value, label, and searchable text in both languages
+ */
 export const getLocalizedCountryOptions = (
 	isLocalized: boolean
-): ReadonlyArray<{ value: RPNInput.Country; label: string }> => {
-	const labels: Record<string, string> = isLocalized
-		? (countryLabelsAr as Record<string, string>)
-		: (countryLabelsEn as Record<string, string>);
-	return COUNTRY_OPTIONS.map((c) => {
-		const code = c.code as RPNInput.Country;
-		const localizedName = labels[c.code] || c.name;
-		return {
-			value: code,
-			label: `${localizedName} (+${c.callingCode})`,
-		};
-	});
-};
+): ReadonlyArray<{
+	value: RPNInput.Country
+	label: string
+	searchText: string // Includes both English and Arabic names for search
+}> => {
+	// Get labels in both languages for search
+	const enLabels: Record<string, string> = countryLabelsEn as Record<
+		string,
+		string
+	>
+	const arLabels: Record<string, string> = countryLabelsAr as Record<
+		string,
+		string
+	>
+
+	// Use all countries from react-phone-number-input library (245 countries)
+	// Wrap in try-catch to ensure all countries are included even if one fails
+	return ALL_COUNTRIES.map((countryCode) => {
+		try {
+			const callingCode = getCountryCallingCode(countryCode)
+
+			// Try to get translation from common.json first (key: country_${countryCode})
+			const i18nKey = `country_${countryCode}`
+			const customTranslation = i18n.getMessage(i18nKey, isLocalized)
+
+			// Get both English and Arabic names for search
+			const enName =
+				i18n.getMessage(i18nKey, false) !== i18nKey
+					? i18n.getMessage(i18nKey, false)
+					: enLabels[countryCode] || countryCode
+			const arName =
+				i18n.getMessage(i18nKey, true) !== i18nKey
+					? i18n.getMessage(i18nKey, true)
+					: arLabels[countryCode] || countryCode
+
+			// Use custom translation if available, otherwise fallback to library
+			let localizedName: string
+			if (customTranslation && customTranslation !== i18nKey) {
+				localizedName = customTranslation
+			} else if (isLocalized) {
+				localizedName = arLabels[countryCode] || countryCode
+			} else {
+				localizedName = enLabels[countryCode] || countryCode
+			}
+
+			// Combine both language names for search (lowercase for case-insensitive matching)
+			const searchText = `${enName} ${arName}`.toLowerCase()
+
+			return {
+				value: countryCode,
+				label: `${localizedName} (+${callingCode})`,
+				searchText,
+			}
+		} catch {
+			// Fallback for countries that fail calling code lookup
+			const i18nKey = `country_${countryCode}`
+			const customTranslation = i18n.getMessage(i18nKey, isLocalized)
+			const enName =
+				i18n.getMessage(i18nKey, false) !== i18nKey
+					? i18n.getMessage(i18nKey, false)
+					: enLabels[countryCode] || countryCode
+			const arName =
+				i18n.getMessage(i18nKey, true) !== i18nKey
+					? i18n.getMessage(i18nKey, true)
+					: arLabels[countryCode] || countryCode
+			let localizedName: string
+			if (customTranslation && customTranslation !== i18nKey) {
+				localizedName = customTranslation
+			} else if (isLocalized) {
+				localizedName = arLabels[countryCode] || countryCode
+			} else {
+				localizedName = enLabels[countryCode] || countryCode
+			}
+
+			const searchText = `${enName} ${arName}`.toLowerCase()
+
+			return {
+				value: countryCode,
+				label: localizedName,
+				searchText,
+			}
+		}
+	})
+}

@@ -94,7 +94,8 @@
    * ======================================== */
 	--z-fullscreen-backdrop: 1100;
 	--z-fullscreen-content: 1110;
-	--z-grid-fullscreen: 1120;
+	--z-grid-fullscreen-overlay: 1450;
+	--z-grid-fullscreen: 1455;
 
 	/* ========================================
    * LAYER 6: DISCARD CHANGES DIALOG (950-960)
@@ -175,7 +176,7 @@
 
 /* Grid fullscreen mode */
 .gdg-fullscreen-overlay {
-	z-index: var(--z-grid-fullscreen);
+	z-index: var(--z-grid-fullscreen-overlay);
 }
 
 /* ========================================

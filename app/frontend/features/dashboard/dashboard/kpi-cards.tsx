@@ -1,9 +1,8 @@
-"use client";
+'use client'
 
-import type { DashboardStats, PrometheusMetrics } from "@features/dashboard/types";
-import { i18n } from "@shared/libs/i18n";
-import { Badge } from "@ui/badge";
-import { motion } from "framer-motion";
+import { i18n } from '@shared/libs/i18n'
+import { Badge } from '@ui/badge'
+import { motion } from 'framer-motion'
 import {
 	Calendar,
 	CheckCircle,
@@ -15,38 +14,95 @@ import {
 	TrendingUp,
 	UserCheck,
 	Users,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { MagicCard } from "@/shared/ui/magicui/magic-card";
-import { Progress } from "@/shared/ui/progress";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
+} from 'lucide-react'
+import type {
+	DashboardStats,
+	PrometheusMetrics,
+} from '@/features/dashboard/types'
+import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { MagicCard } from '@/shared/ui/magicui/magic-card'
+import { Progress } from '@/shared/ui/progress'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+
+const RESPONSE_TIME_PROGRESS_BASE = 100
+const RESPONSE_TIME_PROGRESS_DECAY = 2
+const CPU_USAGE_FALLBACK_PERCENT = 45.2
+const CPU_USAGE_WARNING_THRESHOLD_PERCENT = 80
+const BYTES_PER_KIB = 1024
+const BYTES_PER_MIB = BYTES_PER_KIB * BYTES_PER_KIB
+const BYTES_PER_GIB = BYTES_PER_MIB * BYTES_PER_KIB
+const MEMORY_USAGE_FALLBACK_GIB = 0.5
+const SUCCESS_RATE_PERCENT_BASE = 100
+const SUCCESS_RATE_WARNING_THRESHOLD_PERCENT = 95
+const SUCCESS_RATE_FALLBACK_PERCENT = 96.8
+const KPI_CARD_ANIMATION_DURATION = 0.4
+const KPI_CARD_ANIMATION_OFFSET = 20
+const KPI_GRID_ANIMATION_DELAY_STEP = 0.05
+
+const getResponseTimeProgress = (avgResponseTime: number) =>
+	Math.max(
+		0,
+		RESPONSE_TIME_PROGRESS_BASE - avgResponseTime * RESPONSE_TIME_PROGRESS_DECAY
+	)
+
+const formatMemoryUsage = (bytes?: number) => {
+	if (typeof bytes !== 'number' || Number.isNaN(bytes)) {
+		return `${MEMORY_USAGE_FALLBACK_GIB.toFixed(1)}GB`
+	}
+
+	return `${(bytes / BYTES_PER_GIB).toFixed(1)}GB`
+}
+
+const computeSuccessRate = (successTotal?: number, requestedTotal?: number) => {
+	if (
+		typeof successTotal !== 'number' ||
+		typeof requestedTotal !== 'number' ||
+		requestedTotal <= 0
+	) {
+		return
+	}
+
+	return (successTotal / requestedTotal) * SUCCESS_RATE_PERCENT_BASE
+}
+
+const getSuccessVariant = (
+	successRate?: number
+): 'default' | 'success' | 'warning' | 'danger' => {
+	if (typeof successRate !== 'number') {
+		return 'success'
+	}
+
+	return successRate < SUCCESS_RATE_WARNING_THRESHOLD_PERCENT
+		? 'warning'
+		: 'success'
+}
 
 // Type for metrics that can have optional properties
-interface MetricData extends Omit<KPICardProps, "isLocalized"> {
+interface MetricData extends Omit<KPICardProps, 'isLocalized'> {
 	// All properties are inherited from KPICardProps except isLocalized
 }
 
-interface KPICardsProps {
-	stats: DashboardStats;
-	prometheusMetrics: PrometheusMetrics;
-	isLocalized: boolean;
+type KPICardsProps = {
+	stats: DashboardStats
+	prometheusMetrics: PrometheusMetrics
+	isLocalized: boolean
 }
 
-interface KPICardProps {
-	title: string;
-	value: string | number;
-	description: string;
-	icon: React.ReactNode;
+type KPICardProps = {
+	title: string
+	value: string | number
+	description: string
+	icon: React.ReactNode
 	trend?: {
-		value: number;
-		isPositive: boolean;
-		label?: string;
-	};
-	progress?: number;
-	variant?: "default" | "success" | "warning" | "danger";
-	hasTooltip?: boolean;
-	tooltipContent?: string;
-	isLocalized?: boolean;
+		value: number
+		isPositive: boolean
+		label?: string
+	}
+	progress?: number
+	variant?: 'default' | 'success' | 'warning' | 'danger'
+	hasTooltip?: boolean
+	tooltipContent?: string
+	isLocalized?: boolean
 }
 
 function KPICard({
@@ -56,55 +112,55 @@ function KPICard({
 	icon,
 	trend,
 	progress,
-	variant = "default",
+	variant = 'default',
 	hasTooltip,
 	tooltipContent,
 	isLocalized: _isLocalized,
 }: KPICardProps) {
 	const getVariantClasses = () => {
 		switch (variant) {
-			case "success":
-				return "border-chart-1/30 bg-chart-1/10";
-			case "warning":
-				return "border-chart-3/30 bg-chart-3/10";
-			case "danger":
-				return "border-destructive/30 bg-destructive/10";
+			case 'success':
+				return 'border-chart-1/30 bg-chart-1/10'
+			case 'warning':
+				return 'border-chart-3/30 bg-chart-3/10'
+			case 'danger':
+				return 'border-destructive/30 bg-destructive/10'
 			default:
-				return "";
+				return ''
 		}
-	};
+	}
 
 	return (
 		<motion.div
-			initial={{ opacity: 0, y: 20 }}
 			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.4 }}
 			className="h-full"
+			initial={{ opacity: 0, y: KPI_CARD_ANIMATION_OFFSET }}
+			transition={{ duration: KPI_CARD_ANIMATION_DURATION }}
 		>
 			<MagicCard
-				className={`h-full flex flex-col ${getVariantClasses()}`}
-				gradientSize={250}
+				className={`flex h-full flex-col ${getVariantClasses()}`}
 				gradientColor="hsl(var(--muted-foreground) / 0.08)"
-				gradientOpacity={0.5}
 				gradientFrom="hsl(var(--primary))"
+				gradientOpacity={0.5}
+				gradientSize={250}
 				gradientTo="hsl(var(--accent))"
 			>
-				<Card className="h-full flex flex-col bg-transparent border-0 shadow-none">
-					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 flex-shrink-0">
-						<CardTitle className="text-sm font-medium line-clamp-2 flex items-center gap-1">
+				<Card className="flex h-full flex-col border-0 bg-transparent shadow-none">
+					<CardHeader className="flex flex-shrink-0 flex-row items-center justify-between space-y-0 pb-2">
+						<CardTitle className="line-clamp-2 flex items-center gap-1 font-medium text-sm">
 							{title}
 							{hasTooltip && tooltipContent && (
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<span className="inline-flex items-center cursor-help">
+										<span className="inline-flex cursor-help items-center">
 											<HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
 										</span>
 									</TooltipTrigger>
 									<TooltipContent
-										side="top"
 										align="start"
+										className="max-w-xs border border-border/40 bg-gradient-to-br bg-transparent from-chart-1/15 via-background/70 to-transparent shadow-lg backdrop-blur-md"
+										side="top"
 										sideOffset={10}
-										className="max-w-xs bg-transparent bg-gradient-to-br from-chart-1/15 via-background/70 to-transparent backdrop-blur-md border border-border/40 shadow-lg"
 									>
 										<p className="text-sm opacity-90">{tooltipContent}</p>
 									</TooltipContent>
@@ -113,21 +169,25 @@ function KPICard({
 						</CardTitle>
 						<div className="flex-shrink-0">{icon}</div>
 					</CardHeader>
-					<CardContent className="flex-1 flex flex-col justify-between">
+					<CardContent className="flex flex-1 flex-col justify-between">
 						<div>
-							<div className="text-2xl font-bold transition-all duration-300 will-change-contents">{value}</div>
-							<div className="flex items-center justify-between mt-1 min-h-[2.5rem]">
-								<p className="text-xs text-muted-foreground line-clamp-2 flex-1 mr-2">{description}</p>
+							<div className="font-bold text-2xl transition-all duration-300 will-change-contents">
+								{value}
+							</div>
+							<div className="mt-1 flex min-h-[2.5rem] items-center justify-between">
+								<p className="mr-2 line-clamp-2 flex-1 text-muted-foreground text-xs">
+									{description}
+								</p>
 								{trend && (
 									<Badge
-										variant={trend.isPositive ? "default" : "secondary"}
-										className={`text-xs flex-shrink-0 ${
+										className={`flex-shrink-0 text-xs ${
 											trend.isPositive
-												? "bg-chart-1/20 text-chart-1 hover:bg-chart-1/20"
-												: "bg-destructive/20 text-destructive hover:bg-destructive/20"
+												? 'bg-chart-1/20 text-chart-1 hover:bg-chart-1/20'
+												: 'bg-destructive/20 text-destructive hover:bg-destructive/20'
 										}`}
+										variant={trend.isPositive ? 'default' : 'secondary'}
 									>
-										{trend.isPositive ? "+" : "-"}
+										{trend.isPositive ? '+' : '-'}
 										{trend.value.toFixed(1)}%{trend.label && ` ${trend.label}`}
 									</Badge>
 								)}
@@ -135,22 +195,55 @@ function KPICard({
 						</div>
 						{progress !== undefined && (
 							<div className="mt-3">
-								<Progress value={progress} className="h-2" />
+								<Progress className="h-2" value={progress} />
 							</div>
 						)}
 					</CardContent>
 				</Card>
 			</MagicCard>
 		</motion.div>
-	);
+	)
 }
 
-export function KPICards({ stats, prometheusMetrics, isLocalized }: KPICardsProps) {
+export function KPICards({
+	stats,
+	prometheusMetrics,
+	isLocalized,
+}: KPICardsProps) {
+	const cpuPercent =
+		typeof prometheusMetrics.cpu_percent === 'number'
+			? prometheusMetrics.cpu_percent
+			: CPU_USAGE_FALLBACK_PERCENT
+	const cpuHasLiveMetrics = typeof prometheusMetrics.cpu_percent === 'number'
+	const cpuDescriptionKey = cpuHasLiveMetrics
+		? 'kpi_current_usage'
+		: 'kpi_demo_data'
+	const cpuVariant: 'default' | 'success' | 'warning' | 'danger' =
+		cpuPercent > CPU_USAGE_WARNING_THRESHOLD_PERCENT ? 'danger' : 'default'
+
+	const memoryBytes =
+		typeof prometheusMetrics.memory_bytes === 'number'
+			? prometheusMetrics.memory_bytes
+			: undefined
+	const memoryDescriptionKey =
+		memoryBytes !== undefined ? 'kpi_current_usage' : 'kpi_demo_data'
+	const memoryValue = formatMemoryUsage(memoryBytes)
+
+	const successRate = computeSuccessRate(
+		prometheusMetrics.reservations_successful_total,
+		prometheusMetrics.reservations_requested_total
+	)
+	const successRateDisplay = successRate ?? SUCCESS_RATE_FALLBACK_PERCENT
+	const successDescriptionKey =
+		successRate !== undefined ? 'kpi_operational_rate' : 'kpi_demo_data'
+	const successVariant = getSuccessVariant(successRate)
+	const successProgress = successRateDisplay
+
 	const kpiData: MetricData[] = [
 		{
-			title: i18n.getMessage("kpi_total_reservations", isLocalized),
+			title: i18n.getMessage('kpi_total_reservations', isLocalized),
 			value: stats.totalReservations.toLocaleString(),
-			description: i18n.getMessage("kpi_this_period", isLocalized),
+			description: i18n.getMessage('kpi_this_period', isLocalized),
 			icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
 			...(stats.trends?.totalReservations && {
 				trend: {
@@ -159,22 +252,28 @@ export function KPICards({ stats, prometheusMetrics, isLocalized }: KPICardsProp
 				},
 			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_total_reservations_tooltip", isLocalized),
-			variant: "default" as const,
+			tooltipContent: i18n.getMessage(
+				'kpi_total_reservations_tooltip',
+				isLocalized
+			),
+			variant: 'default' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_active_customers", isLocalized),
+			title: i18n.getMessage('kpi_active_customers', isLocalized),
 			value: stats.activeCustomers.toLocaleString(),
-			description: i18n.getMessage("kpi_active_customers_desc", isLocalized),
+			description: i18n.getMessage('kpi_active_customers_desc', isLocalized),
 			icon: <Users className="h-4 w-4 text-muted-foreground" />,
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_active_customers_tooltip", isLocalized),
-			variant: "success" as const,
+			tooltipContent: i18n.getMessage(
+				'kpi_active_customers_tooltip',
+				isLocalized
+			),
+			variant: 'success' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_cancellations", isLocalized),
+			title: i18n.getMessage('kpi_cancellations', isLocalized),
 			value: stats.totalCancellations.toLocaleString(),
-			description: i18n.getMessage("kpi_this_period", isLocalized),
+			description: i18n.getMessage('kpi_this_period', isLocalized),
 			icon: <MessageSquare className="h-4 w-4 text-muted-foreground" />,
 			...(stats.trends?.cancellations && {
 				trend: {
@@ -183,38 +282,38 @@ export function KPICards({ stats, prometheusMetrics, isLocalized }: KPICardsProp
 				},
 			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_cancellations_tooltip", isLocalized),
-			variant: "warning" as const,
+			tooltipContent: i18n.getMessage('kpi_cancellations_tooltip', isLocalized),
+			variant: 'warning' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_conversion_rate", isLocalized),
+			title: i18n.getMessage('kpi_conversion_rate', isLocalized),
 			value: `${stats.conversionRate.toFixed(1)}%`,
-			description: i18n.getMessage("kpi_conversation_to_booking", isLocalized),
+			description: i18n.getMessage('kpi_conversation_to_booking', isLocalized),
 			icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
 			trend: {
 				value: 3.8,
 				isPositive: true,
 			},
 			progress: stats.conversionRate,
-			variant: "success" as const,
+			variant: 'success' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_returning_rate", isLocalized),
+			title: i18n.getMessage('kpi_returning_rate', isLocalized),
 			value: `${stats.returningRate.toFixed(1)}%`,
-			description: i18n.getMessage("kpi_customer_retention", isLocalized),
+			description: i18n.getMessage('kpi_customer_retention', isLocalized),
 			icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
 			trend: {
 				value: 2.1,
 				isPositive: true,
-				label: i18n.getMessage("kpi_improvement", isLocalized),
+				label: i18n.getMessage('kpi_improvement', isLocalized),
 			},
 			progress: stats.returningRate,
-			variant: "default" as const,
+			variant: 'default' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_avg_response_time", isLocalized),
-			value: `${stats.avgResponseTime.toFixed(1)}${i18n.getMessage("msg_minutes", isLocalized)}`,
-			description: i18n.getMessage("response_time_calculated", isLocalized),
+			title: i18n.getMessage('kpi_avg_response_time', isLocalized),
+			value: `${stats.avgResponseTime.toFixed(1)}${i18n.getMessage('msg_minutes', isLocalized)}`,
+			description: i18n.getMessage('response_time_calculated', isLocalized),
 			icon: <Clock className="h-4 w-4 text-muted-foreground" />,
 			...(stats.trends?.avgResponseTime && {
 				trend: {
@@ -223,25 +322,34 @@ export function KPICards({ stats, prometheusMetrics, isLocalized }: KPICardsProp
 				},
 			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_avg_response_time_tooltip", isLocalized),
-			progress: Math.max(0, 100 - stats.avgResponseTime * 2),
-			variant: "default" as const,
+			tooltipContent: i18n.getMessage(
+				'kpi_avg_response_time_tooltip',
+				isLocalized
+			),
+			progress: getResponseTimeProgress(stats.avgResponseTime),
+			variant: 'default' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_returning_customers", isLocalized),
+			title: i18n.getMessage('kpi_returning_customers', isLocalized),
 			value: stats.returningCustomers.toLocaleString(),
-			description: i18n.getMessage("kpi_customers_with_multiple_bookings", isLocalized),
+			description: i18n.getMessage(
+				'kpi_customers_with_multiple_bookings',
+				isLocalized
+			),
 			icon: <UserCheck className="h-4 w-4 text-muted-foreground" />,
 			trend: {
 				value: 5.2,
 				isPositive: true,
 			},
-			variant: "success" as const,
+			variant: 'success' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_avg_followups", isLocalized),
+			title: i18n.getMessage('kpi_avg_followups', isLocalized),
 			value: stats.avgFollowups.toFixed(1),
-			description: i18n.getMessage("kpi_additional_bookings_per_returning_customer", isLocalized),
+			description: i18n.getMessage(
+				'kpi_additional_bookings_per_returning_customer',
+				isLocalized
+			),
 			icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
 			...(stats.trends?.avgFollowups && {
 				trend: {
@@ -250,13 +358,13 @@ export function KPICards({ stats, prometheusMetrics, isLocalized }: KPICardsProp
 				},
 			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_avg_followups_tooltip", isLocalized),
-			variant: "default" as const,
+			tooltipContent: i18n.getMessage('kpi_avg_followups_tooltip', isLocalized),
+			variant: 'default' as const,
 		},
 		{
-			title: i18n.getMessage("kpi_unique_customers", isLocalized),
+			title: i18n.getMessage('kpi_unique_customers', isLocalized),
 			value: stats.uniqueCustomers.toLocaleString(),
-			description: i18n.getMessage("kpi_this_period", isLocalized),
+			description: i18n.getMessage('kpi_this_period', isLocalized),
 			icon: <Users className="h-4 w-4 text-muted-foreground" />,
 			...(stats.trends?.uniqueCustomers && {
 				trend: {
@@ -265,105 +373,90 @@ export function KPICards({ stats, prometheusMetrics, isLocalized }: KPICardsProp
 				},
 			}),
 			hasTooltip: true,
-			tooltipContent: i18n.getMessage("kpi_unique_customers_tooltip", isLocalized),
-			variant: "success" as const,
+			tooltipContent: i18n.getMessage(
+				'kpi_unique_customers_tooltip',
+				isLocalized
+			),
+			variant: 'success' as const,
 		},
-	];
+	]
 
 	// System metrics if available
 	const systemMetrics: MetricData[] =
 		prometheusMetrics && Object.keys(prometheusMetrics).length > 0
 			? [
 					{
-						title: i18n.getMessage("kpi_cpu_usage", isLocalized),
-						value:
-							prometheusMetrics.cpu_percent !== undefined ? `${prometheusMetrics.cpu_percent.toFixed(1)}%` : "45.2%",
-						description:
-							prometheusMetrics.cpu_percent !== undefined
-								? i18n.getMessage("kpi_current_usage", isLocalized)
-								: i18n.getMessage("kpi_demo_data", isLocalized),
+						title: i18n.getMessage('kpi_cpu_usage', isLocalized),
+						value: `${cpuPercent.toFixed(1)}%`,
+						description: i18n.getMessage(cpuDescriptionKey, isLocalized),
 						icon: <Cpu className="h-4 w-4 text-muted-foreground" />,
-						progress: prometheusMetrics.cpu_percent || 45.2,
-						variant: (prometheusMetrics.cpu_percent || 45.2) > 80 ? ("danger" as const) : ("default" as const),
+						progress: cpuPercent,
+						variant: cpuVariant,
 					},
 					{
-						title: i18n.getMessage("kpi_memory_usage", isLocalized),
-						value:
-							prometheusMetrics.memory_bytes !== undefined
-								? `${(prometheusMetrics.memory_bytes / 1024 ** 3).toFixed(1)}GB`
-								: "0.5GB",
-						description:
-							prometheusMetrics.memory_bytes !== undefined
-								? i18n.getMessage("kpi_current_usage", isLocalized)
-								: i18n.getMessage("kpi_demo_data", isLocalized),
+						title: i18n.getMessage('kpi_memory_usage', isLocalized),
+						value: memoryValue,
+						description: i18n.getMessage(memoryDescriptionKey, isLocalized),
 						icon: <HardDrive className="h-4 w-4 text-muted-foreground" />,
-						variant: "default" as const,
+						variant: 'default' as const,
 					},
 					{
-						title: i18n.getMessage("kpi_success_rate", isLocalized),
-						value:
-							prometheusMetrics.reservations_successful_total !== undefined &&
-							prometheusMetrics.reservations_requested_total !== undefined
-								? `${((prometheusMetrics.reservations_successful_total / prometheusMetrics.reservations_requested_total) * 100).toFixed(1)}%`
-								: "96.8%",
-						description:
-							prometheusMetrics.reservations_successful_total !== undefined
-								? i18n.getMessage("kpi_operational_rate", isLocalized)
-								: i18n.getMessage("kpi_demo_data", isLocalized),
+						title: i18n.getMessage('kpi_success_rate', isLocalized),
+						value: `${successRateDisplay.toFixed(1)}%`,
+						description: i18n.getMessage(successDescriptionKey, isLocalized),
 						icon: <CheckCircle className="h-4 w-4 text-muted-foreground" />,
-						progress:
-							prometheusMetrics.reservations_successful_total !== undefined &&
-							prometheusMetrics.reservations_requested_total !== undefined
-								? (prometheusMetrics.reservations_successful_total / prometheusMetrics.reservations_requested_total) *
-									100
-								: 96.8,
-						variant:
-							prometheusMetrics.reservations_successful_total !== undefined &&
-							prometheusMetrics.reservations_requested_total !== undefined
-								? (prometheusMetrics.reservations_successful_total / prometheusMetrics.reservations_requested_total) *
-										100 <
-									95
-									? ("warning" as const)
-									: ("success" as const)
-								: ("success" as const),
+						progress: successProgress,
+						variant: successVariant,
 						hasTooltip: true,
-						tooltipContent: i18n.getMessage("tooltip_success_rate", isLocalized),
+						tooltipContent: i18n.getMessage(
+							'tooltip_success_rate',
+							isLocalized
+						),
 					},
 				]
-			: [];
+			: []
 
-	const allMetrics = [...kpiData, ...systemMetrics];
+	const allMetrics = [...kpiData, ...systemMetrics]
 
 	return (
 		<div className="space-y-4">
 			{/* Section Title */}
-			<h2 className="text-xl font-semibold">{i18n.getMessage("kpi_performance_metrics", isLocalized)}</h2>
+			<h2 className="font-semibold text-xl">
+				{i18n.getMessage('kpi_performance_metrics', isLocalized)}
+			</h2>
 
 			{/* KPI Grid */}
-			<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-fr">
+			<div className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
 				{allMetrics.map((metric, index) => (
 					<motion.div
-						key={metric.title}
-						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: index * 0.05, duration: 0.4 }}
 						className="h-full"
+						initial={{ opacity: 0, y: KPI_CARD_ANIMATION_OFFSET }}
+						key={metric.title}
+						transition={{
+							delay: index * KPI_GRID_ANIMATION_DELAY_STEP,
+							duration: KPI_CARD_ANIMATION_DURATION,
+						}}
 					>
 						<KPICard
-							title={metric.title}
-							value={metric.value}
 							description={metric.description}
 							icon={metric.icon}
-							variant={metric.variant || "default"}
 							isLocalized={isLocalized}
+							title={metric.title}
+							value={metric.value}
+							variant={metric.variant || 'default'}
 							{...(metric.trend ? { trend: metric.trend } : {})}
-							{...(typeof metric.progress === "number" ? { progress: metric.progress } : {})}
+							{...(typeof metric.progress === 'number'
+								? { progress: metric.progress }
+								: {})}
 							{...(metric.hasTooltip === true ? { hasTooltip: true } : {})}
-							{...(typeof metric.tooltipContent === "string" ? { tooltipContent: metric.tooltipContent } : {})}
+							{...(typeof metric.tooltipContent === 'string'
+								? { tooltipContent: metric.tooltipContent }
+								: {})}
 						/>
 					</motion.div>
 				))}
 			</div>
 		</div>
-	);
+	)
 }

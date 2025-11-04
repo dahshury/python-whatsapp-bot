@@ -92,7 +92,6 @@
 }
 
 .tempus-dominus-widget [data-action]:after {
-	/* biome-ignore lint/suspicious/noUnknownAtRules: SASS-like extend used by build */
 	@extend .visually-hidden;
 	content: attr(title);
 }
@@ -555,7 +554,10 @@
 	transition: all 0.15s ease;
 }
 
-.tempus-dominus-widget .td-picker-header .td-picker-header-row button:hover:not(:disabled) {
+.tempus-dominus-widget
+	.td-picker-header
+	.td-picker-header-row
+	button:hover:not(:disabled) {
 	background-color: var(--td-hover-bg);
 	color: var(--td-hover-color);
 }
@@ -612,7 +614,10 @@
 	cursor: default;
 }
 
-.tempus-dominus-widget.tempus-dominus-widget-readonly table td [data-action]:hover {
+.tempus-dominus-widget.tempus-dominus-widget-readonly
+	table
+	td
+	[data-action]:hover {
 	background: none;
 }
 

@@ -1,40 +1,42 @@
 {
-	"name": "python-whatsapp-bot-monorepo",
-	"private": true,
-	"version": "0.0.0",
-	"license": "MIT",
-	"workspaces": [
-		"app/frontend"
-	],
-	"packageManager": "pnpm@9.12.3",
-	"engines": {
-		"node": ">=20",
-		"pnpm": ">=8"
-	},
-	"scripts": {
-		"dev": "pnpm --filter ./app/frontend dev",
-		"build": "pnpm --filter ./app/frontend build",
-		"start": "pnpm --filter ./app/frontend start",
-		"lint": "pnpm --filter ./app/frontend lint",
-		"lint:fix": "pnpm --filter ./app/frontend lint:fix",
-		"format": "pnpm --filter ./app/frontend format",
-		"typecheck": "pnpm --filter ./app/frontend typecheck",
-		"knip": "pnpm --filter ./app/frontend knip",
-		"check": "pnpm --filter ./app/frontend check",
-		"check:python": "uv run ruff check . && uv run ruff format --check .",
-		"fix:python": "uv run ruff check --fix --unsafe-fixes . && uv run ruff format .",
-		"licenses:js": "pnpm --filter ./app/frontend licenses list --json > app/frontend/third_party_licenses.json",
-		"licenses:js:notice": "pnpm --filter ./app/frontend licenses generate-disclaimer > app/frontend/THIRD_PARTY_NOTICES.txt",
-		"licenses:python": "python -m piplicenses --format=markdown --with-authors --with-urls --with-license-file --no-license-path --output-file THIRD_PARTY_LICENSES_PY.md"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.2.4",
-		"eslint-plugin-boundaries": "^5.0.1",
-		"typescript": "^5",
-		"simple-git-hooks": "^2.11.1"
-	}
-	,
-	"simple-git-hooks": {
-		"pre-commit": "node scripts/ci/pre-commit.mjs"
-	}
+  "name": "python-whatsapp-bot-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "license": "MIT",
+  "workspaces": [
+    "app/frontend"
+  ],
+  "packageManager": "pnpm@9.12.3",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=8"
+  },
+  "scripts": {
+    "dev": "pnpm --filter ./app/frontend dev",
+    "build": "pnpm --filter ./app/frontend build",
+    "start": "pnpm --filter ./app/frontend start",
+    "lint": "pnpm --filter ./app/frontend lint",
+    "lint:fix": "pnpm --filter ./app/frontend lint:fix",
+    "format": "pnpm --filter ./app/frontend format",
+    "typecheck": "pnpm --filter ./app/frontend typecheck",
+    "knip": "pnpm --filter ./app/frontend knip",
+    "check": "pnpm --filter ./app/frontend check",
+    "check:python": "uv run ruff check . && uv run ruff format --check .",
+    "fix:python": "uv run ruff check --fix --unsafe-fixes . && uv run ruff format .",
+    "licenses:js": "pnpm --filter ./app/frontend licenses list --json > app/frontend/third_party_licenses.json",
+    "licenses:js:notice": "pnpm --filter ./app/frontend licenses generate-disclaimer > app/frontend/THIRD_PARTY_NOTICES.txt",
+    "licenses:python": "python -m piplicenses --format=markdown --with-authors --with-urls --with-license-file --no-license-path --output-file THIRD_PARTY_LICENSES_PY.md",
+    "test": "pnpm --filter ./app/frontend test",
+    "test:watch": "pnpm --filter ./app/frontend test:watch"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.2",
+    "husky": "^9.1.7",
+    "simple-git-hooks": "^2.11.1",
+    "typescript": "^5",
+    "ultracite": "6.1.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "node scripts/ci/pre-commit.mjs"
+  }
 }

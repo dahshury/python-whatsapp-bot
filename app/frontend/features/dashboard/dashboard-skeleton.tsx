@@ -1,14 +1,17 @@
-"use client";
+'use client'
 
-import { Card, CardContent, CardHeader } from "@/shared/ui/card";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { Card, CardContent, CardHeader } from '@/shared/ui/card'
+import { Skeleton } from '@/shared/ui/skeleton'
+
+const STAT_CARD_SKELETON_COUNT = 4
+const LIST_ITEM_SKELETON_COUNT = 5
 
 export function DashboardSkeleton() {
 	return (
-		<div className="space-y-6 mx-auto w-full max-w-7xl">
+		<div className="mx-auto w-full max-w-7xl space-y-6">
 			{/* Stats Cards Skeleton */}
 			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-				{[...Array(4)].map((_, i) => (
+				{Array.from({ length: STAT_CARD_SKELETON_COUNT }).map((_, i) => (
 					<Card key={`dashboard-skeleton-stat-card-${i + 1}`}>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<Skeleton className="h-4 w-[6.25rem]" />
@@ -16,7 +19,7 @@ export function DashboardSkeleton() {
 						</CardHeader>
 						<CardContent>
 							<Skeleton className="h-8 w-[3.75rem]" />
-							<Skeleton className="h-3 w-[8.75rem] mt-1" />
+							<Skeleton className="mt-1 h-3 w-[8.75rem]" />
 						</CardContent>
 					</Card>
 				))}
@@ -52,8 +55,11 @@ export function DashboardSkeleton() {
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-3">
-						{[...Array(5)].map((_, i) => (
-							<div key={`dashboard-skeleton-list-item-${i + 1}`} className="flex items-center space-x-4">
+						{Array.from({ length: LIST_ITEM_SKELETON_COUNT }).map((_, i) => (
+							<div
+								className="flex items-center space-x-4"
+								key={`dashboard-skeleton-list-item-${i + 1}`}
+							>
 								<Skeleton className="h-12 w-12 rounded-full" />
 								<div className="space-y-2">
 									<Skeleton className="h-4 w-[15.625rem]" />
@@ -65,5 +71,5 @@ export function DashboardSkeleton() {
 				</CardContent>
 			</Card>
 		</div>
-	);
+	)
 }

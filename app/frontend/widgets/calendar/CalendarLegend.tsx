@@ -6,13 +6,14 @@
  * Shows vacation periods when they exist.
  */
 
-"use client";
+'use client'
 
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useVacation } from "@shared/libs/state/vacation-context";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
-import { cn } from "@shared/libs/utils";
-import { Button } from "@ui/button";
+import { i18n } from '@shared/libs/i18n'
+import { useLanguage } from '@shared/libs/state/language-context'
+import { useVacation } from '@shared/libs/state/vacation-context'
+import { Z_INDEX } from '@shared/libs/ui/z-index'
+import { cn } from '@shared/libs/utils'
+import { Button } from '@ui/button'
 import {
 	ArrowLeftRight,
 	ChevronDownIcon,
@@ -24,145 +25,222 @@ import {
 	Keyboard,
 	MoveUpRight,
 	PlayCircle,
-} from "lucide-react";
-import { HeroPill } from "@/shared/ui/hero-pill";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/shared/ui/hover-card";
-import HeroVideoDialog from "@/shared/ui/magicui/hero-video-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
+} from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { HeroPill } from '@/shared/ui/hero-pill'
+import {
+	HoverCard,
+	HoverCardContent,
+	HoverCardTrigger,
+} from '@/shared/ui/hover-card'
+import HeroVideoDialog from '@/shared/ui/magicui/hero-video-dialog'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/shared/ui/tooltip'
 
-interface CalendarLegendProps {
-	freeRoam?: boolean;
-	className?: string;
+type CalendarLegendProps = {
+	freeRoam?: boolean
+	className?: string
 }
 
-export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLegendProps) {
-	const { isLocalized } = useLanguage();
-	const { vacationPeriods } = useVacation();
+const MAX_LEGEND_PREVIEW_ITEMS = 4
+
+export function CalendarLegend({
+	freeRoam = false,
+	className = '',
+}: CalendarLegendProps) {
+	const { isLocalized } = useLanguage()
+	const { vacationPeriods } = useVacation()
 
 	// Only consider upcoming vacations (start strictly after today)
-	const hasUpcomingVacations = (() => {
+	// Use useEffect to avoid Next.js 16 prerender warning about new Date()
+	// useEffect only runs on client-side after hydration, preventing prerender issues
+	const [hasUpcomingVacations, setHasUpcomingVacations] = useState(false)
+
+	useEffect(() => {
 		try {
-			const normalize = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-			const today = normalize(new Date());
-			return (vacationPeriods || []).some((p) => normalize(p.start).getTime() > today.getTime());
+			const normalize = (d: Date) =>
+				new Date(d.getFullYear(), d.getMonth(), d.getDate())
+			const today = normalize(new Date())
+			const hasUpcoming = (vacationPeriods || []).some(
+				(p) => normalize(p.start).getTime() > today.getTime()
+			)
+			setHasUpcomingVacations(hasUpcoming)
 		} catch {
-			return false;
+			setHasUpcomingVacations(false)
 		}
-	})();
+	}, [vacationPeriods])
 
 	const legendItems = [
 		{
-			key: "check-up",
-			color: "var(--fc-reservation-type-0-bg)", // Green - Check-up
-			label: isLocalized ? "كشف" : "Check-up",
+			key: 'check-up',
+			color: 'var(--fc-reservation-type-0-bg)', // Green - Check-up
+			label: i18n.getMessage('appt_checkup', isLocalized),
 			showAlways: true,
 		},
 		{
-			key: "follow-up",
-			color: "var(--fc-reservation-type-1-bg)", // Blue - Follow-up
-			label: isLocalized ? "مراجعة" : "Follow-up",
+			key: 'follow-up',
+			color: 'var(--fc-reservation-type-1-bg)', // Blue - Follow-up
+			label: i18n.getMessage('appt_followup', isLocalized),
 			showAlways: true,
 		},
 		{
-			key: "conversation",
-			color: "var(--fc-conversation-bg)", // Orange/Yellow - Conversation
-			label: isLocalized ? "محادثة" : "Conversation",
+			key: 'conversation',
+			color: 'var(--fc-conversation-bg)', // Orange/Yellow - Conversation
+			label: i18n.getMessage('calendar_legend_conversation', isLocalized),
 			showAlways: false, // Only show in free roam
 		},
 		{
-			key: "vacation",
-			color: "transparent", // Use transparent; actual swatch uses pattern via background-image
-			label: isLocalized ? "إجازة" : "Vacation",
+			key: 'vacation',
+			color: 'transparent', // Use transparent; actual swatch uses pattern via background-image
+			label: i18n.getMessage('vacation', isLocalized),
 			showAlways: false, // Only show when vacation periods exist
 			showWhenVacationExists: true,
 		},
-	];
+	]
+
+	const showLegendLabel = i18n.getMessage(
+		'calendar_legend_show_button',
+		isLocalized
+	)
+	const legendTitle = i18n.getMessage('calendar_legend_title', isLocalized)
+	const shortcutsTitle = i18n.getMessage(
+		'calendar_legend_shortcuts',
+		isLocalized
+	)
+	const tutorialTitle = i18n.getMessage('calendar_tutorial_title', isLocalized)
+	const tutorialAlt = i18n.getMessage(
+		'calendar_tutorial_thumbnail_alt',
+		isLocalized
+	)
+	const tutorialHint = i18n.getMessage('calendar_tutorial_hint', isLocalized)
+	const changeViewUpLabel = i18n.getMessage(
+		'calendar_legend_change_view_up',
+		isLocalized
+	)
+	const prevDateLabel = i18n.getMessage(
+		'calendar_legend_previous_date',
+		isLocalized
+	)
+	const prevDateHint = i18n.getMessage(
+		'calendar_legend_arrow_left_hint',
+		isLocalized
+	)
+	const nextDateLabel = i18n.getMessage(
+		'calendar_legend_next_date',
+		isLocalized
+	)
+	const nextDateHint = i18n.getMessage(
+		'calendar_legend_arrow_right_hint',
+		isLocalized
+	)
+	const changeViewDownLabel = i18n.getMessage(
+		'calendar_legend_change_view_down',
+		isLocalized
+	)
+	const arrowRepeatHint = i18n.getMessage(
+		'calendar_legend_arrow_repeat_hint',
+		isLocalized
+	)
+	const ctrlArrowHint = i18n.getMessage(
+		'calendar_legend_ctrl_arrow_hint',
+		isLocalized
+	)
 
 	const filteredItems = legendItems.filter(
 		(item) =>
 			item.showAlways ||
-			(freeRoam && item.key === "conversation") ||
+			(freeRoam && item.key === 'conversation') ||
 			(item.showWhenVacationExists && hasUpcomingVacations)
-	);
+	)
 
 	return (
-		<HoverCard openDelay={200} closeDelay={100}>
+		<HoverCard closeDelay={100} openDelay={200}>
 			<HoverCardTrigger asChild>
 				<button
-					type="button"
+					aria-label={showLegendLabel}
 					className={cn(
-						"h-6 px-2 rounded-md border border-border/50 bg-muted/50 hover:bg-muted transition-colors",
-						"flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground",
-						"calendar-legend-trigger", // Add specific class for CSS targeting
+						'h-6 rounded-md border border-border/50 bg-muted/50 px-2 transition-colors hover:bg-muted',
+						'flex items-center gap-1.5 text-muted-foreground text-xs hover:text-foreground',
+						'calendar-legend-trigger', // Add specific class for CSS targeting
 						className
 					)}
-					aria-label={isLocalized ? "إظهار دليل الألوان" : "Show color legend"}
+					type="button"
 				>
 					<Info className="h-3 w-3 text-muted-foreground/80" />
 					<div className="flex items-center gap-0.5">
-						{filteredItems.slice(0, 4).map((item, _index) => (
-							<div
-								key={item.key}
-								className={cn("w-1.5 h-1.5 rounded-full shadow-sm", item.key === "vacation" && "ring-1 ring-border/50")}
-								style={
-									item.key === "vacation"
-										? {
-												backgroundImage: "var(--vacation-pattern-legend)",
-												backgroundColor: "transparent",
-											}
-										: { backgroundColor: item.color }
-								}
-							/>
-						))}
+						{filteredItems
+							.slice(0, MAX_LEGEND_PREVIEW_ITEMS)
+							.map((item, _index) => (
+								<div
+									className={cn(
+										'h-1.5 w-1.5 rounded-full shadow-sm',
+										item.key === 'vacation' && 'ring-1 ring-border/50'
+									)}
+									key={item.key}
+									style={
+										item.key === 'vacation'
+											? {
+													backgroundImage: 'var(--vacation-pattern-legend)',
+													backgroundColor: 'transparent',
+												}
+											: { backgroundColor: item.color }
+									}
+								/>
+							))}
 					</div>
 				</button>
 			</HoverCardTrigger>
 			<HoverCardContent
-				className="w-auto p-3 shadow-lg border-border/80 bg-popover/95 backdrop-blur-sm"
-				side="bottom"
 				align="start"
+				className="max-h-[calc(100vh-2rem)] w-auto max-w-[calc(100vw-2rem)] overflow-auto border-border/80 bg-popover/95 p-3 shadow-lg backdrop-blur-sm"
+				collisionPadding={16}
+				side="bottom"
 				sideOffset={8}
 				style={{ zIndex: Z_INDEX.HOVER_CARD }}
 			>
 				<div className="space-y-3">
-					<div className="text-xs font-medium text-foreground mb-2 flex items-center gap-1.5">
+					<div className="mb-2 flex items-center gap-1.5 font-medium text-foreground text-xs">
 						<Info className="h-3 w-3" />
-						{isLocalized ? "دليل الألوان" : "Legend"}
+						{legendTitle}
 					</div>
 					<div className="flex flex-col gap-1.5">
 						{filteredItems.map((item) => (
 							<HeroPill
-								key={item.key}
 								animate
+								className="mb-1"
 								icon={
 									<span className="flex items-center">
 										<span
 											className={cn(
-												"w-2 h-2 rounded-full shadow-sm",
-												item.key === "vacation" && "ring-1 ring-border/60"
+												'h-2 w-2 rounded-full shadow-sm',
+												item.key === 'vacation' && 'ring-1 ring-border/60'
 											)}
 											style={
-												item.key === "vacation"
+												item.key === 'vacation'
 													? {
-															backgroundImage: "var(--vacation-pattern-legend)",
-															backgroundColor: "transparent",
+															backgroundImage: 'var(--vacation-pattern-legend)',
+															backgroundColor: 'transparent',
 														}
 													: { backgroundColor: item.color }
 											}
 										/>
 									</span>
 								}
+								key={item.key}
 								text={item.label}
-								className="mb-1"
 							/>
 						))}
 					</div>
 
 					{/* Keyboard Shortcuts */}
-					<div className="border-t border-border/50 pt-3">
-						<div className="text-xs font-medium text-foreground mb-2 flex items-center gap-1.5">
+					<div className="border-border/50 border-t pt-3">
+						<div className="mb-2 flex items-center gap-1.5 font-medium text-foreground text-xs">
 							<Keyboard className="h-3 w-3" />
-							{isLocalized ? "الاختصارات" : "Shortcuts"}
+							{shortcutsTitle}
 						</div>
 						<TooltipProvider delayDuration={0}>
 							<div className="inline-grid w-fit grid-cols-3 gap-1">
@@ -170,18 +248,18 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											aria-label={changeViewUpLabel}
 											className="col-start-2"
-											variant="outline"
 											size="icon"
-											aria-label={isLocalized ? "تغيير العرض للأعلى" : "Change view up"}
+											variant="outline"
 										>
-											<ChevronUpIcon size={16} aria-hidden="true" />
+											<ChevronUpIcon aria-hidden="true" size={16} />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side="top" className="px-2 py-1 text-xs">
-										{isLocalized ? "تغيير العرض للأعلى" : "Change view up"}
-										<kbd className="bg-background text-muted-foreground/70 ms-2 -me-1 inline-flex h-5 max-h-full items-center rounded border px-1 font-[inherit] text-[0.625rem] font-medium">
-											{isLocalized ? "Ctrl + ↑" : "Ctrl + ↑"}
+									<TooltipContent className="px-2 py-1 text-xs" side="top">
+										{changeViewUpLabel}
+										<kbd className="-me-1 ms-2 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground/70">
+											Ctrl + ↑
 										</kbd>
 									</TooltipContent>
 								</Tooltip>
@@ -190,38 +268,51 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											aria-label={prevDateLabel}
 											className="col-start-1"
-											variant="outline"
 											size="icon"
-											aria-label={isLocalized ? "التاريخ السابق" : "Previous date"}
+											variant="outline"
 										>
-											<ChevronLeftIcon size={16} aria-hidden="true" />
+											<ChevronLeftIcon aria-hidden="true" size={16} />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side={isLocalized ? "right" : "left"} className="px-2 py-1 text-xs">
-										{isLocalized ? "السهم اليسار: تنقل التاريخ" : "Arrow Left: Navigate date"}
-										<kbd className="bg-background text-muted-foreground/70 ms-2 -me-1 inline-flex h-5 max-h-full items-center rounded border px-1 font-[inherit] text-[0.625rem] font-medium">
-											{isLocalized ? "←" : "←"}
+									<TooltipContent
+										className="px-2 py-1 text-xs"
+										side={isLocalized ? 'right' : 'left'}
+									>
+										{prevDateHint}
+										<kbd className="-me-1 ms-2 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground/70">
+											←
 										</kbd>
 									</TooltipContent>
 								</Tooltip>
 
 								{/* Center dot */}
-								<div className="flex items-center justify-center" aria-hidden="true">
+								<div
+									aria-hidden="true"
+									className="flex items-center justify-center"
+								>
 									<CircleIcon className="opacity-60" size={16} />
 								</div>
 
 								{/* Right: Navigate date right */}
 								<Tooltip>
 									<TooltipTrigger asChild>
-										<Button variant="outline" size="icon" aria-label={isLocalized ? "التاريخ التالي" : "Next date"}>
-											<ChevronRightIcon size={16} aria-hidden="true" />
+										<Button
+											aria-label={nextDateLabel}
+											size="icon"
+											variant="outline"
+										>
+											<ChevronRightIcon aria-hidden="true" size={16} />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side={isLocalized ? "left" : "right"} className="px-2 py-1 text-xs">
-										{isLocalized ? "السهم اليمين: تنقل التاريخ" : "Arrow Right: Navigate date"}
-										<kbd className="bg-background text-muted-foreground/70 ms-2 -me-1 inline-flex h-5 max-h-full items-center rounded border px-1 font-[inherit] text-[0.625rem] font-medium">
-											{isLocalized ? "→" : "→"}
+									<TooltipContent
+										className="px-2 py-1 text-xs"
+										side={isLocalized ? 'left' : 'right'}
+									>
+										{nextDateHint}
+										<kbd className="-me-1 ms-2 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground/70">
+											→
 										</kbd>
 									</TooltipContent>
 								</Tooltip>
@@ -230,18 +321,18 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											aria-label={changeViewDownLabel}
 											className="col-start-2"
-											variant="outline"
 											size="icon"
-											aria-label={isLocalized ? "تغيير العرض للأسفل" : "Change view down"}
+											variant="outline"
 										>
-											<ChevronDownIcon size={16} aria-hidden="true" />
+											<ChevronDownIcon aria-hidden="true" size={16} />
 										</Button>
 									</TooltipTrigger>
-									<TooltipContent side="bottom" className="px-2 py-1 text-xs">
-										{isLocalized ? "تغيير العرض للأسفل" : "Change view down"}
-										<kbd className="bg-background text-muted-foreground/70 ms-2 -me-1 inline-flex h-5 max-h-full items-center rounded border px-1 font-[inherit] text-[0.625rem] font-medium">
-											{isLocalized ? "Ctrl + ↓" : "Ctrl + ↓"}
+									<TooltipContent className="px-2 py-1 text-xs" side="bottom">
+										{changeViewDownLabel}
+										<kbd className="-me-1 ms-2 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground/70">
+											Ctrl + ↓
 										</kbd>
 									</TooltipContent>
 								</Tooltip>
@@ -250,40 +341,34 @@ export function CalendarLegend({ freeRoam = false, className = "" }: CalendarLeg
 						<div className="mt-2 flex flex-col gap-1.5">
 							<HeroPill
 								icon={<ArrowLeftRight className="h-3 w-3" />}
-								text={
-									isLocalized
-										? "السهمين يمين/يسار: تنقل التاريخ (اضغط واستمر للتكرار)"
-										: "Arrow Left/Right: Navigate date (hold to repeat)"
-								}
+								text={arrowRepeatHint}
 							/>
 							<HeroPill
-								icon={<MoveUpRight className="h-3 w-3 -rotate-45" />}
-								text={isLocalized ? "Ctrl + سهم للأعلى/للأسفل: تغيير العرض" : "Ctrl + Arrow Up/Down: Change view"}
+								icon={<MoveUpRight className="-rotate-45 h-3 w-3" />}
+								text={ctrlArrowHint}
 							/>
 						</div>
 					</div>
 
 					{/* Video Tutorial Section */}
-					<div className="border-t border-border/50 pt-3">
-						<div className="text-xs font-medium text-foreground mb-2 flex items-center gap-1.5">
+					<div className="border-border/50 border-t pt-3">
+						<div className="mb-2 flex items-center gap-1.5 font-medium text-foreground text-xs">
 							<PlayCircle className="h-3 w-3" />
-							{isLocalized ? "شرح الموقع" : "Tutorial"}
+							{tutorialTitle}
 						</div>
 						<div className="w-48">
 							<HeroVideoDialog
 								animationStyle="from-center"
-								videoSrc="https://www.youtube.com/embed/Tdd1Shg7XPI"
+								className="overflow-hidden rounded-md border border-border/50"
+								thumbnailAlt={tutorialAlt}
 								thumbnailSrc="https://img.youtube.com/vi/Tdd1Shg7XPI/maxresdefault.jpg"
-								thumbnailAlt={isLocalized ? "شرح موقع حجز العيادة" : "Clinic Booking Tutorial"}
-								className="rounded-md overflow-hidden border border-border/50"
+								videoSrc="https://www.youtube.com/embed/Tdd1Shg7XPI"
 							/>
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							{isLocalized ? "شاهد كيفية استخدام الموقع" : "Watch how to use the system"}
-						</p>
+						<p className="mt-1 text-muted-foreground text-xs">{tutorialHint}</p>
 					</div>
 				</div>
 			</HoverCardContent>
 		</HoverCard>
-	);
+	)
 }

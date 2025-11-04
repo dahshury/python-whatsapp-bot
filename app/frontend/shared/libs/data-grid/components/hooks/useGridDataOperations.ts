@@ -1,14 +1,14 @@
-import type { GridCell, GridColumn } from "@glideapps/glide-data-grid";
-import React from "react";
-import { GridDataService, type SortState } from "../services/GridDataService";
+import type { GridCell, GridColumn } from '@glideapps/glide-data-grid'
+import React from 'react'
+import { GridDataService, type SortState } from '../services/GridDataService'
 
-interface UseGridDataOperationsProps {
-	searchValue: string;
-	deletedRows: Set<number>;
-	numRows: number;
-	displayColumns: GridColumn[];
-	visibleColumnIndices: (number | undefined)[];
-	getRawCellContent: (col: number, row: number) => GridCell;
+type UseGridDataOperationsProps = {
+	searchValue: string
+	deletedRows: Set<number>
+	numRows: number
+	displayColumns: GridColumn[]
+	visibleColumnIndices: (number | undefined)[]
+	getRawCellContent: (col: number, row: number) => GridCell
 }
 
 export const useGridDataOperations = ({
@@ -19,37 +19,55 @@ export const useGridDataOperations = ({
 	visibleColumnIndices,
 	getRawCellContent,
 }: UseGridDataOperationsProps) => {
-	const [sortState, setSortState] = React.useState<SortState | null>(null);
-	const gridDataService = React.useMemo(() => new GridDataService(), []);
+	const [sortState, setSortState] = React.useState<SortState | null>(null)
+	const gridDataService = React.useMemo(() => new GridDataService(), [])
 
-	const { filteredRows, filteredRowCount } = React.useMemo(() => {
-		return gridDataService.filterAndSortRows(
+	const { filteredRows, filteredRowCount } = React.useMemo(
+		() =>
+			gridDataService.filterAndSortRows({
+				searchValue,
+				deletedRows,
+				numRows,
+				displayColumns,
+				visibleColumnIndices,
+				getRawCellContent,
+				sortState,
+			}),
+		[
 			searchValue,
 			deletedRows,
 			numRows,
 			displayColumns,
 			visibleColumnIndices,
 			getRawCellContent,
-			sortState
-		);
-	}, [
-		searchValue,
-		deletedRows,
-		numRows,
-		displayColumns,
-		visibleColumnIndices,
-		getRawCellContent,
-		sortState,
-		gridDataService,
-	]);
+			sortState,
+			gridDataService,
+		]
+	)
 
-	const tooltipMatrix = React.useMemo(() => {
-		return gridDataService.createTooltipMatrix(filteredRows, displayColumns, visibleColumnIndices, getRawCellContent);
-	}, [filteredRows, displayColumns, visibleColumnIndices, getRawCellContent, gridDataService]);
+	const tooltipMatrix = React.useMemo(
+		() =>
+			gridDataService.createTooltipMatrix(
+				filteredRows,
+				displayColumns,
+				visibleColumnIndices,
+				getRawCellContent
+			),
+		[
+			filteredRows,
+			displayColumns,
+			visibleColumnIndices,
+			getRawCellContent,
+			gridDataService,
+		]
+	)
 
-	const handleSort = React.useCallback((columnId: string, direction: "asc" | "desc") => {
-		setSortState({ columnId, direction });
-	}, []);
+	const handleSort = React.useCallback(
+		(columnId: string, direction: 'asc' | 'desc') => {
+			setSortState({ columnId, direction })
+		},
+		[]
+	)
 
 	return {
 		filteredRows,
@@ -57,5 +75,5 @@ export const useGridDataOperations = ({
 		tooltipMatrix,
 		sortState,
 		handleSort,
-	};
-};
+	}
+}

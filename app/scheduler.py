@@ -3,7 +3,6 @@ import datetime
 import gc
 import logging
 import os
-import subprocess
 import traceback
 from zoneinfo import ZoneInfo
 
@@ -12,6 +11,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import config
+from app.db import DATABASE_URL, engine
 from app.metrics import (
     BACKUP_SCRIPT_FAILURES,
     BACKUP_SCRIPT_FAILURES_BY_REASON,
@@ -22,6 +22,7 @@ from app.metrics import (
 )
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
+from app.services.backup import S3DatabaseBackupService, build_config_from_environment
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False
@@ -106,124 +107,48 @@ async def send_reminders_job():
 
 
 def run_database_backup():
-    """
-    Execute the PostgreSQL database backup script.
+    """Execute the PostgreSQL database backup via the aws_s3 extension."""
+    logger = logging.getLogger("app.scheduler.backup")
+    env = dict(os.environ)
+    env.setdefault("DATABASE_URL", DATABASE_URL)
 
-    This job runs the pg_backup.sh script which handles:
-    - Dumping the database via pg_dump
-    - Compressing and storing backups
-    - Cleaning up old backups
-    - Uploading to remote storage (if configured)
-    """
     try:
-        logging.info("Starting database backup job (PostgreSQL)")
-
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        script_path = os.path.join(project_root, "scripts", "pg_backup.sh")
-
-        if not os.path.isfile(script_path):
-            logging.error(f"Backup script not found at {script_path}")
-            BACKUP_SCRIPT_FAILURES.inc()
-            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason="script_not_found", stage="preflight", exit_code="127").inc()
-            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
-            return
-
-        try:
-            os.chmod(script_path, 0o755)
-        except Exception as chmod_error:
-            logging.warning(f"Could not set executable permission: {chmod_error}")
-
-        process = subprocess.Popen(
-            ["/bin/bash", script_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
-        )
-
-        try:
-            stdout, stderr = process.communicate(timeout=600)  # 10-minute timeout for large dumps
-
-            if process.returncode == 0:
-                logging.info("Database backup completed successfully")
-                for line in (stdout or "").splitlines():
-                    logging.debug(f"Backup: {line}")
-            else:
-                logging.error(f"Database backup failed with code {process.returncode}")
-                reason, stage, exit_code = _classify_backup_failure(stdout, stderr, process.returncode)
-                BACKUP_SCRIPT_FAILURES.inc()
-                BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason=reason, stage=stage, exit_code=str(exit_code)).inc()
-                FUNCTION_ERRORS.labels(function="run_database_backup").inc()
-                for line in (stderr or "").splitlines():
-                    logging.error(f"Backup error: {line}")
-                for line in (stdout or "").splitlines():
-                    if line.startswith("BACKUP_ERROR"):
-                        logging.error(f"Backup error detail: {line}")
-        except subprocess.TimeoutExpired:
-            process.kill()
-            logging.error("Database backup timed out")
-            BACKUP_SCRIPT_FAILURES.inc()
-            BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason="timeout", stage="timeout", exit_code="timeout").inc()
-            FUNCTION_ERRORS.labels(function="run_database_backup").inc()
-
-    except Exception as e:
-        logging.error(f"Error during database backup: {e}")
+        config = build_config_from_environment(env)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Failed to build backup configuration: %s", exc)
         BACKUP_SCRIPT_FAILURES.inc()
         BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
-            reason="unhandled_exception", stage="scheduler", exit_code="exception"
+            reason="config_error", stage="configuration", exit_code="config"
         ).inc()
         FUNCTION_ERRORS.labels(function="run_database_backup").inc()
+        return
 
+    if config is None:
+        logger.info("Skipping database backup: S3_BUCKET is not configured")
+        return
 
-def _classify_backup_failure(stdout: str, stderr: str, returncode: int):
-    """
-    Attempt to classify the backup failure reason and stage from the script output.
+    service = S3DatabaseBackupService(engine, logger=logger)
 
-    Returns a tuple: (reason, stage, exit_code)
-    """
     try:
-        combined = []
-        if stdout:
-            combined.extend(stdout.splitlines())
-        if stderr:
-            combined.extend(stderr.splitlines())
-
-        # Prefer structured error lines emitted by the script
-        for line in combined:
-            line_stripped = line.strip()
-            if line_stripped.startswith("BACKUP_ERROR"):
-                # Format: BACKUP_ERROR stage=... code=... reason=... ...
-                reason = None
-                stage = None
-                code = None
-                parts = line_stripped.split()
-                for part in parts:
-                    if part.startswith("reason="):
-                        reason = part.split("=", 1)[1]
-                    elif part.startswith("stage="):
-                        stage = part.split("=", 1)[1]
-                    elif part.startswith("code="):
-                        code = part.split("=", 1)[1]
-                return (
-                    reason or "unknown_error",
-                    stage or "unknown",
-                    code or str(returncode),
-                )
-
-        # Heuristic classification
-        text = "\n".join(combined)
-        if "Database not found" in text:
-            return "db_not_found", "preflight", str(returncode)
-        if "Permission denied" in text:
-            return "permission_denied", "preflight", str(returncode)
-        if "zip" in text.lower() and "error" in text.lower():
-            return "zip_failed", "compress_zip", str(returncode)
-        if "aws s3" in text.lower() or "An error occurred" in text:
-            return "s3_upload_failed", "s3_upload", str(returncode)
-        if "pg_dump" in text.lower():
-            return "pg_dump_failed", "pg_dump", str(returncode)
-        return "unknown_error", "unknown", str(returncode)
-    except Exception:
-        return "unknown_error", "unknown", str(returncode)
+        result = service.perform_backup(config)
+        duration = (result.completed_at - result.started_at).total_seconds()
+        logger.info(
+            "Database backup completed",
+            extra={
+                "object_key": result.object_key,
+                "bytes_uploaded": result.bytes_uploaded,
+                "compression": result.compression,
+                "duration_seconds": duration,
+            },
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Database backup failed: %s", exc)
+        logger.error(traceback.format_exc())
+        BACKUP_SCRIPT_FAILURES.inc()
+        BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
+            reason="execution_failure", stage="pg_dump_to_s3", exit_code="exception"
+        ).inc()
+        FUNCTION_ERRORS.labels(function="run_database_backup").inc()
 
 
 # Define a job to manually trigger Python garbage collection

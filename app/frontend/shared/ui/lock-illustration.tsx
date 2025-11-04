@@ -1,25 +1,35 @@
-import { useId } from "react";
+import { useId } from 'react'
 
 export function LockIllustration({ className }: { className?: string }) {
-	const baseId = useId();
-	const gradId = `${baseId}-lockBody`;
-	const glowId = `${baseId}-lockGlow`;
+	const baseId = useId()
+	const gradId = `${baseId}-lockBody`
+	const glowId = `${baseId}-lockGlow`
 	return (
-		<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" className={className} role="img" aria-label="Locked">
+		<svg
+			aria-label="Locked"
+			className={className}
+			role="img"
+			viewBox="0 0 256 256"
+			xmlns="http://www.w3.org/2000/svg"
+		>
 			<defs>
 				{/* Theming via CSS variables from our settings theme */}
-				<linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+				<linearGradient id={gradId} x1="0" x2="0" y1="0" y2="1">
 					<stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
-					<stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.75" />
+					<stop
+						offset="100%"
+						stopColor="hsl(var(--accent))"
+						stopOpacity="0.75"
+					/>
 				</linearGradient>
-				<radialGradient id={glowId} cx="50%" cy="40%" r="60%">
+				<radialGradient cx="50%" cy="40%" id={glowId} r="60%">
 					<stop offset="0%" stopColor="hsl(var(--ring))" stopOpacity="0.3" />
 					<stop offset="100%" stopColor="hsl(var(--ring))" stopOpacity="0" />
 				</radialGradient>
 			</defs>
 
 			{/* Soft glow behind the lock for contrast on any background */}
-			<circle cx="128" cy="136" r="100" fill={`url(#${glowId})`} />
+			<circle cx="128" cy="136" fill={`url(#${glowId})`} r="100" />
 
 			{/* Shackle */}
 			<path
@@ -29,7 +39,14 @@ export function LockIllustration({ className }: { className?: string }) {
 			/>
 
 			{/* Body */}
-			<rect x="56" y="112" width="144" height="120" rx="20" fill={`url(#${gradId})`} />
+			<rect
+				fill={`url(#${gradId})`}
+				height="120"
+				rx="20"
+				width="144"
+				x="56"
+				y="112"
+			/>
 
 			{/* Keyhole */}
 			<path
@@ -40,16 +57,16 @@ export function LockIllustration({ className }: { className?: string }) {
 
 			{/* Outline for legibility */}
 			<rect
-				x="56"
-				y="112"
-				width="144"
+				fill="none"
 				height="120"
 				rx="20"
-				fill="none"
 				stroke="hsl(var(--ring))"
 				strokeOpacity="0.35"
 				strokeWidth="3"
+				width="144"
+				x="56"
+				y="112"
 			/>
 		</svg>
-	);
+	)
 }

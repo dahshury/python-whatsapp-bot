@@ -1,45 +1,45 @@
-import type * as React from "react";
+import type * as React from 'react'
 
 export const editorStyle: React.CSSProperties = {
-	width: "100%",
-	height: "100%",
-	border: "none",
-	outline: "none",
-	padding: "8px",
-	paddingRight: "36px",
-	fontSize: "13px",
-	fontFamily: "inherit",
-	backgroundColor: "transparent",
-	color: "inherit",
-};
+	width: '100%',
+	height: '100%',
+	border: 'none',
+	outline: 'none',
+	padding: '8px',
+	paddingRight: '36px',
+	fontSize: '13px',
+	fontFamily: 'inherit',
+	backgroundColor: 'transparent',
+	color: 'inherit',
+}
 
 export const wrapperStyle: React.CSSProperties = {
-	display: "flex",
-	alignItems: "center",
-	width: "100%",
-	height: "100%",
-	position: "relative",
-};
+	display: 'flex',
+	alignItems: 'center',
+	width: '100%',
+	height: '100%',
+	position: 'relative',
+}
 
 export const iconButtonStyle: React.CSSProperties = {
-	position: "absolute",
-	right: "8px",
-	top: "50%",
-	transform: "translateY(-50%)",
-	background: "none",
-	border: "none",
-	cursor: "pointer",
-	padding: "4px",
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	color: "inherit",
+	position: 'absolute',
+	right: '8px',
+	top: '50%',
+	transform: 'translateY(-50%)',
+	background: 'none',
+	border: 'none',
+	cursor: 'pointer',
+	padding: '4px',
+	display: 'flex',
+	alignItems: 'center',
+	justifyContent: 'center',
+	color: 'inherit',
 	opacity: 0.7,
-	transition: "opacity 0.2s",
-	width: "24px",
-	height: "24px",
-	borderRadius: "4px",
-};
+	transition: 'opacity 0.2s',
+	width: '24px',
+	height: '24px',
+	borderRadius: '4px',
+}
 
 export const hideNativeDatePickerCSS = `
   /* Chrome, Safari, Edge, Opera */
@@ -63,4 +63,4 @@ export const hideNativeDatePickerCSS = `
   input[type="datetime-local"]::-ms-clear {
     display: none;
   }
-`;
+`

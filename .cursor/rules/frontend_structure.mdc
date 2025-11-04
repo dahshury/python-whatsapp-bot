@@ -1,0 +1,1893 @@
+---
+globs: "**/*.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+# Frontend Architecture Guide: FSD + DDD + Clean Architecture
+
+## Overview
+
+This codebase implements **Feature-Sliced Design (FSD)** enhanced with **Domain-Driven Design (DDD)** and **Clean Architecture** principles for systematic frontend application structuring.
+
+**CORE PRINCIPLE**: Dependencies flow inward: `shared → entities → features → widgets → pages → app`
+
+**IMPORTANT CONTEXT**: This is a **frontend-only application** with a **separate Python backend**. Domain models are used for business logic that occurs in the frontend. Data consistency, transactions, and complex consistency rules are handled by the backend server.
+
+---
+
+## Layer Definitions & Structure
+
+### `shared/` - Shared Foundation (Innermost Layer)
+
+**Purpose**: Framework-agnostic utilities, base classes, and infrastructure
+
+**Complete Structure**:
+
+```text
+shared/
+├── api/                    # Base API infrastructure
+│   ├── base.api.ts         # ApiClient class with CRUD methods
+│   ├── query-client.api.ts # TanStack Query client setup
+│   └── index.ts
+├── config/                 # Application configuration
+│   ├── metadata/           # Next.js metadata configs
+│   │   ├── default.ts      # Default metadata
+│   │   └── index.ts
+│   └── index.ts
+├── domain/                 # DDD base classes
+│   ├── value-object.ts     # Abstract ValueObject<T> base class
+│   └── index.ts
+├── libs/                   # Pure utility functions
+│   ├── date/               # Date manipulation utilities
+│   │   ├── format-date.ts  # Date formatting functions
+│   │   ├── random-date.ts  # Date generation utilities
+│   │   └── index.ts
+│   ├── errors/             # Error handling
+│   │   ├── base-error.ts   # BaseError class with static factories
+│   │   └── index.ts
+│   ├── __tests__/          # Test infrastructure
+│   │   ├── helpers/        # Test helper functions
+│   │   │   ├── async-utils.helper.ts
+│   │   │   ├── data-generators.helper.ts
+│   │   │   ├── dom-utils.helper.ts
+│   │   │   ├── mock-utils.helper.ts
+│   │   │   └── index.ts
+│   │   ├── mocks/          # Base mock implementations
+│   │   │   ├── api.mock.ts
+│   │   │   ├── repository-base.mock.ts
+│   │   │   ├── service-base.mock.ts
+│   │   │   └── index.ts
+│   │   ├── wrappers/       # Test component wrappers
+│   │   │   ├── FullWrapper.tsx
+│   │   │   ├── QueryWrapper.tsx
+│   │   │   ├── RouterWrapper.tsx
+│   │   │   └── index.ts
+│   │   └── index.ts
+│   └── index.ts
+├── types/                  # Shared type definitions
+│   ├── api.types.ts        # API response/request types
+│   ├── pagination.types.ts # Pagination structure types
+│   └── index.ts
+└── ui/                     # Design system components
+    ├── divider/            # UI component folders
+    │   ├── Divider.tsx     # Component implementation
+    │   └── index.ts
+    ├── icons/              # Icon components
+    │   ├── Back.tsx
+    │   ├── Comment.tsx
+    │   ├── Like.tsx
+    │   ├── Logo.tsx
+    │   ├── Message.tsx
+    │   ├── Notification.tsx
+    │   ├── Search.tsx
+    │   └── index.ts
+    ├── input/
+    │   ├── Input.tsx
+    │   └── index.ts
+    └── index.ts
+```
+
+**Implementation Rules**:
+
+- ❌ Cannot import from any other layer
+- ✅ Only external library dependencies allowed
+- ✅ Must be framework-agnostic and pure
+- ✅ ValueObject base class must use deep immutability
+- ✅ BaseError must provide static factory methods
+
+---
+
+### `entities/` - Domain Models (Enterprise Business Rules)
+
+**Purpose**: Rich domain entities, value objects, and data access abstractions
+
+**When to Use Domain Models vs DTOs**:
+
+- ✅ **Use Domain Models** when business methods are needed (e.g., `updateTitle()`, `likePost()`, `updateBody()`)
+- ✅ **Use Domain Models** when domain validation rules must be enforced in the frontend
+- ✅ **Use Domain Models** when future business logic changes are anticipated
+- ⚠️ **Consider DTOs only** for simple display-only data (lists, read-only views) where no business logic is required
+- ⚠️ **Domain Models are not required** for all data - choose based on business logic needs, not dogmatically
+
+**Complete Structure**:
+
+```text
+entities/{entity}/              # e.g., comment, post, user
+├── core/                       # Pure domain logic (no external deps)
+│   ├── {entity}.domain.ts      # Rich domain entity class
+│   ├── {entity}.factory.ts     # Object creation patterns
+│   ├── {entity}.repository.ts  # Repository interface
+│   └── index.ts                # Core exports
+├── infrastructure/             # External system adapters
+│   ├── api/                    # API communication layer
+│   │   ├── {entity}.adapter.ts # API client adapter functions
+│   │   ├── {entity}.query-key.ts # React Query keys
+│   │   └── index.ts
+│   ├── dto/                    # Data Transfer Objects
+│   │   ├── {entity}.dto.ts     # External API data structures
+│   │   └── index.ts
+│   └── repository/             # Repository implementations
+│       ├── {entity}.api.repository.ts # API-based repository
+│       └── index.ts
+├── mapper/                     # Data transformation layer
+│   ├── {entity}.mapper.ts      # DTO ↔ Domain conversions
+│   └── index.ts
+├── types/                      # Domain type definitions
+│   ├── {entity}.types.ts       # Entity interfaces & types
+│   └── index.ts
+├── value-objects/              # DDD Value Objects (when needed)
+│   ├── {concept}.vo.ts         # Immutable value wrappers
+│   └── index.ts
+├── ui/                         # Entity-specific UI (optional)
+│   └── identifier/             # Identity display components
+│       ├── {Entity}Avatar.tsx
+│       ├── {Entity}Identifier.tsx
+│       └── index.ts
+├── __tests__/                  # Comprehensive test suite
+│   ├── core/                   # Domain logic tests
+│   │   ├── {entity}.domain.test.ts
+│   │   ├── {entity}.factory.test.ts
+│   │   └── index.ts
+│   ├── infrastructure/         # Infrastructure tests
+│   │   └── {entity}.api.repository.test.ts
+│   ├── mapper/                 # Transformation tests
+│   │   └── {entity}.mapper.test.ts
+│   ├── value-objects/          # Value object tests
+│   │   ├── {concept}.vo.test.ts
+│   │   └── index.ts
+│   ├── fixtures/               # Test data fixtures
+│   │   ├── {entity}.fixtures.ts
+│   │   └── index.ts
+│   ├── mocks/                  # Mock implementations
+│   │   ├── {entity}-api.mock.ts
+│   │   ├── {entity}-repository.mock.ts
+│   │   └── index.ts
+│   ├── ui/                     # UI component tests
+│   │   └── identifier/
+│   │       ├── {Entity}Avatar.test.tsx
+│   │       ├── {Entity}Identifier.test.tsx
+│   │       └── index.ts
+│   └── index.ts
+└── index.ts                    # Public API exports
+```
+
+**Domain Entity Pattern**:
+
+```typescript
+// entities/comment/core/comment.domain.ts
+import { CommentEntity, UserReference } from "../types";
+import { CommentBody, UserReferenceVO } from "../value-objects";
+
+export class Comment implements CommentEntity {
+  private readonly _id: string;
+  private readonly _postId: string;
+  private readonly _user: UserReferenceVO;
+  private _body: CommentBody;
+  private _likes: number;
+  private _createdAt: number;
+  private _updatedAt: number;
+
+  constructor(
+    id: string,
+    body: string,
+    user: UserReference,
+    postId: string,
+    likes: number = 0,
+    createdAt: number,
+    updatedAt: number
+  ) {
+    this._id = id;
+    this._body = new CommentBody(body); // Validation happens here
+    this._user = new UserReferenceVO(user);
+    this._postId = postId;
+    this._likes = likes;
+    this._createdAt = createdAt;
+    this._updatedAt = updatedAt;
+  }
+
+  // Business methods
+  updateBody(newBody: string): void {
+    this._body = new CommentBody(newBody);
+    this._updatedAt = Date.now();
+  }
+
+  like(userId: string): void {
+    this._likes += 1;
+  }
+
+  unlike(userId: string): void {
+    if (this._likes > 0) this._likes -= 1;
+  }
+
+  // Getters
+  get id(): string {
+    return this._id;
+  }
+  get body(): string {
+    return this._body.text;
+  }
+  get user(): UserReference {
+    return this._user.toDTO();
+  }
+  get likes(): number {
+    return this._likes;
+  }
+}
+```
+
+**Value Object Usage Guidelines**:
+
+- ✅ **Use Value Objects** for domain concepts requiring validation and immutability
+- ✅ **Use Value Objects** when domain rules need centralization (e.g., `CommentBody` with length validation)
+- ✅ **Use Value Objects** for testability and long-term maintainability
+- ⚠️ **Avoid Value Objects** for simple primitive fields without validation needs
+- ⚠️ **Entity methods** can handle simple validation if Value Objects feel excessive
+- ⚠️ **Consider TDD and testability** when deciding - Value Objects improve unit test clarity
+
+**Factory Pattern**:
+
+```typescript
+// entities/comment/core/comment.factory.ts
+export class CommentFactory {
+  // Create new comment (for creation flow)
+  static createNew(body: string, postId: string, user: UserReference): Comment {
+    return new Comment(
+      "", // Server assigns ID
+      body,
+      user,
+      postId,
+      0, // Start with 0 likes
+      Date.now(), // Creation time
+      Date.now() // Updated time (same as creation initially)
+    );
+  }
+
+  // Restore domain object from external data
+  static createFromDto(dto: CommentDto): Comment {
+    return new Comment(
+      dto.id,
+      dto.body,
+      dto.user,
+      dto.postId,
+      dto.likes || 0, // Default value handling
+      dto.createdAt || Date.now(), // Default value handling
+      dto.updatedAt || Date.now() // Default value handling
+    );
+  }
+}
+```
+
+**Factory Explanation**: Factory pattern systematically manages complex domain object creation. It encapsulates creation rules like default value settings, validation, and invariant guarantees, allowing client code to express clear intent without knowing concrete creation logic. `createNew()` handles business rules for new entity creation (initializing likes to 0, setting timestamps, etc.), while `createFromDto()` safely converts external system data to domain objects, handling missing values and data integrity validation. This approach prevents object creation logic from scattering across the application and enables centralized management of creation-related business rules.
+
+**Value Object Pattern**:
+
+```typescript
+// entities/comment/value-objects/comment-body.vo.ts
+import { ValueObject } from "@/shared/domain";
+
+export class CommentBody extends ValueObject<string> {
+  private static readonly MAX_LENGTH = 100;
+
+  // Constructor is inherited from ValueObject<T> which calls:
+  // constructor(value: T) {
+  //   this.validate(value)  // Validation happens first
+  //   this._value = this.deepFreeze(value)  // Then deep freeze for immutability
+  // }
+
+  protected validate(value: string): void {
+    if (!value || !value.trim()) {
+      throw new Error("Comment body cannot be empty");
+    }
+    if (value.length > CommentBody.MAX_LENGTH) {
+      throw new Error(
+        `Comment body cannot exceed ${CommentBody.MAX_LENGTH} characters`
+      );
+    }
+  }
+
+  public get text(): string {
+    return this.value;
+  }
+}
+```
+
+**Value Object Explanation**: Value Objects are immutable objects without identifiers, distinguished only by their value. The base `ValueObject<T>` class constructor automatically calls `validate(value)` first to ensure the value meets domain rules, then applies `deepFreeze()` to ensure complete immutability even when objects or arrays are nested inside. This means child classes only need to implement the `validate()` method - the constructor handles validation and immutability automatically. The `equals()` method safely handles equality comparison, allowing objects with the same value to be considered equal. This design prevents primitive type misuse errors, makes domain concepts explicit in code, and significantly improves type safety, domain expressiveness, and runtime error prevention.
+
+**Repository Interface**:
+
+```typescript
+// entities/comment/core/comment.repository.ts
+import { Comment } from "./comment.domain";
+
+export interface CommentRepository {
+  getByPostId(postId: string): Promise<Comment[]>;
+  getById(id: string): Promise<Comment>;
+  create(comment: Comment): Promise<Comment>;
+  update(comment: Comment): Promise<Comment>;
+  save(comment: Comment): Promise<Comment>;
+  delete(id: string): Promise<boolean>;
+  like(id: string, userId: string): Promise<boolean>;
+  unlike(id: string, userId: string): Promise<boolean>;
+}
+```
+
+**API Adapter Pattern**:
+
+```typescript
+// entities/comment/infrastructure/api/comment.adapter.ts
+import { ApiClient } from "@/shared/api";
+import { CommentDto } from "../dto";
+
+export const CommentAdapter = (apiClient: ApiClient) => ({
+  listByPost: async (postId: string): Promise<Pagination<CommentDto>> => {
+    const response = await apiClient.get(`/posts/${postId}/comments`);
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<CommentDto> => {
+    const response = await apiClient.get(`/comments/${id}`);
+    return response.data;
+  },
+
+  create: async (
+    body: string,
+    postId: string,
+    userId: string
+  ): Promise<CommentDto> => {
+    const response = await apiClient.post(`/comments/add`, {
+      body,
+      postId,
+      userId,
+    });
+    return response.data;
+  },
+});
+```
+
+**Mapper Pattern**:
+
+```typescript
+// entities/comment/mapper/comment.mapper.ts
+export class CommentMapper {
+  static toDomain(dto: CommentDto): Comment {
+    return CommentFactory.createFromDto(dto);
+  }
+
+  static toDto(comment: Comment): CommentDto {
+    return {
+      id: comment.id,
+      body: comment.body,
+      postId: comment.postId,
+      user: comment.user,
+      likes: comment.likes,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+    };
+  }
+
+  static toCreateDto(comment: Comment): CreateCommentDto {
+    return {
+      body: comment.body,
+      postId: comment.postId,
+      userId: comment.user.id,
+    };
+  }
+
+  static toUpdateDto(comment: Comment): UpdateCommentDto {
+    return {
+      id: comment.id,
+      body: comment.body,
+    };
+  }
+
+  static toDomainList(dtos: CommentDto[]): Comment[] {
+    return dtos.map((dto) => this.toDomain(dto));
+  }
+
+  static toDtoList(comments: Comment[]): CommentDto[] {
+    return comments.map((comment) => this.toDto(comment));
+  }
+}
+```
+
+**Mapper Explanation**: Mapper encapsulates transformation logic between external data structures (DTOs) and internal domain models. The mapper isolates conversion logic so that changes to external system data formats don't directly impact domain logic. When API specs change or data structures differ, only the mapper needs modification, minimizing change impact.
+
+**Repository Implementation Pattern**:
+
+```typescript
+// entities/comment/infrastructure/repository/comment.api.repository.ts
+import { CommentRepository } from "../core/comment.repository";
+import { Comment } from "../core/comment.domain";
+import { CommentAdapter } from "../api/comment.adapter";
+import { CommentMapper } from "../../mapper/comment.mapper";
+import { ApiClient } from "@/shared/api";
+
+export class CommentApiRepository implements CommentRepository {
+  private api: ReturnType<typeof CommentAdapter>;
+
+  constructor(apiClient: ApiClient) {
+    this.api = CommentAdapter(apiClient);
+  }
+
+  async getById(id: string): Promise<Comment> {
+    try {
+      const commentDto = await this.api.getById(id);
+      if (!commentDto) {
+        throw new Error(`Comment with ID ${id} not found`);
+      }
+      // Convert external API response to domain model
+      return CommentMapper.toDomain(commentDto);
+    } catch (error) {
+      console.error(`Error fetching comment with ID ${id}:`, error);
+      throw error;
+    }
+  }
+
+  async create(comment: Comment): Promise<Comment | null> {
+    try {
+      // Convert domain model to API request format
+      const createDto = CommentMapper.toCreateDto(comment);
+      const result = await this.api.create(createDto);
+      if (!result) return null;
+
+      return CommentMapper.toDomain(result);
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      return null;
+    }
+  }
+}
+```
+
+**Implementation Rules**:
+
+- ❌ Cannot import from `features/`, `widgets/`, `pages/`, `app/`
+- ✅ Can import from `shared/` only (base classes, utilities)
+- ✅ Domain entities MUST have private fields and business methods (not just data containers)
+- ✅ Value objects MUST extend `ValueObject<T>` and validate in constructor (when used)
+- ✅ Repository interface in `core/`, implementation in `infrastructure/`
+- ✅ Factory MUST handle object creation complexity with `createNew()` and `createFromDto()` methods
+- ✅ Mapper MUST handle all DTO ↔ Domain conversions, including `toCreateDto()` and `toUpdateDto()`
+- ✅ Repository implementations MUST use mappers for all conversions
+- ✅ API adapters MUST use function composition pattern
+- ✅ Query keys MUST be centralized in `infrastructure/api/`
+- ✅ Repository implementations MAY use `console.error` for error logging during development/debugging
+- ⚠️ **No Aggregate Pattern**: Frontend manages entities independently since consistency is handled by backend
+- ⚠️ **Entities are independent**: Use cases combine multiple repositories; aggregates belong on server-side
+
+---
+
+### `features/` - Use Cases + UI (Application Business Rules)
+
+**Purpose**: Application-specific business logic, data fetching, and UI components
+
+**Complete Structure**:
+
+```text
+features/{feature}/             # e.g., comment, post, user
+├── hooks/                      # React Query hooks (Interface Adapters)
+│   ├── use{Action}.ts          # Individual hook implementations
+│   ├── {feature}.hooks.factory.ts # Hook factory for DI
+│   └── index.ts
+├── services/                   # Use case implementations (Application Business Rules)
+│   ├── {feature}.service.ts    # Service implementation
+│   ├── {feature}.service.factory.ts # Service factory for DI
+│   └── index.ts
+├── ui/                         # Feature-specific UI components
+│   ├── {component-name}/       # UI component folders
+│   │   ├── {ComponentName}.tsx # Component implementation
+│   │   └── index.ts
+│   └── index.ts
+├── usecase/                    # Use case interfaces
+│   ├── {feature}.usecase.ts    # Business rules contract
+│   └── index.ts
+├── types/                      # Feature-specific types
+│   └── index.ts
+├── __tests__/                  # Comprehensive test suite
+│   ├── hooks/                  # Hook tests
+│   │   └── use{Hook}.test.ts
+│   ├── services/               # Service tests
+│   │   └── {feature}.service.test.ts
+│   ├── ui/                     # Component tests
+│   │   └── {component-name}/
+│   │       └── {ComponentName}.test.tsx
+│   ├── fixtures/               # Test data fixtures
+│   │   ├── {feature}-hook.fixtures.ts
+│   │   └── index.ts
+│   ├── mocks/                  # Mock implementations
+│   │   └── {feature}-service.mock.ts
+│   └── index.ts
+└── index.ts                    # Public API
+```
+
+**Service Implementation Pattern**:
+
+```typescript
+// features/comment/services/comment.service.ts
+import {
+  CommentRepository,
+  CommentFactory,
+  CommentMapper,
+} from "@/entities/comment";
+import { UserRepository } from "@/entities/user";
+import { BaseError } from "@/shared/libs/errors";
+import { CommentUseCase } from "../usecase/comment.usecase";
+
+export const CommentService = (
+  commentRepository: CommentRepository,
+  userRepository: UserRepository
+): CommentUseCase => ({
+  // For display-only lists, returning DTOs directly is acceptable
+  getAllComments: async (postId: string): Promise<CommentDto[]> => {
+    try {
+      // Option 1: Domain models when business logic needed
+      const domainComments = await commentRepository.getByPostId(postId);
+      return CommentMapper.toDtoList(domainComments);
+
+      // Option 2: DTOs directly for simple display-only data (acceptable)
+      // const commentDtos = await commentAdapter.listByPost(postId);
+      // return commentDtos.data;
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      if (error instanceof BaseError) throw error;
+      throw new Error(`Failed to fetch comments for post ID ${postId}`);
+    }
+  },
+
+  addComment: async (
+    body: string,
+    postId: string,
+    userId: string
+  ): Promise<CommentDto> => {
+    try {
+      const user = await userRepository.getUserProfile();
+      const newComment = CommentFactory.createNew(body, postId, {
+        id: userId,
+        username: user.username,
+        profileImage: user.profileImage || "",
+      });
+      const savedComment = await commentRepository.create(newComment);
+      if (!savedComment) throw BaseError.createFailed("Comment");
+      return CommentMapper.toDto(savedComment);
+    } catch (error) {
+      if (error instanceof BaseError) throw error;
+      throw BaseError.createFailed("Comment");
+    }
+  },
+
+  updateComment: async (
+    id: string,
+    body: string,
+    userId: string
+  ): Promise<CommentDto> => {
+    try {
+      const existingComment = await commentRepository.getById(id);
+      if (!existingComment) throw BaseError.notFound("Comment", id);
+      if (existingComment.user.id !== userId) {
+        throw BaseError.unauthorized("Comment", id, "edit");
+      }
+
+      existingComment.updateBody(body); // Domain method
+      const updatedComment = await commentRepository.update(existingComment);
+      if (!updatedComment) throw BaseError.updateFailed("Comment", id);
+
+      return CommentMapper.toDto(updatedComment);
+    } catch (error) {
+      console.error(`Error updating comment ${id}:`, error);
+      if (error instanceof BaseError) throw error;
+      throw BaseError.updateFailed("Comment", id);
+    }
+  },
+});
+```
+
+**Service Explanation**: UseCase implements specific functionality that the application provides to users. It coordinates multiple repositories and utilizes entity business logic. All dependencies are injected through interfaces, so it doesn't depend on concrete implementations, providing flexibility and testability across various environments.
+
+**Service Factory Pattern**:
+
+```typescript
+// features/comment/services/comment.service.factory.ts
+import { CommentApiRepository } from "@/entities/comment";
+import { UserApiRepository } from "@/entities/user";
+import { apiClient } from "@/shared/api";
+import { CommentService } from "./comment.service";
+
+export const createCommentService = () => {
+  const commentRepository = new CommentApiRepository(apiClient);
+  const userRepository = new UserApiRepository(apiClient);
+  return CommentService(commentRepository, userRepository);
+};
+```
+
+**Hook Implementation Pattern**:
+
+```typescript
+// features/comment/hooks/useGetCommentsByPostId.ts
+import { COMMENT_QUERY_KEY, CommentDto } from "@/entities/comment";
+import { BaseError } from "@/shared/libs/errors";
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { commentUseCase } from "../services"; // Direct service import
+
+export const useGetCommentsByPostId = (
+  postId: string
+): UseQueryResult<CommentDto[], Error> => {
+  return useQuery<CommentDto[], Error>({
+    queryKey: COMMENT_QUERY_KEY.byPostId(postId),
+    queryFn: async () => {
+      try {
+        return await commentUseCase.getAllComments(postId);
+      } catch (error) {
+        if (error instanceof BaseError) throw error;
+        throw new BaseError(
+          `Failed to fetch comments for post ${postId}`,
+          "FETCH_FAILED"
+        );
+      }
+    },
+    enabled: Boolean(postId),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: true,
+  });
+};
+```
+
+**Hook Factory Pattern** (Optional - Use When Needed):
+
+```typescript
+// features/comment/hooks/comment.hooks.factory.ts
+// ⚠️ OPTIONAL: Only use if you need dynamic use case injection or testing
+// For most cases, direct service import in hooks is sufficient
+import { CommentUseCase } from "../usecase/comment.usecase";
+import { createUseGetCommentsByPostId } from "./useGetCommentsByPostId";
+
+export const createCommentHooks = (commentUseCase: CommentUseCase) => ({
+  useGetCommentsByPostId: createUseGetCommentsByPostId(commentUseCase),
+});
+```
+
+**Hook Index Pattern**:
+
+```typescript
+// features/comment/hooks/index.ts
+// Direct export - hooks depend on services directly (simpler approach)
+export { useGetCommentsByPostId } from "./useGetCommentsByPostId";
+
+// OR with factory (if using factory pattern):
+// import { commentUseCase } from "../services";
+// import { createCommentHooks } from "./comment.hooks.factory";
+// export const { useGetCommentsByPostId } = createCommentHooks(commentUseCase);
+```
+
+**Hook Pattern Decision Guide**:
+
+- ✅ **Direct Service Import** (Recommended): Simpler, less abstraction, sufficient for most cases
+- ⚠️ **Hook Factory** (Optional): Use only when you need dynamic injection, complex testing scenarios, or multiple implementations
+
+**Key Insight from Article**: While implementing hooks with Factory pattern for consistency and scalability as an Adapter layer was considered, and the example code includes it, in practice managing factories/singletons only up to the business layer and having hooks directly depend on services is simpler and still sufficient for Adapter functionality. Rather than forcing consistent abstraction up to hooks, prioritizing practicality and maintainability while applying patterns appropriately where needed is more effective.
+
+**Use Case Interface**:
+
+```typescript
+// features/comment/usecase/comment.usecase.ts
+import { CommentDto } from "@/entities/comment";
+
+export interface CommentUseCase {
+  getAllComments: (postId: string) => Promise<CommentDto[]>;
+  getCommentById: (id: string) => Promise<CommentDto>;
+  addComment: (
+    body: string,
+    postId: string,
+    userId: string
+  ) => Promise<CommentDto>;
+  updateComment: (
+    id: string,
+    body: string,
+    userId: string
+  ) => Promise<CommentDto>;
+  deleteComment: (id: string, userId: string) => Promise<boolean>;
+  likeComment: (id: string, userId: string) => Promise<boolean>;
+  unlikeComment: (id: string, userId: string) => Promise<boolean>;
+}
+```
+
+**Feature UI Components**:
+
+```typescript
+// features/comment/ui/comment-form/CommentForm.tsx
+import { UserAvatar } from "@/entities/user/ui/identifier";
+import { Input } from "@/shared/ui/input";
+
+interface CommentFormProps extends React.HTMLAttributes<HTMLFormElement> {
+  userProfileImage: string;
+}
+
+export const CommentForm = ({ userProfileImage, className, ...props }: CommentFormProps) => {
+  return (
+    <form className={`flex items-center mb-6 gap-4 ${className}`} {...props}>
+      <UserAvatar userProfileImage={userProfileImage} />
+      <Input type="text" placeholder="Enter a comment..." />
+      <button type="submit" disabled={!"".trim()}>Post</button>
+    </form>
+  );
+};
+```
+
+**Implementation Rules**:
+
+- ❌ Cannot import from other `features/`, `widgets/`, `pages/`, `app/`
+- ✅ Can import from `entities/` and `shared/`
+- ✅ Services MUST use dependency injection via factories (for testability and flexibility)
+- ✅ Services MUST implement use case interfaces
+- ✅ Services MAY use `console.error` for error logging (development/debugging)
+- ✅ Hooks MUST wrap services with React Query
+- ✅ Hooks MUST handle BaseError and wrap unknown errors
+- ✅ All async operations MUST use proper error handling
+- ✅ Factory pattern MUST be used for service creation (provides DI benefits)
+- ⚠️ **Hook Factory Pattern**: Optional - use direct service imports for simplicity, factory pattern only when dynamic injection/testing needed
+- ✅ UI components MUST accept data via props only
+- ⚠️ **Repository Dependency Injection**: Both dependency injection from Service and direct import methods have advantages and disadvantages. Dependency injection allows easy replacement of repository implementations, providing flexibility in testing and adaptation to various environments. In practice, choose based on project complexity, team development experience, and long-term maintenance strategy.
+
+---
+
+### `widgets/` - Complex UI Blocks
+
+**Purpose**: Reusable, self-contained UI components that compose features and entities
+
+**Complete Structure**:
+
+```text
+widgets/{widget}/              # e.g., header, post
+├── {widget-name}/             # Specific widget implementations
+│   ├── {WidgetName}.tsx       # Widget component
+│   └── index.ts
+├── __tests__/                 # Widget tests
+│   ├── {WidgetName}.test.tsx  # Component tests
+│   └── index.ts
+└── index.ts                   # Public API
+```
+
+**Widget Examples**:
+
+```typescript
+// widgets/header/main-header/MainHeader.tsx
+'use client'
+import { UserAvatar } from "@/entities/user";
+import { useUserProfile } from "@/features/user";
+import { Logo, MessageIcon, NotificationIcon, SearchIcon } from "@/shared/ui/icons";
+import { Input } from "@/shared/ui/input";
+
+export const MainHeader = () => {
+  const { data: userProfile } = useUserProfile();
+  if (!userProfile) return null;
+
+  return (
+    <div className="container flex items-center justify-between p-4">
+      <div className="flex items-center space-x-2">
+      <Logo />
+        <span>MomentHub</span>
+      </div>
+
+      <div className="relative w-1/3">
+        <Input type="text" placeholder="Search" className="w-full" />
+        <SearchIcon className="h-5 w-5 absolute right-4 top-1/2 transform -translate-y-1/2" />
+      </div>
+
+      <div className="flex items-center space-x-4">
+        <button type="button"><MessageIcon /></button>
+        <button type="button"><NotificationIcon /></button>
+        <UserAvatar userProfileImage={userProfile.profileImage} />
+      </div>
+    </div>
+  );
+};
+```
+
+```typescript
+// widgets/post/post-detail-section/PostDetailSection.tsx
+'use client'
+import { UserIdentifier } from "@/entities/user";
+import { CommentForm, CommentView } from "@/features/comment";
+import { useGetPostById } from "@/features/post";
+import { useUserProfile } from "@/features/user";
+import { formatDate } from "@/shared/libs/date";
+import { CommentIcon, Divider, LikeIcon } from "@/shared/ui";
+
+export const PostDetailSection = ({ postId }: { postId: string }) => {
+  const { data: userProfile } = useUserProfile();
+  const { data } = useGetPostById(postId);
+  if (!userProfile || !data) return null;
+
+  return (
+    <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="flex items-center justify-between mb-4">
+        <UserIdentifier user={data.user} />
+        <div className="text-xs text-gray-500">{formatDate(data.createdAt)}</div>
+      </div>
+
+      <div className="rounded-lg overflow-hidden mb-4">
+        <Image src={data.image} alt={`Post by ${data.user.username}`} />
+      </div>
+
+      <div className="mb-6">
+        <p className="text-gray-800">{data.body}</p>
+        <div className="flex items-center text-gray-500 text-sm mt-2">
+          <LikeIcon className="h-4 w-4 text-red-500 mr-1" />
+          <span>{data.likes.toLocaleString()}</span>
+          <CommentIcon className="h-4 w-4 text-blue-500 ml-4 mr-1" />
+          <span>{data.comments.length.toLocaleString()}</span>
+        </div>
+      </div>
+
+      <Divider />
+
+      <div>
+        <h3 className="font-medium mb-4">{data.comments.length} Comments</h3>
+        <CommentForm userProfileImage={userProfile.profileImage} />
+        <div className="space-y-4">
+          {data.comments.map(comment => (
+            <CommentView comment={comment} key={comment.id} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+**Implementation Rules**:
+
+- ✅ Can import from `features/`, `entities/`, and `shared/`
+- ✅ MUST accept data via props when possible
+- ✅ Self-contained and reusable across features
+- ✅ Use `'use client'` when hooks are needed
+- ✅ Can compose features and entities
+- ✅ Should be feature-agnostic (reusable across contexts)
+
+---
+
+### `pages/` - Page Compositions
+
+**Purpose**: Route-level components that compose widgets and features
+
+**Complete Structure**:
+
+```text
+pages/{page}/                  # e.g., home, post
+├── {Page}.tsx                 # Page component (thin composition layer)
+├── detail/                    # Sub-pages (for complex pages)
+│   ├── {SubPage}.tsx
+│   └── index.ts
+├── __tests__/                 # Page tests
+│   ├── {Page}.test.tsx        # Component tests
+│   └── detail/
+│       └── {SubPage}.test.tsx
+└── index.ts                   # Public API
+```
+
+**Page Examples**:
+
+```typescript
+// pages/home/HomePage.tsx
+import { PostListSection } from "@/widgets/post";
+
+export function Home() {
+  return (
+    <div className="w-full min-h-screen bg-gray-50">
+      <div className="w-full flex-1 flex flex-col items-center justify-center p-4">
+        <PostListSection />
+      </div>
+    </div>
+  );
+}
+```
+
+```typescript
+// pages/post/detail/PostDetailPage.tsx
+import { PostDetailSection } from "@/widgets/post";
+
+export const PostDetailPage = ({ postId }: { postId: string }) => {
+  return (
+    <div className="w-full bg-white overflow-y-auto">
+      <PostDetailSection postId={postId} />
+    </div>
+  );
+};
+```
+
+**Implementation Rules**:
+
+- ❌ Cannot import from other `pages/` or `app/`
+- ✅ Can import from `widgets/`, `features/`, `entities/`, `shared/`
+- ✅ MUST compose features and widgets (thin layer)
+- ✅ Keep minimal logic (mostly composition)
+- ✅ Server components by default, `'use client'` only when needed
+- ✅ Max 200 lines per file
+
+---
+
+### `app/` - App Router & Global Setup (Outermost Layer)
+
+**Purpose**: Next.js App Router files, global layouts, and API routes
+
+**Complete Structure**:
+
+```text
+app/                           # Next.js App Router
+├── (home)/                    # Route group
+│   ├── layout.ts              # Re-export from src/app/layouts
+│   └── page.ts                # Re-export from src/pages
+├── (post)/                    # Route group
+│   ├── layout.ts
+│   └── post/
+│       └── [postId]/
+│           └── page.tsx
+├── api/                       # API routes (mock/server)
+│   ├── posts/
+│   │   ├── [id]/
+│   │   │   ├── comments/
+│   │   │   │   └── route.ts
+│   │   │   └── route.ts
+│   │   └── route.ts
+│   └── users/
+│       └── me/
+│           └── route.ts
+├── layout.ts                  # Root layout
+└── page.tsx
+
+src/app/                       # App layer implementations
+├── layouts/                   # Layout components
+│   ├── root/
+│   │   ├── RootLayout.tsx     # Root layout with providers
+│   │   └── index.ts
+│   ├── home/
+│   │   ├── HomeLayout.tsx     # Home-specific layout
+│   │   └── index.ts
+│   ├── post/
+│   │   ├── PostLayout.tsx     # Post-specific layout
+│   │   └── index.ts
+│   └── index.ts
+├── provider/                  # Global providers
+│   ├── tanstack-query/
+│   │   ├── tanstack-query-provider.tsx
+│   │   └── index.ts
+│   └── index.ts
+└── styles/                    # Global styles
+    ├── globals.css
+    └── index.css
+```
+
+**App Router Pattern**:
+
+```typescript
+// app/(home)/layout.ts
+export { HomeLayout as default } from "@/app/layouts";
+
+// app/(home)/page.ts
+export { Home as default } from "@/pages/home";
+
+// app/(post)/post/[postId]/page.tsx
+import { PostDetailPage } from "@/pages/post";
+import { redirect } from "next/navigation";
+
+export default async function Page({ params }: { params: Promise<{ postId: string }> }) {
+  const { postId } = await params;
+  if (!postId) redirect("/notfound");
+  return <PostDetailPage postId={postId} />;
+}
+```
+
+**Layout Pattern**:
+
+```typescript
+// src/app/layouts/root/RootLayout.tsx
+import { TanstackQueryProvider } from "@/app/provider/tanstack-query";
+import "../../styles/globals.css";
+
+export function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <main>
+          <TanstackQueryProvider>
+            <div className="min-w-screen min-h-screen flex flex-col items-center justify-center">
+              {children}
+            </div>
+          </TanstackQueryProvider>
+        </main>
+      </body>
+    </html>
+  );
+}
+```
+
+**Provider Pattern**:
+
+```typescript
+// src/app/provider/tanstack-query/tanstack-query-provider.tsx
+'use client'
+import { queryClient } from "@/shared/api";
+import { QueryClientProvider } from "@tanstack/react-query";
+
+export const TanstackQueryProvider = ({ children }: { children: React.ReactNode }) => {
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+};
+```
+
+**Implementation Rules**:
+
+- ✅ Can import from all layers
+- ✅ Use route groups for layout organization: `(home)`, `(post)`
+- ✅ Re-export implementations from `src/` directory
+- ✅ Server components by default
+- ✅ API routes for mock/development data
+- ✅ Global providers in `src/app/provider/`
+- ✅ Layouts in `src/app/layouts/`
+- ✅ Max 100 lines per file for App Router files
+
+---
+
+## Clean Architecture Mapping
+
+| Clean Architecture Layer       | FSD Implementation                                                | Examples                                                   |
+| ------------------------------ | ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| **Enterprise Business Rules**  | `entities/{entity}/core/` + `entities/{entity}/value-objects/`    | Domain entities, value objects, business rules, validation |
+| **Application Business Rules** | `features/{feature}/services/` + `features/{feature}/usecase/`    | Use case implementations, application logic, orchestration |
+| **Interface Adapters**         | `features/{feature}/hooks/` + `entities/{entity}/infrastructure/` | React Query hooks, API adapters, mappers, DTOs             |
+| **Frameworks & Drivers**       | `app/` + `pages/` + `widgets/` + `shared/api/`                    | Next.js routes, React components, external APIs, UI        |
+
+---
+
+## DDD Patterns Implementation Guide
+
+| Pattern                       | File Location                                              | Implementation Requirements                            | Purpose                               |
+| ----------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------- |
+| **Domain Entity**             | `entities/{entity}/core/{entity}.domain.ts`                | Private fields, business methods, implements interface | Rich business objects with behavior   |
+| **Value Object**              | `entities/{entity}/value-objects/{concept}.vo.ts`          | Extends ValueObject class, validates in constructor    | Immutable validated domain concepts   |
+| **Factory**                   | `entities/{entity}/core/{entity}.factory.ts`               | Static methods: createNew(), createFromDto()           | Complex object creation with defaults |
+| **Repository Interface**      | `entities/{entity}/core/{entity}.repository.ts`            | Abstract methods, returns domain objects               | Data access abstraction               |
+| **Repository Implementation** | `entities/{entity}/infrastructure/repository/`             | Implements interface, uses API adapter, mapper         | Concrete API/storage implementation   |
+| **API Adapter**               | `entities/{entity}/infrastructure/api/*.adapter.ts`        | Function composition, handles HTTP operations          | API communication layer               |
+| **Query Keys**                | `entities/{entity}/infrastructure/api/*.query-key.ts`      | Centralized React Query key management                 | Cache key organization                |
+| **Mapper**                    | `entities/{entity}/mapper/{entity}.mapper.ts`              | Static methods: toDto(), toDomain(), toDomainList()    | Layer data transformations            |
+| **DTO**                       | `entities/{entity}/infrastructure/dto/{entity}.dto.ts`     | Type definitions for external API contracts            | External data contracts               |
+| **Use Case Interface**        | `features/{feature}/usecase/{feature}.usecase.ts`          | Abstract methods defining business operations          | Business rules contract               |
+| **Use Case Service**          | `features/{feature}/services/{feature}.service.ts`         | Implements interface, coordinates repositories         | Business logic orchestration          |
+| **Service Factory**           | `features/{feature}/services/{feature}.service.factory.ts` | Creates service with injected dependencies             | Dependency injection setup            |
+| **Hook Factory**              | `features/{feature}/hooks/{feature}.hooks.factory.ts`      | Creates hooks with injected use case                   | React Query hook creation             |
+| **Feature UI**                | `features/{feature}/ui/{component}/`                       | Components specific to feature functionality           | Feature-specific user interfaces      |
+| **Entity UI**                 | `entities/{entity}/ui/identifier/`                         | Identity components (Avatar, Identifier)               | Entity-specific display components    |
+
+---
+
+## Import Rules & Dependencies (STRICT)
+
+### Dependency Flow Rules ✅
+
+```text
+INWARD DEPENDENCY FLOW:
+app/           → pages/, widgets/, features/, entities/, shared/, external libs
+pages/         → widgets/, features/, entities/, shared/, external libs
+widgets/       → features/, entities/, shared/, external libs
+features/      → entities/, shared/, external libs
+entities/      → shared/, external libs
+shared/        → external libs ONLY
+```
+
+### Forbidden Dependencies ❌
+
+```text
+NEVER ALLOWED:
+shared/        → entities/, features/, widgets/, pages/, app/
+entities/      → features/, widgets/, pages/, app/
+features/      → other features/, widgets/, pages/, app/
+widgets/       → pages/, app/
+pages/         → other pages/, app/
+```
+
+### Specific Import Examples
+
+**✅ Correct Imports**:
+
+```typescript
+// features/comment/services/comment.service.ts
+import { CommentRepository, CommentMapper } from "@/entities/comment"; // ✅ entities
+import { UserRepository } from "@/entities/user"; // ✅ entities
+import { BaseError } from "@/shared/libs/errors"; // ✅ shared
+
+// widgets/header/main-header/MainHeader.tsx
+import { UserAvatar } from "@/entities/user"; // ✅ entities
+import { useUserProfile } from "@/features/user"; // ✅ features
+import { Logo, Input } from "@/shared/ui"; // ✅ shared
+
+// pages/home/HomePage.tsx
+import { PostListSection } from "@/widgets/post"; // ✅ widgets
+
+// app/(home)/page.ts
+export { Home as default } from "@/pages/home"; // ✅ pages
+```
+
+**❌ Forbidden Imports**:
+
+```typescript
+// shared/libs/utils.ts
+import { User } from "@/entities/user"; // ❌ entities from shared
+
+// entities/user/core/user.domain.ts
+import { useUserProfile } from "@/features/user"; // ❌ features from entities
+
+// features/post/services/post.service.ts
+import { useCommentState } from "@/features/comment"; // ❌ cross-feature
+
+// widgets/header/main-header/MainHeader.tsx
+import { HomePage } from "@/pages/home"; // ❌ pages from widgets
+```
+
+### Cross-Feature Communication Patterns
+
+When features need to communicate:
+
+- ✅ **Through shared entities**: `import { User } from "@/entities/user"`
+- ✅ **Through URL state/params**: `const { postId } = useParams()`
+- ✅ **Through widgets**: Widgets can compose multiple features
+- ✅ **Through global state**: React Query cache, context providers
+- ✅ **Through events**: Custom events, URL navigation
+- ❌ **Direct feature imports**: `import { useChatState } from "@/features/chat"`
+
+### Public API Import Pattern
+
+**REQUIRED**: Always use public APIs via `index.ts`:
+
+```typescript
+// ✅ Correct - Public API
+import { Comment, CommentFactory, CommentMapper } from "@/entities/comment";
+import { useGetCommentsByPostId } from "@/features/comment";
+import { PostListSection } from "@/widgets/post";
+
+// ❌ Wrong - Deep imports
+import { Comment } from "@/entities/comment/core/comment.domain";
+import { createUseGetCommentsByPostId } from "@/features/comment/hooks/useGetCommentsByPostId";
+```
+
+---
+
+## File Size Limits & Refactoring Guidelines
+
+| File Type                     | Maximum Lines | Refactoring Threshold | Purpose                               |
+| ----------------------------- | ------------- | --------------------- | ------------------------------------- |
+| **ANY FILE**                  | **500**       | 400 lines             | **HARD LIMIT** - refactor immediately |
+| **Domain Entity**             | 300           | 250 lines             | Business logic complexity management  |
+| **React Component**           | 250           | 200 lines             | UI complexity and readability         |
+| **Service/UseCase**           | 300           | 250 lines             | Business logic separation             |
+| **Hook**                      | 150           | 120 lines             | Data fetching logic focus             |
+| **Test File**                 | 400           | 300 lines             | Comprehensive test coverage           |
+| **Mapper**                    | 200           | 150 lines             | Data transformation clarity           |
+| **API Adapter**               | 200           | 150 lines             | API communication focus               |
+| **Repository Implementation** | 250           | 200 lines             | Data access complexity                |
+| **Factory**                   | 150           | 120 lines             | Object creation simplicity            |
+| **Value Object**              | 100           | 80 lines              | Validation and immutability focus     |
+
+**Refactoring Action Plan**:
+
+- **200-250 lines**: Plan refactoring, identify extraction opportunities
+- **250-350 lines**: Active refactoring needed, split responsibilities
+- **350-450 lines**: Urgent refactoring required, violates single responsibility
+- **450-500 lines**: CRITICAL - immediate refactoring mandatory
+- **>500 lines**: **VIOLATION** - code review failure, must refactor
+
+---
+
+## Testing Structure & Patterns
+
+### Complete Test Organization
+
+**Every layer/slice MUST have `__tests__/` directory**:
+
+```text
+{layer}/{slice}/__tests__/
+├── core/                           # Domain logic tests (entities only)
+│   ├── {entity}.domain.test.ts     # Entity business logic tests
+│   ├── {entity}.factory.test.ts    # Factory method tests
+│   └── index.ts
+├── infrastructure/                 # Infrastructure tests (entities only)
+│   └── {entity}.api.repository.test.ts # Repository implementation tests
+├── hooks/                          # Hook tests (features only)
+│   └── use{Hook}.test.ts           # React Query hook tests
+├── services/                       # Service tests (features only)
+│   └── {feature}.service.test.ts   # Use case implementation tests
+├── ui/                            # Component tests (all layers)
+│   ├── {component}/
+│   │   └── {Component}.test.tsx    # Component unit tests
+│   └── index.ts
+├── value-objects/                  # Value object tests (entities only)
+│   ├── {concept}.vo.test.ts        # Value object validation tests
+│   └── index.ts
+├── mapper/                         # Mapper tests (entities only)
+│   └── {entity}.mapper.test.ts     # Data transformation tests
+├── fixtures/                       # Test data generators
+│   ├── {entity}.fixtures.ts        # Domain test data
+│   ├── {feature}-hook.fixtures.ts  # Hook test data
+│   └── index.ts
+├── mocks/                          # Mock implementations
+│   ├── {entity}-repository.mock.ts # Repository mocks
+│   ├── {entity}-api.mock.ts        # API mocks
+│   ├── {feature}-service.mock.ts   # Service mocks
+│   └── index.ts
+└── index.ts                        # Test exports
+```
+
+### Test Implementation Patterns
+
+**Given-When-Then Structure** (MANDATORY for all tests):
+
+```typescript
+// entities/comment/__tests__/core/comment.domain.test.ts
+describe("Comment Domain Model", () => {
+  describe("updateBody Method", () => {
+    it("should update body and updatedAt timestamp", () => {
+      // Given: Valid comment instance
+      const comment = new Comment(
+        "id",
+        "Original body",
+        user,
+        "post-1",
+        0,
+        now,
+        now
+      );
+      const newBody = "Updated comment body";
+
+      // When: Call updateBody method
+      comment.updateBody(newBody);
+
+      // Then: Body and timestamp should be updated
+      expect(comment.body).toBe(newBody);
+      expect(comment.updatedAt).toBeGreaterThan(now);
+    });
+  });
+});
+```
+
+**Mock Factory Pattern** (for complex objects):
+
+```typescript
+// entities/comment/__tests__/mocks/comment-repository.mock.ts
+export interface MockCommentRepository extends MockRepository<CommentEntity> {
+  getByPostId: ReturnType<typeof vi.fn>;
+  like: ReturnType<typeof vi.fn>;
+  unlike: ReturnType<typeof vi.fn>;
+}
+
+export const CommentRepositoryMocks = {
+  createSuccess: (
+    mockComment: CommentEntity,
+    mockComments: CommentEntity[] = []
+  ) => ({
+    getByPostId: vi.fn().mockResolvedValue(mockComments),
+    getById: vi.fn().mockResolvedValue(mockComment),
+    create: vi.fn().mockResolvedValue(mockComment),
+    like: vi.fn().mockResolvedValue(true),
+    unlike: vi.fn().mockResolvedValue(true),
+  }),
+
+  createError: (error: Error = new Error("Repository Error")) => ({
+    getByPostId: vi.fn().mockRejectedValue(error),
+    getById: vi.fn().mockRejectedValue(error),
+    create: vi.fn().mockRejectedValue(error),
+  }),
+};
+```
+
+**Fixture Pattern** (for test data):
+
+```typescript
+// entities/comment/__tests__/fixtures/comment.fixtures.ts
+export const CommentFixtures = {
+  valid: {
+    basic: {
+      id: "comment-123",
+      postId: "post-123",
+      user: {
+        id: "user-123",
+        username: "testuser",
+        profileImage: "avatar.jpg",
+      },
+      body: "This is a test comment.",
+      likes: 2,
+      createdAt: TestDataHelpers.generateTimestamp(-3600000),
+      updatedAt: TestDataHelpers.generateTimestamp(-3600000),
+    } as CommentEntity,
+  },
+
+  invalid: {
+    emptyBody: {
+      /* ... */
+    },
+    tooLongBody: {
+      /* ... */
+    },
+  },
+
+  multiple: [
+    /* array of comment fixtures */
+  ],
+};
+```
+
+**Hook Testing Pattern**:
+
+```typescript
+// features/comment/__tests__/hooks/useGetCommentsByPostId.test.ts
+import { QueryWrapper } from "@/shared/libs/__tests__";
+
+describe("useGetCommentsByPostId Hook", () => {
+  it("should successfully fetch comments by post ID", async () => {
+    // Given: Valid post ID and mock data
+    const postId = "post-1";
+    mockCommentUseCase.getAllComments.mockResolvedValue(mockCommentsData);
+
+    // When: Hook is called
+    const { result } = renderHook(() => useGetCommentsByPostId(postId), {
+      wrapper: QueryWrapper,
+    });
+
+    // Then: Comments should be fetched successfully
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.data).toEqual(mockCommentsData);
+    });
+  });
+});
+```
+
+---
+
+## Error Handling Patterns
+
+### BaseError Implementation
+
+**REQUIRED**: All errors MUST use BaseError class with static factory methods:
+
+```typescript
+// shared/libs/errors/base-error.ts
+export class BaseError extends Error {
+  constructor(message: string, name: string) {
+    super(message);
+    this.name = name;
+  }
+
+  static notFound(entity: string, id: string): BaseError {
+    return new BaseError(`${entity} with ID ${id} not found`, "NotFoundError");
+  }
+
+  static unauthorized(
+    entity: string,
+    id: string,
+    action: string = "modify"
+  ): BaseError {
+    return new BaseError(
+      `You don't have permission to ${action} ${entity.toLowerCase()} with ID ${id}`,
+      "UnauthorizedError"
+    );
+  }
+
+  static createFailed(entity: string): BaseError {
+    return new BaseError(
+      `Failed to create ${entity.toLowerCase()}`,
+      "CreateFailedError"
+    );
+  }
+
+  static updateFailed(entity: string, id: string): BaseError {
+    return new BaseError(
+      `Failed to update ${entity.toLowerCase()} with ID ${id}`,
+      "UpdateFailedError"
+    );
+  }
+
+  static deleteFailed(entity: string, id: string): BaseError {
+    return new BaseError(
+      `Failed to delete ${entity.toLowerCase()} with ID ${id}`,
+      "DeleteFailedError"
+    );
+  }
+
+  static validation(message: string): BaseError {
+    return new BaseError(message, "ValidationError");
+  }
+}
+```
+
+### Error Handling in Services
+
+**Pattern**: Always handle BaseError vs unknown errors:
+
+```typescript
+// features/comment/services/comment.service.ts
+export const CommentService = (/* dependencies */): CommentUseCase => ({
+  getAllComments: async (postId: string): Promise<CommentDto[]> => {
+    try {
+      const domainComments = await commentRepository.getByPostId(postId);
+      return CommentMapper.toDtoList(domainComments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      if (error instanceof BaseError) throw error; // Re-throw BaseError
+      throw new Error(`Failed to fetch comments for post ID ${postId}`); // Wrap unknown
+    }
+  },
+
+  updateComment: async (
+    id: string,
+    body: string,
+    userId: string
+  ): Promise<CommentDto> => {
+    try {
+      const existingComment = await commentRepository.getById(id);
+      if (!existingComment) throw BaseError.notFound("Comment", id);
+      if (existingComment.user.id !== userId) {
+        throw BaseError.unauthorized("Comment", id, "edit");
+      }
+
+      existingComment.updateBody(body); // May throw validation error
+      const updatedComment = await commentRepository.update(existingComment);
+      if (!updatedComment) throw BaseError.updateFailed("Comment", id);
+
+      return CommentMapper.toDto(updatedComment);
+    } catch (error) {
+      console.error(`Error updating comment ${id}:`, error);
+      if (error instanceof BaseError) throw error;
+      throw BaseError.updateFailed("Comment", id);
+    }
+  },
+});
+```
+
+**Note**: `console.error` is acceptable for error logging in services and repositories for development/debugging purposes. In production environments, consider using a logging abstraction if needed.
+
+### Error Handling in Hooks
+
+**Pattern**: Wrap unknown errors for React Query:
+
+```typescript
+// features/comment/hooks/useGetCommentsByPostId.ts
+export const createUseGetCommentsByPostId = (
+  commentUseCase: CommentUseCase
+) => {
+  return (postId: string): UseQueryResult<CommentDto[], Error> => {
+    return useQuery<CommentDto[], Error>({
+      queryKey: COMMENT_QUERY_KEY.byPostId(postId),
+      queryFn: async () => {
+        try {
+          return await commentUseCase.getAllComments(postId);
+        } catch (error) {
+          if (error instanceof BaseError) throw error; // Preserve BaseError
+          throw new BaseError(
+            `Failed to fetch comments for post ${postId}`,
+            "FETCH_FAILED"
+          );
+        }
+      },
+      enabled: Boolean(postId),
+    });
+  };
+};
+```
+
+---
+
+## Public API Pattern (MANDATORY)
+
+### Entity Public API Pattern
+
+```typescript
+// entities/comment/index.ts - REQUIRED structure
+export { Comment, CommentFactory, type CommentRepository } from "./core";
+export { COMMENT_QUERY_KEY } from "./infrastructure/api";
+export { type CommentDto } from "./infrastructure/dto";
+export { CommentApiRepository } from "./infrastructure/repository";
+export { CommentMapper } from "./mapper";
+export { type CommentEntity } from "./types";
+```
+
+### Feature Public API Pattern
+
+```typescript
+// features/comment/index.ts - REQUIRED structure
+export { useGetCommentsByPostId } from "./hooks";
+export { CommentForm } from "./ui/comment-form";
+export { CommentView } from "./ui/comment-view";
+```
+
+### Widget Public API Pattern
+
+```typescript
+// widgets/post/index.ts - REQUIRED structure
+export { PostDetailSection } from "./post-detail-section";
+export { PostListSection } from "./post-list-section";
+```
+
+### Deep Import Prohibition
+
+**❌ FORBIDDEN - Deep imports**:
+
+```typescript
+import { Comment } from "@/entities/comment/core/comment.domain";
+import { createUseGetCommentsByPostId } from "@/features/comment/hooks/useGetCommentsByPostId";
+import { MainHeader } from "@/widgets/header/main-header/MainHeader";
+```
+
+**✅ REQUIRED - Public API imports**:
+
+```typescript
+import { Comment, CommentFactory, CommentMapper } from "@/entities/comment";
+import { useGetCommentsByPostId } from "@/features/comment";
+import { MainHeader } from "@/widgets/header";
+```
+
+---
+
+## Practical Considerations & Patterns
+
+### Domain Model vs DTO Decision Guide
+
+**When to Use Domain Models**:
+
+- ✅ Business methods are needed: `updateTitle()`, `likePost()`, `updateBody()`, etc.
+- ✅ Domain validation rules must be enforced in frontend
+- ✅ Future business logic changes are anticipated
+- ✅ Complex state transitions or business rules exist
+- ✅ Business logic needs to be encapsulated and centralized
+
+**When DTOs Are Sufficient**:
+
+- ✅ Simple display-only data (lists, read-only views)
+- ✅ No business logic or state transitions required
+- ✅ Data is transformed only for presentation
+- ✅ Performance is critical and domain conversion overhead is unnecessary
+- ✅ The data transformation overhead seems unnecessary for simple display scenarios
+
+**Key Insight from Article**: For simple list displays where data is only shown and not modified, using DTOs directly can be more efficient. However, for editable entities like post details where `updateTitle()`, `likePost()` methods are needed, domain objects clearly demonstrate their value. Additionally, using domain models helps minimize change scope when business logic is added later, aids in test code writing, and significantly helps secure type safety.
+
+**Example**:
+
+```typescript
+// ✅ Good: Domain model for editable post with business methods
+const post = await postRepository.getById(id);
+post.updateTitle(newTitle); // Business logic
+await postRepository.update(post);
+
+// ✅ Also Good: DTOs for simple list display
+const posts = await postAdapter.listAll(); // Returns DTOs directly
+return posts.data; // No business logic needed
+```
+
+### Value Object Usage Decision Guide
+
+**When to Use Value Objects**:
+
+- ✅ Domain concepts requiring validation (e.g., `CommentBody` with length/format rules)
+- ✅ Immutability is important for the concept
+- ✅ TDD and granular unit testing is prioritized
+- ✅ Domain rules need centralization
+- ✅ Long-term maintainability benefits from explicit domain concepts
+- ✅ Domain rules need to be centrally managed for easier maintenance
+
+**When Entity Methods Are Sufficient**:
+
+- ✅ Simple validation without complex rules
+- ✅ Primitive fields without domain significance
+- ✅ Validation logic is straightforward and unlikely to expand
+- ✅ Similar validation fields (like Post's title or body) don't all need separate Value Objects
+
+**Key Insight from Article**: Value Objects enhance validation and testability. However, wrapping every simple string property like `CommentBody` as a Value Object may be excessive. The value becomes clearer through conversations with backend developers about TDD, granular unit testing, and long-term scalability. Value Objects make test code easier to write, allow domain rules to be gathered in one place improving cohesion and maintainability, and help minimize modification scope when domain requirements change later. For simple validation-only cases, entity methods may still be more practical, but considering test strategy or domain expansion possibilities, actively introducing Value Object patterns is worth considering.
+
+**Example**:
+
+```typescript
+// ✅ Good: Value Object for validated domain concept
+class CommentBody extends ValueObject<string> {
+  protected validate(value: string): void {
+    if (!value?.trim() || value.length > 100) {
+      throw new Error("Invalid comment body");
+    }
+  }
+}
+
+// ✅ Also Good: Entity method for simple validation
+class Comment {
+  updateBody(newBody: string): void {
+    if (!newBody?.trim()) {
+      throw BaseError.validation("Comment body cannot be empty");
+    }
+    this._body = newBody;
+  }
+}
+```
+
+### Aggregate Pattern on Frontend
+
+**Key Principle**: ❌ **Aggregates are NOT used on the frontend**
+
+**Reasoning**:
+
+- Data consistency and transactions are handled by the backend server
+- Frontend manages entities independently
+- Use cases combine multiple repositories as needed
+- Complex consistency rules belong on the server-side
+
+**Frontend Approach**:
+
+```typescript
+// ✅ Correct: Independent entities with use case coordination
+const post = await postRepository.getById(id);
+const comments = await commentRepository.getByPostId(id);
+// Use case handles combination logic
+
+// ❌ Avoid: Aggregate pattern on frontend
+class PostAggregate {
+  // Consistency management belongs on backend
+}
+```
+
+---
+
+## Anti-Patterns & Violations
+
+### ❌ God Components (>500 lines)
+
+```typescript
+// VIOLATION: Monolithic component
+export function Dashboard() {
+  // User management, data fetching, charts, forms, WebSocket...
+  // 800+ lines of mixed concerns
+}
+```
+
+**Fix**: Split into widgets, features, and use composition
+
+### ❌ Cross-Layer Contamination
+
+```typescript
+// VIOLATION: Business logic in UI
+export function CommentForm() {
+  const handleSubmit = async () => {
+    const user = await userRepository.getUserProfile();  // ❌ Repository in UI
+    const comment = CommentFactory.createNew(...);       // ❌ Factory in UI
+    await commentRepository.create(comment);             // ❌ Repository in UI
+  };
+}
+```
+
+**Fix**: Move logic to features/services, inject via hooks
+
+### ❌ Feature Coupling
+
+```typescript
+// VIOLATION: Direct cross-feature dependency
+import { useChatState } from "@/features/chat"; // ❌ From different feature
+```
+
+**Fix**: Use shared entities, URL state, or widgets for communication
+
+### ❌ Anemic Domain Models
+
+```typescript
+// VIOLATION: Data-only interface
+export interface Comment {
+  id: string;
+  body: string;
+  likes: number;
+}
+```
+
+**Fix**: Create rich domain entity with business methods
+
+### ❌ Repository in UI
+
+```typescript
+// VIOLATION: Direct repository usage in component
+export function PostCard() {
+  const posts = await postRepository.getAll(); // ❌ Repository in component
+}
+```
+
+**Fix**: Use feature hooks that wrap services
+
+### ❌ Mixed Concerns in Services
+
+```typescript
+// VIOLATION: UI state mixed with business logic
+export const CommentService = () => ({
+  addComment: async (body: string) => {
+    setIsLoading(true); // ❌ UI state in service
+    const result = await api.post("/comments", { body });
+    setIsLoading(false); // ❌ UI state in service
+    return result;
+  },
+});
+```
+
+**Fix**: Keep services pure, handle UI state in hooks/components
+
+---
+
+## Quick Navigation Guide
+
+### Finding Domain Logic
+
+- **Domain entities**: `entities/{entity}/core/{entity}.domain.ts`
+- **Business methods**: Look for `update*()`, `like()`, `unlike()` methods in entities
+- **Value objects**: `entities/{entity}/value-objects/{concept}.vo.ts`
+- **Factories**: `entities/{entity}/core/{entity}.factory.ts` - `createNew()`, `createFromDto()`
+- **Validation rules**: In value object `validate()` methods and entity constructors
+
+### Finding Business Logic
+
+- **Use cases**: `features/{feature}/services/{feature}.service.ts`
+- **Use case interfaces**: `features/{feature}/usecase/{feature}.usecase.ts`
+- **Service factories**: `features/{feature}/services/{feature}.service.factory.ts`
+- **Business orchestration**: Services coordinate multiple repositories
+
+### Finding Data Access
+
+- **Repository interfaces**: `entities/{entity}/core/{entity}.repository.ts`
+- **Repository implementations**: `entities/{entity}/infrastructure/repository/{entity}.api.repository.ts`
+- **API adapters**: `entities/{entity}/infrastructure/api/{entity}.adapter.ts`
+- **DTOs**: `entities/{entity}/infrastructure/dto/{entity}.dto.ts`
+- **Mappers**: `entities/{entity}/mapper/{entity}.mapper.ts`
+- **Query keys**: `entities/{entity}/infrastructure/api/{entity}.query-key.ts`
+
+### Finding UI Components
+
+- **Feature-specific UI**: `features/{feature}/ui/{component}/`
+- **Complex reusable UI**: `widgets/{widget}/{widget-name}/`
+- **Entity UI**: `entities/{entity}/ui/identifier/` (Avatar, Identifier)
+- **Pages**: `pages/{page}/` - composition layer
+- **Design system**: `shared/ui/` - base components
+
+### Finding Data Fetching
+
+- **React Query hooks**: `features/{feature}/hooks/use{Action}.ts`
+- **Hook factories**: `features/{feature}/hooks/{feature}.hooks.factory.ts`
+- **Hook composition**: `features/{feature}/hooks/index.ts`
+- **Query configuration**: Check `staleTime`, `gcTime`, `enabled` in hooks
+
+### Finding Tests & Mocks
+
+- **All tests**: `{layer}/{slice}/__tests__/`
+- **Domain tests**: `entities/{entity}/__tests__/core/`
+- **Service tests**: `features/{feature}/__tests__/services/`
+- **Hook tests**: `features/{feature}/__tests__/hooks/`
+- **Component tests**: `{layer}/{slice}/__tests__/ui/`
+- **Test fixtures**: `__tests__/fixtures/{entity}.fixtures.ts`
+- **Mock factories**: `__tests__/mocks/{entity}-repository.mock.ts`
+- **Shared test utilities**: `shared/libs/__tests__/`
+
+### Finding Error Handling
+
+- **BaseError definitions**: `shared/libs/errors/base-error.ts`
+- **Error usage in services**: Look for `try/catch` with BaseError checks
+- **Validation errors**: In value object `validate()` methods
+- **Hook error wrapping**: In `queryFn` error handling
+
+---
+
+## Implementation Checklist
+
+### When Creating a New Entity
+
+- [ ] Create `entities/{entity}/` directory
+- [ ] Implement domain entity in `core/{entity}.domain.ts`
+- [ ] Create factory in `core/{entity}.factory.ts`
+- [ ] Define repository interface in `core/{entity}.repository.ts`
+- [ ] Create DTO types in `infrastructure/dto/{entity}.dto.ts`
+- [ ] Implement API adapter in `infrastructure/api/{entity}.adapter.ts`
+- [ ] Create query keys in `infrastructure/api/{entity}.query-key.ts`
+- [ ] Implement repository in `infrastructure/repository/{entity}.api.repository.ts`
+- [ ] Create mapper in `mapper/{entity}.mapper.ts`
+- [ ] Define types in `types/{entity}.types.ts`
+- [ ] Add value objects if needed in `value-objects/`
+- [ ] Create public API in `index.ts`
+- [ ] Write comprehensive tests in `__tests__/`
+
+### When Creating a New Feature
+
+- [ ] Create `features/{feature}/` directory
+- [ ] Define use case interface in `usecase/{feature}.usecase.ts`
+- [ ] Implement service in `services/{feature}.service.ts`
+- [ ] Create service factory in `services/{feature}.service.factory.ts`
+- [ ] Implement hooks in `hooks/use{Action}.ts`
+- [ ] Create hook factory in `hooks/{feature}.hooks.factory.ts`
+- [ ] Compose hooks in `hooks/index.ts`
+- [ ] Create UI components in `ui/{component}/`
+- [ ] Define feature types in `types/index.ts`
+- [ ] Create public API in `index.ts`
+- [ ] Write comprehensive tests in `__tests__/`
+
+### When Creating a Widget
+
+- [ ] Create `widgets/{widget}/` directory
+- [ ] Implement widget in `{widget-name}/{WidgetName}.tsx`
+- [ ] Use `"use client"` if hooks are needed
+- [ ] Accept data via props when possible
+- [ ] Compose features and entities
+- [ ] Keep feature-agnostic (reusable)
+- [ ] Create public API in `index.ts`
+- [ ] Write component tests in `__tests__/`
+
+### When Creating a Page
+
+- [ ] Create `pages/{page}/` directory
+- [ ] Implement page in `{Page}.tsx`
+- [ ] Keep thin (composition only)
+- [ ] Import from widgets/features/entities/shared
+- [ ] Use server components by default
+- [ ] Create public API in `index.ts`
+- [ ] Write component tests in `__tests__/`
+
+---
+
+## Critical Success Factors
+
+1. **Dependency Direction**: ALWAYS check imports flow inward
+2. **Public APIs**: NEVER use deep imports, always use `index.ts`
+3. **Domain Richness**: Entities MUST have business methods when business logic exists; DTOs acceptable for display-only data
+4. **Error Consistency**: ALL errors MUST use BaseError pattern
+5. **Test Coverage**: EVERY component/service/entity MUST have tests
+6. **Factory Pattern**: Complex object creation MUST use factories; service factories for DI
+7. **Mapper Usage**: Data transformation MUST go through mappers
+8. **Single Responsibility**: Files exceeding limits MUST be refactored
+9. **Value Objects**: Use thoughtfully for domain concepts requiring validation, not dogmatically
+10. **Layer Boundaries**: Respect architectural constraints strictly
+11. **Frontend Context**: Remember this is frontend-only - consistency/transactions handled by backend
+12. **Pragmatic Patterns**: Choose abstraction level based on complexity needs, not ideology
+
+---
+
+## Practical Decision Framework
+
+**Before Adding Complexity, Ask**:
+
+1. **Do I need business methods?** → Domain Model
+2. **Is this display-only?** → DTO might be sufficient
+3. **Do I need validation?** → Value Object vs Entity method
+4. **Do I need dynamic injection?** → Factory pattern vs direct import
+5. **Is consistency critical?** → Handle on backend, frontend coordinates
+
+**Architecture Philosophy**:
+
+- ✅ **Use patterns when they solve problems**, not for ideological purity
+- ✅ **Choose simplicity when complexity isn't justified**
+- ✅ **Domain models for business logic**, DTOs for simple data transfer
+- ✅ **Value Objects for important domain concepts**, entity methods for simple validation
+- ✅ **Factory pattern for services** (DI benefits), optional for hooks (simplicity benefit)
+
+**Final Note from Article**: This example code is frankly a classic case of over-engineering. Applying Repository pattern, Factory, Mapper, and Value Object to simple functions like displaying user information or retrieving a list of posts is clearly overly complex. However, what was gained through this opportunity was an expansion of thinking. Even though it wasn't a perfect implementation, it was possible to cultivate a perspective on front-end code from the perspective of DDD and Clean Architecture. These extreme examples helped clearly understand the role and value of each pattern. Above all, it provided the opportunity to seriously consider the question, "When is this complexity justified?"
+
+Ultimately, the key question is: **"Does complexity solve the problem?"** For simple CRUD or data display functions, traditional, simple approaches may be more appropriate. However, for functions with complex business rules, frequent changes, and collaboration across multiple team members, a structured approach can deliver greater value in the long run.
+
+The true value of architectural patterns lies not in "perfect implementation," but in providing a "framework for thinking about writing better code." It may be over-engineering that started out of curiosity, but through it, a sense of "how much is necessary and how much is excessive?" can be developed.
+
+---
+
+**REMEMBER**: This architecture prioritizes **maintainability and practical problem-solving** over dogmatic pattern application. Every pattern serves to prevent common frontend scaling problems. When in doubt, follow the inward dependency rule, use public APIs, and choose the simplest solution that solves your problem.

@@ -1,52 +1,124 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.2.4/schema.json",
-	"vcs": {
-		"enabled": true,
-		"clientKind": "git",
-		"useIgnoreFile": true
-	},
-	"files": {
-		"ignoreUnknown": true,
-		"includes": [
-			"app/frontend/**"
-		],
-		"maxSize": 1048576
-	},
-	"formatter": {
-		"enabled": true,
-		"indentStyle": "tab",
-		"formatWithErrors": true
-	},
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true,
-			"correctness": {
-				"useExhaustiveDependencies": "warn"
-			},
-			"suspicious": {
-				"noExplicitAny": "warn"
-			},
-			"security": {
-				"noDangerouslySetInnerHtml": "warn"
-			},
-			"style": {
-				"noParameterAssign": "error",
-				"useAsConstAssertion": "error",
-				"useDefaultParameterLast": "error",
-				"useEnumInitializers": "error",
-				"useSelfClosingElements": "error",
-				"useSingleVarDeclarator": "error",
-				"noUnusedTemplateLiteral": "error",
-				"useNumberNamespace": "error",
-				"noInferrableTypes": "error",
-				"noUselessElse": "error"
-			}
-		}
-	},
-	"javascript": {
-		"formatter": {
-			"quoteStyle": "double"
-		}
-	}
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["app/frontend/**"],
+    "experimentalScannerIgnores": ["**/*.css", "**/*.module.css"],
+    "maxSize": 1048576
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "tab",
+    "formatWithErrors": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off"
+      },
+      "suspicious": {
+        "noConfusingVoidType": "off",
+        "noExplicitAny": "warn"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "warn"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "warn"
+      },
+      "performance": {
+        "noBarrelFile": "off"
+      },
+      "style": {
+        "useBlockStatements": "warn",
+        "useFilenamingConvention": "off",
+        "noParameterAssign": "error",
+        "useAsConstAssertion": "error",
+        "useDefaultParameterLast": "error",
+        "useEnumInitializers": "error",
+        "useSelfClosingElements": "error",
+        "useSingleVarDeclarator": "error",
+        "noUnusedTemplateLiteral": "error",
+        "useNumberNamespace": "error",
+        "noInferrableTypes": "error",
+        "noUselessElse": "error",
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "paths": {
+              "@/widgets/calendar/hooks/*": "Import calendar hooks via '@/features/calendar' public API.",
+              "@/features/*/hooks/*": "Import feature hooks via feature public API (e.g. '@/features/feature').",
+              "@/features/*/services/*": "Do not deep import feature services. Use the feature public API or factories.",
+              "@/features/*/usecase/*": "Do not deep import feature usecases. Use the feature public API.",
+              "@/features/*/vm/*": "Do not deep import feature VMs. Use the feature public API.",
+              "@features/*/hooks/*": "Import feature hooks via feature public API (e.g. '@/features/feature'). Use @/ prefix.",
+              "@features/*/services/*": "Do not deep import feature services. Use the feature public API with @/ prefix.",
+              "@features/*/usecase/*": "Do not deep import feature usecases. Use the feature public API with @/ prefix.",
+              "@features/*/vm/*": "Do not deep import feature VMs. Use the feature public API with @/ prefix.",
+              "@/entities/*/core/*": "Import entities via their public API (e.g. '@/entities/user').",
+              "@entities/*/core/*": "Import entities via their public API (e.g. '@/entities/user'). Use @/ prefix."
+            }
+          }
+        }
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "asNeeded"
+    }
+  },
+  "css": {
+    "parser": {
+      "allowWrongLineComments": false,
+      "cssModules": false
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.css"],
+      "linter": {
+        "enabled": false
+      },
+      "formatter": {
+        "enabled": false
+      }
+    },
+    {
+      "includes": ["**/*.module.css"],
+      "css": {
+        "parser": {
+          "cssModules": true,
+          "allowWrongLineComments": false
+        }
+      },
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnknownPseudoClass": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/logger.ts"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noConsole": "off"
+          }
+        }
+      }
+    }
+  ],
+  "extends": ["ultracite/core", "ultracite/react", "ultracite/next"]
 }

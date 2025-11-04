@@ -79,6 +79,7 @@
 
 	/* Day grid specific */
 	--fc-daygrid-event-dot-width: 8px;
+	--fc-daygrid-event-vertical-gap: 0.35em;
 
 	/* List view specific */
 	--fc-list-event-dot-width: 10px;

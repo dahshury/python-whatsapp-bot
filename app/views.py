@@ -3,6 +3,7 @@ import contextlib
 import datetime
 import json
 import logging
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
@@ -311,8 +312,49 @@ async def api_test_whatsapp_config():
 
 @router.get("/conversations")
 async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):
+    """
+    DEPRECATED: This endpoint loads all conversations at once.
+    Use /conversations/{wa_id} for on-demand per-customer loading instead.
+    Use /conversations/calendar/events for lightweight calendar events.
+    Kept for backward compatibility with dashboard (will be refactored).
+    """
     conversations = get_all_conversations(recent=recent, limit=limit)
     return JSONResponse(content=conversations)
+
+
+@router.get("/conversations/{wa_id}")
+async def api_get_conversation_by_wa_id(wa_id: str, limit: int = Query(0)):
+    """
+    Get conversation messages for a specific customer.
+    Used for on-demand loading when customer is selected.
+    """
+    conversations = get_all_conversations(wa_id=wa_id, limit=limit)
+    return JSONResponse(content=conversations)
+
+
+@router.get("/conversations/calendar/events")
+async def api_get_calendar_conversation_events(
+    from_date: str = Query(None),
+    to_date: str = Query(None)
+):
+    """
+    Get lightweight conversation events for calendar (last message + customer names only).
+    Returns only the last message per customer and customer names.
+    """
+    from app.utils.service_utils import get_calendar_conversation_events
+    events = get_calendar_conversation_events(from_date=from_date, to_date=to_date)
+    return JSONResponse(content=events)
+
+
+@router.get("/customers/names")
+async def api_get_customer_names():
+    """
+    Get all customer names for sidebar combobox.
+    Returns all customers whether they have reservations or conversations.
+    """
+    from app.utils.service_utils import get_all_customer_names
+    names = get_all_customer_names()
+    return JSONResponse(content=names)
 
 
 @router.post("/conversations/{wa_id}")
@@ -322,8 +364,18 @@ async def api_append_message(wa_id: str, payload: dict = Body(...)):
 
 
 @router.get("/reservations")
-async def api_get_all_reservations(future: bool = Query(True), include_cancelled: bool = Query(False)):
-    reservations = get_all_reservations(future=future, include_cancelled=include_cancelled)
+async def api_get_all_reservations(
+    future: bool = Query(True),
+    include_cancelled: bool = Query(False),
+    from_date: str = Query(None),
+    to_date: str = Query(None)
+):
+    reservations = get_all_reservations(
+        future=future, 
+        include_cancelled=include_cancelled,
+        from_date=from_date,
+        to_date=to_date
+    )
     return JSONResponse(content=reservations)
 
 
@@ -344,12 +396,15 @@ async def api_reserve_time_slot(payload: dict = Body(...)):
     except Exception as e:
         return JSONResponse(content={"success": False, "error": f"Invalid phone number: {str(e)}"}, status_code=400)
 
+    # Safely resolve reservation type: 0 is valid and must not fall through
+    _rtype = payload.get("type") if "type" in payload else payload.get("reservation_type")
+
     resp = reserve_time_slot(
         normalized_wa_id,  # Use normalized plain format
         payload.get("title") or payload.get("customer_name"),  # Support both formats
         payload.get("date") or payload.get("date_str"),  # Support both formats
         payload.get("time") or payload.get("time_slot"),  # Support both formats
-        payload.get("type") or payload.get("reservation_type"),  # Support both formats
+        _rtype,  # 0 or 1
         hijri=payload.get("hijri", False),
         max_reservations=payload.get("max_reservations", 5),
         ar=payload.get("ar", False),
@@ -377,6 +432,151 @@ async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
 
 
 # === Customers endpoints (name/age management) ===
+
+
+@router.get("/phone/stats")
+async def api_phone_stats():
+    """
+    Get phone/customer statistics efficiently.
+    Returns country counts and registration status counts from all customers.
+    """
+    try:
+        from app.services.domain.customer.phone_stats_service import PhoneStatsService
+
+        service = PhoneStatsService()
+        stats = service.get_all_stats()
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "data": stats
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error getting phone stats: {e}")
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=500
+        )
+
+
+@router.get("/phone/search")
+async def api_phone_search(q: str = Query(..., min_length=1), limit: int = Query(100, ge=1, le=500)):
+    """
+    Search for phone numbers using pg_trgm. Replaces old search with database-level fuzzy matching.
+    """
+    try:
+        from app.services.domain.customer.phone_search_service import PhoneSearchService
+
+        service = PhoneSearchService()
+        results = service.search_phones(query=q, limit=limit, min_similarity=0.3)
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "data": [result.to_dict() for result in results]
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error searching phones: {e}")
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=500
+        )
+
+
+@router.get("/phone/recent")
+async def api_phone_recent(limit: int = Query(50, ge=1, le=100)):
+    """
+    Get recent contacts sorted by last user message.
+    Only includes contacts that have at least one user message.
+    """
+    try:
+        from app.services.domain.customer.phone_search_service import PhoneSearchService
+
+        service = PhoneSearchService()
+        results = service.get_recent_contacts(limit=limit)
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "data": [result.to_dict() for result in results]
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error getting recent contacts: {e}")
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=500
+        )
+
+
+@router.get("/phone/all")
+async def api_phone_all(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=500),
+    country: Optional[str] = Query(None),
+    registration: Optional[str] = Query(None),
+    date_range_type: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None)
+):
+    """
+    Get all contacts with pagination.
+    Supports filtering by country, registration status, and date range.
+    """
+    try:
+        from datetime import datetime
+        from app.services.domain.customer.phone_search_service import PhoneSearchService
+
+        service = PhoneSearchService()
+        
+        # Build filters dict
+        filters = {}
+        if country:
+            filters['country'] = country
+        if registration:
+            filters['registration'] = registration
+        if date_range_type and date_from and date_to:
+            try:
+                from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                filters['date_range'] = {
+                    'type': date_range_type,
+                    'range': {
+                        'from': from_date,
+                        'to': to_date
+                    }
+                }
+            except Exception as e:
+                logging.warning(f"Invalid date range: {e}")
+        
+        results, total_count = service.get_all_contacts(
+            page=page,
+            page_size=page_size,
+            filters=filters if filters else None
+        )
+
+        return JSONResponse(
+            content={
+                "success": True,
+                "data": [result.to_dict() for result in results],
+                "pagination": {
+                    "page": page,
+                    "page_size": page_size,
+                    "total": total_count,
+                    "total_pages": (total_count + page_size - 1) // page_size if page_size > 0 else 0
+                }
+            }
+        )
+    except Exception as e:
+        logging.error(f"Error getting all contacts: {e}")
+        return JSONResponse(
+            content={"success": False, "error": str(e)},
+            status_code=500
+        )
+
+
 @router.get("/customers/{wa_id}")
 async def api_get_customer(wa_id: str):
     try:

@@ -1,0 +1,248 @@
+---
+globs: "**/*.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+This comprehensive guide outlines best practices, conventions, and standards for development with modern web technologies including ReactJS, NextJS, Redux, TypeScript, JavaScript, HTML, CSS, and UI frameworks.
+
+    Development Philosophy
+    - Write clean, maintainable, and scalable code
+    - Follow SOLID principles
+    - Prefer functional and declarative programming patterns over imperative
+    - Emphasize type safety and static analysis
+    - Practice component-driven development
+    - Follow the user's requirements carefully and to the letter
+    - Be thoughtful and provide nuanced answers through careful reasoning
+    - Always provide accurate, factual, and well-reasoned solutions
+
+    Analysis Process
+    1. Request Analysis
+    - Determine task type (code creation, debugging, architecture, etc.)
+    - Identify languages and frameworks involved
+    - Note explicit and implicit requirements
+    - Define core problem and desired outcome
+    - Consider project context and constraints
+    2. Solution Planning
+    - Break down the solution into logical steps
+    - Consider modularity and reusability
+    - Identify necessary files and dependencies
+    - Evaluate alternative approaches
+    - Plan for testing and validation
+    3. Implementation Strategy
+    - Choose appropriate design patterns
+    - Consider performance implications
+    - Plan for error handling and edge cases
+    - Ensure accessibility compliance
+    - Verify best practices alignment
+
+    Code Implementation Guidelines
+    Planning Phase
+    - Begin with step-by-step planning
+    - Write detailed pseudocode before implementation
+    - Document component architecture and data flow
+    - Consider edge cases and error scenarios
+    - Confirm your plan with step-by-step pseudocode before writing implementation code
+    - Think step-by-step and describe your implementation plan in great detail before writing code
+    - Always follow best practices, DRY principle (Don't Repeat Yourself), and write bug-free, fully functional code
+
+    Code Style
+    - Use tabs for indentation
+    - Use single quotes for strings (except to avoid escaping); use double quotes in JSX attributes
+    - Omit semicolons (unless required for disambiguation)
+    - Eliminate unused variables
+    - Add space after keywords
+    - Add space before function declaration parentheses
+    - Space infix operators
+    - Add space after commas
+    - Keep else statements on the same line as closing curly braces
+    - Use curly braces for multi-line if statements
+    - Always handle error parameters in callbacks
+    - Limit line length to 80 characters
+    - Use trailing commas in multiline object/array literals
+    - Use early returns whenever possible to make code more readable
+    - Focus on readability over performance
+    - Always use descriptive variable and function names
+    - Ensure code is complete with no TODOs, placeholders, or missing pieces
+    - Include all required imports in your implementation
+    - Be concise and minimize unnecessary prose in code
+    - Structure components logically: exports, subcomponents, helpers, types
+    - Buttons must include `type` attribute (e.g., type="button", type="submit")
+
+    Naming Conventions
+    General Rules
+    - Use PascalCase for:
+      - Components
+      - Type definitions
+      - Interfaces
+    - Use kebab-case for:
+      - Directory names (e.g., components/auth-wizard)
+      - File names (e.g., user-profile.tsx)
+    - Use camelCase for:
+      - Variables
+      - Functions
+      - Methods
+      - Hooks
+      - Properties
+      - Props
+    - Use UPPERCASE for:
+      - Environment variables
+      - Constants
+      - Global configurations
+
+    Specific Naming Patterns
+    - Prefix event handlers with 'handle': handleClick, handleSubmit
+    - Prefix boolean variables with verbs: isLoading, hasError, canSubmit
+    - Prefix custom hooks with 'use': useAuth, useForm
+    - Use complete words over abbreviations except for:
+      - err (error)
+      - req (request)
+      - res (response)
+      - props (properties)
+      - ref (reference)
+    - Use descriptive names for variables and functions (e.g., isFormValid instead of isValid, handleFormSubmit instead of handleSubmit)
+    - Use const instead of function declarations for arrow functions: const toggle = () => instead of function toggle() {}
+    - Always define a type for const function declarations
+    - Ensure proper naming of key components and functions for clarity and maintainability
+    - Favor named exports for components
+
+    React Best Practices
+    Component Architecture
+    - Use functional components with TypeScript interfaces
+    - Define components using the function keyword
+    - Extract reusable logic into custom hooks
+    - Implement proper component composition
+    - Use React.memo() strategically for performance
+    - Implement proper cleanup in useEffect hooks
+    - Use Suspense for async operations
+
+    React Performance Optimization
+    - Use useCallback for memoizing callback functions
+    - Implement useMemo for expensive computations
+    - Avoid inline function definitions in JSX
+    - Implement code splitting using dynamic imports
+    - Implement proper key props in lists (avoid using index as key)
+    - Optimize for Web Vitals (TTFB, FCP, LCP, INP)
+
+    Next.js Best Practices
+    Core Concepts
+    - Utilize App Router for routing
+    - Implement proper metadata management
+    - Use proper caching strategies
+    - Implement proper error boundaries
+
+    Components and Features
+    - Use Next.js built-in components:
+      - Image component for optimized images (use appropriately with meaningful alt text)
+      - Link component for client-side navigation
+      - Script component for external scripts
+      - Metadata API for metadata (App Router)
+    - Implement proper loading states
+    - Use proper data fetching methods
+    - Use Vercel AI SDK for AI features with streaming and RSC patterns
+    - Provide meaningful `alt` text for images (descriptive, not generic)
+    - Ensure valid and descriptive anchor links
+
+    Server Components
+    - Default to Server Components
+    - Use URL query parameters for data fetching and server state management
+    - Use 'use client' directive only when necessary:
+      - Event listeners
+      - Browser APIs
+      - State management
+      - Client-side-only libraries
+
+    Async Request APIs (Next.js 15)
+    - Always use async versions of runtime APIs
+
+    // Always use async versions of runtime APIs
+    const cookieStore = await cookies();
+    const headersList = await headers();
+    const { isEnabled } = await draftMode();
+
+    // Handle async params in layouts/pages
+    const params = await props.params;
+    const searchParams = await props.searchParams;
+
+    TypeScript Implementation
+    - Enable strict mode
+    - Define clear interfaces for component props, state, and Redux state structure.
+    - Use type guards to handle potential undefined or null values safely.
+    - Apply generics to functions, actions, and slices where type flexibility is needed.
+    - Utilize TypeScript utility types (Partial, Pick, Omit) for cleaner and reusable code.
+    - Prefer interface over type for defining object structures, especially when extending.
+    - Use mapped types for creating variations of existing types dynamically.
+    - Use TypeScript for all code
+    - Avoid enums; prefer const objects/maps
+    - Use the 'satisfies' operator for type validation
+
+    UI and Styling
+    Component Libraries
+    - Use Shadcn UI for consistent, accessible component design.
+    - Integrate Radix UI primitives for customizable, accessible UI elements.
+    - Apply composition patterns to create modular, reusable components.
+
+    Styling Guidelines
+    - Use Tailwind CSS for styling
+    - Use Tailwind CSS for utility-first, maintainable styling.
+    - Design with mobile-first, responsive principles for flexibility across devices.
+    - Implement dark mode using CSS variables or Tailwind's dark mode features.
+    - Ensure color contrast ratios meet accessibility standards for readability.
+    - Maintain consistent spacing values to establish visual harmony.
+    - Define CSS variables for theme colors and spacing to support easy theming and maintainability.
+    - Always use Tailwind classes for styling HTML elements; avoid using CSS or style tags.
+    - Use clsx or cva utilities for conditional class names; avoid non-standard 'class:' syntax.
+
+    State Management
+    Local State
+    - Use useState for component-level state
+    - Implement useReducer for complex state
+    - Use useContext for shared state
+    - Implement proper state initialization
+    - Use useActionState for forms (replaces deprecated useFormState)
+    - Use enhanced useFormStatus (data, method, action)
+
+    URL State
+    - Implement URL state management with 'nuqs' where appropriate
+    - Minimize client-side state; prefer server state and URL params
+
+    Global State
+    - Use Redux Toolkit for global state
+    - Use createSlice to define state, reducers, and actions together.
+    - Avoid using createReducer and createAction unless necessary.
+    - Normalize state structure to avoid deeply nested data.
+    - Use selectors to encapsulate state access.
+    - Avoid large, all-encompassing slices; separate concerns by feature.
+
+
+    Error Handling and Validation
+    Form Validation
+    - Use Zod for schema validation
+    - Implement proper error messages
+    - Use proper form libraries (e.g., React Hook Form)
+
+    Error Boundaries
+    - Use error boundaries to catch and handle errors in React component trees gracefully.
+    - Avoid console logging; instrument with your app's logging solution if required (no console usage in code).
+    - Design user-friendly fallback UIs to display when errors occur, keeping users informed without breaking the app.
+
+    Integration Testing
+    - Focus on user workflows to ensure app functionality.
+    - Set up and tear down test environments properly to maintain test independence.
+    - Use snapshot testing selectively to catch unintended UI changes without over-relying on it.
+    - Leverage testing utilities (e.g., screen in RTL) for cleaner and more readable tests.
+
+    Internationalization (i18n)
+    - Use next-i18next for translations
+    - Implement proper locale detection
+    - Use proper number and date formatting
+    - Implement proper RTL support
+    - Use proper currency formatting
+
+    Code Quality and Completeness
+    - Fully implement all requested functionality without leaving TODOs, placeholders, or missing pieces
+    - Verify thoroughly that implementations are complete and finalized before submission
+    - Ensure all imports are included and properly organized
+    - Leave NO gaps or incomplete features in implementations
+    - Test implementations to confirm they are fully functional
+    - Acknowledge when uncertain about solutions rather than guessing
+    - Say explicitly if you do not know an answer or if there might not be a correct solution

@@ -75,7 +75,8 @@ const Z_INDEX = {
 	FULLSCREEN_CONTENT: 1110,
 	GRID_FULLSCREEN_BACKDROP: 1100,
 	GRID_FULLSCREEN_CONTENT: 1110,
-	GRID_FULLSCREEN: 1120,
+	GRID_FULLSCREEN_OVERLAY: 1450,
+	GRID_FULLSCREEN: 1455,
 
 	// ========================================
 	// COMMAND OVERLAYS (1300)
@@ -94,7 +95,7 @@ const Z_INDEX = {
 	// EMERGENCY/DEBUG LAYERS (2000)
 	// ========================================
 	EMERGENCY_OVERLAY: 2000, // For absolute critical overlays
-} as const;
+} as const
 
-export { Z_INDEX };
-export type ZIndexKeys = keyof typeof Z_INDEX;
+export { Z_INDEX }
+export type ZIndexKeys = keyof typeof Z_INDEX

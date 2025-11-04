@@ -1,81 +1,114 @@
-"use client";
+'use client'
 
-import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { Button } from "@ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@ui/card";
-import { AlertTriangle, RefreshCw, Server } from "lucide-react";
-import { useCallback, useState } from "react";
-import { Spinner } from "@/shared/ui/spinner";
+import { i18n } from '@shared/libs/i18n'
+import { useLanguage } from '@shared/libs/state/language-context'
+import { Button } from '@ui/button'
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from '@ui/card'
+import { AlertTriangle, RefreshCw, Server } from 'lucide-react'
+import { useCallback, useState } from 'react'
+import { Spinner } from '@/shared/ui/spinner'
 
-interface BackendConnectionOverlayProps {
-	onRetry: () => void;
-	isRetrying?: boolean;
+type BackendConnectionOverlayProps = {
+	onRetry: () => void
+	isRetrying?: boolean
 }
 
-export function BackendConnectionOverlay({ onRetry, isRetrying = false }: BackendConnectionOverlayProps) {
-	const { isLocalized } = useLanguage();
-	const [copied, setCopied] = useState(false);
+export function BackendConnectionOverlay({
+	onRetry,
+	isRetrying = false,
+}: BackendConnectionOverlayProps) {
+	const { isLocalized } = useLanguage()
+	const [copied, setCopied] = useState(false)
 
 	const copyToClipboard = useCallback(async () => {
 		try {
-			await navigator.clipboard.writeText("python app/backend/main.py");
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error("Failed to copy to clipboard:", err);
+			await navigator.clipboard.writeText('python app/backend/main.py')
+			setCopied(true)
+			const COPY_RESET_DELAY_MS = 2000
+			setTimeout(() => setCopied(false), COPY_RESET_DELAY_MS)
+		} catch {
+			// Clipboard write failed - copy button not updated
 		}
-	}, []);
+	}, [])
 
 	return (
-		<div className="fixed inset-0 bg-background/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-			<Card className="w-full max-w-md mx-auto border-destructive/20 bg-card">
-				<CardHeader className="text-center space-y-4">
-					<div className="mx-auto w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center">
-						<Server className="w-8 h-8 text-destructive" />
+		<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 p-4 backdrop-blur-sm">
+			<Card className="mx-auto w-full max-w-md border-destructive/20 bg-card">
+				<CardHeader className="space-y-4 text-center">
+					<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+						<Server className="h-8 w-8 text-destructive" />
 					</div>
 					<div className="space-y-2">
-						<CardTitle className="text-lg font-semibold text-foreground">
-							{i18n.getMessage("backend_connection_error_title", isLocalized)}
+						<CardTitle className="font-semibold text-foreground text-lg">
+							{i18n.getMessage('backend_connection_error_title', isLocalized)}
 						</CardTitle>
-						<CardDescription className="text-sm text-muted-foreground">
-							{i18n.getMessage("backend_connection_error_description", isLocalized)}
+						<CardDescription className="text-muted-foreground text-sm">
+							{i18n.getMessage(
+								'backend_connection_error_description',
+								isLocalized
+							)}
 						</CardDescription>
 					</div>
 				</CardHeader>
 				<CardContent className="space-y-4">
-					<div className="bg-muted/50 p-4 rounded-lg border border-border">
-						<p className="text-sm font-medium text-foreground mb-2">
-							{i18n.getMessage("backend_connection_error_instructions", isLocalized)}
+					<div className="rounded-lg border border-border bg-muted/50 p-4">
+						<p className="mb-2 font-medium text-foreground text-sm">
+							{i18n.getMessage(
+								'backend_connection_error_instructions',
+								isLocalized
+							)}
 						</p>
-						<div className="flex items-center gap-2 bg-background border border-border rounded-md p-2">
-							<code className="text-sm font-mono text-foreground flex-1">python app/backend/main.py</code>
-							<Button size="sm" variant="ghost" onClick={copyToClipboard} className="h-auto p-1 text-xs">
-								{copied ? "✓" : "📋"}
+						<div className="flex items-center gap-2 rounded-md border border-border bg-background p-2">
+							<code className="flex-1 font-mono text-foreground text-sm">
+								python app/backend/main.py
+							</code>
+							<Button
+								className="h-auto p-1 text-xs"
+								onClick={copyToClipboard}
+								size="sm"
+								variant="ghost"
+							>
+								{copied ? '✓' : '📋'}
 							</Button>
 						</div>
 					</div>
 
-					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<AlertTriangle className="w-4 h-4" />
-						<span>{i18n.getMessage("backend_connection_ensure_localhost", isLocalized)}</span>
+					<div className="flex items-center gap-2 text-muted-foreground text-sm">
+						<AlertTriangle className="h-4 w-4" />
+						<span>
+							{i18n.getMessage(
+								'backend_connection_ensure_localhost',
+								isLocalized
+							)}
+						</span>
 					</div>
 
-					<Button onClick={onRetry} disabled={isRetrying} className="w-full" size="lg">
+					<Button
+						className="w-full"
+						disabled={isRetrying}
+						onClick={onRetry}
+						size="lg"
+					>
 						{isRetrying ? (
 							<>
-								<Spinner className="w-4 h-4 mr-2" />
-								{i18n.getMessage("backend_connection_checking", isLocalized)}
+								<Spinner className="mr-2 h-4 w-4" />
+								{i18n.getMessage('backend_connection_checking', isLocalized)}
 							</>
 						) : (
 							<>
-								<RefreshCw className="w-4 h-4 mr-2" />
-								{i18n.getMessage("backend_connection_error_retry", isLocalized)}
+								<RefreshCw className="mr-2 h-4 w-4" />
+								{i18n.getMessage('backend_connection_error_retry', isLocalized)}
 							</>
 						)}
 					</Button>
 				</CardContent>
 			</Card>
 		</div>
-	);
+	)
 }

@@ -71,6 +71,70 @@
 }
 
 /* =================================================================
+   MORE LINK - BASE STYLES FOR THE "+X more" LINK
+   ================================================================= */
+
+.fc-daygrid-more-link,
+.fc-more-link {
+	display: inline-block;
+	font-size: 0.75em;
+	color: hsl(var(--primary));
+	padding: 2px 4px;
+	margin: 1px 2px;
+	cursor: pointer;
+	text-decoration: none;
+	border-radius: var(--radius-sm);
+	background: hsl(var(--muted) / 0.3);
+	transition: background 0.15s ease;
+	font-weight: 500;
+	/* Constrain within cell boundaries */
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	box-sizing: border-box;
+}
+
+.fc-daygrid-more-link:hover,
+.fc-more-link:hover {
+	background: hsl(var(--muted) / 0.5);
+	color: hsl(var(--primary));
+}
+
+/* Dark mode more link */
+.dark .fc-daygrid-more-link,
+.dark .fc-more-link {
+	background: hsl(var(--muted) / 0.4);
+	color: hsl(var(--primary));
+}
+
+.dark .fc-daygrid-more-link:hover,
+.dark .fc-more-link:hover {
+	background: hsl(var(--muted) / 0.6);
+}
+
+/* Ensure day-bottom container constrains the more link */
+.fc-daygrid-day-bottom {
+	position: relative;
+	overflow: hidden;
+	padding: 0 2px;
+	margin: 0;
+	width: 100%;
+	box-sizing: border-box;
+}
+
+/* Direction-specific more link positioning */
+.fc-direction-ltr .fc-daygrid-more-link,
+.fc-direction-ltr .fc-more-link {
+	text-align: left;
+}
+
+.fc-direction-rtl .fc-daygrid-more-link,
+.fc-direction-rtl .fc-more-link {
+	text-align: right;
+}
+
+/* =================================================================
    MORE POPOVER - SPECIFIC TO MORE LINKS
    ================================================================= */
 

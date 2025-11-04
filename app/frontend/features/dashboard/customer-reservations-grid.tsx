@@ -1,228 +1,272 @@
-"use client";
+'use client'
 
-import { DataEditor, type GridCell, GridCellKind, type GridColumn, type Item } from "@glideapps/glide-data-grid";
-import { useTheme } from "next-themes";
-import React, { useCallback, useMemo } from "react";
-import type { Reservation } from "@/entities/event";
-import { createGlideTheme } from "@/shared/libs/data-grid/components/utils/streamlitGlideTheme";
+import {
+	DataEditor,
+	type GridCell,
+	GridCellKind,
+	type GridColumn,
+	type Item,
+} from '@glideapps/glide-data-grid'
+import { i18n } from '@shared/libs/i18n'
+import { useTheme } from 'next-themes'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Reservation } from '@/entities/event'
+import { createGlideTheme } from '@/shared/libs/data-grid/components/utils/streamlitGlideTheme'
 
-interface CustomerReservationsGridProps {
-	reservations: Reservation[];
-	isLocalized: boolean;
+const DEFAULT_CONTAINER_WIDTH = 240
+const THEME_UPDATE_DELAY_MS = 50
+const DATE_MIN_WIDTH_PX = 85
+const TIME_MIN_WIDTH_PX = 70
+const TYPE_MIN_WIDTH_PX = 85
+const DATE_WIDTH_RATIO = 0.35
+const TIME_WIDTH_RATIO = 0.3
+const HOURS_PER_HALF_DAY = 12
+const GRID_HEADER_HEIGHT_PX = 22
+const GRID_ROW_HEIGHT_PX = 24
+const GRID_MAX_HEIGHT_PX = 300
+
+type CustomerReservationsGridProps = {
+	reservations: Reservation[]
+	isLocalized: boolean
 }
 
-export function CustomerReservationsGrid({ reservations, isLocalized }: CustomerReservationsGridProps) {
-	const { theme: currentTheme } = useTheme();
-	const isDarkMode = currentTheme === "dark";
+export function CustomerReservationsGrid({
+	reservations,
+	isLocalized,
+}: CustomerReservationsGridProps) {
+	const { theme: currentTheme } = useTheme()
+	const isDarkMode = currentTheme === 'dark'
 
 	// Container ref for measuring width
-	const containerRef = React.useRef<HTMLDivElement>(null);
-	const [containerWidth, setContainerWidth] = React.useState<number>(240); // Default width
+	const containerRef = useRef<HTMLDivElement>(null)
+	const [containerWidth, setContainerWidth] = useState<number>(
+		DEFAULT_CONTAINER_WIDTH
+	)
 
 	// Force grid to re-render when theme changes by using a key
-	const [themeKey, setThemeKey] = React.useState(0);
+	const [themeKey, setThemeKey] = useState(0)
 
 	// Update theme key when theme changes
-	React.useEffect(() => {
+	useEffect(() => {
 		// Small delay to ensure CSS variables are updated
 		const timer = setTimeout(() => {
-			setThemeKey((prev) => prev + 1);
-		}, 50);
-		return () => clearTimeout(timer);
-	}, []);
+			setThemeKey((prev) => prev + 1)
+		}, THEME_UPDATE_DELAY_MS)
+		return () => clearTimeout(timer)
+	}, [])
 
 	// Measure container width
-	React.useEffect(() => {
-		if (!containerRef.current) return;
-
-		const observer = new ResizeObserver((entries) => {
-			for (const entry of entries) {
-				const width = entry.contentRect.width;
-				if (width > 0) {
-					setContainerWidth(width);
-				}
-			}
-		});
-
-		// Initial measurement
-		const initialWidth = containerRef.current.offsetWidth;
-		if (initialWidth > 0) {
-			setContainerWidth(initialWidth);
+	useEffect(() => {
+		if (!containerRef.current) {
+			return
 		}
 
-		observer.observe(containerRef.current);
+		// Use requestAnimationFrame to prevent ResizeObserver loop errors
+		const observer = new ResizeObserver((entries) => {
+			requestAnimationFrame(() => {
+				for (const entry of entries) {
+					const width = entry.contentRect.width
+					if (width > 0) {
+						setContainerWidth(width)
+					}
+				}
+			})
+		})
 
-		return () => observer.disconnect();
-	}, []);
+		// Initial measurement
+		const initialWidth = containerRef.current.offsetWidth
+		if (initialWidth > 0) {
+			setContainerWidth(initialWidth)
+		}
+
+		observer.observe(containerRef.current)
+
+		return () => observer.disconnect()
+	}, [])
 
 	// Re-create theme when either light/dark mode or style theme changes
 	const gridTheme = useMemo(() => {
-		const baseTheme = createGlideTheme(isDarkMode ? "dark" : "light");
+		const baseTheme = createGlideTheme(isDarkMode ? 'dark' : 'light')
 		return {
 			...baseTheme,
 			// Customize for smaller size in customer card
 			cellHorizontalPadding: 6,
 			cellVerticalPadding: 2,
-			headerHeight: 22,
-			rowHeight: 24,
-			baseFontStyle: "12px",
-		};
-	}, [isDarkMode]);
+			headerHeight: GRID_HEADER_HEIGHT_PX,
+			rowHeight: GRID_ROW_HEIGHT_PX,
+			baseFontStyle: '12px',
+		}
+	}, [isDarkMode])
 
 	const columns: GridColumn[] = useMemo(() => {
 		// Calculate column widths based on container width
-		const totalWidth = containerWidth;
-		const dateWidth = Math.max(85, Math.floor(totalWidth * 0.35));
-		const timeWidth = Math.max(70, Math.floor(totalWidth * 0.3));
-		const typeWidth = Math.max(85, totalWidth - dateWidth - timeWidth);
+		const totalWidth = containerWidth
+		const dateWidth = Math.max(
+			DATE_MIN_WIDTH_PX,
+			Math.floor(totalWidth * DATE_WIDTH_RATIO)
+		)
+		const timeWidth = Math.max(
+			TIME_MIN_WIDTH_PX,
+			Math.floor(totalWidth * TIME_WIDTH_RATIO)
+		)
+		const typeWidth = Math.max(
+			TYPE_MIN_WIDTH_PX,
+			totalWidth - dateWidth - timeWidth
+		)
 
 		return [
 			{
-				title: isLocalized ? "التاريخ" : "Date",
-				id: "date",
+				title: i18n.getMessage('date_label', isLocalized),
+				id: 'date',
 				width: dateWidth,
 			},
 			{
-				title: isLocalized ? "الوقت" : "Time",
-				id: "time",
+				title: i18n.getMessage('time_label', isLocalized),
+				id: 'time',
 				width: timeWidth,
 			},
 			{
-				title: isLocalized ? "النوع" : "Type",
-				id: "type",
+				title: i18n.getMessage('field_type', isLocalized),
+				id: 'type',
 				width: typeWidth,
 			},
-		];
-	}, [isLocalized, containerWidth]);
+		]
+	}, [isLocalized, containerWidth])
 
 	const formatTime = useCallback((timeStr: string) => {
 		try {
 			// Handle various time formats
-			if (timeStr.includes("AM") || timeStr.includes("PM")) {
-				return timeStr;
+			if (timeStr.includes('AM') || timeStr.includes('PM')) {
+				return timeStr
 			}
 			// Convert 24-hour format to 12-hour format
-			const [hours, minutes] = timeStr.split(":");
-			const hour = Number.parseInt(hours || "0", 10);
-			const ampm = hour >= 12 ? "PM" : "AM";
-			const hour12 = hour % 12 || 12;
-			return `${hour12}:${minutes} ${ampm}`;
+			const [hours, minutes] = timeStr.split(':')
+			const hour = Number.parseInt(hours || '0', 10)
+			const ampm = hour >= HOURS_PER_HALF_DAY ? 'PM' : 'AM'
+			const hour12 = hour % HOURS_PER_HALF_DAY || HOURS_PER_HALF_DAY
+			return `${hour12}:${minutes} ${ampm}`
 		} catch {
-			return timeStr;
+			return timeStr
 		}
-	}, []);
+	}, [])
 
 	const formatDate = useCallback(
 		(dateStr: string) => {
 			try {
-				const date = new Date(dateStr);
-				return date.toLocaleDateString(isLocalized ? "ar-SA" : "en-US", {
-					month: "short",
-					day: "numeric",
-				});
+				const date = new Date(dateStr)
+				return date.toLocaleDateString(isLocalized ? 'ar-SA' : 'en-US', {
+					month: 'short',
+					day: 'numeric',
+				})
 			} catch {
-				return dateStr;
+				return dateStr
 			}
 		},
 		[isLocalized]
-	);
+	)
 
 	const getServiceType = useCallback(
 		(reservation: Reservation) => {
 			// Map reservation types to display names - same as drawer implementation
-			const typeValue = reservation.type || 0;
-			if (isLocalized) {
-				return typeValue === 0 ? "كشف" : "مراجعة";
-			}
-			return typeValue === 0 ? "Check-up" : "Follow-up";
+			const typeValue = reservation.type || 0
+			return typeValue === 0
+				? i18n.getMessage('appt_checkup', isLocalized)
+				: i18n.getMessage('appt_followup', isLocalized)
 		},
 		[isLocalized]
-	);
+	)
 
-	const getCellContent = React.useCallback(
+	const getCellContent = useCallback(
 		(cell: Item): GridCell => {
-			const [col, row] = cell;
-			const reservation = reservations[row];
+			const [col, row] = cell
+			const reservation = reservations[row]
 
 			if (!reservation) {
 				return {
 					kind: GridCellKind.Text,
-					data: "",
-					displayData: "",
+					data: '',
+					displayData: '',
 					allowOverlay: false,
-				};
+				}
 			}
 
-			const column = columns[col];
+			const column = columns[col]
 			if (!column) {
 				return {
 					kind: GridCellKind.Text,
-					data: "",
-					displayData: "",
+					data: '',
+					displayData: '',
 					allowOverlay: false,
-				};
+				}
 			}
 			switch (column.id) {
-				case "date":
+				case 'date':
 					return {
 						kind: GridCellKind.Text,
 						data: reservation.date,
 						displayData: formatDate(reservation.date),
 						allowOverlay: false,
-					};
-				case "time":
+					}
+				case 'time':
 					return {
 						kind: GridCellKind.Text,
 						data: reservation.time_slot,
 						displayData: formatTime(reservation.time_slot),
 						allowOverlay: false,
-					};
-				case "type":
+					}
+				case 'type':
 					return {
 						kind: GridCellKind.Text,
-						data: reservation.type?.toString() || "0",
+						data: reservation.type?.toString() || '0',
 						displayData: getServiceType(reservation),
 						allowOverlay: false,
-					};
+					}
 				default:
 					return {
 						kind: GridCellKind.Text,
-						data: "",
-						displayData: "",
+						data: '',
+						displayData: '',
 						allowOverlay: false,
-					};
+					}
 			}
 		},
 		[reservations, columns, formatDate, formatTime, getServiceType]
-	);
+	)
 
 	if (reservations.length === 0) {
 		return (
-			<div className="text-center py-2 text-xs text-muted-foreground">
-				{isLocalized ? "لا توجد حجوزات" : "No reservations"}
+			<div className="py-2 text-center text-muted-foreground text-xs">
+				{i18n.getMessage('customer_no_reservations', isLocalized)}
 			</div>
-		);
+		)
 	}
 
 	return (
-		<div ref={containerRef} className="w-full mt-1 rounded-sm overflow-hidden glide-grid-wrapper" data-fullwidth="true">
+		<div
+			className="glide-grid-wrapper mt-1 w-full overflow-hidden rounded-sm"
+			data-fullwidth="true"
+			ref={containerRef}
+		>
 			<div className="glide-grid-inner glide-grid-inner-full glide-grid-fullwidth">
 				<DataEditor
-					key={`customer-grid-${themeKey}`}
-					getCellContent={getCellContent}
+					className="gdg-wmyidgi"
 					columns={columns}
+					getCellContent={getCellContent}
+					headerHeight={GRID_HEADER_HEIGHT_PX}
+					height={Math.min(
+						GRID_MAX_HEIGHT_PX,
+						reservations.length * GRID_ROW_HEIGHT_PX + GRID_HEADER_HEIGHT_PX
+					)}
+					key={`customer-grid-${themeKey}`} // Header + rows (increased max height)
+					rowHeight={GRID_ROW_HEIGHT_PX}
+					rowMarkers="none"
 					rows={reservations.length}
-					width={containerWidth}
-					height={Math.min(300, reservations.length * 24 + 22)} // Header + rows (increased max height)
 					smoothScrollX={false}
 					smoothScrollY={false}
-					rowMarkers="none"
-					headerHeight={22}
-					rowHeight={24}
 					theme={gridTheme}
-					className="gdg-wmyidgi"
+					width={containerWidth}
 				/>
 			</div>
 		</div>
-	);
+	)
 }

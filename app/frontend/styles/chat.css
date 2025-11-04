@@ -60,7 +60,13 @@
 	background: transparent;
 }
 /* Remove outer backgrounds; keep only inner bubble styles */
-:where(.message-row, .message-row-user, .message-row-admin, .message-row-assistant, .message-row-secretary) {
+:where(
+		.message-row,
+		.message-row-user,
+		.message-row-admin,
+		.message-row-assistant,
+		.message-row-secretary
+	) {
 	background: transparent;
 }
 
@@ -113,7 +119,11 @@
 	position: absolute;
 	inset: -4px;
 	border-radius: 8px;
-	background: radial-gradient(40% 40% at 50% 50%, currentColor 0%, transparent 60%);
+	background: radial-gradient(
+		40% 40% at 50% 50%,
+		currentColor 0%,
+		transparent 60%
+	);
 	filter: blur(8px);
 	opacity: 0;
 	transition: opacity 200ms ease;
@@ -148,16 +158,32 @@
 	transform: scale(1.02);
 }
 .message-row-user .avatar-neon::before {
-	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--primary)) 0%, transparent 70%);
+	background: radial-gradient(
+		50% 50% at 50% 50%,
+		hsl(var(--primary)) 0%,
+		transparent 70%
+	);
 }
 .message-row-admin .avatar-neon::before {
-	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--accent)) 0%, transparent 70%);
+	background: radial-gradient(
+		50% 50% at 50% 50%,
+		hsl(var(--accent)) 0%,
+		transparent 70%
+	);
 }
 .message-row-assistant .avatar-neon::before {
-	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--ring)) 0%, transparent 70%);
+	background: radial-gradient(
+		50% 50% at 50% 50%,
+		hsl(var(--ring)) 0%,
+		transparent 70%
+	);
 }
 .message-row-secretary .avatar-neon::before {
-	background: radial-gradient(50% 50% at 50% 50%, hsl(var(--muted-foreground)) 0%, transparent 70%);
+	background: radial-gradient(
+		50% 50% at 50% 50%,
+		hsl(var(--muted-foreground)) 0%,
+		transparent 70%
+	);
 }
 .prose a {
 	overflow-wrap: anywhere;
@@ -222,8 +248,8 @@
 .calendar-chat [data-slot="input-group-control"] .ScrollbarsCustom-Content,
 .calendar-chat [data-slot="input-group-control"] .ScrollbarsCustom-Scroller,
 .calendar-chat .tiptap,
-.calendar-chat .tiptap .ProseMirror,
-.calendar-chat .ProseMirror {
+.calendar-chat .ProseMirror,
+.calendar-chat .tiptap .ProseMirror {
 	cursor: text;
 }
 

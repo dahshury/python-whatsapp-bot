@@ -1,31 +1,36 @@
-"use client";
+'use client'
 
-import type React from "react";
-import { CalendarSkeleton } from "./CalendarSkeleton";
+import type React from 'react'
+import { CalendarSkeleton } from './CalendarSkeleton'
 
-interface CalendarContainerProps {
-	loading: boolean;
-	isHydrated: boolean;
-	isRefreshing: boolean;
-	children: React.ReactNode;
+type CalendarContainerProps = {
+	loading: boolean
+	isHydrated: boolean
+	isRefreshing: boolean
+	children: React.ReactNode
 }
 
-export function CalendarContainer({ loading, isHydrated, isRefreshing, children }: CalendarContainerProps) {
+export function CalendarContainer({
+	loading,
+	isHydrated,
+	isRefreshing,
+	children,
+}: CalendarContainerProps) {
 	// Show loading state
 	if (loading || !isHydrated) {
-		return <CalendarSkeleton />;
+		return <CalendarSkeleton />
 	}
 
 	const content = (
 		<div
-			className="relative w-full calendar-bg-wrap"
+			className="calendar-bg-wrap relative flex h-full w-full"
 			style={{
 				// Make FC internal sticky backgrounds use transparency so glow shows through
 				// @ts-expect-error -- CSS variable custom property
-				"--fc-page-bg-color": "transparent",
+				'--fc-page-bg-color': 'transparent',
 			}}
 		>
-			<div className="relative z-10">{children}</div>
+			<div className="relative z-10 flex h-full w-full flex-1">{children}</div>
 			<style jsx>{`
 				/* Ensure the radial glow is visible through FullCalendar */
 				.calendar-bg-wrap :global(.fc) {
@@ -84,12 +89,12 @@ export function CalendarContainer({ loading, isHydrated, isRefreshing, children 
 				}
 			`}</style>
 		</div>
-	);
+	)
 
 	// Show blurred calendar when refreshing
 	if (isRefreshing) {
-		return <CalendarSkeleton isBlurred={true}>{content}</CalendarSkeleton>;
+		return <CalendarSkeleton isBlurred={true}>{content}</CalendarSkeleton>
 	}
 
-	return content;
+	return content
 }

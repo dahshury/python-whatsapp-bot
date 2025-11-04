@@ -1,10 +1,10 @@
-import { useCallback, useState } from "react";
-import type { BaseColumnProps } from "../core/types";
+import { useCallback, useState } from 'react'
+import type { BaseColumnProps } from '../core/types'
 
-export interface ColumnMenuState {
-	isOpen: boolean;
-	column: BaseColumnProps | null;
-	position: { x: number; y: number };
+export type ColumnMenuState = {
+	isOpen: boolean
+	column: BaseColumnProps | null
+	position: { x: number; y: number }
 }
 
 export function useColumnMenu() {
@@ -12,75 +12,79 @@ export function useColumnMenu() {
 		isOpen: false,
 		column: null,
 		position: { x: 0, y: 0 },
-	});
+	})
 
-	const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
-	const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set());
+	const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
+	const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
 	const [pinnedColumns, setPinnedColumns] = useState<{
-		left: Set<string>;
-		right: Set<string>;
+		left: Set<string>
+		right: Set<string>
 	}>({
 		left: new Set(),
 		right: new Set(),
-	});
-	const [columnFormats, setColumnFormats] = useState<Record<string, string>>({});
+	})
+	const [columnFormats, setColumnFormats] = useState<Record<string, string>>({})
 
-	const openMenu = useCallback((column: BaseColumnProps, x: number, y: number) => {
-		setMenuState({
-			isOpen: true,
-			column,
-			position: { x, y },
-		});
-	}, []);
+	const openMenu = useCallback(
+		(column: BaseColumnProps, x: number, y: number) => {
+			setMenuState({
+				isOpen: true,
+				column,
+				position: { x, y },
+			})
+		},
+		[]
+	)
 
 	const closeMenu = useCallback(() => {
 		setMenuState({
 			isOpen: false,
 			column: null,
 			position: { x: 0, y: 0 },
-		});
-	}, []);
+		})
+	}, [])
 
 	const sortColumn = useCallback(
-		(columnId: string, direction: "asc" | "desc") => {
-			console.log("Sort column:", columnId, direction);
-			closeMenu();
+		(_columnId: string, _direction: 'asc' | 'desc') => {
+			closeMenu()
 		},
 		[closeMenu]
-	);
+	)
 
 	const pinColumn = useCallback(
-		(columnId: string, side: "left" | "right") => {
+		(columnId: string, side: 'left' | 'right') => {
 			setPinnedColumns((prev) => ({
 				...prev,
 				[side]: new Set([...prev[side], columnId]),
-				[side === "left" ? "right" : "left"]: new Set(
-					[...prev[side === "left" ? "right" : "left"]].filter((id) => id !== columnId)
+				[side === 'left' ? 'right' : 'left']: new Set(
+					[...prev[side === 'left' ? 'right' : 'left']].filter(
+						(id) => id !== columnId
+					)
 				),
-			}));
-			closeMenu();
+			}))
+			closeMenu()
 		},
 		[closeMenu]
-	);
+	)
 
 	const unpinColumn = useCallback(
 		(columnId: string) => {
 			setPinnedColumns((prev) => ({
 				left: new Set([...prev.left].filter((id) => id !== columnId)),
 				right: new Set([...prev.right].filter((id) => id !== columnId)),
-			}));
-			closeMenu();
+			}))
+			closeMenu()
 		},
 		[closeMenu]
-	);
+	)
 
 	const hideColumn = useCallback(
 		(columnId: string) => {
-			setHiddenColumns((prev) => new Set([...prev, columnId]));
-			closeMenu();
+			setHiddenColumns((prev) => new Set([...prev, columnId]))
+			closeMenu()
 		},
 		[closeMenu]
-	);
+	)
 
 	const autosizeColumn = useCallback(
 		(columnId: string) => {
@@ -88,52 +92,50 @@ export function useColumnMenu() {
 			setColumnWidths((prev) => ({
 				...prev,
 				[columnId]: 150, // Default auto-sized width
-			}));
-			closeMenu();
+			}))
+			closeMenu()
 		},
 		[closeMenu]
-	);
+	)
 
 	const changeFormat = useCallback(
 		(columnId: string, format: string) => {
 			setColumnFormats((prev) => ({
 				...prev,
 				[columnId]: format,
-			}));
-			closeMenu();
+			}))
+			closeMenu()
 		},
 		[closeMenu]
-	);
+	)
 
 	const getPinnedSide = useCallback(
-		(columnId: string): "left" | "right" | false => {
-			if (pinnedColumns.left.has(columnId)) return "left";
-			if (pinnedColumns.right.has(columnId)) return "right";
-			return false;
+		(columnId: string): 'left' | 'right' | false => {
+			if (pinnedColumns.left.has(columnId)) {
+				return 'left'
+			}
+			if (pinnedColumns.right.has(columnId)) {
+				return 'right'
+			}
+			return false
 		},
 		[pinnedColumns]
-	);
+	)
 
 	const isColumnHidden = useCallback(
-		(columnId: string): boolean => {
-			return hiddenColumns.has(columnId);
-		},
+		(columnId: string): boolean => hiddenColumns.has(columnId),
 		[hiddenColumns]
-	);
+	)
 
 	const getColumnWidth = useCallback(
-		(columnId: string): number | undefined => {
-			return columnWidths[columnId];
-		},
+		(columnId: string): number | undefined => columnWidths[columnId],
 		[columnWidths]
-	);
+	)
 
 	const getColumnFormat = useCallback(
-		(columnId: string): string | undefined => {
-			return columnFormats[columnId];
-		},
+		(columnId: string): string | undefined => columnFormats[columnId],
 		[columnFormats]
-	);
+	)
 
 	return {
 		menuState,
@@ -153,5 +155,5 @@ export function useColumnMenu() {
 		pinnedColumns,
 		columnWidths,
 		columnFormats,
-	};
+	}
 }

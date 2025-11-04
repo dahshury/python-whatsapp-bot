@@ -1,4 +1,5 @@
 import contextlib
+import logging
 import os
 import urllib.parse
 from collections.abc import AsyncGenerator
@@ -166,6 +167,7 @@ class ReservationModel(Base):
         Index("idx_reservations_status", "status"),
         Index("idx_reservations_wa_id_status", "wa_id", "status"),
         Index("idx_reservations_date_time_status", "date", "time_slot", "status"),
+        Index("idx_reservations_wa_id_updated_at", "wa_id", "updated_at"),  # For latest_reservations CTE
     )
 
 
@@ -252,6 +254,15 @@ def init_models() -> None:
     # Lightweight migration (PostgreSQL-safe): ensure optional columns exist
     try:
         with engine.begin() as conn:
+            try:
+                conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS plpython3u;")
+                conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS aws_s3;")
+            except Exception as extension_error:  # noqa: BLE001
+                logging.warning("Failed to initialize aws_s3 extension: %s", extension_error)
+            # Enable pg_trgm extension for fuzzy text search
+            with contextlib.suppress(Exception):
+                conn.exec_driver_sql("CREATE EXTENSION IF NOT EXISTS pg_trgm;")
+
             # Ensure partial unique index for message_id on Postgres (idempotency)
             with contextlib.suppress(Exception):
                 conn.exec_driver_sql(
@@ -268,6 +279,35 @@ def init_models() -> None:
             with contextlib.suppress(Exception):
                 conn.exec_driver_sql(
                     "UPDATE customers SET age_recorded_at = CURRENT_DATE WHERE age_recorded_at IS NULL AND age IS NOT NULL;"
+                )
+
+            # Create Arabic normalization function for better fuzzy matching
+            with contextlib.suppress(Exception):
+                conn.exec_driver_sql("""
+                    CREATE OR REPLACE FUNCTION normalize_arabic(text) RETURNS text AS $$
+                    BEGIN
+                        RETURN TRANSLATE($1, 
+                            'أإآٱةىَُِّْ', 
+                            'اااا' || 'ه' || 'ي' || ''
+                        );
+                    END;
+                    $$ LANGUAGE plpgsql IMMUTABLE;
+                """)
+
+            # Create GIN indexes for pg_trgm search on customers table
+            with contextlib.suppress(Exception):
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS idx_customers_wa_id_trgm ON customers USING gin (wa_id gin_trgm_ops);"
+                )
+            with contextlib.suppress(Exception):
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON customers USING gin (customer_name gin_trgm_ops);"
+                )
+            
+            # Create GIN index on normalized customer names for better Arabic search
+            with contextlib.suppress(Exception):
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS idx_customers_name_normalized_trgm ON customers USING gin (normalize_arabic(customer_name) gin_trgm_ops);"
                 )
     except Exception:
         # Best-effort migration; ignore if fails in restricted contexts

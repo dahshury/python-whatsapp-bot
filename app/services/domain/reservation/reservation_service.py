@@ -111,7 +111,7 @@ class ReservationService(BaseService):
     @instrument_reservation
     def reserve_time_slot(self, wa_id: str, customer_name: str, date_str: str, 
                          time_slot: str, reservation_type: int, hijri: bool = False,
-                         max_reservations: int = 5, ar: bool = False) -> Dict[str, Any]:
+                         max_reservations: int = 5, ar: bool = False, _call_source: str = "assistant") -> Dict[str, Any]:
         """
         Reserve a time slot for a customer.
         
@@ -210,6 +210,7 @@ class ReservationService(BaseService):
                                 "customer_name": customer_name,
                             },
                             affected_entities=[wa_id],
+                            source=_call_source,
                         )
                     except Exception:
                         pass
@@ -250,6 +251,7 @@ class ReservationService(BaseService):
                             "customer_name": customer_name,
                         },
                         affected_entities=[wa_id],
+                        source=_call_source,
                     )
                 except Exception:
                     pass
@@ -303,6 +305,7 @@ class ReservationService(BaseService):
                         "customer_name": customer_name,
                     },
                     affected_entities=[wa_id],
+                    source=_call_source,
                 )
             except Exception:
                 pass
@@ -317,7 +320,8 @@ class ReservationService(BaseService):
                           new_type: Optional[int] = None, max_reservations: int = 5,
                           approximate: bool = False, hijri: bool = False, ar: bool = False,
                           reservation_id_to_modify: Optional[int] = None,
-                          _internal_call_context: Optional[str] = None) -> Dict[str, Any]:
+                          _internal_call_context: Optional[str] = None,
+                          _call_source: str = "assistant") -> Dict[str, Any]:
         """
         Modify an existing reservation for a customer.
         
@@ -530,6 +534,7 @@ class ReservationService(BaseService):
                             "status": reservation_to_modify.status,
                         },
                         affected_entities=[reservation_to_modify.wa_id],
+                        source=_call_source,
                     )
                 except Exception:
                     pass
@@ -541,7 +546,8 @@ class ReservationService(BaseService):
     @instrument_cancellation
     def cancel_reservation(self, wa_id: str, date_str: Optional[str] = None,
                           hijri: bool = False, ar: bool = False, 
-                          reservation_id_to_cancel: Optional[int] = None) -> Dict[str, Any]:
+                          reservation_id_to_cancel: Optional[int] = None,
+                          _call_source: str = "assistant") -> Dict[str, Any]:
         """
         Cancel a reservation or all reservations for a customer using soft deletion.
         Can cancel a specific reservation by ID or by wa_id and date.
@@ -597,6 +603,7 @@ class ReservationService(BaseService):
                             "reservation_cancelled",
                             {"id": reservation_id_to_cancel, "wa_id": reservation.wa_id, "date": reservation.date, "time_slot": reservation.time_slot},
                             affected_entities=[reservation.wa_id],
+                            source=_call_source,
                         )
                     except Exception:
                         pass
@@ -639,7 +646,7 @@ class ReservationService(BaseService):
                         cancelled_ids.append(res.id)
                         cancelled_count += 1
                         try:
-                            enqueue_broadcast("reservation_cancelled", {"id": res.id, "wa_id": res.wa_id, "date": res.date, "time_slot": res.time_slot}, affected_entities=[res.wa_id])
+                            enqueue_broadcast("reservation_cancelled", {"id": res.id, "wa_id": res.wa_id, "date": res.date, "time_slot": res.time_slot}, affected_entities=[res.wa_id], source=_call_source)
                         except Exception:
                             pass
                 
@@ -669,7 +676,7 @@ class ReservationService(BaseService):
                 # If cancelled_ids were populated based on a prior fetch, use that.
                 if cancelled_count > 0:
                     try:
-                        enqueue_broadcast("reservation_cancelled", {"wa_id": wa_id}, affected_entities=[wa_id])
+                        enqueue_broadcast("reservation_cancelled", {"wa_id": wa_id}, affected_entities=[wa_id], source=_call_source)
                     except Exception:
                         pass
 

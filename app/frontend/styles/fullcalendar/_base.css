@@ -135,7 +135,7 @@ a.fc-col-header-cell-cushion {
 
 /* Day cells */
 .fc-daygrid-day {
-	border-radius: 0;
+	border-radius: calc(var(--radius) * 0.75);
 }
 
 /* Background layers */

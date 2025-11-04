@@ -162,39 +162,71 @@ def find_nearest_time_slot(target_slot, available_slots):
 
     return closest_slot
 
-def get_all_reservations(future=True, include_cancelled=False):
+def get_all_reservations(future=True, include_cancelled=False, from_date=None, to_date=None):
     """
-    Retrieve all reservations from the database.
+    Retrieve reservations from the database with optional date range filtering.
+    
+    IMPORTANT: This function NEVER loads ALL reservations without a date range.
+    If no date range is provided and future=False, it defaults to a 30-day backward
+    and 90-day forward window to prevent loading excessive data.
+    
+    OPTIMIZATION: This endpoint NO LONGER returns customer_name to eliminate redundancy.
+    Frontend should use /customers/names to resolve names from wa_id.
     
     Parameters:
         future (bool): If True, only return reservations for today and future dates.
-                      If False, return all reservations.
+                      If False, return reservations within default window (last 30 days + next 90 days)
+                      unless from_date/to_date are specified. Ignored if from_date/to_date are provided.
         include_cancelled (bool): If True, include cancelled reservations in the results.
                                  If False, only return active reservations.
+        from_date (str, optional): Start date in YYYY-MM-DD format. If provided, filters reservations from this date onwards.
+        to_date (str, optional): End date in YYYY-MM-DD format. If provided, filters reservations up to this date.
     
     Returns:
         dict: Dictionary with wa_id as keys and list of reservation dicts as values.
-             Each reservation dict contains customer_name, date, time_slot, type, and cancelled flag.
+             Each reservation dict contains id, date, time_slot, type, and cancelled flag.
+             Customer names are NOT included - use /customers/names to resolve.
     """
     try:
         with get_session() as session:
-            stmt = (
-                select(
+            # Removed JOIN with CustomerModel - no longer fetching customer_name
+            stmt = select(
                     ReservationModel.id,
                     ReservationModel.wa_id,
-                    CustomerModel.customer_name,
                     ReservationModel.date,
                     ReservationModel.time_slot,
                     ReservationModel.type,
                     ReservationModel.status,
-                )
-                .join(CustomerModel, ReservationModel.wa_id == CustomerModel.wa_id)
             )
 
             filters = []
-            if future:
+            
+            # Date range filtering takes precedence over future parameter
+            if from_date and to_date:
+                # Both dates provided - filter by range
+                filters.append(ReservationModel.date >= from_date)
+                filters.append(ReservationModel.date <= to_date)
+            elif from_date:
+                # Only from_date provided
+                filters.append(ReservationModel.date >= from_date)
+            elif to_date:
+                # Only to_date provided
+                filters.append(ReservationModel.date <= to_date)
+            elif future:
+                # No date range specified, use future parameter (default safe behavior)
                 today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
                 filters.append(ReservationModel.date >= today)
+            # If future=False and no date range, apply a reasonable default window
+            # to prevent loading ALL reservations (last 30 days + next 90 days)
+            else:
+                # No date range AND future=False - apply default window to prevent loading all data
+                today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date()
+                default_from_date = (today - datetime.timedelta(days=30)).isoformat()
+                default_to_date = (today + datetime.timedelta(days=90)).isoformat()
+                filters.append(ReservationModel.date >= default_from_date)
+                filters.append(ReservationModel.date <= default_to_date)
+            
+            # Status filtering
             if not include_cancelled:
                 filters.append(ReservationModel.status == "active")
 
@@ -213,7 +245,7 @@ def get_all_reservations(future=True, include_cancelled=False):
             reservations[user_id].append(
                 {
                     "id": r.id,
-                    "customer_name": r.customer_name,
+                    # customer_name removed - use /customers/names to resolve
                     "date": r.date,
                     "time_slot": r.time_slot,
                     "type": r.type,
@@ -316,7 +348,129 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
     except Exception as e:
         logging.error(f"get_all_conversations failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary"))
+
+
+def get_calendar_conversation_events(from_date=None, to_date=None):
+    """
+    Get lightweight conversation events for calendar with optional date range filtering.
+    Returns only the last message per customer within the specified date range.
+    This is optimized for calendar display - no need to load all messages.
     
+    OPTIMIZATION: This endpoint NO LONGER returns customer_name to eliminate redundancy.
+    Frontend should use /customers/names to resolve names from wa_id.
+    
+    Parameters:
+        from_date (str, optional): Start date in YYYY-MM-DD format. If provided, filters conversations from this date onwards.
+        to_date (str, optional): End date in YYYY-MM-DD format. If provided, filters conversations up to this date.
+    
+    Returns:
+        dict: Dictionary with wa_id as keys and list of conversation event dicts as values.
+             Each event contains role, message, date, time (customer_name removed).
+    """
+    try:
+        with get_session() as session:
+            # Build the SQL query with optional date filtering using parameterized queries
+            # Start with base query
+            base_query = """
+                WITH filtered_conversations AS (
+                    SELECT 
+                        wa_id,
+                        role,
+                        message,
+                        date,
+                        time
+                    FROM conversation c
+                """
+            
+            # Add date filtering conditions if provided
+            conditions = []
+            params = {}
+            if from_date:
+                conditions.append("c.date >= :from_date")
+                params['from_date'] = from_date
+            if to_date:
+                conditions.append("c.date <= :to_date")
+                params['to_date'] = to_date
+            
+            if conditions:
+                where_clause = "WHERE " + " AND ".join(conditions)
+            else:
+                where_clause = ""
+            
+            query = base_query + where_clause + """
+                ),
+                last_messages AS (
+                    SELECT DISTINCT ON (wa_id)
+                        wa_id,
+                        role,
+                        message,
+                        date,
+                        time
+                    FROM filtered_conversations
+                    ORDER BY wa_id, date DESC, time DESC
+                )
+                SELECT 
+                    lm.wa_id,
+                    lm.role,
+                    lm.message,
+                    lm.date,
+                    lm.time
+                FROM last_messages lm
+                ORDER BY lm.date DESC, lm.time DESC
+            """
+            
+            stmt = text(query)
+            rows = session.execute(stmt, params).all()
+            
+            # Format as calendar events structure
+            events = {}
+            for r in rows:
+                wa_id = r.wa_id
+                if wa_id not in events:
+                    events[wa_id] = []
+                events[wa_id].append({
+                    "role": r.role,
+                    "message": r.message,
+                    "date": r.date,
+                    "time": r.time,
+                    # customer_name removed - use /customers/names to resolve
+                })
+            
+            return format_response(True, data=events)
+    except Exception as e:
+        logging.error(f"get_calendar_conversation_events failed, error: {e}")
+        return format_response(False, message=get_message("system_error_contact_secretary"))
+
+
+def get_all_customer_names():
+    """
+    Get all customer names for sidebar combobox.
+    Returns all customers whether they have reservations or conversations.
+    """
+    try:
+        with get_session() as session:
+            # Get all customers with their names
+            stmt = select(
+                CustomerModel.wa_id,
+                CustomerModel.customer_name,
+            ).order_by(CustomerModel.wa_id)
+            
+            rows = session.execute(stmt).all()
+            
+            # Format as simple list
+            customers = {}
+            for r in rows:
+                customers[r.wa_id] = {
+                    "wa_id": r.wa_id,
+                    "customer_name": r.customer_name,
+                }
+            
+            return format_response(True, data=customers)
+    except Exception as e:
+        logging.error(f"get_all_customer_names failed, error: {e}")
+        return format_response(False, message=get_message("system_error_contact_secretary"))
+
+
 def append_message(wa_id, role, message, date_str, time_str):
     """
     Append a message to the conversation database for a given WhatsApp user.
@@ -355,6 +509,7 @@ def append_message(wa_id, role, message, date_str, time_str):
                 "conversation_new_message",
                 {"wa_id": wa_id, "role": role, "message": message, "date": date_str, "time": time_str},
                 affected_entities=[wa_id],
+                source="assistant",  # All conversation messages are backend-initiated (webhook/LLM)
             )
         except Exception:
             pass

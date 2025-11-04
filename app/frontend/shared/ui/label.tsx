@@ -1,25 +1,36 @@
-"use client";
+'use client'
 
-import * as LabelPrimitive from "@radix-ui/react-label";
-import { useUiOverride } from "@shared/libs/ui-registry";
-import { cn } from "@shared/libs/utils";
-import { cva, type VariantProps } from "class-variance-authority";
-import * as React from "react";
+import { Root as LabelRootPrimitive } from '@radix-ui/react-label'
+import { useUiOverride } from '@shared/libs/ui-registry'
+import { cn } from '@shared/libs/utils'
+import { cva, type VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 
-const labelVariants = cva("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70");
+const labelVariants = cva(
+	'font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'
+)
 
-type LabelProps = React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root> & VariantProps<typeof labelVariants>;
+type LabelProps = React.ComponentPropsWithoutRef<typeof LabelRootPrimitive> &
+	VariantProps<typeof labelVariants>
 
-const BaseLabel = React.forwardRef<React.ElementRef<typeof LabelPrimitive.Root>, LabelProps>(
-	({ className, ...props }, ref) => (
-		<LabelPrimitive.Root ref={ref} className={cn(labelVariants(), className)} {...props} />
-	)
-);
-BaseLabel.displayName = LabelPrimitive.Root.displayName;
+const BaseLabel = ({
+	className,
+	ref,
+	...props
+}: LabelProps & {
+	ref?: React.RefObject<React.ElementRef<typeof LabelRootPrimitive> | null>
+}) => (
+	<LabelRootPrimitive
+		className={cn(labelVariants(), className)}
+		ref={ref}
+		{...props}
+	/>
+)
+BaseLabel.displayName = LabelRootPrimitive.displayName
 
 function Label(props: LabelProps) {
-	const Override = useUiOverride<LabelProps>("Label", BaseLabel);
-	return <Override {...props} />;
+	const Override = useUiOverride<LabelProps>('Label', BaseLabel)
+	return <Override {...props} />
 }
 
-export { Label };
+export { Label }

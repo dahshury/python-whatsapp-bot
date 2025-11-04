@@ -1,168 +1,196 @@
-import { Z_INDEX } from "@shared/libs/ui/z-index";
-import { useTheme } from "next-themes";
-import React from "react";
-import { createPortal } from "react-dom";
-import { useFullscreen } from "../contexts/FullscreenContext";
+import { Z_INDEX } from '@shared/libs/ui/z-index'
+import { useTheme } from 'next-themes'
+import React from 'react'
+import { createPortal } from 'react-dom'
+import { i18n } from '@/shared/libs/i18n'
+import { useLanguage } from '@/shared/libs/state/language-context'
+import { useFullscreen } from '../contexts/FullscreenContext'
 
-interface FullscreenWrapperProps {
-	theme: Record<string, unknown>;
-	darkTheme: Record<string, unknown>;
-	children: React.ReactNode;
+type FullscreenWrapperProps = {
+	theme: Record<string, unknown>
+	darkTheme: Record<string, unknown>
+	children: React.ReactNode
 }
 
-export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({ theme, darkTheme, children }) => {
-	const { isFullscreen } = useFullscreen();
-	const [mounted, setMounted] = React.useState(false);
-	const [portalContainer, setPortalContainer] = React.useState<HTMLElement | null>(null);
-	const { theme: appTheme } = useTheme();
+export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
+	theme,
+	darkTheme,
+	children,
+}) => {
+	const { isFullscreen } = useFullscreen()
+	const [mounted, setMounted] = React.useState(false)
+	const [portalContainer, setPortalContainer] =
+		React.useState<HTMLElement | null>(null)
+	const { theme: appTheme } = useTheme()
+	const { isLocalized } = useLanguage()
 
 	// Handle SSR - wait for client mount
 	React.useEffect(() => {
-		setMounted(true);
-	}, []);
+		setMounted(true)
+	}, [])
 
 	// Determine if we're in dark mode - prioritize next-themes over internal theme
-	const isDark = mounted ? appTheme === "dark" : theme === darkTheme;
+	const isDark = mounted ? appTheme === 'dark' : theme === darkTheme
 
 	React.useEffect(() => {
 		if (isFullscreen && mounted) {
-			// Create a dedicated portal container
-			const container = document.createElement("div");
-			container.id = "grid-fullscreen-portal";
-			container.style.position = "fixed";
-			container.style.top = "0";
-			container.style.left = "0";
-			container.style.right = "0";
-			container.style.bottom = "0";
-			container.style.width = "100vw";
-			container.style.height = "100vh";
+			// Create a dedicated portal container for fullscreen content
+			const container = document.createElement('div')
+			container.id = 'grid-fullscreen-portal'
+			container.style.position = 'fixed'
+			container.style.top = '0'
+			container.style.left = '0'
+			container.style.right = '0'
+			container.style.bottom = '0'
+			container.style.width = '100vw'
+			container.style.height = '100vh'
 			container.style.zIndex = (
 				Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_BACKDROP) ||
 				Number((Z_INDEX as Record<string, number>).FULLSCREEN_BACKDROP)
-			).toString();
-			container.style.pointerEvents = "auto";
+			).toString()
+			container.style.pointerEvents = 'auto'
 
-			// Provide a child portal above content for grid overlays like toolbar
-			const overlayPortal = document.createElement("div");
-			overlayPortal.id = "grid-fullscreen-overlay-portal";
-			overlayPortal.style.position = "fixed";
-			overlayPortal.style.top = "0";
-			overlayPortal.style.left = "0";
-			overlayPortal.style.width = "0";
-			overlayPortal.style.height = "0";
+			// Provide a separate portal above fullscreen content for overlays like the toolbar
+			const overlayPortal = document.createElement('div')
+			overlayPortal.id = 'grid-fullscreen-overlay-portal'
+			overlayPortal.style.position = 'fixed'
+			overlayPortal.style.top = '0'
+			overlayPortal.style.left = '0'
+			overlayPortal.style.width = '0'
+			overlayPortal.style.height = '0'
+			overlayPortal.style.overflow = 'visible'
 			overlayPortal.style.zIndex = (
-				Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) ||
+				Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_OVERLAY) ||
+				Number((Z_INDEX as Record<string, number>).ENHANCED_OVERLAY) ||
 				Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT)
-			).toString();
-			container.appendChild(overlayPortal);
+			).toString()
+			overlayPortal.style.pointerEvents = 'auto'
 
 			// Copy theme classes
-			if (document.documentElement.classList.contains("dark")) {
-				container.classList.add("dark");
+			if (document.documentElement.classList.contains('dark')) {
+				container.classList.add('dark')
+				overlayPortal.classList.add('dark')
 			}
 
-			document.body.appendChild(container);
-			setPortalContainer(container);
+			document.body.appendChild(container)
+			document.body.appendChild(overlayPortal)
+			setPortalContainer(container)
 
 			// Add a class to body to hide scrollbars
-			document.body.classList.add("grid-fullscreen-active");
+			document.body.classList.add('grid-fullscreen-active')
 
 			return () => {
 				try {
-					container.remove();
+					container.remove()
 				} catch {
-					document.body.removeChild(container);
+					document.body.removeChild(container)
 				}
-				document.body.classList.remove("grid-fullscreen-active");
-				setPortalContainer(null);
-			};
+				if (overlayPortal.parentNode) {
+					try {
+						overlayPortal.remove()
+					} catch {
+						overlayPortal.parentNode.removeChild(overlayPortal)
+					}
+				}
+				document.body.classList.remove('grid-fullscreen-active')
+				setPortalContainer(null)
+			}
 		}
-		return undefined;
-	}, [isFullscreen, mounted]);
+		return
+	}, [isFullscreen, mounted])
 
 	if (!isFullscreen) {
-		return <>{children}</>;
+		return <>{children}</>
 	}
 
 	const wrapperStyle: React.CSSProperties = {
-		position: "fixed",
+		position: 'fixed',
 		top: 0,
 		left: 0,
 		right: 0,
 		bottom: 0,
-		width: "100vw",
-		height: "100vh",
-		backgroundColor: isDark ? "rgb(0 0 0 / 0.95)" : "rgb(255 255 255 / 0.95)",
-		backdropFilter: "blur(10px)",
-		display: "flex",
-		flexDirection: "column",
+		width: '100vw',
+		height: '100vh',
+		backgroundColor: isDark ? 'rgb(0 0 0 / 0.95)' : 'rgb(255 255 255 / 0.95)',
+		backdropFilter: 'blur(10px)',
+		display: 'flex',
+		flexDirection: 'column',
 		zIndex:
 			Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_BACKDROP) ||
 			Number((Z_INDEX as Record<string, number>).FULLSCREEN_BACKDROP),
-	};
+	}
 
 	const contentStyle: React.CSSProperties = {
-		width: "100%",
-		height: "100%",
-		display: "flex",
-		flexDirection: "column",
-		overflow: "auto", // Allow scrolling when content is larger than viewport
+		width: '100%',
+		height: '100%',
+		display: 'flex',
+		flexDirection: 'column',
+		overflow: 'auto', // Allow scrolling when content is larger than viewport
 		flex: 1,
-	};
+	}
 
 	const gridContainerStyle: React.CSSProperties = {
-		width: "100%",
-		height: "100%",
-		display: "flex",
-		flexDirection: "column",
-		alignItems: "center",
-		justifyContent: "flex-start",
-		paddingTop: "60px", // Space for toolbar
-		paddingLeft: "20px",
-		paddingRight: "20px",
-		paddingBottom: "40px", // Space for ESC message
-		boxSizing: "border-box",
-		overflow: "auto", // Allow scrolling if content is larger
-	};
+		width: '100%',
+		height: '100%',
+		display: 'flex',
+		flexDirection: 'column',
+		alignItems: 'center',
+		justifyContent: 'flex-start',
+		paddingTop: '60px', // Space for toolbar
+		paddingLeft: '20px',
+		paddingRight: '20px',
+		paddingBottom: '40px', // Space for ESC message
+		boxSizing: 'border-box',
+		overflow: 'auto', // Allow scrolling if content is larger
+	}
 
 	const fullscreenContent = (
-		<div style={wrapperStyle} className={`grid-fullscreen-wrapper ${isDark ? "dark" : ""}`}>
+		<div
+			className={`grid-fullscreen-wrapper ${isDark ? 'dark' : ''}`}
+			style={wrapperStyle}
+		>
 			<div
 				style={{
 					...contentStyle,
-					position: "relative",
+					position: 'relative',
 					zIndex:
-						Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) ||
-						Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
+						Number(
+							(Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT
+						) || Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
 				}}
 			>
-				<div style={gridContainerStyle} className="glide-grid-fullscreen-container">
+				<div
+					className="glide-grid-fullscreen-container"
+					style={gridContainerStyle}
+				>
 					{children}
 				</div>
 				<div
+					className="rounded-md bg-background/80 px-3 py-1 text-muted-foreground backdrop-blur-sm"
 					style={{
-						position: "fixed",
-						bottom: "20px",
-						right: "20px",
-						fontSize: "12px",
-						fontFamily: "system-ui, -apple-system, sans-serif",
+						position: 'fixed',
+						bottom: '20px',
+						right: '20px',
+						fontSize: '12px',
+						fontFamily: 'system-ui, -apple-system, sans-serif',
 						zIndex:
-							Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) ||
+							Number(
+								(Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT
+							) ||
 							Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
 					}}
-					className="text-muted-foreground bg-background/80 backdrop-blur-sm px-3 py-1 rounded-md"
 				>
-					Press ESC to exit fullscreen
+					{i18n.getMessage('press_esc_to_exit_fullscreen', isLocalized)}
 				</div>
 			</div>
 		</div>
-	);
+	)
 
 	// Always use portal for fullscreen to ensure it renders at body level
 	if (mounted && portalContainer) {
-		return createPortal(fullscreenContent, portalContainer);
+		return createPortal(fullscreenContent, portalContainer)
 	}
 
 	// Fallback: render children normally if portal is not ready
-	return <>{children}</>;
-};
+	return <>{children}</>
+}

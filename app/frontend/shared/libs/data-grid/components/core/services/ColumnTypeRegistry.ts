@@ -1,39 +1,42 @@
-import type { IColumnType, IColumnTypeRegistry } from "../interfaces/IColumnType";
-import type { ColumnDataType } from "../interfaces/IDataSource";
+import type {
+	IColumnType,
+	IColumnTypeRegistry,
+} from '../interfaces/IColumnType'
+import type { ColumnDataType } from '../interfaces/IDataSource'
 
 export class ColumnTypeRegistry implements IColumnTypeRegistry {
-	private static instance: ColumnTypeRegistry;
-	private columnTypes: Map<ColumnDataType, IColumnType> = new Map();
+	private static instance: ColumnTypeRegistry
+	private readonly columnTypes: Map<ColumnDataType, IColumnType> = new Map()
 
 	private constructor() {}
 
-	public static getInstance(): ColumnTypeRegistry {
+	static getInstance(): ColumnTypeRegistry {
 		if (!ColumnTypeRegistry.instance) {
-			ColumnTypeRegistry.instance = new ColumnTypeRegistry();
+			ColumnTypeRegistry.instance = new ColumnTypeRegistry()
 		}
-		return ColumnTypeRegistry.instance;
+		return ColumnTypeRegistry.instance
 	}
 
-	public register(columnType: IColumnType): void {
+	register(columnType: IColumnType): void {
 		// Only register if not already registered to prevent warnings in development
 		if (!this.columnTypes.has(columnType.dataType)) {
-			this.columnTypes.set(columnType.dataType, columnType);
+			this.columnTypes.set(columnType.dataType, columnType)
 		}
 	}
 
-	public get(dataType: ColumnDataType): IColumnType | undefined {
-		return this.columnTypes.get(dataType);
+	get(dataType: ColumnDataType): IColumnType | undefined {
+		return this.columnTypes.get(dataType)
 	}
 
-	public getAll(): Map<ColumnDataType, IColumnType> {
-		return new Map(this.columnTypes);
+	getAll(): Map<ColumnDataType, IColumnType> {
+		return new Map(this.columnTypes)
 	}
 
-	public hasType(dataType: ColumnDataType): boolean {
-		return this.columnTypes.has(dataType);
+	hasType(dataType: ColumnDataType): boolean {
+		return this.columnTypes.has(dataType)
 	}
 
-	public clear(): void {
-		this.columnTypes.clear();
+	clear(): void {
+		this.columnTypes.clear()
 	}
 }

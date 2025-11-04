@@ -1,67 +1,105 @@
-"use client";
+'use client'
 
-import { useLanguage } from "@shared/libs/state/language-context";
-import { cn } from "@shared/libs/utils";
-import { Button } from "@ui/button";
-import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Grid3X3, List } from "lucide-react";
-import * as React from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
-import { useCalendarToolbar } from "@/widgets/calendar/hooks/useCalendarToolbar";
-import type { CalendarCoreRef } from "./CalendarCore";
+import { i18n } from '@shared/libs/i18n'
+import { useLanguage } from '@shared/libs/state/language-context'
+import { cn } from '@shared/libs/utils'
+import { Button } from '@ui/button'
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { RefObject } from 'react'
+import { useState } from 'react'
+import type { CalendarCoreRef } from '@/features/calendar'
+import { useCalendarToolbar } from '@/features/calendar'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from '@/shared/ui/tooltip'
 
-interface CalendarToolbarProps {
-	calendarRef?: React.RefObject<CalendarCoreRef | null> | null;
-	currentView: string;
-	freeRoam?: boolean;
-	className?: string;
+type CalendarToolbarProps = {
+	calendarRef?: RefObject<CalendarCoreRef | null> | null
+	currentView: string
+	freeRoam?: boolean
+	className?: string
 }
 
-export function CalendarToolbar({ calendarRef, currentView, className }: CalendarToolbarProps) {
-	const { isLocalized } = useLanguage();
-	const [isHoveringDate, setIsHoveringDate] = React.useState(false);
+export function CalendarToolbar({
+	calendarRef,
+	currentView,
+	className,
+}: CalendarToolbarProps) {
+	const { isLocalized } = useLanguage()
+	const [isHoveringDate, setIsHoveringDate] = useState(false)
 
 	// Use the custom hook for all calendar logic
-	const { title, isPrevDisabled, isNextDisabled, isTodayDisabled, handlePrev, handleNext, handleToday } =
-		useCalendarToolbar({
-			calendarRef: calendarRef || null,
-			currentView,
-		});
+	const {
+		title,
+		isPrevDisabled,
+		isNextDisabled,
+		isTodayDisabled,
+		handlePrev,
+		handleNext,
+		handleToday,
+	} = useCalendarToolbar({
+		calendarRef: calendarRef || null,
+		currentView,
+	})
 
 	// Define navigation buttons with proper arrow directions for RTL
 	const prevButton = (
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button variant="ghost" size="icon" onClick={handlePrev} disabled={isPrevDisabled} className="h-16 w-16">
+					<Button
+						className="h-16 w-16"
+						disabled={isPrevDisabled}
+						onClick={handlePrev}
+						size="icon"
+						variant="ghost"
+					>
 						{/* In RTL, use right arrow for previous (pointing outward) */}
-						{isLocalized ? <ChevronRight className="h-8 w-8" /> : <ChevronLeft className="h-8 w-8" />}
+						{isLocalized ? (
+							<ChevronRight className="h-8 w-8" />
+						) : (
+							<ChevronLeft className="h-8 w-8" />
+						)}
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isLocalized ? "السابق" : "Previous"}</p>
+					<p>{i18n.getMessage('msg_previous', isLocalized)}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	);
+	)
 
 	const nextButton = (
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<Button variant="ghost" size="icon" onClick={handleNext} disabled={isNextDisabled} className="h-16 w-16">
+					<Button
+						className="h-16 w-16"
+						disabled={isNextDisabled}
+						onClick={handleNext}
+						size="icon"
+						variant="ghost"
+					>
 						{/* In RTL, use left arrow for next (pointing outward) */}
-						{isLocalized ? <ChevronLeft className="h-8 w-8" /> : <ChevronRight className="h-8 w-8" />}
+						{isLocalized ? (
+							<ChevronLeft className="h-8 w-8" />
+						) : (
+							<ChevronRight className="h-8 w-8" />
+						)}
 					</Button>
 				</TooltipTrigger>
 				<TooltipContent>
-					<p>{isLocalized ? "التالي" : "Next"}</p>
+					<p>{i18n.getMessage('msg_next', isLocalized)}</p>
 				</TooltipContent>
 			</Tooltip>
 		</TooltipProvider>
-	);
+	)
 
 	return (
-		<div className={cn("flex items-center gap-2", className)}>
+		<div className={cn('flex items-center gap-2', className)}>
 			{/* Navigation controls with date in the middle */}
 			<div className="flex items-center">
 				{/* Left side navigation button (Previous in LTR, Next in RTL) */}
@@ -72,33 +110,37 @@ export function CalendarToolbar({ calendarRef, currentView, className }: Calenda
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button
-								variant="ghost"
-								size="sm"
-								onClick={handleToday}
+								className={cn(
+									'group relative mx-2 h-16 px-6 font-medium text-2xl',
+									'hover:bg-accent hover:text-accent-foreground',
+									'transition-all duration-200',
+									!isTodayDisabled && 'cursor-pointer'
+								)}
 								disabled={isTodayDisabled}
+								onClick={handleToday}
 								onMouseEnter={() => setIsHoveringDate(true)}
 								onMouseLeave={() => setIsHoveringDate(false)}
-								className={cn(
-									"h-16 px-6 mx-2 text-2xl font-medium relative group",
-									"hover:bg-accent hover:text-accent-foreground",
-									"transition-all duration-200",
-									!isTodayDisabled && "cursor-pointer"
-								)}
+								size="sm"
+								variant="ghost"
 							>
 								{/* Calendar icon that appears on hover */}
 								<CalendarDays
 									className={cn(
-										"h-7 w-7 absolute transition-all duration-200",
-										isLocalized ? "right-2" : "left-2",
-										isHoveringDate && !isTodayDisabled ? "opacity-100 scale-100" : "opacity-0 scale-75"
+										'absolute h-7 w-7 transition-all duration-200',
+										isLocalized ? 'right-2' : 'left-2',
+										isHoveringDate && !isTodayDisabled
+											? 'scale-100 opacity-100'
+											: 'scale-75 opacity-0'
 									)}
 								/>
 
 								{/* Date text with padding adjustment for icon */}
 								<span
 									className={cn(
-										"transition-all duration-200",
-										isHoveringDate && !isTodayDisabled && (isLocalized ? "pr-10" : "pl-10")
+										'transition-all duration-200',
+										isHoveringDate &&
+											!isTodayDisabled &&
+											(isLocalized ? 'pr-10' : 'pl-10')
 									)}
 								>
 									{title}
@@ -107,9 +149,10 @@ export function CalendarToolbar({ calendarRef, currentView, className }: Calenda
 								{/* Subtle underline indicator */}
 								<span
 									className={cn(
-										"absolute bottom-2 left-6 right-6 h-0.5 bg-current opacity-0 scale-x-0",
-										"transition-all duration-200 origin-center",
-										!isTodayDisabled && "group-hover:opacity-20 group-hover:scale-x-100"
+										'absolute right-6 bottom-2 left-6 h-0.5 scale-x-0 bg-current opacity-0',
+										'origin-center transition-all duration-200',
+										!isTodayDisabled &&
+											'group-hover:scale-x-100 group-hover:opacity-20'
 									)}
 								/>
 
@@ -117,9 +160,9 @@ export function CalendarToolbar({ calendarRef, currentView, className }: Calenda
 								{!isTodayDisabled && (
 									<span
 										className={cn(
-											"absolute top-1 h-3 w-3 rounded-full",
-											"bg-primary animate-pulse",
-											isLocalized ? "left-1" : "right-1"
+											'absolute top-1 h-3 w-3 rounded-full',
+											'animate-pulse bg-primary',
+											isLocalized ? 'left-1' : 'right-1'
 										)}
 									/>
 								)}
@@ -128,15 +171,11 @@ export function CalendarToolbar({ calendarRef, currentView, className }: Calenda
 						<TooltipContent>
 							<p className="flex items-center gap-1.5">
 								{isTodayDisabled ? (
-									isLocalized ? (
-										"أنت بالفعل في اليوم الحالي"
-									) : (
-										"Already showing today"
-									)
+									i18n.getMessage('already_showing_today', isLocalized)
 								) : (
 									<>
 										<CalendarDays className="h-3.5 w-3.5" />
-										{isLocalized ? "الذهاب إلى اليوم" : "Go to today"}
+										{i18n.getMessage('go_to_today', isLocalized)}
 									</>
 								)}
 							</p>
@@ -148,25 +187,8 @@ export function CalendarToolbar({ calendarRef, currentView, className }: Calenda
 				{isLocalized ? prevButton : nextButton}
 			</div>
 		</div>
-	);
+	)
 }
 
 // Export view options for use in settings
-export const getCalendarViewOptions = (isLocalized: boolean) => [
-	{
-		value: "multiMonthYear",
-		label: isLocalized ? "السنة" : "Year",
-		icon: Grid3X3,
-	},
-	{
-		value: "dayGridMonth",
-		label: isLocalized ? "الشهر" : "Month",
-		icon: Calendar,
-	},
-	{
-		value: "timeGridWeek",
-		label: isLocalized ? "الأسبوع" : "Week",
-		icon: Calendar,
-	},
-	{ value: "listMonth", label: isLocalized ? "قائمة" : "List", icon: List },
-];
+export { getCalendarViewOptions } from '@/features/calendar'

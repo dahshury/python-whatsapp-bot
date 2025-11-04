@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react'
 
 export function useGridLifecycle(
 	isFullscreen: boolean,
@@ -8,22 +8,24 @@ export function useGridLifecycle(
 	// lock body scroll when fullscreen
 	React.useEffect(() => {
 		if (isFullscreen) {
-			document.body.style.overflow = "hidden";
+			document.body.style.overflow = 'hidden'
 		} else {
-			document.body.style.overflow = "";
+			document.body.style.overflow = ''
 		}
-	}, [isFullscreen]);
+	}, [isFullscreen])
 
 	// Close column menu on outside click
 	React.useEffect(() => {
-		if (!showColumnMenu) return;
+		if (!showColumnMenu) {
+			return
+		}
 		const handleClick = (e: MouseEvent) => {
-			const menu = document.getElementById("column-menu-popup");
+			const menu = document.getElementById('column-menu-popup')
 			if (menu && !menu.contains(e.target as Node)) {
-				setShowColumnMenu(false);
+				setShowColumnMenu(false)
 			}
-		};
-		document.addEventListener("mousedown", handleClick);
-		return () => document.removeEventListener("mousedown", handleClick);
-	}, [showColumnMenu, setShowColumnMenu]);
+		}
+		document.addEventListener('mousedown', handleClick)
+		return () => document.removeEventListener('mousedown', handleClick)
+	}, [showColumnMenu, setShowColumnMenu])
 }

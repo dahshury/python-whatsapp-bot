@@ -1,14 +1,19 @@
 /* Dialog Cell Editor Overrides - Centralized Solution */
 
-/* 
+/*
  * All dialog-related z-index values are now centralized in _z-index.css
- * 
+ *
  * Z-Index Variables:
  * - --z-dialog-backdrop: 30 (dialog backdrop)
  * - --z-dialog-content: 40 (dialog content)
  * - --z-dialog-overlays: 50 (all overlays above dialog)
- * 
+ *
  * This ensures consistent z-index management across the entire application.
  * All overlay elements (cell editors, dropdowns, etc.) automatically use
  * the --z-dialog-overlays variable for proper layering.
  */
+
+:root {
+	/* Provides a named alias for overlay layers used by cell editors */
+	--dialog-cell-editor-overlay: var(--z-dialog-overlays);
+}
