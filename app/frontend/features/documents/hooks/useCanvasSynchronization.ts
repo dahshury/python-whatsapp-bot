@@ -123,6 +123,7 @@ export function useCanvasSynchronization(
 
 	// Wrap handleCanvasChange to mirror editor → viewer imperatively (rAF-coalesced)
 	// Only mirror elements and files, not viewport/panning (appState)
+	// DO NOT update viewerScene state prop - only use API updates to avoid re-renders
 	const handleCanvasChange = useCallback(
 		(
 			elements: unknown[],
@@ -142,6 +143,7 @@ export function useCanvasSynchronization(
 						} | null
 						if (api?.updateScene && pending?.elements) {
 							// Do not override viewer camera; update elements/files only
+							// Do NOT update viewerScene state - only use API to avoid re-renders
 							api.updateScene({
 								elements: pending.elements as unknown[],
 								files: (pending.files || {}) as Record<string, unknown>,

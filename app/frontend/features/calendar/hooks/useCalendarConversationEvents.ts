@@ -56,14 +56,17 @@ export function useCalendarConversationEvents() {
  * @param periodKey - Period identifier (e.g., "2025-11" for month, "2025-W44" for week)
  * @param fromDate - Start date (YYYY-MM-DD)
  * @param toDate - End date (YYYY-MM-DD)
- * @param freeRoam - Whether free-roam mode is enabled (affects caching, not filtering)
+ * @param options - Options object
+ * @param options.freeRoam - Whether free-roam mode is enabled (affects caching, not filtering)
+ * @param options.enabled - Whether the query should be enabled (default: true)
  */
 export function useCalendarConversationEventsForPeriod(
 	periodKey: string,
 	fromDate: string,
 	toDate: string,
-	freeRoam?: boolean
+	options?: { freeRoam?: boolean; enabled?: boolean }
 ) {
+	const { freeRoam, enabled = true } = options || {}
 	const queryClient = useQueryClient()
 
 	// Check if we have cached data for this period
@@ -97,6 +100,6 @@ export function useCalendarConversationEventsForPeriod(
 		refetchOnWindowFocus: false, // Don't refetch when window regains focus
 		refetchOnMount: false, // Don't refetch on mount - use cached data (WebSocket handles real-time updates)
 		retry: 1,
-		enabled: Boolean(periodKey && fromDate && toDate),
+		enabled: Boolean(enabled && periodKey && fromDate && toDate),
 	})
 }

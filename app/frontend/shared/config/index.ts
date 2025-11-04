@@ -13,3 +13,36 @@ export const RESERVATION_CONFIG = {
 	 */
 	MAX_RESERVATIONS_FRONTEND: 6,
 } as const
+
+/**
+ * HTTP status code constants
+ */
+export const HTTP_STATUS = {
+	OK: 200,
+	NOT_FOUND: 404,
+	INTERNAL_SERVER_ERROR: 500,
+} as const
+
+/**
+ * Backend connection constants
+ */
+export const BACKEND_CONNECTION = {
+	/**
+	 * Delay in milliseconds before reloading the page after retry
+	 */
+	RETRY_RELOAD_DELAY_MS: 120,
+	/**
+	 * Maximum length of response preview to store
+	 */
+	RESPONSE_PREVIEW_MAX_LENGTH: 2000,
+} as const
+
+/**
+ * UI prefetch constants
+ */
+export const PREFETCH = {
+	/**
+	 * Delay in milliseconds before marking prefetch as complete
+	 */
+	PREFETCH_COMPLETE_DELAY_MS: 100,
+} as const

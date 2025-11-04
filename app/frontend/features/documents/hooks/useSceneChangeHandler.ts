@@ -154,6 +154,7 @@ export const useSceneChangeHandler = (
 					combinedSignature,
 					hasContentChanges: changeResult.hasContentChanges,
 					hasCameraChanges,
+					idleTimeoutMs: 3000, // Only schedule idle save if no activity in last 3 seconds
 				})
 
 				// Schedule save if needed

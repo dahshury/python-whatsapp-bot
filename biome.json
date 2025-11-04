@@ -34,7 +34,8 @@
         "noDangerouslySetInnerHtml": "warn"
       },
       "performance": {
-        "noBarrelFile": "off"
+        "noBarrelFile": "off",
+        "noNamespaceImport": "error"
       },
       "style": {
         "useBlockStatements": "warn",

@@ -1,3 +1,5 @@
+'use client'
+
 import { useDebouncedValue } from '@shared/libs/hooks/use-debounced-value'
 import { useScrollSelectedIntoView } from '@shared/libs/hooks/use-scroll-selected-into-view'
 import { DEFAULT_COUNTRY } from '@shared/libs/phone/config'

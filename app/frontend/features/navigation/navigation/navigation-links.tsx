@@ -4,11 +4,11 @@ import { i18n } from '@shared/libs/i18n'
 import { cn } from '@shared/libs/utils'
 import { buttonVariants } from '@ui/button'
 import { BarChart3, Calendar, FileText } from 'lucide-react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { memo } from 'react'
 import type { NavigationLinksProps } from '@/features/navigation/types'
 import { DockIcon } from '@/shared/ui/dock'
+import { PrefetchLink } from '@/shared/ui/prefetch-link'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
 
 export const NavigationLinks = memo(
@@ -22,7 +22,7 @@ export const NavigationLinks = memo(
 				<DockIcon>
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<Link
+							<PrefetchLink
 								aria-label={i18n.getMessage('documents', isLocalized)}
 								className={cn(
 									buttonVariants({
@@ -38,7 +38,7 @@ export const NavigationLinks = memo(
 								href="/documents"
 							>
 								<FileText className="size-4 sm:size-5" />
-							</Link>
+							</PrefetchLink>
 						</TooltipTrigger>
 						<TooltipContent>
 							<p>{i18n.getMessage('documents', isLocalized)}</p>
@@ -49,7 +49,7 @@ export const NavigationLinks = memo(
 				<DockIcon>
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<Link
+							<PrefetchLink
 								aria-label={i18n.getMessage('dashboard_title', isLocalized)}
 								className={cn(
 									buttonVariants({
@@ -65,7 +65,7 @@ export const NavigationLinks = memo(
 								href="/dashboard"
 							>
 								<BarChart3 className="size-4 sm:size-5" />
-							</Link>
+							</PrefetchLink>
 						</TooltipTrigger>
 						<TooltipContent>
 							<p>{i18n.getMessage('dashboard_title', isLocalized)}</p>
@@ -83,7 +83,7 @@ export const CalendarLink = memo(
 		className = '',
 	}: Pick<NavigationLinksProps, 'isLocalized' | 'className'>) => (
 		<DockIcon>
-			<Link
+			<PrefetchLink
 				aria-label={i18n.getMessage('calendar', isLocalized)}
 				className={cn(
 					buttonVariants({
@@ -97,7 +97,7 @@ export const CalendarLink = memo(
 				prefetch={false}
 			>
 				<Calendar className="size-4" />
-			</Link>
+			</PrefetchLink>
 		</DockIcon>
 	)
 )

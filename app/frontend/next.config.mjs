@@ -11,11 +11,12 @@ const nextConfig = {
 			process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || 'Asia/Riyadh',
 	},
 
-	// Allow remote images from YouTube thumbnail hosts
+	// Allow remote images from YouTube thumbnail hosts and curated Unsplash assets
 	images: {
 		remotePatterns: [
 			{ protocol: 'https', hostname: 'img.youtube.com' },
 			{ protocol: 'https', hostname: 'i.ytimg.com' },
+			{ protocol: 'https', hostname: 'images.unsplash.com' },
 		],
 	},
 
@@ -61,7 +62,7 @@ const nextConfig = {
 						value:
 							process.env.NODE_ENV === 'development'
 								? "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; font-src 'self' data: blob: https:;"
-								: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com; font-src 'self' data: blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://offline.tawkit.net; connect-src 'self' ws: wss: http: https:;",
+								: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://images.unsplash.com; font-src 'self' data: blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://offline.tawkit.net; connect-src 'self' ws: wss: http: https:;",
 					},
 				],
 			},

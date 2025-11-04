@@ -20,8 +20,6 @@ export type {
 	CustomerRowPersistenceState,
 } from './customer-row-persistence.service'
 export { CustomerRowPersistenceService } from './customer-row-persistence.service'
-export type { DocumentLoadOptions } from './document-load.service'
-export { DocumentLoadService } from './document-load.service'
 // Save process exports (to be gradually deprecated as hooks are refactored)
 export {
 	createIdleAutosaveController,

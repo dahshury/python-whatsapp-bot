@@ -178,11 +178,11 @@ describe('useCalendarEvents', () => {
 		})
 
 		// Should call with freeRoam=true
-		expect(useCalendarReservationsForPeriod).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.any(String),
-			expect.any(String),
-			true
-		)
+		expect(useCalendarReservationsForPeriod).toHaveBeenCalledWith({
+			periodKey: expect.any(String),
+			fromDate: expect.any(String),
+			toDate: expect.any(String),
+			freeRoam: true,
+		})
 	})
 })

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { DocumentLoadService } from '../services/document-load.service'
-import { createDocumentsService } from '../services/documents.service.factory'
+import { DEFAULT_DOCUMENT_WA_ID } from '@/shared/libs/documents'
+import { useEnsureInitialized, useGetByWaId } from './index'
 
 export type UseDocumentLoadOptions = {
 	enabled: boolean
@@ -10,8 +10,8 @@ export type UseDocumentLoadOptions = {
 }
 
 /**
- * Hook for loading documents from the server.
- * Handles initialization, REST coordination, and WebSocket loading.
+ * Hook for loading documents from the server using TanStack Query.
+ * Handles initialization and document loading via queries.
  *
  * @param waId - WhatsApp ID of the document to load
  * @param options - Load configuration options
@@ -35,54 +35,132 @@ export const useDocumentLoad = (
 	const [, startTransition] = useTransition()
 	const lastLoadedWaIdRef = useRef<string | null>(null)
 
+	// Use TanStack Query for document retrieval
+	// Enable query when basic conditions are met - documents are dynamic, no caching
+	const queryEnabled =
+		enabled &&
+		autoLoadOnMount &&
+		Boolean(waId) &&
+		waId !== DEFAULT_DOCUMENT_WA_ID
+
+	// Use query with enabled flag to control when it fetches
+	const { data, isLoading } = useGetByWaId(waId, {
+		enabled: queryEnabled,
+	})
+	const ensureInitialized = useEnsureInitialized()
+
+	// Reset when waId changes and show loading indicator for new document
 	useEffect(() => {
-		if (!(enabled && autoLoadOnMount && waId)) {
+		if (!waId) {
+			return
+		}
+
+		if (lastLoadedWaIdRef.current !== waId) {
+			// Reset tracking
+			lastLoadedWaIdRef.current = null
+
+			const shouldShowSpinner =
+				enabled && autoLoadOnMount && waId !== DEFAULT_DOCUMENT_WA_ID
+
+			if (shouldShowSpinner) {
+				// Always show loading - query will refetch fresh data (no caching)
+				startTransition(() => setLoading(true))
+			} else {
+				startTransition(() => setLoading(false))
+			}
+		}
+		// startTransition is stable from React, doesn't need to be in deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [waId, enabled, autoLoadOnMount])
+
+	// Handle query data when it arrives
+	useEffect(() => {
+		if (!(data?.document && waId) || lastLoadedWaIdRef.current === waId) {
+			return
+		}
+
+		lastLoadedWaIdRef.current = waId
+
+		window.dispatchEvent(
+			new CustomEvent('documents:external-update', {
+				detail: {
+					wa_id: waId,
+					document: data.document,
+				},
+			})
+		)
+		startTransition(() => setLoading(false))
+		// startTransition is stable from React, doesn't need to be in deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [data, waId])
+
+	// Initialization effect - ensures document is initialized (runs in parallel with query)
+	useEffect(() => {
+		if (
+			!(enabled && autoLoadOnMount && waId) ||
+			waId === DEFAULT_DOCUMENT_WA_ID
+		) {
+			return
+		}
+
+		// Skip if already loaded
+		if (lastLoadedWaIdRef.current === waId) {
 			return
 		}
 
 		let cancelled = false
 
-		const load = async () => {
-			if (DocumentLoadService.shouldSkipLoad(waId, lastLoadedWaIdRef.current)) {
-				return
-			}
-
-			startTransition(() => setLoading(true))
-
+		const initialize = async () => {
 			try {
-				// Ensure document is initialized
-				const svc = createDocumentsService()
-				await svc.ensureInitialized(waId)
+				// Ensure initialization - this can run in parallel with query fetch
+				await ensureInitialized(waId)
 
-				// Check if we should still proceed
 				if (cancelled) {
 					return
 				}
-				if (lastLoadedWaIdRef.current === waId) {
-					return
-				}
 
-				// Load document via WebSocket
-				await DocumentLoadService.load({
-					waId,
-					pollIntervalMs,
-				})
+				// Wait for any in-flight REST operations to complete
+				while (true) {
+					await new Promise((resolve) => setTimeout(resolve, pollIntervalMs))
+					const restInFlight = (globalThis as { __docRestInFlight?: boolean })
+						.__docRestInFlight
+					if (!restInFlight) {
+						break
+					}
+					if (cancelled) {
+						return
+					}
+				}
 			} catch (_error) {
 				if (!cancelled) {
-					// Error handled at higher level
 					startTransition(() => setLoading(false))
 				}
 			}
 		}
 
-		load().catch(() => {
-			// Error already handled in load()
+		initialize().catch(() => {
+			// Error already handled
 		})
 
 		return () => {
 			cancelled = true
 		}
-	}, [enabled, autoLoadOnMount, waId, pollIntervalMs])
+	}, [enabled, autoLoadOnMount, waId, pollIntervalMs, ensureInitialized])
+
+	// Sync loading state with query state during initial load only
+	useEffect(() => {
+		if (!queryEnabled) {
+			return
+		}
+		if (lastLoadedWaIdRef.current === waId) {
+			return
+		}
+		startTransition(() => {
+			setLoading(isLoading)
+		})
+		// startTransition is stable from React, doesn't need to be in deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [queryEnabled, isLoading, waId])
 
 	return {
 		loading,

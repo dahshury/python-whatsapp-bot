@@ -24,6 +24,7 @@ type UseCalendarSlidingWindowOptions = {
 	freeRoam: boolean
 	excludeConversations?: boolean
 	windowSize?: number // Number of periods to prefetch on each side (default: 5)
+	enabled?: boolean // Whether prefetching should be enabled (default: true)
 }
 
 /**
@@ -38,6 +39,7 @@ export function useCalendarSlidingWindow(
 		freeRoam,
 		excludeConversations = false,
 		windowSize = 5,
+		enabled = true,
 	} = options
 
 	const queryClient = useQueryClient()
@@ -164,6 +166,11 @@ export function useCalendarSlidingWindow(
 	// Prefetch all periods in the window asynchronously
 	// This runs in a separate effect to ensure prefetching happens immediately
 	useEffect(() => {
+		// Skip prefetching if disabled
+		if (!enabled) {
+			return
+		}
+
 		// Prefetch all periods in parallel (fire and forget)
 		const prefetchPromises: Promise<unknown>[] = []
 
@@ -269,7 +276,14 @@ export function useCalendarSlidingWindow(
 				// Errors are logged by TanStack Query internally
 			})
 		}
-	}, [prefetchPeriods, viewType, freeRoam, excludeConversations, queryClient])
+	}, [
+		prefetchPeriods,
+		viewType,
+		freeRoam,
+		excludeConversations,
+		queryClient,
+		enabled,
+	])
 
 	return {
 		currentPeriodKey,

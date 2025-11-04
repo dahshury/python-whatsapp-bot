@@ -10,6 +10,7 @@ import {
 	AutosaveOrchestrationService,
 	type AutosaveState,
 } from '../services/autosave-orchestration.service'
+import { useSave } from './index'
 import { useAutosaveControllers } from './useAutosaveControllers'
 import { useDocumentEvents } from './useDocumentEvents'
 import { useDocumentLoad } from './useDocumentLoad'
@@ -89,6 +90,9 @@ export default function useDocumentScene(
 			autoLoadOnMount,
 		})
 
+	// Document save mutation
+	const { mutateAsync: saveMutationFn } = useSave()
+
 	// Autosave callbacks
 	const autosaveCallbacks = useMemo(
 		() => ({
@@ -128,6 +132,7 @@ export default function useDocumentScene(
 		lastSavedEditorCameraRef,
 		ignoreChangesUntilRef,
 		callbacks: autosaveCallbacks,
+		saveMutationFn,
 	})
 
 	// Scene change handler

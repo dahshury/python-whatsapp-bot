@@ -37,6 +37,11 @@ export type UseDocumentsSectionResult = {
 		appState?: Record<string, unknown>
 		files?: Record<string, unknown>
 	} | null
+	viewerScene: {
+		elements?: unknown[]
+		appState?: Record<string, unknown>
+		files?: Record<string, unknown>
+	} | null
 	isUnlocked: boolean
 	isFullscreen: boolean
 	customerColumns: unknown[]
@@ -86,7 +91,7 @@ export function useDocumentsSection(
 	const searchParams = useSearchParams()
 
 	// Document hooks
-	const { mutateAsync: ensureInitialized } = useEnsureInitialized()
+	const ensureInitialized = useEnsureInitialized()
 
 	const [waId, setWaId] = useState<string>(DEFAULT_DOCUMENT_WA_ID)
 	const [scene, setScene] = useState<{
@@ -94,6 +99,13 @@ export function useDocumentsSection(
 		appState?: Record<string, unknown>
 		files?: Record<string, unknown>
 	} | null>(null)
+	// Viewer scene state - only set during initial load, then rely on API updates
+	const [viewerScene, setViewerScene] = useState<{
+		elements?: unknown[]
+		appState?: Record<string, unknown>
+		files?: Record<string, unknown>
+	} | null>(null)
+	const currentWaIdRef = useRef<string | null>(null)
 
 	// Viewer canvas API
 	const viewerApiRef = useRef<ExcalidrawImperativeAPI | null>(null)
@@ -197,12 +209,14 @@ export function useDocumentsSection(
 	useExternalDocumentUpdates({
 		waId,
 		setScene,
+		setViewerScene,
 		pendingInitialLoadWaIdRef,
 		editorSigRef,
 		viewerSigRef,
 		viewerApiRef,
 		pendingViewerInitRef,
 		initializeCamera,
+		currentWaIdRef,
 	})
 
 	// Customer selection hook
@@ -333,6 +347,7 @@ export function useDocumentsSection(
 		// State
 		waId,
 		scene,
+		viewerScene,
 		isUnlocked,
 		isFullscreen,
 		customerColumns,

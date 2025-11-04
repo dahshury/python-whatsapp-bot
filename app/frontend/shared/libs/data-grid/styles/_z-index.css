@@ -74,8 +74,8 @@
    * ======================================== */
 	--z-dialog-content: 710;
 
-	/* ========================================
-   * LAYER 4: DATA CELL EDITORS & WIDGETS (720-900)
+/* ========================================
+ * LAYER 4: DATA CELL EDITORS & WIDGETS (680-900)
    * ======================================== */
 	--z-dialog-overlays: 720;
 	--z-grid-overlay: 800;
@@ -85,7 +85,7 @@
 	--z-date-picker-widget: 830;
 	--z-grid-dropdown: 840;
 	--z-grid-menu: 970;
-	--z-grid-tooltip: 980;
+	--z-grid-tooltip: 680;
 	--z-grid-modal: 950;
 	--z-command-overlay: 1300;
 

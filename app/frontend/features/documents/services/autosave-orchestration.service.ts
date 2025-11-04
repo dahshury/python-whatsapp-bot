@@ -130,6 +130,7 @@ export const AutosaveOrchestrationService = {
 
 	/**
 	 * Determines if a save should be scheduled based on current state and changes.
+	 * For idle saves, only schedules if there's been no recent activity (true inactivity).
 	 *
 	 * @param options - Save scheduling options
 	 * @param options.state - Current autosave state
@@ -137,6 +138,7 @@ export const AutosaveOrchestrationService = {
 	 * @param options.combinedSignature - Combined signature including camera (preferred for comparison)
 	 * @param options.hasContentChanges - Whether content has changed
 	 * @param options.hasCameraChanges - Whether camera position has changed
+	 * @param options.idleTimeoutMs - Idle timeout in ms (default: 3000). Only schedule if no activity in this window.
 	 * @returns true if save should be scheduled
 	 */
 	shouldScheduleSave(options: {
@@ -145,6 +147,7 @@ export const AutosaveOrchestrationService = {
 		combinedSignature: SceneSignature | null
 		hasContentChanges: boolean
 		hasCameraChanges: boolean
+		idleTimeoutMs?: number
 	}): boolean {
 		const {
 			state,
@@ -152,6 +155,7 @@ export const AutosaveOrchestrationService = {
 			combinedSignature,
 			hasContentChanges,
 			hasCameraChanges,
+			idleTimeoutMs = 3000,
 		} = options
 		// Don't schedule while already saving
 		if (state.isSaving) {
@@ -162,6 +166,22 @@ export const AutosaveOrchestrationService = {
 		if (!(hasContentChanges || hasCameraChanges)) {
 			return false
 		}
+
+		// For idle saves:
+		// - Content changes: Only schedule if there's been NO recent activity (true inactivity)
+		// - Camera-only changes: Always schedule (timer resets handle continuous movement)
+		//   The timer will reset during continuous camera movement, and fire when movement stops
+		// The interval controller handles continuous content activity saves
+		if (
+			hasContentChanges &&
+			!hasCameraChanges &&
+			this.hasRecentActivity(state, idleTimeoutMs)
+		) {
+			return false
+		}
+		// Camera changes (with or without content): always schedule
+		// The idle controller's schedule() resets the timer, so continuous movement
+		// will keep resetting, and when movement stops, timer will complete after 3s
 
 		// Use combined signature if available (includes camera), otherwise use content signature
 		// The idle controller always saves with combined signatures, so we should compare them

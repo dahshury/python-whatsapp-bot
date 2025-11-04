@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { callPythonBackendCached } from '@/shared/libs/backend'
 
 // Very small Prometheus text parser for a known subset of metrics
 const LINE_BREAK_REGEX = /\r?\n/
@@ -45,36 +46,22 @@ function parsePrometheusText(text: string): Record<string, number> {
 	return values
 }
 
+export const revalidate = 60
+
 export async function GET() {
 	try {
-		const candidates = ['http://backend:8000', 'http://localhost:8000']
-		let lastError: unknown
-		for (const base of candidates) {
-			try {
-				const res = await fetch(`${base}/metrics`, {
-					method: 'GET',
-					headers: { Accept: 'text/plain' },
-					cache: 'no-store',
-				})
-				if (!res.ok) {
-					continue
-				}
-				const text = await res.text()
-				const data = parsePrometheusText(text)
-				return NextResponse.json({ success: true, data })
-			} catch (err) {
-				lastError = err
-			}
-		}
-		return NextResponse.json(
+		const response = await callPythonBackendCached<string>(
+			'/metrics',
 			{
-				success: false,
-				message:
-					(lastError as Error | undefined)?.message || 'Metrics fetch failed',
-				data: {},
+				method: 'GET',
+				headers: { Accept: 'text/plain' },
 			},
-			{ status: 500 }
+			{ revalidate: 60, keyParts: ['prefetch', 'metrics'] }
 		)
+
+		const text = typeof response === 'string' ? response : ''
+		const data = parsePrometheusText(text)
+		return NextResponse.json({ success: true, data })
 	} catch (error) {
 		return NextResponse.json(
 			{ success: false, message: (error as Error).message, data: {} },

@@ -1,3 +1,5 @@
+'use client'
+
 import type { DataEditorRef } from '@glideapps/glide-data-grid'
 import { useCallback, useEffect } from 'react'
 

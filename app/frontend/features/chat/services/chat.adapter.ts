@@ -1,14 +1,21 @@
 import { logger } from '@/shared/libs/logger'
 import { markLocalOperation } from '@/shared/libs/utils/local-ops'
-import type { ChatPort, ChatUpdate, WebSocketPort } from '@/shared/ports'
+import type {
+	ChatPort,
+	ChatUpdate,
+	HttpClientPort,
+	WebSocketPort,
+} from '@/shared/ports'
 
 const LOCAL_OP_DEBOUNCE_MS = 5000
 
 export class ChatAdapter implements ChatPort {
 	private readonly wsPort: WebSocketPort
+	private readonly httpPort: HttpClientPort
 
-	constructor(wsPort: WebSocketPort) {
+	constructor(wsPort: WebSocketPort, httpPort: HttpClientPort) {
 		this.wsPort = wsPort
+		this.httpPort = httpPort
 	}
 
 	async sendMessage(waId: string, text: string): Promise<void> {
@@ -32,20 +39,28 @@ export class ChatAdapter implements ChatPort {
 			return
 		}
 
-		const response = await fetch('/api/message/send', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ wa_id: waId, text }),
-		})
-		if (!response.ok) {
-			let msg = 'Failed to send message'
-			try {
-				const data = (await response.json()) as { message?: string }
-				msg = data?.message || msg
-			} catch (error) {
-				logger.warn('[ChatAdapter] Failed to parse error response', error)
+		// Fallback to HTTP using httpAdapter when WebSocket fails
+		try {
+			const response = await this.httpPort.post<{
+				success?: boolean
+				message?: string
+			}>('/api/message/send', { wa_id: waId, text })
+
+			if (!response || (response as { success?: boolean }).success === false) {
+				const msg =
+					(response as { message?: string })?.message ||
+					'Failed to send message'
+				throw new Error(msg)
 			}
-			throw new Error(msg)
+		} catch (error) {
+			if (error instanceof Error) {
+				throw error
+			}
+			logger.warn(
+				'[ChatAdapter] Failed to send message via HTTP fallback',
+				error
+			)
+			throw new Error('Failed to send message')
 		}
 	}
 

@@ -11,7 +11,7 @@ import { CalendarCore } from './CalendarCore'
 import { CalendarEventContextMenu } from './CalendarEventContextMenu'
 import { CalendarHoverCardPortal } from './CalendarHoverCardPortal'
 
-type CalendarMainContentProps = {
+export type CalendarMainContentProps = {
 	calendarRef?: React.RefObject<CalendarCoreRef | null> | null
 	processedEvents: CalendarEvent[]
 	currentView: string

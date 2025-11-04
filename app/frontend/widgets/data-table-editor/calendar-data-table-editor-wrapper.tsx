@@ -34,7 +34,7 @@ const noopEventHandler = (_event: DataTableCalendarEvent): void => {
 	// No-op: consumers can override to intercept calendar events.
 }
 
-type CalendarDataTableEditorWrapperProps = {
+export type CalendarDataTableEditorWrapperProps = {
 	editorOpen: boolean
 	shouldLoadEditor: boolean
 	selectedDateRange: { start: string; end: string } | null

@@ -72,7 +72,7 @@ function DocumentsPageContent() {
 	const searchParams = useSearchParams()
 
 	// Document initialization
-	const { mutateAsync: ensureInitialized } = useEnsureInitialized()
+	const ensureInitialized = useEnsureInitialized()
 	const [waId, setWaId] = useState<string>(DEFAULT_DOCUMENT_WA_ID)
 
 	// Dual canvas state management

@@ -1,3 +1,5 @@
+'use client'
+
 import { useLanguage } from '@shared/libs/state/language-context'
 import { useCallback, useRef, useState } from 'react'
 import { i18n } from '@/shared/libs/i18n'
@@ -51,6 +53,41 @@ function isErrorCell(cell: unknown): cell is { errorDetails: string } {
 		(cell as { isError?: boolean; errorDetails?: unknown }).isError === true &&
 		typeof (cell as { errorDetails?: unknown }).errorDetails === 'string'
 	)
+}
+
+const TRANSLATION_KEY_PATTERN = /^[a-zA-Z][a-zA-Z0-9_.]*$/
+const MIN_TRANSLATION_KEY_LENGTH = 3
+
+/**
+ * Translates a message if it looks like a translation key (e.g., "validation.phoneFormatNotRecognized" or "Validation.phoneFormatNotRecognized").
+ * Returns the translated message if it's a key, otherwise returns the original message.
+ */
+function translateMessageIfKey(message: string, isLocalized: boolean): string {
+	// Check if message looks like a translation key (contains dots and lowercase letters)
+	// Pattern: "validation.phoneFormatNotRecognized" or "Validation.phoneFormatNotRecognized"
+	const looksLikeKey =
+		message.includes('.') &&
+		TRANSLATION_KEY_PATTERN.test(message) &&
+		message.length > MIN_TRANSLATION_KEY_LENGTH
+
+	if (looksLikeKey) {
+		// Normalize the key (convert "Validation.phoneFormatNotRecognized" to "validation.phoneFormatNotRecognized")
+		// Find the first dot and lowercase everything before it
+		const firstDotIndex = message.indexOf('.')
+		if (firstDotIndex > 0) {
+			const prefix = message.substring(0, firstDotIndex).toLowerCase()
+			const suffix = message.substring(firstDotIndex)
+			const normalizedKey = prefix + suffix
+
+			const translated = i18n.getMessage(normalizedKey, isLocalized)
+			// If translation found (different from key), return it
+			if (translated !== normalizedKey) {
+				return translated
+			}
+		}
+	}
+
+	return message
 }
 
 export function useGridTooltips(
@@ -131,17 +168,20 @@ export function useGridTooltips(
 							)
 							if (cellValidationError) {
 								fieldLabel = formatFieldLabel(cellValidationError.fieldName)
-								message = cellValidationError.message
+								message = translateMessageIfKey(
+									cellValidationError.message,
+									isLocalized
+								)
 								tooltipContent = fieldLabel
-									? `${fieldLabel}: ${cellValidationError.message}`
-									: `${cellValidationError.message}`
+									? `${fieldLabel}: ${message}`
+									: message
 							}
 						}
 
 						// Fallback to cell-level errors
 						if (!tooltipContent && isErrorCell(cell)) {
-							message = cell.errorDetails
-							tooltipContent = cell.errorDetails
+							message = translateMessageIfKey(cell.errorDetails, isLocalized)
+							tooltipContent = message
 						}
 
 						// Required field missing value
@@ -158,7 +198,8 @@ export function useGridTooltips(
 
 						// Cell-specific tooltip
 						if (!tooltipContent && hasTooltip(cell)) {
-							message = (cell as { tooltip: string }).tooltip
+							const rawTooltip = (cell as { tooltip: string }).tooltip
+							message = translateMessageIfKey(rawTooltip, isLocalized)
 							tooltipContent = message
 						}
 					} catch {
@@ -205,6 +246,7 @@ export function useGridTooltips(
 			validationErrors,
 			formatFieldLabel,
 			getBoundsForCell,
+			isLocalized,
 		]
 	)
 

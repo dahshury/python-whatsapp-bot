@@ -1,3 +1,5 @@
+'use client'
+
 import { useCustomerData } from '@shared/libs/data/customer-data-context'
 import type { FC } from 'react'
 import { useEffect, useMemo, useRef } from 'react'

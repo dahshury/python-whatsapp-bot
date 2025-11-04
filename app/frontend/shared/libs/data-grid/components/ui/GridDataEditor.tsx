@@ -1,3 +1,5 @@
+'use client'
+
 import type {
 	GridCell as GDGGridCell,
 	GridMouseCellEventArgs as GDGGridMouseCellEventArgs,

@@ -61,6 +61,8 @@ export type UseCalendarEventsOptions = {
 	ageByWaId?: Record<string, number | null>
 	/** When true, do not include conversation events in generated calendar events. */
 	excludeConversations?: boolean
+	/** When false, calendar queries will not be executed (e.g., when drawer is closed) */
+	enabled?: boolean
 }
 
 export type CalendarEventsState = {
@@ -95,6 +97,7 @@ export function useCalendarEvents(
 		currentDate,
 		excludeConversations = false,
 		ageByWaId,
+		enabled = true,
 	} = options
 
 	const [state, setState] = useState<CalendarEventsState>({
@@ -103,6 +106,8 @@ export function useCalendarEvents(
 		error: null,
 		lastUpdated: null,
 	})
+	const prevEventsRef = useRef<CalendarEvent[]>([])
+	const prevDataHashRef = useRef<string>('')
 
 	// Get current period key and date range
 	const currentPeriodKey = getPeriodKey(currentView as ViewType, currentDate)
@@ -127,6 +132,7 @@ export function useCalendarEvents(
 		freeRoam,
 		excludeConversations,
 		windowSize: 5,
+		enabled,
 	})
 
 	// Set up WebSocket cache invalidation
@@ -136,21 +142,28 @@ export function useCalendarEvents(
 
 	// Fetch current period data (this subscribes to the query and triggers loading)
 	// We need to read the actual data to trigger re-renders when cache updates
-	const { isLoading: reservationsLoading, error: reservationsError } =
-		useCalendarReservationsForPeriod(
-			currentPeriodKey,
-			fromDate,
-			toDate,
-			freeRoam
-		)
+	const {
+		data: currentPeriodReservations,
+		isLoading: reservationsLoading,
+		error: reservationsError,
+	} = useCalendarReservationsForPeriod({
+		periodKey: currentPeriodKey,
+		fromDate,
+		toDate,
+		freeRoam,
+		enabled,
+	})
 
-	const { isLoading: conversationsLoading, error: conversationsError } =
-		useCalendarConversationEventsForPeriod(
-			currentPeriodKey,
-			fromDate,
-			toDate,
-			freeRoam
-		)
+	const {
+		data: currentPeriodConversations,
+		isLoading: conversationsLoading,
+		error: conversationsError,
+	} = useCalendarConversationEventsForPeriod(
+		currentPeriodKey,
+		fromDate,
+		toDate,
+		{ freeRoam, enabled }
+	)
 
 	// Track cached periods and their data for incremental updates
 	const SLIDING_WINDOW_SIZE = 5
@@ -210,6 +223,20 @@ export function useCalendarEvents(
 			}
 		}
 
+		// Ensure the actively viewed period always reflects the latest query data
+		if (typeof currentPeriodKey === 'string' && currentPeriodReservations) {
+			cachedReservationsByPeriod.current.set(
+				currentPeriodKey,
+				currentPeriodReservations
+			)
+		}
+		if (typeof currentPeriodKey === 'string' && currentPeriodConversations) {
+			cachedConversationsByPeriod.current.set(
+				currentPeriodKey,
+				currentPeriodConversations
+			)
+		}
+
 		// Update tracked periods
 		cachedPeriodsRef.current = new Set(currentPeriods)
 
@@ -259,14 +286,21 @@ export function useCalendarEvents(
 			allCachedReservations: mergedReservations,
 			allCachedConversationEvents: mergedConversations,
 		}
-	}, [currentPrefetchPeriods, freeRoam, queryClient])
+	}, [
+		currentPrefetchPeriods,
+		freeRoam,
+		queryClient,
+		currentPeriodReservations,
+		currentPeriodConversations,
+		currentPeriodKey,
+	])
 
 	// Fetch calendar vacations (not period-based, always fetch all)
 	const {
 		data: vacationPeriods = [],
 		isLoading: vacationsLoading,
 		error: vacationsError,
-	} = useCalendarVacations()
+	} = useCalendarVacations(enabled)
 
 	// Fetch customer names (single source of truth - no redundancy)
 	const { data: customerNamesData } = useCustomerNames()
@@ -302,11 +336,21 @@ export function useCalendarEvents(
 	 */
 	useEffect(() => {
 		try {
-			setState((prev) => ({
-				...prev,
-				loading: isDataLoading,
-				error: dataError ? String(dataError) : null,
-			}))
+			// Only update loading/error state if it actually changed
+			setState((prev) => {
+				if (
+					prev.loading === isDataLoading &&
+					prev.error === (dataError ? String(dataError) : null)
+				) {
+					// No change, return previous state to prevent re-render
+					return prev
+				}
+				return {
+					...prev,
+					loading: isDataLoading,
+					error: dataError ? String(dataError) : null,
+				}
+			})
 
 			// Only process if loading is complete and no errors
 			// Allow processing even with empty data (empty objects/arrays) as long as loading is complete
@@ -316,13 +360,19 @@ export function useCalendarEvents(
 			}
 
 			if (dataError) {
-				// Has error - set error state
-				setState((prev) => ({
-					...prev,
-					loading: false,
-					error: String(dataError),
-					lastUpdated: new Date(),
-				}))
+				// Has error - set error state only if changed
+				setState((prev) => {
+					const errorStr = String(dataError)
+					if (prev.loading === false && prev.error === errorStr) {
+						return prev
+					}
+					return {
+						...prev,
+						loading: false,
+						error: errorStr,
+						lastUpdated: new Date(),
+					}
+				})
 				return
 			}
 
@@ -396,6 +446,26 @@ export function useCalendarEvents(
 				}
 			)
 
+			// Only update state if events actually changed
+			// Use a hash of the input data to detect changes without expensive comparisons
+			const dataHash = JSON.stringify({
+				reservations: Object.keys(allCachedReservations).length,
+				conversations: Object.keys(allCachedConversationEvents).length,
+				vacations: vacationPeriods.length,
+				excludeConversations,
+			})
+
+			if (
+				prevDataHashRef.current === dataHash &&
+				prevEventsRef.current.length === processedEvents.length
+			) {
+				// Data hasn't changed, skip update to prevent infinite loop
+				return
+			}
+
+			prevDataHashRef.current = dataHash
+			prevEventsRef.current = processedEvents
+
 			setState((prev) => ({
 				...prev,
 				events: processedEvents,
@@ -404,13 +474,19 @@ export function useCalendarEvents(
 				lastUpdated: new Date(),
 			}))
 		} catch (error) {
-			setState((prev) => ({
-				...prev,
-				loading: false,
-				error:
-					error instanceof Error ? error.message : 'Unknown error occurred',
-				lastUpdated: new Date(),
-			}))
+			setState((prev) => {
+				const errorMessage =
+					error instanceof Error ? error.message : 'Unknown error occurred'
+				if (prev.loading === false && prev.error === errorMessage) {
+					return prev
+				}
+				return {
+					...prev,
+					loading: false,
+					error: errorMessage,
+					lastUpdated: new Date(),
+				}
+			})
 		}
 	}, [
 		isDataLoading,

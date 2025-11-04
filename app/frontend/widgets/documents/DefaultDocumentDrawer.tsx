@@ -6,8 +6,7 @@ import { Button } from '@ui/button'
 import { FileEdit } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import React from 'react'
-import { useDocumentScene } from '@/features/documents'
-import { DocumentLoadService } from '@/features/documents/services/document-load.service'
+import { useDocumentScene, useGetByWaId } from '@/features/documents'
 import { TEMPLATE_USER_WA_ID, toSceneFromDoc } from '@/shared/libs/documents'
 import { computeSceneSignature } from '@/shared/libs/documents/scene-utils'
 import { logger } from '@/shared/libs/logger'
@@ -27,6 +26,8 @@ type DefaultDocumentDrawerProps = {
 	trigger?: React.ReactNode
 	title?: string
 }
+
+const CAMERA_PRECISION_FACTOR = 1000
 
 const logDrawerError = (context: string, error: unknown) => {
 	logger.warn(`[DefaultDocumentDrawer] ${context}`, error)
@@ -50,10 +51,21 @@ export function DefaultDocumentDrawer({
 		appState?: Record<string, unknown>
 		files?: Record<string, unknown>
 	} | null>(null)
+	// Live scene for real-time viewer mirror (updates on every editor change)
+	const [liveScene, setLiveScene] = React.useState<{
+		elements?: unknown[]
+		appState?: Record<string, unknown>
+		files?: Record<string, unknown>
+	} | null>(null)
 	const [loading, setLoading] = React.useState(false)
 	const [isLoaded, setIsLoaded] = React.useState(false)
 
 	const themeMode = resolvedTheme === 'dark' ? 'dark' : 'light'
+
+	// Ref to track viewer's current camera state for saving
+	const viewerCameraRef = React.useRef<Record<string, unknown>>({})
+	// Ref to track last viewer camera signature to avoid redundant saves
+	const lastViewerCameraSigRef = React.useRef<string>('')
 
 	// Track if we're expecting initial load
 	// After initial load, editor becomes write-only to prevent remounting during edits
@@ -61,6 +73,7 @@ export function DefaultDocumentDrawer({
 
 	// Signatures to avoid redundant scene re-applies that can cause flicker
 	const editorSigRef = React.useRef<string | null>(null)
+	const viewerSigRef = React.useRef<string | null>(null)
 
 	// Debug hook retained without side effects
 	React.useEffect(() => {
@@ -120,15 +133,43 @@ export function DefaultDocumentDrawer({
 			const hasElements =
 				Array.isArray(sceneData.elements) && sceneData.elements.length > 0
 
-			if (
-				isPendingInitialLoad &&
-				sig &&
-				sig !== editorSigRef.current &&
-				hasElements
-			) {
-				editorSigRef.current = sig
-				setScene(sceneData)
-				pendingInitialLoadRef.current = false
+			if (isPendingInitialLoad && sig && sig !== editorSigRef.current) {
+				// Only mark as loaded if we received actual content
+				if (hasElements) {
+					editorSigRef.current = sig
+					setScene(sceneData)
+					viewerSigRef.current = sig
+
+					// Load viewer's saved camera or use empty state
+					const viewerCamera = sceneData.viewerAppState || {}
+					viewerCameraRef.current = viewerCamera
+
+					// Initialize viewer camera signature from loaded data
+					const zoomValue =
+						(viewerCamera.zoom as { value?: number })?.value ?? 1
+					const scrollX = (viewerCamera.scrollX as number) ?? 0
+					const scrollY = (viewerCamera.scrollY as number) ?? 0
+					const camera = {
+						zoom:
+							Math.round(zoomValue * CAMERA_PRECISION_FACTOR) /
+							CAMERA_PRECISION_FACTOR,
+						scrollX: Math.round(scrollX),
+						scrollY: Math.round(scrollY),
+					}
+					lastViewerCameraSigRef.current = JSON.stringify(camera)
+
+					setLiveScene({
+						elements: sceneData.elements || [],
+						appState: viewerCamera,
+						files: sceneData.files || {},
+					})
+					// Mark as loaded
+					pendingInitialLoadRef.current = false
+				} else {
+					// no-op
+				}
+			} else if (!isPendingInitialLoad) {
+				// removed console logging
 			}
 		},
 		[]
@@ -139,23 +180,99 @@ export function DefaultDocumentDrawer({
 		// removed console logging
 	}, [])
 
-	// Canvas change handler wired to autosave orchestration
+	// Callback for viewer canvas changes (to track viewer camera)
+	const handleViewerCanvasChange = React.useCallback(
+		(
+			_elements: unknown[],
+			appState: Record<string, unknown>,
+			_files: Record<string, unknown>
+		) => {
+			// Compute stable signature for viewer camera (only zoom/scroll values)
+			// Round to avoid floating-point precision issues
+			const zoomValue = (appState.zoom as { value?: number })?.value ?? 1
+			const scrollX = (appState.scrollX as number) ?? 0
+			const scrollY = (appState.scrollY as number) ?? 0
+
+			const camera = {
+				zoom:
+					Math.round(zoomValue * CAMERA_PRECISION_FACTOR) /
+					CAMERA_PRECISION_FACTOR,
+				scrollX: Math.round(scrollX),
+				scrollY: Math.round(scrollY),
+			}
+			const newSig = JSON.stringify(camera)
+
+			// Only trigger autosave if camera signature actually changed
+			if (newSig === lastViewerCameraSigRef.current) {
+				return // No change, skip
+			}
+
+			// no-op
+
+			// Update refs
+			viewerCameraRef.current = appState
+			lastViewerCameraSigRef.current = newSig
+
+			// Trigger autosave with current editor state + new viewer camera
+			try {
+				const currentScene = sceneRef.current
+				if (currentScene?.elements && open && isLoaded) {
+					// Extract editor's camera from current scene
+					const editorCamera = currentScene.appState
+						? {
+								zoom: currentScene.appState.zoom,
+								scrollX: currentScene.appState.scrollX,
+								scrollY: currentScene.appState.scrollY,
+							}
+						: undefined
+
+					originalHandleCanvasChange({
+						elements: currentScene.elements as unknown[],
+						appState: currentScene.appState || {},
+						files: currentScene.files || {},
+						viewerAppState: viewerCameraRef.current,
+						editorAppState: editorCamera,
+					})
+				}
+			} catch (error) {
+				logDrawerError(
+					'Failed to propagate viewer camera updates to autosave',
+					error
+				)
+			}
+		},
+		[originalHandleCanvasChange, open, isLoaded]
+	)
+
+	// Wrap handleCanvasChange to update live viewer scene in real-time
+	// Only mirror elements and files, not viewport/panning (appState)
 	const handleCanvasChange = React.useCallback(
 		(
 			elements: unknown[],
 			appState: Record<string, unknown>,
 			files: Record<string, unknown>
 		) => {
+			// Update live scene with elements and files only
+			// Preserve viewer's independent viewport by not updating appState
+			setLiveScene((prev) => ({
+				elements,
+				appState: prev?.appState || {}, // Keep viewer's viewport
+				files,
+			}))
+
+			// Extract editor's camera state for explicit tracking
 			const editorCamera = {
 				zoom: appState.zoom,
 				scrollX: appState.scrollX,
 				scrollY: appState.scrollY,
 			}
 
+			// Call original handler for autosave logic with both cameras
 			originalHandleCanvasChange({
 				elements,
 				appState,
 				files,
+				viewerAppState: viewerCameraRef.current,
 				editorAppState: editorCamera,
 			})
 		},
@@ -284,19 +401,67 @@ export function DefaultDocumentDrawer({
 			)
 	}, [applySceneIfInitialLoad])
 
+	// Use TanStack Query for document retrieval
+	const {
+		data,
+		isLoading: queryLoading,
+		isFetching,
+		refetch,
+	} = useGetByWaId(TEMPLATE_USER_WA_ID, {
+		enabled: open,
+	})
+
 	// Load template document when drawer opens (always request fresh snapshot)
 	React.useEffect(() => {
 		if (open) {
 			// Mark as pending initial load
 			pendingInitialLoadRef.current = true
+			// Reset camera tracking
+			lastViewerCameraSigRef.current = ''
+			viewerCameraRef.current = {}
 			setIsLoaded(false)
 			setLoading(true)
-			// Load document via REST API
-			DocumentLoadService.load({ waId: TEMPLATE_USER_WA_ID }).catch(() => {
-				setLoading(false)
-			})
+			// Trigger query fetch
+			refetch()
+				.then((result) => {
+					if (result?.data?.document) {
+						window.dispatchEvent(
+							new CustomEvent('documents:external-update', {
+								detail: {
+									wa_id: TEMPLATE_USER_WA_ID,
+									document: result.data.document,
+								},
+							})
+						)
+					}
+				})
+				.catch(() => {
+					setLoading(false)
+				})
 		}
-	}, [open])
+	}, [open, refetch])
+
+	// Sync loading state with query state
+	React.useEffect(() => {
+		if (open) {
+			setLoading(queryLoading || isFetching)
+		}
+	}, [open, queryLoading, isFetching])
+
+	// Handle query data when it arrives
+	React.useEffect(() => {
+		if (data?.document && open) {
+			window.dispatchEvent(
+				new CustomEvent('documents:external-update', {
+					detail: {
+						wa_id: TEMPLATE_USER_WA_ID,
+						document: data.document,
+					},
+				})
+			)
+			setLoading(false)
+		}
+	}, [data, open])
 
 	React.useEffect(() => {
 		// When closing, keep scene but lock saves
@@ -335,10 +500,64 @@ export function DefaultDocumentDrawer({
 							/>
 						</SheetHeader>
 
-						<div className="flex min-h-0 flex-1 flex-col p-2">
+						<div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+							{/* Top viewer canvas (read-only, mirrors bottom editor) */}
+							<div className="relative h-[150px] flex-shrink-0">
+								<div className="viewer-canvas-container relative h-full overflow-hidden rounded-md border border-border/50 bg-card/40">
+									<style>{`
+										.viewer-canvas-container button[title*="Exit"],
+										.viewer-canvas-container button[aria-label*="Exit"],
+										.viewer-canvas-container .excalidraw-textEditorContainer,
+										.viewer-canvas-container .layer-ui__wrapper__footer-right,
+										.viewer-canvas-container .layer-ui__wrapper__footer-left,
+										.viewer-canvas-container .layer-ui__wrapper__top-right,
+										.viewer-canvas-container .Island:has(button[title*="canvas actions"]),
+										.viewer-canvas-container button[title*="View mode"],
+										.viewer-canvas-container button[title*="Zen mode"],
+										.viewer-canvas-container button[title*="zen mode"],
+										.viewer-canvas-container .zen-mode-visibility,
+										.viewer-canvas-container button[aria-label*="fullscreen" i],
+										.viewer-canvas-container button[title*="fullscreen" i],
+										.viewer-canvas-container .excalidraw__canvas {
+											pointer-events: auto !important;
+										}
+										.viewer-canvas-container button[title*="Exit"]:not([title*="fullscreen" i]),
+										.viewer-canvas-container button[aria-label*="Exit"]:not([aria-label*="fullscreen" i]) {
+											display: none !important;
+										}
+									`}</style>
+									<DocumentCanvas
+										langCode={locale || 'en'}
+										onApiReady={onApiReadyWithApply}
+										onChange={
+											handleViewerCanvasChange as unknown as ExcalidrawProps['onChange']
+										}
+										theme={themeMode}
+										{...(liveScene ? { scene: liveScene } : {})}
+										forceLTR={true}
+										hideHelpIcon={true}
+										hideToolbar={true}
+										scrollable={false}
+										uiOptions={{
+											canvasActions: {
+												toggleTheme: false,
+												export: false,
+												saveAsImage: false,
+												clearCanvas: false,
+												loadScene: false,
+												saveToActiveFile: false,
+											},
+										}}
+										viewModeEnabled={true}
+										zenModeEnabled={true}
+									/>
+								</div>
+							</div>
+
+							{/* Bottom editor canvas (editable) */}
 							<div
 								className="relative flex-1 overflow-hidden rounded-md border border-border/50 bg-card/40"
-								style={{ minHeight: '600px' }}
+								style={{ minHeight: '450px' }}
 							>
 								{!loading && (
 									<DocumentCanvas

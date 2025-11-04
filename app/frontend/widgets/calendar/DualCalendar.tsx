@@ -39,7 +39,7 @@ import { CalendarDock } from './CalendarDock'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { useCalendarPane } from './dual/useCalendarPane'
 
-type DualCalendarComponentProps = {
+export type DualCalendarComponentProps = {
 	freeRoam?: boolean
 	initialView?: string
 	initialDate?: string

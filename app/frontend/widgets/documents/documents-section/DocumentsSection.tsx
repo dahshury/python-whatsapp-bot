@@ -25,6 +25,7 @@ function DocumentsPageContent() {
 	// Main composition hook - orchestrates all document section logic
 	const {
 		scene,
+		viewerScene,
 		isUnlocked,
 		isFullscreen,
 		customerDataSource,
@@ -35,8 +36,10 @@ function DocumentsPageContent() {
 		fsContainerRef,
 		handleClear,
 		handleProviderReady,
+		handleViewerCanvasChange,
 		handleCanvasChange,
 		onApiReadyWithApply,
+		onViewerApiReady,
 		enterFullscreen,
 		exitFullscreen,
 	} = useDocumentsSection({
@@ -129,10 +132,10 @@ function DocumentsPageContent() {
 						style={{ height: isFullscreen ? '100vh' : 'calc(100vh - 6.5rem)' }}
 					>
 						{/* Top: customer grid */}
-						<div className="w-full flex-shrink-0 rounded-md border border-border/50 bg-background/60 p-2">
+						<div className="w-full flex-shrink-0 rounded-md border border-border/50 bg-background/60 p-1">
 							<FullscreenProvider>
 								<ClientGrid
-									className="min-h-[150px] w-full"
+									className="min-h-[64px] w-full"
 									dataSource={customerDataSource as unknown as IDataSource}
 									disableTrailingRow={true}
 									documentsGrid={true}
@@ -149,8 +152,75 @@ function DocumentsPageContent() {
 							</FullscreenProvider>
 						</div>
 
-						{/* Editor canvas (full height) */}
-						<div className="flex min-h-0 flex-1 flex-col">
+						{/* Below: dual canvases */}
+						<div className="flex min-h-0 flex-1 flex-col gap-2">
+							{/* Viewer (top, ~150px) - real-time mirror of editor with independent camera */}
+							<div className="viewer-canvas-container relative h-[150px] flex-shrink-0 overflow-hidden rounded-md border border-border/50 bg-card/40">
+								<style>
+									{`
+										.viewer-canvas-container .excalidraw-modal,
+										.viewer-canvas-container .welcome-screen-center,
+										.viewer-canvas-container .zen-mode-transition,
+										.viewer-canvas-container button[title*="Exit"],
+										.viewer-canvas-container button[aria-label*="Exit"],
+										.viewer-canvas-container button[title*="exit"],
+										.viewer-canvas-container button[aria-label*="exit"],
+										.viewer-canvas-container .zen-mode-transition-container,
+										.viewer-canvas-container .disable-zen-mode,
+										.viewer-canvas-container [class*="zen-mode"],
+										.viewer-canvas-container [class*="fullscreen"] {
+											display: none !important;
+										}
+										/* Allow panning/zooming but keep it read-only */
+										.viewer-canvas-container .excalidraw {
+											cursor: grab !important;
+										}
+										.viewer-canvas-container .excalidraw:active {
+											cursor: grabbing !important;
+										}
+									`}
+								</style>
+								<DocumentCanvas
+									forceLTR={true}
+									hideHelpIcon={true}
+									hideToolbar={true}
+									langCode={locale || 'en'}
+									onApiReady={onViewerApiReady}
+									onChange={
+										handleViewerCanvasChange as unknown as ExcalidrawProps['onChange']
+									}
+									scrollable={false}
+									theme={themeMode}
+									{...(viewerScene ? { scene: viewerScene } : {})}
+									uiOptions={{
+										canvasActions: {
+											toggleTheme: false,
+											export: false,
+											saveAsImage: false,
+											clearCanvas: false,
+											loadScene: false,
+											saveToActiveFile: false,
+										},
+									}}
+									viewModeEnabled={true}
+									zenModeEnabled={true}
+								/>
+								{/* Saving indicator overlay */}
+								<div className="pointer-events-none absolute top-2 right-2 z-[3]">
+									<DocumentSavingIndicator
+										loading={loading}
+										status={saveStatus}
+									/>
+								</div>
+								{/* Lock overlay when not unlocked or loading (viewer - spinner only) */}
+								<DocumentLockOverlay
+									active={loading || !isUnlocked}
+									loading={loading}
+									message=""
+								/>
+							</div>
+
+							{/* Editor (bottom, flex-fill) */}
 							<div
 								className={`relative min-h-0 flex-1 ${isFullscreen ? 'rounded-none border-0' : 'rounded-md border border-border/50'} flex flex-col overflow-hidden bg-card/40`}
 							>
@@ -168,25 +238,19 @@ function DocumentsPageContent() {
 									viewModeEnabled={false}
 									zenModeEnabled={false}
 								/>
-								<div className="pointer-events-none absolute top-2 right-2 z-[5]">
-									<DocumentSavingIndicator
-										loading={loading}
-										status={saveStatus}
-									/>
-								</div>
 
 								{/* Lock overlay when not unlocked; show loading when busy */}
-								{(loading || !isUnlocked) && (
-									<DocumentLockOverlay
-										message={
-											isUnlocked
-												? i18n.getMessage('document_loading', isLocalized)
-												: i18n.getMessage('document_unlock_prompt', isLocalized)
-										}
-									/>
-								)}
+								<DocumentLockOverlay
+									active={loading || !isUnlocked}
+									loading={loading}
+									message={
+										isUnlocked
+											? i18n.getMessage('document_loading', isLocalized)
+											: i18n.getMessage('document_unlock_prompt', isLocalized)
+									}
+								/>
 								{/* Fullscreen toggle button (theme-aware container) */}
-								<div className="absolute right-2 bottom-2 z-[4]">
+								<div className="absolute right-2 bottom-2 z-[3]">
 									<div className="rounded-md border border-border bg-card/90 px-1.5 py-1 text-foreground shadow-sm backdrop-blur">
 										{isFullscreen ? (
 											<button

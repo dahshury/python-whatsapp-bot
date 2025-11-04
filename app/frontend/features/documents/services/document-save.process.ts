@@ -3,7 +3,6 @@ import {
 	computeSceneSignature,
 	normalizeForPersist,
 } from '@/shared/libs/documents/scene-utils'
-import { createDocumentsService } from './documents.service.factory'
 
 type Json = Record<string, unknown>
 
@@ -24,6 +23,15 @@ export type SaveResult = {
 	message?: string
 	[id: string]: unknown
 }
+
+export type SaveMutationFn = (args: {
+	waId: string
+	snapshot: Partial<{
+		name?: string | null
+		age?: number | null
+		document?: unknown
+	}>
+}) => Promise<boolean>
 
 /**
  * Computes a document signature from payload.
@@ -68,7 +76,8 @@ function computeCombinedSignature(
 }
 
 export async function saveDocumentOnce(
-	payload: DocumentPayload
+	payload: DocumentPayload,
+	saveMutationFn: SaveMutationFn
 ): Promise<SaveResult> {
 	try {
 		const body = normalizeForPersist({
@@ -82,8 +91,10 @@ export async function saveDocumentOnce(
 				editorAppState: payload.editorAppState,
 			}),
 		})
-		const svc = createDocumentsService()
-		const ok = await svc.save(payload.waId, { document: body })
+		const ok = await saveMutationFn({
+			waId: payload.waId,
+			snapshot: { document: body },
+		})
 		const res = { success: ok } as Json
 		return {
 			success: Boolean((res as { success?: unknown })?.success) !== false,
@@ -97,6 +108,7 @@ export async function saveDocumentOnce(
 export type IdleAutosaveControllerOptions = {
 	waId: string
 	idleMs?: number
+	saveMutationFn: SaveMutationFn
 	onSaving?: (args: { waId: string; signature: SceneSignature }) => void
 	onSaved?: (args: {
 		waId: string
@@ -117,6 +129,7 @@ export function createIdleAutosaveController(
 	const {
 		waId,
 		idleMs = 3000,
+		saveMutationFn,
 		onSaving,
 		onSaved,
 		onError,
@@ -157,7 +170,7 @@ export function createIdleAutosaveController(
 
 		const signatureBeingSaved = SceneSignature.fromString(combinedSig)
 		onSaving?.({ waId, signature: signatureBeingSaved })
-		const res = await saveDocumentOnce({ waId, ...payload })
+		const res = await saveDocumentOnce({ waId, ...payload }, saveMutationFn)
 		if (res?.success) {
 			try {
 				const g = globalThis as unknown as {
@@ -239,6 +252,7 @@ export function createIdleAutosaveController(
 export type IntervalAutosaveControllerOptions = {
 	waId: string
 	intervalMs?: number
+	saveMutationFn: SaveMutationFn
 	onSaving?: (args: { waId: string; signature: SceneSignature }) => void
 	onSaved?: (args: {
 		waId: string
@@ -252,7 +266,14 @@ export type IntervalAutosaveControllerOptions = {
 export function createIntervalAutosaveController(
 	options: IntervalAutosaveControllerOptions
 ) {
-	const { waId, intervalMs = 15_000, onSaving, onSaved, onError } = options
+	const {
+		waId,
+		intervalMs = 15_000,
+		saveMutationFn,
+		onSaving,
+		onSaved,
+		onError,
+	} = options
 	let id: number | null = null
 
 	function stop(): void {
@@ -310,14 +331,17 @@ export function createIntervalAutosaveController(
 				}
 
 				onSaving?.({ waId, signature: currentSig })
-				const res = await saveDocumentOnce({
-					waId,
-					elements,
-					appState,
-					files,
-					...(viewerAppState !== undefined && { viewerAppState }),
-					...(editorAppState !== undefined && { editorAppState }),
-				})
+				const res = await saveDocumentOnce(
+					{
+						waId,
+						elements,
+						appState,
+						files,
+						...(viewerAppState !== undefined && { viewerAppState }),
+						...(editorAppState !== undefined && { editorAppState }),
+					},
+					saveMutationFn
+				)
 				if ((res as { success?: boolean })?.success !== false) {
 					try {
 						const g = globalThis as unknown as {

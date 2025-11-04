@@ -66,7 +66,7 @@ const Z_INDEX = {
 	CONFIRMATION_OVERLAY_BACKDROP: 950,
 	CONFIRMATION_OVERLAY_CONTENT: 960,
 	GRID_MENU: 970,
-	GRID_TOOLTIP: 980,
+	GRID_TOOLTIP: 680, // Keep tooltips below drawers while remaining above base UI
 
 	// ========================================
 	// FULLSCREEN LAYERS (1100-1200)

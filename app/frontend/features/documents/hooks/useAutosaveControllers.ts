@@ -32,6 +32,14 @@ export type UseAutosaveControllersOptions = {
 	lastSavedEditorCameraRef: React.RefObject<CameraState | null>
 	ignoreChangesUntilRef: React.RefObject<number>
 	callbacks: AutosaveCallbacks
+	saveMutationFn: (args: {
+		waId: string
+		snapshot: Partial<{
+			name?: string | null
+			age?: number | null
+			document?: unknown
+		}>
+	}) => Promise<boolean>
 }
 
 /**
@@ -66,6 +74,7 @@ export const useAutosaveControllers = (
 		lastSavedEditorCameraRef,
 		ignoreChangesUntilRef,
 		callbacks,
+		saveMutationFn,
 	} = options
 
 	const idleControllerRef = useRef<ReturnType<
@@ -102,6 +111,7 @@ export const useAutosaveControllers = (
 		idleControllerRef.current = createIdleAutosaveController({
 			waId,
 			idleMs: 3000,
+			saveMutationFn,
 			getLastSavedCombinedSignature: () => {
 				// Get the last saved combined signature for comparison
 				const contentSig = lastSavedSignatureRef.current
@@ -204,6 +214,7 @@ export const useAutosaveControllers = (
 		intervalControllerRef.current = createIntervalAutosaveController({
 			waId,
 			intervalMs: 15_000,
+			saveMutationFn,
 			onSaving: ({ signature }) => {
 				AutosaveOrchestrationService.markSavingStart(
 					autosaveStateRef.current,
@@ -288,6 +299,7 @@ export const useAutosaveControllers = (
 		ignoreChangesUntilRef,
 		lastSavedEditorCameraRef,
 		lastSavedViewerCameraRef,
+		saveMutationFn,
 	])
 
 	// Start interval controller when conditions are met

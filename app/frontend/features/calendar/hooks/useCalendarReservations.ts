@@ -67,20 +67,26 @@ export function useReservationsForDateRange(
 }
 
 /**
+ * Options for fetching reservations for a specific date range.
+ */
+export type UseCalendarReservationsForPeriodOptions = {
+	periodKey: string
+	fromDate: string
+	toDate: string
+	freeRoam: boolean
+	enabled?: boolean
+}
+
+/**
  * Hook for fetching reservations for a specific date range.
  * Uses TanStack Query for caching and state management.
  *
- * @param periodKey - Period identifier (e.g., "2025-11" for month, "2025-W44" for week)
- * @param fromDate - Start date (YYYY-MM-DD)
- * @param toDate - End date (YYYY-MM-DD)
- * @param freeRoam - Whether free-roam mode is enabled
+ * @param options - Configuration options for the query
  */
 export function useCalendarReservationsForPeriod(
-	periodKey: string,
-	fromDate: string,
-	toDate: string,
-	freeRoam: boolean
+	options: UseCalendarReservationsForPeriodOptions
 ) {
+	const { periodKey, fromDate, toDate, freeRoam, enabled = true } = options
 	const queryClient = useQueryClient()
 
 	// Check if we have cached data for this period
@@ -125,7 +131,7 @@ export function useCalendarReservationsForPeriod(
 		refetchOnWindowFocus: false, // Don't refetch when window regains focus
 		refetchOnMount: false, // Don't refetch on mount - use cached data (WebSocket handles real-time updates)
 		retry: 1,
-		enabled: Boolean(periodKey && fromDate && toDate), // Only fetch if all params are provided
+		enabled: Boolean(enabled && periodKey && fromDate && toDate), // Only fetch if enabled and all params are provided
 	})
 }
 

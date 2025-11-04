@@ -1,22 +1,26 @@
 'use client'
 
-import { useDockBridge } from '@shared/libs/dock-bridge-context'
+import { createCalendarCallbacks } from '@shared/libs/calendar/calendar-callbacks'
+import { getTimezone } from '@shared/libs/calendar/calendar-config'
+import { useLanguage } from '@shared/libs/state/language-context'
+import { useSettings } from '@shared/libs/state/settings-context'
+import { useVacation } from '@shared/libs/state/vacation-context'
 import { cn } from '@shared/libs/utils'
-import { Button } from '@ui/button'
-import {
-	isValidElement,
-	type ReactNode,
-	type RefObject,
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from 'react'
+import { useRouter } from 'next/navigation'
+import React from 'react'
 import type { CalendarCoreRef } from '@/features/calendar'
-import { useCalendarCore } from '@/features/calendar'
-import { useNavigationView } from '@/features/navigation'
-import { DockNav } from '@/features/navigation/dock-nav'
+import {
+	alignAndSortEventsForCalendar,
+	filterEventsForCalendar,
+	useCalendarContextMenu,
+	useCalendarCore,
+	useCalendarDragHandlers,
+	useCalendarEventHandlers,
+	useCalendarHoverCard,
+	useVacationDateChecker,
+} from '@/features/calendar'
+import { useCalendarPeriodData } from '@/features/calendar/hooks/useCalendarPeriodData'
+import { PREFETCH } from '@/shared/config'
 import {
 	Sheet,
 	SheetContent,
@@ -24,340 +28,349 @@ import {
 	SheetTitle,
 	SheetTrigger,
 } from '@/shared/ui/sheet'
-import { ThemedScrollbar } from '@/shared/ui/themed-scrollbar'
-import { CalendarContainer, CalendarMainContent } from '.'
+import { CalendarContainer } from './CalendarContainer'
+import { CalendarMainContent } from './CalendarMainContent'
 
 type CalendarDrawerProps = {
 	className?: string
-	trigger?: ReactNode
+	trigger?: React.ReactNode
+	title?: string
 	side?: 'left' | 'right' | 'top' | 'bottom'
 	initialView?: string
-	title?: string
 	disableDateClick?: boolean
-	/** Persist calendar state under this prefix; defaults to documents drawer */
-	storageKeyPrefix?: string
 }
 
 /**
- * CalendarDrawer renders a minimal calendar inside a drawer/sheet.
- * It reuses centralized calendar logic via useCalendarCore and CalendarMainContent.
- * Date click behavior can be disabled via prop and is intentionally modular.
+ * CalendarDrawer component that displays a calendar in a sheet drawer.
+ * Prefetches calendar data when the trigger is hovered or when the drawer
+ * is about to open, so the calendar is ready when the drawer opens.
  */
 export function CalendarDrawer({
 	className,
 	trigger,
+	title = 'Calendar',
 	side = 'right',
 	initialView = 'listMonth',
-	title = 'Calendar',
-	disableDateClick = true,
-	storageKeyPrefix = 'documents:calendar-drawer',
+	disableDateClick = false,
 }: CalendarDrawerProps) {
-	const [open, setOpen] = useState(false)
-	const didInitOnOpenRef = useRef(false)
+	const [open, setOpen] = React.useState(false)
+	const [shouldPrefetch, setShouldPrefetch] = React.useState(false)
+	const [isPrefetched, setIsPrefetched] = React.useState(false)
+	const [mounted, setMounted] = React.useState(false)
+	const router = useRouter()
+	const { freeRoam } = useSettings()
+	const { isLocalized } = useLanguage()
+	const {
+		handleDateClick: handleVacationDateClick,
+		recordingState,
+		vacationPeriods,
+	} = useVacation()
 
-	// Ensure component only renders after hydration to avoid ID mismatches
-	const [mounted, setMounted] = useState(false)
-	useEffect(() => {
+	// Ensure component only renders after hydration
+	React.useEffect(() => {
 		setMounted(true)
 	}, [])
 
-	// Centralized calendar state/logic
-	const {
-		calendarRef,
-		calendarState,
-		eventsState,
-		processedEvents,
-		calendarHeight,
-		isRefreshing,
-		isVacationDate,
-		contextMenu,
-		hoverCardWithDragging,
-		dragHandlers,
-		eventHandlers,
-		callbacks: baseCallbacks,
-		handleUpdateSize,
-		setCalendarHeight,
-		reservations,
-		isLocalized,
-	} = useCalendarCore({
-		freeRoam: true,
+	// Prefetch when trigger is hovered or drawer is about to open
+	const handleTriggerHover = React.useCallback(() => {
+		setShouldPrefetch(true)
+	}, [])
+
+	const handleOpenChange = React.useCallback((newOpen: boolean) => {
+		setOpen(newOpen)
+		// Start prefetching when drawer starts opening
+		if (newOpen) {
+			setShouldPrefetch(true)
+		}
+	}, [])
+
+	// Mark as prefetched after a short delay to allow data to start loading
+	React.useEffect(() => {
+		if (shouldPrefetch && !isPrefetched) {
+			const timer = setTimeout(() => {
+				setIsPrefetched(true)
+			}, PREFETCH.PREFETCH_COMPLETE_DELAY_MS)
+			return () => clearTimeout(timer)
+		}
+		return
+	}, [shouldPrefetch, isPrefetched])
+
+	// Calendar ref
+	const calendarRef = React.useRef<CalendarCoreRef>(null)
+
+	// Calendar core hook - enabled when prefetching or drawer is open
+	const calendarCore = useCalendarCore({
+		freeRoam,
 		initialView,
-		storageKeyPrefix,
-		excludeConversations: true,
+		excludeConversations: false,
+		enabled: shouldPrefetch || open || isPrefetched,
 	})
 
-	// Sync current view with feature navigation state
-	const { setView } = useNavigationView()
-	useEffect(() => {
-		try {
-			if (calendarState.currentView) {
-				setView(calendarState.currentView)
-			}
-		} catch {
-			// Ignore errors when syncing calendar view with navigation state
-		}
-	}, [calendarState.currentView, setView])
+	// Get period-based data
+	const { getCurrentPeriodData } = useCalendarPeriodData({
+		currentView: calendarCore.calendarState.currentView,
+		currentDate: calendarCore.calendarState.currentDate,
+		freeRoam,
+	})
+	const periodData = getCurrentPeriodData()
 
-	// Direct view change handler to affect this calendar instance even off calendar page
-	const handleViewChangeDirect = useCallback(
-		(view: string) => {
-			try {
-				const api = calendarRef?.current?.getApi?.()
-				if (api) {
-					try {
-						api.setOption('validRange', undefined)
-						api.setOption('eventConstraint', undefined)
-						api.setOption('selectConstraint', undefined)
-					} catch {
-						// Ignore errors when clearing calendar constraints
-					}
-					try {
-						api.changeView(view)
-					} catch {
-						// Ignore errors when changing calendar view
-					}
-					try {
-						requestAnimationFrame(() => {
-							try {
-								api.updateSize?.()
-							} catch {
-								// Ignore errors when updating calendar size
-							}
-						})
-					} catch {
-						// Ignore errors when scheduling calendar size update
-					}
-				}
-			} finally {
-				calendarState.setCurrentView(view)
-			}
-		},
-		[calendarRef, calendarState.setCurrentView]
+	// Vacation date checker
+	const isVacationDate = useVacationDateChecker(vacationPeriods)
+
+	// Map conversations from period data
+	const mappedConversations = React.useMemo(
+		() => periodData.conversations || {},
+		[periodData.conversations]
 	)
 
-	// Keep stable refs for functions used inside open effect
-	const setCurrentDateRef = useRef(calendarState.setCurrentDate)
-	useEffect(() => {
-		setCurrentDateRef.current = calendarState.setCurrentDate
-	}, [calendarState.setCurrentDate])
-	const viewChangeDirectRef = useRef(handleViewChangeDirect)
-	useEffect(() => {
-		viewChangeDirectRef.current = handleViewChangeDirect
-	}, [handleViewChangeDirect])
+	// Map reservations from period data
+	const mappedReservations = React.useMemo(
+		() => periodData.reservations || {},
+		[periodData.reservations]
+	)
 
-	// Reset to today and force list view only once per drawer open
-	useEffect(() => {
-		if (!open) {
-			didInitOnOpenRef.current = false
-			return
-		}
-		if (didInitOnOpenRef.current) {
-			return
-		}
-		didInitOnOpenRef.current = true
-		try {
-			const api = calendarRef?.current?.getApi?.()
-			api?.today?.()
-		} catch {
-			// Ignore errors when resetting calendar to today
-		}
-		try {
-			setCurrentDateRef.current?.(new Date())
-		} catch {
-			// Ignore errors when setting current date
-		}
-		try {
-			viewChangeDirectRef.current?.('listMonth')
-		} catch {
-			// Ignore errors when setting list view
-		}
-	}, [open, calendarRef])
-
-	// Bridge for DockNav/Settings to control this calendar
-	const { setState: setDockBridgeState } = useDockBridge()
-	useEffect(() => {
-		setDockBridgeState({
-			calendarRef: (calendarRef || null) as RefObject<CalendarCoreRef | null>,
-			currentCalendarView: calendarState.currentView,
-			onCalendarViewChange: handleViewChangeDirect,
-		})
+	// Process events for calendar
+	const allEvents = React.useMemo(() => {
+		const filtered = filterEventsForCalendar(
+			calendarCore.eventsState.events,
+			freeRoam
+		)
+		return alignAndSortEventsForCalendar(
+			filtered,
+			freeRoam,
+			calendarCore.calendarState.currentView
+		)
 	}, [
-		handleViewChangeDirect,
-		calendarRef,
-		calendarState.currentView,
-		setDockBridgeState,
+		calendarCore.eventsState.events,
+		calendarCore.calendarState.currentView,
+		freeRoam,
 	])
 
-	// Optionally disable dateClick/select by overriding callbacks
-	const callbacks = useMemo(() => {
-		if (!disableDateClick) {
-			return baseCallbacks
-		}
-		return {
-			dateClick: () => {
-				// Disabled in drawer mode
-			},
-			select: () => {
-				// Disabled in drawer mode
-			},
-			// In drawer, allow clicking past reservations (pass through to default)
-			eventClick: baseCallbacks.eventClick,
-		}
-	}, [baseCallbacks, disableDateClick])
+	// Calendar height
+	const calendarHeight = React.useMemo((): number | 'auto' => {
+		// Use auto height for drawer to fill available space
+		return 'auto'
+	}, [])
 
-	// Drawer width adapts to calendar view: list* views use 75vw, others expand
-	const isListView = useMemo(() => {
-		const view = calendarState.currentView || ''
-		return view.startsWith('list')
-	}, [calendarState.currentView])
+	// Event handlers
+	const eventHandlers = useCalendarEventHandlers({
+		events: allEvents,
+		conversations: mappedConversations,
+		isLocalized,
+		currentView: calendarCore.calendarState.currentView,
+		isVacationDate,
+		handleRefreshWithBlur: async () => {
+			// No-op: refresh handled elsewhere
+		},
+		openConversation: () => {
+			// No-op: conversations not opened from drawer
+		},
+		addEvent: calendarCore.eventsState.addEvent,
+		updateEvent: calendarCore.eventsState.updateEvent,
+		removeEvent: calendarCore.eventsState.removeEvent,
+		dataTableEditor: {
+			handleEditReservation: () => {
+				// No-op: handled by dataTableEditor state
+			},
+		},
+		calendarRef,
+	})
 
-	const drawerWidthClass = isListView
-		? 'w-[clamp(320px,75vw,840px)]'
-		: 'w-[95vw]'
+	// Handle opening document from event click
+	const handleOpenDocument = React.useCallback(
+		(waId: string) => {
+			// Navigate to documents page with waId as query parameter
+			router.push(`/documents?waId=${encodeURIComponent(waId)}`)
+			// Close the drawer after navigation
+			setOpen(false)
+		},
+		[router]
+	)
+
+	// Build calendar callbacks
+	const callbacks = React.useMemo(
+		() =>
+			createCalendarCallbacks({
+				handlers: {
+					isLocalized,
+					currentView: calendarCore.calendarState.currentView,
+					isVacationDate,
+					openEditor: () => {
+						// No-op: editor not shown in drawer
+					},
+					handleOpenConversation: eventHandlers.handleOpenConversation,
+					handleEventChange: eventHandlers.handleEventChange,
+				},
+				freeRoam,
+				timezone: getTimezone(),
+				currentDate: calendarCore.calendarState.currentDate,
+				...(recordingState.periodIndex !== null && recordingState.field !== null
+					? {
+							handleVacationDateClick,
+						}
+					: {}),
+				setCurrentDate: calendarCore.calendarState.setCurrentDate,
+				currentView: calendarCore.calendarState.currentView,
+			}),
+		[
+			isLocalized,
+			calendarCore.calendarState.currentView,
+			isVacationDate,
+			eventHandlers.handleOpenConversation,
+			eventHandlers.handleEventChange,
+			freeRoam,
+			calendarCore.calendarState.currentDate,
+			recordingState.periodIndex,
+			recordingState.field,
+			handleVacationDateClick,
+			calendarCore.calendarState.setCurrentDate,
+		]
+	)
+
+	// Context menu
+	const contextMenu = useCalendarContextMenu()
+
+	// Create a ref for the hover card close function
+	const closeHoverCardRef = React.useRef<(() => void) | null>(null)
+
+	// Drag handlers (must be created before hover card)
+	const dragHandlers = useCalendarDragHandlers({
+		closeHoverCardImmediately: () => closeHoverCardRef.current?.(),
+	})
+
+	// Hover card management with proper drag state
+	const hoverCard = useCalendarHoverCard({
+		isDragging: dragHandlers.isDragging,
+	})
+
+	// Update the ref with the actual close function
+	React.useEffect(() => {
+		closeHoverCardRef.current = hoverCard.closeHoverCardImmediately
+	}, [hoverCard.closeHoverCardImmediately])
+
+	// Handle calendar size updates
+	const handleCalendarUpdateSize = React.useCallback(() => {
+		// No-op: height is auto in drawer
+	}, [])
+
+	const handleCalendarHeightChange = React.useCallback(() => {
+		// No-op: height is auto in drawer
+	}, [])
+
+	// Wrap trigger to handle hover for prefetching
+	const wrappedTrigger = React.useMemo(() => {
+		if (!trigger) {
+			return null
+		}
+		const element = trigger as React.ReactElement<
+			React.HTMLAttributes<HTMLElement>
+		>
+		if (!element || typeof element !== 'object' || !('props' in element)) {
+			return element
+		}
+		const props = element.props as React.HTMLAttributes<HTMLElement>
+		return React.cloneElement(element, {
+			...props,
+			onMouseEnter: handleTriggerHover,
+		})
+	}, [trigger, handleTriggerHover])
+
+	if (!mounted) {
+		return null
+	}
 
 	return (
-		<>
-			{mounted ? (
-				<Sheet onOpenChange={setOpen} open={open}>
-					{trigger ? (
-						isValidElement(trigger) ? (
-							<SheetTrigger asChild>{trigger}</SheetTrigger>
-						) : (
-							<SheetTrigger asChild>
-								<Button variant="outline">Open Calendar</Button>
-							</SheetTrigger>
-						)
-					) : (
-						<SheetTrigger asChild>
-							<Button variant="outline">Open Calendar</Button>
-						</SheetTrigger>
-					)}
-					<SheetContent
-						className={cn(
-							`${drawerWidthClass} flex max-w-none flex-col overflow-hidden p-0 sm:max-w-none`,
-							className
-						)}
-						side={side}
+		<Sheet onOpenChange={handleOpenChange} open={open}>
+			<SheetTrigger asChild>{wrappedTrigger}</SheetTrigger>
+			<SheetContent
+				className={cn(
+					'flex w-[85vw] flex-col overflow-hidden p-0 sm:max-w-xl',
+					className
+				)}
+				side={side}
+			>
+				<SheetHeader className="flex flex-row items-center justify-between border-b px-4 py-3 pr-12">
+					<SheetTitle>{title}</SheetTitle>
+				</SheetHeader>
+
+				<div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+					<CalendarContainer
+						isHydrated={mounted}
+						isRefreshing={false}
+						loading={calendarCore.eventsState.loading && !isPrefetched}
 					>
-						<SheetHeader className="border-b px-4 py-3">
-							<SheetTitle>{title}</SheetTitle>
-						</SheetHeader>
-
-						{/* Dock similar to header dock, single-view settings */}
-						<div className="px-2 py-1">
-							{/* No external arrows; navigation is inside the dock */}
-							<DockNav
-								calendarRef={calendarRef}
-								className="mt-0 w-full max-w-full overflow-x-auto"
-								currentCalendarView={calendarState.currentView}
-								layout="drawerThreeColumn"
-								navigationOnly={true}
-								onCalendarViewChange={handleViewChangeDirect}
-							/>
-						</div>
-
-						<div className="min-h-0 flex-1 px-2 pt-0 pb-2">
-							<ThemedScrollbar className="h-full w-full" noScrollX={true}>
-								<CalendarContainer
-									isHydrated={calendarState.isHydrated}
-									isRefreshing={isRefreshing}
-									loading={eventsState.loading}
-								>
-									<div className="calendar-drawer-calendar relative flex h-full w-full flex-1 rounded-lg border border-border/50 bg-card/50 p-2">
-										<style>{`
-										.calendar-drawer-calendar :global(.fc) {
-											height: 100%;
-											width: 100%;
-										}
-										.calendar-drawer-calendar :global(.fc-view-harness),
-										.calendar-drawer-calendar :global(.fc-scroller),
-										.calendar-drawer-calendar :global(.fc-scroller-harness) {
-											min-height: 100%;
-										}
-										.calendar-drawer-calendar :global(.fc-list-table) {
-											width: 100%;
-										}
-									`}</style>
-										<CalendarMainContent
-											calendarHeight={calendarHeight}
-											calendarRef={calendarRef}
-											callbacks={callbacks}
-											contextMenu={contextMenu}
-											conversations={{}}
-											currentDate={calendarState.currentDate}
-											currentView={calendarState.currentView}
-											dataTableEditor={{
-												handleEditReservation: () => {
-													// Disabled in drawer mode
-												},
-											}}
-											disableHoverCards={true}
-											disableNavLinks={true}
-											dragHandlers={dragHandlers}
-											events={eventsState.events}
-											freeRoam={true}
-											handleCancelReservation={
-												eventHandlers.handleCancelReservation
+						{open || isPrefetched ? (
+							<div className="flex h-full flex-1 flex-col rounded-lg border border-border/50 bg-card/50 p-2">
+								<CalendarMainContent
+									calendarHeight={calendarHeight}
+									calendarRef={calendarRef}
+									callbacks={{
+										...callbacks,
+										dateClick: disableDateClick
+											? () => {
+													// No-op when date click is disabled
+												}
+											: callbacks.dateClick,
+										// Override eventClick to open document and close drawer
+										eventClick: (info: {
+											event?: {
+												id?: string
+												extendedProps?: { wa_id?: string; waId?: string }
 											}
-											handleEventChange={eventHandlers.handleEventChange}
-											handleOpenConversation={(waId) => {
-												try {
-													window.dispatchEvent(
-														new CustomEvent('doc:user-select', {
-															detail: { waId },
-														})
-													)
-												} catch {
-													// Ignore errors when dispatching custom event
-												}
-												try {
-													eventHandlers.handleOpenConversation(waId)
-												} catch {
-													// Ignore errors when opening conversation
-												}
-												try {
-													setOpen(false)
-												} catch {
-													// Ignore errors when closing drawer
-												}
-											}}
-											handleOpenDocument={(waId) => {
-												try {
-													window.dispatchEvent(
-														new CustomEvent('doc:user-select', {
-															detail: { waId },
-														})
-													)
-													setOpen(false)
-												} catch {
-													// Ignore errors when opening document
-												}
-											}}
-											handleUpdateSize={handleUpdateSize}
-											handleViewDetails={() => {
-												// Disabled in drawer mode
-											}}
-											hoverCard={hoverCardWithDragging}
-											isHydrated={calendarState.isHydrated}
-											isLocalized={isLocalized}
-											isVacationDate={isVacationDate}
-											processedEvents={processedEvents.filter(
-												(e) => (e as { type?: string }).type !== 'conversation'
-											)}
-											reservations={reservations}
-											setCalendarHeight={setCalendarHeight}
-											setCurrentDate={calendarState.setCurrentDate}
-											setCurrentView={calendarState.setCurrentView}
-											slotTimes={calendarState.slotTimes}
-											slotTimesKey={calendarState.slotTimesKey}
-										/>
-									</div>
-								</CalendarContainer>
-							</ThemedScrollbar>
-						</div>
-					</SheetContent>
-				</Sheet>
-			) : null}
-		</>
+										}) => {
+											const waId =
+												info?.event?.extendedProps?.wa_id ||
+												info?.event?.extendedProps?.waId ||
+												info?.event?.id
+											if (waId) {
+												handleOpenDocument(String(waId))
+											}
+										},
+									}}
+									contextMenu={contextMenu}
+									conversations={mappedConversations}
+									currentDate={calendarCore.calendarState.currentDate}
+									currentView={calendarCore.calendarState.currentView}
+									dataTableEditor={{
+										handleEditReservation: () => {
+											// No-op: handled by dataTableEditor state
+										},
+									}}
+									disableHoverCards={false}
+									disableNavLinks={false}
+									dragHandlers={dragHandlers}
+									events={allEvents}
+									freeRoam={freeRoam}
+									handleCancelReservation={
+										eventHandlers.handleCancelReservation
+									}
+									handleEventChange={eventHandlers.handleEventChange}
+									handleOpenConversation={() => {
+										// No-op: conversations not opened from drawer
+									}}
+									handleOpenDocument={handleOpenDocument}
+									handleUpdateSize={handleCalendarUpdateSize}
+									handleViewDetails={() => {
+										// No-op: view details handled elsewhere
+									}}
+									hoverCard={hoverCard}
+									isHydrated={true}
+									isLocalized={isLocalized}
+									isVacationDate={isVacationDate}
+									onViewChange={calendarCore.calendarState.setCurrentView}
+									processedEvents={allEvents}
+									reservations={mappedReservations}
+									setCalendarHeight={handleCalendarHeightChange}
+									setCurrentDate={calendarCore.calendarState.setCurrentDate}
+									setCurrentView={calendarCore.calendarState.setCurrentView}
+									slotTimes={calendarCore.calendarState.slotTimes}
+									slotTimesKey={calendarCore.calendarState.slotTimesKey}
+								/>
+							</div>
+						) : null}
+					</CalendarContainer>
+				</div>
+			</SheetContent>
+		</Sheet>
 	)
 }

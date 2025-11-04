@@ -19,6 +19,13 @@ export type UseExternalDocumentUpdatesParams = {
 			files?: Record<string, unknown>
 		} | null
 	) => void
+	setViewerScene?: (
+		scene: {
+			elements?: unknown[]
+			appState?: Record<string, unknown>
+			files?: Record<string, unknown>
+		} | null
+	) => void
 	pendingInitialLoadWaIdRef: React.MutableRefObject<string | null>
 	editorSigRef: React.MutableRefObject<string | null>
 	viewerSigRef: React.MutableRefObject<string | null>
@@ -29,6 +36,7 @@ export type UseExternalDocumentUpdatesParams = {
 		files?: Record<string, unknown>
 	} | null>
 	initializeCamera: (viewerCamera: Record<string, unknown>) => void
+	currentWaIdRef?: React.MutableRefObject<string | null>
 }
 
 /**
@@ -45,12 +53,14 @@ export function useExternalDocumentUpdates(
 	const {
 		waId,
 		setScene,
+		setViewerScene,
 		pendingInitialLoadWaIdRef,
 		editorSigRef,
 		viewerSigRef,
 		viewerApiRef,
 		pendingViewerInitRef,
 		initializeCamera,
+		currentWaIdRef,
 	} = params
 
 	useEffect(() => {
@@ -75,6 +85,26 @@ export function useExternalDocumentUpdates(
 				const isPendingInitialLoad = pendingInitialLoadWaIdRef.current === waId
 				const hasElements = Array.isArray(s.elements) && s.elements.length > 0
 
+				// Only update viewer when switching documents (waId changed), not on every data update
+				const isDocumentSwitch =
+					currentWaIdRef && currentWaIdRef.current !== waId
+				if (currentWaIdRef) {
+					currentWaIdRef.current = waId
+				}
+
+				// Only update viewer scene state prop on initial load or document switch
+				// Use API updates for all other cases to avoid re-renders
+				const shouldUpdateViewerSceneProp =
+					isPendingInitialLoad || isDocumentSwitch
+
+				// Always initialize viewer when we receive data, not just during initial load
+				// This ensures viewer gets data even if editor is already loaded
+				const shouldUpdateViewer =
+					isPendingInitialLoad ||
+					(sig &&
+						sig !== viewerSigRef.current &&
+						(hasElements || waId === DEFAULT_DOCUMENT_WA_ID))
+
 				// Only mark as loaded if we received actual content, not an empty document
 				if (
 					isPendingInitialLoad &&
@@ -89,13 +119,20 @@ export function useExternalDocumentUpdates(
 					const viewerCamera = s.viewerAppState || {}
 					initializeCamera(viewerCamera)
 
+					// Update viewer scene state ONLY during initial load or document switch
+					// After initial load, rely on API updates to avoid re-renders
+					const viewerSceneData = {
+						elements: s.elements || [],
+						appState: viewerCamera,
+						files: s.files || {},
+					}
+					if (shouldUpdateViewerSceneProp) {
+						setViewerScene?.(viewerSceneData)
+					}
+
 					// Initialize viewer via API (preserve its independent camera afterwards)
 					try {
-						const initScene = {
-							elements: s.elements || [],
-							appState: viewerCamera,
-							files: s.files || {},
-						} as Record<string, unknown>
+						const initScene = viewerSceneData as Record<string, unknown>
 						const api = viewerApiRef.current as unknown as {
 							updateScene?: (s: Record<string, unknown>) => void
 						} | null
@@ -116,6 +153,44 @@ export function useExternalDocumentUpdates(
 					}
 					// Mark this specific waId as loaded only if we got content
 					pendingInitialLoadWaIdRef.current = null
+				} else if (shouldUpdateViewer && sig && sig !== viewerSigRef.current) {
+					// Update viewer when switching documents (waId changed)
+					// Use API updates for viewer, only update scene prop if document switch
+					viewerSigRef.current = sig
+					const viewerCamera = s.viewerAppState || {}
+					initializeCamera(viewerCamera)
+
+					const viewerSceneData = {
+						elements: s.elements || [],
+						appState: viewerCamera,
+						files: s.files || {},
+					}
+					// Only update viewer scene state prop on document switch, not on every data update
+					if (shouldUpdateViewerSceneProp) {
+						setViewerScene?.(viewerSceneData)
+					}
+
+					// Initialize viewer via API
+					try {
+						const initScene = viewerSceneData as Record<string, unknown>
+						const api = viewerApiRef.current as unknown as {
+							updateScene?: (s: Record<string, unknown>) => void
+						} | null
+						if (api?.updateScene) {
+							api.updateScene(initScene)
+						} else {
+							pendingViewerInitRef.current = initScene as unknown as {
+								elements?: unknown[]
+								appState?: Record<string, unknown>
+								files?: Record<string, unknown>
+							}
+						}
+					} catch (error) {
+						logExternalUpdateWarning(
+							'Failed to initialize viewer via API during external update',
+							error
+						)
+					}
 				}
 			} catch (error) {
 				logExternalUpdateWarning(
@@ -151,6 +226,25 @@ export function useExternalDocumentUpdates(
 						pendingInitialLoadWaIdRef.current === waId
 					const hasElements = Array.isArray(s.elements) && s.elements.length > 0
 
+					// Only update viewer when switching documents (waId changed), not on every data update
+					const isDocumentSwitch =
+						currentWaIdRef && currentWaIdRef.current !== waId
+					if (currentWaIdRef) {
+						currentWaIdRef.current = waId
+					}
+
+					// Only update viewer scene state prop on initial load or document switch
+					const shouldUpdateViewerSceneProp =
+						isPendingInitialLoad || isDocumentSwitch
+
+					// Always initialize viewer when we receive data, not just during initial load
+					// This ensures viewer gets data even if editor is already loaded
+					const shouldUpdateViewer =
+						isPendingInitialLoad ||
+						(sig &&
+							sig !== viewerSigRef.current &&
+							(hasElements || waId === DEFAULT_DOCUMENT_WA_ID))
+
 					// Only mark as loaded if we received actual content, not an empty document
 					if (
 						isPendingInitialLoad &&
@@ -165,13 +259,17 @@ export function useExternalDocumentUpdates(
 						const viewerCamera = s.viewerAppState || {}
 						initializeCamera(viewerCamera)
 
+						// Update viewer scene state
+						const viewerSceneData = {
+							elements: s.elements || [],
+							appState: viewerCamera,
+							files: s.files || {},
+						}
+						setViewerScene?.(viewerSceneData)
+
 						// Initialize viewer via API (preserve its independent camera afterwards)
 						try {
-							const initScene = {
-								elements: s.elements || [],
-								appState: viewerCamera,
-								files: s.files || {},
-							} as Record<string, unknown>
+							const initScene = viewerSceneData as Record<string, unknown>
 							const api = viewerApiRef.current as unknown as {
 								updateScene?: (s: Record<string, unknown>) => void
 							} | null
@@ -192,6 +290,47 @@ export function useExternalDocumentUpdates(
 						}
 						// Mark this specific waId as loaded only if we got content
 						pendingInitialLoadWaIdRef.current = null
+					} else if (
+						shouldUpdateViewer &&
+						sig &&
+						sig !== viewerSigRef.current
+					) {
+						// Update viewer when switching documents - use API only to avoid flicker
+						viewerSigRef.current = sig
+						const viewerCamera = s.viewerAppState || {}
+						initializeCamera(viewerCamera)
+
+						// Update viewer scene state only on document switch
+						const viewerSceneData = {
+							elements: s.elements || [],
+							appState: viewerCamera,
+							files: s.files || {},
+						}
+						if (shouldUpdateViewerSceneProp) {
+							setViewerScene?.(viewerSceneData)
+						}
+
+						// Initialize viewer via API
+						try {
+							const initScene = viewerSceneData as Record<string, unknown>
+							const api = viewerApiRef.current as unknown as {
+								updateScene?: (s: Record<string, unknown>) => void
+							} | null
+							if (api?.updateScene) {
+								api.updateScene(initScene)
+							} else {
+								pendingViewerInitRef.current = initScene as unknown as {
+									elements?: unknown[]
+									appState?: Record<string, unknown>
+									files?: Record<string, unknown>
+								}
+							}
+						} catch (error) {
+							logExternalUpdateWarning(
+								'Failed to initialize viewer via API during scene applied',
+								error
+							)
+						}
 					}
 				}
 			} catch (error) {
@@ -233,11 +372,13 @@ export function useExternalDocumentUpdates(
 	}, [
 		waId,
 		setScene,
+		setViewerScene,
 		pendingInitialLoadWaIdRef,
 		editorSigRef,
 		viewerSigRef,
 		viewerApiRef,
 		pendingViewerInitRef,
 		initializeCamera,
+		currentWaIdRef,
 	])
 }

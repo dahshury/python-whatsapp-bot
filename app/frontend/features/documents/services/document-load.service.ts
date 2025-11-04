@@ -14,9 +14,14 @@ export type DocumentLoadOptions = {
  * Service for handling document loading operations.
  * Uses REST API to fetch documents instead of WebSocket.
  *
+ * @deprecated This service is deprecated. Use TanStack Query hooks (useGetByWaId) instead.
  * @example
  * ```typescript
+ * // Old way (deprecated):
  * await DocumentLoadService.load({ waId: 'user123' })
+ *
+ * // New way:
+ * const { data, refetch } = useGetByWaId(waId)
  * ```
  */
 export const DocumentLoadService = {

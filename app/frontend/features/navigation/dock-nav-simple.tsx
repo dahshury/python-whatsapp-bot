@@ -8,16 +8,16 @@ import { buttonVariants } from '@ui/button'
 import { Label } from '@ui/label'
 import { Separator } from '@ui/separator'
 import { BarChart3, Settings } from 'lucide-react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { type RefObject, useEffect, useState } from 'react'
+import { memo, type RefObject, useEffect, useState } from 'react'
 import type { CalendarCoreRef } from '@/features/calendar'
 import { getCalendarViewOptions } from '@/features/calendar'
 import { SettingsTabs } from '@/features/settings/settings'
 import { i18n } from '@/shared/libs/i18n'
 import { Dock, DockIcon } from '@/shared/ui/dock'
 import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { PrefetchLink } from '@/shared/ui/prefetch-link'
 import { RadioGroup, RadioGroupItem } from '@/shared/ui/radio-group'
 import { StablePopoverButton } from '@/shared/ui/stable-popover-button'
 import {
@@ -148,6 +148,110 @@ export function DualCalendarViewSelector({
 		</div>
 	)
 }
+
+const SettingsPopover = memo(
+	({
+		i18n: i18nApi,
+		isLocalized,
+		suppressTooltip,
+		onSettingsOpenChange,
+		settingsOpen,
+		activeTab,
+		setActiveTab,
+		isCalendarPage,
+		currentCalendarView,
+		handleCalendarViewChange,
+		_isDualMode,
+		viewMode,
+		leftCalendarRef,
+		rightCalendarRef,
+		leftCalendarView,
+		rightCalendarView,
+		handleLeftCalendarViewChange,
+		handleRightCalendarViewChange,
+	}: {
+		i18n: typeof i18n
+		isLocalized: boolean
+		suppressTooltip: boolean
+		onSettingsOpenChange: (open: boolean) => void
+		settingsOpen: boolean
+		activeTab: string
+		setActiveTab: (value: string) => void
+		isCalendarPage: boolean
+		currentCalendarView: string
+		handleCalendarViewChange: (view: string) => void
+		_isDualMode: boolean
+		viewMode: 'freeRoam' | 'dual' | 'default'
+		leftCalendarRef: RefObject<CalendarCoreRef | null> | null
+		rightCalendarRef: RefObject<CalendarCoreRef | null> | null
+		leftCalendarView: string
+		rightCalendarView: string
+		handleLeftCalendarViewChange: (view: string) => void
+		handleRightCalendarViewChange: (view: string) => void
+	}) => (
+		<DockIcon>
+			<Popover onOpenChange={onSettingsOpenChange} open={settingsOpen}>
+				<Tooltip {...(settingsOpen || suppressTooltip ? { open: false } : {})}>
+					<TooltipTrigger asChild>
+						<PopoverTrigger asChild>
+							<StablePopoverButton
+								aria-label={i18nApi.getMessage('settings', isLocalized)}
+								className="size-9 rounded-full transition-colors duration-300 ease-out"
+								variant={settingsOpen ? 'default' : 'ghost'}
+							>
+								<Settings
+									className={cn(
+										'size-4 transform transition-transform duration-300 ease-out',
+										settingsOpen ? 'rotate-90' : 'rotate-0'
+									)}
+								/>
+							</StablePopoverButton>
+						</PopoverTrigger>
+					</TooltipTrigger>
+					<TooltipContent>
+						<p>{i18nApi.getMessage('settings', isLocalized)}</p>
+					</TooltipContent>
+				</Tooltip>
+
+				<PopoverContent
+					align="center"
+					className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
+				>
+					{_isDualMode && viewMode === 'dual' ? (
+						<SettingsTabs
+							activeTab={activeTab}
+							currentCalendarView={currentCalendarView}
+							customViewSelector={
+								<DualCalendarViewSelector
+									isLocalized={isLocalized}
+									leftCalendarRef={leftCalendarRef || null}
+									leftCalendarView={leftCalendarView}
+									onLeftCalendarViewChange={handleLeftCalendarViewChange}
+									onRightCalendarViewChange={handleRightCalendarViewChange}
+									rightCalendarRef={rightCalendarRef || null}
+									rightCalendarView={rightCalendarView}
+								/>
+							}
+							isCalendarPage={isCalendarPage}
+							isLocalized={isLocalized}
+							onCalendarViewChange={handleCalendarViewChange}
+							onTabChange={setActiveTab}
+						/>
+					) : (
+						<SettingsTabs
+							activeTab={activeTab}
+							currentCalendarView={currentCalendarView}
+							isCalendarPage={isCalendarPage}
+							isLocalized={isLocalized}
+							onCalendarViewChange={handleCalendarViewChange}
+							onTabChange={setActiveTab}
+						/>
+					)}
+				</PopoverContent>
+			</Popover>
+		</DockIcon>
+	)
+)
 
 export function DockNavSimple({
 	className = '',
@@ -373,7 +477,7 @@ export function DockNavSimple({
 				<DockIcon>
 					<Tooltip>
 						<TooltipTrigger asChild>
-							<Link
+							<PrefetchLink
 								aria-label={i18n.getMessage('dashboard_title', isLocalized)}
 								className={cn(
 									buttonVariants({
@@ -386,7 +490,7 @@ export function DockNavSimple({
 								href="/dashboard"
 							>
 								<BarChart3 className="size-4" />
-							</Link>
+							</PrefetchLink>
 						</TooltipTrigger>
 						<TooltipContent>
 							<p>{i18n.getMessage('dashboard_title', isLocalized)}</p>
@@ -398,69 +502,26 @@ export function DockNavSimple({
 				<Separator className="h-full py-2" orientation="vertical" />
 
 				{/* Settings Popover */}
-				<DockIcon>
-					<Popover onOpenChange={handleSettingsOpenChange} open={settingsOpen}>
-						<Tooltip
-							{...(settingsOpen || suppressTooltip ? { open: false } : {})}
-						>
-							<TooltipTrigger asChild>
-								<PopoverTrigger asChild>
-									<StablePopoverButton
-										aria-label={i18n.getMessage('settings', isLocalized)}
-										className="size-9 rounded-full transition-colors duration-300 ease-out"
-										variant={settingsOpen ? 'default' : 'ghost'}
-									>
-										<Settings
-											className={cn(
-												'size-4 transform transition-transform duration-300 ease-out',
-												settingsOpen ? 'rotate-90' : 'rotate-0'
-											)}
-										/>
-									</StablePopoverButton>
-								</PopoverTrigger>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>{i18n.getMessage('settings', isLocalized)}</p>
-							</TooltipContent>
-						</Tooltip>
-
-						<PopoverContent
-							align="center"
-							className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
-						>
-							{_isDualMode && viewMode === 'dual' ? (
-								<SettingsTabs
-									activeTab={activeTab}
-									currentCalendarView={currentCalendarView}
-									customViewSelector={
-										<DualCalendarViewSelector
-											isLocalized={isLocalized}
-											leftCalendarRef={leftCalendarRef || null}
-											leftCalendarView={leftCalendarView}
-											onLeftCalendarViewChange={handleLeftCalendarViewChange}
-											onRightCalendarViewChange={handleRightCalendarViewChange}
-											rightCalendarRef={rightCalendarRef || null}
-											rightCalendarView={rightCalendarView}
-										/>
-									}
-									isCalendarPage={isCalendarPage}
-									isLocalized={isLocalized}
-									onCalendarViewChange={handleCalendarViewChange}
-									onTabChange={setActiveTab}
-								/>
-							) : (
-								<SettingsTabs
-									activeTab={activeTab}
-									currentCalendarView={currentCalendarView}
-									isCalendarPage={isCalendarPage}
-									isLocalized={isLocalized}
-									onCalendarViewChange={handleCalendarViewChange}
-									onTabChange={setActiveTab}
-								/>
-							)}
-						</PopoverContent>
-					</Popover>
-				</DockIcon>
+				<SettingsPopover
+					_isDualMode={_isDualMode}
+					activeTab={activeTab}
+					currentCalendarView={currentCalendarView}
+					handleCalendarViewChange={handleCalendarViewChange}
+					handleLeftCalendarViewChange={handleLeftCalendarViewChange}
+					handleRightCalendarViewChange={handleRightCalendarViewChange}
+					i18n={i18n}
+					isCalendarPage={isCalendarPage}
+					isLocalized={isLocalized}
+					leftCalendarRef={leftCalendarRef || null}
+					leftCalendarView={leftCalendarView}
+					onSettingsOpenChange={handleSettingsOpenChange}
+					rightCalendarRef={rightCalendarRef || null}
+					rightCalendarView={rightCalendarView}
+					setActiveTab={setActiveTab}
+					settingsOpen={settingsOpen}
+					suppressTooltip={suppressTooltip}
+					viewMode={viewMode}
+				/>
 			</Dock>
 		</TooltipProvider>
 	)

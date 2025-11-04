@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { type ReactNode, useMemo, useState } from 'react'
 import { TanstackQueryProvider } from '@/app/provider/tanstack-query/tanstack-query-provider'
 import { AppServiceProvider } from '@/infrastructure/providers/app-service-provider'
 import { BackendConnectionProvider } from '@/shared/libs/backend-connection-provider'
@@ -13,6 +13,7 @@ import { LanguageProvider } from '@/shared/libs/state/language-context'
 import { SettingsProvider } from '@/shared/libs/state/settings-context'
 import { VacationProvider } from '@/shared/libs/state/vacation-context'
 import { ToastRouter } from '@/shared/libs/toast/toast-router'
+import { AppShellVisibilityProvider } from '@/shared/ui/app-shell-visibility'
 import { DvhInit } from '@/shared/ui/dvh-init'
 import { ErrorRecoveryInit } from '@/shared/ui/error-recovery-init'
 import { MainContentWrapper } from '@/shared/ui/main-content-wrapper'
@@ -37,6 +38,19 @@ export function AppProvidersClient({
 	headerSlot,
 	sidebarSlot,
 }: AppProvidersClientProps) {
+	const [showShell, setShowShell] = useState(true)
+	const appShellContextValue = useMemo(
+		() => ({
+			showShell,
+			setShowShell,
+		}),
+		[showShell]
+	)
+	const headerContent =
+		showShell && headerSlot ? (
+			<div data-app-shell="header">{headerSlot}</div>
+		) : null
+
 	return (
 		<>
 			<ErrorRecoveryInit />
@@ -69,12 +83,22 @@ export function AppProvidersClient({
 																		}}
 																	>
 																		<div className="flex flex-1 overflow-hidden">
-																			<SidebarProvider>
-																				{sidebarSlot}
-																				<MainContentWrapper header={headerSlot}>
-																					{children}
-																				</MainContentWrapper>
-																			</SidebarProvider>
+																			<AppShellVisibilityProvider
+																				value={appShellContextValue}
+																			>
+																				<SidebarProvider>
+																					{showShell ? (
+																						<div data-app-shell="sidebar">
+																							{sidebarSlot}
+																						</div>
+																					) : null}
+																					<MainContentWrapper
+																						header={headerContent}
+																					>
+																						{children}
+																					</MainContentWrapper>
+																				</SidebarProvider>
+																			</AppShellVisibilityProvider>
 																		</div>
 																	</div>
 																	<RealtimeEventBus />

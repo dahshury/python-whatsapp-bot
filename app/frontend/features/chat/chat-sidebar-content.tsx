@@ -21,7 +21,11 @@ import { ChatMessagesViewport } from '@/features/chat/chat/chat-messages-viewpor
 import { ConversationCombobox } from '@/features/chat/conversation-combobox'
 import { logger } from '@/shared/libs/logger'
 import { Spinner } from '@/shared/ui/spinner'
-import { useConversationMessagesQuery, useCustomerNames } from './hooks'
+import {
+	useConversationMessagesQuery,
+	useCustomerNames,
+	useTypingIndicator,
+} from './hooks'
 
 type ChatSidebarContentProps = {
 	selectedConversationId: string | null
@@ -232,41 +236,36 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 		? i18n.getMessage('chat_type_message', isLocalized)
 		: i18n.getMessage('chat_no_conversation', isLocalized)
 
-	// Emit typing indicator via process controller (throttled) when enabled
+	// Emit typing indicator via TanStack Query mutation (throttled) when enabled
+	const typingMutation = useTypingIndicator()
 	useEffect(() => {
 		if (!(sendTypingIndicator && selectedConversationId)) {
 			return
 		}
-		// Throttled typing indicator via HTTP endpoint (no legacy process)
+		// Throttled typing indicator via HTTP endpoint using TanStack Query
 		let lastSent = 0
-		const sendTyping = async (value: boolean) => {
-			const response = await fetch('/api/typing', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					wa_id: selectedConversationId,
-					typing: value,
-				}),
-			})
-			if (!response.ok) {
-				throw new Error(`Typing endpoint responded with ${response.status}`)
-			}
-		}
 		const dispatchTyping = (value: boolean) => {
-			sendTyping(value).catch((error) =>
-				logSidebarWarning('Failed to dispatch typing indicator', error)
-			)
-		}
-		const onEditorTyping = () => {
 			try {
 				const now = Date.now()
 				if (now - lastSent >= TYPING_THROTTLE_MS) {
-					dispatchTyping(true)
+					typingMutation.mutate(
+						{
+							wa_id: selectedConversationId,
+							typing: value,
+						},
+						{
+							onError: (error) =>
+								logSidebarWarning('Failed to dispatch typing indicator', error),
+						}
+					)
 					lastSent = now
 				}
 			} catch (error) {
 				logSidebarWarning('Editor typing throttler failed', error)
 			}
+		}
+		const onEditorTyping = () => {
+			dispatchTyping(true)
 		}
 		const handler = (e: Event) => {
 			try {
@@ -283,7 +282,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 			dispatchTyping(false)
 			window.removeEventListener('chat:editor_event', handler as EventListener)
 		}
-	}, [sendTypingIndicator, selectedConversationId])
+	}, [sendTypingIndicator, selectedConversationId, typingMutation])
 
 	// Show combobox - always show it since we're loading customer names
 	const { data: customerNames } = useCustomerNames()

@@ -43,6 +43,8 @@ type UseCalendarCoreProps = {
 	dateStorageKey?: string
 	/** When true, conversations will not be fetched nor included in events */
 	excludeConversations?: boolean
+	/** When false, calendar queries will not be executed (e.g., when drawer is closed) */
+	enabled?: boolean
 }
 
 export function useCalendarCore({
@@ -53,6 +55,7 @@ export function useCalendarCore({
 	viewStorageKey,
 	dateStorageKey,
 	excludeConversations,
+	enabled = true,
 }: UseCalendarCoreProps) {
 	const { isLocalized } = useLanguage()
 	const {
@@ -78,12 +81,21 @@ export function useCalendarCore({
 
 	// Get period-based data from TanStack Query cache (for hover cards and UI)
 	// NOTE: Calendar events are loaded via useCalendarEvents hook below
+	// Only read from cache when enabled to avoid unnecessary cache access
 	const { getCurrentPeriodData } = useCalendarPeriodData({
 		currentView: calendarState.currentView,
 		currentDate: calendarState.currentDate,
 		freeRoam,
 	})
-	const periodData = getCurrentPeriodData()
+	const periodData = enabled
+		? getCurrentPeriodData()
+		: {
+				reservations: {},
+				conversations: {},
+				periodKey: '',
+				fromDate: '',
+				toDate: '',
+			}
 
 	// Calendar events management
 	const eventsState = useCalendarEvents({
@@ -93,6 +105,7 @@ export function useCalendarCore({
 		currentDate: calendarState.currentDate,
 		autoRefresh: false,
 		...(excludeConversations ? { excludeConversations: true } : {}),
+		enabled,
 	})
 
 	// Invalidate cache when view changes (only invalidate old view type queries)

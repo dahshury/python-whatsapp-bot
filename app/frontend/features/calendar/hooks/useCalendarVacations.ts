@@ -12,8 +12,10 @@ type CalendarVacationsResponse = {
 /**
  * Hook for fetching vacations for calendar.
  * Uses TanStack Query for caching and state management.
+ *
+ * @param enabled - Whether the query should be enabled (default: true)
  */
-export function useCalendarVacations() {
+export function useCalendarVacations(enabled = true) {
 	return useQuery({
 		queryKey: ['calendar-vacations'],
 		queryFn: async (): Promise<Vacation[]> => {
@@ -31,5 +33,6 @@ export function useCalendarVacations() {
 		refetchOnWindowFocus: false,
 		refetchOnMount: true,
 		retry: 1,
+		enabled,
 	})
 }

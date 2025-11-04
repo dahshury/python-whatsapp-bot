@@ -139,7 +139,7 @@ export default function useDocumentCustomerRow(
 					;(globalThis as { __docRestInFlight?: boolean }).__docRestInFlight =
 						false
 
-					// Note: Document loading is handled separately by DocumentLoadService
+					// Note: Document loading is handled separately by TanStack Query (useGetByWaId)
 					// We only handle grid data (name, age, phone) here
 					await apply(restName, restAge)
 

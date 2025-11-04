@@ -26,7 +26,7 @@ const AppServiceContext = createContext<ServiceRegistry | null>(null)
 
 export function AppServiceProvider({ children }: { children: ReactNode }) {
 	const services = useMemo<ServiceRegistry>(() => {
-		const chat = new ChatAdapter(wsAdapter)
+		const chat = new ChatAdapter(wsAdapter, httpAdapter)
 		const reservations = new ReservationsPortAdapter()
 		const metrics = new MetricsAdapter(wsAdapter)
 
