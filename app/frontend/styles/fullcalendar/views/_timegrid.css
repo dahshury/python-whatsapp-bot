@@ -8,313 +8,313 @@
 
 /* General timegrid structure */
 .fc-timegrid .fc-daygrid-body {
-	/* the all-day daygrid within the timegrid view */
-	z-index: var(
-		--z-calendar-day-bg-event
-	); /* put above the timegrid-body so that more-popover is above everything */
+  /* the all-day daygrid within the timegrid view */
+  z-index: var(
+    --z-calendar-day-bg-event
+  ); /* put above the timegrid-body so that more-popover is above everything */
 }
 
 .fc-timegrid-divider {
-	padding: 0 0 2px; /* browsers get confused when you set height. use padding instead */
+  padding: 0 0 2px; /* browsers get confused when you set height. use padding instead */
 }
 
 .fc-timegrid-body {
-	position: relative;
-	z-index: var(--z-base); /* scope the z-indexes of slots and cols */
-	min-height: 100%; /* fill height always, even when slat table doesn't grow */
+  position: relative;
+  z-index: var(--z-base); /* scope the z-indexes of slots and cols */
+  min-height: 100%; /* fill height always, even when slat table doesn't grow */
 }
 
 .fc-timegrid-axis-chunk {
-	/* for advanced ScrollGrid */
-	position: relative; /* offset parent for now-indicator-container */
+  /* for advanced ScrollGrid */
+  position: relative; /* offset parent for now-indicator-container */
 }
 
 .fc-timegrid-axis-chunk > table {
-	position: relative;
-	z-index: var(--z-base); /* above the now-indicator-container */
+  position: relative;
+  z-index: var(--z-base); /* above the now-indicator-container */
 }
 
 /* Slots (time rows) */
 .fc-timegrid-slots {
-	position: relative;
-	z-index: var(--z-base);
+  position: relative;
+  z-index: var(--z-base);
 }
 
 .fc-timegrid-slot {
-	/* a <td> */
-	height: 1.5em;
-	border-bottom: 0; /* each cell owns its top border */
+  /* a <td> */
+  height: 1.5em;
+  border-bottom: 0; /* each cell owns its top border */
 }
 
 .fc-timegrid-slot:empty:before {
-	content: "\00a0"; /* make sure there's at least an empty space to create height for height syncing */
+  content: "\00a0"; /* make sure there's at least an empty space to create height for height syncing */
 }
 
 .fc-timegrid-slot-minor {
-	border-top-style: dotted;
+  border-top-style: dotted;
 }
 
 /* Minor time slots (half-hour marks) - moved from _week.css */
 .fc-timegrid-slot-minor {
-	border-top: 1px dashed hsl(var(--border) / 0.2);
-	background: linear-gradient(
-		135deg,
-		hsl(var(--card) / 0.5) 0%,
-		hsl(var(--muted) / 0.02) 50%,
-		hsl(var(--card) / 0.5) 100%
-	);
-	opacity: 0.7;
+  border-top: 1px dashed hsl(var(--border) / 0.2);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card) / 0.5) 0%,
+    hsl(var(--muted) / 0.02) 50%,
+    hsl(var(--card) / 0.5) 100%
+  );
+  opacity: 0.7;
 }
 
 .fc-timegrid-slot-label-cushion {
-	display: inline-block;
-	white-space: nowrap;
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .fc-timegrid-slot-label {
-	vertical-align: middle; /* vertical align the slots */
+  vertical-align: middle; /* vertical align the slots */
 }
 
 /* Slots AND axis cells (top-left corner of view including the "all-day" text) */
 .fc-timegrid-axis-cushion,
 .fc-timegrid-slot-label-cushion {
-	padding: 0 4px;
+  padding: 0 4px;
 }
 
 /* Axis cells (top-left corner of view including the "all-day" text) */
 .fc-timegrid-axis-frame-liquid {
-	height: 100%; /* will need liquid-hack in FF */
+  height: 100%; /* will need liquid-hack in FF */
 }
 
 .fc-timegrid-axis-frame {
-	overflow: hidden;
-	display: flex;
-	align-items: center; /* vertical align */
-	justify-content: flex-end; /* horizontal align. matches text-align below */
+  overflow: hidden;
+  display: flex;
+  align-items: center; /* vertical align */
+  justify-content: flex-end; /* horizontal align. matches text-align below */
 }
 
 .fc-timegrid-axis-cushion {
-	max-width: 60px; /* limits the width of the "all-day" text */
-	flex-shrink: 0; /* allows text to expand how it normally would, regardless of constrained width */
+  max-width: 60px; /* limits the width of the "all-day" text */
+  flex-shrink: 0; /* allows text to expand how it normally would, regardless of constrained width */
 }
 
 /* Enhanced time axis styling (time bar on the left) - moved from _week.css */
 .fc-timegrid-axis {
-	background: linear-gradient(
-		90deg,
-		hsl(var(--card)) 0%,
-		hsl(var(--muted) / 0.1) 100%
-	);
-	border-right: 2px solid hsl(var(--border) / 0.2);
-	/* GPU acceleration */
-	transform: translateZ(0);
+  background: linear-gradient(
+    90deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--muted) / 0.1) 100%
+  );
+  border-right: 2px solid hsl(var(--border) / 0.2);
+  /* GPU acceleration */
+  transform: translateZ(0);
 }
 
 /* Direction-specific */
 .fc-direction-ltr .fc-timegrid-slot-label-frame {
-	text-align: right;
+  text-align: right;
 }
 
 .fc-direction-rtl .fc-timegrid-slot-label-frame {
-	text-align: left;
+  text-align: left;
 }
 
 /* Liquid hack for FF */
 .fc-liquid-hack .fc-timegrid-axis-frame-liquid {
-	height: auto;
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
+  height: auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
 }
 
 /* Columns */
 
 .fc-timegrid-col-frame {
-	min-height: 100%; /* liquid-hack is below */
-	position: relative;
+  min-height: 100%; /* liquid-hack is below */
+  position: relative;
 }
 
 /* Media screen specific */
 .fc-media-screen.fc-liquid-hack .fc-timegrid-col-frame {
-	height: auto;
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	left: 0;
+  height: auto;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
 }
 
 .fc-media-screen .fc-timegrid-cols {
-	position: absolute; /* no z-index. children will decide and go above slots */
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+  position: absolute; /* no z-index. children will decide and go above slots */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .fc-media-screen .fc-timegrid-cols > table {
-	height: 100%;
+  height: 100%;
 }
 
 /* Column backgrounds */
 .fc-timegrid-col-bg {
-	z-index: var(--z-calendar-day-bg-event);
+  z-index: var(--z-calendar-day-bg-event);
 }
 
 .fc-timegrid-col-bg .fc-non-business {
-	z-index: var(--z-calendar-day-bg-non-business);
+  z-index: var(--z-calendar-day-bg-non-business);
 }
 .fc-timegrid-col-bg .fc-bg-event {
-	z-index: var(--z-calendar-day-bg-event);
+  z-index: var(--z-calendar-day-bg-event);
 }
 .fc-timegrid-col-bg .fc-highlight {
-	z-index: var(--z-calendar-day-bg-highlight);
+  z-index: var(--z-calendar-day-bg-highlight);
 }
 
 .fc-timegrid-bg-harness {
-	position: absolute; /* top/bottom will be set by JS */
-	left: 0;
-	right: 0;
-	z-index: var(
-		--z-calendar-day-bg-event
-	); /* Below events, matches parent col-bg */
-	pointer-events: none; /* Don't capture clicks - allow events to be clickable */
+  position: absolute; /* top/bottom will be set by JS */
+  left: 0;
+  right: 0;
+  z-index: var(
+    --z-calendar-day-bg-event
+  ); /* Below events, matches parent col-bg */
+  pointer-events: none; /* Don't capture clicks - allow events to be clickable */
 }
 
 /* Column events */
 .fc-timegrid-col-events {
-	z-index: var(--z-calendar-day-bg-highlight);
-	/* child event segs have z-indexes that are scoped within this div */
-	pointer-events: none; /* Don't capture clicks - let child events handle them */
+  z-index: var(--z-calendar-day-bg-highlight);
+  /* child event segs have z-indexes that are scoped within this div */
+  pointer-events: none; /* Don't capture clicks - let child events handle them */
 }
 
 /* Re-enable pointer events on event harnesses within col-events */
 .fc-timegrid-col-events .fc-timegrid-event-harness {
-	pointer-events: auto;
+  pointer-events: auto;
 }
 
 /* Now indicator container */
 .fc-timegrid-now-indicator-container {
-	bottom: 0;
-	overflow: hidden; /* don't let overflow of lines/arrows cause unnecessary scrolling */
-	/* z-index is set on the individual elements */
+  bottom: 0;
+  overflow: hidden; /* don't let overflow of lines/arrows cause unnecessary scrolling */
+  /* z-index is set on the individual elements */
 }
 
 .fc-media-screen .fc-timegrid-col-bg,
 .fc-media-screen .fc-timegrid-col-events,
 .fc-media-screen .fc-timegrid-now-indicator-container {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 /* Direction-specific margins */
 .fc-direction-ltr .fc-timegrid-col-events {
-	margin: 0 2.5% 0 2px;
+  margin: 0 2.5% 0 2px;
 }
 
 .fc-direction-rtl .fc-timegrid-col-events {
-	margin: 0 2px 0 2.5%;
+  margin: 0 2px 0 2.5%;
 }
 
 /* Event harness */
 .fc-timegrid-event-harness {
-	position: absolute; /* top/left/right/bottom will all be set by JS */
-	z-index: var(
-		--z-calendar-event
-	) !important; /* Override FullCalendar's inline z-index - ensure harness is above background layers */
-	pointer-events: auto; /* Allow clicks on harness to reach events */
+  position: absolute; /* top/left/right/bottom will all be set by JS */
+  z-index: var(
+    --z-calendar-event
+  ) !important; /* Override FullCalendar's inline z-index - ensure harness is above background layers */
+  pointer-events: auto; /* Allow clicks on harness to reach events */
 }
 
 .fc-timegrid-event-harness > .fc-timegrid-event {
-	position: absolute; /* absolute WITHIN the harness */
-	top: 0; /* for when not yet positioned */
-	bottom: 0; /* " */
-	left: 0;
-	right: 0;
-	z-index: var(
-		--z-calendar-event
-	) !important; /* Ensure event is clickable and above background */
-	pointer-events: auto; /* Make event clickable */
+  position: absolute; /* absolute WITHIN the harness */
+  top: 0; /* for when not yet positioned */
+  bottom: 0; /* " */
+  left: 0;
+  right: 0;
+  z-index: var(
+    --z-calendar-event
+  ) !important; /* Ensure event is clickable and above background */
+  pointer-events: auto; /* Make event clickable */
 }
 
 .fc-timegrid-event-harness-inset .fc-timegrid-event,
 .fc-timegrid-event.fc-event-mirror {
-	box-shadow: 0px 0px 0px 1px var(--fc-page-bg-color);
+  box-shadow: 0px 0px 0px 1px var(--fc-page-bg-color);
 }
 
 .fc-timegrid :where(.fc-timegrid-event) {
-	/* events need to be root */
-	font-size: var(--fc-small-font-size);
-	border-radius: var(--radius-sm);
+  /* events need to be root */
+  font-size: var(--fc-small-font-size);
+  border-radius: var(--radius-sm);
 }
 
 .fc-timegrid :where(.fc-timegrid-event) {
-	/* events need to be root */
-	margin-bottom: 1px; /* give some space from bottom */
+  /* events need to be root */
+  margin-bottom: 1px; /* give some space from bottom */
 }
 
 /* Ensure all fc-event elements in timegrid are clickable - including conversation events */
 .fc-timegrid .fc-event,
 .fc-timegrid-event-harness .fc-event {
-	z-index: var(--z-calendar-event) !important;
-	pointer-events: auto !important;
-	cursor: pointer;
-	position: relative; /* Establish stacking context */
+  z-index: var(--z-calendar-event) !important;
+  pointer-events: auto !important;
+  cursor: pointer;
+  position: relative; /* Establish stacking context */
 }
 
 .fc-timegrid-event .fc-event-main {
-	padding: 0 3px;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	background: transparent;
+  padding: 0 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
 }
 
 .fc-timegrid-event .fc-event-title {
-	color: var(--fc-event-text-color);
+  color: var(--fc-event-text-color);
 }
 
 .fc-timegrid-event .fc-event-time {
-	font-size: 0.65rem;
-	line-height: 1.1;
-	opacity: 0.9;
-	color: var(--fc-event-text-color);
-	text-shadow: none;
-	-webkit-text-stroke: none;
-	outline: none;
-	border: none;
-	background: transparent;
-	white-space: nowrap;
-	margin-bottom: 1px;
+  font-size: 0.65rem;
+  line-height: 1.1;
+  opacity: 0.9;
+  color: var(--fc-event-text-color);
+  text-shadow: none;
+  -webkit-text-stroke: none;
+  outline: none;
+  border: none;
+  background: transparent;
+  white-space: nowrap;
+  margin-bottom: 1px;
 }
 
 /* Desktop: Week (timeGrid) view shows short name by default; Alt/Shift hover reveals full */
 @media (min-width: 640px) {
-	.fc-timegrid-event .fc-event-title .name-full {
-		display: none;
-	}
-	.fc-timegrid-event .fc-event-title .name-short {
-		display: inline;
-	}
-	body.alt-pressed .fc-timegrid-event:hover .fc-event-title .name-full,
-	body.shift-pressed .fc-timegrid-event:hover .fc-event-title .name-full {
-		display: inline;
-	}
-	body.alt-pressed .fc-timegrid-event:hover .fc-event-title .name-short,
-	body.shift-pressed .fc-timegrid-event:hover .fc-event-title .name-short {
-		display: none;
-	}
+  .fc-timegrid-event .fc-event-title .name-full {
+    display: none;
+  }
+  .fc-timegrid-event .fc-event-title .name-short {
+    display: inline;
+  }
+  body.alt-pressed .fc-timegrid-event:hover .fc-event-title .name-full,
+  body.shift-pressed .fc-timegrid-event:hover .fc-event-title .name-full {
+    display: inline;
+  }
+  body.alt-pressed .fc-timegrid-event:hover .fc-event-title .name-short,
+  body.shift-pressed .fc-timegrid-event:hover .fc-event-title .name-short {
+    display: none;
+  }
 }
 
 /* Short events */
 .fc-timegrid-event-short .fc-event-main-frame {
-	flex-direction: row;
-	overflow: hidden;
-	background: transparent;
+  flex-direction: row;
+  overflow: hidden;
+  background: transparent;
 }
 
 /* More link - styles moved to _popover-unified.css */
@@ -323,46 +323,46 @@
 /* Now indicator */
 .fc-timegrid-now-indicator-line,
 .fc-timegrid-now-indicator-arrow {
-	pointer-events: none;
+  pointer-events: none;
 }
 
 .fc-timegrid-now-indicator-line {
-	position: absolute;
-	z-index: var(--z-calendar-day-number);
-	left: 0;
-	right: 0;
-	border-style: solid;
-	border-color: var(--fc-now-indicator-color);
-	border-width: 1px 0 0;
+  position: absolute;
+  z-index: var(--z-calendar-day-number);
+  left: 0;
+  right: 0;
+  border-style: solid;
+  border-color: var(--fc-now-indicator-color);
+  border-width: 1px 0 0;
 }
 
 .fc-timegrid-now-indicator-arrow {
-	position: absolute;
-	z-index: var(--z-calendar-day-number);
-	margin-top: -5px; /* vertically center on top coordinate */
-	border-style: solid;
-	border-color: var(--fc-now-indicator-color);
+  position: absolute;
+  z-index: var(--z-calendar-day-number);
+  margin-top: -5px; /* vertically center on top coordinate */
+  border-style: solid;
+  border-color: var(--fc-now-indicator-color);
 }
 
 .fc-direction-ltr .fc-timegrid-now-indicator-arrow {
-	left: 0;
-	/* triangle pointing right */
-	border-width: 5px 0 5px 6px;
-	border-top-color: transparent;
-	border-bottom-color: transparent;
+  left: 0;
+  /* triangle pointing right */
+  border-width: 5px 0 5px 6px;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
 }
 
 .fc-direction-rtl .fc-timegrid-now-indicator-arrow {
-	right: 0;
-	/* triangle pointing left */
-	border-width: 5px 6px 5px 0;
-	border-top-color: transparent;
-	border-bottom-color: transparent;
+  right: 0;
+  /* triangle pointing left */
+  border-width: 5px 6px 5px 0;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
 }
 
 /* Ensure events are visible even when very thin */
 .fc-timegrid-event[style*="height"] {
-	min-height: 18px;
+  min-height: 18px;
 }
 
 /* Conversation events show start time like others; end revealed on Alt-hover (handled globally) */
@@ -374,17 +374,17 @@
 .fc-timegrid-event .fc-event-title,
 .fc-timegrid-event .fc-event-title-container,
 .fc-timegrid-event * {
-	background: transparent;
-	box-shadow: none;
-	text-shadow: none;
-	outline: none;
-	border: none;
-	pointer-events: none; /* Don't block clicks - let parent event handle them */
+  background: transparent;
+  box-shadow: none;
+  text-shadow: none;
+  outline: none;
+  border: none;
+  pointer-events: none; /* Don't block clicks - let parent event handle them */
 }
 
 /* Re-enable pointer events on the actual event element */
 .fc-timegrid-event {
-	pointer-events: auto !important;
+  pointer-events: auto !important;
 }
 
 /* Time grid hack - use popover z-index
@@ -396,26 +396,26 @@
 
 /* GPU acceleration for smooth scrolling */
 .week-view-container {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	/* GPU acceleration */
-	transform: translateZ(0);
-	backface-visibility: hidden;
-	perspective: 1000px;
-	will-change: transform;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  /* GPU acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform;
 }
 
 /* Enhanced header styling for week view */
 .week-view-container .fc-col-header {
-	/* GPU acceleration */
-	transform: translateZ(0);
+  /* GPU acceleration */
+  transform: translateZ(0);
 }
 
 /* Reduce complexity on lower-end devices */
 @media (prefers-reduced-motion: reduce) {
-	.week-view-container * {
-		transition: none;
-		animation: none;
-	}
+  .week-view-container * {
+    transition: none;
+    animation: none;
+  }
 }

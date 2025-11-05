@@ -2,50 +2,50 @@
 
 /* Glide Grid Loading Spinner */
 .glide-loading-spinner {
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
-	animation: spin 1s linear infinite;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .glide-loading-spinner-light {
-	border: 3px solid hsl(var(--border));
-	border-top-color: hsl(var(--primary));
+  border: 3px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
 }
 
 .glide-loading-spinner-dark {
-	border: 3px solid hsl(var(--border));
-	border-top-color: hsl(var(--primary));
+  border: 3px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
 }
 
 /* Glide Grid Container */
 .glide-grid-container {
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 400px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
 }
 
 .glide-grid-container-light {
-	background: hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 .glide-grid-container-dark {
-	background: hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 /* Glide Grid Loading Text */
 .glide-loading-text {
-	font-size: 14px;
-	font-family: inherit;
+  font-size: 14px;
+  font-family: inherit;
 }
 
 .glide-loading-text-light {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 .glide-loading-text-dark {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }

@@ -3,12 +3,12 @@
 
 /* Base pill styling for reservation events */
 .fc-event.reservation-event {
-	border-width: var(--fc-event-stroke-width); /* rem-based outline */
-	border-radius: 6px;
-	padding: 2px 6px; /* horizontal breathing room */
-	box-shadow: none;
-	font-weight: 600; /* stronger label */
-	/* Opaque backgrounds per type (set below) */
+  border-width: var(--fc-event-stroke-width); /* rem-based outline */
+  border-radius: 6px;
+  padding: 2px 6px; /* horizontal breathing room */
+  box-shadow: none;
+  font-weight: 600; /* stronger label */
+  /* Opaque backgrounds per type (set below) */
 }
 
 /* ==============================================================================
@@ -24,28 +24,28 @@
 .fc-timegrid-event.reservation-event .fc-event-main-frame,
 .fc-multimonth .fc-daygrid-event.reservation-event .fc-event-main,
 .fc-multimonth .fc-event.reservation-event .fc-event-main {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
-	column-gap: 8px;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	width: 100%;
-	background: transparent;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  background: transparent;
 }
 
 /* Ensure timegrid events occupy the full computed height from start/end duration */
 .fc-timegrid-event.reservation-event {
-	height: 100%; /* respect harness-calculated height */
-	box-sizing: border-box;
+  height: 100%; /* respect harness-calculated height */
+  box-sizing: border-box;
 }
 .fc-timegrid-event.reservation-event .fc-event-main,
 .fc-timegrid-event.reservation-event .fc-event-main-frame {
-	height: 100%;
-	min-height: 100%;
-	align-items: stretch;
+  height: 100%;
+  min-height: 100%;
+  align-items: stretch;
 }
 
 /* UNIFIED TIME STYLING - All views use same approach */
@@ -54,18 +54,18 @@
 .fc-timegrid-event.reservation-event .fc-event-time,
 .fc-multimonth .fc-daygrid-event.reservation-event .fc-event-time,
 .fc-multimonth .fc-event.reservation-event .fc-event-time {
-	font-size: var(--fc-event-time-size);
-	line-height: 1.1;
-	opacity: 0.95;
-	text-transform: uppercase; /* AM/PM uppercase */
-	order: 2;
-	margin-left: auto; /* push time to the right */
-	text-align: right;
-	font-style: italic;
-	font-weight: 400; /* override bold defaults */
-	flex-shrink: 1; /* allow time to shrink within scaled container */
-	white-space: nowrap;
-	background: transparent;
+  font-size: var(--fc-event-time-size);
+  line-height: 1.1;
+  opacity: 0.95;
+  text-transform: uppercase; /* AM/PM uppercase */
+  order: 2;
+  margin-left: auto; /* push time to the right */
+  text-align: right;
+  font-style: italic;
+  font-weight: 400; /* override bold defaults */
+  flex-shrink: 1; /* allow time to shrink within scaled container */
+  white-space: nowrap;
+  background: transparent;
 }
 
 /* UNIFIED TITLE STYLING - All views use same approach */
@@ -74,19 +74,19 @@
 .fc-timegrid-event.reservation-event .fc-event-title,
 .fc-multimonth .fc-daygrid-event.reservation-event .fc-event-title,
 .fc-multimonth .fc-event.reservation-event .fc-event-title {
-	font-size: var(--fc-event-title-size); /* slightly larger than time */
-	line-height: 1.1;
-	font-weight: 700;
-	overflow: visible;
-	text-overflow: clip;
-	order: 1;
-	flex: 1 1 auto;
-	min-width: 0;
-	text-align: left;
-	background: transparent;
-	white-space: normal;
-	word-break: break-word;
-	overflow-wrap: anywhere;
+  font-size: var(--fc-event-title-size); /* slightly larger than time */
+  line-height: 1.1;
+  font-weight: 700;
+  overflow: visible;
+  text-overflow: clip;
+  order: 1;
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  background: transparent;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 /* ==============================================================================
@@ -94,18 +94,18 @@
    ============================================================================== */
 
 .fc-list-event.reservation-event .fc-list-event-title {
-	font-weight: 600;
-	font-size: 0.78rem; /* match other views */
-	line-height: 1.1;
+  font-weight: 600;
+  font-size: 0.78rem; /* match other views */
+  line-height: 1.1;
 }
 
 /* List view time - unified with other views */
 .fc-list .fc-list-event.reservation-event .fc-list-event-time {
-	font-size: 0.65rem;
-	font-style: italic;
-	font-weight: 400;
-	text-transform: uppercase;
-	opacity: 0.95;
+  font-size: 0.65rem;
+  font-style: italic;
+  font-weight: 400;
+  text-transform: uppercase;
+  opacity: 0.95;
 }
 
 /* Ensure typed text colors override FullCalendar defaults in all views */
@@ -117,17 +117,17 @@
 .fc-event.reservation-type-1 .fc-event-time,
 .fc-list-event.reservation-type-0 .fc-list-event-title,
 .fc-list-event.reservation-type-1 .fc-list-event-title {
-	color: var(--fc-typed-text);
+  color: var(--fc-typed-text);
 }
 
 /* Subtle hover to mimic shadcn feel */
 .fc-event.reservation-event:hover {
-	filter: brightness(1.02) saturate(1.02);
+  filter: brightness(1.02) saturate(1.02);
 }
 
 /* Cancelled reservations can stay subdued via existing classes, ensure readability */
 .fc-event.reservation-event.fc-event-past {
-	opacity: 0.85;
+  opacity: 0.85;
 }
 
 /* ==============================================================================
@@ -139,25 +139,25 @@
 .fc-event.reservation-event:not(.conversation-event) .fc-event-main-frame,
 .fc-daygrid-event.reservation-event:not(.conversation-event) .fc-event-main,
 .fc-timegrid-event.reservation-event:not(.conversation-event)
-	.fc-event-main-frame {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
+  .fc-event-main-frame {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
 }
 
 /* Ensure time always stays on the right across all views */
 .fc-event.reservation-event:not(.conversation-event) .fc-event-time {
-	order: 2;
-	margin-left: auto;
-	flex-shrink: 0;
+  order: 2;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 /* Ensure title always stays on the left across all views */
 .fc-event.reservation-event:not(.conversation-event) .fc-event-title {
-	order: 1;
-	flex: 1 1 auto;
-	text-align: left;
+  order: 1;
+  flex: 1 1 auto;
+  text-align: left;
 }
 
 /* Colors are sourced from variables in _variables.css and applied in _universal.css */
@@ -169,8 +169,8 @@
 .fc-timegrid-event.conversation-event,
 .fc-daygrid-event.reservation-event,
 .fc-daygrid-event.conversation-event {
-	border-width: var(--fc-event-stroke-width);
-	border-color: #000;
+  border-width: var(--fc-event-stroke-width);
+  border-color: #000;
 }
 
 /* Dark theme: white stroke for all non-vacation events */
@@ -180,12 +180,12 @@
 .dark .fc-timegrid-event.conversation-event,
 .dark .fc-daygrid-event.reservation-event,
 .dark .fc-daygrid-event.conversation-event {
-	border-width: var(--fc-event-stroke-width);
-	border-color: #fff;
+  border-width: var(--fc-event-stroke-width);
+  border-color: #fff;
 }
 
 /* Fallback: ensure ALL non-vacation events invert stroke with theme */
 .dark .fc-event {
-	border-width: var(--fc-event-stroke-width);
-	border-color: #fff;
+  border-width: var(--fc-event-stroke-width);
+  border-color: #fff;
 }

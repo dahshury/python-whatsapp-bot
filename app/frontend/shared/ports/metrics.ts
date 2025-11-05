@@ -4,8 +4,8 @@
  */
 
 export type MetricsPort = {
-	getMetrics(): Promise<PrometheusMetrics>
-	subscribe(callback: (metrics: PrometheusMetrics) => void): () => void
-}
+  getMetrics(): Promise<PrometheusMetrics>;
+  subscribe(callback: (metrics: PrometheusMetrics) => void): () => void;
+};
 
-export type PrometheusMetrics = Record<string, number>
+export type PrometheusMetrics = Record<string, number>;

@@ -1,1 +1,1 @@
-export { MessageAnalysisStats } from './MessageAnalysisStats'
+export { MessageAnalysisStats } from "./MessageAnalysisStats";

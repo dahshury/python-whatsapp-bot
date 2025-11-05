@@ -4,4 +4,4 @@
 // No public exports - metrics is infrastructure-only
 // This file exists to mark this directory as a module package
 
-export {}
+export {};

@@ -23,23 +23,23 @@
  */
 .fc-bg-event.vacation-background-event,
 .vacation-background-event {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
-	border: none;
-	pointer-events: none;
-	/* Ensure vacation overlays sit above base day backgrounds */
-	z-index: var(--z-calendar-day-bg-highlight);
-	transition:
-		background-color 180ms ease,
-		box-shadow 180ms ease;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
+  border: none;
+  pointer-events: none;
+  /* Ensure vacation overlays sit above base day backgrounds */
+  z-index: var(--z-calendar-day-bg-highlight);
+  transition:
+    background-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .vacation-event {
-	color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
-	font-weight: 600;
+  color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
+  font-weight: 600;
 }
 
 .vacation-event .fc-event-title,
@@ -49,25 +49,25 @@
 .vacation-event .fc-event-time,
 .vacation-event .fc-list-event-title,
 .vacation-event .fc-list-event-time {
-	color: inherit;
+  color: inherit;
 }
 
 .fc-event.vacation-event,
 .fc-event.vacation-event:hover,
 .fc-event.vacation-event:focus-visible {
-	color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
-	text-decoration: none;
+  color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
+  text-decoration: none;
 }
 
 .fc-daygrid-day-bottom .vacation-event {
-	--fc-event-text-color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
-	color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
+  --fc-event-text-color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
+  color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
 }
 
 .fc-daygrid-day-bottom .vacation-event:hover,
 .fc-daygrid-day-bottom .vacation-event:focus-visible,
 .fc-daygrid-day-bottom .vacation-event * {
-	color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
+  color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
 }
 
 /**
@@ -75,20 +75,20 @@
  * More stable than background events, won't get cleared by refetchEvents
  */
 .fc-event.vacation-period-event {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	border-color: hsl(var(--vacation-bg, 25 95% 53%) / 0.3);
-	color: transparent;
-	pointer-events: none;
-	opacity: 0.8;
-	z-index: 1; /* Above day cells but below regular events */
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  border-color: hsl(var(--vacation-bg, 25 95% 53%) / 0.3);
+  color: transparent;
+  pointer-events: none;
+  opacity: 0.8;
+  z-index: 1; /* Above day cells but below regular events */
 }
 
 .fc-event.vacation-period-event .fc-event-title,
 .fc-event.vacation-period-event .fc-event-time {
-	display: none; /* Hide all text content */
+  display: none; /* Hide all text content */
 }
 
 /* Cross-view compatibility for vacation background events */
@@ -96,10 +96,10 @@
 .fc-timegrid :where(.fc-bg-event.vacation-background-event),
 .fc-multimonth :where(.fc-bg-event.vacation-background-event),
 .fc-list :where(.fc-bg-event.vacation-background-event) {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 /* =================================================================
@@ -112,71 +112,71 @@
  */
 .fc-daygrid :where(.fc-bg-event.vacation-background-event),
 .fc-multimonth :where(.fc-bg-event.vacation-background-event) {
-	/* Critical height constraints */
-	height: 100%;
-	max-height: none; /* Remove height limit that might affect color rendering */
-	min-height: 0;
-	overflow: hidden;
+  /* Critical height constraints */
+  height: 100%;
+  max-height: none; /* Remove height limit that might affect color rendering */
+  min-height: 0;
+  overflow: hidden;
 
-	/* Critical positioning */
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
+  /* Critical positioning */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
 
-	/* Remove any margins/padding that could cause overflow */
-	margin: 0;
-	padding: 0;
+  /* Remove any margins/padding that could cause overflow */
+  margin: 0;
+  padding: 0;
 
-	/* Ensure contained within parent */
-	box-sizing: border-box;
+  /* Ensure contained within parent */
+  box-sizing: border-box;
 }
 
 /* Specific constraints for vacation events within day cells */
 .fc-daygrid-day :where(.fc-bg-event.vacation-background-event),
 .fc-multimonth .fc-daygrid-day :where(.fc-bg-event.vacation-background-event) {
-	/* Force absolute positioning within the day cell */
-	position: absolute;
-	inset: 0; /* Modern shorthand for top:0, right:0, bottom:0, left:0 */
+  /* Force absolute positioning within the day cell */
+  position: absolute;
+  inset: 0; /* Modern shorthand for top:0, right:0, bottom:0, left:0 */
 
-	/* Critical: prevent any dimension overflow */
-	width: 100%;
-	height: 100%;
-	max-width: 100%;
-	max-height: none; /* Remove height limit that might affect color rendering */
-	min-width: 0;
-	min-height: 0;
+  /* Critical: prevent any dimension overflow */
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: none; /* Remove height limit that might affect color rendering */
+  min-width: 0;
+  min-height: 0;
 
-	/* Prevent content overflow */
-	overflow: hidden;
+  /* Prevent content overflow */
+  overflow: hidden;
 
-	/* Remove any transforms or scaling that might cause issues */
-	transform: none;
+  /* Remove any transforms or scaling that might cause issues */
+  transform: none;
 
-	/* Ensure proper stacking above base day backgrounds */
-	z-index: var(--z-calendar-day-bg-highlight);
+  /* Ensure proper stacking above base day backgrounds */
+  z-index: var(--z-calendar-day-bg-highlight);
 }
 
 /* Multimonth specific height enforcement */
 .fc-multimonth .fc-daygrid-day {
-	position: relative; /* Ensure positioning context for absolute children */
+  position: relative; /* Ensure positioning context for absolute children */
 }
 
 .fc-multimonth .fc-daygrid-day .fc-bg-event.vacation-background-event {
-	/* Ensure consistent rendering in multimonth view */
-	max-height: none;
-	height: 100%;
+  /* Ensure consistent rendering in multimonth view */
+  max-height: none;
+  height: 100%;
 
-	/* Remove clip-path that might affect color rendering */
-	clip-path: none;
+  /* Remove clip-path that might affect color rendering */
+  clip-path: none;
 
-	/* Ensure consistent color rendering */
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	opacity: 1;
+  /* Ensure consistent color rendering */
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
 }
 
 /* =================================================================
@@ -191,46 +191,46 @@
 /* Universal vacation day styling - base appearance */
 
 .fc-day.vacation-day {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	cursor: not-allowed;
-	position: relative;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  cursor: not-allowed;
+  position: relative;
 }
 
 /* Vacation day hover prevention */
 .fc-day.vacation-day:hover {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	box-shadow: none;
-	cursor: not-allowed;
-	transition: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  box-shadow: none;
+  cursor: not-allowed;
+  transition: none;
 }
 /* Disable day header nav link clicks on vacation days */
 .fc-col-header-cell.vacation-day-header a,
 .fc-timegrid-axis-frame.vacation-day-header a {
-	pointer-events: none;
-	cursor: default;
+  pointer-events: none;
+  cursor: default;
 }
 
 .dark .fc-daygrid-day.vacation-day::before,
 .dark .fc-timegrid-col.vacation-day::before {
-	background-color: hsl(var(--vacation-bg, 25 95% 53%) / 0.25);
+  background-color: hsl(var(--vacation-bg, 25 95% 53%) / 0.25);
 }
 
 /* Prevent selection highlight on vacation days */
 .vacation-day :where(.fc-highlight) {
-	display: none;
-	background: none;
-	opacity: 0;
+  display: none;
+  background: none;
+  opacity: 0;
 }
 
 /* Ensure vacation day events are visible above the overlay */
 .fc-daygrid-day.vacation-day :where(.fc-daygrid-day-events) {
-	z-index: var(--z-calendar-events);
+  z-index: var(--z-calendar-events);
 }
 
 /* =================================================================
@@ -245,15 +245,15 @@
 /* Make vacation day number (nav link) non-interactive, but allow event clicks */
 .fc-multimonth .fc-daygrid-day.vacation-day a.fc-daygrid-day-number,
 .fc-daygrid .fc-daygrid-day.vacation-day a.fc-daygrid-day-number {
-	pointer-events: none;
+  pointer-events: none;
 }
 
 /* Vacation day events remain clickable (for opening conversations) */
 .fc-multimonth .fc-daygrid-day.vacation-day .fc-event,
 .fc-daygrid .fc-daygrid-day.vacation-day .fc-event {
-	opacity: 0.7;
-	position: relative;
-	z-index: var(--z-fc-multimonth-variant-primary);
+  opacity: 0.7;
+  position: relative;
+  z-index: var(--z-fc-multimonth-variant-primary);
 }
 
 /* =================================================================
@@ -267,30 +267,30 @@
 
 /* Disable vacation day hover effects in day view */
 .fc-timeGridDay-view .fc-day.vacation-day:hover {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	box-shadow: none;
-	cursor: not-allowed;
-	transition: none;
-	transform: none;
-	filter: none;
-	opacity: inherit;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  box-shadow: none;
+  cursor: not-allowed;
+  transition: none;
+  transform: none;
+  filter: none;
+  opacity: inherit;
 }
 
 /* Dark mode vacation day hover overrides for day view */
 .dark .fc-timeGridDay-view .fc-day.vacation-day:hover {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	box-shadow: none;
-	cursor: not-allowed;
-	transition: none;
-	transform: none;
-	filter: none;
-	opacity: inherit;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  box-shadow: none;
+  cursor: not-allowed;
+  transition: none;
+  transform: none;
+  filter: none;
+  opacity: inherit;
 }
 
 /* =================================================================
@@ -299,32 +299,32 @@
 
 /* Show not-allowed cursor in vacation columns in week view (keep event clicks working) */
 .fc-timeGridWeek-view .fc-timegrid-col.vacation-day {
-	cursor: not-allowed;
+  cursor: not-allowed;
 }
 
 /* Disable hover effects for vacation columns in week view */
 .fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
-	box-shadow: none;
-	transition: none;
-	transform: none;
-	filter: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  box-shadow: none;
+  transition: none;
+  transform: none;
+  filter: none;
 }
 
 .dark .fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 /* Hide selection highlight within vacation columns in week view */
 .fc-timeGridWeek-view .fc-timegrid-col.vacation-day .fc-highlight {
-	display: none;
-	opacity: 0;
+  display: none;
+  opacity: 0;
 }
 
 /* =================================================================
@@ -338,13 +338,13 @@
 
 /* Dark mode vacation styling for better visibility */
 .dark .fc-multimonth
-	.fc-daygrid-day.vacation-day:not(.fc-day-past)
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day.vacation-day:not(.fc-day-past)
+  .fc-daygrid-day-frame,
 .dark
-	.fc-daygrid
-	.fc-daygrid-day.vacation-day:not(.fc-day-past)
-	.fc-daygrid-day-frame {
-	opacity: 0.9;
+  .fc-daygrid
+  .fc-daygrid-day.vacation-day:not(.fc-day-past)
+  .fc-daygrid-day-frame {
+  opacity: 0.9;
 }
 
 /* =================================================================
@@ -356,11 +356,11 @@
  * Increases opacity and adds borders for better visibility
  */
 @media (prefers-contrast: high) {
-	.fc-bg-event.vacation-background-event,
-	.vacation-background-event {
-		background-color: hsl(var(--vacation-bg, 25 95% 53%) / 0.25);
-		border: 1px solid hsl(var(--vacation-bg, 25 95% 53%) / 0.5);
-	}
+  .fc-bg-event.vacation-background-event,
+  .vacation-background-event {
+    background-color: hsl(var(--vacation-bg, 25 95% 53%) / 0.25);
+    border: 1px solid hsl(var(--vacation-bg, 25 95% 53%) / 0.5);
+  }
 }
 
 /* =================================================================
@@ -375,8 +375,8 @@
 /* Remove custom coloring for past/disabled days in free roam, but keep vacation styling */
 [data-free-roam="true"] .fc-day-disabled:not(.vacation-day),
 [data-free-roam="true"] .fc-day-past:not(.vacation-day) {
-	background-color: transparent;
-	opacity: 1;
+  background-color: transparent;
+  opacity: 1;
 }
 
 /* =================================================================
@@ -390,41 +390,41 @@
 
 /* Frame styling override - matches today frame specificity */
 :where(
-		.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-			.fc-daygrid-day-frame
-	) {
-	background: hsl(var(--destructive) / 0.2);
-	background-image: none;
+    .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+      .fc-daygrid-day-frame
+  ) {
+  background: hsl(var(--destructive) / 0.2);
+  background-image: none;
 }
 
 /* Multimonth frame styling override - highest specificity */
 .fc-multimonth
 :where(
-	.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-		.fc-daygrid-day-frame
+  .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+    .fc-daygrid-day-frame
 ) {
-	background: hsl(var(--destructive) / 0.2);
-	background-image: none;
+  background: hsl(var(--destructive) / 0.2);
+  background-image: none;
 }
 
 /* Dark mode overrides */
 .dark
 :where(
-	.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-		.fc-daygrid-day-frame
+  .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+    .fc-daygrid-day-frame
 ) {
-	background: hsl(var(--destructive) / 0.3);
-	background-image: none;
+  background: hsl(var(--destructive) / 0.3);
+  background-image: none;
 }
 
 .dark
-	.fc-multimonth
-	:where(
-		.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-			.fc-daygrid-day-frame
-	) {
-	background: hsl(var(--destructive) / 0.3);
-	background-image: none;
+  .fc-multimonth
+  :where(
+    .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+      .fc-daygrid-day-frame
+  ) {
+  background: hsl(var(--destructive) / 0.3);
+  background-image: none;
 }
 
 /* =================================================================
@@ -433,213 +433,213 @@
 
 /* Define reusable zigzag pattern (light and dark variants) */
 :root {
-	--vacation-foreground-hsl: 24 88% 28%;
-	--vacation-pattern-alpha-strong: 0.24;
-	--vacation-pattern-alpha-medium: 0.16;
-	--vacation-pattern-alpha-light: 0.1;
-	--vacation-pattern-alpha-fine: 0.07;
-	--vacation-legend-alpha-strong: 0.35;
-	--vacation-legend-alpha-light: 0.2;
+  --vacation-foreground-hsl: 24 88% 28%;
+  --vacation-pattern-alpha-strong: 0.24;
+  --vacation-pattern-alpha-medium: 0.16;
+  --vacation-pattern-alpha-light: 0.1;
+  --vacation-pattern-alpha-fine: 0.07;
+  --vacation-legend-alpha-strong: 0.35;
+  --vacation-legend-alpha-light: 0.2;
 
-	--vacation-pattern:
-		repeating-linear-gradient(
-			0deg,
-			transparent,
-			transparent 15px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-strong, 0.24)
-				)
-				15px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-strong, 0.24)
-				)
-				16px
-		),
-		repeating-linear-gradient(
-			90deg,
-			transparent,
-			transparent 25px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-medium, 0.16)
-				)
-				25px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-medium, 0.16)
-				)
-				26px
-		),
-		repeating-linear-gradient(
-			60deg,
-			transparent,
-			transparent 30px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-light, 0.1)
-				)
-				30px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-light, 0.1)
-				)
-				31px
-		),
-		repeating-linear-gradient(
-			150deg,
-			transparent,
-			transparent 28px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-fine, 0.07)
-				)
-				28px,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-pattern-alpha-fine, 0.07)
-				)
-				29px
-		);
+  --vacation-pattern:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 15px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-strong, 0.24)
+        )
+        15px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-strong, 0.24)
+        )
+        16px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 25px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-medium, 0.16)
+        )
+        25px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-medium, 0.16)
+        )
+        26px
+    ),
+    repeating-linear-gradient(
+      60deg,
+      transparent,
+      transparent 30px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-light, 0.1)
+        )
+        30px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-light, 0.1)
+        )
+        31px
+    ),
+    repeating-linear-gradient(
+      150deg,
+      transparent,
+      transparent 28px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-fine, 0.07)
+        )
+        28px,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-pattern-alpha-fine, 0.07)
+        )
+        29px
+    );
 
-	/* High-density micro pattern for tiny legend swatches */
-	--vacation-pattern-legend:
-		repeating-linear-gradient(
-			45deg,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-legend-alpha-strong, 0.35)
-				)
-				0 1px,
-			transparent 1px 2px
-		),
-		repeating-linear-gradient(
-			-45deg,
-			hsl(
-					var(--vacation-bg, 25 95% 53%) /
-					var(--vacation-legend-alpha-light, 0.2)
-				)
-				0 1px,
-			transparent 1px 2px
-		);
+  /* High-density micro pattern for tiny legend swatches */
+  --vacation-pattern-legend:
+    repeating-linear-gradient(
+      45deg,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-legend-alpha-strong, 0.35)
+        )
+        0 1px,
+      transparent 1px 2px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      hsl(
+          var(--vacation-bg, 25 95% 53%) /
+          var(--vacation-legend-alpha-light, 0.2)
+        )
+        0 1px,
+      transparent 1px 2px
+    );
 }
 
 .dark {
-	--vacation-foreground-hsl: 35 100% 90%;
-	--vacation-pattern-alpha-strong: 0.42;
-	--vacation-pattern-alpha-medium: 0.3;
-	--vacation-pattern-alpha-light: 0.2;
-	--vacation-pattern-alpha-fine: 0.14;
-	--vacation-legend-alpha-strong: 0.55;
-	--vacation-legend-alpha-light: 0.34;
+  --vacation-foreground-hsl: 35 100% 90%;
+  --vacation-pattern-alpha-strong: 0.42;
+  --vacation-pattern-alpha-medium: 0.3;
+  --vacation-pattern-alpha-light: 0.2;
+  --vacation-pattern-alpha-fine: 0.14;
+  --vacation-legend-alpha-strong: 0.55;
+  --vacation-legend-alpha-light: 0.34;
 }
 
 /* Apply pattern to vacation day cells */
 .fc-day.vacation-day {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 .fc-day.vacation-day:hover {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 /* Ensure full coverage in dayGrid and multiMonth cells by styling the frame */
 :where(.fc-daygrid-day.vacation-day .fc-daygrid-day-frame) {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 /* Apply pattern to background events used for vacation spans */
 .fc-bg-event.vacation-background-event,
 .vacation-background-event {
-	background-image: var(--vacation-pattern);
+  background-image: var(--vacation-pattern);
 }
 
 .fc-daygrid .fc-bg-event.vacation-background-event,
 .fc-timegrid .fc-bg-event.vacation-background-event,
 .fc-multimonth .fc-bg-event.vacation-background-event,
 .fc-list .fc-bg-event.vacation-background-event {
-	background-image: var(--vacation-pattern);
+  background-image: var(--vacation-pattern);
 }
 
 .fc-daygrid-day.vacation-day:hover .vacation-background-event,
 .fc-multimonth .fc-daygrid-day.vacation-day:hover .vacation-background-event,
 .fc-timegrid-col.vacation-day:hover .vacation-background-event,
 .fc-day.vacation-day:hover .vacation-background-event {
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		calc(var(--vacation-bg-opacity, 0.12) + 0.05)
-	);
-	box-shadow: inset 0 0 0 1px
-		hsl(
-			var(--vacation-bg, 25 95% 53%) /
-			calc(var(--vacation-bg-opacity, 0.12) + 0.18)
-		);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    calc(var(--vacation-bg-opacity, 0.12) + 0.05)
+  );
+  box-shadow: inset 0 0 0 1px
+    hsl(
+      var(--vacation-bg, 25 95% 53%) /
+      calc(var(--vacation-bg-opacity, 0.12) + 0.18)
+    );
 }
 
 .fc-multimonth .fc-daygrid-day .fc-bg-event.vacation-background-event {
-	background-image: var(--vacation-pattern);
-	opacity: 1;
+  background-image: var(--vacation-pattern);
+  opacity: 1;
 }
 
 /* Ensure 'today' on vacation also shows the pattern */
 .fc-daygrid
 :where(
-	.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-		.fc-daygrid-day-frame
+  .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+    .fc-daygrid-day-frame
 ) {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 .fc-multimonth
-	:where(
-		.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-			.fc-daygrid-day-frame
-	) {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  :where(
+    .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+      .fc-daygrid-day-frame
+  ) {
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 .dark
-	:where(
-		.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-			.fc-daygrid-day-frame
-	) {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  :where(
+    .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+      .fc-daygrid-day-frame
+  ) {
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 .dark
-	.fc-multimonth
-	:where(
-		.fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
-			.fc-daygrid-day-frame
-	) {
-	background-image: none;
-	background-color: hsl(
-		var(--vacation-bg, 25 95% 53%) /
-		var(--vacation-bg-opacity, 0.12)
-	);
+  .fc-multimonth
+  :where(
+    .fc-daygrid-day.fc-day-today.vacation-day:not(.fc-day-past)
+      .fc-daygrid-day-frame
+  ) {
+  background-image: none;
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }

@@ -2,51 +2,51 @@
 
 /* Screen-specific styles */
 @media screen {
-	.fc-media-screen {
-		/* Placeholder for screen-specific styles */
-	}
+  .fc-media-screen {
+    /* Placeholder for screen-specific styles */
+  }
 
-	/* Sticky positioning for multimonth single column */
-	.fc-multimonth-singlecol .fc-multimonth-header {
-		position: sticky;
-	}
+  /* Sticky positioning for multimonth single column */
+  .fc-multimonth-singlecol .fc-multimonth-header {
+    position: sticky;
+  }
 }
 
 /* Print-specific styles */
 @media print {
-	.fc-media-print {
-		/* Placeholder for print-specific styles */
-	}
+  .fc-media-print {
+    /* Placeholder for print-specific styles */
+  }
 
-	/* Make multimonth view overflow visible for printing */
-	.fc-multimonth {
-		overflow: visible;
-	}
+  /* Make multimonth view overflow visible for printing */
+  .fc-multimonth {
+    overflow: visible;
+  }
 
-	/* Hide non-essential UI elements */
-	.fc-toolbar {
-		display: none;
-	}
+  /* Hide non-essential UI elements */
+  .fc-toolbar {
+    display: none;
+  }
 
-	/* Remove shadows and hover effects */
-	/* .fc-event:hover {
+  /* Remove shadows and hover effects */
+  /* .fc-event:hover {
     filter: none;
     box-shadow: none;
   } */
 
-	/* Ensure all content is visible */
-	.fc-scroller {
-		overflow: visible;
-		height: auto;
-	}
+  /* Ensure all content is visible */
+  .fc-scroller {
+    overflow: visible;
+    height: auto;
+  }
 
-	/* Remove background colors that might not print well */
-	.fc-day-today {
-		background-color: transparent;
-	}
+  /* Remove background colors that might not print well */
+  .fc-day-today {
+    background-color: transparent;
+  }
 
-	.fc-highlight {
-		background-color: transparent;
-		border: 2px dashed #000;
-	}
+  .fc-highlight {
+    background-color: transparent;
+    border: 2px dashed #000;
+  }
 }

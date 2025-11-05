@@ -1,148 +1,148 @@
 @tailwind components;
 
 @layer components {
-	.container {
-		@apply flex flex-col;
-	}
+  .container {
+    @apply flex flex-col;
+  }
 
-	.contentWrapper {
-		@apply flex flex-row items-stretch divide-x overflow-hidden rounded-lg border border-border bg-background;
-		@apply min-w-fit;
-	}
+  .contentWrapper {
+    @apply flex flex-row items-stretch divide-x overflow-hidden rounded-lg border border-border bg-background;
+    @apply min-w-fit;
+  }
 
-	.calendarWrapper {
-		@apply flex-shrink-0 p-3;
-	}
+  .calendarWrapper {
+    @apply flex-shrink-0 p-3;
+  }
 
-	.presetsSidebar {
-		@apply relative flex-shrink-0 w-[249px] overflow-hidden;
-	}
+  .presetsSidebar {
+    @apply relative flex-shrink-0 w-[249px] overflow-hidden;
+  }
 
-	.presetsSidebar > div {
-		@apply absolute inset-0 grid gap-4;
-	}
+  .presetsSidebar > div {
+    @apply absolute inset-0 grid gap-4;
+  }
 
-	.presetsHeader {
-		@apply space-y-2 px-4 pt-4;
-	}
+  .presetsHeader {
+    @apply space-y-2 px-4 pt-4;
+  }
 
-	.presetsTitle {
-		@apply text-center text-sm font-medium;
-	}
+  .presetsTitle {
+    @apply text-center text-sm font-medium;
+  }
 
-	.presetsScrollArea {
-		@apply h-full overflow-y-auto;
-	}
+  .presetsScrollArea {
+    @apply h-full overflow-y-auto;
+  }
 
-	.presets {
-		@apply grid grid-cols-1 gap-2 px-4 pb-4;
-	}
+  .presets {
+    @apply grid grid-cols-1 gap-2 px-4 pb-4;
+  }
 
-	.calendar {
-		@apply text-foreground;
-	}
+  .calendar {
+    @apply text-foreground;
+  }
 
-	.calendar :global(.rmdp-wrapper) {
-		@apply bg-transparent shadow-none;
-	}
+  .calendar :global(.rmdp-wrapper) {
+    @apply bg-transparent shadow-none;
+  }
 
-	.calendar :global(.rmdp-calendar) {
-		@apply bg-transparent;
-	}
+  .calendar :global(.rmdp-calendar) {
+    @apply bg-transparent;
+  }
 
-	.calendar :global(.rmdp-header) {
-		@apply mb-2 flex items-center justify-between;
-	}
+  .calendar :global(.rmdp-header) {
+    @apply mb-2 flex items-center justify-between;
+  }
 
-	.calendar :global(.rmdp-header-values) {
-		@apply text-sm font-semibold;
-	}
+  .calendar :global(.rmdp-header-values) {
+    @apply text-sm font-semibold;
+  }
 
-	/* Arrow buttons - use the correct container selector */
-	.calendar :global(.rmdp-arrow-container) {
-		@apply inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150;
-		@apply bg-transparent text-muted-foreground;
-		@apply hover:bg-accent hover:text-accent-foreground;
-		@apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
-	}
+  /* Arrow buttons - use the correct container selector */
+  .calendar :global(.rmdp-arrow-container) {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md transition-colors duration-150;
+    @apply bg-transparent text-muted-foreground;
+    @apply hover:bg-accent hover:text-accent-foreground;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
 
-	.calendar :global(.rmdp-arrow-container:hover) {
+  .calendar :global(.rmdp-arrow-container:hover) {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  .calendar :global(.rmdp-arrow-container .rmdp-arrow) {
+    @apply border-current;
+  }
+
+  .calendar :global(.rmdp-week-day) {
+    @apply text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground;
+  }
+
+  .calendar :global(.rmdp-week) {
+    @apply gap-1;
+  }
+
+  .calendar :global(.rmdp-day span) {
+    @apply flex h-8 w-8 items-center justify-center rounded-md text-xs transition-colors duration-150;
+  }
+
+  .calendar :global(.rmdp-day:not(.rmdp-disabled):not(.rmdp-empty) span:hover) {
 		@apply bg-accent text-accent-foreground;
 	}
 
-	.calendar :global(.rmdp-arrow-container .rmdp-arrow) {
-		@apply border-current;
-	}
+  .calendar :global(.rmdp-day.rmdp-today span) {
+    @apply border border-primary/40;
+  }
 
-	.calendar :global(.rmdp-week-day) {
-		@apply text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground;
-	}
+  .calendar :global(.rmdp-day.rmdp-selected span),
+  .calendar :global(.rmdp-day.rmdp-start span),
+  .calendar :global(.rmdp-day.rmdp-end span) {
+    @apply bg-primary text-primary-foreground shadow-sm;
+  }
 
-	.calendar :global(.rmdp-week) {
-		@apply gap-1;
-	}
+  .calendar :global(.rmdp-day.rmdp-range span) {
+    @apply bg-primary/10 text-primary;
+  }
 
-	.calendar :global(.rmdp-day span) {
-		@apply flex h-8 w-8 items-center justify-center rounded-md text-xs transition-colors duration-150;
-	}
+  .calendar :global(.rmdp-day.rmdp-disabled span) {
+    @apply cursor-not-allowed opacity-40;
+  }
 
-	.calendar :global(.rmdp-day:not(.rmdp-disabled):not(.rmdp-empty) span:hover) {
-		@apply bg-accent text-accent-foreground;
-	}
+  .calendar :global(.rmdp-month-picker),
+  .calendar :global(.rmdp-year-picker) {
+    @apply grid grid-cols-3 gap-1 text-sm;
+  }
 
-	.calendar :global(.rmdp-day.rmdp-today span) {
-		@apply border border-primary/40;
-	}
+  .calendar :global(.rmdp-month-picker .rmdp-option),
+  .calendar :global(.rmdp-year-picker .rmdp-option) {
+    @apply rounded-md py-2 transition-colors duration-150;
+  }
 
-	.calendar :global(.rmdp-day.rmdp-selected span),
-	.calendar :global(.rmdp-day.rmdp-start span),
-	.calendar :global(.rmdp-day.rmdp-end span) {
-		@apply bg-primary text-primary-foreground shadow-sm;
-	}
+  .calendar :global(.rmdp-month-picker .rmdp-option:hover),
+  .calendar :global(.rmdp-year-picker .rmdp-option:hover) {
+    @apply bg-accent text-accent-foreground;
+  }
 
-	.calendar :global(.rmdp-day.rmdp-range span) {
-		@apply bg-primary/10 text-primary;
-	}
+  .calendar :global(.rmdp-month-picker .rmdp-selected span),
+  .calendar :global(.rmdp-year-picker .rmdp-selected span) {
+    @apply bg-primary text-primary-foreground;
+  }
 
-	.calendar :global(.rmdp-day.rmdp-disabled span) {
-		@apply cursor-not-allowed opacity-40;
-	}
+  /* Override react-multi-date-picker theme colors to match app theme */
+  .calendar.bg-dark :global(.rmdp-calendar) {
+    @apply bg-background;
+  }
 
-	.calendar :global(.rmdp-month-picker),
-	.calendar :global(.rmdp-year-picker) {
-		@apply grid grid-cols-3 gap-1 text-sm;
-	}
+  .calendar.bg-gray :global(.rmdp-calendar) {
+    @apply bg-card;
+  }
 
-	.calendar :global(.rmdp-month-picker .rmdp-option),
-	.calendar :global(.rmdp-year-picker .rmdp-option) {
-		@apply rounded-md py-2 transition-colors duration-150;
-	}
+  /* Ensure arrow containers match calendar background */
+  .calendar.bg-dark :global(.rmdp-arrow-container) {
+    @apply bg-background;
+  }
 
-	.calendar :global(.rmdp-month-picker .rmdp-option:hover),
-	.calendar :global(.rmdp-year-picker .rmdp-option:hover) {
-		@apply bg-accent text-accent-foreground;
-	}
-
-	.calendar :global(.rmdp-month-picker .rmdp-selected span),
-	.calendar :global(.rmdp-year-picker .rmdp-selected span) {
-		@apply bg-primary text-primary-foreground;
-	}
-
-	/* Override react-multi-date-picker theme colors to match app theme */
-	.calendar.bg-dark :global(.rmdp-calendar) {
-		@apply bg-background;
-	}
-
-	.calendar.bg-gray :global(.rmdp-calendar) {
-		@apply bg-card;
-	}
-
-	/* Ensure arrow containers match calendar background */
-	.calendar.bg-dark :global(.rmdp-arrow-container) {
-		@apply bg-background;
-	}
-
-	.calendar.bg-gray :global(.rmdp-arrow-container) {
-		@apply bg-card;
-	}
+  .calendar.bg-gray :global(.rmdp-arrow-container) {
+    @apply bg-card;
+  }
 }

@@ -3,74 +3,74 @@
 /* DAY CELL BASE STYLING - Applied to both multimonth and daygrid */
 .fc-multimonth .fc-daygrid-day,
 .fc-daygrid .fc-daygrid-day {
-	position: relative;
-	background: transparent;
-	border: none;
-	overflow: visible;
-	padding: 2px;
-	/* GPU acceleration */
-	transform: translateZ(0);
-	backface-visibility: hidden;
-	-webkit-backface-visibility: hidden;
-	transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  background: transparent;
+  border: none;
+  overflow: visible;
+  padding: 2px;
+  /* GPU acceleration */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* DAY CELL FRAME - The inner container with visual styling */
 .fc-multimonth .fc-daygrid-day-frame,
 .fc-daygrid .fc-daygrid-day-frame {
-	border: 1px solid hsl(var(--border) / 0.15);
-	border-radius: calc(var(--radius) * 0.75);
-	overflow: hidden;
-	height: 100%;
-	width: 100%;
-	position: relative;
-	display: flex;
-	flex-direction: column;
-	box-shadow:
-		0 2px 4px rgba(0, 0, 0, 0.08),
-		0 1px 2px rgba(0, 0, 0, 0.04),
-		inset 0 1px 0 hsl(var(--background) / 0.5);
-	transition:
-		transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-		box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-		background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
-		border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-	/* Enhanced GPU acceleration */
-	transform: translate3d(0, 0, 0);
-	backface-visibility: hidden;
-	-webkit-backface-visibility: hidden;
-	will-change: transform, box-shadow, background-color, border-color;
-	perspective: 1000px;
-	z-index: var(--z-fc-day-cell-base);
+  border: 1px solid hsl(var(--border) / 0.15);
+  border-radius: calc(var(--radius) * 0.75);
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 hsl(var(--background) / 0.5);
+  transition:
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* Enhanced GPU acceleration */
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, box-shadow, background-color, border-color;
+  perspective: 1000px;
+  z-index: var(--z-fc-day-cell-base);
 }
 
 /* Enhanced frame styling for multimonth view specifically */
 .fc-multimonth .fc-daygrid-day-frame {
-	z-index: var(--z-fc-day-cell-base);
-	position: relative;
+  z-index: var(--z-fc-day-cell-base);
+  position: relative;
 }
 
 /* Future days default gradient */
 .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(
-		.vacation-day
-	):not(.fc-day-disabled)
-	.fc-daygrid-day-frame,
+    .vacation-day
+  ):not(.fc-day-disabled)
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(.vacation-day):not(
-		.fc-day-disabled
-	)
-	.fc-daygrid-day-frame {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--card)) 0%,
-		hsl(var(--card) / 0.95) 100%
-	);
+  .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(.vacation-day):not(
+    .fc-day-disabled
+  )
+  .fc-daygrid-day-frame {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--card)) 0%,
+    hsl(var(--card) / 0.95) 100%
+  );
 }
 
 /* Fix day events container to allow more link overflow - minimal overrides only */
 .fc .fc-daygrid-day-events {
-	overflow: visible;
-	z-index: var(--z-calendar-events);
+  overflow: visible;
+  z-index: var(--z-calendar-events);
 }
 
 /* Day background layer */
@@ -78,39 +78,39 @@
 .fc-multimonth .fc-daygrid-day-top,
 .fc-daygrid .fc-daygrid-day-bg,
 .fc-daygrid .fc-daygrid-day-top {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	border-radius: calc(var(--radius) * 0.75);
-	overflow: hidden;
-	background: transparent;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: calc(var(--radius) * 0.75);
+  overflow: hidden;
+  background: transparent;
 }
 
 /* Day top specific styles */
 .fc-multimonth .fc-daygrid-day-top,
 .fc-daygrid .fc-daygrid-day-top {
-	position: static;
-	display: flex;
-	flex-direction: row-reverse;
-	padding: 0.2em 0.3em;
-	font-size: 0.75em;
-	color: hsl(var(--muted-foreground));
+  position: static;
+  display: flex;
+  flex-direction: row-reverse;
+  padding: 0.2em 0.3em;
+  font-size: 0.75em;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Day number styling */
 .fc-multimonth .fc-daygrid-day-number,
 .fc-daygrid .fc-daygrid-day-number {
-	position: relative;
-	z-index: var(--z-fc-day-cell-base);
-	padding: 0.2em 0.3em;
-	font-weight: 500;
-	transition: transform 0.2s ease;
-	border-radius: var(--radius-sm);
-	font-size: 1.045em;
-	line-height: 1.2;
-	display: inline-block;
+  position: relative;
+  z-index: var(--z-fc-day-cell-base);
+  padding: 0.2em 0.3em;
+  font-weight: 500;
+  transition: transform 0.2s ease;
+  border-radius: var(--radius-sm);
+  font-size: 1.045em;
+  line-height: 1.2;
+  display: inline-block;
 }
 
 /* Disable clearfix pseudo-elements */
@@ -126,14 +126,14 @@
 .fc-daygrid .fc-daygrid-day-events:after,
 .fc-daygrid .fc-daygrid-event-harness:before,
 .fc-daygrid .fc-daygrid-event-harness:after {
-	display: none;
-	content: none;
+  display: none;
+  content: none;
 }
 
 /* Event container - minimal overrides only */
 .fc-multimonth .fc-daygrid-day-events,
 .fc-daygrid .fc-daygrid-day-events {
-	margin-top: var(--fc-daygrid-event-vertical-gap);
-	z-index: var(--z-fc-day-cell-content);
-	overflow: visible;
+  margin-top: var(--fc-daygrid-event-vertical-gap);
+  z-index: var(--z-fc-day-cell-content);
+  overflow: visible;
 }

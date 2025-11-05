@@ -1,8 +1,11 @@
-import { createDashboardService } from '../services/dashboard.service.factory'
-import { createUseDashboardStats } from './useDashboardStats'
+import { createDashboardService } from "../services/dashboard.service.factory";
+import { createUseDashboardStats } from "./useDashboardStats";
 
-const svc = createDashboardService()
-export const useDashboardStats = createUseDashboardStats(svc)
+const svc = createDashboardService();
+export const useDashboardStats = createUseDashboardStats(svc);
 
-export type { UsePaginationOptions, UsePaginationReturn } from './usePagination'
-export { usePagination } from './usePagination'
+export type {
+  UsePaginationOptions,
+  UsePaginationReturn,
+} from "./usePagination";
+export { usePagination } from "./usePagination";

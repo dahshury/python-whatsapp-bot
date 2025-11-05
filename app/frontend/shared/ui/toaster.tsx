@@ -1,31 +1,31 @@
-'use client'
+"use client";
 
-import { useToast } from '@shared/libs/hooks/use-toast'
+import { useToast } from "@shared/libs/hooks/use-toast";
 import {
-	Toast,
-	ToastClose,
-	ToastDescription,
-	ToastProvider,
-	ToastTitle,
-	ToastViewport,
-} from '@/shared/ui/toast'
+  Toast,
+  ToastClose,
+  ToastDescription,
+  ToastProvider,
+  ToastTitle,
+  ToastViewport,
+} from "@/shared/ui/toast";
 
 export function Toaster() {
-	const { toasts } = useToast()
+  const { toasts } = useToast();
 
-	return (
-		<ToastProvider>
-			{toasts.map(({ id, title, description, action, ...props }) => (
-				<Toast key={id} {...props}>
-					<div className="grid gap-1">
-						{title && <ToastTitle>{title}</ToastTitle>}
-						{description && <ToastDescription>{description}</ToastDescription>}
-					</div>
-					{action}
-					<ToastClose />
-				</Toast>
-			))}
-			<ToastViewport className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col p-4 md:max-w-[26.25rem]" />
-		</ToastProvider>
-	)
+  return (
+    <ToastProvider>
+      {toasts.map(({ id, title, description, action, ...props }) => (
+        <Toast key={id} {...props}>
+          <div className="grid gap-1">
+            {title && <ToastTitle>{title}</ToastTitle>}
+            {description && <ToastDescription>{description}</ToastDescription>}
+          </div>
+          {action}
+          <ToastClose />
+        </Toast>
+      ))}
+      <ToastViewport className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col p-4 md:max-w-[26.25rem]" />
+    </ToastProvider>
+  );
 }

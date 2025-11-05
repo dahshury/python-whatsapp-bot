@@ -1,19 +1,19 @@
-import type { NextRequest } from 'next/server'
+import type { NextRequest } from "next/server";
 
 export type PrefetchQueryPayload = {
-	key: unknown[]
-	data: unknown
-}
+  key: unknown[];
+  data: unknown;
+};
 
 export type PrefetchPayload = {
-	queries?: PrefetchQueryPayload[]
-}
+  queries?: PrefetchQueryPayload[];
+};
 
 export type PrefetchResponse =
-	| { success: true; payload?: PrefetchPayload }
-	| { success: false; error: string }
+  | { success: true; payload?: PrefetchPayload }
+  | { success: false; error: string };
 
 export type PrefetchResolver = (
-	pathname: string,
-	request: NextRequest
-) => Promise<PrefetchResponse>
+  pathname: string,
+  request: NextRequest
+) => Promise<PrefetchResponse>;

@@ -1,4 +1,4 @@
-import type { CalendarEvent } from '@/entities/event'
+import type { CalendarEvent } from "@/entities/event";
 
 /**
  * Produce view-optimized events. For multiMonthYear, simplify and control editability.
@@ -7,16 +7,16 @@ export function optimizeEventsForView(
   events: CalendarEvent[],
   currentView: string
 ): CalendarEvent[] {
-  if (currentView === 'multiMonthYear') {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
+  if (currentView === "multiMonthYear") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
     return events.map((event) => {
-      const eventStartDate = new Date(event.start)
-      const isPastEvent = eventStartDate < today
-      const isReservation = event.extendedProps?.type !== 2
+      const eventStartDate = new Date(event.start);
+      const isPastEvent = eventStartDate < today;
+      const isReservation = event.extendedProps?.type !== 2;
 
-      const allowDrag = !isPastEvent && isReservation
+      const allowDrag = !isPastEvent && isReservation;
 
       return {
         ...event,
@@ -33,11 +33,9 @@ export function optimizeEventsForView(
           cancelled: event.extendedProps?.cancelled ?? false,
           reservationId: event.extendedProps?.reservationId,
         },
-      } as unknown as CalendarEvent
-    })
+      } as unknown as CalendarEvent;
+    });
   }
 
-  return events
+  return events;
 }
-
-

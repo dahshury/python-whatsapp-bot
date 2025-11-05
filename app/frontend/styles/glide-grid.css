@@ -2,457 +2,457 @@
 
 /* Theme variable mappings for Glide Data Grid */
 :root {
-	/* Cell backgrounds */
-	--gdg-bg-cell: hsl(var(--card));
-	--gdg-bg-cell-medium: hsl(var(--muted));
+  /* Cell backgrounds */
+  --gdg-bg-cell: hsl(var(--card));
+  --gdg-bg-cell-medium: hsl(var(--muted));
 
-	/* Header backgrounds - using muted for better distinction */
-	--gdg-bg-header: hsl(var(--muted));
-	--gdg-bg-header-hover: hsl(var(--hover));
-	--gdg-bg-header-has-focus: hsl(var(--accent));
+  /* Header backgrounds - using muted for better distinction */
+  --gdg-bg-header: hsl(var(--muted));
+  --gdg-bg-header-hover: hsl(var(--hover));
+  --gdg-bg-header-has-focus: hsl(var(--accent));
 
-	/* Text colors */
-	--gdg-text-dark: hsl(var(--foreground));
-	--gdg-text-medium: hsl(var(--muted-foreground));
-	--gdg-text-light: hsl(var(--muted-foreground));
-	--gdg-text-header: hsl(var(--foreground));
-	--gdg-text-group-header: hsl(var(--muted-foreground));
-	--gdg-text-header-selected: hsl(var(--primary));
-	--gdg-text-bubble: hsl(var(--popover-foreground));
+  /* Text colors */
+  --gdg-text-dark: hsl(var(--foreground));
+  --gdg-text-medium: hsl(var(--muted-foreground));
+  --gdg-text-light: hsl(var(--muted-foreground));
+  --gdg-text-header: hsl(var(--foreground));
+  --gdg-text-group-header: hsl(var(--muted-foreground));
+  --gdg-text-header-selected: hsl(var(--primary));
+  --gdg-text-bubble: hsl(var(--popover-foreground));
 
-	/* Icon colors */
-	--gdg-bg-icon-header: hsl(var(--muted));
-	--gdg-fg-icon-header: hsl(var(--muted-foreground));
+  /* Icon colors */
+  --gdg-bg-icon-header: hsl(var(--muted));
+  --gdg-fg-icon-header: hsl(var(--muted-foreground));
 
-	/* Accent colors */
-	--gdg-accent-color: hsl(var(--primary));
-	--gdg-accent-fg: hsl(var(--primary-foreground));
-	--gdg-accent-light: hsl(var(--primary) / 0.2);
+  /* Accent colors */
+  --gdg-accent-color: hsl(var(--primary));
+  --gdg-accent-fg: hsl(var(--primary-foreground));
+  --gdg-accent-light: hsl(var(--primary) / 0.2);
 
-	/* Bubble backgrounds */
-	--gdg-bg-bubble: hsl(var(--popover));
-	--gdg-bg-bubble-selected: hsl(var(--primary));
+  /* Bubble backgrounds */
+  --gdg-bg-bubble: hsl(var(--popover));
+  --gdg-bg-bubble-selected: hsl(var(--primary));
 
-	/* Search result */
-	--gdg-bg-search-result: hsl(var(--primary) / 0.2);
+  /* Search result */
+  --gdg-bg-search-result: hsl(var(--primary) / 0.2);
 
-	/* Borders */
-	--gdg-border-color: hsl(var(--border));
-	--gdg-horizontal-border-color: hsl(var(--border));
-	--gdg-drilldown-border: hsl(var(--primary));
+  /* Borders */
+  --gdg-border-color: hsl(var(--border));
+  --gdg-horizontal-border-color: hsl(var(--border));
+  --gdg-drilldown-border: hsl(var(--primary));
 
-	/* Link color */
-	--gdg-link-color: hsl(var(--primary));
+  /* Link color */
+  --gdg-link-color: hsl(var(--primary));
 
-	/* Selection */
-	--gdg-selection: hsl(var(--accent));
+  /* Selection */
+  --gdg-selection: hsl(var(--accent));
 
-	/* Toolbar */
-	--gdg-toolbar-bg: hsl(var(--popover) / 0.95);
-	--gdg-toolbar-icon: hsl(var(--muted-foreground));
-	--gdg-toolbar-hover-bg: hsl(var(--hover));
-	--gdg-toolbar-hover-icon: hsl(var(--hover-foreground));
+  /* Toolbar */
+  --gdg-toolbar-bg: hsl(var(--popover) / 0.95);
+  --gdg-toolbar-icon: hsl(var(--muted-foreground));
+  --gdg-toolbar-hover-bg: hsl(var(--hover));
+  --gdg-toolbar-hover-icon: hsl(var(--hover-foreground));
 
-	/* Typography */
-	--gdg-font-family: var(--font-sans);
-	--gdg-base-font-style: 13px;
-	--gdg-header-font-style: 600 13px;
-	--gdg-editor-font-size: 13px;
+  /* Typography */
+  --gdg-font-family: var(--font-sans);
+  --gdg-base-font-style: 13px;
+  --gdg-header-font-style: 600 13px;
+  --gdg-editor-font-size: 13px;
 
-	/* Padding */
-	--gdg-cell-horizontal-padding: 8px;
-	--gdg-cell-vertical-padding: 3px;
+  /* Padding */
+  --gdg-cell-horizontal-padding: 8px;
+  --gdg-cell-vertical-padding: 3px;
 
-	/* Menu and Dropdown specific variables */
-	--gdg-menu-bg: hsl(var(--popover));
-	--gdg-menu-border: hsl(var(--border));
-	--gdg-menu-text: hsl(var(--popover-foreground));
-	--gdg-menu-hover-bg: hsl(var(--accent));
-	--gdg-menu-hover-text: hsl(var(--accent-foreground));
-	--gdg-menu-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  /* Menu and Dropdown specific variables */
+  --gdg-menu-bg: hsl(var(--popover));
+  --gdg-menu-border: hsl(var(--border));
+  --gdg-menu-text: hsl(var(--popover-foreground));
+  --gdg-menu-hover-bg: hsl(var(--accent));
+  --gdg-menu-hover-text: hsl(var(--accent-foreground));
+  --gdg-menu-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
 
-	/* Validation error gradient colors - using theme's destructive color */
-	--gdg-validation-error-start: hsl(var(--destructive) / 0.15);
-	--gdg-validation-error-end: hsl(var(--background) / 0);
-	--gdg-validation-error-indicator: hsl(var(--destructive));
-	--gdg-validation-error-border: hsl(var(--destructive) / 0.3);
+  /* Validation error gradient colors - using theme's destructive color */
+  --gdg-validation-error-start: hsl(var(--destructive) / 0.15);
+  --gdg-validation-error-end: hsl(var(--background) / 0);
+  --gdg-validation-error-indicator: hsl(var(--destructive));
+  --gdg-validation-error-border: hsl(var(--destructive) / 0.3);
 }
 
 /* Tooltip animation */
 @keyframes tooltipFadeIn {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Validation error cell styles */
 @keyframes validation-pulse {
-	0% {
-		opacity: 1;
-	}
-	50% {
-		opacity: 0.8;
-	}
-	100% {
-		opacity: 1;
-	}
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* Cell with validation error - subtle border effect */
 .gdg-cell-validation-error {
-	position: relative;
-	animation: validation-pulse 2s ease-in-out infinite;
+  position: relative;
+  animation: validation-pulse 2s ease-in-out infinite;
 }
 
 /* Additional visual cue - subtle left border for error cells */
 .gdg-cell-validation-error::before {
-	content: "";
-	position: absolute;
-	left: 0;
-	top: 0;
-	bottom: 0;
-	width: 2px;
-	background-color: var(--gdg-validation-error-indicator);
-	opacity: 0.5;
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--gdg-validation-error-indicator);
+  opacity: 0.5;
 }
 
 /* Override Glide Data Grid styles to use CSS variables */
 .gdg-wmyidgi,
 .gdg-wmyidgi * {
-	--gdg-bg-cell: hsl(var(--card));
-	--gdg-bg-header: hsl(var(--muted));
-	--gdg-text-dark: hsl(var(--foreground));
-	--gdg-border-color: hsl(var(--border));
+  --gdg-bg-cell: hsl(var(--card));
+  --gdg-bg-header: hsl(var(--muted));
+  --gdg-text-dark: hsl(var(--foreground));
+  --gdg-border-color: hsl(var(--border));
 }
 
 /* Ensure overlay editors use theme colors */
 .gdg-d19meir1.gdg-style {
-	background-color: hsl(var(--card));
-	color: hsl(var(--foreground));
-	box-shadow:
-		0 0 0 1px hsl(var(--primary)),
-		0px 0px 1px rgba(62, 65, 86, 0.4),
-		0px 6px 12px rgba(62, 65, 86, 0.15);
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
+  box-shadow:
+    0 0 0 1px hsl(var(--primary)),
+    0px 0px 1px rgba(62, 65, 86, 0.4),
+    0px 6px 12px rgba(62, 65, 86, 0.15);
 }
 
 .gdg-d19meir1 input,
 .gdg-d19meir1 textarea {
-	background-color: hsl(var(--card));
-	color: hsl(var(--foreground));
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 /* Glide Grid Animations */
 @keyframes menuSlideIn {
-	from {
-		opacity: 0;
-		transform: scale(0.95) translateY(-4px);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1) translateY(0);
-	}
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes submenuSlideIn {
-	from {
-		opacity: 0;
-		transform: scale(0.95) translateX(-4px);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1) translateX(0);
-	}
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
 }
 
 @keyframes spin {
-	to {
-		transform: rotate(360deg);
-	}
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Glide Grid Loading Spinner */
 .glide-loading-spinner {
-	width: 40px;
-	height: 40px;
-	border-radius: 50%;
-	animation: spin 1s linear infinite;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
 .glide-loading-spinner-light {
-	border: 3px solid hsl(var(--border));
-	border-top-color: hsl(var(--primary));
+  border: 3px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
 }
 
 .glide-loading-spinner-dark {
-	border: 3px solid hsl(var(--border));
-	border-top-color: hsl(var(--primary));
+  border: 3px solid hsl(var(--border));
+  border-top-color: hsl(var(--primary));
 }
 
 /* Glide Grid Container */
 .glide-grid-container {
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 400px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
 }
 
 .glide-grid-container-light {
-	background: hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 .glide-grid-container-dark {
-	background: hsl(var(--background));
+  background: hsl(var(--background));
 }
 
 /* Glide Grid Loading Text */
 .glide-loading-text {
-	font-size: 14px;
-	font-family: inherit;
+  font-size: 14px;
+  font-family: inherit;
 }
 
 .glide-loading-text-light {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 .glide-loading-text-dark {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 /* Glide Grid Wrapper */
 .glide-grid-wrapper {
-	width: 100%;
-	height: 100%;
-	position: relative;
-	border-radius: 12px;
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .glide-grid-wrapper-centered {
-	align-items: center;
+  align-items: center;
 }
 
 .glide-grid-wrapper-fullscreen {
-	flex: 1;
-	border: none;
-	box-shadow: none;
+  flex: 1;
+  border: none;
+  box-shadow: none;
 }
 
 /* Glide Grid Inner Container */
 .glide-grid-inner {
-	display: flex;
-	flex-direction: column;
-	border-radius: 12px;
-	overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .glide-grid-inner-fit {
-	width: fit-content;
-	max-width: 100%;
-	margin: 0 auto;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .glide-grid-inner-full {
-	width: 100%;
+  width: 100%;
 }
 
 /* Make glide-data-grid fill the container when fullWidth is true */
 .glide-grid-inner-full .gdg-wmyidgi {
-	width: 100%;
+  width: 100%;
 }
 
 /* Ensure all grid containers fill width in full mode */
 .glide-grid-inner-full > div {
-	width: 100%;
+  width: 100%;
 }
 
 /* Make the grid editor fullwidth container and its canvas fill width */
 .glide-grid-fullwidth {
-	width: 100%;
+  width: 100%;
 }
 
 .glide-grid-fullwidth .gdg-wmyidgi {
-	width: 100%;
+  width: 100%;
 }
 
 /* Override inline width styles when in fullWidth mode without explicit width */
 .glide-grid-fullwidth .gdg-wmyidgi[style*="width: var"] {
-	width: 100%;
+  width: 100%;
 }
 
 /* Ensure grid fills dialog content */
 [role="dialog"] .glide-grid-inner-full,
 [role="dialog"] .glide-grid-fullwidth {
-	width: 100%;
+  width: 100%;
 }
 
 /* Remove any max-width constraints in dialog */
 [role="dialog"] .glide-grid-inner-full {
-	max-width: none;
+  max-width: none;
 }
 
 /* Force the grid to fill width when data-fullwidth is true */
 [data-fullwidth="true"] {
-	width: 100%;
+  width: 100%;
 }
 
 /* Override glide-data-grid's calculated width when in fullWidth mode */
 .glide-grid-inner-full .gdg-wmyidgi[style] {
-	width: 100%;
+  width: 100%;
 }
 
 /* Force the entire grid component to fill width */
 .glide-grid-inner-full > div,
 .glide-grid-inner-full > div > div {
-	width: 100%;
+  width: 100%;
 }
 
 /* Glide Data Grid Essential Styles */
 
 /* Main container */
 .gdg-wmyidgi {
-	position: relative;
-	min-width: 10px;
-	min-height: 10px;
-	max-width: 100%;
-	max-height: 100%;
-	width: var(--wmyidgi-0);
-	height: var(--wmyidgi-1);
-	overflow: clip;
-	direction: ltr;
+  position: relative;
+  min-width: 10px;
+  min-height: 10px;
+  max-width: 100%;
+  max-height: 100%;
+  width: var(--wmyidgi-0);
+  height: var(--wmyidgi-1);
+  overflow: clip;
+  direction: ltr;
 }
 
 .gdg-wmyidgi > :first-child {
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* Overlay editor styles */
 .gdg-d19meir1 {
-	position: absolute;
-	display: flex;
-	flex-direction: column;
-	overflow: hidden;
-	box-sizing: border-box;
-	--overlay-top: var(--d19meir1-0);
-	left: var(--d19meir1-1);
-	top: var(--d19meir1-0);
-	min-width: var(--d19meir1-2);
-	min-height: var(--d19meir1-3);
-	width: max-content;
-	max-width: 400px;
-	max-height: calc(100vh - var(--d19meir1-4));
-	font-family: var(--gdg-font-family);
-	font-size: var(--gdg-editor-font-size);
-	text-align: start;
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  --overlay-top: var(--d19meir1-0);
+  left: var(--d19meir1-1);
+  top: var(--d19meir1-0);
+  min-width: var(--d19meir1-2);
+  min-height: var(--d19meir1-3);
+  width: max-content;
+  max-width: 400px;
+  max-height: calc(100vh - var(--d19meir1-4));
+  font-family: var(--gdg-font-family);
+  font-size: var(--gdg-editor-font-size);
+  text-align: start;
 }
 
 @keyframes glide_fade_in-gdg-d19meir1 {
-	from {
-		opacity: 0%;
-	}
-	to {
-		opacity: 100%;
-	}
+  from {
+    opacity: 0%;
+  }
+  to {
+    opacity: 100%;
+  }
 }
 
 .gdg-d19meir1.gdg-style {
-	border-radius: 2px;
-	background-color: var(--gdg-bg-cell, hsl(var(--card)));
-	box-shadow:
-		0 0 0 1px var(--gdg-accent-color, hsl(var(--primary))),
-		0px 0px 1px rgba(62, 65, 86, 0.4),
-		0px 6px 12px rgba(62, 65, 86, 0.15);
-	animation: glide_fade_in-gdg-d19meir1 60ms 1;
+  border-radius: 2px;
+  background-color: var(--gdg-bg-cell, hsl(var(--card)));
+  box-shadow:
+    0 0 0 1px var(--gdg-accent-color, hsl(var(--primary))),
+    0px 0px 1px rgba(62, 65, 86, 0.4),
+    0px 6px 12px rgba(62, 65, 86, 0.15);
+  animation: glide_fade_in-gdg-d19meir1 60ms 1;
 }
 
 .gdg-d19meir1.gdg-pad {
-	padding: var(--d19meir1-5) 8.5px 3px;
+  padding: var(--d19meir1-5) 8.5px 3px;
 }
 
 .gdg-d19meir1 .gdg-clip-region {
-	display: flex;
-	flex-direction: column;
-	overflow-y: auto;
-	overflow-x: hidden;
-	border-radius: 2px;
-	flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 2px;
+  flex-grow: 1;
 }
 
 .gdg-d19meir1 .gdg-clip-region .gdg-growing-entry {
-	height: 100%;
+  height: 100%;
 }
 
 .gdg-d19meir1 .gdg-clip-region input.gdg-input,
 .gdg-d19meir1 .gdg-clip-region textarea.gdg-input {
-	width: 100%;
-	border: none;
-	border-width: 0;
-	outline: none;
+  width: 100%;
+  border: none;
+  border-width: 0;
+  outline: none;
 }
 
 /* Additional essential styles */
 .glide-data-grid-overlay-editor,
 .click-outside-ignore {
-	outline-width: 2px;
-	outline-offset: -1px;
-	z-index: var(--z-grid-editor-max);
+  outline-width: 2px;
+  outline-offset: -1px;
+  z-index: var(--z-grid-editor-max);
 }
 
 /* Ensure grid renders properly */
 canvas {
-	outline: none;
+  outline: none;
 }
 
 /* Ensure the grid canvas fills the container when in fullWidth mode */
 .glide-grid-fullwidth canvas {
-	width: 100%;
-	max-width: 100%;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* Search styles */
 .gdg-search-wrapper {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	z-index: var(--z-base);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: var(--z-base);
 }
 
 /* Ensure proper layering */
 body > .gdg-d19meir1,
 body > .glide-data-grid-overlay-editor,
 body > .click-outside-ignore {
-	z-index: var(--z-grid-editor-max);
+  z-index: var(--z-grid-editor-max);
 }
 
 /* BeautifulWrapper Component Styles */
 
 .beautiful-wrapper {
-	padding: 24px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	color: hsl(var(--foreground));
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: hsl(var(--foreground));
 }
 
 .beautiful-wrapper-description {
-	font-style: italic;
-	color: hsl(var(--muted-foreground));
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
 }
 
 .beautiful-wrapper-content {
-	flex: 1;
+  flex: 1;
 }
 
 /* Glide Data Grid Dropdown and Menu Styles */
@@ -466,12 +466,12 @@ body > .column-menu,
 body > .formatting-menu,
 body > #column-menu,
 body > #formatting-menu {
-	background-color: var(--gdg-menu-bg);
-	border: 1px solid var(--gdg-menu-border);
-	color: var(--gdg-menu-text);
-	border-radius: var(--radius);
-	box-shadow: var(--gdg-menu-shadow);
-	font-family: var(--font-sans);
+  background-color: var(--gdg-menu-bg);
+  border: 1px solid var(--gdg-menu-border);
+  color: var(--gdg-menu-text);
+  border-radius: var(--radius);
+  box-shadow: var(--gdg-menu-shadow);
+  font-family: var(--font-sans);
 }
 
 /* Menu Item Styles */
@@ -481,8 +481,8 @@ body > #formatting-menu {
 #formatting-menu .format-menu-item,
 body .column-menu .menu-item,
 body .formatting-menu .format-menu-item {
-	color: var(--gdg-menu-text);
-	transition: background-color 0.15s ease;
+  color: var(--gdg-menu-text);
+  transition: background-color 0.15s ease;
 }
 
 .menu-item:hover,
@@ -491,16 +491,16 @@ body .formatting-menu .format-menu-item {
 #formatting-menu .format-menu-item:hover,
 body .column-menu .menu-item:hover,
 body .formatting-menu .format-menu-item:hover {
-	background-color: var(--gdg-menu-hover-bg);
-	color: var(--gdg-menu-hover-text);
+  background-color: var(--gdg-menu-hover-bg);
+  color: var(--gdg-menu-hover-text);
 }
 
 .menu-item.active,
 #column-menu .menu-item.active,
 body .column-menu .menu-item.active {
-	background-color: var(--gdg-menu-hover-bg);
-	color: var(--gdg-menu-hover-text);
-	opacity: 0.9;
+  background-color: var(--gdg-menu-hover-bg);
+  color: var(--gdg-menu-hover-text);
+  opacity: 0.9;
 }
 
 /* Menu Divider */
@@ -508,122 +508,122 @@ body .column-menu .menu-item.active {
 #column-menu > div[style*="height: 1px"],
 body .column-menu > div[style*="height: 1px"],
 body #column-menu > div[style*="height: 1px"] {
-	background-color: var(--gdg-menu-border);
-	opacity: 0.5;
+  background-color: var(--gdg-menu-border);
+  opacity: 0.5;
 }
 
 /* Dropdown Cell Editor Styles */
 .gdg-d19meir1 select,
 .glide-data-grid-overlay-editor select,
 .click-outside-ignore select {
-	background-color: hsl(var(--card));
-	border: 1px solid hsl(var(--border));
-	color: hsl(var(--foreground));
-	border-radius: var(--radius-sm);
-	padding: 4px 8px;
-	font-size: 13px;
-	font-family: var(--font-sans);
-	outline: none;
-	cursor: pointer;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  outline: none;
+  cursor: pointer;
 }
 
 .gdg-d19meir1 select:focus,
 .glide-data-grid-overlay-editor select:focus,
 .click-outside-ignore select:focus {
-	border-color: hsl(var(--primary));
-	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 /* Dropdown Options */
 .gdg-d19meir1 option,
 .glide-data-grid-overlay-editor option,
 .click-outside-ignore option {
-	background-color: hsl(var(--popover));
-	color: hsl(var(--popover-foreground));
-	padding: 4px 8px;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  padding: 4px 8px;
 }
 
 .gdg-d19meir1 option:hover,
 .glide-data-grid-overlay-editor option:hover,
 .click-outside-ignore option:hover {
-	background-color: hsl(var(--accent));
-	color: hsl(var(--accent-foreground));
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 /* React Select Dropdown Styles (if used) */
 [class*="react-select"] [class*="control"] {
-	background-color: hsl(var(--card));
-	border-color: hsl(var(--border));
-	color: hsl(var(--foreground));
-	min-height: 32px;
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+  min-height: 32px;
 }
 
 [class*="react-select"] [class*="control"]:hover {
-	border-color: hsl(var(--border));
+  border-color: hsl(var(--border));
 }
 
 [class*="react-select"] [class*="control"][class*="focused"] {
-	border-color: hsl(var(--primary));
-	box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
 [class*="react-select"] [class*="menu"] {
-	background-color: hsl(var(--popover));
-	border: 1px solid hsl(var(--border));
-	box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  background-color: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
 }
 
 [class*="react-select"] [class*="option"] {
-	background-color: transparent;
-	color: hsl(var(--popover-foreground));
+  background-color: transparent;
+  color: hsl(var(--popover-foreground));
 }
 
 [class*="react-select"] [class*="option"][class*="focused"] {
-	background-color: hsl(var(--accent));
-	color: hsl(var(--accent-foreground));
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 [class*="react-select"] [class*="option"][class*="selected"] {
-	background-color: hsl(var(--primary));
-	color: hsl(var(--primary-foreground));
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 [class*="react-select"] [class*="singleValue"] {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 [class*="react-select"] [class*="placeholder"] {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 [class*="react-select"] [class*="indicatorSeparator"] {
-	background-color: hsl(var(--border));
+  background-color: hsl(var(--border));
 }
 
 [class*="react-select"] [class*="dropdownIndicator"] {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 [class*="react-select"] [class*="dropdownIndicator"]:hover {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 /* Menu Icon Colors */
 .column-menu svg,
 .formatting-menu svg {
-	color: currentColor;
-	opacity: 0.7;
+  color: currentColor;
+  opacity: 0.7;
 }
 
 .menu-item:hover svg,
 .format-menu-item:hover svg {
-	opacity: 1;
+  opacity: 1;
 }
 
 /* Invisible Bridge for Submenu */
 .column-menu + div[style*="position: fixed"] {
-	background: transparent;
-	pointer-events: auto;
+  background: transparent;
+  pointer-events: auto;
 }
 
 /* Override inline styles for menus */
@@ -631,9 +631,9 @@ body #column-menu > div[style*="height: 1px"] {
 [style*="background-color"][class*="menu"],
 #column-menu[style],
 #formatting-menu[style] {
-	background-color: var(--gdg-menu-bg);
-	border-color: var(--gdg-menu-border);
-	color: var(--gdg-menu-text);
+  background-color: var(--gdg-menu-bg);
+  border-color: var(--gdg-menu-border);
+  color: var(--gdg-menu-text);
 }
 
 /* Override inline styles for menu items */
@@ -641,66 +641,66 @@ body #column-menu > div[style*="height: 1px"] {
 [style*="background-color"][class*="menu-item"],
 .menu-item[style],
 .format-menu-item[style] {
-	color: var(--gdg-menu-text);
+  color: var(--gdg-menu-text);
 }
 
 .menu-item[style]:hover,
 .format-menu-item[style]:hover {
-	background-color: var(--gdg-menu-hover-bg);
-	color: var(--gdg-menu-hover-text);
+  background-color: var(--gdg-menu-hover-bg);
+  color: var(--gdg-menu-hover-text);
 }
 
 /* Ensure dropdown editor follows theme */
 .gdg-d19meir1 .gdg-clip-region,
 .glide-data-grid-overlay-editor .gdg-clip-region {
-	background-color: hsl(var(--card));
-	color: hsl(var(--foreground));
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 /* Native select dropdown styling */
 select:-webkit-autofill,
 select:-webkit-autofill:hover,
 select:-webkit-autofill:focus {
-	-webkit-text-fill-color: hsl(var(--foreground));
-	-webkit-box-shadow: 0 0 0px 1000px hsl(var(--card)) inset;
-	background-color: hsl(var(--card));
+  -webkit-text-fill-color: hsl(var(--foreground));
+  -webkit-box-shadow: 0 0 0px 1000px hsl(var(--card)) inset;
+  background-color: hsl(var(--card));
 }
 
 /* ------------------- Toolbar Styles ------------------- */
 .glide-grid-toolbar {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: flex-end;
-	box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.08);
-	border-radius: var(--radius);
-	background-color: var(--gdg-toolbar-bg);
-	backdrop-filter: blur(10px);
-	padding: 3px;
-	pointer-events: auto;
-	transition:
-		background-color 0.15s ease,
-		color 0.15s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  box-shadow: 1px 2px 8px rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius);
+  background-color: var(--gdg-toolbar-bg);
+  backdrop-filter: blur(10px);
+  padding: 3px;
+  pointer-events: auto;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .glide-grid-toolbar button {
-	background: transparent;
-	border: none;
-	padding: 4px;
-	cursor: pointer;
-	color: var(--gdg-toolbar-icon);
-	border-radius: 4px;
-	transition: all 150ms ease;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--gdg-toolbar-icon);
+  border-radius: 4px;
+  transition: all 150ms ease;
 }
 
 .glide-grid-toolbar button:hover:not(:disabled) {
-	background-color: var(--gdg-toolbar-hover-bg);
-	color: var(--gdg-toolbar-hover-icon);
+  background-color: var(--gdg-toolbar-hover-bg);
+  color: var(--gdg-toolbar-hover-icon);
 }
 
 .glide-grid-toolbar button:disabled {
-	cursor: not-allowed;
-	opacity: 0.4;
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 /* Dark mode overrides handled automatically via CSS variables */

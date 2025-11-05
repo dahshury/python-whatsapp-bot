@@ -1,72 +1,72 @@
 /* RTL (Right-to-Left) Support */
 
 .fc[dir="rtl"] .fc-toolbar-title {
-	padding: 20px 20px 0px 0;
+  padding: 20px 20px 0px 0;
 }
 
 .fc[dir="rtl"] .fc-button-group {
-	direction: rtl;
+  direction: rtl;
 }
 
 .fc[dir="rtl"] .fc-col-header-cell-cushion {
-	direction: rtl;
+  direction: rtl;
 }
 
 .fc[dir="rtl"] .fc-event {
-	direction: rtl;
+  direction: rtl;
 }
 
 .fc[dir="rtl"] .fc-daygrid-day-top {
-	direction: rtl;
+  direction: rtl;
 }
 
 /* Direction-specific spacing */
 .fc-direction-ltr .fc-daygrid-event .fc-event-time {
-	margin-right: 3px;
+  margin-right: 3px;
 }
 
 .fc-direction-rtl .fc-daygrid-event .fc-event-time {
-	margin-left: 3px;
+  margin-left: 3px;
 }
 
 /* Direction-specific list view */
 .fc-direction-ltr .fc-list-day-text,
 .fc-direction-rtl .fc-list-day-side-text {
-	float: left;
+  float: left;
 }
 
 .fc-direction-ltr .fc-list-day-side-text,
 .fc-direction-rtl .fc-list-day-text {
-	float: right;
+  float: right;
 }
 
 .fc-direction-ltr .fc-list-table .fc-list-event-graphic {
-	padding-right: 0;
+  padding-right: 0;
 }
 
 .fc-direction-rtl .fc-list-table .fc-list-event-graphic {
-	padding-left: 0;
+  padding-left: 0;
 }
 
 /* Direction-specific daygrid */
 .fc-direction-ltr .fc-daygrid-event.fc-event-start,
 .fc-direction-rtl .fc-daygrid-event.fc-event-end {
-	margin-left: 2px;
+  margin-left: 2px;
 }
 
 .fc-direction-ltr .fc-daygrid-event.fc-event-end,
 .fc-direction-rtl .fc-daygrid-event.fc-event-start {
-	margin-right: 2px;
+  margin-right: 2px;
 }
 
 /* More link direction styles moved to _popover-unified.css */
 
 .fc-direction-ltr .fc-daygrid-week-number {
-	left: 0;
-	border-radius: 0 0 3px 0;
+  left: 0;
+  border-radius: 0 0 3px 0;
 }
 
 .fc-direction-rtl .fc-daygrid-week-number {
-	right: 0;
-	border-radius: 0 0 0 3px;
+  right: 0;
+  border-radius: 0 0 0 3px;
 }

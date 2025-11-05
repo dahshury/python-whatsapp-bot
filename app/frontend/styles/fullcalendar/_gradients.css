@@ -2,95 +2,95 @@
 
 /* Toolbar gradient */
 .fc-toolbar {
-	background-image: var(--gradient-muted);
+  background-image: var(--gradient-muted);
 }
 
 /* DayGrid column headers - ensure gradient in light mode too */
 .fc-daygrid .fc-col-header-cell,
 .fc-daygrid th.fc-col-header-cell {
-	background: linear-gradient(
-		to bottom,
-		hsl(var(--card)) 0%,
-		hsl(var(--accent) / 0.12) 25%,
-		hsl(var(--accent) / 0.08) 50%,
-		hsl(var(--accent) / 0.06) 75%,
-		hsl(var(--accent) / 0.04) 100%
-	);
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--card)) 0%,
+    hsl(var(--accent) / 0.12) 25%,
+    hsl(var(--accent) / 0.08) 50%,
+    hsl(var(--accent) / 0.06) 75%,
+    hsl(var(--accent) / 0.04) 100%
+  );
 }
 
 /* Day backgrounds - gentle card tint for future days */
 .fc-daygrid .fc-daygrid-day:not(.fc-day-past):not(.fc-day-today):not(
-		.fc-day-disabled
-	)
-	.fc-daygrid-day-frame {
-	background-image: var(--gradient-muted);
+    .fc-day-disabled
+  )
+  .fc-daygrid-day-frame {
+  background-image: var(--gradient-muted);
 }
 
 /* Today highlight - accent based gradient */
 .fc-daygrid .fc-daygrid-day.fc-day-today:not(.fc-day-past):not(.fc-day-disabled)
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day-frame,
 .fc .fc-day-today .fc-timegrid-col-frame {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--accent) / 0.18) 0%,
-		hsl(var(--accent) / 0.1) 60%,
-		transparent 100%
-	);
-	border-color: hsl(var(--accent) / 0.25);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent) / 0.18) 0%,
+    hsl(var(--accent) / 0.1) 60%,
+    transparent 100%
+  );
+  border-color: hsl(var(--accent) / 0.25);
 }
 
 /* Non-business background - soften with gradient */
 .fc .fc-non-business {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.35) 0%,
-		hsl(var(--muted) / 0.25) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.35) 0%,
+    hsl(var(--muted) / 0.25) 100%
+  );
 }
 
 /* Background events - use chart-3 gradient for differentiation */
 .fc .fc-bg-event {
-	background-image: var(--gradient-chart-3);
-	opacity: var(--fc-bg-event-opacity);
+  background-image: var(--gradient-chart-3);
+  opacity: var(--fc-bg-event-opacity);
 }
 
 /* H/V events - apply primary gradient backgrounds (but preserve typed overrides) */
 .fc-h-event:not(.reservation-type-0):not(.reservation-type-1):not(
-		.conversation-event
-	),
+    .conversation-event
+  ),
 .fc-v-event:not(.reservation-type-0):not(.reservation-type-1):not(
-		.conversation-event
-	) {
-	background-image: var(--gradient-primary);
-	border-color: hsl(var(--primary));
+    .conversation-event
+  ) {
+  background-image: var(--gradient-primary);
+  border-color: hsl(var(--primary));
 }
 
 /* Past events - muted gradient */
 .fc-event.fc-event-past {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.6) 0%,
-		hsl(var(--muted) / 0.4) 100%
-	);
-	color: hsl(var(--muted-foreground));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.6) 0%,
+    hsl(var(--muted) / 0.4) 100%
+  );
+  color: hsl(var(--muted-foreground));
 }
 
 /* Cancelled events - keep existing overrides and add subtle gradient */
 .fc-event[data-cancelled="true"] {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--destructive) / 0.35) 0%,
-		hsl(var(--destructive) / 0.25) 100%
-	);
-	border-color: hsl(var(--destructive));
+  background: linear-gradient(
+    135deg,
+    hsl(var(--destructive) / 0.35) 0%,
+    hsl(var(--destructive) / 0.25) 100%
+  );
+  border-color: hsl(var(--destructive));
 }
 
 /* Popover headers - use accent gradient */
 .fc-popover-header {
-	background-image: var(--gradient-accent);
+  background-image: var(--gradient-accent);
 }
 
 /* List view date headers */
 .fc-list-sticky .fc-list-day > * {
-	background-image: var(--gradient-muted);
+  background-image: var(--gradient-muted);
 }

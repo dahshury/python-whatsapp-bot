@@ -1,7 +1,7 @@
-import type { VacationDomain } from './vacation.domain'
+import type { VacationDomain } from "./vacation.domain";
 
 export type VacationRepository = {
-	getAll(): Promise<VacationDomain[]>
-	save(vacation: VacationDomain): Promise<VacationDomain>
-	delete(id: string): Promise<boolean>
-}
+  getAll(): Promise<VacationDomain[]>;
+  save(vacation: VacationDomain): Promise<VacationDomain>;
+  delete(id: string): Promise<boolean>;
+};

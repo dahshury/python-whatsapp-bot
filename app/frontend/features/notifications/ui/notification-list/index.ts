@@ -1,2 +1,2 @@
-export { NotificationEmptyState } from './NotificationEmptyState'
-export { NotificationList } from './NotificationList'
+export { NotificationEmptyState } from "./NotificationEmptyState";
+export { NotificationList } from "./NotificationList";

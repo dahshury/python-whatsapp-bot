@@ -2,106 +2,106 @@
 
 /* Essential Grid Wrapper Styles */
 .glide-grid-wrapper {
-	width: 100%;
-	height: 100%;
-	position: relative;
-	border-radius: var(--radius);
-	overflow: hidden;
-	display: flex;
-	flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .glide-grid-wrapper-centered {
-	align-items: center;
+  align-items: center;
 }
 
 .glide-grid-wrapper-fullscreen {
-	flex: 1;
-	border: none;
-	box-shadow: none;
+  flex: 1;
+  border: none;
+  box-shadow: none;
 }
 
 /* Grid Inner Container */
 .glide-grid-inner {
-	display: flex;
-	flex-direction: column;
-	border-radius: var(--radius);
-	overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .glide-grid-inner-fit {
-	width: fit-content;
-	max-width: 100%;
-	margin: 0 auto;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 
 .glide-grid-inner-full {
-	width: 100%;
+  width: 100%;
 }
 
 /* Main container */
 .gdg-wmyidgi {
-	position: relative;
-	min-width: 10px;
-	min-height: 10px;
-	max-width: 100%;
-	max-height: 100%;
-	width: var(--wmyidgi-0);
-	height: var(--wmyidgi-1);
-	overflow: hidden;
-	direction: ltr;
+  position: relative;
+  min-width: 10px;
+  min-height: 10px;
+  max-width: 100%;
+  max-height: 100%;
+  width: var(--wmyidgi-0);
+  height: var(--wmyidgi-1);
+  overflow: hidden;
+  direction: ltr;
 }
 
 /* Fullwidth Grid Support */
 .glide-grid-fullwidth {
-	width: 100%;
+  width: 100%;
 }
 
 .glide-grid-fullwidth .gdg-wmyidgi {
-	width: 100%;
+  width: 100%;
 }
 
 .glide-grid-inner-full .gdg-wmyidgi {
-	width: 100%;
+  width: 100%;
 }
 
 .glide-grid-inner-full > div {
-	width: 100%;
+  width: 100%;
 }
 
 /* Dialog/Modal context */
 [role="dialog"] .glide-grid-inner-full,
 [role="dialog"] .glide-grid-fullwidth {
-	width: 100%;
+  width: 100%;
 }
 
 [role="dialog"] .glide-grid-inner-full {
-	max-width: none;
+  max-width: none;
 }
 
 [data-fullwidth="true"] {
-	width: 100%;
+  width: 100%;
 }
 
 .gdg-wmyidgi > :first-child {
-	position: absolute;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* Ensure grid renders properly */
 canvas {
-	outline: none;
+  outline: none;
 }
 
 /* Search styles */
 .gdg-search-wrapper {
-	position: absolute;
-	top: 8px;
-	right: 8px;
-	z-index: var(--z-base);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: var(--z-base);
 }
 
 /* ========================================
@@ -112,19 +112,19 @@ canvas {
 .gdg-d19meir1,
 .glide-data-grid-overlay-editor,
 .click-outside-ignore {
-	z-index: var(--z-grid-overlay-editor);
-	pointer-events: auto;
+  z-index: var(--z-grid-overlay-editor);
+  pointer-events: auto;
 }
 
 /* Ensure overlay editors attached to body get maximum priority */
 body > .gdg-d19meir1,
 body > .glide-data-grid-overlay-editor,
 body > .click-outside-ignore {
-	z-index: var(--z-grid-editor-max);
-	position: fixed;
+  z-index: var(--z-grid-editor-max);
+  position: fixed;
 }
 
 /* Grid cell styling with themed variables */
 .gdg-container {
-	z-index: var(--z-base);
+  z-index: var(--z-base);
 }

@@ -1,16 +1,16 @@
-import { useCallback, useEffect } from 'react'
-import type { CameraState, SceneSignature } from '@/entities/document'
-import { DocumentEventsAdapter } from '@/entities/document'
+import { useCallback, useEffect } from "react";
+import type { CameraState, SceneSignature } from "@/entities/document";
+import { DocumentEventsAdapter } from "@/entities/document";
 
 export type UseDocumentEventsOptions = {
-	waId: string
-	onExternalUpdate: (event: {
-		signature: SceneSignature
-		viewerCamera?: CameraState | undefined
-		editorCamera?: CameraState | undefined
-	}) => void
-	onSceneApplied: () => void
-}
+  waId: string;
+  onExternalUpdate: (event: {
+    signature: SceneSignature;
+    viewerCamera?: CameraState | undefined;
+    editorCamera?: CameraState | undefined;
+  }) => void;
+  onSceneApplied: () => void;
+};
 
 /**
  * Hook for handling document-related browser events.
@@ -32,51 +32,51 @@ export type UseDocumentEventsOptions = {
  * ```
  */
 export const useDocumentEvents = (options: UseDocumentEventsOptions) => {
-	const { waId, onExternalUpdate, onSceneApplied } = options
+  const { waId, onExternalUpdate, onSceneApplied } = options;
 
-	// Wrap handlers in useCallback to prevent unnecessary re-renders
-	const handleExternalUpdate = useCallback(
-		(event: {
-			signature: SceneSignature
-			viewerCamera?: CameraState | undefined
-			editorCamera?: CameraState | undefined
-		}) => {
-			onExternalUpdate(event)
-		},
-		[onExternalUpdate]
-	)
+  // Wrap handlers in useCallback to prevent unnecessary re-renders
+  const handleExternalUpdate = useCallback(
+    (event: {
+      signature: SceneSignature;
+      viewerCamera?: CameraState | undefined;
+      editorCamera?: CameraState | undefined;
+    }) => {
+      onExternalUpdate(event);
+    },
+    [onExternalUpdate]
+  );
 
-	const handleSceneApplied = useCallback(() => {
-		onSceneApplied()
-	}, [onSceneApplied])
+  const handleSceneApplied = useCallback(() => {
+    onSceneApplied();
+  }, [onSceneApplied]);
 
-	// External update events
-	useEffect(() => {
-		if (!waId) {
-			return () => {
-				// No cleanup needed
-			}
-		}
+  // External update events
+  useEffect(() => {
+    if (!waId) {
+      return () => {
+        // No cleanup needed
+      };
+    }
 
-		return DocumentEventsAdapter.onExternalUpdate(waId, (event) => {
-			handleExternalUpdate({
-				signature: event.signature,
-				viewerCamera: event.viewerCamera,
-				editorCamera: event.editorCamera,
-			})
-		})
-	}, [waId, handleExternalUpdate])
+    return DocumentEventsAdapter.onExternalUpdate(waId, (event) => {
+      handleExternalUpdate({
+        signature: event.signature,
+        viewerCamera: event.viewerCamera,
+        editorCamera: event.editorCamera,
+      });
+    });
+  }, [waId, handleExternalUpdate]);
 
-	// Scene applied events
-	useEffect(() => {
-		if (!waId) {
-			return () => {
-				// No cleanup needed
-			}
-		}
+  // Scene applied events
+  useEffect(() => {
+    if (!waId) {
+      return () => {
+        // No cleanup needed
+      };
+    }
 
-		return DocumentEventsAdapter.onSceneApplied(waId, () => {
-			handleSceneApplied()
-		})
-	}, [waId, handleSceneApplied])
-}
+    return DocumentEventsAdapter.onSceneApplied(waId, () => {
+      handleSceneApplied();
+    });
+  }, [waId, handleSceneApplied]);
+};

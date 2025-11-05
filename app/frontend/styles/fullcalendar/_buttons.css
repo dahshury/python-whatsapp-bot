@@ -6,139 +6,139 @@
  */
 
 .fc-button {
-	overflow: visible;
-	text-transform: none;
-	margin: 0;
-	font-family: inherit;
-	font-size: inherit;
-	display: inline-block;
-	font-weight: 400;
-	text-align: center;
-	vertical-align: middle;
-	user-select: none;
-	background-color: transparent;
-	border: 1px solid transparent;
-	padding: 0.28em 0.455em;
-	/* font-size duplicated; keep only one value */
-	/* font-size: 0.7em; */
-	line-height: 1.5;
-	border-radius: var(--radius);
+  overflow: visible;
+  text-transform: none;
+  margin: 0;
+  font-family: inherit;
+  font-size: inherit;
+  display: inline-block;
+  font-weight: 400;
+  text-align: center;
+  vertical-align: middle;
+  user-select: none;
+  background-color: transparent;
+  border: 1px solid transparent;
+  padding: 0.28em 0.455em;
+  /* font-size duplicated; keep only one value */
+  /* font-size: 0.7em; */
+  line-height: 1.5;
+  border-radius: var(--radius);
 }
 
 /* Consolidate focus outlines into a single declaration */
 .fc-button:focus {
-	outline: 1px dotted;
+  outline: 1px dotted;
 }
 
 .fc-button:not(:disabled) {
-	cursor: pointer;
+  cursor: pointer;
 }
 
 .fc-button:hover {
-	text-decoration: none;
+  text-decoration: none;
 }
 
 .fc-button:focus {
-	box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
+  box-shadow: 0 0 0 0.2rem rgba(44, 62, 80, 0.25);
 }
 
 .fc-button:disabled {
-	opacity: 0.65;
+  opacity: 0.65;
 }
 
 /* Primary button coloring */
 .fc-button-primary {
-	background-color: hsl(var(--primary));
-	border-color: hsl(var(--primary));
-	color: hsl(var(--primary-foreground));
-	border-radius: var(--radius);
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border-radius: var(--radius);
 }
 
 .fc-button-primary:hover {
-	background-color: hsl(var(--primary) / 0.9);
-	border-color: hsl(var(--primary) / 0.9);
-	color: hsl(var(--primary-foreground));
+  background-color: hsl(var(--primary) / 0.9);
+  border-color: hsl(var(--primary) / 0.9);
+  color: hsl(var(--primary-foreground));
 }
 
 .fc-button-primary:disabled {
-	background-color: hsl(var(--primary));
-	border-color: hsl(var(--primary));
-	color: hsl(var(--primary-foreground));
-	opacity: 0.65;
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  opacity: 0.65;
 }
 
 .fc-button-primary:focus {
-	box-shadow: 0 0 0 0.2rem rgba(76, 91, 106, 0.5);
+  box-shadow: 0 0 0 0.2rem rgba(76, 91, 106, 0.5);
 }
 
 .fc-button-primary:not(:disabled):active,
 .fc-button-primary:not(:disabled).fc-button-active {
-	color: var(--fc-button-text-color);
-	background-color: var(--fc-button-active-bg-color);
-	border-color: var(--fc-button-active-border-color);
+  color: var(--fc-button-text-color);
+  background-color: var(--fc-button-active-bg-color);
+  border-color: var(--fc-button-active-border-color);
 }
 
 .fc-button-primary:not(:disabled):active:focus,
 .fc-button-primary:not(:disabled).fc-button-active:focus {
-	box-shadow: 0 0 0 0.2rem rgba(76, 91, 106, 0.5);
+  box-shadow: 0 0 0 0.2rem rgba(76, 91, 106, 0.5);
 }
 
 /* Icons within buttons */
 .fc-button .fc-icon {
-	vertical-align: middle;
-	font-size: 1.05em;
+  vertical-align: middle;
+  font-size: 1.05em;
 }
 
 /* Button groups in toolbar */
 .fc-button-group {
-	display: inline-flex;
-	position: relative;
+  display: inline-flex;
+  position: relative;
 }
 
 .fc-button-group > .fc-button {
-	position: relative;
-	flex: 0 1 auto;
+  position: relative;
+  flex: 0 1 auto;
 }
 
 .fc-button-group > .fc-button:hover {
-	z-index: var(--z-fc-button);
+  z-index: var(--z-fc-button);
 }
 
 /* Remove border radius from middle buttons in groups */
 .fc-button-group > .fc-button:not(:first-child) {
-	margin-left: -1px;
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
 }
 
 .fc-button-group > .fc-button:not(:last-child) {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* Ensure first and last buttons in group have proper radius */
 .fc-button-group > .fc-button:first-child {
-	border-top-left-radius: var(--radius);
-	border-bottom-left-radius: var(--radius);
+  border-top-left-radius: var(--radius);
+  border-bottom-left-radius: var(--radius);
 }
 
 .fc-button-group > .fc-button:last-child {
-	border-top-right-radius: var(--radius);
-	border-bottom-right-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
 }
 
 /* Individual navigation buttons that aren't in groups */
 .fc-toolbar .fc-button {
-	border-radius: var(--radius);
+  border-radius: var(--radius);
 }
 
 /* Today button specifically */
 .fc-today-button {
-	border-radius: var(--radius);
+  border-radius: var(--radius);
 }
 
 /* Prev/Next buttons */
 .fc-prev-button,
 .fc-next-button {
-	border-radius: var(--radius);
+  border-radius: var(--radius);
 }

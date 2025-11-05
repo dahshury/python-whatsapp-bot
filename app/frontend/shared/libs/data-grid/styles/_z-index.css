@@ -11,109 +11,109 @@
  */
 
 :root {
-	/* ========================================
+  /* ========================================
    * LAYER 1: CALENDAR & BASE UI (0-100)
    * ======================================== */
-	--z-background: 0;
-	--z-calendar-day-bg-non-business: 1;
-	--z-calendar-day-bg-event: 2;
-	--z-calendar-vacation-bg: 3;
-	--z-calendar-day-bg-highlight: 4;
-	--z-calendar-day-number: 5;
-	--z-calendar-week-number: 6;
-	--z-calendar-event: 7;
-	--z-calendar-event-mirror: 8;
-	--z-base: 1;
-	--z-sticky-header: 10;
-	--z-calendar-events: 20;
-	--z-hover-effects: 30;
-	--z-sidebar: 49;
-	--z-dropdown: 50;
-	--z-hover-card: 2600;
-	--z-tooltip: 70;
-	--z-popover: 80;
-	--z-context-menu: 90;
-	--z-sidebar-chat-overlay: 150;
-	--z-sidebar-chat-tooltip: 160;
+  --z-background: 0;
+  --z-calendar-day-bg-non-business: 1;
+  --z-calendar-day-bg-event: 2;
+  --z-calendar-vacation-bg: 3;
+  --z-calendar-day-bg-highlight: 4;
+  --z-calendar-day-number: 5;
+  --z-calendar-week-number: 6;
+  --z-calendar-event: 7;
+  --z-calendar-event-mirror: 8;
+  --z-base: 1;
+  --z-sticky-header: 10;
+  --z-calendar-events: 20;
+  --z-hover-effects: 30;
+  --z-sidebar: 49;
+  --z-dropdown: 50;
+  --z-hover-card: 2600;
+  --z-tooltip: 70;
+  --z-popover: 80;
+  --z-context-menu: 90;
+  --z-sidebar-chat-overlay: 150;
+  --z-sidebar-chat-tooltip: 160;
 
-	/* ========================================
+  /* ========================================
    * FULLCALENDAR INTERNAL LAYERS
    * ======================================== */
-	--z-fc-scrollgrid: 3;
-	--z-fc-sticky: 3;
-	--z-fc-button: 1;
-	--z-fc-multimonth-header: 1;
-	--z-fc-multimonth-container: 1;
-	--z-fc-multimonth-variant-primary: 2;
-	--z-fc-multimonth-variant-secondary: 1;
-	--z-fc-week: 1;
-	--z-fc-day-cell-base: 4;
-	--z-fc-day-cell-content: 1;
-	--z-fc-free-roam: 10;
-	--z-calendar-dragging: 85;
-	--z-timegrid-more-link: 95;
-	--z-fc-more-popover: 2500;
+  --z-fc-scrollgrid: 3;
+  --z-fc-sticky: 3;
+  --z-fc-button: 1;
+  --z-fc-multimonth-header: 1;
+  --z-fc-multimonth-container: 1;
+  --z-fc-multimonth-variant-primary: 2;
+  --z-fc-multimonth-variant-secondary: 1;
+  --z-fc-week: 1;
+  --z-fc-day-cell-base: 4;
+  --z-fc-day-cell-content: 1;
+  --z-fc-free-roam: 10;
+  --z-calendar-dragging: 85;
+  --z-timegrid-more-link: 95;
+  --z-fc-more-popover: 2500;
 
-	/* ========================================
+  /* ========================================
    * GLIDE DATA GRID LAYERS (Base grid only)
    * ======================================== */
-	--z-grid-base: 1;
-	--z-grid-cell: 1;
-	--z-grid-header: 10;
-	--z-grid-header-active: 11;
-	--z-grid-selection: 20;
-	--z-grid-hover: 25;
+  --z-grid-base: 1;
+  --z-grid-cell: 1;
+  --z-grid-header: 10;
+  --z-grid-header-active: 11;
+  --z-grid-selection: 20;
+  --z-grid-hover: 25;
 
-	/* ========================================
+  /* ========================================
    * LAYER 2: DIALOG BACKDROP (700)
    * ======================================== */
-	--z-dialog-backdrop: 700;
+  --z-dialog-backdrop: 700;
 
-	/* ========================================
+  /* ========================================
    * LAYER 3: DIALOG CONTENT (710)
    * ======================================== */
-	--z-dialog-content: 710;
+  --z-dialog-content: 710;
 
-/* ========================================
+  /* ========================================
  * LAYER 4: DATA CELL EDITORS & WIDGETS (680-900)
    * ======================================== */
-	--z-dialog-overlays: 720;
-	--z-grid-overlay: 800;
-	--z-grid-overlay-editor: 810;
-	--z-grid-editor: 810;
-	--z-date-picker: 820;
-	--z-date-picker-widget: 830;
-	--z-grid-dropdown: 840;
-	--z-grid-menu: 970;
-	--z-grid-tooltip: 680;
-	--z-grid-modal: 950;
-	--z-command-overlay: 1300;
+  --z-dialog-overlays: 720;
+  --z-grid-overlay: 800;
+  --z-grid-overlay-editor: 810;
+  --z-grid-editor: 810;
+  --z-date-picker: 820;
+  --z-date-picker-widget: 830;
+  --z-grid-dropdown: 840;
+  --z-grid-menu: 970;
+  --z-grid-tooltip: 680;
+  --z-grid-modal: 950;
+  --z-command-overlay: 1300;
 
-	/* ========================================
+  /* ========================================
    * LAYER 5: FULLSCREEN MODE (1100-1120)
    * ======================================== */
-	--z-fullscreen-backdrop: 1100;
-	--z-fullscreen-content: 1110;
-	--z-grid-fullscreen-overlay: 1450;
-	--z-grid-fullscreen: 1455;
+  --z-fullscreen-backdrop: 1100;
+  --z-fullscreen-content: 1110;
+  --z-grid-fullscreen-overlay: 1450;
+  --z-grid-fullscreen: 1455;
 
-	/* ========================================
+  /* ========================================
    * LAYER 6: DISCARD CHANGES DIALOG (950-960)
    * ======================================== */
-	--z-confirmation-backdrop: 950;
-	--z-confirmation-content: 960;
+  --z-confirmation-backdrop: 950;
+  --z-confirmation-content: 960;
 
-	/* ========================================
+  /* ========================================
    * LEGACY/COMPATIBILITY
    * ======================================== */
-	--z-modal-backdrop: 500;
-	--z-modal-content: 510;
-	--z-grid-editor-max: 3600;
+  --z-modal-backdrop: 500;
+  --z-modal-content: 510;
+  --z-grid-editor-max: 3600;
 
-	/* ========================================
+  /* ========================================
    * EMERGENCY/DEBUG LAYERS (50000+)
    * ======================================== */
-	--z-debug-overlay: 50000;
+  --z-debug-overlay: 50000;
 }
 
 /* ========================================
@@ -121,14 +121,14 @@
  * ======================================== */
 
 @keyframes dialog-appear {
-	from {
-		opacity: 0;
-		transform: translate(-50%, -50%) scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: translate(-50%, -50%) scale(1);
-	}
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 /* Disabled for framer-motion driven dialogs; set inline style animation: none */
@@ -142,41 +142,41 @@
 
 /* Grid container and base elements */
 .gdg-wmyidgi {
-	z-index: var(--z-grid-base);
+  z-index: var(--z-grid-base);
 }
 
 /* Grid overlay editors - critical priority */
 .gdg-d19meir1,
 .glide-data-grid-overlay-editor,
 .click-outside-ignore {
-	z-index: var(--z-grid-overlay-editor);
+  z-index: var(--z-grid-overlay-editor);
 }
 
 /* Grid editor maximum priority for critical operations */
 .grid-editor-critical,
 .gdg-d19meir1.gdg-style {
-	z-index: var(--z-grid-editor-max);
+  z-index: var(--z-grid-editor-max);
 }
 
 /* Grid cell overlays */
 .gdg-cell-overlay {
-	z-index: var(--z-grid-overlay);
+  z-index: var(--z-grid-overlay);
 }
 
 /* Grid menus and dropdowns */
 .gdg-menu,
 .gdg-dropdown {
-	z-index: var(--z-grid-menu);
+  z-index: var(--z-grid-menu);
 }
 
 /* Grid tooltips */
 .gdg-tooltip {
-	z-index: var(--z-grid-tooltip);
+  z-index: var(--z-grid-tooltip);
 }
 
 /* Grid fullscreen mode */
 .gdg-fullscreen-overlay {
-	z-index: var(--z-grid-fullscreen-overlay);
+  z-index: var(--z-grid-fullscreen-overlay);
 }
 
 /* ========================================
@@ -185,61 +185,61 @@
 
 /* Calendar internal layering */
 .fc-daygrid-day-bg .fc-non-business {
-	z-index: var(--z-calendar-day-bg-non-business);
+  z-index: var(--z-calendar-day-bg-non-business);
 }
 
 .fc-daygrid-day-bg .fc-bg-event {
-	z-index: var(--z-calendar-day-bg-event);
+  z-index: var(--z-calendar-day-bg-event);
 }
 
 /* Vacation background events - higher than other bg events, lower than regular events */
 .fc-bg-event.vacation-background-event,
 .vacation-background-event {
-	z-index: var(--z-calendar-vacation-bg);
+  z-index: var(--z-calendar-vacation-bg);
 }
 
 .fc-daygrid-day-bg .fc-highlight {
-	z-index: var(--z-calendar-day-bg-highlight);
+  z-index: var(--z-calendar-day-bg-highlight);
 }
 
 .fc-daygrid-day-number {
-	z-index: var(--z-calendar-day-number);
+  z-index: var(--z-calendar-day-number);
 }
 
 .fc-daygrid-week-number {
-	z-index: var(--z-calendar-week-number);
+  z-index: var(--z-calendar-week-number);
 }
 
 .fc-daygrid-event,
 .fc-timegrid-event {
-	z-index: var(--z-calendar-event);
+  z-index: var(--z-calendar-event);
 }
 
 .fc-daygrid-event.fc-event-mirror {
-	z-index: var(--z-calendar-event-mirror);
+  z-index: var(--z-calendar-event-mirror);
 }
 
 /* Calendar context menus and popovers */
 .fc-popover,
 [data-fc-popover],
 .fc-more-popover {
-	z-index: var(--z-fc-more-popover);
+  z-index: var(--z-fc-more-popover);
 }
 
 /* Calendar hover cards - force high z-index */
 .fc-hover-card-container {
-	z-index: var(--z-hover-card);
+  z-index: var(--z-hover-card);
 }
 
 /* Force hover card portal to appear above all calendar elements */
 .calendar-hover-card-portal,
 [class*="hover-card"] {
-	z-index: var(--z-hover-card);
+  z-index: var(--z-hover-card);
 }
 
 /* Calendar dragging events */
 .fc-event-dragging {
-	z-index: var(--z-calendar-dragging);
+  z-index: var(--z-calendar-dragging);
 }
 
 /* Timegrid more links - DISABLED */
@@ -265,85 +265,85 @@
 /* Date picker components */
 .tempus-dominus-widget,
 .dropdown-menu[data-popper-placement] {
-	z-index: var(--z-date-picker);
+  z-index: var(--z-date-picker);
 }
 
 /* Bootstrap date picker widget */
 .bootstrap-datetimepicker-widget {
-	z-index: var(--z-date-picker-widget);
+  z-index: var(--z-date-picker-widget);
 }
 
 /* Tooltips */
 [role="tooltip"],
 .tooltip {
-	z-index: var(--z-tooltip);
+  z-index: var(--z-tooltip);
 }
 
 /* Dropdowns */
 [role="listbox"],
 [role="menu"],
 .dropdown-menu:not([data-popper-placement]) {
-	z-index: var(--z-dropdown);
+  z-index: var(--z-dropdown);
 }
 
 /* Popovers */
 [data-radix-popper-content-wrapper],
 .popover-content {
-	z-index: var(--z-popover);
+  z-index: var(--z-popover);
 }
 
 /* Sidebar */
 .sidebar-nav {
-	z-index: var(--z-sidebar);
+  z-index: var(--z-sidebar);
 }
 
 /* Side chat components */
 .sidebar-chat-overlay,
 .chat-loading-overlay {
-	z-index: var(--z-sidebar-chat-overlay);
+  z-index: var(--z-sidebar-chat-overlay);
 }
 
 .sidebar-chat-tooltip,
 .chat-message-tooltip {
-	z-index: var(--z-sidebar-chat-tooltip);
+  z-index: var(--z-sidebar-chat-tooltip);
 }
 
 /* Modal components */
 .modal-backdrop,
 .portal-backdrop {
-	z-index: var(--z-modal-backdrop);
+  z-index: var(--z-modal-backdrop);
 }
 
 .modal-content,
 .portal-content {
-	z-index: var(--z-modal-content);
+  z-index: var(--z-modal-content);
 }
 
 /* Confirmation dialogs */
 .unsaved-changes-backdrop,
 .confirmation-backdrop {
-	z-index: var(--z-confirmation-backdrop);
-	position: fixed;
+  z-index: var(--z-confirmation-backdrop);
+  position: fixed;
 }
 
 .unsaved-changes-content,
 .confirmation-content {
-	z-index: var(--z-confirmation-content);
-	position: fixed;
+  z-index: var(--z-confirmation-content);
+  position: fixed;
 }
 
 /* Fullscreen overlays */
 .fullscreen-backdrop {
-	z-index: var(--z-fullscreen-backdrop);
+  z-index: var(--z-fullscreen-backdrop);
 }
 
 .fullscreen-content {
-	z-index: var(--z-fullscreen-content);
+  z-index: var(--z-fullscreen-content);
 }
 
 /* Debug overlays */
 .debug-overlay {
-	z-index: var(--z-debug-overlay);
+  z-index: var(--z-debug-overlay);
 }
 
 /* ========================================
@@ -352,22 +352,22 @@
 
 /* Custom dialog backdrop */
 .dialog-backdrop {
-	z-index: var(--z-dialog-backdrop);
+  z-index: var(--z-dialog-backdrop);
 }
 
 /* Custom dialog content class */
 .dialog-content {
-	z-index: var(--z-dialog-content);
+  z-index: var(--z-dialog-content);
 }
 
 /* Override Radix UI dialog z-50 default */
 [data-radix-dialog-content].z-50 {
-	z-index: var(--z-dialog-content);
+  z-index: var(--z-dialog-content);
 }
 
 /* Override Radix UI overlay z-50 default */
 [data-radix-dialog-overlay].z-50 {
-	z-index: var(--z-dialog-backdrop);
+  z-index: var(--z-dialog-backdrop);
 }
 
 /* All overlay elements that should appear above dialog */
@@ -394,76 +394,76 @@ select,
 .select-dropdown,
 .autocomplete-dropdown,
 .combobox-dropdown {
-	z-index: var(--z-dialog-overlays);
+  z-index: var(--z-dialog-overlays);
 }
 
 /* Hover card content: default to hover-card layer, not dialog overlays */
 [data-radix-hover-card-content] {
-	z-index: var(--z-hover-card);
+  z-index: var(--z-hover-card);
 }
 
 /* Force dialog backdrop to highest z-index */
 .dialog-backdrop {
-	position: fixed;
-	inset: 0;
-	z-index: var(--z-dialog-backdrop);
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-dialog-backdrop);
 }
 
 /* Force all potentially conflicting elements to lower z-index */
 .animated-sidebar-trigger {
-	z-index: 10001; /* Above sticky header/backdrop */
-	pointer-events: auto;
+  z-index: 10001; /* Above sticky header/backdrop */
+  pointer-events: auto;
 }
 
 .calendar-legend-trigger {
-	z-index: 10001; /* Above sticky header/backdrop */
-	pointer-events: auto;
+  z-index: 10001; /* Above sticky header/backdrop */
+  pointer-events: auto;
 }
 
 [data-radix-hover-card-content] {
-	z-index: var(--z-hover-card);
+  z-index: var(--z-hover-card);
 }
 
 /* Nuclear option: When dialog backdrop exists anywhere, force specific elements below it */
 html:has(.dialog-backdrop) .animated-sidebar-trigger,
 html:has(.dialog-backdrop) .calendar-legend-trigger,
 html:has(.dialog-backdrop) [data-radix-hover-card-content] {
-	z-index: 39;
-	opacity: 0.3; /* Visual debugging: make them dimmed */
+  z-index: 39;
+  opacity: 0.3; /* Visual debugging: make them dimmed */
 }
 
 /* Alternative fallback using sibling selector */
 .dialog-backdrop ~ * .animated-sidebar-trigger,
 .dialog-backdrop ~ * .calendar-legend-trigger,
 .dialog-backdrop ~ * [data-radix-hover-card-content] {
-	z-index: 39;
-	opacity: 0.3;
+  z-index: 39;
+  opacity: 0.3;
 }
 
 /* Direct override approach - check for dialog backdrop in document */
 body:has(.dialog-backdrop) .animated-sidebar-trigger,
 body:has(.dialog-backdrop) .calendar-legend-trigger {
-	z-index: 39;
-	opacity: 0.3;
+  z-index: 39;
+  opacity: 0.3;
 }
 
 body:has(.dialog-backdrop) [data-radix-hover-card-content] {
-	z-index: 39;
-	opacity: 0.3;
-	pointer-events: none;
+  z-index: 39;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 /* JavaScript-based fallback using body class */
 body.has-dialog-backdrop .animated-sidebar-trigger,
 body.has-dialog-backdrop .calendar-legend-trigger {
-	z-index: 39;
-	opacity: 0.3;
+  z-index: 39;
+  opacity: 0.3;
 }
 
 body.has-dialog-backdrop [data-radix-hover-card-content] {
-	z-index: 39;
-	opacity: 0.3;
-	pointer-events: none;
+  z-index: 39;
+  opacity: 0.3;
+  pointer-events: none;
 }
 
 /* ========================================
@@ -472,12 +472,12 @@ body.has-dialog-backdrop [data-radix-hover-card-content] {
 
 /* Override default Radix Popover z-50 when inside dialog context */
 [data-radix-popover-content].z-50 {
-	z-index: var(--z-dialog-overlays);
+  z-index: var(--z-dialog-overlays);
 }
 
 /* Force all popover content above dialog when dialog is present */
 body:has([data-radix-dialog-content]) [data-radix-popover-content] {
-	z-index: var(--z-dialog-overlays);
+  z-index: var(--z-dialog-overlays);
 }
 
 /* Command component inside popover should inherit proper z-index */
@@ -485,8 +485,8 @@ body:has([data-radix-dialog-content]) [data-radix-popover-content] {
 [data-radix-popover-content] [cmdk-list],
 [data-radix-popover-content] [cmdk-group],
 [data-radix-popover-content] [cmdk-item] {
-	position: relative;
-	z-index: inherit;
+  position: relative;
+  z-index: inherit;
 }
 
 /* ========================================
@@ -495,7 +495,7 @@ body:has([data-radix-dialog-content]) [data-radix-popover-content] {
 
 /* Force popovers containing Command components above grid editors */
 [data-radix-popover-content]:has([cmdk-root]) {
-	z-index: var(--z-command-overlay);
+  z-index: var(--z-command-overlay);
 }
 
 /* Fallback approaches for better browser compatibility */
@@ -504,19 +504,19 @@ body:has([data-radix-dialog-content]) [data-radix-popover-content] {
 body:has(.gdg-d19meir1) :where([data-radix-popover-content]),
 body:has(.glide-data-grid-overlay-editor) :where([data-radix-popover-content]),
 body:has(.click-outside-ignore) :where([data-radix-popover-content]) {
-	z-index: var(--z-command-overlay);
+  z-index: var(--z-command-overlay);
 }
 
 /* Force any popover that contains a Command component to use command overlay level */
 [data-radix-popover-content]:has([cmdk-item]) {
-	z-index: var(--z-command-overlay);
+  z-index: var(--z-command-overlay);
 }
 
 /* Direct Command component targeting */
 .gdg-d19meir1 [cmdk-root],
 .glide-data-grid-overlay-editor [cmdk-root],
 .click-outside-ignore [cmdk-root] {
-	z-index: var(--z-command-overlay);
+  z-index: var(--z-command-overlay);
 }
 
 /* Force positioned elements to use dialog overlay z-index - REMOVED as too broad */
@@ -527,12 +527,12 @@ body:has(.click-outside-ignore) :where([data-radix-popover-content]) {
 
 /* Ensure dialog content is visible with proper z-index */
 [data-radix-dialog-content] {
-	z-index: var(--z-dialog-content);
+  z-index: var(--z-dialog-content);
 }
 
 /* Also apply to any element with dialog-content class */
 .dialog-content[data-radix-dialog-content] {
-	z-index: var(--z-dialog-content);
+  z-index: var(--z-dialog-content);
 }
 
 /* Specific elements that must appear ABOVE dialog */
@@ -546,5 +546,5 @@ select,
 .enhanced-column-menu,
 .gdg-dropdown,
 .dropdown-menu {
-	z-index: var(--z-dialog-overlays);
+  z-index: var(--z-dialog-overlays);
 }

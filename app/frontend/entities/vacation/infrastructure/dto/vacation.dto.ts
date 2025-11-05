@@ -1,5 +1,5 @@
 export type VacationDto = {
-	id: string
-	start: string
-	end: string
-}
+  id: string;
+  start: string;
+  end: string;
+};

@@ -1,40 +1,40 @@
-'use client'
+"use client";
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-	type CameraState,
-	DocumentEventsAdapter,
-	type SceneSignature,
-} from '@/entities/document'
+  type CameraState,
+  DocumentEventsAdapter,
+  type SceneSignature,
+} from "@/entities/document";
 import {
-	AutosaveOrchestrationService,
-	type AutosaveState,
-} from '../services/autosave-orchestration.service'
-import { useSave } from './index'
-import { useAutosaveControllers } from './useAutosaveControllers'
-import { useDocumentEvents } from './useDocumentEvents'
-import { useDocumentLoad } from './useDocumentLoad'
-import { useExcalidrawAPI } from './useExcalidrawAPI'
+  AutosaveOrchestrationService,
+  type AutosaveState,
+} from "../services/autosave-orchestration.service";
+import { useSave } from "./index";
+import { useAutosaveControllers } from "./useAutosaveControllers";
+import { useDocumentEvents } from "./useDocumentEvents";
+import { useDocumentLoad } from "./useDocumentLoad";
+import { useExcalidrawAPI } from "./useExcalidrawAPI";
 import {
-	type SceneChangePayload,
-	useSceneChangeHandler,
-} from './useSceneChangeHandler'
+  type SceneChangePayload,
+  useSceneChangeHandler,
+} from "./useSceneChangeHandler";
 
-const EXTERNAL_UPDATE_IGNORE_CHANGES_DURATION_MS = 800
-const SCENE_APPLIED_IGNORE_CHANGES_DURATION_MS = 400
+const EXTERNAL_UPDATE_IGNORE_CHANGES_DURATION_MS = 800;
+const SCENE_APPLIED_IGNORE_CHANGES_DURATION_MS = 400;
 
 type SaveStatus =
-	| { status: 'idle' }
-	| { status: 'dirty' }
-	| { status: 'saving' }
-	| { status: 'saved'; at: number }
-	| { status: 'error'; message?: string }
+  | { status: "idle" }
+  | { status: "dirty" }
+  | { status: "saving" }
+  | { status: "saved"; at: number }
+  | { status: "error"; message?: string };
 
 type UseDocumentSceneOptions = {
-	enabled?: boolean
-	isUnlocked?: boolean
-	autoLoadOnMount?: boolean
-}
+  enabled?: boolean;
+  isUnlocked?: boolean;
+  autoLoadOnMount?: boolean;
+};
 
 /**
  * Main hook for managing Excalidraw document scenes.
@@ -58,191 +58,210 @@ type UseDocumentSceneOptions = {
  * ```
  */
 export default function useDocumentScene(
-	waId: string,
-	options?: UseDocumentSceneOptions
+  waId: string,
+  options?: UseDocumentSceneOptions
 ) {
-	const {
-		enabled = true,
-		isUnlocked = true,
-		autoLoadOnMount = true,
-	} = options || {}
+  const {
+    enabled = true,
+    isUnlocked = true,
+    autoLoadOnMount = true,
+  } = options || {};
 
-	// State management
-	const [saveState, setSaveState] = useState<SaveStatus>({ status: 'idle' })
+  // State management
+  const [saveState, setSaveState] = useState<SaveStatus>({ status: "idle" });
 
-	// Refs for tracking scene state
-	const initialSceneAppliedRef = useRef<boolean>(false)
-	const ignoreChangesUntilRef = useRef<number>(0)
-	const autosaveStateRef = useRef<AutosaveState>(
-		AutosaveOrchestrationService.createState()
-	)
-	const lastSavedSignatureRef = useRef<SceneSignature | null>(null)
-	const lastSavedViewerCameraRef = useRef<CameraState | null>(null)
-	const lastSavedEditorCameraRef = useRef<CameraState | null>(null)
+  // Refs for tracking scene state
+  const initialSceneAppliedRef = useRef<boolean>(false);
+  const ignoreChangesUntilRef = useRef<number>(0);
+  const autosaveStateRef = useRef<AutosaveState>(
+    AutosaveOrchestrationService.createState()
+  );
+  const lastSavedSignatureRef = useRef<SceneSignature | null>(null);
+  const lastSavedViewerCameraRef = useRef<CameraState | null>(null);
+  const lastSavedEditorCameraRef = useRef<CameraState | null>(null);
+  const previousWaIdRef = useRef<string | null>(null);
 
-	// Excalidraw API management
-	const { apiRef, onExcalidrawAPI } = useExcalidrawAPI()
+  // Reset orchestration and change tracking when waId changes
+  // Must be in useEffect to avoid SSR issues with Date.now()
+  useEffect(() => {
+    if (previousWaIdRef.current !== waId) {
+      previousWaIdRef.current = waId;
+      initialSceneAppliedRef.current = false;
+      ignoreChangesUntilRef.current =
+        Date.now() + EXTERNAL_UPDATE_IGNORE_CHANGES_DURATION_MS;
+      autosaveStateRef.current = AutosaveOrchestrationService.createState();
+      lastSavedSignatureRef.current = null;
+      lastSavedViewerCameraRef.current = null;
+      lastSavedEditorCameraRef.current = null;
+      AutosaveOrchestrationService.setGlobalSavingFlag(false);
+      AutosaveOrchestrationService.setGlobalLocalEditsFlag(false);
+      setSaveState({ status: "idle" });
+    }
+  }, [waId]);
 
-	// Document loading
-	const { loading, setLoading, lastLoadedWaIdRef, startTransition } =
-		useDocumentLoad(waId, {
-			enabled,
-			autoLoadOnMount,
-		})
+  // Excalidraw API management
+  const { apiRef, onExcalidrawAPI } = useExcalidrawAPI();
 
-	// Document save mutation
-	const { mutateAsync: saveMutationFn } = useSave()
+  // Document loading
+  const { loading, setLoading, lastLoadedWaIdRef, startTransition } =
+    useDocumentLoad(waId, {
+      enabled,
+      autoLoadOnMount,
+    });
 
-	// Autosave callbacks
-	const autosaveCallbacks = useMemo(
-		() => ({
-			onSaving: () => {
-				setSaveState({ status: 'saving' })
-			},
-			onSaved: (_signature: SceneSignature) => {
-				// Check if there are pending changes after save completes
-				// The markSavingComplete method already updated hasLocalEditsDuringSave
-				if (autosaveStateRef.current.hasLocalEditsDuringSave) {
-					setSaveState({ status: 'dirty' })
-				} else {
-					setSaveState({ status: 'saved', at: Date.now() })
-				}
-			},
-			onError: (message?: string) => {
-				if (message !== undefined) {
-					setSaveState({ status: 'error', message })
-				} else {
-					setSaveState({ status: 'error' })
-				}
-			},
-		}),
-		[]
-	)
+  // Document save mutation
+  const { mutateAsync: saveMutationFn } = useSave();
 
-	// Autosave controllers management
-	const { idleControllerRef } = useAutosaveControllers({
-		waId,
-		enabled,
-		isUnlocked,
-		initialSceneApplied: initialSceneAppliedRef.current,
-		apiRef,
-		autosaveStateRef,
-		lastSavedSignatureRef,
-		lastSavedViewerCameraRef,
-		lastSavedEditorCameraRef,
-		ignoreChangesUntilRef,
-		callbacks: autosaveCallbacks,
-		saveMutationFn,
-	})
+  // Autosave callbacks
+  const autosaveCallbacks = useMemo(
+    () => ({
+      onSaving: () => {
+        setSaveState({ status: "saving" });
+      },
+      onSaved: (_signature: SceneSignature) => {
+        // Check if there are pending changes after save completes
+        // The markSavingComplete method already updated hasLocalEditsDuringSave
+        if (autosaveStateRef.current.hasLocalEditsDuringSave) {
+          setSaveState({ status: "dirty" });
+        } else {
+          setSaveState({ status: "saved", at: Date.now() });
+        }
+      },
+      onError: (message?: string) => {
+        if (message !== undefined) {
+          setSaveState({ status: "error", message });
+        } else {
+          setSaveState({ status: "error" });
+        }
+      },
+    }),
+    []
+  );
 
-	// Scene change handler
-	const { handleCanvasChange, viewerAppStateRef, editorAppStateRef } =
-		useSceneChangeHandler({
-			enabled,
-			waId,
-			isUnlocked,
-			initialSceneApplied: initialSceneAppliedRef.current,
-			ignoreChangesUntil: ignoreChangesUntilRef.current,
-			autosaveStateRef,
-			lastSavedSignatureRef,
-			lastSavedViewerCameraRef,
-			lastSavedEditorCameraRef,
-			idleControllerRef: idleControllerRef as React.RefObject<{
-				schedule: (payload: SceneChangePayload) => void
-			} | null>,
-			onStateChange: (status) => {
-				setSaveState({ status })
-			},
-		})
+  // Autosave controllers management
+  const { idleControllerRef } = useAutosaveControllers({
+    waId,
+    enabled,
+    isUnlocked,
+    initialSceneApplied: initialSceneAppliedRef.current,
+    apiRef,
+    autosaveStateRef,
+    lastSavedSignatureRef,
+    lastSavedViewerCameraRef,
+    lastSavedEditorCameraRef,
+    ignoreChangesUntilRef,
+    callbacks: autosaveCallbacks,
+    saveMutationFn,
+  });
 
-	// External update event handler
-	const handleExternalUpdate = useCallback(
-		(event: {
-			signature: SceneSignature
-			viewerCamera?: CameraState | undefined
-			editorCamera?: CameraState | undefined
-		}) => {
-			try {
-				lastLoadedWaIdRef.current = waId
-				lastSavedSignatureRef.current = event.signature
+  // Scene change handler
+  const { handleCanvasChange, viewerAppStateRef, editorAppStateRef } =
+    useSceneChangeHandler({
+      enabled,
+      waId,
+      isUnlocked,
+      initialSceneApplied: initialSceneAppliedRef.current,
+      ignoreChangesUntil: ignoreChangesUntilRef.current,
+      autosaveStateRef,
+      lastSavedSignatureRef,
+      lastSavedViewerCameraRef,
+      lastSavedEditorCameraRef,
+      idleControllerRef: idleControllerRef as React.RefObject<{
+        schedule: (payload: SceneChangePayload) => void;
+      } | null>,
+      onStateChange: (status) => {
+        setSaveState({ status });
+      },
+    });
 
-				// Update camera states
-				if (event.viewerCamera) {
-					lastSavedViewerCameraRef.current = event.viewerCamera
-					viewerAppStateRef.current = {
-						zoom: { value: event.viewerCamera.zoom },
-						scrollX: event.viewerCamera.scrollX,
-						scrollY: event.viewerCamera.scrollY,
-					}
-				} else {
-					lastSavedViewerCameraRef.current = null
-				}
+  // External update event handler
+  const handleExternalUpdate = useCallback(
+    (event: {
+      signature: SceneSignature;
+      viewerCamera?: CameraState | undefined;
+      editorCamera?: CameraState | undefined;
+    }) => {
+      try {
+        lastLoadedWaIdRef.current = waId;
+        lastSavedSignatureRef.current = event.signature;
 
-				if (event.editorCamera) {
-					lastSavedEditorCameraRef.current = event.editorCamera
-					editorAppStateRef.current = {
-						zoom: { value: event.editorCamera.zoom },
-						scrollX: event.editorCamera.scrollX,
-						scrollY: event.editorCamera.scrollY,
-					}
-				} else {
-					lastSavedEditorCameraRef.current = null
-				}
+        // Update camera states
+        if (event.viewerCamera) {
+          lastSavedViewerCameraRef.current = event.viewerCamera;
+          viewerAppStateRef.current = {
+            zoom: { value: event.viewerCamera.zoom },
+            scrollX: event.viewerCamera.scrollX,
+            scrollY: event.viewerCamera.scrollY,
+          };
+        } else {
+          lastSavedViewerCameraRef.current = null;
+        }
 
-				// Reset autosave state
-				autosaveStateRef.current.isSaving = false
-				autosaveStateRef.current.hasLocalEditsDuringSave = false
-				autosaveStateRef.current.lastScheduledSignature = null
-				AutosaveOrchestrationService.setGlobalSavingFlag(false)
-				AutosaveOrchestrationService.setGlobalLocalEditsFlag(false)
+        if (event.editorCamera) {
+          lastSavedEditorCameraRef.current = event.editorCamera;
+          editorAppStateRef.current = {
+            zoom: { value: event.editorCamera.zoom },
+            scrollX: event.editorCamera.scrollX,
+            scrollY: event.editorCamera.scrollY,
+          };
+        } else {
+          lastSavedEditorCameraRef.current = null;
+        }
 
-				// Update UI state
-				setSaveState({ status: 'saved', at: Date.now() })
-				startTransition(() => setLoading(false))
-				ignoreChangesUntilRef.current =
-					Date.now() + EXTERNAL_UPDATE_IGNORE_CHANGES_DURATION_MS
-				initialSceneAppliedRef.current = true
+        // Reset autosave state
+        autosaveStateRef.current.isSaving = false;
+        autosaveStateRef.current.hasLocalEditsDuringSave = false;
+        autosaveStateRef.current.lastScheduledSignature = null;
+        AutosaveOrchestrationService.setGlobalSavingFlag(false);
+        AutosaveOrchestrationService.setGlobalLocalEditsFlag(false);
 
-				// Dispatch scene applied event
-				try {
-					DocumentEventsAdapter.dispatchSceneApplied(waId, {})
-				} catch {
-					// Silently ignore errors
-				}
-			} catch {
-				// Silently ignore errors
-			}
-		},
-		[
-			waId,
-			lastLoadedWaIdRef,
-			viewerAppStateRef,
-			editorAppStateRef,
-			setLoading,
-			startTransition,
-		]
-	)
+        // Update UI state
+        setSaveState({ status: "saved", at: Date.now() });
+        startTransition(() => setLoading(false));
+        ignoreChangesUntilRef.current =
+          Date.now() + EXTERNAL_UPDATE_IGNORE_CHANGES_DURATION_MS;
+        initialSceneAppliedRef.current = true;
 
-	// Scene applied event handler
-	const handleSceneApplied = useCallback(() => {
-		try {
-			initialSceneAppliedRef.current = true
-			ignoreChangesUntilRef.current =
-				Date.now() + SCENE_APPLIED_IGNORE_CHANGES_DURATION_MS
-		} catch {
-			// Silently ignore errors
-		}
-	}, [])
+        // Dispatch scene applied event
+        try {
+          DocumentEventsAdapter.dispatchSceneApplied(waId, {});
+        } catch {
+          // Silently ignore errors
+        }
+      } catch {
+        // Silently ignore errors
+      }
+    },
+    [
+      waId,
+      lastLoadedWaIdRef,
+      viewerAppStateRef,
+      editorAppStateRef,
+      setLoading,
+      startTransition,
+    ]
+  );
 
-	// Document events (external updates, scene applied)
-	useDocumentEvents({
-		waId,
-		onExternalUpdate: handleExternalUpdate,
-		onSceneApplied: handleSceneApplied,
-	})
+  // Scene applied event handler
+  const handleSceneApplied = useCallback(() => {
+    try {
+      initialSceneAppliedRef.current = true;
+      ignoreChangesUntilRef.current =
+        Date.now() + SCENE_APPLIED_IGNORE_CHANGES_DURATION_MS;
+    } catch {
+      // Silently ignore errors
+    }
+  }, []);
 
-	// Memoize save status
-	const saveStatus = useMemo(() => saveState, [saveState])
+  // Document events (external updates, scene applied)
+  useDocumentEvents({
+    waId,
+    onExternalUpdate: handleExternalUpdate,
+    onSceneApplied: handleSceneApplied,
+  });
 
-	return { loading, handleCanvasChange, onExcalidrawAPI, saveStatus } as const
+  // Memoize save status
+  const saveStatus = useMemo(() => saveState, [saveState]);
+
+  return { loading, handleCanvasChange, onExcalidrawAPI, saveStatus } as const;
 }

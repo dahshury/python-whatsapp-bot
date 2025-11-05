@@ -1,5 +1,5 @@
-import { NotFoundPage } from '@/components/ui/not-found-page'
+import { NotFoundPage } from "@/components/ui/not-found-page";
 
 export default function DemoOne() {
-	return <NotFoundPage />
+  return <NotFoundPage />;
 }

@@ -1,246 +1,246 @@
 .input-bubble {
-	margin: 2px 0 8px;
-	width: 100%;
-	border: 1px solid hsl(var(--border));
-	border-radius: 17px 17px 27px 27px;
-	background-color: hsl(var(--card));
-	box-shadow:
-		0px 24px 48px rgba(0, 0, 0, 0.03),
-		0px 12px 24px rgba(0, 0, 0, 0.05),
-		0px 6px 12px rgba(0, 0, 0, 0.06);
+  margin: 2px 0 8px;
+  width: 100%;
+  border: 1px solid hsl(var(--border));
+  border-radius: 17px 17px 27px 27px;
+  background-color: hsl(var(--card));
+  box-shadow:
+    0px 24px 48px rgba(0, 0, 0, 0.03),
+    0px 12px 24px rgba(0, 0, 0, 0.05),
+    0px 6px 12px rgba(0, 0, 0, 0.06);
 }
 .uiverse-text-box {
-	width: 100%;
-	background-color: hsl(var(--muted));
-	padding: 10px;
-	border-radius: 12px;
+  width: 100%;
+  background-color: hsl(var(--muted));
+  padding: 10px;
+  border-radius: 12px;
 }
 .uiverse-box-container {
-	width: 100%;
-	background-color: hsl(var(--background));
-	border-radius: 8px 8px 21px 21px;
-	padding: 12px;
-	border: 1px solid hsl(var(--border));
+  width: 100%;
+  background-color: hsl(var(--background));
+  border-radius: 8px 8px 21px 21px;
+  padding: 12px;
+  border: 1px solid hsl(var(--border));
 }
 .message-list {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 /* Reduce extra space below the last message */
 .message-list:last-child,
 .message-list[data-trim-bottom="true"] {
-	padding-bottom: 0;
+  padding-bottom: 0;
 }
 .message-list > .message-row {
-	position: relative;
-	z-index: 1;
+  position: relative;
+  z-index: 1;
 }
 .message-list :where(.message-row) {
-	padding: 0;
-	border-radius: 0;
-	overflow: visible;
+  padding: 0;
+  border-radius: 0;
+  overflow: visible;
 }
 .message-row-user {
-	background: transparent;
+  background: transparent;
 }
 .message-row-admin {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--accent) / 0.2) 0%,
-		hsl(var(--accent) / 0.1) 50%,
-		hsl(var(--accent) / 0.14) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent) / 0.2) 0%,
+    hsl(var(--accent) / 0.1) 50%,
+    hsl(var(--accent) / 0.14) 100%
+  );
 }
 .message-row-assistant {
-	background: transparent;
+  background: transparent;
 }
 .message-row-secretary {
-	background: transparent;
+  background: transparent;
 }
 /* Remove outer backgrounds; keep only inner bubble styles */
 :where(
-		.message-row,
-		.message-row-user,
-		.message-row-admin,
-		.message-row-assistant,
-		.message-row-secretary
-	) {
-	background: transparent;
+    .message-row,
+    .message-row-user,
+    .message-row-admin,
+    .message-row-assistant,
+    .message-row-secretary
+  ) {
+  background: transparent;
 }
 
 /* Remove extra vertical padding introduced by the wrapper inside message rows */
 .message-row > div:first-of-type {
-	padding-top: 0;
-	padding-bottom: 0;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 .message-row-user :where(.rounded-lg, .rounded-md) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--primary) / 0.4) 0%,
-		hsl(var(--primary) / 0.28) 50%,
-		hsl(var(--primary) / 0.3) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.4) 0%,
+    hsl(var(--primary) / 0.28) 50%,
+    hsl(var(--primary) / 0.3) 100%
+  );
 }
 .message-row-admin :where(.rounded-lg, .rounded-md) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--accent) / 0.36) 0%,
-		hsl(var(--accent) / 0.24) 50%,
-		hsl(var(--accent) / 0.28) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent) / 0.36) 0%,
+    hsl(var(--accent) / 0.24) 50%,
+    hsl(var(--accent) / 0.28) 100%
+  );
 }
 .message-row-assistant :where(.rounded-lg, .rounded-md) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.36) 0%,
-		hsl(var(--muted) / 0.24) 50%,
-		hsl(var(--muted) / 0.28) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.36) 0%,
+    hsl(var(--muted) / 0.24) 50%,
+    hsl(var(--muted) / 0.28) 100%
+  );
 }
 .message-row-secretary :where(.rounded-lg, .rounded-md) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--accent) / 0.36) 0%,
-		hsl(var(--accent) / 0.24) 50%,
-		hsl(var(--accent) / 0.28) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent) / 0.36) 0%,
+    hsl(var(--accent) / 0.24) 50%,
+    hsl(var(--accent) / 0.28) 100%
+  );
 }
 .message-row :where(.rounded-lg, .rounded-md) {
-	border: 1px solid hsl(var(--border) / 0.4);
+  border: 1px solid hsl(var(--border) / 0.4);
 }
 .icon-neon {
-	position: relative;
-	isolation: isolate;
+  position: relative;
+  isolation: isolate;
 }
 .icon-neon::after {
-	content: "";
-	position: absolute;
-	inset: -4px;
-	border-radius: 8px;
-	background: radial-gradient(
-		40% 40% at 50% 50%,
-		currentColor 0%,
-		transparent 60%
-	);
-	filter: blur(8px);
-	opacity: 0;
-	transition: opacity 200ms ease;
-	z-index: -1;
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 8px;
+  background: radial-gradient(
+    40% 40% at 50% 50%,
+    currentColor 0%,
+    transparent 60%
+  );
+  filter: blur(8px);
+  opacity: 0;
+  transition: opacity 200ms ease;
+  z-index: -1;
 }
 .icon-neon:hover::after,
 .icon-neon:focus-visible::after {
-	opacity: 0.6;
+  opacity: 0.6;
 }
 .avatar-neon {
-	position: relative;
-	z-index: 0;
+  position: relative;
+  z-index: 0;
 }
 .avatar-neon > * {
-	position: relative;
-	z-index: 2;
+  position: relative;
+  z-index: 2;
 }
 .avatar-neon::before {
-	content: "";
-	position: absolute;
-	inset: -6px;
-	border-radius: 12px;
-	filter: blur(12px);
-	opacity: 0.55;
-	transition:
-		opacity 200ms ease,
-		transform 200ms ease;
-	z-index: 1;
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 12px;
+  filter: blur(12px);
+  opacity: 0.55;
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+  z-index: 1;
 }
 .message-row:hover .avatar-neon::before {
-	opacity: 0.9;
-	transform: scale(1.02);
+  opacity: 0.9;
+  transform: scale(1.02);
 }
 .message-row-user .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--primary)) 0%,
-		transparent 70%
-	);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    hsl(var(--primary)) 0%,
+    transparent 70%
+  );
 }
 .message-row-admin .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--accent)) 0%,
-		transparent 70%
-	);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    hsl(var(--accent)) 0%,
+    transparent 70%
+  );
 }
 .message-row-assistant .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--ring)) 0%,
-		transparent 70%
-	);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    hsl(var(--ring)) 0%,
+    transparent 70%
+  );
 }
 .message-row-secretary .avatar-neon::before {
-	background: radial-gradient(
-		50% 50% at 50% 50%,
-		hsl(var(--muted-foreground)) 0%,
-		transparent 70%
-	);
+  background: radial-gradient(
+    50% 50% at 50% 50%,
+    hsl(var(--muted-foreground)) 0%,
+    transparent 70%
+  );
 }
 .prose a {
-	overflow-wrap: anywhere;
-	word-break: normal;
-	white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  white-space: normal;
 }
 .prose p,
 .prose li {
-	overflow-wrap: break-word;
-	word-break: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .prose code {
-	word-break: break-word;
-	white-space: pre-wrap;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 .prose pre {
-	white-space: pre;
-	overflow-x: auto;
-	max-width: 100%;
+  white-space: pre;
+  overflow-x: auto;
+  max-width: 100%;
 }
 
 /* Calendar page sidebar specific chat tweaks */
 .calendar-chat {
-	/* Scope all overrides to calendar chat within the sidebar */
+  /* Scope all overrides to calendar chat within the sidebar */
 }
 
 /* 1) Increase opacity of bubbles in calendar sidebar */
 .calendar-chat .message-row-user :where(.rounded-lg, .rounded-md) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--primary) / 0.48) 0%,
-		hsl(var(--primary) / 0.36) 50%,
-		hsl(var(--primary) / 0.4) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.48) 0%,
+    hsl(var(--primary) / 0.36) 50%,
+    hsl(var(--primary) / 0.4) 100%
+  );
 }
 
 .calendar-chat .message-row-admin :where(.rounded-lg, .rounded-md),
 .calendar-chat .message-row-assistant :where(.rounded-lg, .rounded-md),
 .calendar-chat .message-row-secretary :where(.rounded-lg, .rounded-md) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.44) 0%,
-		hsl(var(--muted) / 0.32) 50%,
-		hsl(var(--muted) / 0.36) 100%
-	);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.44) 0%,
+    hsl(var(--muted) / 0.32) 50%,
+    hsl(var(--muted) / 0.36) 100%
+  );
 }
 
 /* 2) Remove avatar glow in calendar sidebar chat */
 .calendar-chat .avatar-neon::before {
-	content: none;
+  content: none;
 }
 
 /* 3) Ensure timestamp sits at the bottom-right inside the bubble */
 .calendar-chat .message-row article > div.absolute {
-	position: absolute;
-	bottom: 0.5rem;
-	right: 0.75rem;
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.75rem;
 }
 
 /* 4) Force text cursor inside the chat input area in the calendar sidebar */
@@ -250,10 +250,10 @@
 .calendar-chat .tiptap,
 .calendar-chat .ProseMirror,
 .calendar-chat .tiptap .ProseMirror {
-	cursor: text;
+  cursor: text;
 }
 
 /* 5) Prevent scroll anchoring/jumps when focusing the input below the messages */
 .calendar-chat .message-list {
-	overflow-anchor: none;
+  overflow-anchor: none;
 }

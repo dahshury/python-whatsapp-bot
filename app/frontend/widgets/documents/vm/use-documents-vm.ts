@@ -4,31 +4,31 @@
  * Foundation for document operations and state management.
  */
 
-import { useMemo } from 'react'
+import { useMemo } from "react";
 // Documents feature should be used directly; DI port removed.
 
 export type DocumentsViewModelState = {
-	isLoading: boolean
-	error: string | null
-}
+  isLoading: boolean;
+  error: string | null;
+};
 
-export type DocumentsViewModelActions = Record<string, never>
+export type DocumentsViewModelActions = Record<string, never>;
 
 export type DocumentsViewModel = DocumentsViewModelState &
-	DocumentsViewModelActions
+  DocumentsViewModelActions;
 
 /**
  * Hook that provides the documents view model.
  * Currently a placeholder; will be extended as documents refactoring progresses.
  */
 export function useDocumentsViewModel(): DocumentsViewModel {
-	const vm = useMemo<DocumentsViewModelState>(
-		() => ({
-			isLoading: false,
-			error: null,
-		}),
-		[]
-	)
+  const vm = useMemo<DocumentsViewModelState>(
+    () => ({
+      isLoading: false,
+      error: null,
+    }),
+    []
+  );
 
-	return vm as DocumentsViewModel
+  return vm as DocumentsViewModel;
 }

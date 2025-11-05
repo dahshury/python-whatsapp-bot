@@ -1,90 +1,90 @@
-import { cn } from '@shared/libs/utils'
-import type * as React from 'react'
+import { cn } from "@shared/libs/utils";
+import type * as React from "react";
 
 const Empty = ({
-	className,
-	ref,
-	...props
+  className,
+  ref,
+  ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-	ref?: React.RefObject<HTMLDivElement | null>
+  ref?: React.RefObject<HTMLDivElement | null>;
 }) => (
-	<div
-		className={cn('flex flex-col items-center justify-center py-12', className)}
-		ref={ref}
-		{...props}
-	/>
-)
+  <div
+    className={cn("flex flex-col items-center justify-center py-12", className)}
+    ref={ref}
+    {...props}
+  />
+);
 
-Empty.displayName = 'Empty'
+Empty.displayName = "Empty";
 
 const EmptyHeader = ({
-	className,
-	ref,
-	...props
+  className,
+  ref,
+  ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-	ref?: React.RefObject<HTMLDivElement | null>
+  ref?: React.RefObject<HTMLDivElement | null>;
 }) => (
-	<div
-		className={cn('flex flex-col items-center gap-3 text-center', className)}
-		ref={ref}
-		{...props}
-	/>
-)
+  <div
+    className={cn("flex flex-col items-center gap-3 text-center", className)}
+    ref={ref}
+    {...props}
+  />
+);
 
-EmptyHeader.displayName = 'EmptyHeader'
+EmptyHeader.displayName = "EmptyHeader";
 
 const EmptyMedia = ({
-	className,
-	ref,
-	variant,
-	...props
+  className,
+  ref,
+  variant,
+  ...props
 }: React.HTMLAttributes<HTMLDivElement> & {
-	ref?: React.RefObject<HTMLDivElement | null>
-	variant?: 'icon' | 'image'
+  ref?: React.RefObject<HTMLDivElement | null>;
+  variant?: "icon" | "image";
 }) => (
-	<div
-		className={cn(
-			'flex items-center justify-center',
-			variant === 'icon' && 'text-muted-foreground',
-			className
-		)}
-		ref={ref}
-		{...props}
-	/>
-)
+  <div
+    className={cn(
+      "flex items-center justify-center",
+      variant === "icon" && "text-muted-foreground",
+      className
+    )}
+    ref={ref}
+    {...props}
+  />
+);
 
-EmptyMedia.displayName = 'EmptyMedia'
+EmptyMedia.displayName = "EmptyMedia";
 
 const EmptyTitle = ({
-	className,
-	ref,
-	...props
+  className,
+  ref,
+  ...props
 }: React.HTMLAttributes<HTMLHeadingElement> & {
-	ref?: React.RefObject<HTMLHeadingElement | null>
+  ref?: React.RefObject<HTMLHeadingElement | null>;
 }) => (
-	<h3
-		className={cn('font-semibold text-foreground text-lg', className)}
-		ref={ref}
-		{...props}
-	/>
-)
+  <h3
+    className={cn("font-semibold text-foreground text-lg", className)}
+    ref={ref}
+    {...props}
+  />
+);
 
-EmptyTitle.displayName = 'EmptyTitle'
+EmptyTitle.displayName = "EmptyTitle";
 
 const EmptyDescription = ({
-	className,
-	ref,
-	...props
+  className,
+  ref,
+  ...props
 }: React.HTMLAttributes<HTMLParagraphElement> & {
-	ref?: React.RefObject<HTMLParagraphElement | null>
+  ref?: React.RefObject<HTMLParagraphElement | null>;
 }) => (
-	<p
-		className={cn('max-w-sm text-muted-foreground text-sm', className)}
-		ref={ref}
-		{...props}
-	/>
-)
+  <p
+    className={cn("max-w-sm text-muted-foreground text-sm", className)}
+    ref={ref}
+    {...props}
+  />
+);
 
-EmptyDescription.displayName = 'EmptyDescription'
+EmptyDescription.displayName = "EmptyDescription";
 
-export { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription }
+export { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription };

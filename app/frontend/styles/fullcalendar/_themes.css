@@ -2,57 +2,57 @@
 
 /* Dark mode CSS variable overrides */
 .dark {
-	--fc-page-bg-color: hsl(var(--background));
-	--fc-event-selected-overlay-color: rgba(255, 255, 255, 0.15);
-	/* --fc-event-hover-bg-color: hsl(var(--accent) / 0.2); */
-	--fc-event-past-opacity: 0.5;
-	--fc-event-disabled-opacity: 0.6;
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-event-selected-overlay-color: rgba(255, 255, 255, 0.15);
+  /* --fc-event-hover-bg-color: hsl(var(--accent) / 0.2); */
+  --fc-event-past-opacity: 0.5;
+  --fc-event-disabled-opacity: 0.6;
 }
 
 /* Dark mode specific styles */
 .dark .selected-date-cell {
-	background-color: hsl(var(--accent));
-	color: hsl(var(--accent-foreground));
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
 }
 
 .dark .fc {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 .dark .fc-col-header-cell-cushion {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 .dark .fc-daygrid-day-number {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 /* Theme integration - text colors */
 .fc-list-day-text,
 .fc-list-day-side-text {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 .fc-list-table th,
 .fc-list-table td {
-	border-color: hsl(var(--border));
+  border-color: hsl(var(--border));
 }
 
 /* Header background for all views */
 .fc-scrollgrid-section-header > * {
-	background-color: hsl(var(--muted) / 0.5);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Ensure week view headers have consistent background */
 .fc-timeGridWeek-view .fc-col-header,
 .fc-timeGridDay-view .fc-col-header {
-	background-color: hsl(var(--muted) / 0.5);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Multimonth view headers */
 .fc-multimonth-header,
 .fc-multimonth-header-table {
-	background-color: hsl(var(--muted) / 0.5);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Dark mode override for headers */
@@ -61,14 +61,14 @@
 .dark .fc-timeGridDay-view .fc-col-header,
 .dark .fc-multimonth-header,
 .dark .fc-multimonth-header-table {
-	background-color: hsl(var(--muted) / 0.3);
+  background-color: hsl(var(--muted) / 0.3);
 }
 
 /* List view theme integration */
 .fc-list-view .fc-list-day-cushion {
-	background-color: hsl(var(--muted) / 0.5);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 .dark .fc-list-view .fc-list-day-cushion {
-	background-color: hsl(var(--muted) / 0.3);
+  background-color: hsl(var(--muted) / 0.3);
 }

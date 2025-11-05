@@ -2,108 +2,108 @@
 /* To enable: Add className="theme-neo-brutalism" to html or body tag */
 
 .theme-neo-brutalism {
-	--background: 0 0% 100%; /* hsl(0 0% 100%) */
-	--foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--card: 0 0% 100%; /* hsl(0 0% 100%) */
-	--card-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--popover: 0 0% 100%; /* hsl(0 0% 100%) */
-	--popover-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--primary: 0 100% 60%; /* hsl(0 100% 60%) */
-	--primary-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--secondary: 60 100% 50%; /* hsl(60 100% 50%) */
-	--secondary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--muted: 0 0% 94.1176%; /* hsl(0 0% 94.1176%) */
-	--muted-foreground: 0 0% 20%; /* hsl(0 0% 20%) */
-	--accent: 216 100% 50%; /* hsl(216 100% 50%) */
-	--accent-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--destructive: 0 0% 0%; /* hsl(0 0% 0%) */
-	--destructive-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--border: 0 0% 0%; /* hsl(0 0% 0%) */
-	--input: 0 0% 0%; /* hsl(0 0% 0%) */
-	--ring: 0 100% 60%; /* hsl(0 100% 60%) */
-	--chart-1: 0 100% 60%; /* hsl(0 100% 60%) */
-	--chart-2: 60 100% 50%; /* hsl(60 100% 50%) */
-	--chart-3: 216 100% 50%; /* hsl(216 100% 50%) */
-	--chart-4: 120 100% 40%; /* hsl(120 100% 40%) */
-	--chart-5: 300 100% 40%; /* hsl(300 100% 40%) */
-	--sidebar: 0 0% 94.1176%; /* hsl(0 0% 94.1176%) */
-	--sidebar-background: 0 0% 94.1176%; /* hsl(0 0% 94.1176%) */
-	--sidebar-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--sidebar-primary: 0 100% 60%; /* hsl(0 100% 60%) */
-	--sidebar-primary-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--sidebar-accent: 216 100% 50%; /* hsl(216 100% 50%) */
-	--sidebar-accent-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--sidebar-border: 0 0% 0%; /* hsl(0 0% 0%) */
-	--sidebar-ring: 0 100% 60%; /* hsl(0 100% 60%) */
-	--font-sans: "DM Sans", var(--font-sans-stack);
-	--font-serif: var(--font-serif-stack);
-	--font-mono: "Space Mono", var(--font-mono-stack);
-	--radius: 0px;
-	--shadow-2xs: 4px 4px 0px 0px hsl(0 0% 0% / 0.5);
-	--shadow-xs: 4px 4px 0px 0px hsl(0 0% 0% / 0.5);
-	--shadow-sm:
-		4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 1px 2px -1px hsl(0 0% 0% / 1);
-	--shadow: 4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 1px 2px -1px hsl(0 0% 0% / 1);
-	--shadow-md:
-		4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 2px 4px -1px hsl(0 0% 0% / 1);
-	--shadow-lg:
-		4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 4px 6px -1px hsl(0 0% 0% / 1);
-	--shadow-xl:
-		4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 8px 10px -1px hsl(0 0% 0% / 1);
-	--shadow-2xl: 4px 4px 0px 0px hsl(0 0% 0% / 2.5);
+  --background: 0 0% 100%; /* hsl(0 0% 100%) */
+  --foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --card: 0 0% 100%; /* hsl(0 0% 100%) */
+  --card-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --popover: 0 0% 100%; /* hsl(0 0% 100%) */
+  --popover-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --primary: 0 100% 60%; /* hsl(0 100% 60%) */
+  --primary-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --secondary: 60 100% 50%; /* hsl(60 100% 50%) */
+  --secondary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --muted: 0 0% 94.1176%; /* hsl(0 0% 94.1176%) */
+  --muted-foreground: 0 0% 20%; /* hsl(0 0% 20%) */
+  --accent: 216 100% 50%; /* hsl(216 100% 50%) */
+  --accent-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --destructive: 0 0% 0%; /* hsl(0 0% 0%) */
+  --destructive-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --border: 0 0% 0%; /* hsl(0 0% 0%) */
+  --input: 0 0% 0%; /* hsl(0 0% 0%) */
+  --ring: 0 100% 60%; /* hsl(0 100% 60%) */
+  --chart-1: 0 100% 60%; /* hsl(0 100% 60%) */
+  --chart-2: 60 100% 50%; /* hsl(60 100% 50%) */
+  --chart-3: 216 100% 50%; /* hsl(216 100% 50%) */
+  --chart-4: 120 100% 40%; /* hsl(120 100% 40%) */
+  --chart-5: 300 100% 40%; /* hsl(300 100% 40%) */
+  --sidebar: 0 0% 94.1176%; /* hsl(0 0% 94.1176%) */
+  --sidebar-background: 0 0% 94.1176%; /* hsl(0 0% 94.1176%) */
+  --sidebar-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --sidebar-primary: 0 100% 60%; /* hsl(0 100% 60%) */
+  --sidebar-primary-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --sidebar-accent: 216 100% 50%; /* hsl(216 100% 50%) */
+  --sidebar-accent-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --sidebar-border: 0 0% 0%; /* hsl(0 0% 0%) */
+  --sidebar-ring: 0 100% 60%; /* hsl(0 100% 60%) */
+  --font-sans: "DM Sans", var(--font-sans-stack);
+  --font-serif: var(--font-serif-stack);
+  --font-mono: "Space Mono", var(--font-mono-stack);
+  --radius: 0px;
+  --shadow-2xs: 4px 4px 0px 0px hsl(0 0% 0% / 0.5);
+  --shadow-xs: 4px 4px 0px 0px hsl(0 0% 0% / 0.5);
+  --shadow-sm:
+    4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 1px 2px -1px hsl(0 0% 0% / 1);
+  --shadow: 4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 1px 2px -1px hsl(0 0% 0% / 1);
+  --shadow-md:
+    4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 2px 4px -1px hsl(0 0% 0% / 1);
+  --shadow-lg:
+    4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 4px 6px -1px hsl(0 0% 0% / 1);
+  --shadow-xl:
+    4px 4px 0px 0px hsl(0 0% 0% / 1), 4px 8px 10px -1px hsl(0 0% 0% / 1);
+  --shadow-2xl: 4px 4px 0px 0px hsl(0 0% 0% / 2.5);
 }
 
 /* Dark mode for Neo Brutalism theme */
 .theme-neo-brutalism.dark,
 .dark .theme-neo-brutalism {
-	--background: 0 0% 0%; /* hsl(0 0% 0%) */
-	--foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--card: 0 0% 20%; /* hsl(0 0% 20%) */
-	--card-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--popover: 0 0% 20%; /* hsl(0 0% 20%) */
-	--popover-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--primary: 0 100% 70%; /* hsl(0 100.0000% 70%) */
-	--primary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--secondary: 60 100% 60%; /* hsl(60 100% 60%) */
-	--secondary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--muted: 0 0% 20%; /* hsl(0 0% 20%) */
-	--muted-foreground: 0 0% 80%; /* hsl(0 0% 80%) */
-	--accent: 210 100% 60%; /* hsl(210 100% 60%) */
-	--accent-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--destructive: 0 0% 100%; /* hsl(0 0% 100%) */
-	--destructive-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--border: 0 0% 100%; /* hsl(0 0% 100%) */
-	--input: 0 0% 100%; /* hsl(0 0% 100%) */
-	--ring: 0 100% 70%; /* hsl(0 100.0000% 70%) */
-	--chart-1: 0 100% 70%; /* hsl(0 100.0000% 70%) */
-	--chart-2: 60 100% 60%; /* hsl(60 100% 60%) */
-	--chart-3: 210 100% 60%; /* hsl(210 100% 60%) */
-	--chart-4: 120 60% 50%; /* hsl(120 60.0000% 50%) */
-	--chart-5: 300 60% 50%; /* hsl(300 60.0000% 50%) */
-	--sidebar: 0 0% 0%; /* hsl(0 0% 0%) */
-	--sidebar-background: 0 0% 0%; /* hsl(0 0% 0%) */
-	--sidebar-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
-	--sidebar-primary: 0 100% 70%; /* hsl(0 100.0000% 70%) */
-	--sidebar-primary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--sidebar-accent: 210 100% 60%; /* hsl(210 100% 60%) */
-	--sidebar-accent-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
-	--sidebar-border: 0 0% 100%; /* hsl(0 0% 100%) */
-	--sidebar-ring: 0 100% 70%; /* hsl(0 100.0000% 70%) */
-	--font-sans: "DM Sans", var(--font-sans-stack);
-	--font-serif: var(--font-serif-stack);
-	--font-mono: "Space Mono", var(--font-mono-stack);
-	--radius: 0px;
-	--shadow-2xs: 4px 4px 0px 0px hsl(0 0% 100% / 0.5);
-	--shadow-xs: 4px 4px 0px 0px hsl(0 0% 100% / 0.5);
-	--shadow-sm:
-		4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 1px 2px -1px hsl(0 0% 100% / 1);
-	--shadow:
-		4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 1px 2px -1px hsl(0 0% 100% / 1);
-	--shadow-md:
-		4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 2px 4px -1px hsl(0 0% 100% / 1);
-	--shadow-lg:
-		4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 4px 6px -1px hsl(0 0% 100% / 1);
-	--shadow-xl:
-		4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 8px 10px -1px hsl(0 0% 100% / 1);
-	--shadow-2xl: 4px 4px 0px 0px hsl(0 0% 100% / 2.5);
+  --background: 0 0% 0%; /* hsl(0 0% 0%) */
+  --foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --card: 0 0% 20%; /* hsl(0 0% 20%) */
+  --card-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --popover: 0 0% 20%; /* hsl(0 0% 20%) */
+  --popover-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --primary: 0 100% 70%; /* hsl(0 100.0000% 70%) */
+  --primary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --secondary: 60 100% 60%; /* hsl(60 100% 60%) */
+  --secondary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --muted: 0 0% 20%; /* hsl(0 0% 20%) */
+  --muted-foreground: 0 0% 80%; /* hsl(0 0% 80%) */
+  --accent: 210 100% 60%; /* hsl(210 100% 60%) */
+  --accent-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --destructive: 0 0% 100%; /* hsl(0 0% 100%) */
+  --destructive-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --border: 0 0% 100%; /* hsl(0 0% 100%) */
+  --input: 0 0% 100%; /* hsl(0 0% 100%) */
+  --ring: 0 100% 70%; /* hsl(0 100.0000% 70%) */
+  --chart-1: 0 100% 70%; /* hsl(0 100.0000% 70%) */
+  --chart-2: 60 100% 60%; /* hsl(60 100% 60%) */
+  --chart-3: 210 100% 60%; /* hsl(210 100% 60%) */
+  --chart-4: 120 60% 50%; /* hsl(120 60.0000% 50%) */
+  --chart-5: 300 60% 50%; /* hsl(300 60.0000% 50%) */
+  --sidebar: 0 0% 0%; /* hsl(0 0% 0%) */
+  --sidebar-background: 0 0% 0%; /* hsl(0 0% 0%) */
+  --sidebar-foreground: 0 0% 100%; /* hsl(0 0% 100%) */
+  --sidebar-primary: 0 100% 70%; /* hsl(0 100.0000% 70%) */
+  --sidebar-primary-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --sidebar-accent: 210 100% 60%; /* hsl(210 100% 60%) */
+  --sidebar-accent-foreground: 0 0% 0%; /* hsl(0 0% 0%) */
+  --sidebar-border: 0 0% 100%; /* hsl(0 0% 100%) */
+  --sidebar-ring: 0 100% 70%; /* hsl(0 100.0000% 70%) */
+  --font-sans: "DM Sans", var(--font-sans-stack);
+  --font-serif: var(--font-serif-stack);
+  --font-mono: "Space Mono", var(--font-mono-stack);
+  --radius: 0px;
+  --shadow-2xs: 4px 4px 0px 0px hsl(0 0% 100% / 0.5);
+  --shadow-xs: 4px 4px 0px 0px hsl(0 0% 100% / 0.5);
+  --shadow-sm:
+    4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 1px 2px -1px hsl(0 0% 100% / 1);
+  --shadow:
+    4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 1px 2px -1px hsl(0 0% 100% / 1);
+  --shadow-md:
+    4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 2px 4px -1px hsl(0 0% 100% / 1);
+  --shadow-lg:
+    4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 4px 6px -1px hsl(0 0% 100% / 1);
+  --shadow-xl:
+    4px 4px 0px 0px hsl(0 0% 100% / 1), 4px 8px 10px -1px hsl(0 0% 100% / 1);
+  --shadow-2xl: 4px 4px 0px 0px hsl(0 0% 100% / 2.5);
 }

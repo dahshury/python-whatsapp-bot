@@ -2,212 +2,212 @@
 
 /* BeautifulWrapper Component Styles */
 .beautiful-wrapper {
-	padding: 24px;
-	display: flex;
-	flex-direction: column;
-	gap: 16px;
-	color: hsl(var(--foreground));
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: hsl(var(--foreground));
 }
 
 .beautiful-wrapper-description {
-	font-style: italic;
-	color: hsl(var(--muted-foreground));
+  font-style: italic;
+  color: hsl(var(--muted-foreground));
 }
 
 .beautiful-wrapper-content {
-	flex: 1;
+  flex: 1;
 }
 
 /* Grid Toolbar and Menu Enhancements */
 
 /* Grid toolbar - now a simple horizontal bar above the grid */
 .grid-toolbar {
-	/* Ensure it appears above other content */
-	z-index: 10;
-	/* Smooth transitions */
-	transition: all 150ms ease-in-out;
+  /* Ensure it appears above other content */
+  z-index: 10;
+  /* Smooth transitions */
+  transition: all 150ms ease-in-out;
 }
 
 /* Grid toolbar button base styles */
 .grid-toolbar button {
-	width: 1.75rem;
-	height: 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
 }
 
 /* Dark mode support for toolbar */
 .dark .grid-toolbar {
-	background-color: rgb(31 41 55);
-	border-color: rgb(75 85 99);
-	color: rgb(229 231 235);
+  background-color: rgb(31 41 55);
+  border-color: rgb(75 85 99);
+  color: rgb(229 231 235);
 }
 
 .dark .grid-toolbar button {
-	color: rgb(156 163 175);
+  color: rgb(156 163 175);
 }
 
 .dark .grid-toolbar button:hover {
-	background-color: rgb(55 65 81);
-	color: rgb(229 231 235);
+  background-color: rgb(55 65 81);
+  color: rgb(229 231 235);
 }
 
 .dark .grid-toolbar .w-px {
-	background-color: rgb(75 85 99);
+  background-color: rgb(75 85 99);
 }
 
 /* Grid container - no longer needs padding since toolbar is outside */
 .glide-grid-inner {
-	position: relative;
+  position: relative;
 }
 
 /* Dialog-specific grid container adjustments */
 [role="dialog"] .glide-grid-inner,
 .dialog-content .glide-grid-inner,
 [data-radix-dialog-content] .glide-grid-inner {
-	/* Remove any extra padding that was previously added for absolute positioning */
-	padding: 0;
-	margin: 0;
+  /* Remove any extra padding that was previously added for absolute positioning */
+  padding: 0;
+  margin: 0;
 }
 
 /* Formatting menu slide-in animation */
 @keyframes submenuSlideIn {
-	0% {
-		opacity: 0;
-		transform: translateY(-8px) scale(0.95);
-	}
-	100% {
-		opacity: 1;
-		transform: translateY(0) scale(1);
-	}
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 /* Formatting menu improved styling */
 .formatting-menu {
-	animation: submenuSlideIn 150ms ease-out;
-	will-change: transform, opacity;
+  animation: submenuSlideIn 150ms ease-out;
+  will-change: transform, opacity;
 }
 
 .format-menu-item {
-	transition:
-		background-color 150ms ease,
-		transform 100ms ease;
+  transition:
+    background-color 150ms ease,
+    transform 100ms ease;
 }
 
 .format-menu-item:hover {
-	transform: translateX(2px);
+  transform: translateX(2px);
 }
 
 /* Performance optimizations */
 .glide-grid-toolbar,
 .formatting-menu {
-	will-change: transform, opacity;
-	backface-visibility: hidden;
+  will-change: transform, opacity;
+  backface-visibility: hidden;
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-	.grid-toolbar {
-		padding: 0.375rem 0.75rem;
-		min-height: 2.5rem;
-	}
+  .grid-toolbar {
+    padding: 0.375rem 0.75rem;
+    min-height: 2.5rem;
+  }
 
-	.grid-toolbar .gap-1 {
-		gap: 0.25rem;
-	}
+  .grid-toolbar .gap-1 {
+    gap: 0.25rem;
+  }
 }
 
 /* Grid toolbar CSS custom properties for theming */
 :root {
-	--gdg-toolbar-bg: rgba(255, 255, 255, 0.95);
-	--gdg-toolbar-border: rgba(0, 0, 0, 0.1);
-	--gdg-toolbar-icon: #666;
-	--gdg-toolbar-hover-bg: rgba(0, 0, 0, 0.1);
-	--gdg-toolbar-hover-icon: #000;
+  --gdg-toolbar-bg: rgba(255, 255, 255, 0.95);
+  --gdg-toolbar-border: rgba(0, 0, 0, 0.1);
+  --gdg-toolbar-icon: #666;
+  --gdg-toolbar-hover-bg: rgba(0, 0, 0, 0.1);
+  --gdg-toolbar-hover-icon: #000;
 }
 
 /* Dark theme overrides */
 [data-theme="dark"] {
-	--gdg-toolbar-bg: rgba(42, 42, 42, 0.95);
-	--gdg-toolbar-border: rgba(255, 255, 255, 0.1);
-	--gdg-toolbar-icon: #ccc;
-	--gdg-toolbar-hover-bg: rgba(255, 255, 255, 0.1);
-	--gdg-toolbar-hover-icon: #fff;
+  --gdg-toolbar-bg: rgba(42, 42, 42, 0.95);
+  --gdg-toolbar-border: rgba(255, 255, 255, 0.1);
+  --gdg-toolbar-icon: #ccc;
+  --gdg-toolbar-hover-bg: rgba(255, 255, 255, 0.1);
+  --gdg-toolbar-hover-icon: #fff;
 }
 
 /* Improve backdrop blur support */
 @supports (backdrop-filter: blur(8px)) {
-	.glide-grid-toolbar,
-	.formatting-menu {
-		backdrop-filter: blur(8px);
-	}
+  .glide-grid-toolbar,
+  .formatting-menu {
+    backdrop-filter: blur(8px);
+  }
 }
 
 /* Fallback for browsers without backdrop-filter */
 @supports not (backdrop-filter: blur(8px)) {
-	.glide-grid-toolbar {
-		background: rgba(255, 255, 255, 0.98);
-	}
+  .glide-grid-toolbar {
+    background: rgba(255, 255, 255, 0.98);
+  }
 
-	[data-theme="dark"] .glide-grid-toolbar {
-		background: rgba(42, 42, 42, 0.98);
-	}
+  [data-theme="dark"] .glide-grid-toolbar {
+    background: rgba(42, 42, 42, 0.98);
+  }
 }
 
 /* Enhanced focus states for accessibility */
 .glide-grid-toolbar button:focus-visible,
 .format-menu-item:focus-visible {
-	outline: 2px solid var(--gdg-toolbar-hover-icon);
-	outline-offset: 2px;
+  outline: 2px solid var(--gdg-toolbar-hover-icon);
+  outline-offset: 2px;
 }
 
 /* Responsive toolbar scaling */
 @media (max-width: 768px) {
-	.glide-grid-toolbar {
-		transform: scale(0.85);
-	}
+  .glide-grid-toolbar {
+    transform: scale(0.85);
+  }
 }
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-	.glide-grid-toolbar {
-		border-width: 2px;
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-	}
+  .glide-grid-toolbar {
+    border-width: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
 
-	.format-menu-item {
-		border: 1px solid transparent;
-	}
+  .format-menu-item {
+    border: 1px solid transparent;
+  }
 
-	.format-menu-item:hover {
-		border-color: var(--gdg-toolbar-hover-icon);
-	}
+  .format-menu-item:hover {
+    border-color: var(--gdg-toolbar-hover-icon);
+  }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-	.glide-grid-toolbar,
-	.formatting-menu,
-	.format-menu-item {
-		transition: none;
-		animation: none;
-	}
+  .glide-grid-toolbar,
+  .formatting-menu,
+  .format-menu-item {
+    transition: none;
+    animation: none;
+  }
 }
 
 /* Specific adjustments for different dialog types */
 .data-table-editor .glide-grid-inner {
-	padding-top: 48px;
+  padding-top: 48px;
 }
 
 /* Fullscreen mode - no extra padding needed */
 .glide-grid-wrapper-fullscreen .glide-grid-inner {
-	padding-top: 0;
+  padding-top: 0;
 }
 
 /* Responsive toolbar in dialogs */
 @media (max-width: 768px) {
-	/* Reduce padding in mobile dialogs */
-	[role="dialog"] .glide-grid-inner,
-	.dialog-content .glide-grid-inner,
-	[data-radix-dialog-content] .glide-grid-inner {
-		padding-top: 40px;
-	}
+  /* Reduce padding in mobile dialogs */
+  [role="dialog"] .glide-grid-inner,
+  .dialog-content .glide-grid-inner,
+  [data-radix-dialog-content] .glide-grid-inner {
+    padding-top: 40px;
+  }
 }

@@ -1,6 +1,6 @@
-'use client'
+"use client";
 
-import { useEffect } from 'react'
+import { useEffect } from "react";
 
 /**
  * Suppresses ResizeObserver loop errors that occur when ResizeObserver callbacks
@@ -9,46 +9,46 @@ import { useEffect } from 'react'
  * The error typically occurs when UI libraries use ResizeObserver internally.
  */
 export function SuppressResizeObserverWarnings() {
-	useEffect(() => {
-		const errorHandler = (event: ErrorEvent) => {
-			// Suppress ResizeObserver loop errors
-			if (
-				event.message?.includes('ResizeObserver loop') ||
-				event.message?.includes(
-					'ResizeObserver loop completed with undelivered notifications'
-				)
-			) {
-				event.preventDefault()
-				event.stopPropagation()
-				return false
-			}
-			return
-		}
+  useEffect(() => {
+    const errorHandler = (event: ErrorEvent) => {
+      // Suppress ResizeObserver loop errors
+      if (
+        event.message?.includes("ResizeObserver loop") ||
+        event.message?.includes(
+          "ResizeObserver loop completed with undelivered notifications"
+        )
+      ) {
+        event.preventDefault();
+        event.stopPropagation();
+        return false;
+      }
+      return;
+    };
 
-		// Handle unhandled errors
-		window.addEventListener('error', errorHandler, true)
+    // Handle unhandled errors
+    window.addEventListener("error", errorHandler, true);
 
-		// Handle unhandled promise rejections that might contain ResizeObserver errors
-		const rejectionHandler = (event: PromiseRejectionEvent) => {
-			const reason = event.reason
-			if (
-				typeof reason === 'string' &&
-				(reason.includes('ResizeObserver loop') ||
-					reason.includes(
-						'ResizeObserver loop completed with undelivered notifications'
-					))
-			) {
-				event.preventDefault()
-			}
-		}
+    // Handle unhandled promise rejections that might contain ResizeObserver errors
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
+      const reason = event.reason;
+      if (
+        typeof reason === "string" &&
+        (reason.includes("ResizeObserver loop") ||
+          reason.includes(
+            "ResizeObserver loop completed with undelivered notifications"
+          ))
+      ) {
+        event.preventDefault();
+      }
+    };
 
-		window.addEventListener('unhandledrejection', rejectionHandler)
+    window.addEventListener("unhandledrejection", rejectionHandler);
 
-		return () => {
-			window.removeEventListener('error', errorHandler, true)
-			window.removeEventListener('unhandledrejection', rejectionHandler)
-		}
-	}, [])
+    return () => {
+      window.removeEventListener("error", errorHandler, true);
+      window.removeEventListener("unhandledrejection", rejectionHandler);
+    };
+  }, []);
 
-	return null
+  return null;
 }

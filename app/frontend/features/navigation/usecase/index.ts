@@ -1,1 +1,1 @@
-export type { NavigationUseCase } from './navigation.usecase'
+export type { NavigationUseCase } from "./navigation.usecase";

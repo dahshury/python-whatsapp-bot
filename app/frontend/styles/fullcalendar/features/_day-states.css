@@ -3,97 +3,97 @@
 /* TODAY'S DATE STYLING */
 .fc-multimonth :where(.fc-daygrid-day.fc-day-today),
 .fc-daygrid :where(.fc-daygrid-day.fc-day-today) {
-	/* Add subtle background tint like in week view */
-	background: hsl(var(--primary) / 0.03);
-	z-index: var(--z-calendar-event);
-	position: relative;
+  /* Add subtle background tint like in week view */
+  background: hsl(var(--primary) / 0.03);
+  z-index: var(--z-calendar-event);
+  position: relative;
 }
 
 .fc-multimonth
-	:where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame),
+  :where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame),
 .fc-daygrid
-	:where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--primary) / 0.15) 0%,
-		hsl(var(--primary) / 0.2) 50%,
-		hsl(var(--accent) / 0.15) 100%
-	);
-	border: 2px solid hsl(var(--primary) / 0.4);
-	box-shadow:
-		0 4px 12px hsl(var(--primary) / 0.2),
-		0 2px 6px hsl(var(--primary) / 0.15),
-		inset 0 1px 0 hsl(var(--primary) / 0.3),
-		inset 0 -1px 0 hsl(var(--accent) / 0.2);
-	transform: translateY(-1px);
-	z-index: var(--z-calendar-event);
-	position: relative;
+  :where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.15) 0%,
+    hsl(var(--primary) / 0.2) 50%,
+    hsl(var(--accent) / 0.15) 100%
+  );
+  border: 2px solid hsl(var(--primary) / 0.4);
+  box-shadow:
+    0 4px 12px hsl(var(--primary) / 0.2),
+    0 2px 6px hsl(var(--primary) / 0.15),
+    inset 0 1px 0 hsl(var(--primary) / 0.3),
+    inset 0 -1px 0 hsl(var(--accent) / 0.2);
+  transform: translateY(-1px);
+  z-index: var(--z-calendar-event);
+  position: relative;
 }
 
 /* Today's number - more prominent */
 .fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
 .fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-	position: relative;
-	font-weight: 900;
-	color: hsl(var(--primary));
-	text-shadow: 0 1px 2px hsl(var(--primary) / 0.3);
-	z-index: var(--z-calendar-events);
+  position: relative;
+  font-weight: 900;
+  color: hsl(var(--primary));
+  text-shadow: 0 1px 2px hsl(var(--primary) / 0.3);
+  z-index: var(--z-calendar-events);
 }
 
 /* Today indicator dot - more prominent */
 .fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after,
 .fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
-	content: "";
-	position: absolute;
-	bottom: 1px;
-	left: 50%;
-	transform: translateX(-50%);
-	width: 4px;
-	height: 4px;
-	background: hsl(var(--primary));
-	border-radius: 50%;
-	box-shadow: 0 0 4px hsl(var(--primary) / 0.5);
-	z-index: var(--z-calendar-events);
+  content: "";
+  position: absolute;
+  bottom: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  background: hsl(var(--primary));
+  border-radius: 50%;
+  box-shadow: 0 0 4px hsl(var(--primary) / 0.5);
+  z-index: var(--z-calendar-events);
 }
 
 /* Today with selection */
 .fc-multimonth .fc-daygrid-day.fc-day-today.fc-day-selected:not(.fc-day-past)
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-today.fc-day-selected:not(.fc-day-past)
-	.fc-daygrid-day-frame {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--accent) / 0.2) 0%,
-		hsl(var(--primary) / 0.15) 100%
-	);
-	border: 2px solid hsl(var(--accent) / 0.5);
-	box-shadow: 0 2px 8px hsl(var(--accent) / 0.2);
-	z-index: var(--z-calendar-event);
+  .fc-daygrid-day.fc-day-today.fc-day-selected:not(.fc-day-past)
+  .fc-daygrid-day-frame {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--accent) / 0.2) 0%,
+    hsl(var(--primary) / 0.15) 100%
+  );
+  border: 2px solid hsl(var(--accent) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--accent) / 0.2);
+  z-index: var(--z-calendar-event);
 }
 
 /* PAST DATES - Allow clicks for navigation */
 .fc-multimonth .fc-daygrid-day.fc-day-past,
 .fc-daygrid .fc-daygrid-day.fc-day-past {
-	/* pointer-events: none; // Commented out to allow navigation clicks */
-	cursor: pointer; /* Allow clicks for calendar navigation */
+  /* pointer-events: none; // Commented out to allow navigation clicks */
+  cursor: pointer; /* Allow clicks for calendar navigation */
 }
 
 /* Allow past events to be clickable in free roam mode */
 [data-free-roam="true"] .fc-multimonth .fc-daygrid-day.fc-day-past .fc-event,
 [data-free-roam="true"] .fc-daygrid .fc-daygrid-day.fc-day-past .fc-event {
-	pointer-events: auto;
-	cursor: pointer;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 /* Allow past more links to be clickable in free roam mode */
 [data-free-roam="true"]
-	.fc-multimonth
-	.fc-daygrid-day.fc-day-past
-	.fc-more-link,
+  .fc-multimonth
+  .fc-daygrid-day.fc-day-past
+  .fc-more-link,
 [data-free-roam="true"] .fc-daygrid .fc-daygrid-day.fc-day-past .fc-more-link {
-	pointer-events: auto;
-	cursor: pointer;
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 /* Ensure multimonth past events are hoverable in free roam mode */
@@ -131,75 +131,75 @@
 /* DISABLED DAYS - Allow clicks for navigation */
 .fc-multimonth .fc-daygrid-day.fc-day-disabled,
 .fc-daygrid .fc-daygrid-day.fc-day-disabled {
-	/* pointer-events: none; // Commented out to allow navigation clicks */
-	cursor: pointer; /* Allow clicks for calendar navigation */
+  /* pointer-events: none; // Commented out to allow navigation clicks */
+  cursor: pointer; /* Allow clicks for calendar navigation */
 }
 
 .fc-multimonth :where(.fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame),
 .fc-daygrid :where(.fc-daygrid-day.fc-day-disabled .fc-daygrid-day-frame) {
-	background: hsl(var(--muted) / 0.05);
-	border-color: hsl(var(--border) / 0.1);
-	opacity: 0.5;
+  background: hsl(var(--muted) / 0.05);
+  border-color: hsl(var(--border) / 0.1);
+  opacity: 0.5;
 }
 
 .fc-multimonth .fc-daygrid-day.fc-day-disabled .fc-daygrid-day-number,
 .fc-daygrid .fc-daygrid-day.fc-day-disabled .fc-daygrid-day-number {
-	color: hsl(var(--muted-foreground) / 0.5);
-	font-weight: 400;
+  color: hsl(var(--muted-foreground) / 0.5);
+  font-weight: 400;
 }
 
 /* SELECTED DATE STYLING */
 .fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(
-		.fc-day-disabled
-	)
-	.fc-daygrid-day-frame,
+    .fc-day-disabled
+  )
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
-	.fc-daygrid-day-frame {
-	background: hsl(var(--primary) / 0.15);
-	border: 2px solid hsl(var(--primary) / 0.5);
-	box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
+  .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
+  .fc-daygrid-day-frame {
+  background: hsl(var(--primary) / 0.15);
+  border: 2px solid hsl(var(--primary) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
 }
 
 .fc-multimonth
-	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
-	.fc-daygrid-day-number,
+  .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
+  .fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
-	.fc-daygrid-day-number {
-	color: hsl(var(--primary));
-	font-weight: 700;
+  .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled)
+  .fc-daygrid-day-number {
+  color: hsl(var(--primary));
+  font-weight: 700;
 }
 
 /* HIGHLIGHT/DATECLICK SELECTION */
 .fc-multimonth .fc-daygrid-day .fc-highlight,
 .fc-daygrid .fc-daygrid-day .fc-highlight {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: hsl(var(--primary) / 0.2);
-	border-radius: calc(var(--radius) * 0.75);
-	z-index: var(--z-calendar-events);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: hsl(var(--primary) / 0.2);
+  border-radius: calc(var(--radius) * 0.75);
+  z-index: var(--z-calendar-events);
 }
 
 /* Style for days with highlight */
 .fc-multimonth :where(.fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-frame),
 .fc-daygrid :where(.fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-frame) {
-	border: 2px solid hsl(var(--primary) / 0.5);
-	box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
-	z-index: var(--z-calendar-event);
-	position: relative;
+  border: 2px solid hsl(var(--primary) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
+  z-index: var(--z-calendar-event);
+  position: relative;
 }
 
 /* Fallback for browsers without :has() support */
 .fc-multimonth :where(.fc-daygrid-day.fc-day-highlight .fc-daygrid-day-frame),
 .fc-daygrid :where(.fc-daygrid-day.fc-day-highlight .fc-daygrid-day-frame) {
-	border: 2px solid hsl(var(--primary) / 0.5);
-	box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
-	z-index: var(--z-calendar-event);
-	position: relative;
+  border: 2px solid hsl(var(--primary) / 0.5);
+  box-shadow: 0 2px 8px hsl(var(--primary) / 0.2);
+  z-index: var(--z-calendar-event);
+  position: relative;
 }
 
 /* Highlight day numbers */
@@ -207,21 +207,21 @@
 .fc-multimonth .fc-daygrid-day.fc-day-highlight .fc-daygrid-day-number,
 .fc-daygrid .fc-daygrid-day:has(.fc-highlight) .fc-daygrid-day-number,
 .fc-daygrid .fc-daygrid-day.fc-day-highlight .fc-daygrid-day-number {
-	color: hsl(var(--primary));
-	font-weight: 700;
-	z-index: var(--z-calendar-events);
-	position: relative;
+  color: hsl(var(--primary));
+  font-weight: 700;
+  z-index: var(--z-calendar-events);
+  position: relative;
 }
 
 /* OTHER MONTH DAYS */
 .fc-day-other .fc-daygrid-day-top {
-	opacity: 0.3;
+  opacity: 0.3;
 }
 
 /* MONTH START */
 .fc-daygrid-month-start {
-	font-weight: bold;
-	font-size: 1.1em;
+  font-weight: bold;
+  font-size: 1.1em;
 }
 
 /* ========================================
@@ -231,43 +231,43 @@
 /* Dark mode today background tint - like week view */
 .dark .fc-multimonth .fc-daygrid-day.fc-day-today,
 .dark .fc-daygrid .fc-daygrid-day.fc-day-today {
-	background: hsl(var(--primary) / 0.08);
+  background: hsl(var(--primary) / 0.08);
 }
 
 /* Dark mode today frame - enhanced gradient */
 .dark .fc-multimonth
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past)
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day.fc-day-today:not(.fc-day-past)
+  .fc-daygrid-day-frame,
 .dark
-	.fc-daygrid
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past)
-	.fc-daygrid-day-frame {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--primary) / 0.2) 0%,
-		hsl(var(--primary) / 0.25) 50%,
-		hsl(var(--accent) / 0.2) 100%
-	);
-	border: 2px solid hsl(var(--primary) / 0.5);
-	box-shadow:
-		0 4px 12px hsl(var(--primary) / 0.3),
-		0 2px 6px hsl(var(--primary) / 0.2),
-		inset 0 1px 0 hsl(var(--primary) / 0.4),
-		inset 0 -1px 0 hsl(var(--accent) / 0.3);
+  .fc-daygrid
+  .fc-daygrid-day.fc-day-today:not(.fc-day-past)
+  .fc-daygrid-day-frame {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.2) 0%,
+    hsl(var(--primary) / 0.25) 50%,
+    hsl(var(--accent) / 0.2) 100%
+  );
+  border: 2px solid hsl(var(--primary) / 0.5);
+  box-shadow:
+    0 4px 12px hsl(var(--primary) / 0.3),
+    0 2px 6px hsl(var(--primary) / 0.2),
+    inset 0 1px 0 hsl(var(--primary) / 0.4),
+    inset 0 -1px 0 hsl(var(--accent) / 0.3);
 }
 
 /* Dark mode today number - enhanced visibility */
 .dark .fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number,
 .dark .fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-	color: hsl(var(--primary));
-	text-shadow: 0 1px 3px hsl(var(--primary) / 0.5);
+  color: hsl(var(--primary));
+  text-shadow: 0 1px 3px hsl(var(--primary) / 0.5);
 }
 
 /* Dark mode today indicator dot - enhanced glow */
 .dark .fc-multimonth .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after,
 .dark .fc-daygrid .fc-daygrid-day.fc-day-today .fc-daygrid-day-number::after {
-	background: hsl(var(--primary));
-	box-shadow: 0 0 6px hsl(var(--primary) / 0.7);
+  background: hsl(var(--primary));
+  box-shadow: 0 0 6px hsl(var(--primary) / 0.7);
 }
 
 /* ==================================================
@@ -277,17 +277,17 @@
 /* Remove background, shadow, and transition on hover for any daygrid day */
 .fc-daygrid :where(.fc-daygrid-day:hover),
 .fc-daygrid :where(.fc-daygrid-day:hover .fc-daygrid-day-frame) {
-	background-color: inherit;
-	box-shadow: none;
-	transform: none;
-	transition: none;
+  background-color: inherit;
+  box-shadow: none;
+  transform: none;
+  transition: none;
 }
 
 /* Explicitly disable hover effects for timeGridDay's all-day daygrid header cell */
 .fc-timeGridDay-view :where(.fc-daygrid-day:hover),
 .fc-timeGridDay-view :where(.fc-daygrid-day:hover .fc-daygrid-day-frame) {
-	background-color: inherit;
-	box-shadow: none;
-	transform: none;
-	transition: none;
+  background-color: inherit;
+  box-shadow: none;
+  transform: none;
+  transition: none;
 }

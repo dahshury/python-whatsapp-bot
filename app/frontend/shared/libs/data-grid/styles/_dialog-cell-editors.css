@@ -14,6 +14,6 @@
  */
 
 :root {
-	/* Provides a named alias for overlay layers used by cell editors */
-	--dialog-cell-editor-overlay: var(--z-dialog-overlays);
+  /* Provides a named alias for overlay layers used by cell editors */
+  --dialog-cell-editor-overlay: var(--z-dialog-overlays);
 }

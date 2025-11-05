@@ -2,97 +2,97 @@
 
 /* A horizontal event */
 .fc-h-event {
-	display: block;
-	border: 1px solid var(--fc-event-border-color);
-	background-color: var(--fc-event-bg-color);
-	border-radius: var(--radius-sm);
+  display: block;
+  border: 1px solid var(--fc-event-border-color);
+  background-color: var(--fc-event-bg-color);
+  border-radius: var(--radius-sm);
 }
 
 .fc-h-event .fc-event-main {
-	color: var(--fc-event-text-color);
-	background: transparent;
+  color: var(--fc-event-text-color);
+  background: transparent;
 }
 
 .fc-h-event .fc-event-main-frame {
-	display: flex;
-	background: transparent;
+  display: flex;
+  background: transparent;
 }
 
 .fc-h-event .fc-event-time {
-	max-width: 100%;
-	overflow: hidden;
-	background: transparent;
+  max-width: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
 .fc-h-event .fc-event-title-container {
-	flex-grow: 1;
-	flex-shrink: 1;
-	min-width: 0;
-	background: transparent;
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-width: 0;
+  background: transparent;
 }
 
 .fc-h-event .fc-event-title {
-	display: inline-block;
-	vertical-align: top;
-	left: 0;
-	right: 0;
-	max-width: 100%;
-	overflow: hidden;
-	background: transparent;
+  display: inline-block;
+  vertical-align: top;
+  left: 0;
+  right: 0;
+  max-width: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
 /* Expand hit area when selected */
 .fc-h-event.fc-event-selected:before {
-	top: -10px;
-	bottom: -10px;
+  top: -10px;
+  bottom: -10px;
 }
 
 /* Adjust border and border-radius for non-start/end */
 .fc-direction-ltr .fc-daygrid-block-event:not(.fc-event-start),
 .fc-direction-rtl .fc-daygrid-block-event:not(.fc-event-end) {
-	border-top-left-radius: 0;
-	border-bottom-left-radius: 0;
-	border-left-width: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-width: 0;
 }
 
 .fc-direction-ltr .fc-daygrid-block-event:not(.fc-event-end),
 .fc-direction-rtl .fc-daygrid-block-event:not(.fc-event-start) {
-	border-top-right-radius: 0;
-	border-bottom-right-radius: 0;
-	border-right-width: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right-width: 0;
 }
 
 /* Resizers for horizontal events */
 .fc-h-event:not(.fc-event-selected) .fc-event-resizer {
-	top: 0;
-	bottom: 0;
-	width: var(--fc-event-resizer-thickness);
+  top: 0;
+  bottom: 0;
+  width: var(--fc-event-resizer-thickness);
 }
 
 .fc-direction-ltr .fc-h-event:not(.fc-event-selected) .fc-event-resizer-start,
 .fc-direction-rtl .fc-h-event:not(.fc-event-selected) .fc-event-resizer-end {
-	cursor: w-resize;
-	left: calc(-0.5 * var(--fc-event-resizer-thickness));
+  cursor: w-resize;
+  left: calc(-0.5 * var(--fc-event-resizer-thickness));
 }
 
 .fc-direction-ltr .fc-h-event:not(.fc-event-selected) .fc-event-resizer-end,
 .fc-direction-rtl .fc-h-event:not(.fc-event-selected) .fc-event-resizer-start {
-	cursor: e-resize;
-	right: calc(-0.5 * var(--fc-event-resizer-thickness));
+  cursor: e-resize;
+  right: calc(-0.5 * var(--fc-event-resizer-thickness));
 }
 
 /* Resizers for TOUCH */
 .fc-h-event.fc-event-selected .fc-event-resizer {
-	top: 50%;
-	margin-top: calc(-0.5 * var(--fc-event-resizer-dot-total-width));
+  top: 50%;
+  margin-top: calc(-0.5 * var(--fc-event-resizer-dot-total-width));
 }
 
 .fc-direction-ltr .fc-h-event.fc-event-selected .fc-event-resizer-start,
 .fc-direction-rtl .fc-h-event.fc-event-selected .fc-event-resizer-end {
-	left: calc(-0.5 * var(--fc-event-resizer-dot-total-width));
+  left: calc(-0.5 * var(--fc-event-resizer-dot-total-width));
 }
 
 .fc-direction-ltr .fc-h-event.fc-event-selected .fc-event-resizer-end,
 .fc-direction-rtl .fc-h-event.fc-event-selected .fc-event-resizer-start {
-	right: calc(-0.5 * var(--fc-event-resizer-dot-total-width));
+  right: calc(-0.5 * var(--fc-event-resizer-dot-total-width));
 }

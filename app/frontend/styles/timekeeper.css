@@ -5,246 +5,246 @@
 
 /* TimeKeeper Cell Component Styles */
 .timekeeper-cell-wrapper {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	height: 100%;
-	position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
 .timekeeper-cell-editor {
-	width: 100%;
-	height: 100%;
-	border: none;
-	outline: none;
-	padding: 0.5rem;
-	padding-right: 2.25rem;
-	font-size: 0.8125rem;
-	font-family: inherit;
-	background-color: transparent;
-	color: inherit;
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  padding: 0.5rem;
+  padding-right: 2.25rem;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  background-color: transparent;
+  color: inherit;
 }
 
 .timekeeper-cell-icon-button {
-	position: absolute;
-	right: 0.5rem;
-	top: 50%;
-	transform: translateY(-50%);
-	background: none;
-	border: none;
-	cursor: pointer;
-	padding: 0.25rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: inherit;
-	opacity: 0.7;
-	transition: opacity 0.2s;
-	width: 1.5rem;
-	height: 1.5rem;
-	border-radius: 0.25rem;
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.25rem;
 }
 
 .timekeeper-cell-icon-button:hover {
-	opacity: 1;
+  opacity: 1;
 }
 
 .timekeeper-portal {
-	position: fixed;
-	z-index: var(--z-index-date-picker, 3000);
-	background: hsl(var(--card));
-	border-radius: calc(var(--radius) + 2px);
-	box-shadow: var(--shadow-lg);
-	padding: 1rem;
-	border: 0.0625rem solid hsl(var(--border));
-	min-width: 17.5rem;
-	min-height: 18.75rem;
-	color: hsl(var(--card-foreground));
+  position: fixed;
+  z-index: var(--z-index-date-picker, 3000);
+  background: hsl(var(--card));
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem;
+  border: 0.0625rem solid hsl(var(--border));
+  min-width: 17.5rem;
+  min-height: 18.75rem;
+  color: hsl(var(--card-foreground));
 }
 
 .timekeeper-done-button {
-	text-align: center;
-	padding: 0.75rem 0;
-	border-top: 0.0625rem solid hsl(var(--border));
-	background-color: hsl(var(--muted));
-	cursor: pointer;
-	font-size: 0.8125rem;
-	font-weight: 500;
-	color: hsl(var(--muted-foreground));
-	border-radius: 0 0 calc(var(--radius) + 2px) calc(var(--radius) + 2px);
-	transition: background-color 0.2s ease;
+  text-align: center;
+  padding: 0.75rem 0;
+  border-top: 0.0625rem solid hsl(var(--border));
+  background-color: hsl(var(--muted));
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  border-radius: 0 0 calc(var(--radius) + 2px) calc(var(--radius) + 2px);
+  transition: background-color 0.2s ease;
 }
 
 .timekeeper-done-button:hover {
-	background-color: hsl(var(--muted) / 0.8);
+  background-color: hsl(var(--muted) / 0.8);
 }
 
 .timekeeper-error-container {
-	padding: 1.25rem;
-	text-align: center;
-	color: hsl(var(--muted-foreground));
+  padding: 1.25rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
 }
 
 .timekeeper-retry-button {
-	padding: 0.5rem 1rem;
-	border: 1px solid hsl(var(--border));
-	border-radius: var(--radius);
-	background: hsl(var(--secondary));
-	color: hsl(var(--secondary-foreground));
-	cursor: pointer;
-	transition: background-color 0.2s ease;
+  padding: 0.5rem 1rem;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
 .timekeeper-retry-button:hover {
-	background: hsl(var(--secondary) / 0.8);
+  background: hsl(var(--secondary) / 0.8);
 }
 
 /* Fade-in animation for timekeeper portal */
 @keyframes timekeeperFadeIn {
-	from {
-		opacity: 0;
-		transform: translateY(-0.625rem);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
+  from {
+    opacity: 0;
+    transform: translateY(-0.625rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .timekeeper-portal {
-	animation: timekeeperFadeIn 0.2s ease-out;
+  animation: timekeeperFadeIn 0.2s ease-out;
 }
 
 /* React Timekeeper Library Styles Integration */
 .react-timekeeper {
-	--timekeeper-bg: hsl(var(--card));
-	--timekeeper-text: hsl(var(--card-foreground));
-	--timekeeper-selected: hsl(var(--primary));
-	--timekeeper-selected-text: hsl(var(--primary-foreground));
-	--timekeeper-hand: hsl(var(--primary));
-	--timekeeper-hover: hsl(var(--accent));
-	--timekeeper-hover-text: hsl(var(--accent-foreground));
-	--timekeeper-border: hsl(var(--border));
-	--timekeeper-muted: hsl(var(--muted));
-	--timekeeper-muted-text: hsl(var(--muted-foreground));
+  --timekeeper-bg: hsl(var(--card));
+  --timekeeper-text: hsl(var(--card-foreground));
+  --timekeeper-selected: hsl(var(--primary));
+  --timekeeper-selected-text: hsl(var(--primary-foreground));
+  --timekeeper-hand: hsl(var(--primary));
+  --timekeeper-hover: hsl(var(--accent));
+  --timekeeper-hover-text: hsl(var(--accent-foreground));
+  --timekeeper-border: hsl(var(--border));
+  --timekeeper-muted: hsl(var(--muted));
+  --timekeeper-muted-text: hsl(var(--muted-foreground));
 }
 
 /* Timekeeper overrides for proper theming */
 .react-timekeeper__clock-wrapper {
-	background: var(--timekeeper-bg);
-	color: var(--timekeeper-text);
-	border-radius: var(--radius);
+  background: var(--timekeeper-bg);
+  color: var(--timekeeper-text);
+  border-radius: var(--radius);
 }
 
 .react-timekeeper__time-dropdown {
-	background: var(--timekeeper-bg);
-	color: var(--timekeeper-text);
-	border-color: var(--timekeeper-border);
-	border-radius: var(--radius);
-	box-shadow: var(--shadow-md);
+  background: var(--timekeeper-bg);
+  color: var(--timekeeper-text);
+  border-color: var(--timekeeper-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
 }
 
 .react-timekeeper__time-dropdown-option {
-	color: var(--timekeeper-text);
-	transition: all 0.2s ease;
+  color: var(--timekeeper-text);
+  transition: all 0.2s ease;
 }
 
 .react-timekeeper__time-dropdown-option:hover {
-	background: var(--timekeeper-hover);
-	color: var(--timekeeper-hover-text);
+  background: var(--timekeeper-hover);
+  color: var(--timekeeper-hover-text);
 }
 
 .react-timekeeper__time-dropdown-option--active {
-	background: var(--timekeeper-selected);
-	color: var(--timekeeper-selected-text);
+  background: var(--timekeeper-selected);
+  color: var(--timekeeper-selected-text);
 }
 
 .react-timekeeper__clock-hand {
-	background: var(--timekeeper-bg);
+  background: var(--timekeeper-bg);
 }
 
 .react-timekeeper__clock-hand::after {
-	background: var(--timekeeper-bg);
+  background: var(--timekeeper-bg);
 }
 
 .react-timekeeper__done-button {
-	background: var(--timekeeper-selected);
-	color: var(--timekeeper-selected-text);
-	border: none;
-	padding: 8px 16px;
-	border-radius: var(--radius);
-	cursor: pointer;
-	font-weight: 500;
-	transition: opacity 0.2s;
-	font-family: inherit;
+  background: var(--timekeeper-selected);
+  color: var(--timekeeper-selected-text);
+  border: none;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-weight: 500;
+  transition: opacity 0.2s;
+  font-family: inherit;
 }
 
 .react-timekeeper__done-button:hover {
-	opacity: 0.9;
+  opacity: 0.9;
 }
 
 .react-timekeeper__top-bar {
-	background: var(--timekeeper-bg);
-	border-bottom: 1px solid var(--timekeeper-border);
-	color: var(--timekeeper-text);
+  background: var(--timekeeper-bg);
+  border-bottom: 1px solid var(--timekeeper-border);
+  color: var(--timekeeper-text);
 }
 
 .react-timekeeper__time-dropdown-button {
-	background: var(--timekeeper-muted);
-	color: var(--timekeeper-muted-text);
-	border: 1px solid var(--timekeeper-border);
-	border-radius: var(--radius);
-	transition: all 0.2s ease;
+  background: var(--timekeeper-muted);
+  color: var(--timekeeper-muted-text);
+  border: 1px solid var(--timekeeper-border);
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
 }
 
 .react-timekeeper__time-dropdown-button:hover {
-	background: var(--timekeeper-hover);
-	color: var(--timekeeper-hover-text);
+  background: var(--timekeeper-hover);
+  color: var(--timekeeper-hover-text);
 }
 
 .react-timekeeper__meridiem-wrapper {
-	background: var(--timekeeper-bg);
+  background: var(--timekeeper-bg);
 }
 
 .react-timekeeper__meridiem {
-	background: var(--timekeeper-muted);
-	color: var(--timekeeper-muted-text);
-	border: 1px solid var(--timekeeper-border);
-	border-radius: var(--radius);
-	transition: all 0.2s ease;
+  background: var(--timekeeper-muted);
+  color: var(--timekeeper-muted-text);
+  border: 1px solid var(--timekeeper-border);
+  border-radius: var(--radius);
+  transition: all 0.2s ease;
 }
 
 .react-timekeeper__meridiem--active {
-	background: var(--timekeeper-selected);
-	color: var(--timekeeper-selected-text);
+  background: var(--timekeeper-selected);
+  color: var(--timekeeper-selected-text);
 }
 
 .react-timekeeper__meridiem:hover {
-	background: var(--timekeeper-hover);
-	color: var(--timekeeper-hover-text);
+  background: var(--timekeeper-hover);
+  color: var(--timekeeper-hover-text);
 }
 
 /* Dark theme specific adjustments */
 .dark .react-timekeeper {
-	--timekeeper-bg: hsl(var(--card));
-	--timekeeper-text: hsl(var(--card-foreground));
-	--timekeeper-selected: hsl(var(--primary));
-	--timekeeper-selected-text: hsl(var(--primary-foreground));
-	--timekeeper-hand: hsl(var(--primary));
-	--timekeeper-hover: hsl(var(--accent));
-	--timekeeper-hover-text: hsl(var(--accent-foreground));
-	--timekeeper-border: hsl(var(--border));
-	--timekeeper-muted: hsl(var(--muted));
-	--timekeeper-muted-text: hsl(var(--muted-foreground));
+  --timekeeper-bg: hsl(var(--card));
+  --timekeeper-text: hsl(var(--card-foreground));
+  --timekeeper-selected: hsl(var(--primary));
+  --timekeeper-selected-text: hsl(var(--primary-foreground));
+  --timekeeper-hand: hsl(var(--primary));
+  --timekeeper-hover: hsl(var(--accent));
+  --timekeeper-hover-text: hsl(var(--accent-foreground));
+  --timekeeper-border: hsl(var(--border));
+  --timekeeper-muted: hsl(var(--muted));
+  --timekeeper-muted-text: hsl(var(--muted-foreground));
 }
 
 /* Click outside ignore class for portal interactions */
 .click-outside-ignore,
 .click-outside-ignore * {
-	/* Marker class for click-outside detection system */
+  /* Marker class for click-outside detection system */
 }
 
 /* Ensure proper layering above grid overlays */
 .timekeeper-portal {
-	z-index: calc(var(--z-index-date-picker, 3000) + 100);
+  z-index: calc(var(--z-index-date-picker, 3000) + 100);
 }

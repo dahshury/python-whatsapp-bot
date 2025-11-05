@@ -2,78 +2,78 @@
 
 /* Prose dark mode overrides */
 .prose {
-	--tw-prose-body: hsl(var(--foreground));
-	--tw-prose-headings: hsl(var(--foreground));
-	--tw-prose-lead: hsl(var(--muted-foreground));
-	--tw-prose-links: hsl(var(--primary));
-	--tw-prose-bold: hsl(var(--foreground));
-	--tw-prose-counters: hsl(var(--muted-foreground));
-	--tw-prose-bullets: hsl(var(--muted-foreground));
-	--tw-prose-hr: hsl(var(--border));
-	--tw-prose-quotes: hsl(var(--foreground));
-	--tw-prose-quote-borders: hsl(var(--border));
-	--tw-prose-captions: hsl(var(--muted-foreground));
-	--tw-prose-code: hsl(var(--foreground));
-	--tw-prose-pre-code: hsl(var(--foreground));
-	--tw-prose-pre-bg: hsl(var(--muted));
-	--tw-prose-th-borders: hsl(var(--border));
-	--tw-prose-td-borders: hsl(var(--border));
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-lead: hsl(var(--muted-foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-quotes: hsl(var(--foreground));
+  --tw-prose-quote-borders: hsl(var(--border));
+  --tw-prose-captions: hsl(var(--muted-foreground));
+  --tw-prose-code: hsl(var(--foreground));
+  --tw-prose-pre-code: hsl(var(--foreground));
+  --tw-prose-pre-bg: hsl(var(--muted));
+  --tw-prose-th-borders: hsl(var(--border));
+  --tw-prose-td-borders: hsl(var(--border));
 }
 
 /* Dark mode specific prose colors */
 .dark .prose {
-	--tw-prose-body: hsl(var(--foreground));
-	--tw-prose-headings: hsl(var(--foreground));
-	--tw-prose-lead: hsl(var(--muted-foreground));
-	--tw-prose-links: hsl(var(--primary));
-	--tw-prose-bold: hsl(var(--foreground));
-	--tw-prose-counters: hsl(var(--muted-foreground));
-	--tw-prose-bullets: hsl(var(--muted-foreground));
-	--tw-prose-hr: hsl(var(--border));
-	--tw-prose-quotes: hsl(var(--foreground));
-	--tw-prose-quote-borders: hsl(var(--border));
-	--tw-prose-captions: hsl(var(--muted-foreground));
-	--tw-prose-code: hsl(var(--foreground));
-	--tw-prose-pre-code: hsl(var(--foreground));
-	--tw-prose-pre-bg: hsl(var(--muted));
-	--tw-prose-th-borders: hsl(var(--border));
-	--tw-prose-td-borders: hsl(var(--border));
+  --tw-prose-body: hsl(var(--foreground));
+  --tw-prose-headings: hsl(var(--foreground));
+  --tw-prose-lead: hsl(var(--muted-foreground));
+  --tw-prose-links: hsl(var(--primary));
+  --tw-prose-bold: hsl(var(--foreground));
+  --tw-prose-counters: hsl(var(--muted-foreground));
+  --tw-prose-bullets: hsl(var(--muted-foreground));
+  --tw-prose-hr: hsl(var(--border));
+  --tw-prose-quotes: hsl(var(--foreground));
+  --tw-prose-quote-borders: hsl(var(--border));
+  --tw-prose-captions: hsl(var(--muted-foreground));
+  --tw-prose-code: hsl(var(--foreground));
+  --tw-prose-pre-code: hsl(var(--foreground));
+  --tw-prose-pre-bg: hsl(var(--muted));
+  --tw-prose-th-borders: hsl(var(--border));
+  --tw-prose-td-borders: hsl(var(--border));
 }
 
 /* Override default prose invert behavior */
 .prose :where(code):not(:where([class~="not-prose"] *)) {
-	background-color: hsl(var(--muted));
-	color: hsl(var(--foreground));
-	font-weight: 400;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  font-weight: 400;
 }
 
 .prose :where(pre):not(:where([class~="not-prose"] *)) {
-	background-color: hsl(var(--muted));
-	color: hsl(var(--foreground));
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 /* Ensure inline code has proper padding and rounded corners */
 .prose :where(:not(pre) > code):not(:where([class~="not-prose"] *)) {
-	padding: 0.125rem 0.25rem;
-	border-radius: 0.25rem;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
 }
 
 /* List markers should use theme colors */
 .prose :where(ul > li)::marker {
-	color: hsl(var(--primary));
+  color: hsl(var(--primary));
 }
 
 .prose :where(ol > li)::marker {
-	color: hsl(var(--primary));
+  color: hsl(var(--primary));
 }
 
 /* TipTap editor: ensure list markers follow theme colors as well */
 .tiptap .ProseMirror ul li::marker {
-	color: hsl(var(--primary));
+  color: hsl(var(--primary));
 }
 
 .tiptap .ProseMirror ol li::marker {
-	color: hsl(var(--primary));
+  color: hsl(var(--primary));
 }
 
 /* Chat-only stronger override to guarantee theme color in the sidebar */
@@ -81,58 +81,58 @@
 .message-row .prose :where(ol > li)::marker,
 .message-row .tiptap .ProseMirror ul li::marker,
 .message-row .tiptap .ProseMirror ol li::marker {
-	color: hsl(var(--primary));
+  color: hsl(var(--primary));
 }
 
 /* Details UI inside chat messages */
 .tiptap details.details,
 .prose details.details {
-	margin: 0.75rem 0;
-	border: 1px solid hsl(var(--border));
-	border-radius: 0.5rem;
-	padding: 0.5rem 0.6rem;
-	background: hsl(var(--card));
+  margin: 0.75rem 0;
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: hsl(var(--card));
 }
 .tiptap details.details > summary,
 .prose details.details > summary {
-	font-weight: 700;
-	cursor: pointer;
+  font-weight: 700;
+  cursor: pointer;
 }
 .tiptap details.details > summary::before,
 .prose details.details > summary::before {
-	content: "▸";
-	display: inline-block;
-	margin-right: 0.4rem;
-	transition: transform 150ms ease;
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.4rem;
+  transition: transform 150ms ease;
 }
 .tiptap details.details[open] > summary::before,
 .prose details.details[open] > summary::before {
-	transform: rotate(90deg);
+  transform: rotate(90deg);
 }
 .tiptap details.details pre,
 .tiptap details.details code,
 .prose details.details pre {
-	margin: 0.5rem 0 0 0;
-	background: hsl(var(--muted));
-	color: hsl(var(--foreground));
+  margin: 0.5rem 0 0 0;
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 .tiptap details.details[open],
 .prose details.details[open] {
-	box-shadow: 0 0 0 1px hsl(var(--accent) / 0.3) inset;
+  box-shadow: 0 0 0 1px hsl(var(--accent) / 0.3) inset;
 }
 
 /* YouTube embed styles in chat */
 .prose div[data-youtube-video] {
-	cursor: move;
-	padding-right: 1.5rem;
+  cursor: move;
+  padding-right: 1.5rem;
 }
 .prose div[data-youtube-video] iframe {
-	border: 0.5rem solid hsl(var(--border));
-	display: block;
-	min-height: 200px;
-	min-width: 200px;
-	outline: 0px solid transparent;
-	border-radius: 0.5rem;
-	width: 100%;
-	max-width: 800px;
+  border: 0.5rem solid hsl(var(--border));
+  display: block;
+  min-height: 200px;
+  min-width: 200px;
+  outline: 0px solid transparent;
+  border-radius: 0.5rem;
+  width: 100%;
+  max-width: 800px;
 }

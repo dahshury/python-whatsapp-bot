@@ -4,93 +4,93 @@
 .fc-theme-standard .week-view-container .fc-col-header-cell,
 .fc .week-view-container .fc-col-header-cell,
 .week-view-container th.fc-col-header-cell {
-	position: relative;
-	padding: 0.12em 0;
-	font-weight: 600;
-	font-size: 0.9em;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	color: hsl(var(--muted-foreground));
-	/* Fancy multi-stop gradient with depth */
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.05) 0%,
-		hsl(var(--muted) / 0.15) 20%,
-		hsl(var(--muted) / 0.25) 40%,
-		hsl(var(--muted) / 0.3) 50%,
-		hsl(var(--muted) / 0.25) 60%,
-		hsl(var(--muted) / 0.15) 80%,
-		hsl(var(--muted) / 0.05) 100%
-	);
-	/* Multiple borders for depth effect */
-	border: none;
-	border-bottom: 1px solid hsl(var(--border) / 0.2);
-	box-shadow:
-		inset 0 1px 0 hsl(var(--background) / 0.5),
-		inset 0 -1px 0 hsl(var(--muted) / 0.4),
-		0 1px 2px hsl(var(--muted) / 0.1);
-	/* Smooth transitions */
-	transition: all 0.2s ease;
-	/* Subtle backdrop for glass effect */
-	backdrop-filter: blur(2px);
-	border-radius: 0;
-	text-align: center;
+  position: relative;
+  padding: 0.12em 0;
+  font-weight: 600;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  /* Fancy multi-stop gradient with depth */
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.05) 0%,
+    hsl(var(--muted) / 0.15) 20%,
+    hsl(var(--muted) / 0.25) 40%,
+    hsl(var(--muted) / 0.3) 50%,
+    hsl(var(--muted) / 0.25) 60%,
+    hsl(var(--muted) / 0.15) 80%,
+    hsl(var(--muted) / 0.05) 100%
+  );
+  /* Multiple borders for depth effect */
+  border: none;
+  border-bottom: 1px solid hsl(var(--border) / 0.2);
+  box-shadow:
+    inset 0 1px 0 hsl(var(--background) / 0.5),
+    inset 0 -1px 0 hsl(var(--muted) / 0.4),
+    0 1px 2px hsl(var(--muted) / 0.1);
+  /* Smooth transitions */
+  transition: all 0.2s ease;
+  /* Subtle backdrop for glass effect */
+  backdrop-filter: blur(2px);
+  border-radius: 0;
+  text-align: center;
 }
 
 /* Force cushion to be transparent (ordered by specificity) */
 .week-view-container th .fc-col-header-cell-cushion,
 .fc-theme-standard .week-view-container .fc-col-header-cell-cushion,
 .fc .week-view-container .fc-col-header-cell-cushion {
-	display: block;
-	padding: 0;
-	margin: 0;
-	font-size: inherit;
-	background: transparent;
-	border: none;
-	box-shadow: none;
-	color: inherit;
-	font-weight: inherit;
-	text-transform: inherit;
-	letter-spacing: inherit;
-	border-radius: 0;
-	width: 100%;
-	height: 100%;
+  display: block;
+  padding: 0;
+  margin: 0;
+  font-size: inherit;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  border-radius: 0;
+  width: 100%;
+  height: 100%;
 }
 
 /* Force hover state */
 .fc-theme-standard .week-view-container .fc-col-header-cell:hover,
 .fc .week-view-container .fc-col-header-cell:hover,
 .week-view-container th.fc-col-header-cell:hover {
-	/* All hover effects disabled */
-	transform: none;
-	cursor: default;
+  /* All hover effects disabled */
+  transform: none;
+  cursor: default;
 }
 
 /* Dark mode overrides */
 .dark .fc-theme-standard .week-view-container .fc-col-header-cell,
 .dark .fc .week-view-container .fc-col-header-cell,
 .dark .week-view-container th.fc-col-header-cell {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.15) 0%,
-		hsl(var(--muted) / 0.25) 20%,
-		hsl(var(--muted) / 0.35) 40%,
-		hsl(var(--muted) / 0.4) 50%,
-		hsl(var(--muted) / 0.35) 60%,
-		hsl(var(--muted) / 0.25) 80%,
-		hsl(var(--muted) / 0.15) 100%
-	);
-	border-bottom-color: hsl(var(--border) / 0.3);
-	box-shadow:
-		inset 0 1px 0 rgba(255, 255, 255, 0.05),
-		inset 0 -1px 0 rgba(0, 0, 0, 0.4),
-		0 1px 3px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.15) 0%,
+    hsl(var(--muted) / 0.25) 20%,
+    hsl(var(--muted) / 0.35) 40%,
+    hsl(var(--muted) / 0.4) 50%,
+    hsl(var(--muted) / 0.35) 60%,
+    hsl(var(--muted) / 0.25) 80%,
+    hsl(var(--muted) / 0.15) 100%
+  );
+  border-bottom-color: hsl(var(--border) / 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .dark .fc-theme-standard .week-view-container .fc-col-header-cell:hover,
 .dark .fc .week-view-container .fc-col-header-cell:hover,
 .dark .week-view-container th.fc-col-header-cell:hover {
-	/* All hover effects disabled in dark mode */
-	transform: none;
-	cursor: default;
+  /* All hover effects disabled in dark mode */
+  transform: none;
+  cursor: default;
 }

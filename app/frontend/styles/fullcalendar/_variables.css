@@ -7,81 +7,81 @@
  */
 
 :root {
-	/* Font sizes */
-	--fc-small-font-size: 0.85em;
+  /* Font sizes */
+  --fc-small-font-size: 0.85em;
 
-	/* Page and background colors */
-	--fc-page-bg-color: hsl(var(--background));
-	--fc-neutral-bg-color: hsl(var(--muted) / 0.3);
-	--fc-neutral-text-color: hsl(var(--muted-foreground));
-	--fc-border-color: hsl(var(--border));
+  /* Page and background colors */
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-neutral-bg-color: hsl(var(--muted) / 0.3);
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+  --fc-border-color: hsl(var(--border));
 
-	/* Button colors */
-	--fc-button-text-color: hsl(var(--primary-foreground));
-	--fc-button-bg-color: hsl(var(--primary));
-	--fc-button-border-color: hsl(var(--primary));
-	--fc-button-hover-bg-color: hsl(var(--primary) / 0.9);
-	--fc-button-hover-border-color: hsl(var(--primary) / 0.9);
-	--fc-button-active-bg-color: hsl(var(--primary) / 0.8);
-	--fc-button-active-border-color: hsl(var(--primary) / 0.8);
+  /* Button colors */
+  --fc-button-text-color: hsl(var(--primary-foreground));
+  --fc-button-bg-color: hsl(var(--primary));
+  --fc-button-border-color: hsl(var(--primary));
+  --fc-button-hover-bg-color: hsl(var(--primary) / 0.9);
+  --fc-button-hover-border-color: hsl(var(--primary) / 0.9);
+  --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
+  --fc-button-active-border-color: hsl(var(--primary) / 0.8);
 
-	/* Event colors */
-	--fc-event-bg-color: hsl(var(--primary));
-	--fc-event-border-color: hsl(var(--primary));
-	--fc-event-text-color: hsl(var(--primary-foreground));
-	--fc-event-selected-overlay-color: rgba(0, 0, 0, 0.25);
+  /* Event colors */
+  --fc-event-bg-color: hsl(var(--primary));
+  --fc-event-border-color: hsl(var(--primary));
+  --fc-event-text-color: hsl(var(--primary-foreground));
+  --fc-event-selected-overlay-color: rgba(0, 0, 0, 0.25);
 
-	/* Event state colors */
-	--fc-event-past-opacity: 0.6;
-	--fc-event-past-bg-color: hsl(var(--muted));
-	--fc-event-past-text-color: hsl(var(--muted-foreground));
-	--fc-event-disabled-bg-color: hsl(var(--muted) / 0.5);
-	--fc-event-disabled-text-color: hsl(var(--muted-foreground));
-	--fc-event-current-bg-color: hsl(var(--primary));
-	--fc-event-current-border-color: hsl(var(--primary));
+  /* Event state colors */
+  --fc-event-past-opacity: 0.6;
+  --fc-event-past-bg-color: hsl(var(--muted));
+  --fc-event-past-text-color: hsl(var(--muted-foreground));
+  --fc-event-disabled-bg-color: hsl(var(--muted) / 0.5);
+  --fc-event-disabled-text-color: hsl(var(--muted-foreground));
+  --fc-event-current-bg-color: hsl(var(--primary));
+  --fc-event-current-border-color: hsl(var(--primary));
 
-	/* Today and now indicator */
-	--fc-today-bg-color: hsl(var(--accent) / 0.15);
-	--fc-now-indicator-color: hsl(var(--destructive));
+  /* Today and now indicator */
+  --fc-today-bg-color: hsl(var(--accent) / 0.15);
+  --fc-now-indicator-color: hsl(var(--destructive));
 
-	/* Reservation type colors - single source of truth */
-	--fc-reservation-type-0-bg: #e2eee9; /* Check-up background */
-	--fc-reservation-type-0-border: #12b981; /* Check-up accent */
-	--fc-reservation-type-0-text: #12b981; /* Check-up text */
-	/* Hover gradient end (flat) */
-	--fc-reservation-type-0-bg-grad-end: #e2eee9;
+  /* Reservation type colors - single source of truth */
+  --fc-reservation-type-0-bg: #e2eee9; /* Check-up background */
+  --fc-reservation-type-0-border: #12b981; /* Check-up accent */
+  --fc-reservation-type-0-text: #12b981; /* Check-up text */
+  /* Hover gradient end (flat) */
+  --fc-reservation-type-0-bg-grad-end: #e2eee9;
 
-	--fc-reservation-type-1-bg: #e2e8f4; /* Follow-up background */
-	--fc-reservation-type-1-border: #3c82f6; /* Follow-up accent */
-	--fc-reservation-type-1-text: #3c82f6; /* Follow-up text */
-	/* Hover gradient end (flat) */
-	--fc-reservation-type-1-bg-grad-end: #e2e8f4;
-	--fc-conversation-bg: #edae49; /* Conversation - Orange/Yellow */
-	--fc-conversation-border: #edae49;
+  --fc-reservation-type-1-bg: #e2e8f4; /* Follow-up background */
+  --fc-reservation-type-1-border: #3c82f6; /* Follow-up accent */
+  --fc-reservation-type-1-text: #3c82f6; /* Follow-up text */
+  /* Hover gradient end (flat) */
+  --fc-reservation-type-1-bg-grad-end: #e2e8f4;
+  --fc-conversation-bg: #edae49; /* Conversation - Orange/Yellow */
+  --fc-conversation-border: #edae49;
 
-	/* Event resizer */
-	--fc-event-resizer-thickness: 8px;
-	--fc-event-resizer-dot-total-width: 8px;
-	--fc-event-resizer-dot-border-width: 1px;
+  /* Event resizer */
+  --fc-event-resizer-thickness: 8px;
+  --fc-event-resizer-dot-total-width: 8px;
+  --fc-event-resizer-dot-border-width: 1px;
 
-	/* Event stroke thickness - rem-based, clamped for readability across DPIs */
-	--fc-event-stroke-width: clamp(1px, 0.125rem, 0.1875rem);
+  /* Event stroke thickness - rem-based, clamped for readability across DPIs */
+  --fc-event-stroke-width: clamp(1px, 0.125rem, 0.1875rem);
 
-	/* Event typography sizes (REM-based) */
-	--fc-event-title-size: 0.78rem;
-	--fc-event-time-size: 0.65rem;
+  /* Event typography sizes (REM-based) */
+  --fc-event-title-size: 0.78rem;
+  --fc-event-time-size: 0.65rem;
 
-	/* Special background colors */
-	--fc-non-business-color: hsl(var(--muted) / 0.3);
-	--fc-bg-event-color: hsl(var(--chart-3));
-	--fc-bg-event-opacity: 0.3;
-	--fc-highlight-color: hsl(var(--accent) / 0.3);
+  /* Special background colors */
+  --fc-non-business-color: hsl(var(--muted) / 0.3);
+  --fc-bg-event-color: hsl(var(--chart-3));
+  --fc-bg-event-opacity: 0.3;
+  --fc-highlight-color: hsl(var(--accent) / 0.3);
 
-	/* Day grid specific */
-	--fc-daygrid-event-dot-width: 8px;
-	--fc-daygrid-event-vertical-gap: 0.35em;
+  /* Day grid specific */
+  --fc-daygrid-event-dot-width: 8px;
+  --fc-daygrid-event-vertical-gap: 0.35em;
 
-	/* List view specific */
-	--fc-list-event-dot-width: 10px;
-	--fc-list-event-hover-bg-color: hsl(var(--accent));
+  /* List view specific */
+  --fc-list-event-dot-width: 10px;
+  --fc-list-event-hover-bg-color: hsl(var(--accent));
 }

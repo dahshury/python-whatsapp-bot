@@ -7,8 +7,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["app/frontend/**"],
-    "experimentalScannerIgnores": ["**/*.css", "**/*.module.css"],
+    "includes": [
+      "app/frontend/**"
+    ],
+    "experimentalScannerIgnores": [
+      "**/*.css",
+      "**/*.module.css"
+    ],
     "maxSize": 1048576
   },
   "formatter": {
@@ -86,7 +91,9 @@
   },
   "overrides": [
     {
-      "includes": ["**/*.css"],
+      "includes": [
+        "**/*.css"
+      ],
       "linter": {
         "enabled": false
       },
@@ -95,7 +102,9 @@
       }
     },
     {
-      "includes": ["**/*.module.css"],
+      "includes": [
+        "**/*.module.css"
+      ],
       "css": {
         "parser": {
           "cssModules": true,
@@ -111,7 +120,9 @@
       }
     },
     {
-      "includes": ["**/logger.ts"],
+      "includes": [
+        "**/logger.ts"
+      ],
       "linter": {
         "rules": {
           "suspicious": {
@@ -121,5 +132,9 @@
       }
     }
   ],
-  "extends": ["ultracite/core", "ultracite/react", "ultracite/next"]
+  "extends": [
+    "ultracite/core",
+    "ultracite/react",
+    "ultracite/next"
+  ]
 }

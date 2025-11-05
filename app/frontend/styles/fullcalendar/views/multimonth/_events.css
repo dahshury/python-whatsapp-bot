@@ -2,16 +2,16 @@
 
 /* Enhanced event styling in multiMonth view */
 .fc-multimonth .fc-event {
-	@apply text-xs leading-tight;
-	box-shadow: none;
+  @apply text-xs leading-tight;
+  box-shadow: none;
 }
 
 .fc-multimonth .fc-event-title {
-	@apply truncate;
+  @apply truncate;
 }
 
 /* Dot events get a subtle glow */
 .fc-multimonth .fc-daygrid-event-dot {
-	width: 5px;
-	height: 5px;
+  width: 5px;
+  height: 5px;
 }

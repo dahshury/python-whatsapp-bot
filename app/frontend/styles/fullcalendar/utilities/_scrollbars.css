@@ -2,42 +2,42 @@
 
 /* Cross-browser theming for the FullCalendar list view scroller */
 .fc-list-view .fc-scroller {
-	/* Firefox */
-	scrollbar-width: thin;
-	scrollbar-color: hsl(var(--muted-foreground) / 0.35) hsl(var(--muted) / 0.2);
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) hsl(var(--muted) / 0.2);
 }
 
 /* Prefer slightly subtler track in the sidebar */
 .bg-sidebar .fc-list-view .fc-scroller {
-	scrollbar-width: thin;
-	scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) transparent;
 }
 
 .dark .fc-list-view .fc-scroller {
-	scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted) / 0.15);
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--muted) / 0.15);
 }
 
 /* WebKit (Chrome/Safari/Edge) */
 .fc-list-view .fc-scroller::-webkit-scrollbar {
-	@apply w-2 h-2;
+  @apply w-2 h-2;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-track {
-	@apply bg-muted/30 rounded;
+  @apply bg-muted/30 rounded;
 }
 
 .bg-sidebar .fc-list-view .fc-scroller::-webkit-scrollbar-track {
-	@apply bg-transparent;
+  @apply bg-transparent;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-thumb {
-	@apply bg-muted-foreground/40 rounded-full;
+  @apply bg-muted-foreground/40 rounded-full;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-thumb:hover {
-	@apply bg-muted-foreground/60;
+  @apply bg-muted-foreground/60;
 }
 
 .fc-list-view .fc-scroller::-webkit-scrollbar-corner {
-	background: transparent;
+  background: transparent;
 }

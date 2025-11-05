@@ -8,16 +8,16 @@
  * Usage: Wrap dynamic dock content with this cached shell
  */
 
-'use cache'
+"use cache";
 
-import { Dock } from '@shared/ui/dock'
-import type { ReactNode } from 'react'
+import { Dock } from "@shared/ui/dock";
+import type { ReactNode } from "react";
 
 type CachedDockShellProps = {
-	className?: string
-	children: ReactNode
-	direction?: 'top' | 'middle' | 'bottom'
-}
+  className?: string;
+  children: ReactNode;
+  direction?: "top" | "middle" | "bottom";
+};
 
 /**
  * Memoized Dock Shell
@@ -26,13 +26,13 @@ type CachedDockShellProps = {
  * This is the client-component equivalent of "use cache" for static structure.
  */
 export function CachedDockShell({
-	className,
-	children,
-	direction = 'middle',
+  className,
+  children,
+  direction = "middle",
 }: CachedDockShellProps) {
-	return (
-		<Dock className={className || ''} direction={direction}>
-			{children}
-		</Dock>
-	)
+  return (
+    <Dock className={className || ""} direction={direction}>
+      {children}
+    </Dock>
+  );
 }

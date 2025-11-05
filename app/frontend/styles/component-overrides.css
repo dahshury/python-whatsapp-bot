@@ -2,214 +2,214 @@
 
 /* Error Boundary Component */
 .error-boundary-container {
-	background-color: hsl(var(--card));
-	color: hsl(var(--card-foreground));
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
 }
 
 .error-boundary-details {
-	background-color: hsl(var(--destructive) / 0.1);
-	border-color: hsl(var(--destructive) / 0.3);
-	color: hsl(var(--destructive-foreground));
+  background-color: hsl(var(--destructive) / 0.1);
+  border-color: hsl(var(--destructive) / 0.3);
+  color: hsl(var(--destructive-foreground));
 }
 
 .dark .error-boundary-details {
-	background-color: hsl(var(--destructive) / 0.2);
-	border-color: hsl(var(--destructive) / 0.4);
+  background-color: hsl(var(--destructive) / 0.2);
+  border-color: hsl(var(--destructive) / 0.4);
 }
 
 .error-boundary-overlay {
-	background-color: hsl(var(--background) / 0.9);
+  background-color: hsl(var(--background) / 0.9);
 }
 
 /* Avatar Fallbacks */
 .avatar-fallback-primary {
-	background-color: hsl(var(--primary) / 0.1);
-	color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary));
 }
 
 .dark .avatar-fallback-primary {
-	background-color: hsl(var(--primary) / 0.2);
-	color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.2);
+  color: hsl(var(--primary));
 }
 
 .avatar-fallback-success {
-	background-color: hsl(var(--chart-3) / 0.1);
-	color: hsl(var(--chart-3));
+  background-color: hsl(var(--chart-3) / 0.1);
+  color: hsl(var(--chart-3));
 }
 
 .dark .avatar-fallback-success {
-	background-color: hsl(var(--chart-3) / 0.2);
-	color: hsl(var(--chart-3));
+  background-color: hsl(var(--chart-3) / 0.2);
+  color: hsl(var(--chart-3));
 }
 
 /* Chat Sidebar Specific */
 .chat-sidebar-container {
-	background-color: hsl(var(--card));
+  background-color: hsl(var(--card));
 }
 
 .chat-sidebar-header {
-	background-color: hsl(var(--card));
-	border-color: hsl(var(--border));
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
 
 .chat-sidebar-content {
-	background-color: hsl(var(--card));
+  background-color: hsl(var(--card));
 }
 
 .chat-sidebar-scrollarea {
-	background-color: hsl(var(--card));
+  background-color: hsl(var(--card));
 }
 
 .chat-sidebar-input-area {
-	background-color: hsl(var(--card));
-	border-color: hsl(var(--border));
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
 }
 
 /* Chat Message Bubbles */
 .chat-message-user {
-	background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted));
 }
 
 .dark .chat-message-user {
-	background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted));
 }
 
 .chat-message-assistant {
-	background-color: transparent;
+  background-color: transparent;
 }
 
 /* Chat Locked Message */
 .chat-locked-message {
-	background-color: hsl(var(--chart-4) / 0.1);
-	color: hsl(var(--chart-4));
-	border-color: hsl(var(--chart-4) / 0.3);
+  background-color: hsl(var(--chart-4) / 0.1);
+  color: hsl(var(--chart-4));
+  border-color: hsl(var(--chart-4) / 0.3);
 }
 
 .dark .chat-locked-message {
-	background-color: hsl(var(--chart-4) / 0.2);
-	color: hsl(var(--chart-4));
-	border-color: hsl(var(--chart-4) / 0.4);
+  background-color: hsl(var(--chart-4) / 0.2);
+  color: hsl(var(--chart-4));
+  border-color: hsl(var(--chart-4) / 0.4);
 }
 
 /* User/Bot Avatars */
 .chat-avatar-user {
-	background-color: hsl(var(--primary));
-	color: hsl(var(--primary-foreground));
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .chat-avatar-bot {
-	background-color: hsl(var(--muted-foreground));
-	color: hsl(var(--background));
+  background-color: hsl(var(--muted-foreground));
+  color: hsl(var(--background));
 }
 
 /* Loading Overlay */
 .chat-loading-overlay {
-	background-color: hsl(var(--background) / 0.5);
-	backdrop-filter: blur(4px);
+  background-color: hsl(var(--background) / 0.5);
+  backdrop-filter: blur(4px);
 }
 
 /* Message Text Colors */
 .chat-message-text {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 .chat-message-meta {
-	color: hsl(var(--muted-foreground));
+  color: hsl(var(--muted-foreground));
 }
 
 /* Prose/Markdown Styles for Chat Messages */
 .chat-prose {
-	color: hsl(var(--foreground));
+  color: hsl(var(--foreground));
 }
 
 .chat-prose pre {
-	background-color: hsl(var(--muted));
-	color: hsl(var(--foreground));
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .chat-prose code {
-	background-color: hsl(var(--muted));
-	color: hsl(var(--foreground));
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .dark .chat-prose pre {
-	background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted));
 }
 
 .dark .chat-prose code {
-	background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted));
 }
 
 /* Calendar View Container */
 .calendar-view-container {
-	background-color: hsl(var(--card));
+  background-color: hsl(var(--card));
 }
 
 .dark .calendar-view-container {
-	background-color: hsl(var(--card));
+  background-color: hsl(var(--card));
 }
 
 /* Context Menu Danger Item */
 .context-menu-danger {
-	color: hsl(var(--destructive));
+  color: hsl(var(--destructive));
 }
 
 .context-menu-danger:hover {
-	background-color: hsl(var(--destructive) / 0.1);
-	color: hsl(var(--destructive));
+  background-color: hsl(var(--destructive) / 0.1);
+  color: hsl(var(--destructive));
 }
 
 .dark .context-menu-danger:hover {
-	background-color: hsl(var(--destructive) / 0.2);
+  background-color: hsl(var(--destructive) / 0.2);
 }
 
 /* App Sidebar Toggle Button Group */
 .sidebar-toggle-group {
-	background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted));
 }
 
 .dark .sidebar-toggle-group {
-	background-color: hsl(var(--muted));
+  background-color: hsl(var(--muted));
 }
 
 /* Remove all hardcoded dark mode colors */
 .dark-bg-custom {
-	background-color: hsl(var(--card));
+  background-color: hsl(var(--card));
 }
 
 /* Conversation Event Colors */
 .conversation-event-light {
-	background-color: hsl(var(--chart-4));
-	color: hsl(var(--background));
+  background-color: hsl(var(--chart-4));
+  color: hsl(var(--background));
 }
 
 .conversation-event-dark {
-	background-color: hsl(var(--chart-4));
-	color: hsl(var(--foreground));
+  background-color: hsl(var(--chart-4));
+  color: hsl(var(--foreground));
 }
 
 /* Reservation Type Colors */
 .reservation-type-0 {
-	background-color: hsl(var(--chart-3));
-	color: hsl(var(--chart-3-foreground, var(--background)));
+  background-color: hsl(var(--chart-3));
+  color: hsl(var(--chart-3-foreground, var(--background)));
 }
 
 .reservation-type-1 {
-	background-color: hsl(var(--chart-1));
-	color: hsl(var(--chart-1-foreground, var(--background)));
+  background-color: hsl(var(--chart-1));
+  color: hsl(var(--chart-1-foreground, var(--background)));
 }
 
 /* Cancelled Event */
 .event-cancelled {
-	background-color: hsl(var(--muted));
-	color: hsl(var(--muted-foreground));
-	text-decoration: line-through;
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  text-decoration: line-through;
 }
 
 /* Loading States */
 .loading-skeleton {
-	background-color: hsl(var(--muted));
-	animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  background-color: hsl(var(--muted));
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Scrollbar theming is now handled by react-scrollbars-custom */
@@ -220,48 +220,48 @@
 
 /* Calendar hover card animation */
 @keyframes calendar-hover-card-in {
-	from {
-		opacity: 0;
-		transform: scale(0.95);
-	}
-	to {
-		opacity: 1;
-		transform: scale(1);
-	}
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .calendar-hover-card {
-	animation: calendar-hover-card-in 0.2s ease-out;
+  animation: calendar-hover-card-in 0.2s ease-out;
 }
 
 .calendar-hover-card-bottom {
-	animation: calendar-hover-card-in 0.2s ease-out;
+  animation: calendar-hover-card-in 0.2s ease-out;
 }
 
 /* Hover card fade animations */
 .hover-card-fade-enter {
-	opacity: 0;
-	transform: scale(0.95);
-	transform-origin: center;
-	transition: none; /* No transition on initial render */
+  opacity: 0;
+  transform: scale(0.95);
+  transform-origin: center;
+  transition: none; /* No transition on initial render */
 }
 
 /* Active state - visible (applied after mount) */
 .hover-card-active {
-	opacity: 1;
-	transform: scale(1);
-	transform-origin: center;
-	transition:
-		opacity 200ms ease-out,
-		transform 200ms ease-out;
+  opacity: 1;
+  transform: scale(1);
+  transform-origin: center;
+  transition:
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
 }
 
 /* Exit animation */
 .hover-card-fade-exit {
-	opacity: 0;
-	transform: scale(0.95);
-	transform-origin: center;
-	transition:
-		opacity 0.5s ease-out,
-		transform 0.5s ease-out;
+  opacity: 0;
+  transform: scale(0.95);
+  transform-origin: center;
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
 }

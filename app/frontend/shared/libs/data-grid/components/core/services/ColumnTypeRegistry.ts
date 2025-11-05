@@ -1,42 +1,42 @@
 import type {
-	IColumnType,
-	IColumnTypeRegistry,
-} from '../interfaces/IColumnType'
-import type { ColumnDataType } from '../interfaces/IDataSource'
+  IColumnType,
+  IColumnTypeRegistry,
+} from "../interfaces/IColumnType";
+import type { ColumnDataType } from "../interfaces/IDataSource";
 
 export class ColumnTypeRegistry implements IColumnTypeRegistry {
-	private static instance: ColumnTypeRegistry
-	private readonly columnTypes: Map<ColumnDataType, IColumnType> = new Map()
+  private static instance: ColumnTypeRegistry;
+  private readonly columnTypes: Map<ColumnDataType, IColumnType> = new Map();
 
-	private constructor() {}
+  private constructor() {}
 
-	static getInstance(): ColumnTypeRegistry {
-		if (!ColumnTypeRegistry.instance) {
-			ColumnTypeRegistry.instance = new ColumnTypeRegistry()
-		}
-		return ColumnTypeRegistry.instance
-	}
+  static getInstance(): ColumnTypeRegistry {
+    if (!ColumnTypeRegistry.instance) {
+      ColumnTypeRegistry.instance = new ColumnTypeRegistry();
+    }
+    return ColumnTypeRegistry.instance;
+  }
 
-	register(columnType: IColumnType): void {
-		// Only register if not already registered to prevent warnings in development
-		if (!this.columnTypes.has(columnType.dataType)) {
-			this.columnTypes.set(columnType.dataType, columnType)
-		}
-	}
+  register(columnType: IColumnType): void {
+    // Only register if not already registered to prevent warnings in development
+    if (!this.columnTypes.has(columnType.dataType)) {
+      this.columnTypes.set(columnType.dataType, columnType);
+    }
+  }
 
-	get(dataType: ColumnDataType): IColumnType | undefined {
-		return this.columnTypes.get(dataType)
-	}
+  get(dataType: ColumnDataType): IColumnType | undefined {
+    return this.columnTypes.get(dataType);
+  }
 
-	getAll(): Map<ColumnDataType, IColumnType> {
-		return new Map(this.columnTypes)
-	}
+  getAll(): Map<ColumnDataType, IColumnType> {
+    return new Map(this.columnTypes);
+  }
 
-	hasType(dataType: ColumnDataType): boolean {
-		return this.columnTypes.has(dataType)
-	}
+  hasType(dataType: ColumnDataType): boolean {
+    return this.columnTypes.has(dataType);
+  }
 
-	clear(): void {
-		this.columnTypes.clear()
-	}
+  clear(): void {
+    this.columnTypes.clear();
+  }
 }

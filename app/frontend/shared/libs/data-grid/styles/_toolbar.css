@@ -1,42 +1,42 @@
 /* Glide Grid Toolbar Styles */
 
 .glide-grid-toolbar {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: flex-end;
-	padding: 4px;
-	background-color: var(--gdg-bg-header, hsl(var(--background)));
-	border: 1px solid var(--gdg-border-color, hsl(var(--border)));
-	border-radius: 6px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	opacity: 1;
-	visibility: visible;
-	transition: all 150ms ease-in;
-	pointer-events: auto;
-	margin: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 4px;
+  background-color: var(--gdg-bg-header, hsl(var(--background)));
+  border: 1px solid var(--gdg-border-color, hsl(var(--border)));
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  opacity: 1;
+  visibility: visible;
+  transition: all 150ms ease-in;
+  pointer-events: auto;
+  margin: 8px;
 }
 
 .glide-grid-toolbar button {
-	background: transparent;
-	border: none;
-	padding: 4px;
-	cursor: pointer;
-	color: var(--gdg-toolbar-icon);
-	border-radius: 4px;
-	transition: all 150ms ease;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--gdg-toolbar-icon);
+  border-radius: 4px;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .glide-grid-toolbar button:hover:not(:disabled) {
-	background-color: var(--gdg-toolbar-hover-bg);
-	color: var(--gdg-toolbar-hover-icon);
-	transform: scale(1.05);
+  background-color: var(--gdg-toolbar-hover-bg);
+  color: var(--gdg-toolbar-hover-icon);
+  transform: scale(1.05);
 }
 
 .glide-grid-toolbar button:disabled {
-	cursor: not-allowed;
-	opacity: 0.4;
+  cursor: not-allowed;
+  opacity: 0.4;
 }

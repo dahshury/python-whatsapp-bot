@@ -4,14 +4,14 @@
  */
 
 export type WebSocketMessage = {
-	type: string
-	data?: unknown
-}
+  type: string;
+  data?: unknown;
+};
 
 export type WebSocketPort = {
-	connect(): Promise<void>
-	disconnect(): Promise<void>
-	send(message: WebSocketMessage): Promise<boolean>
-	subscribe(callback: (message: WebSocketMessage) => void): () => void // returns unsubscribe function
-	isConnected(): boolean
-}
+  connect(): Promise<void>;
+  disconnect(): Promise<void>;
+  send(message: WebSocketMessage): Promise<boolean>;
+  subscribe(callback: (message: WebSocketMessage) => void): () => void; // returns unsubscribe function
+  isConnected(): boolean;
+};

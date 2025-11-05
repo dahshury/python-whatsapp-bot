@@ -1,7 +1,7 @@
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
-import { useCallback, useRef } from 'react'
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { useCallback, useRef } from "react";
 
-export type ExcalidrawAPI = ExcalidrawImperativeAPI
+export type ExcalidrawAPI = ExcalidrawImperativeAPI;
 
 /**
  * Hook for managing the Excalidraw API reference.
@@ -14,11 +14,11 @@ export type ExcalidrawAPI = ExcalidrawImperativeAPI
  * ```
  */
 export const useExcalidrawAPI = () => {
-	const apiRef = useRef<ExcalidrawAPI | null>(null)
+  const apiRef = useRef<ExcalidrawAPI | null>(null);
 
-	const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => {
-		apiRef.current = api
-	}, [])
+  const onExcalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => {
+    apiRef.current = api;
+  }, []);
 
-	return { apiRef, onExcalidrawAPI } as const
-}
+  return { apiRef, onExcalidrawAPI } as const;
+};

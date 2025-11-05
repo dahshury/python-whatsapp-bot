@@ -1,0 +1,1 @@
+export { DocumentEditorCanvas } from "./DocumentEditorCanvas";

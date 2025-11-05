@@ -2,49 +2,49 @@
 
 /* Base scrollbar container */
 .ScrollbarsCustom-themed {
-	/* Container inherits theme context */
-	position: relative;
+  /* Container inherits theme context */
+  position: relative;
 }
 
 /* Wrapper - needed for layout */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Wrapper {
-	position: absolute;
-	inset: 0;
-	overflow: hidden;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
 /* Scroller - contains native scrollbars */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Scroller {
-	position: absolute;
-	inset: 0;
-	padding-right: var(--scrollbar-width, 17px);
-	padding-bottom: 0; /* Do not reserve space for horizontal track by default */
-	overflow: scroll;
-	scrollbar-width: none; /* Firefox */
-	-ms-overflow-style: none; /* IE/Edge */
+  position: absolute;
+  inset: 0;
+  padding-right: var(--scrollbar-width, 17px);
+  padding-bottom: 0; /* Do not reserve space for horizontal track by default */
+  overflow: scroll;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
 /* Main content scrollbar - takes up real space */
 .main-content-scrollbar .ScrollbarsCustom-Scroller {
-	/* Keep default padding-right to make space for scrollbar */
-	padding-right: 18px; /* Track width + 3px extra space */
+  /* Keep default padding-right to make space for scrollbar */
+  padding-right: 18px; /* Track width + 3px extra space */
 }
 
 /* Remove any reserved space for a horizontal scrollbar in main content */
 .main-content-scrollbar .ScrollbarsCustom-Scroller {
-	padding-bottom: 0;
-	overflow-x: hidden;
+  padding-bottom: 0;
+  overflow-x: hidden;
 }
 
 .main-content-scrollbar .ScrollbarsCustom-TrackY {
-	/* Track should be at the right edge within its allocated space */
-	width: 15px;
-	right: -1px; /* Push track 3px further right */
+  /* Track should be at the right edge within its allocated space */
+  width: 15px;
+  right: -1px; /* Push track 3px further right */
 }
 
 .main-content-scrollbar .ScrollbarsCustom-ThumbY {
-	width: 12px;
-	margin: 0 1.5px; /* Center thumb in track */
+  width: 12px;
+  margin: 0 1.5px; /* Center thumb in track */
 }
 
 /* Hide horizontal track entirely for main content */
@@ -52,209 +52,209 @@
 
 /* Chat scrollbar - 20% thicker than default */
 .chat-scrollbar .ScrollbarsCustom-TrackY {
-	width: 18px; /* 15px * 1.2 */
+  width: 18px; /* 15px * 1.2 */
 }
 
 .chat-scrollbar .ScrollbarsCustom-ThumbY {
-	width: 14px; /* 12px * 1.2 */
-	margin: 0 2px; /* Center thumb in wider track */
+  width: 14px; /* 12px * 1.2 */
+  margin: 0 2px; /* Center thumb in wider track */
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-Scroller::-webkit-scrollbar {
-	display: none; /* Chrome/Safari */
+  display: none; /* Chrome/Safari */
 }
 
 /* Content wrapper */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Content {
-	box-sizing: border-box;
+  box-sizing: border-box;
 }
 
 /* Ensure page content can flex to fill available height */
 .main-content-scrollbar .ScrollbarsCustom-Content {
-	min-height: 100%;
-	display: flex;
-	flex-direction: column;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Track styles */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Track {
-	position: absolute;
-	overflow: hidden;
-	background-color: hsl(var(--muted) / 0.3);
-	border-radius: var(--radius);
-	transition:
-		background-color 0.2s ease,
-		opacity 0.2s ease;
-	user-select: none;
+  position: absolute;
+  overflow: hidden;
+  background-color: hsl(var(--muted) / 0.3);
+  border-radius: var(--radius);
+  transition:
+    background-color 0.2s ease,
+    opacity 0.2s ease;
+  user-select: none;
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-Track:hover {
-	background-color: hsl(var(--muted) / 0.5);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 /* Track positioning */
 .ScrollbarsCustom-themed .ScrollbarsCustom-TrackY {
-	width: 15px; /* Tripled from 10px */
-	top: 0;
-	right: 0;
-	bottom: 0;
+  width: 15px; /* Tripled from 10px */
+  top: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-TrackX {
-	height: 15px; /* Tripled from 10px */
-	left: 0;
-	right: 0;
-	bottom: 0;
+  height: 15px; /* Tripled from 10px */
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 /* Thumb styles */
 .ScrollbarsCustom-themed .ScrollbarsCustom-Thumb {
-	position: relative;
-	background-color: hsl(var(--muted-foreground) / 0.5);
-	border-radius: var(--radius);
-	transition: background-color 0.2s ease;
-	cursor: grab;
+  position: relative;
+  background-color: hsl(var(--muted-foreground) / 0.5);
+  border-radius: var(--radius);
+  transition: background-color 0.2s ease;
+  cursor: grab;
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-Thumb:hover {
-	background-color: hsl(var(--muted-foreground) / 0.7);
+  background-color: hsl(var(--muted-foreground) / 0.7);
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-Thumb.dragging {
-	background-color: hsl(var(--primary));
-	cursor: grabbing;
+  background-color: hsl(var(--primary));
+  cursor: grabbing;
 }
 
 /* Thumb sizing */
 .ScrollbarsCustom-themed .ScrollbarsCustom-ThumbY {
-	width: 12px; /* Tripled from 6px */
-	margin: 0 0px;
+  width: 12px; /* Tripled from 6px */
+  margin: 0 0px;
 }
 
 .ScrollbarsCustom-themed .ScrollbarsCustom-ThumbX {
-	height: 12px; /* Tripled from 6px */
-	margin: 0px 0px;
+  height: 12px; /* Tripled from 6px */
+  margin: 0px 0px;
 }
 
 /* Thin variant */
 .ScrollbarsCustom-themed.scrollbar-thin .ScrollbarsCustom-TrackY {
-	width: 6px;
+  width: 6px;
 }
 
 .ScrollbarsCustom-themed.scrollbar-thin .ScrollbarsCustom-TrackX {
-	height: 6px;
+  height: 6px;
 }
 
 .ScrollbarsCustom-themed.scrollbar-thin .ScrollbarsCustom-ThumbY {
-	width: 4px;
-	margin: 0 1px;
+  width: 4px;
+  margin: 0 1px;
 }
 
 .ScrollbarsCustom-themed.scrollbar-thin .ScrollbarsCustom-ThumbX {
-	height: 4px;
-	margin: 1px 0;
+  height: 4px;
+  margin: 1px 0;
 }
 
 /* Auto-hide variant */
 .ScrollbarsCustom-themed.scrollbar-autohide .ScrollbarsCustom-Track {
-	opacity: 0;
-	transition: opacity 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .ScrollbarsCustom-themed.scrollbar-autohide:hover .ScrollbarsCustom-Track {
-	opacity: 1;
+  opacity: 1;
 }
 
 /* Dark mode adjustments */
 .dark .ScrollbarsCustom-themed .ScrollbarsCustom-Track {
-	background-color: hsl(var(--muted) / 0.2);
+  background-color: hsl(var(--muted) / 0.2);
 }
 
 .dark .ScrollbarsCustom-themed .ScrollbarsCustom-Track:hover {
-	background-color: hsl(var(--muted) / 0.3);
+  background-color: hsl(var(--muted) / 0.3);
 }
 
 .dark .ScrollbarsCustom-themed .ScrollbarsCustom-Thumb {
-	background-color: hsl(var(--muted-foreground) / 0.3);
+  background-color: hsl(var(--muted-foreground) / 0.3);
 }
 
 .dark .ScrollbarsCustom-themed .ScrollbarsCustom-Thumb:hover {
-	background-color: hsl(var(--muted-foreground) / 0.5);
+  background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
 /* RTL Support */
 .ScrollbarsCustom-themed.rtl .ScrollbarsCustom-TrackY {
-	right: auto;
-	left: 0;
+  right: auto;
+  left: 0;
 }
 
 /* Permanent scrollbars */
 .ScrollbarsCustom-themed.scrollbar-permanent .ScrollbarsCustom-Track {
-	opacity: 1;
+  opacity: 1;
 }
 
 /* Minimal styling variant */
 .ScrollbarsCustom-themed.scrollbar-minimal .ScrollbarsCustom-Track {
-	background-color: transparent;
+  background-color: transparent;
 }
 
 .ScrollbarsCustom-themed.scrollbar-minimal .ScrollbarsCustom-Thumb {
-	background-color: hsl(var(--border));
+  background-color: hsl(var(--border));
 }
 
 .ScrollbarsCustom-themed.scrollbar-minimal .ScrollbarsCustom-Thumb:hover {
-	background-color: hsl(var(--muted-foreground) / 0.5);
+  background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
 /* macOS-style scrollbars */
 .ScrollbarsCustom-themed.scrollbar-macos .ScrollbarsCustom-Track {
-	background-color: transparent;
+  background-color: transparent;
 }
 
 .ScrollbarsCustom-themed.scrollbar-macos .ScrollbarsCustom-Thumb {
-	background-color: hsl(var(--muted-foreground) / 0.3);
-	border: 2px solid transparent;
-	background-clip: padding-box;
+  background-color: hsl(var(--muted-foreground) / 0.3);
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 .ScrollbarsCustom-themed.scrollbar-macos .ScrollbarsCustom-Thumb:hover {
-	background-color: hsl(var(--muted-foreground) / 0.5);
+  background-color: hsl(var(--muted-foreground) / 0.5);
 }
 
 .ScrollbarsCustom-themed.scrollbar-macos.scrollbar-autohide
-	.ScrollbarsCustom-Thumb {
-	opacity: 0;
-	transition: opacity 0.2s ease;
+  .ScrollbarsCustom-Thumb {
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
 .ScrollbarsCustom-themed.scrollbar-macos.scrollbar-autohide:hover
-	.ScrollbarsCustom-Thumb {
-	opacity: 1;
+  .ScrollbarsCustom-Thumb {
+  opacity: 1;
 }
 
 /* Hide tracks when scrolling is not possible */
 .ScrollbarsCustom-themed:not(.trackYVisible) .ScrollbarsCustom-TrackY,
 .ScrollbarsCustom-themed:not(.trackXVisible) .ScrollbarsCustom-TrackX {
-	display: none;
+  display: none;
 }
 
 /* Phone dropdown scrollbar - 1.2x thicker than default (reduced by 70% from 4x) */
 .phone-dropdown-scrollbar .ScrollbarsCustom-TrackY {
-	width: 18px; /* 15px * 1.2 */
+  width: 18px; /* 15px * 1.2 */
 }
 
 .phone-dropdown-scrollbar .ScrollbarsCustom-ThumbY {
-	width: 14.4px; /* 12px * 1.2 */
-	margin: 0 1.8px; /* Center thumb in track */
+  width: 14.4px; /* 12px * 1.2 */
+  margin: 0 1.8px; /* Center thumb in track */
 }
 
 /* Fallback styles for SSR hydration - ensures consistent layout */
 .main-content-scrollbar.overflow-auto {
-	padding-right: 18px; /* Match the space allocated for custom scrollbar */
-	scrollbar-gutter: stable;
+  padding-right: 18px; /* Match the space allocated for custom scrollbar */
+  scrollbar-gutter: stable;
 }
 
 .chat-scrollbar.overflow-auto {
-	/* Chat scrollbar doesn't need extra padding as it overlays */
-	scrollbar-gutter: stable;
+  /* Chat scrollbar doesn't need extra padding as it overlays */
+  scrollbar-gutter: stable;
 }

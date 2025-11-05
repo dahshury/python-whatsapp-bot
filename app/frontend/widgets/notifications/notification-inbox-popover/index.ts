@@ -1,1 +1,1 @@
-export { NotificationInboxPopover } from './NotificationInboxPopover'
+export { NotificationInboxPopover } from "./NotificationInboxPopover";

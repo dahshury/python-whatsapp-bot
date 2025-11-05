@@ -2,104 +2,104 @@
 
 /* A VERTICAL event */
 .fc-v-event {
-	/* allowed to be top-level */
-	display: block;
-	border: 1px solid var(--fc-event-border-color);
-	background-color: var(--fc-event-bg-color);
-	border-radius: var(--radius-sm);
+  /* allowed to be top-level */
+  display: block;
+  border: 1px solid var(--fc-event-border-color);
+  background-color: var(--fc-event-bg-color);
+  border-radius: var(--radius-sm);
 }
 
 .fc-v-event .fc-event-main {
-	color: var(--fc-event-text-color);
-	height: 100%;
-	background: transparent;
+  color: var(--fc-event-text-color);
+  height: 100%;
+  background: transparent;
 }
 
 .fc-v-event .fc-event-main-frame {
-	height: 100%;
-	display: flex;
-	flex-direction: column;
-	background: transparent;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
 }
 
 .fc-v-event .fc-event-time {
-	flex-grow: 0;
-	flex-shrink: 0;
-	max-height: 100%;
-	overflow: hidden;
-	background: transparent;
+  flex-grow: 0;
+  flex-shrink: 0;
+  max-height: 100%;
+  overflow: hidden;
+  background: transparent;
 }
 
 .fc-v-event .fc-event-title-container {
-	/* a container for the sticky cushion */
-	flex-grow: 1;
-	flex-shrink: 1;
-	min-height: 0; /* important for allowing to shrink all the way */
-	background: transparent;
+  /* a container for the sticky cushion */
+  flex-grow: 1;
+  flex-shrink: 1;
+  min-height: 0; /* important for allowing to shrink all the way */
+  background: transparent;
 }
 
 .fc-v-event .fc-event-title {
-	/* will have fc-sticky on it */
-	top: 0;
-	bottom: 0;
-	max-height: 100%; /* clip overflow */
-	overflow: hidden;
-	background: transparent;
+  /* will have fc-sticky on it */
+  top: 0;
+  bottom: 0;
+  max-height: 100%; /* clip overflow */
+  overflow: hidden;
+  background: transparent;
 }
 
 /* Multi-day event styling */
 .fc-v-event:not(.fc-event-start) {
-	border-top-width: 0;
-	border-top-left-radius: 0;
-	border-top-right-radius: 0;
+  border-top-width: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
 }
 
 .fc-v-event:not(.fc-event-end) {
-	border-bottom-width: 0;
-	border-bottom-left-radius: 0;
-	border-bottom-right-radius: 0;
+  border-bottom-width: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 /* Expand hit area when selected */
 .fc-v-event.fc-event-selected:before {
-	left: -10px;
-	right: -10px;
+  left: -10px;
+  right: -10px;
 }
 
 /* Resizer (mouse AND touch) */
 .fc-v-event .fc-event-resizer-start {
-	cursor: n-resize;
+  cursor: n-resize;
 }
 
 .fc-v-event .fc-event-resizer-end {
-	cursor: s-resize;
+  cursor: s-resize;
 }
 
 /* Resizer for MOUSE */
 .fc-v-event:not(.fc-event-selected) .fc-event-resizer {
-	height: var(--fc-event-resizer-thickness);
-	left: 0;
-	right: 0;
+  height: var(--fc-event-resizer-thickness);
+  left: 0;
+  right: 0;
 }
 
 .fc-v-event:not(.fc-event-selected) .fc-event-resizer-start {
-	top: calc(var(--fc-event-resizer-thickness) / -2);
+  top: calc(var(--fc-event-resizer-thickness) / -2);
 }
 
 .fc-v-event:not(.fc-event-selected) .fc-event-resizer-end {
-	bottom: calc(var(--fc-event-resizer-thickness) / -2);
+  bottom: calc(var(--fc-event-resizer-thickness) / -2);
 }
 
 /* Resizer for TOUCH (when event is "selected") */
 .fc-v-event.fc-event-selected .fc-event-resizer {
-	left: 50%;
-	margin-left: calc(var(--fc-event-resizer-dot-total-width) / -2);
+  left: 50%;
+  margin-left: calc(var(--fc-event-resizer-dot-total-width) / -2);
 }
 
 .fc-v-event.fc-event-selected .fc-event-resizer-start {
-	top: calc(var(--fc-event-resizer-dot-total-width) / -2);
+  top: calc(var(--fc-event-resizer-dot-total-width) / -2);
 }
 
 .fc-v-event.fc-event-selected .fc-event-resizer-end {
-	bottom: calc(var(--fc-event-resizer-dot-total-width) / -2);
+  bottom: calc(var(--fc-event-resizer-dot-total-width) / -2);
 }

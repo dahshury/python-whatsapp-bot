@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { type ReactNode, useEffect } from 'react'
-import { useLanguageStore, useSettingsStore } from '../store/app-store'
+import { type ReactNode, useEffect } from "react";
+import { useLanguageStore, useSettingsStore } from "../store/app-store";
 
 /**
  * Store Provider - Initializes Zustand stores with persisted state
@@ -10,11 +10,11 @@ import { useLanguageStore, useSettingsStore } from '../store/app-store'
  * to prevent hydration mismatches in Next.js.
  */
 export function StoreProvider({ children }: { children: ReactNode }) {
-	useEffect(() => {
-		initializeStores()
-	}, [])
+  useEffect(() => {
+    initializeStores();
+  }, []);
 
-	return children
+  return children;
 }
 
 /**
@@ -23,12 +23,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
  * but we can add custom initialization logic here if needed
  */
 function initializeStores() {
-	if (typeof window === 'undefined') {
-		return
-	}
+  if (typeof window === "undefined") {
+    return;
+  }
 
-	// The persist middleware automatically rehydrates from localStorage
-	// We just need to ensure stores are accessed once to trigger rehydration
-	useSettingsStore.getState()
-	useLanguageStore.getState()
+  // The persist middleware automatically rehydrates from localStorage
+  // We just need to ensure stores are accessed once to trigger rehydration
+  useSettingsStore.getState();
+  useLanguageStore.getState();
 }

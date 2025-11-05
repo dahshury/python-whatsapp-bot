@@ -8,19 +8,19 @@
  * updates dynamically without re-rendering the entire button structure.
  */
 
-'use cache'
+"use cache";
 
-import { cn } from '@shared/libs/utils'
-import { Button } from '@ui/button'
-import { Bell } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { cn } from "@shared/libs/utils";
+import { Button } from "@ui/button";
+import { Bell } from "lucide-react";
+import type { ReactNode } from "react";
 
 type CachedNotificationShellProps = {
-	badge?: ReactNode
-	onClick?: () => void
-	className?: string
-	'aria-label'?: string
-}
+  badge?: ReactNode;
+  onClick?: () => void;
+  className?: string;
+  "aria-label"?: string;
+};
 
 /**
  * Memoized Notification Button Shell
@@ -32,21 +32,21 @@ type CachedNotificationShellProps = {
  * This optimization reduces re-renders when parent components update.
  */
 export function CachedNotificationShell({
-	badge,
-	onClick,
-	className,
-	'aria-label': ariaLabel,
+  badge,
+  onClick,
+  className,
+  "aria-label": ariaLabel,
 }: CachedNotificationShellProps) {
-	return (
-		<Button
-			aria-label={ariaLabel}
-			className={cn('relative', className)}
-			onClick={onClick}
-			size="icon"
-			variant="ghost"
-		>
-			<Bell className="h-5 w-5" />
-			{badge}
-		</Button>
-	)
+  return (
+    <Button
+      aria-label={ariaLabel}
+      className={cn("relative", className)}
+      onClick={onClick}
+      size="icon"
+      variant="ghost"
+    >
+      <Bell className="h-5 w-5" />
+      {badge}
+    </Button>
+  );
 }

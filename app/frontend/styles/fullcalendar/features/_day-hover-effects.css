@@ -21,78 +21,78 @@
 
 /* Special hover for today (lowest specificity) */
 .fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
-	.fc-daygrid-day-frame {
-	background: hsl(var(--accent) / 0.35);
-	transform: translateY(-2px);
-	border-color: hsl(var(--accent) / 0.7);
-	box-shadow: 0 4px 12px hsl(var(--accent) / 0.3);
-	border-radius: calc(var(--radius) * 0.75);
+  .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+  .fc-daygrid-day-frame {
+  background: hsl(var(--accent) / 0.35);
+  transform: translateY(-2px);
+  border-color: hsl(var(--accent) / 0.7);
+  box-shadow: 0 4px 12px hsl(var(--accent) / 0.3);
+  border-radius: calc(var(--radius) * 0.75);
 }
 
 /* Active/pressed day cell styling (low specificity) */
 .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
-	.fc-daygrid-day-frame {
-	transform: translateY(0);
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-	border-radius: calc(var(--radius) * 0.75);
+  .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
+  .fc-daygrid-day-frame {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: calc(var(--radius) * 0.75);
 }
 
 /* Special hover for selected/highlighted dates (medium specificity) */
 .fc-multimonth .fc-daygrid
-	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
+  .fc-daygrid-day-frame,
 .fc-multimonth
-	.fc-daygrid
-	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
-		.fc-day-disabled
-	):hover
-	.fc-daygrid-day-frame,
+  .fc-daygrid
+  .fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
+    .fc-day-disabled
+  ):hover
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid
-	.fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
-	.fc-daygrid-day-frame,
+  .fc-daygrid
+  .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid
-	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
-		.fc-day-disabled
-	):hover
-	.fc-daygrid-day-frame {
-	background: hsl(var(--primary) / 0.3);
-	border-color: hsl(var(--primary) / 0.7);
-	border-radius: calc(var(--radius) * 0.75);
-	box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
+  .fc-daygrid
+  .fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
+    .fc-day-disabled
+  ):hover
+  .fc-daygrid-day-frame {
+  background: hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.7);
+  border-radius: calc(var(--radius) * 0.75);
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.3);
 }
 
 /* Enhanced day cell hover - smooth transform and shadow effects (highest specificity) */
 .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-frame,
+    .fc-day-today
+  ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+  .fc-daygrid-day-frame,
 .fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-frame {
-	background: linear-gradient(
-		135deg,
-		hsl(var(--muted) / 0.15) 0%,
-		hsl(var(--muted) / 0.25) 100%
-	);
-	border-color: hsl(var(--muted) / 0.4);
-	border-radius: calc(var(--radius) * 0.75);
-	transform: translateY(-3px) scale(1.02);
-	box-shadow:
-		0 8px 16px rgba(0, 0, 0, 0.15),
-		0 4px 8px rgba(0, 0, 0, 0.1),
-		0 2px 4px rgba(0, 0, 0, 0.05),
-		inset 0 1px 0 hsl(var(--background) / 0.8);
-	z-index: var(--z-fc-free-roam);
+  .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+    .fc-day-today
+  ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+  .fc-daygrid-day-frame {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.15) 0%,
+    hsl(var(--muted) / 0.25) 100%
+  );
+  border-color: hsl(var(--muted) / 0.4);
+  border-radius: calc(var(--radius) * 0.75);
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 8px 16px rgba(0, 0, 0, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 hsl(var(--background) / 0.8);
+  z-index: var(--z-fc-free-roam);
 }
 
 /* =================================================================
@@ -101,49 +101,49 @@
 
 /* Special hover for today's number (lowest specificity) */
 .fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
-	.fc-daygrid-day-number,
+  .fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
-	.fc-daygrid-day-number {
-	background: hsl(var(--accent) / 0.45);
-	color: hsl(var(--accent-foreground));
+  .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
+  .fc-daygrid-day-number {
+  background: hsl(var(--accent) / 0.45);
+  color: hsl(var(--accent-foreground));
 }
 
 /* Special hover for selected/highlighted day numbers (medium specificity) */
 .fc-multimonth .fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(
-		.fc-day-past
-	):hover
-	.fc-daygrid-day-number,
+    .fc-day-past
+  ):hover
+  .fc-daygrid-day-number,
 .fc-multimonth
-	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
-		.fc-day-past
-	):hover
-	.fc-daygrid-day-number,
+  .fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
+    .fc-day-past
+  ):hover
+  .fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(.fc-day-past):hover
-	.fc-daygrid-day-number,
+  .fc-daygrid-day.fc-day-selected:not(.fc-day-disabled):not(.fc-day-past):hover
+  .fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
-		.fc-day-past
-	):hover
-	.fc-daygrid-day-number {
-	background: hsl(var(--primary) / 0.4);
-	color: hsl(var(--primary-foreground));
+  .fc-daygrid-day:has(.fc-highlight):not(.fc-day-disabled):not(
+    .fc-day-past
+  ):hover
+  .fc-daygrid-day-number {
+  background: hsl(var(--primary) / 0.4);
+  color: hsl(var(--primary-foreground));
 }
 
 /* Hover effect for day numbers (highest specificity) */
 .fc-multimonth .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-number,
+    .fc-day-today
+  ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+  .fc-daygrid-day-number,
 .fc-daygrid
-	.fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-number {
-	background: hsl(var(--muted) / 0.3);
-	color: hsl(var(--muted-foreground));
-	transform: scale(1.05);
+  .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
+    .fc-day-today
+  ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+  .fc-daygrid-day-number {
+  background: hsl(var(--muted) / 0.3);
+  color: hsl(var(--muted-foreground));
+  transform: scale(1.05);
 }
 
 /* =================================================================
@@ -162,34 +162,34 @@
 
 /* Enhanced dark mode hover effects (must come after base hover styles) */
 .dark .fc-multimonth
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-frame,
+  .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+    .fc-day-today
+  ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+  .fc-daygrid-day-frame,
 .dark
-	.fc-daygrid
-	.fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
-		.fc-day-today
-	):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-	.fc-daygrid-day-frame {
-	transform: translateY(-3px) scale(1.02);
-	box-shadow:
-		0 12px 24px rgba(0, 0, 0, 0.4),
-		0 8px 16px rgba(0, 0, 0, 0.3),
-		0 4px 8px rgba(0, 0, 0, 0.2),
-		inset 0 1px 0 hsl(var(--background) / 0.2);
+  .fc-daygrid
+  .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
+    .fc-day-today
+  ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
+  .fc-daygrid-day-frame {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.4),
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 hsl(var(--background) / 0.2);
 }
 
 /* Day cell hover effects */
 .fc-day-hover-effect {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: var(--fc-highlight-color);
-	opacity: 0;
-	transition: opacity 0.2s ease;
-	pointer-events: none;
-	z-index: var(--z-hover-effects);
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--fc-highlight-color);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: var(--z-hover-effects);
 }

@@ -1,1 +1,1 @@
-export { RsvpStatusBadge } from './RsvpStatusBadge'
+export { RsvpStatusBadge } from "./RsvpStatusBadge";

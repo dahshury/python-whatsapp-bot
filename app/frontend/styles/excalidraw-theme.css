@@ -28,254 +28,254 @@
 /* Light mode (default) - Comprehensive Excalidraw variable mapping */
 .excalidraw,
 .excalidraw-theme-scope {
-	/* ===== THEME FILTERS & BASICS ===== */
-	--theme-filter: none;
+  /* ===== THEME FILTERS & BASICS ===== */
+  --theme-filter: none;
 
-	/* ===== BUTTON COLORS ===== */
-	--button-destructive-bg-color: hsl(var(--destructive) / 0.1);
-	--button-destructive-color: hsl(var(--destructive));
-	--button-gray-1: hsl(var(--muted) / 0.8);
-	--button-gray-2: hsl(var(--muted) / 0.6);
-	--button-gray-3: hsl(var(--muted) / 0.4);
-	--button-special-active-bg-color: hsl(142 76% 36% / 0.1);
-	--button-hover-bg: hsl(var(--accent));
-	--button-active-bg: hsl(var(--accent));
-	--button-active-border: hsl(var(--primary));
+  /* ===== BUTTON COLORS ===== */
+  --button-destructive-bg-color: hsl(var(--destructive) / 0.1);
+  --button-destructive-color: hsl(var(--destructive));
+  --button-gray-1: hsl(var(--muted) / 0.8);
+  --button-gray-2: hsl(var(--muted) / 0.6);
+  --button-gray-3: hsl(var(--muted) / 0.4);
+  --button-special-active-bg-color: hsl(142 76% 36% / 0.1);
+  --button-hover-bg: hsl(var(--accent));
+  --button-active-bg: hsl(var(--accent));
+  --button-active-border: hsl(var(--primary));
 
-	/* ===== MOBILE SPECIFIC ===== */
-	--mobile-action-button-bg: hsl(var(--card) / 0.85);
-	--mobile-color-border: hsl(var(--border));
-	--mobile-action-button-size: 2rem;
+  /* ===== MOBILE SPECIFIC ===== */
+  --mobile-action-button-bg: hsl(var(--card) / 0.85);
+  --mobile-color-border: hsl(var(--border));
+  --mobile-action-button-size: 2rem;
 
-	/* ===== BORDERS & DIALOGS ===== */
-	--default-border-color: hsl(var(--border));
-	--dialog-border-color: hsl(var(--border));
-	--dropdown-icon: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="292.4" height="292.4" viewBox="0 0 292 292"><path fill="hsl(var(--foreground))" d="M287 197L159 69c-4-3-8-5-13-5s-9 2-13 5L5 197c-3 4-5 8-5 13s2 9 5 13c4 4 8 5 13 5h256c5 0 9-1 13-5s5-8 5-13-1-9-5-13z"/></svg>');
+  /* ===== BORDERS & DIALOGS ===== */
+  --default-border-color: hsl(var(--border));
+  --dialog-border-color: hsl(var(--border));
+  --dropdown-icon: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="292.4" height="292.4" viewBox="0 0 292 292"><path fill="hsl(var(--foreground))" d="M287 197L159 69c-4-3-8-5-13-5s-9 2-13 5L5 197c-3 4-5 8-5 13s2 9 5 13c4 4 8 5 13 5h256c5 0 9-1 13-5s5-8 5-13-1-9-5-13z"/></svg>');
 
-	/* ===== FOCUS & HIGHLIGHTS ===== */
-	--focus-highlight-color: hsl(var(--ring) / 0.3);
+  /* ===== FOCUS & HIGHLIGHTS ===== */
+  --focus-highlight-color: hsl(var(--ring) / 0.3);
 
-	/* ===== ICON COLORS ===== */
-	--icon-fill-color: hsl(var(--foreground));
-	--icon-green-fill-color: hsl(142 76% 36%);
-	--color-icon-white: hsl(var(--background));
+  /* ===== ICON COLORS ===== */
+  --icon-fill-color: hsl(var(--foreground));
+  --icon-green-fill-color: hsl(142 76% 36%);
+  --color-icon-white: hsl(var(--background));
 
-	/* ===== BACKGROUND COLORS ===== */
-	--default-bg-color: hsl(var(--card));
-	--input-bg-color: hsl(var(--input));
-	--input-border-color: hsl(var(--border));
-	--input-hover-bg-color: hsl(var(--accent));
-	--input-label-color: hsl(var(--muted-foreground));
-	--island-bg-color: hsl(var(--card));
+  /* ===== BACKGROUND COLORS ===== */
+  --default-bg-color: hsl(var(--card));
+  --input-bg-color: hsl(var(--input));
+  --input-border-color: hsl(var(--border));
+  --input-hover-bg-color: hsl(var(--accent));
+  --input-label-color: hsl(var(--muted-foreground));
+  --island-bg-color: hsl(var(--card));
 
-	/* ===== TEXT & TYPOGRAPHY ===== */
-	--text-primary-color: hsl(var(--foreground));
-	--keybinding-color: hsl(var(--muted-foreground));
-	--link-color: hsl(var(--primary));
+  /* ===== TEXT & TYPOGRAPHY ===== */
+  --text-primary-color: hsl(var(--foreground));
+  --keybinding-color: hsl(var(--muted-foreground));
+  --link-color: hsl(var(--primary));
 
-	/* ===== OVERLAYS & POPUPS ===== */
-	--overlay-bg-color: hsl(var(--background) / 0.85);
-	--popup-bg-color: hsl(var(--popover));
-	--popup-secondary-bg-color: hsl(var(--muted));
-	--popup-text-color: hsl(var(--popover-foreground));
-	--popup-text-inverted-color: hsl(var(--background));
+  /* ===== OVERLAYS & POPUPS ===== */
+  --overlay-bg-color: hsl(var(--background) / 0.85);
+  --popup-bg-color: hsl(var(--popover));
+  --popup-secondary-bg-color: hsl(var(--muted));
+  --popup-text-color: hsl(var(--popover-foreground));
+  --popup-text-inverted-color: hsl(var(--background));
 
-	/* ===== SELECTION & HIGHLIGHTING ===== */
-	--select-highlight-color: hsl(var(--primary) / 0.4);
-	--color-selection: hsl(var(--primary));
+  /* ===== SELECTION & HIGHLIGHTING ===== */
+  --select-highlight-color: hsl(var(--primary) / 0.4);
+  --color-selection: hsl(var(--primary));
 
-	/* ===== SHADOWS (using our theme shadow system) ===== */
-	--shadow-island:
-		0px 2px 8px hsl(var(--foreground) / 0.08), 0px 4px 16px
-		hsl(var(--foreground) / 0.05);
-	--modal-shadow:
-		0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px
-		hsl(var(--foreground) / 0.08);
-	--sidebar-shadow:
-		0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px
-		hsl(var(--foreground) / 0.08);
-	--library-dropdown-shadow:
-		0px 8px 16px hsl(var(--foreground) / 0.1), 0px 4px 8px
-		hsl(var(--foreground) / 0.06);
+  /* ===== SHADOWS (using our theme shadow system) ===== */
+  --shadow-island:
+    0px 2px 8px hsl(var(--foreground) / 0.08), 0px 4px 16px
+    hsl(var(--foreground) / 0.05);
+  --modal-shadow:
+    0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px
+    hsl(var(--foreground) / 0.08);
+  --sidebar-shadow:
+    0px 24px 48px hsl(var(--foreground) / 0.12), 0px 12px 24px
+    hsl(var(--foreground) / 0.08);
+  --library-dropdown-shadow:
+    0px 8px 16px hsl(var(--foreground) / 0.1), 0px 4px 8px
+    hsl(var(--foreground) / 0.06);
 
-	/* ===== SIZING ===== */
-	--default-button-size: 2rem;
-	--default-icon-size: 1rem;
-	--lg-button-size: 2.25rem;
-	--lg-icon-size: 1rem;
-	--editor-container-padding: 1rem;
-	--space-factor: 0.25rem;
+  /* ===== SIZING ===== */
+  --default-button-size: 2rem;
+  --default-icon-size: 1rem;
+  --lg-button-size: 2.25rem;
+  --lg-icon-size: 1rem;
+  --editor-container-padding: 1rem;
+  --space-factor: 0.25rem;
 
-	@media screen and (min-device-width: 1921px) {
-		--lg-button-size: 2.5rem;
-		--lg-icon-size: 1.25rem;
-		--default-button-size: 2.25rem;
-		--default-icon-size: 1.25rem;
-	}
+  @media screen and (min-device-width: 1921px) {
+    --lg-button-size: 2.5rem;
+    --lg-icon-size: 1.25rem;
+    --default-button-size: 2.25rem;
+    --default-icon-size: 1.25rem;
+  }
 
-	/* ===== SCROLLBAR ===== */
-	--scrollbar-thumb: hsl(var(--muted-foreground) / 0.3);
-	--scrollbar-thumb-hover: hsl(var(--muted-foreground) / 0.5);
+  /* ===== SCROLLBAR ===== */
+  --scrollbar-thumb: hsl(var(--muted-foreground) / 0.3);
+  --scrollbar-thumb-hover: hsl(var(--muted-foreground) / 0.5);
 
-	/* ===== COLOR SLIDERS ===== */
-	--color-slider-track: hsl(var(--primary) / 0.2);
-	--color-slider-thumb: hsl(var(--foreground) / 0.7);
+  /* ===== COLOR SLIDERS ===== */
+  --color-slider-track: hsl(var(--primary) / 0.2);
+  --color-slider-thumb: hsl(var(--foreground) / 0.7);
 
-	/* ===== AVATAR & SIDEBAR ===== */
-	--avatar-border-color: hsl(var(--border));
-	--sidebar-border-color: hsl(var(--border));
-	--sidebar-bg-color: hsl(var(--card));
+  /* ===== AVATAR & SIDEBAR ===== */
+  --avatar-border-color: hsl(var(--border));
+  --sidebar-border-color: hsl(var(--border));
+  --sidebar-bg-color: hsl(var(--card));
 
-	/* ===== BORDER RADIUS ===== */
-	--border-radius-md: var(--radius);
-	--border-radius-lg: calc(var(--radius) + 0.125rem);
+  /* ===== BORDER RADIUS ===== */
+  --border-radius-md: var(--radius);
+  --border-radius-lg: calc(var(--radius) + 0.125rem);
 
-	/* ===== PRIMARY COLOR SYSTEM ===== */
-	--color-primary: hsl(var(--primary));
-	--color-primary-darker: color-mix(in srgb, hsl(var(--primary)) 90%, black);
-	--color-primary-darkest: color-mix(in srgb, hsl(var(--primary)) 75%, black);
-	--color-primary-light: hsl(var(--primary) / 0.12);
-	--color-primary-light-darker: hsl(var(--primary) / 0.18);
-	--color-primary-hover: color-mix(in srgb, hsl(var(--primary)) 95%, black);
-	--color-primary-contrast-offset: color-mix(
-		in srgb,
-		hsl(var(--primary)) 85%,
-		black
-	);
+  /* ===== PRIMARY COLOR SYSTEM ===== */
+  --color-primary: hsl(var(--primary));
+  --color-primary-darker: color-mix(in srgb, hsl(var(--primary)) 90%, black);
+  --color-primary-darkest: color-mix(in srgb, hsl(var(--primary)) 75%, black);
+  --color-primary-light: hsl(var(--primary) / 0.12);
+  --color-primary-light-darker: hsl(var(--primary) / 0.18);
+  --color-primary-hover: color-mix(in srgb, hsl(var(--primary)) 95%, black);
+  --color-primary-contrast-offset: color-mix(
+    in srgb,
+    hsl(var(--primary)) 85%,
+    black
+  );
 
-	/* ===== GRAY SCALE (mapped to theme neutrals) ===== */
-	--color-gray-10: color-mix(
-		in srgb,
-		hsl(var(--background)) 90%,
-		hsl(var(--foreground))
-	);
-	--color-gray-20: color-mix(
-		in srgb,
-		hsl(var(--background)) 80%,
-		hsl(var(--foreground))
-	);
-	--color-gray-30: color-mix(
-		in srgb,
-		hsl(var(--background)) 70%,
-		hsl(var(--foreground))
-	);
-	--color-gray-40: color-mix(
-		in srgb,
-		hsl(var(--background)) 60%,
-		hsl(var(--foreground))
-	);
-	--color-gray-50: color-mix(
-		in srgb,
-		hsl(var(--background)) 50%,
-		hsl(var(--foreground))
-	);
-	--color-gray-60: color-mix(
-		in srgb,
-		hsl(var(--background)) 40%,
-		hsl(var(--foreground))
-	);
-	--color-gray-70: color-mix(
-		in srgb,
-		hsl(var(--background)) 30%,
-		hsl(var(--foreground))
-	);
-	--color-gray-80: color-mix(
-		in srgb,
-		hsl(var(--background)) 20%,
-		hsl(var(--foreground))
-	);
-	--color-gray-85: color-mix(
-		in srgb,
-		hsl(var(--background)) 15%,
-		hsl(var(--foreground))
-	);
-	--color-gray-90: color-mix(
-		in srgb,
-		hsl(var(--background)) 10%,
-		hsl(var(--foreground))
-	);
-	--color-gray-100: hsl(var(--foreground));
+  /* ===== GRAY SCALE (mapped to theme neutrals) ===== */
+  --color-gray-10: color-mix(
+    in srgb,
+    hsl(var(--background)) 90%,
+    hsl(var(--foreground))
+  );
+  --color-gray-20: color-mix(
+    in srgb,
+    hsl(var(--background)) 80%,
+    hsl(var(--foreground))
+  );
+  --color-gray-30: color-mix(
+    in srgb,
+    hsl(var(--background)) 70%,
+    hsl(var(--foreground))
+  );
+  --color-gray-40: color-mix(
+    in srgb,
+    hsl(var(--background)) 60%,
+    hsl(var(--foreground))
+  );
+  --color-gray-50: color-mix(
+    in srgb,
+    hsl(var(--background)) 50%,
+    hsl(var(--foreground))
+  );
+  --color-gray-60: color-mix(
+    in srgb,
+    hsl(var(--background)) 40%,
+    hsl(var(--foreground))
+  );
+  --color-gray-70: color-mix(
+    in srgb,
+    hsl(var(--background)) 30%,
+    hsl(var(--foreground))
+  );
+  --color-gray-80: color-mix(
+    in srgb,
+    hsl(var(--background)) 20%,
+    hsl(var(--foreground))
+  );
+  --color-gray-85: color-mix(
+    in srgb,
+    hsl(var(--background)) 15%,
+    hsl(var(--foreground))
+  );
+  --color-gray-90: color-mix(
+    in srgb,
+    hsl(var(--background)) 10%,
+    hsl(var(--foreground))
+  );
+  --color-gray-100: hsl(var(--foreground));
 
-	/* ===== DISABLED STATE ===== */
-	--color-disabled: var(--color-gray-40);
+  /* ===== DISABLED STATE ===== */
+  --color-disabled: var(--color-gray-40);
 
-	/* ===== WARNING COLORS ===== */
-	--color-warning: hsl(45 93% 88%);
-	--color-warning-dark: hsl(45 92% 65%);
-	--color-warning-darker: hsl(40 92% 57%);
-	--color-warning-darkest: hsl(32 90% 50%);
-	--color-text-warning: hsl(var(--foreground));
-	--color-warning-background: var(--color-warning);
-	--color-warning-icon-background: var(--color-warning-dark);
-	--color-warning-color: hsl(var(--foreground));
-	--color-warning-icon-color: hsl(var(--foreground));
+  /* ===== WARNING COLORS ===== */
+  --color-warning: hsl(45 93% 88%);
+  --color-warning-dark: hsl(45 92% 65%);
+  --color-warning-darker: hsl(40 92% 57%);
+  --color-warning-darkest: hsl(32 90% 50%);
+  --color-text-warning: hsl(var(--foreground));
+  --color-warning-background: var(--color-warning);
+  --color-warning-icon-background: var(--color-warning-dark);
+  --color-warning-color: hsl(var(--foreground));
+  --color-warning-icon-color: hsl(var(--foreground));
 
-	/* ===== DANGER COLORS ===== */
-	--color-danger: hsl(var(--destructive));
-	--color-danger-dark: color-mix(in srgb, hsl(var(--destructive)) 90%, black);
-	--color-danger-darker: color-mix(in srgb, hsl(var(--destructive)) 75%, black);
-	--color-danger-darkest: color-mix(
-		in srgb,
-		hsl(var(--destructive)) 60%,
-		black
-	);
-	--color-danger-text: hsl(var(--destructive-foreground));
-	--color-danger-background: hsl(var(--destructive) / 0.1);
-	--color-danger-icon-background: hsl(var(--destructive) / 0.15);
-	--color-danger-color: hsl(var(--destructive));
-	--color-danger-icon-color: hsl(var(--destructive));
+  /* ===== DANGER COLORS ===== */
+  --color-danger: hsl(var(--destructive));
+  --color-danger-dark: color-mix(in srgb, hsl(var(--destructive)) 90%, black);
+  --color-danger-darker: color-mix(in srgb, hsl(var(--destructive)) 75%, black);
+  --color-danger-darkest: color-mix(
+    in srgb,
+    hsl(var(--destructive)) 60%,
+    black
+  );
+  --color-danger-text: hsl(var(--destructive-foreground));
+  --color-danger-background: hsl(var(--destructive) / 0.1);
+  --color-danger-icon-background: hsl(var(--destructive) / 0.15);
+  --color-danger-color: hsl(var(--destructive));
+  --color-danger-icon-color: hsl(var(--destructive));
 
-	/* ===== MUTED COLORS ===== */
-	--color-muted: hsl(var(--muted));
-	--color-muted-darker: hsl(var(--muted-foreground));
-	--color-muted-darkest: hsl(var(--foreground));
-	--color-muted-background: hsl(var(--muted) / 0.5);
-	--color-muted-background-darker: hsl(var(--muted));
+  /* ===== MUTED COLORS ===== */
+  --color-muted: hsl(var(--muted));
+  --color-muted-darker: hsl(var(--muted-foreground));
+  --color-muted-darkest: hsl(var(--foreground));
+  --color-muted-background: hsl(var(--muted) / 0.5);
+  --color-muted-background-darker: hsl(var(--muted));
 
-	/* ===== PROMO COLOR ===== */
-	--color-promo: var(--color-primary);
+  /* ===== PROMO COLOR ===== */
+  --color-promo: var(--color-primary);
 
-	/* ===== SUCCESS COLORS ===== */
-	--color-success: hsl(142 76% 86%);
-	--color-success-darker: hsl(142 76% 82%);
-	--color-success-darkest: hsl(142 76% 72%);
-	--color-success-text: hsl(142 76% 26%);
-	--color-success-contrast: hsl(142 76% 50%);
-	--color-success-contrast-hover: hsl(142 76% 54%);
-	--color-success-contrast-active: hsl(142 76% 58%);
+  /* ===== SUCCESS COLORS ===== */
+  --color-success: hsl(142 76% 86%);
+  --color-success-darker: hsl(142 76% 82%);
+  --color-success-darkest: hsl(142 76% 72%);
+  --color-success-text: hsl(142 76% 26%);
+  --color-success-contrast: hsl(142 76% 50%);
+  --color-success-contrast-hover: hsl(142 76% 54%);
+  --color-success-contrast-active: hsl(142 76% 58%);
 
-	/* ===== LOGO COLORS ===== */
-	--color-logo-icon: hsl(var(--primary));
-	--color-logo-text: hsl(var(--foreground));
+  /* ===== LOGO COLORS ===== */
+  --color-logo-icon: hsl(var(--primary));
+  --color-logo-text: hsl(var(--foreground));
 
-	/* ===== SURFACE COLORS (Material Design 3 style) ===== */
-	--color-surface-high: hsl(var(--accent));
-	--color-surface-mid: color-mix(
-		in srgb,
-		hsl(var(--card)) 95%,
-		hsl(var(--foreground))
-	);
-	--color-surface-low: color-mix(
-		in srgb,
-		hsl(var(--card)) 97%,
-		hsl(var(--foreground))
-	);
-	--color-surface-lowest: hsl(var(--background));
-	--color-on-surface: hsl(var(--foreground));
-	--color-brand-hover: color-mix(in srgb, hsl(var(--primary)) 95%, black);
-	--color-brand-active: color-mix(in srgb, hsl(var(--primary)) 85%, black);
-	--color-on-primary-container: hsl(var(--primary-foreground));
-	--color-surface-primary-container: hsl(var(--primary) / 0.12);
-	--color-border-outline: hsl(var(--border));
-	--color-border-outline-variant: hsl(var(--border) / 0.5);
+  /* ===== SURFACE COLORS (Material Design 3 style) ===== */
+  --color-surface-high: hsl(var(--accent));
+  --color-surface-mid: color-mix(
+    in srgb,
+    hsl(var(--card)) 95%,
+    hsl(var(--foreground))
+  );
+  --color-surface-low: color-mix(
+    in srgb,
+    hsl(var(--card)) 97%,
+    hsl(var(--foreground))
+  );
+  --color-surface-lowest: hsl(var(--background));
+  --color-on-surface: hsl(var(--foreground));
+  --color-brand-hover: color-mix(in srgb, hsl(var(--primary)) 95%, black);
+  --color-brand-active: color-mix(in srgb, hsl(var(--primary)) 85%, black);
+  --color-on-primary-container: hsl(var(--primary-foreground));
+  --color-surface-primary-container: hsl(var(--primary) / 0.12);
+  --color-border-outline: hsl(var(--border));
+  --color-border-outline-variant: hsl(var(--border) / 0.5);
 
-	/* ===== BADGE COLORS ===== */
-	--color-badge: hsl(142 76% 26%);
-	--background-color-badge: hsl(142 76% 86%);
+  /* ===== BADGE COLORS ===== */
+  --color-badge: hsl(142 76% 26%);
+  --background-color-badge: hsl(142 76% 86%);
 
-	/* ===== CANVAS BACKGROUND (Excalidraw-specific) ===== */
-	--color-background: hsl(var(--card));
-	--color-text: hsl(var(--foreground));
+  /* ===== CANVAS BACKGROUND (Excalidraw-specific) ===== */
+  --color-background: hsl(var(--card));
+  --color-text: hsl(var(--foreground));
 }
 
 /* Dark mode - Comprehensive Excalidraw variable mapping for dark themes */
@@ -283,231 +283,231 @@
 .dark .excalidraw,
 .excalidraw-theme-scope.theme--dark,
 .dark .excalidraw-theme-scope {
-	/* ===== THEME FILTERS & BASICS ===== */
-	--theme-filter: invert(93%) hue-rotate(180deg);
+  /* ===== THEME FILTERS & BASICS ===== */
+  --theme-filter: invert(93%) hue-rotate(180deg);
 
-	/* ===== BUTTON COLORS ===== */
-	--button-destructive-bg-color: hsl(var(--destructive) / 0.2);
-	--button-destructive-color: hsl(var(--destructive));
-	--button-gray-1: hsl(var(--muted) / 0.4);
-	--button-gray-2: hsl(var(--muted) / 0.3);
-	--button-gray-3: hsl(var(--muted) / 0.2);
-	--button-special-active-bg-color: hsl(142 76% 26% / 0.3);
-	--button-hover-bg: hsl(var(--accent));
-	--button-active-bg: hsl(var(--accent));
-	--button-active-border: hsl(var(--primary));
+  /* ===== BUTTON COLORS ===== */
+  --button-destructive-bg-color: hsl(var(--destructive) / 0.2);
+  --button-destructive-color: hsl(var(--destructive));
+  --button-gray-1: hsl(var(--muted) / 0.4);
+  --button-gray-2: hsl(var(--muted) / 0.3);
+  --button-gray-3: hsl(var(--muted) / 0.2);
+  --button-special-active-bg-color: hsl(142 76% 26% / 0.3);
+  --button-hover-bg: hsl(var(--accent));
+  --button-active-bg: hsl(var(--accent));
+  --button-active-border: hsl(var(--primary));
 
-	/* ===== MOBILE SPECIFIC ===== */
-	--mobile-action-button-bg: hsl(var(--card) / 0.95);
-	--mobile-color-border: hsl(var(--border));
+  /* ===== MOBILE SPECIFIC ===== */
+  --mobile-action-button-bg: hsl(var(--card) / 0.95);
+  --mobile-color-border: hsl(var(--border));
 
-	/* ===== BORDERS & DIALOGS ===== */
-	--default-border-color: hsl(var(--border));
-	--dialog-border-color: hsl(var(--border));
-	--dropdown-icon: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="292.4" height="292.4" viewBox="0 0 292 292"><path fill="%23ced4da" d="M287 197L159 69c-4-3-8-5-13-5s-9 2-13 5L5 197c-3 4-5 8-5 13s2 9 5 13c4 4 8 5 13 5h256c5 0 9-1 13-5s5-8 5-13-1-9-5-13z"/></svg>');
+  /* ===== BORDERS & DIALOGS ===== */
+  --default-border-color: hsl(var(--border));
+  --dialog-border-color: hsl(var(--border));
+  --dropdown-icon: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="292.4" height="292.4" viewBox="0 0 292 292"><path fill="%23ced4da" d="M287 197L159 69c-4-3-8-5-13-5s-9 2-13 5L5 197c-3 4-5 8-5 13s2 9 5 13c4 4 8 5 13 5h256c5 0 9-1 13-5s5-8 5-13-1-9-5-13z"/></svg>');
 
-	/* ===== FOCUS & HIGHLIGHTS ===== */
-	--focus-highlight-color: hsl(var(--ring) / 0.4);
+  /* ===== FOCUS & HIGHLIGHTS ===== */
+  --focus-highlight-color: hsl(var(--ring) / 0.4);
 
-	/* ===== ICON COLORS ===== */
-	--icon-fill-color: hsl(var(--foreground));
-	--icon-green-fill-color: hsl(142 76% 60%);
-	--color-icon-white: hsl(var(--foreground));
+  /* ===== ICON COLORS ===== */
+  --icon-fill-color: hsl(var(--foreground));
+  --icon-green-fill-color: hsl(142 76% 60%);
+  --color-icon-white: hsl(var(--foreground));
 
-	/* ===== BACKGROUND COLORS ===== */
-	--default-bg-color: hsl(var(--card));
-	--input-bg-color: hsl(var(--input));
-	--input-border-color: hsl(var(--border));
-	--input-hover-bg-color: hsl(var(--accent));
-	--input-label-color: hsl(var(--muted-foreground));
-	--island-bg-color: hsl(var(--card));
+  /* ===== BACKGROUND COLORS ===== */
+  --default-bg-color: hsl(var(--card));
+  --input-bg-color: hsl(var(--input));
+  --input-border-color: hsl(var(--border));
+  --input-hover-bg-color: hsl(var(--accent));
+  --input-label-color: hsl(var(--muted-foreground));
+  --island-bg-color: hsl(var(--card));
 
-	/* ===== TEXT & TYPOGRAPHY ===== */
-	--text-primary-color: hsl(var(--foreground));
-	--keybinding-color: hsl(var(--muted-foreground));
-	--link-color: hsl(var(--primary));
+  /* ===== TEXT & TYPOGRAPHY ===== */
+  --text-primary-color: hsl(var(--foreground));
+  --keybinding-color: hsl(var(--muted-foreground));
+  --link-color: hsl(var(--primary));
 
-	/* ===== OVERLAYS & POPUPS ===== */
-	--overlay-bg-color: hsl(var(--background) / 0.9);
-	--popup-bg-color: hsl(var(--popover));
-	--popup-secondary-bg-color: hsl(var(--muted) / 0.5);
-	--popup-text-color: hsl(var(--popover-foreground));
-	--popup-text-inverted-color: hsl(var(--card));
+  /* ===== OVERLAYS & POPUPS ===== */
+  --overlay-bg-color: hsl(var(--background) / 0.9);
+  --popup-bg-color: hsl(var(--popover));
+  --popup-secondary-bg-color: hsl(var(--muted) / 0.5);
+  --popup-text-color: hsl(var(--popover-foreground));
+  --popup-text-inverted-color: hsl(var(--card));
 
-	/* ===== SELECTION & HIGHLIGHTING ===== */
-	--select-highlight-color: hsl(var(--primary) / 0.5);
-	--color-selection: hsl(var(--primary));
+  /* ===== SELECTION & HIGHLIGHTING ===== */
+  --select-highlight-color: hsl(var(--primary) / 0.5);
+  --color-selection: hsl(var(--primary));
 
-	/* ===== SHADOWS (adapted for dark mode) ===== */
-	--shadow-island:
-		0px 2px 8px hsl(0 0% 0% / 0.3), 0px 4px 16px hsl(0 0% 0% / 0.2);
-	--modal-shadow:
-		0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
-	--sidebar-shadow:
-		0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
-	--library-dropdown-shadow:
-		0px 8px 16px hsl(0 0% 0% / 0.4), 0px 4px 8px hsl(0 0% 0% / 0.2);
+  /* ===== SHADOWS (adapted for dark mode) ===== */
+  --shadow-island:
+    0px 2px 8px hsl(0 0% 0% / 0.3), 0px 4px 16px hsl(0 0% 0% / 0.2);
+  --modal-shadow:
+    0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
+  --sidebar-shadow:
+    0px 24px 48px hsl(0 0% 0% / 0.5), 0px 12px 24px hsl(0 0% 0% / 0.3);
+  --library-dropdown-shadow:
+    0px 8px 16px hsl(0 0% 0% / 0.4), 0px 4px 8px hsl(0 0% 0% / 0.2);
 
-	/* ===== SCROLLBAR ===== */
-	--scrollbar-thumb: hsl(var(--muted-foreground) / 0.4);
-	--scrollbar-thumb-hover: hsl(var(--muted-foreground) / 0.6);
+  /* ===== SCROLLBAR ===== */
+  --scrollbar-thumb: hsl(var(--muted-foreground) / 0.4);
+  --scrollbar-thumb-hover: hsl(var(--muted-foreground) / 0.6);
 
-	/* ===== COLOR SLIDERS ===== */
-	--color-slider-track: hsl(var(--primary) / 0.3);
-	--color-slider-thumb: hsl(var(--foreground) / 0.8);
+  /* ===== COLOR SLIDERS ===== */
+  --color-slider-track: hsl(var(--primary) / 0.3);
+  --color-slider-thumb: hsl(var(--foreground) / 0.8);
 
-	/* ===== AVATAR & SIDEBAR ===== */
-	--avatar-border-color: hsl(var(--border));
-	--sidebar-border-color: hsl(var(--border));
-	--sidebar-bg-color: hsl(var(--card));
+  /* ===== AVATAR & SIDEBAR ===== */
+  --avatar-border-color: hsl(var(--border));
+  --sidebar-border-color: hsl(var(--border));
+  --sidebar-bg-color: hsl(var(--card));
 
-	/* ===== PRIMARY COLOR SYSTEM (adjusted for dark mode) ===== */
-	--color-primary: hsl(var(--primary));
-	--color-primary-darker: color-mix(in srgb, hsl(var(--primary)) 110%, white);
-	--color-primary-darkest: color-mix(in srgb, hsl(var(--primary)) 125%, white);
-	--color-primary-light: hsl(var(--primary) / 0.2);
-	--color-primary-light-darker: hsl(var(--primary) / 0.3);
-	--color-primary-hover: color-mix(in srgb, hsl(var(--primary)) 105%, white);
-	--color-primary-contrast-offset: color-mix(
-		in srgb,
-		hsl(var(--primary)) 115%,
-		white
-	);
+  /* ===== PRIMARY COLOR SYSTEM (adjusted for dark mode) ===== */
+  --color-primary: hsl(var(--primary));
+  --color-primary-darker: color-mix(in srgb, hsl(var(--primary)) 110%, white);
+  --color-primary-darkest: color-mix(in srgb, hsl(var(--primary)) 125%, white);
+  --color-primary-light: hsl(var(--primary) / 0.2);
+  --color-primary-light-darker: hsl(var(--primary) / 0.3);
+  --color-primary-hover: color-mix(in srgb, hsl(var(--primary)) 105%, white);
+  --color-primary-contrast-offset: color-mix(
+    in srgb,
+    hsl(var(--primary)) 115%,
+    white
+  );
 
-	/* ===== GRAY SCALE (inverted for dark mode) ===== */
-	--color-gray-10: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 90%,
-		hsl(var(--background))
-	);
-	--color-gray-20: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 80%,
-		hsl(var(--background))
-	);
-	--color-gray-30: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 70%,
-		hsl(var(--background))
-	);
-	--color-gray-40: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 60%,
-		hsl(var(--background))
-	);
-	--color-gray-50: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 50%,
-		hsl(var(--background))
-	);
-	--color-gray-60: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 40%,
-		hsl(var(--background))
-	);
-	--color-gray-70: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 30%,
-		hsl(var(--background))
-	);
-	--color-gray-80: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 20%,
-		hsl(var(--background))
-	);
-	--color-gray-85: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 15%,
-		hsl(var(--background))
-	);
-	--color-gray-90: color-mix(
-		in srgb,
-		hsl(var(--foreground)) 10%,
-		hsl(var(--background))
-	);
-	--color-gray-100: hsl(var(--background));
+  /* ===== GRAY SCALE (inverted for dark mode) ===== */
+  --color-gray-10: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 90%,
+    hsl(var(--background))
+  );
+  --color-gray-20: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 80%,
+    hsl(var(--background))
+  );
+  --color-gray-30: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 70%,
+    hsl(var(--background))
+  );
+  --color-gray-40: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 60%,
+    hsl(var(--background))
+  );
+  --color-gray-50: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 50%,
+    hsl(var(--background))
+  );
+  --color-gray-60: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 40%,
+    hsl(var(--background))
+  );
+  --color-gray-70: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 30%,
+    hsl(var(--background))
+  );
+  --color-gray-80: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 20%,
+    hsl(var(--background))
+  );
+  --color-gray-85: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 15%,
+    hsl(var(--background))
+  );
+  --color-gray-90: color-mix(
+    in srgb,
+    hsl(var(--foreground)) 10%,
+    hsl(var(--background))
+  );
+  --color-gray-100: hsl(var(--background));
 
-	/* ===== DISABLED STATE ===== */
-	--color-disabled: var(--color-gray-60);
+  /* ===== DISABLED STATE ===== */
+  --color-disabled: var(--color-gray-60);
 
-	/* ===== WARNING COLORS (adjusted for dark mode) ===== */
-	--color-warning: hsl(45 80% 35%);
-	--color-warning-dark: hsl(45 85% 45%);
-	--color-warning-darker: hsl(45 90% 55%);
-	--color-warning-darkest: hsl(45 95% 65%);
-	--color-text-warning: hsl(var(--foreground) / 0.9);
-	--color-warning-background: hsl(45 80% 35% / 0.3);
-	--color-warning-icon-background: hsl(45 85% 45% / 0.3);
-	--color-warning-color: hsl(45 95% 75%);
-	--color-warning-icon-color: hsl(45 95% 75%);
+  /* ===== WARNING COLORS (adjusted for dark mode) ===== */
+  --color-warning: hsl(45 80% 35%);
+  --color-warning-dark: hsl(45 85% 45%);
+  --color-warning-darker: hsl(45 90% 55%);
+  --color-warning-darkest: hsl(45 95% 65%);
+  --color-text-warning: hsl(var(--foreground) / 0.9);
+  --color-warning-background: hsl(45 80% 35% / 0.3);
+  --color-warning-icon-background: hsl(45 85% 45% / 0.3);
+  --color-warning-color: hsl(45 95% 75%);
+  --color-warning-icon-color: hsl(45 95% 75%);
 
-	/* ===== DANGER COLORS (adjusted for dark mode) ===== */
-	--color-danger: hsl(var(--destructive));
-	--color-danger-dark: color-mix(in srgb, hsl(var(--destructive)) 110%, white);
-	--color-danger-darker: color-mix(
-		in srgb,
-		hsl(var(--destructive)) 125%,
-		white
-	);
-	--color-danger-darkest: color-mix(
-		in srgb,
-		hsl(var(--destructive)) 140%,
-		white
-	);
-	--color-danger-text: hsl(var(--destructive-foreground));
-	--color-danger-background: hsl(var(--destructive) / 0.2);
-	--color-danger-icon-background: hsl(var(--destructive) / 0.25);
-	--color-danger-color: hsl(var(--destructive));
-	--color-danger-icon-color: hsl(var(--destructive));
+  /* ===== DANGER COLORS (adjusted for dark mode) ===== */
+  --color-danger: hsl(var(--destructive));
+  --color-danger-dark: color-mix(in srgb, hsl(var(--destructive)) 110%, white);
+  --color-danger-darker: color-mix(
+    in srgb,
+    hsl(var(--destructive)) 125%,
+    white
+  );
+  --color-danger-darkest: color-mix(
+    in srgb,
+    hsl(var(--destructive)) 140%,
+    white
+  );
+  --color-danger-text: hsl(var(--destructive-foreground));
+  --color-danger-background: hsl(var(--destructive) / 0.2);
+  --color-danger-icon-background: hsl(var(--destructive) / 0.25);
+  --color-danger-color: hsl(var(--destructive));
+  --color-danger-icon-color: hsl(var(--destructive));
 
-	/* ===== MUTED COLORS ===== */
-	--color-muted: hsl(var(--muted));
-	--color-muted-darker: hsl(var(--muted-foreground));
-	--color-muted-darkest: hsl(var(--foreground) / 0.7);
-	--color-muted-background: hsl(var(--muted-foreground) / 0.3);
-	--color-muted-background-darker: hsl(var(--foreground) / 0.15);
+  /* ===== MUTED COLORS ===== */
+  --color-muted: hsl(var(--muted));
+  --color-muted-darker: hsl(var(--muted-foreground));
+  --color-muted-darkest: hsl(var(--foreground) / 0.7);
+  --color-muted-background: hsl(var(--muted-foreground) / 0.3);
+  --color-muted-background-darker: hsl(var(--foreground) / 0.15);
 
-	/* ===== PROMO COLOR ===== */
-	--color-promo: var(--color-primary);
+  /* ===== PROMO COLOR ===== */
+  --color-promo: var(--color-primary);
 
-	/* ===== SUCCESS COLORS (adjusted for dark mode) ===== */
-	--color-success: hsl(142 60% 35%);
-	--color-success-darker: hsl(142 65% 45%);
-	--color-success-darkest: hsl(142 70% 55%);
-	--color-success-text: hsl(142 76% 76%);
-	--color-success-contrast: hsl(142 70% 55%);
-	--color-success-contrast-hover: hsl(142 72% 60%);
-	--color-success-contrast-active: hsl(142 74% 65%);
+  /* ===== SUCCESS COLORS (adjusted for dark mode) ===== */
+  --color-success: hsl(142 60% 35%);
+  --color-success-darker: hsl(142 65% 45%);
+  --color-success-darkest: hsl(142 70% 55%);
+  --color-success-text: hsl(142 76% 76%);
+  --color-success-contrast: hsl(142 70% 55%);
+  --color-success-contrast-hover: hsl(142 72% 60%);
+  --color-success-contrast-active: hsl(142 74% 65%);
 
-	/* ===== LOGO COLORS ===== */
-	--color-logo-icon: hsl(var(--primary));
-	--color-logo-text: hsl(var(--foreground));
+  /* ===== LOGO COLORS ===== */
+  --color-logo-icon: hsl(var(--primary));
+  --color-logo-text: hsl(var(--foreground));
 
-	/* ===== SURFACE COLORS (adapted for dark mode) ===== */
-	--color-surface-high: hsl(var(--accent));
-	--color-surface-mid: color-mix(in srgb, hsl(var(--card)) 105%, white 5%);
-	--color-surface-low: color-mix(in srgb, hsl(var(--card)) 103%, white 3%);
-	--color-surface-lowest: hsl(var(--background));
-	--color-on-surface: hsl(var(--foreground));
-	--color-brand-hover: color-mix(in srgb, hsl(var(--primary)) 105%, white);
-	--color-brand-active: color-mix(in srgb, hsl(var(--primary)) 115%, white);
-	--color-on-primary-container: hsl(var(--primary-foreground));
-	--color-surface-primary-container: hsl(var(--primary) / 0.2);
-	--color-border-outline: hsl(var(--border));
-	--color-border-outline-variant: hsl(var(--border) / 0.4);
+  /* ===== SURFACE COLORS (adapted for dark mode) ===== */
+  --color-surface-high: hsl(var(--accent));
+  --color-surface-mid: color-mix(in srgb, hsl(var(--card)) 105%, white 5%);
+  --color-surface-low: color-mix(in srgb, hsl(var(--card)) 103%, white 3%);
+  --color-surface-lowest: hsl(var(--background));
+  --color-on-surface: hsl(var(--foreground));
+  --color-brand-hover: color-mix(in srgb, hsl(var(--primary)) 105%, white);
+  --color-brand-active: color-mix(in srgb, hsl(var(--primary)) 115%, white);
+  --color-on-primary-container: hsl(var(--primary-foreground));
+  --color-surface-primary-container: hsl(var(--primary) / 0.2);
+  --color-border-outline: hsl(var(--border));
+  --color-border-outline-variant: hsl(var(--border) / 0.4);
 
-	/* ===== BADGE COLORS (adjusted for dark mode) ===== */
-	--color-badge: hsl(142 76% 76%);
-	--background-color-badge: hsl(142 60% 25%);
+  /* ===== BADGE COLORS (adjusted for dark mode) ===== */
+  --color-badge: hsl(142 76% 76%);
+  --background-color-badge: hsl(142 60% 25%);
 
-	/* ===== CANVAS BACKGROUND (Excalidraw-specific) ===== */
-	--color-background: hsl(var(--card));
-	--color-text: hsl(var(--foreground));
+  /* ===== CANVAS BACKGROUND (Excalidraw-specific) ===== */
+  --color-background: hsl(var(--card));
+  --color-text: hsl(var(--foreground));
 }
 
 /* Ensure dark background transparency works correctly */
 .excalidraw.theme--dark.theme--dark-background-none {
-	background: none;
+  background: none;
 }
 
 /* Help icon visibility is controlled per-instance via DocumentCanvas (excal-hide-help) */
@@ -518,108 +518,108 @@
  * This is a valid use case for !important when integrating third-party libraries.
  */
 .excalidraw-fullscreen-button {
-	/* Match Excalidraw button dimensions and spacing */
-	width: var(--default-button-size);
-	height: var(--default-button-size);
-	min-width: var(--default-button-size);
-	min-height: var(--default-button-size);
-	box-sizing: border-box;
-	padding: 4px;
+  /* Match Excalidraw button dimensions and spacing */
+  width: var(--default-button-size);
+  height: var(--default-button-size);
+  min-width: var(--default-button-size);
+  min-height: var(--default-button-size);
+  box-sizing: border-box;
+  padding: 4px;
 
-	/* Match Excalidraw button styling */
-	background-color: var(--button-gray-1);
-	color: var(--icon-fill-color);
-	border: 1px solid var(--default-border-color);
-	/* Excalidraw's ToolIcon has a small 4px radius */
-	border-radius: 4px;
-	box-shadow: var(--shadow-island);
+  /* Match Excalidraw button styling */
+  background-color: var(--button-gray-1);
+  color: var(--icon-fill-color);
+  border: 1px solid var(--default-border-color);
+  /* Excalidraw's ToolIcon has a small 4px radius */
+  border-radius: 4px;
+  box-shadow: var(--shadow-island);
 
-	/* Match Excalidraw button behavior */
-	transition:
-		background-color 0.2s ease,
-		border-color 0.2s ease,
-		transform 0.1s ease;
-	cursor: pointer;
+  /* Match Excalidraw button behavior */
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.1s ease;
+  cursor: pointer;
 
-	/* Icon sizing and layout */
-	display: flex;
-	align-items: center;
-	justify-content: center;
+  /* Icon sizing and layout */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .excalidraw-fullscreen-button:hover {
-	background-color: var(--button-hover-bg);
-	border-color: var(--button-active-border);
+  background-color: var(--button-hover-bg);
+  border-color: var(--button-active-border);
 }
 
 .excalidraw-fullscreen-button:active {
-	background-color: var(--button-active-bg);
-	border-color: var(--button-active-border);
-	transform: scale(0.95);
+  background-color: var(--button-active-bg);
+  border-color: var(--button-active-border);
+  transform: scale(0.95);
 }
 
 .excalidraw-fullscreen-button .ToolIcon__icon {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	width: 100%;
-	height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 .excalidraw-fullscreen-button svg {
-	width: var(--default-icon-size);
-	height: var(--default-icon-size);
-	color: var(--icon-fill-color);
-	/* Match Excalidraw ToolIcon visual style */
-	stroke: currentColor;
-	fill: none;
-	stroke-width: 1.5;
-	stroke-linecap: round;
-	stroke-linejoin: round;
+  width: var(--default-icon-size);
+  height: var(--default-icon-size);
+  color: var(--icon-fill-color);
+  /* Match Excalidraw ToolIcon visual style */
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* Tighten fullscreen layout for document canvases so there's no bottom gap */
 .grid-fullscreen-wrapper .glide-grid-fullscreen-container,
 .grid-fullscreen-wrapper .excalidraw-theme-scope,
 .grid-fullscreen-wrapper .excalidraw-theme-scope .excalidraw {
-	height: 100%;
+  height: 100%;
 }
 .grid-fullscreen-wrapper {
-	padding-bottom: 0;
+  padding-bottom: 0;
 }
 
 /* Ensure Excalidraw internal buttons also respect theme */
 .excalidraw button {
-	transition:
-		background-color 0.2s ease,
-		border-color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
 /* Dark mode transparency adjustments */
 .theme--dark-background-none.theme--dark {
-	background: none;
+  background: none;
 }
 
 /* Ensure all Excalidraw buttons get proper focus states */
 .excalidraw button:focus-visible {
-	outline: 2px solid var(--focus-highlight-color);
-	outline-offset: 2px;
+  outline: 2px solid var(--focus-highlight-color);
+  outline-offset: 2px;
 }
 
 /* Position and layering fixes adapted from prior implementation, scoped to our containers */
 .excalidraw-theme-scope .excalidraw {
-	/* NOTE: position: relative was removed because it breaks position:fixed elements
+  /* NOTE: position: relative was removed because it breaks position:fixed elements
 	   like the eraser cursor shadow, causing misalignment between cursor and eraser */
-	height: 100%;
-	width: 100%;
+  height: 100%;
+  width: 100%;
 }
 .excalidraw-theme-scope .excalidraw .popover,
 .excalidraw-theme-scope .excalidraw .context-menu {
-	position: fixed;
-	z-index: var(--z-context-menu, 2147483000);
+  position: fixed;
+  z-index: var(--z-context-menu, 2147483000);
 }
 .excalidraw-theme-scope .excalidraw .popover:has(.context-menu) {
-	position: absolute;
-	z-index: var(--z-context-menu, 2147483000);
+  position: absolute;
+  z-index: var(--z-context-menu, 2147483000);
 }
 
 /* ===== THEME-SPECIFIC ENHANCEMENTS ===== */
@@ -628,72 +628,72 @@
 
 /* Ensure all branded themes get proper canvas styling */
 :is(
-		.theme-default,
-		.theme-claude,
-		.theme-neo-brutalism,
-		.theme-perpetuity,
-		.theme-retro-arcade,
-		.theme-soft-pop,
-		.theme-ghibli-studio,
-		.theme-valorant,
-		.theme-t3chat,
-		.theme-perplexity,
-		.theme-art-deco,
-		.theme-neomorphism
-	)
-	.excalidraw-theme-scope
-	.excalidraw {
-	/* Canvas uses card background for consistency across all themes */
-	background-color: hsl(var(--card));
-	color: hsl(var(--foreground));
+    .theme-default,
+    .theme-claude,
+    .theme-neo-brutalism,
+    .theme-perpetuity,
+    .theme-retro-arcade,
+    .theme-soft-pop,
+    .theme-ghibli-studio,
+    .theme-valorant,
+    .theme-t3chat,
+    .theme-perplexity,
+    .theme-art-deco,
+    .theme-neomorphism
+  )
+  .excalidraw-theme-scope
+  .excalidraw {
+  /* Canvas uses card background for consistency across all themes */
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 /* Dark mode canvas adjustments for all themes */
 :is(
-		.theme-default,
-		.theme-claude,
-		.theme-neo-brutalism,
-		.theme-perpetuity,
-		.theme-retro-arcade,
-		.theme-soft-pop,
-		.theme-ghibli-studio,
-		.theme-valorant,
-		.theme-t3chat,
-		.theme-perplexity,
-		.theme-art-deco,
-		.theme-neomorphism
-	)
-	.dark
-	.excalidraw-theme-scope
-	.excalidraw,
+    .theme-default,
+    .theme-claude,
+    .theme-neo-brutalism,
+    .theme-perpetuity,
+    .theme-retro-arcade,
+    .theme-soft-pop,
+    .theme-ghibli-studio,
+    .theme-valorant,
+    .theme-t3chat,
+    .theme-perplexity,
+    .theme-art-deco,
+    .theme-neomorphism
+  )
+  .dark
+  .excalidraw-theme-scope
+  .excalidraw,
 :is(
-		.theme-default,
-		.theme-claude,
-		.theme-neo-brutalism,
-		.theme-perpetuity,
-		.theme-retro-arcade,
-		.theme-soft-pop,
-		.theme-ghibli-studio,
-		.theme-valorant,
-		.theme-t3chat,
-		.theme-perplexity,
-		.theme-art-deco,
-		.theme-neomorphism
-	)
-	.excalidraw-theme-scope
-	.excalidraw.theme--dark {
-	background-color: hsl(var(--card));
-	color: hsl(var(--foreground));
+    .theme-default,
+    .theme-claude,
+    .theme-neo-brutalism,
+    .theme-perpetuity,
+    .theme-retro-arcade,
+    .theme-soft-pop,
+    .theme-ghibli-studio,
+    .theme-valorant,
+    .theme-t3chat,
+    .theme-perplexity,
+    .theme-art-deco,
+    .theme-neomorphism
+  )
+  .excalidraw-theme-scope
+  .excalidraw.theme--dark {
+  background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 /* Hide help affordances inside bottom editable canvas only (done via prop) */
 .excalidraw-theme-scope .excalidraw .ToolIcon__keybinding {
-	display: var(--excal-keybinding-visibility, inline-block);
+  display: var(--excal-keybinding-visibility, inline-block);
 }
 
 /* Hide help icon inside bottom editor only */
 .doc-excal-bottom .excalidraw .help-icon,
 .doc-excal-bottom .excalidraw .App-toolbar__help,
 .doc-excal-bottom .excalidraw .ToolIcon__keybinding {
-	display: none;
+  display: none;
 }

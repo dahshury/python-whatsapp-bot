@@ -1,10 +1,10 @@
-'use cache'
+"use cache";
 
-import { DocumentsPage } from '@/compositions/documents'
+import { DocumentsPage } from "@/compositions/documents";
 
-const ensureCacheBoundary = () => Promise.resolve()
+const ensureCacheBoundary = () => Promise.resolve();
 
 export default async function Page() {
-	await ensureCacheBoundary()
-	return <DocumentsPage />
+  await ensureCacheBoundary();
+  return <DocumentsPage />;
 }

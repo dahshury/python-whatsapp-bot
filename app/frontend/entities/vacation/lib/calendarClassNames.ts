@@ -1,4 +1,4 @@
-import { cn } from '@shared/libs/utils'
+import { cn } from "@shared/libs/utils";
 
 export function createDayCellClassNames(
   currentDate: Date,
@@ -6,31 +6,32 @@ export function createDayCellClassNames(
   isVacationDate?: (dateStr: string) => boolean
 ) {
   return (arg: { date: Date }) => {
-    const cellDate = arg.date
+    const cellDate = arg.date;
     const toYMD = (d: Date) => {
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      return `${y}-${m}-${dd}`
-    }
-    const currentDateStr = toYMD(currentDate)
-    const cellDateStr = toYMD(cellDate)
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    };
+    const currentDateStr = toYMD(currentDate);
+    const cellDateStr = toYMD(cellDate);
 
-    const isPastDate = cellDate < new Date()
-    const vacationClass = isVacationDate && cellDateStr
-      ? (isVacationDate(cellDateStr) ? 'vacation-day' : '')
-      : ''
+    const isPastDate = cellDate < new Date();
+    let vacationClass = "";
+    if (isVacationDate && cellDateStr && isVacationDate(cellDateStr)) {
+      vacationClass = "vacation-day";
+    }
 
     if (!freeRoam && isPastDate) {
-      return vacationClass
+      return vacationClass;
     }
 
     if (cellDateStr === currentDateStr) {
-      return cn('selected-date-cell', vacationClass)
+      return cn("selected-date-cell", vacationClass);
     }
 
-    return cn(vacationClass, 'cursor-pointer hover:bg-muted')
-  }
+    return cn(vacationClass, "cursor-pointer hover:bg-muted");
+  };
 }
 
 export function createDayHeaderClassNames(
@@ -38,17 +39,17 @@ export function createDayHeaderClassNames(
 ) {
   return (arg: { date?: Date }) => {
     try {
-      const d = arg?.date
-      if (!(d && isVacationDate)) return ''
-      const y = d.getFullYear()
-      const m = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      const ymd = `${y}-${m}-${dd}`
-      return isVacationDate(ymd) ? 'vacation-day-header' : ''
+      const d = arg?.date;
+      if (!(d && isVacationDate)) {
+        return "";
+      }
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const ymd = `${y}-${m}-${dd}`;
+      return isVacationDate(ymd) ? "vacation-day-header" : "";
     } catch {
-      return ''
+      return "";
     }
-  }
+  };
 }
-
-

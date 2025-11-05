@@ -1,220 +1,220 @@
 /* Multi-Month View Styles */
 
 .fc-multimonth {
-	display: flex;
-	flex-wrap: wrap;
-	border: 1px solid var(--fc-border-color);
-	border-radius: var(--radius);
-	overflow: visible;
-	contain: layout style;
-	gap: 0.75rem;
-	padding: 0.75rem;
-	background-color: hsl(var(--background));
+  display: flex;
+  flex-wrap: wrap;
+  border: 1px solid var(--fc-border-color);
+  border-radius: var(--radius);
+  overflow: visible;
+  contain: layout style;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: hsl(var(--background));
 }
 
 /* Individual month container - theme-aware rounded corners */
 .fc-multimonth-month {
-	contain: layout;
-	will-change: contents;
-	border: 1px solid hsl(var(--border));
-	border-radius: var(--radius);
-	overflow: hidden;
-	background-color: hsl(var(--card));
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-	transition: box-shadow 0.2s ease;
-	flex: 1 1 calc(33.333% - 0.5rem); /* 3 columns with gap */
-	min-width: 260px; /* Minimum width for readability */
+  contain: layout;
+  will-change: contents;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: hsl(var(--card));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.2s ease;
+  flex: 1 1 calc(33.333% - 0.5rem); /* 3 columns with gap */
+  min-width: 260px; /* Minimum width for readability */
 }
 
 /* Hover effect for months */
 .fc-multimonth-month:hover {
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 /* A single month title */
 .fc-multimonth-title {
-	padding: 0.75em 0;
-	text-align: center;
-	font-weight: bold;
-	font-size: 1.1em;
-	background-color: hsl(var(--muted) / 0.3);
-	border-bottom: 1px solid hsl(var(--border));
-	margin: 0;
+  padding: 0.75em 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 1.1em;
+  background-color: hsl(var(--muted) / 0.3);
+  border-bottom: 1px solid hsl(var(--border));
+  margin: 0;
 }
 
 /* Month daygrid */
 .fc-multimonth-daygrid {
-	background: var(--fc-page-bg-color);
+  background: var(--fc-page-bg-color);
 }
 
 /* Tables within months */
 .fc-multimonth-header-table,
 .fc-multimonth-daygrid-table {
-	width: 100%;
-	table-layout: fixed;
+  width: 100%;
+  table-layout: fixed;
 }
 
 .fc-multimonth-header-table {
-	background-color: hsl(var(--muted) / 0.5);
+  background-color: hsl(var(--muted) / 0.5);
 }
 
 .fc-multimonth-daygrid-table {
-	border-top-style: hidden;
+  border-top-style: hidden;
 }
 
 /* Remove outer borders from tables inside month containers */
 .fc-multimonth-month .fc-multimonth-header-table,
 .fc-multimonth-month .fc-multimonth-daygrid-table {
-	border: none;
+  border: none;
 }
 
 /* First and last cells border radius for clean edges */
 .fc-multimonth-month .fc-multimonth-header-table th:first-child {
-	border-left: none;
+  border-left: none;
 }
 
 .fc-multimonth-month .fc-multimonth-header-table th:last-child {
-	border-right: none;
+  border-right: none;
 }
 
 .fc-multimonth-month .fc-multimonth-daygrid-table td:first-child {
-	border-left: none;
+  border-left: none;
 }
 
 .fc-multimonth-month .fc-multimonth-daygrid-table td:last-child {
-	border-right: none;
+  border-right: none;
 }
 
 .fc-multimonth-month .fc-multimonth-daygrid-table tr:last-child td {
-	border-bottom: none;
+  border-bottom: none;
 }
 
 /* Single column variant */
 .fc-multimonth-singlecol .fc-multimonth {
-	position: relative;
-	gap: 0;
-	padding: 0;
+  position: relative;
+  gap: 0;
+  padding: 0;
 }
 
 .fc-multimonth-singlecol .fc-multimonth-month {
-	border-radius: 0;
-	border-left: none;
-	border-right: none;
-	margin-bottom: -1px;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  margin-bottom: -1px;
 }
 
 .fc-multimonth-singlecol .fc-multimonth-month:first-child {
-	border-top-left-radius: var(--radius);
-	border-top-right-radius: var(--radius);
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
 }
 
 .fc-multimonth-singlecol .fc-multimonth-month:last-child {
-	border-bottom-left-radius: var(--radius);
-	border-bottom-right-radius: var(--radius);
-	margin-bottom: 0;
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
+  margin-bottom: 0;
 }
 
 .fc-multimonth-singlecol .fc-multimonth-header {
-	position: relative;
-	top: 0;
-	z-index: var(--z-fc-multimonth-variant-primary);
-	background: var(--fc-page-bg-color);
+  position: relative;
+  top: 0;
+  z-index: var(--z-fc-multimonth-variant-primary);
+  background: var(--fc-page-bg-color);
 }
 
 .fc-multimonth-singlecol .fc-multimonth-daygrid {
-	position: relative;
-	z-index: var(--z-fc-multimonth-variant-secondary);
+  position: relative;
+  z-index: var(--z-fc-multimonth-variant-secondary);
 }
 
 .fc-multimonth-singlecol .fc-multimonth-header-table,
 .fc-multimonth-singlecol .fc-multimonth-daygrid-table {
-	border-left-style: hidden;
-	border-right-style: hidden;
+  border-left-style: hidden;
+  border-right-style: hidden;
 }
 
 .fc-multimonth-singlecol
-	.fc-multimonth-month:last-child
-	.fc-multimonth-daygrid-table {
-	border-bottom-style: hidden;
+  .fc-multimonth-month:last-child
+  .fc-multimonth-daygrid-table {
+  border-bottom-style: hidden;
 }
 
 /* Multi-column variant */
 .fc-multimonth-multicol {
-	line-height: 1;
+  line-height: 1;
 }
 
 .fc-multimonth-multicol .fc-multimonth-month {
-	padding: 0;
+  padding: 0;
 }
 
 /* More-link styles moved to _popover-unified.css */
 
 /* Compact variant */
 .fc-multimonth-compact {
-	line-height: 1;
+  line-height: 1;
 }
 
 .fc-multimonth-compact .fc-multimonth-month {
-	font-size: 0.9em;
+  font-size: 0.9em;
 }
 
 .fc-multimonth-compact .fc-multimonth-header-table,
 .fc-multimonth-compact .fc-multimonth-daygrid-table {
-	font-size: 0.9em;
+  font-size: 0.9em;
 }
 
 .fc-multimonth-compact .fc-multimonth-title {
-	padding: 0.5em 0;
-	font-size: 1em;
+  padding: 0.5em 0;
+  font-size: 1em;
 }
 
 /* Dark mode adjustments */
 .dark .fc-multimonth {
-	background-color: hsl(var(--background));
+  background-color: hsl(var(--background));
 }
 
 .dark .fc-multimonth-month {
-	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .dark .fc-multimonth-month:hover {
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
 }
 
 /* Media screen specific - sticky header */
 @media screen {
-	.fc-multimonth-singlecol .fc-multimonth-header {
-		position: sticky;
-	}
+  .fc-multimonth-singlecol .fc-multimonth-header {
+    position: sticky;
+  }
 }
 
 /* Print specific - show overflow */
 @media print {
-	.fc-multimonth {
-		overflow: visible;
-	}
+  .fc-multimonth {
+    overflow: visible;
+  }
 }
 
 /* Reduce visual complexity in multiMonth view */
 .fc-multimonth .fc-event {
-	@apply text-xs leading-tight;
-	box-shadow: none;
+  @apply text-xs leading-tight;
+  box-shadow: none;
 }
 
 .fc-multimonth .fc-event-title {
-	@apply truncate;
-	max-width: 100%;
+  @apply truncate;
+  max-width: 100%;
 }
 
 .fc-multimonth .fc-daygrid-event-dot {
-	display: none;
+  display: none;
 }
 
 .fc-multimonth .fc-daygrid-day-events {
-	@apply min-h-0;
+  @apply min-h-0;
 }
 
 /* Disable hover effects on day cells in multiMonth view for performance */
 .fc-multimonth .fc-daygrid-day:hover {
-	transition: none;
+  transition: none;
 }

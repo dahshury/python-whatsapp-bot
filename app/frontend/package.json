@@ -129,7 +129,7 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.4",
+    "@biomejs/biome": "^2.3.3",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/react-query-devtools": "^5.90.2",
     "@testing-library/jest-dom": "^6.9.1",
@@ -141,17 +141,14 @@
     "@types/react": "^19.1.9",
     "@types/react-dom": "^19.1.9",
     "babel-plugin-react-compiler": "^1.0.0",
-    "eslint": "^8",
-    "eslint-config-next": "^16.0.0",
-    "eslint-plugin-boundaries": "^5.0.1",
     "jsdom": "^27.0.1",
     "knip": "^5.64.3",
     "postcss": "^8",
     "postcss-load-config": "^6.0.1",
-    "prettier": "^3.6.2",
     "react-wordcloud": "^1.2.7",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
+    "ultracite": "6.2.1",
     "vite": "^5.3.1",
     "vite-tsconfig-paths": "^5.1.0",
     "vitest": "^2.1.4"
