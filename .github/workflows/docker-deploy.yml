@@ -35,9 +35,11 @@ jobs:
       - name: Build and push frontend image
         env:
           NEXT_PUBLIC_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_BACKEND_URL }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL} \
+            --build-arg NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
             -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest \
             -f app/frontend/Dockerfile app/frontend
           docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest
@@ -51,13 +53,13 @@ jobs:
           script: |
             # Create base directory if it doesn't exist
             mkdir -p /home/ubuntu/python-whatsapp-bot
-            
+
             # Remove existing directories that might have permission issues
             sudo rm -rf /home/ubuntu/python-whatsapp-bot/prometheus
-            
+
             # Create fresh directories with proper permissions
             mkdir -p /home/ubuntu/python-whatsapp-bot/prometheus
-            
+
             # Ensure proper ownership (use sudo)
             sudo chown -R ubuntu:ubuntu /home/ubuntu/python-whatsapp-bot
             # Create swap file if not exists (1G)
@@ -172,4 +174,4 @@ jobs:
               exit 0
             done
             echo "Deployment failed after 3 attempts"
-            exit 1 
+            exit 1

@@ -28,3 +28,4 @@ export const NEW_CUSTOMER_SUPPRESS_WINDOW_MS = 600;
  * the initial setup phase completes.
  */
 export const NEW_CUSTOMER_SUPPRESS_CLEANUP_DELAY_MS = 700;
+

@@ -27,3 +27,4 @@ export function getGridContainerClasses(
   const fullscreenClass = isFullscreen ? "glide-grid-fullscreen-editor" : "";
   return `${containerClass} ${fullscreenClass}`.trim();
 }
+

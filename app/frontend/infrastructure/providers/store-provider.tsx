@@ -32,3 +32,4 @@ function initializeStores() {
   useSettingsStore.getState();
   useLanguageStore.getState();
 }
+

@@ -83,3 +83,4 @@ export type GridDataEditorProps = {
   // If true, render without outer border/background so it blends into dialogs
   hideOuterFrame?: boolean;
 };
+

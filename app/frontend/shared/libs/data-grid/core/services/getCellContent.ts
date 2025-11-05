@@ -84,3 +84,4 @@ export function createGetCellContent({
     return baseCell;
   };
 }
+

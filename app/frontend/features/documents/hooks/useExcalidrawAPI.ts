@@ -22,3 +22,4 @@ export const useExcalidrawAPI = () => {
 
   return { apiRef, onExcalidrawAPI } as const;
 };
+

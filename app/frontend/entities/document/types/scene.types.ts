@@ -38,3 +38,4 @@ export type SceneSaveResult = {
   success: boolean;
   message?: string;
 };
+

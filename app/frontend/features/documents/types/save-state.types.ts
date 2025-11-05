@@ -21,3 +21,4 @@ export type SceneChangePayload = {
   editorAppState?: Record<string, unknown>;
   signature?: string;
 };
+
