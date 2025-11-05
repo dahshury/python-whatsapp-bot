@@ -19,5 +19,5 @@ RUN git clone --depth=1 https://github.com/chimpler/postgres-aws-s3.git /tmp/pos
  && make -C /tmp/postgres-aws-s3 install \
  && rm -rf /tmp/postgres-aws-s3
 
-COPY initdb/ /docker-entrypoint-initdb.d/
+COPY docker/postgres/initdb/ /docker-entrypoint-initdb.d/
 
