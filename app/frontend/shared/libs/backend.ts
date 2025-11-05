@@ -1,4 +1,4 @@
-import { BACKEND_CONNECTION, HTTP_STATUS } from "@/shared/config";
+import { HTTP_STATUS, BACKEND_CONNECTION } from "@/shared/config";
 import {
   markBackendConnected,
   markBackendDisconnected,
@@ -7,22 +7,68 @@ import { unstableCache } from "@/shared/libs/cache/unstable-cache";
 
 const BACKEND_FAILURE_REGEX = /Backend request failed|fetch failed/i;
 
+function parseBackendEnvCandidates(raw?: string | null): string[] {
+  if (!raw) {
+    return [];
+  }
+  return raw
+    .split(",")
+    .map((candidate) => candidate.trim())
+    .filter((candidate) => candidate.length > 0);
+}
+
+function isLocalhostHostname(hostname: string | null | undefined): boolean {
+  if (!hostname) {
+    return false;
+  }
+  const normalized = hostname.trim().toLowerCase();
+  if (!normalized) {
+    return false;
+  }
+  return (
+    normalized === "localhost" ||
+    normalized === "127.0.0.1" ||
+    normalized === "::1" ||
+    normalized.endsWith(".localhost")
+  );
+}
+
+function dedupeCandidates(candidates: string[]): string[] {
+  return Array.from(new Set(candidates.filter(Boolean)));
+}
+
 function resolveBackendBaseUrlCandidates(): string[] {
   // Server-side (Next.js API): try Docker service first, then localhost
   const isServer = typeof window === "undefined";
+  const envCandidates = parseBackendEnvCandidates(
+    isServer
+      ? process.env.BACKEND_URL || process.env.INTERNAL_BACKEND_URL
+      : process.env.NEXT_PUBLIC_BACKEND_URL
+  );
   if (isServer) {
-    return ["http://backend:8000", "http://localhost:8000"];
+    return dedupeCandidates([
+      ...envCandidates,
+      "http://backend:8000",
+      "http://localhost:8000",
+    ]);
   }
 
-  // Browser-side: Use environment variable if set, otherwise fall back to localhost
-  const publicBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-  if (publicBackendUrl) {
-    // In production with explicit backend URL, use it exclusively
-    return [publicBackendUrl];
+  // Browser: For development, try direct backend connection first (faster, bypasses Next.js proxy)
+  // Fall back to Next.js API proxy if direct connection fails [[memory:8680273]]
+  const candidates: string[] = [...envCandidates];
+
+  try {
+    const hostname = window.location.hostname;
+    if (isLocalhostHostname(hostname)) {
+      candidates.push("http://localhost:8000");
+    }
+  } catch {
+    // Accessing window location failed - ignore and continue with defaults
   }
 
-  // Development: try direct backend connection first (faster), fall back to Next.js proxy
-  return ["http://localhost:8000", "/api"];
+  candidates.push("/api");
+
+  return dedupeCandidates(candidates);
 }
 
 function joinUrl(base: string, path: string): string {
