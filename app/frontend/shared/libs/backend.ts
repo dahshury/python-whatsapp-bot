@@ -1,4 +1,4 @@
-import { HTTP_STATUS, BACKEND_CONNECTION } from "@/shared/config";
+import { BACKEND_CONNECTION, HTTP_STATUS } from "@/shared/config";
 import {
   markBackendConnected,
   markBackendDisconnected,
@@ -14,8 +14,14 @@ function resolveBackendBaseUrlCandidates(): string[] {
     return ["http://backend:8000", "http://localhost:8000"];
   }
 
-  // Browser: For development, try direct backend connection first (faster, bypasses Next.js proxy)
-  // Fall back to Next.js API proxy if direct connection fails [[memory:8680273]]
+  // Browser-side: Use environment variable if set, otherwise fall back to localhost
+  const publicBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+  if (publicBackendUrl) {
+    // In production with explicit backend URL, use it exclusively
+    return [publicBackendUrl];
+  }
+
+  // Development: try direct backend connection first (faster), fall back to Next.js proxy
   return ["http://localhost:8000", "/api"];
 }
 

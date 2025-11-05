@@ -4,8 +4,7 @@ import type { EventChangeArg } from "@fullcalendar/core";
 import type { CalendarCallbacks } from "@shared/libs/calendar/calendar-callbacks";
 import { calculateCalendarHeight } from "@shared/libs/calendar/calendar-view-utils";
 import type React from "react";
-import type { ConversationMessage } from "@/entities/conversation";
-import type { CalendarEvent, Reservation } from "@/entities/event";
+import type { CalendarEvent } from "@/entities/event";
 import type { CalendarCoreRef } from "@/features/calendar";
 import { CalendarCore } from "./CalendarCore";
 import { CalendarEventContextMenu } from "./CalendarEventContextMenu";
@@ -64,8 +63,6 @@ export type CalendarMainContentProps = {
     handleEventDragStart: (info: unknown) => void;
     handleEventDragStop: () => void;
   };
-  conversations: Record<string, ConversationMessage[]>;
-  reservations: Record<string, Reservation[]>;
   events: CalendarEvent[];
   dataTableEditor: { handleEditReservation: (event: CalendarEvent) => void };
   handleOpenConversation: (eventId: string) => void;
@@ -104,8 +101,6 @@ export function CalendarMainContent({
   contextMenu,
   hoverCard,
   dragHandlers,
-  conversations,
-  reservations,
   events,
   dataTableEditor,
   handleOpenConversation,
@@ -285,7 +280,6 @@ export function CalendarMainContent({
         hoverCard.hoverCardPosition &&
         !dragHandlers.isDragging && (
           <CalendarHoverCardPortal
-            conversations={conversations}
             hoverCardPosition={hoverCard.hoverCardPosition}
             hoveredEventId={hoverCard.hoveredEventId}
             isDragging={dragHandlers.isDragging}
@@ -294,7 +288,6 @@ export function CalendarMainContent({
             isLocalized={_isLocalized}
             onMouseEnter={hoverCard.onHoverCardMouseEnter}
             onMouseLeave={hoverCard.onHoverCardMouseLeave}
-            reservations={reservations}
           />
         )}
     </>

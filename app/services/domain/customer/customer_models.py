@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import asdict, dataclass
+from typing import List, Optional
 from datetime import date
 
 
@@ -13,7 +13,7 @@ class Customer:
     age: Optional[int] = None
     age_recorded_at: Optional[date] = None
     
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate customer data after initialization."""
         if not self.wa_id:
             raise ValueError("Customer wa_id cannot be empty")
@@ -51,3 +51,41 @@ class Customer:
             (ref.month, ref.day) < (self.age_recorded_at.month, self.age_recorded_at.day)
         )
         return max(0, self.age + max(0, years))
+
+
+@dataclass
+class MessageSnapshot:
+    """Minimal representation of a customer's message timestamp."""
+
+    date: Optional[str] = None
+    time: Optional[str] = None
+
+
+@dataclass
+class ReservationSnapshot:
+    """Lean representation of a customer's reservation for hover-card usage."""
+
+    id: Optional[int]
+    date: str
+    time_slot: str
+    type: int
+    status: str
+    cancelled: bool
+
+
+@dataclass
+class CustomerStats:
+    """Aggregate customer statistics for hover-card and analytics views."""
+
+    wa_id: str
+    customer_name: Optional[str]
+    message_count: int
+    reservation_count: int
+    reservations: List[ReservationSnapshot]
+    first_message: Optional[MessageSnapshot] = None
+    last_message: Optional[MessageSnapshot] = None
+
+    def to_dict(self) -> dict[str, object]:
+        """Convert the dataclass structure into a plain dictionary."""
+
+        return asdict(self)

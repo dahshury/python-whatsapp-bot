@@ -23,10 +23,21 @@ function getOrCreateTabId(): string {
 function resolveWebSocketUrl(): string {
   try {
     if (typeof window !== "undefined") {
+      const tab = getOrCreateTabId();
+
+      // Check for explicit WebSocket URL from environment
+      const publicWsUrl = process.env.NEXT_PUBLIC_WS_URL;
+      if (publicWsUrl) {
+        // If explicit WS URL is set, use it with tab parameter
+        const url = new URL(publicWsUrl);
+        url.searchParams.set("tab", tab);
+        return url.toString();
+      }
+
+      // Auto-detect based on current location
       const isHttps = window.location.protocol === "https:";
       const host = window.location.hostname || "localhost";
       const wsProto = isHttps ? "wss" : "ws";
-      const tab = getOrCreateTabId();
       const wsUrl = `${wsProto}://${host}:8000/ws?tab=${encodeURIComponent(tab)}`;
       return wsUrl;
     }

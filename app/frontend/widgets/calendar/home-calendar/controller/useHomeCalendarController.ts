@@ -26,7 +26,6 @@ import {
   useCalendarState,
   useVacationDateChecker,
 } from "@/features/calendar";
-import { useCalendarPeriodData } from "@/features/calendar/hooks/useCalendarPeriodData";
 import { useCalendarDataTableEditor } from "@/features/data-table";
 import type { CalendarMainContentProps } from "@/widgets/calendar/CalendarMainContent";
 import type { DualCalendarComponentProps } from "@/widgets/calendar/DualCalendar";
@@ -110,36 +109,6 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
     initialView: "timeGridWeek",
     storageKeyPrefix: "calendar:page",
   });
-
-  const { getCurrentPeriodData } = useCalendarPeriodData({
-    currentView: calendarState.currentView,
-    currentDate: calendarState.currentDate,
-    freeRoam,
-  });
-
-  const mappedConversations = useMemo(() => {
-    const conversations = getCurrentPeriodData().conversations;
-    const out: Record<
-      string,
-      import("@/entities/conversation").ConversationMessage[]
-    > = {};
-    for (const [waId, events] of Object.entries(conversations || {})) {
-      if (Array.isArray(events) && events.length > 0) {
-        out[waId] = events.map((event) => ({
-          role: event.role || "user",
-          message: event.message || "",
-          time: event.time || "",
-          date: event.date || "",
-        }));
-      }
-    }
-    return out;
-  }, [getCurrentPeriodData]);
-
-  const mappedReservations = useMemo(
-    () => getCurrentPeriodData().reservations,
-    [getCurrentPeriodData]
-  );
 
   const eventsState = useCalendarEvents({
     freeRoam,
@@ -429,7 +398,6 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
     calendarRef,
     callbacks,
     contextMenu,
-    conversations: mappedConversations,
     currentDate: calendarState.currentDate,
     currentView: calendarState.currentView,
     dataTableEditor: {
@@ -454,7 +422,6 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
     isVacationDate,
     onViewChange: calendarState.setCurrentView,
     processedEvents: allEvents,
-    reservations: mappedReservations,
     setCalendarHeight: handleCalendarHeightChange,
     setCurrentDate: calendarState.setCurrentDate,
     setCurrentView: calendarState.setCurrentView,

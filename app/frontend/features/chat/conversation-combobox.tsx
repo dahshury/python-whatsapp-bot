@@ -409,10 +409,8 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
                 sideOffset={5}
               >
                 <CustomerStatsCard
-                  conversations={{}} // Empty - conversations loaded on-demand
                   isHoverCard={true}
                   isLocalized={isLocalized}
-                  reservations={reservations}
                   selectedConversationId={effectiveSelectedId}
                 />
               </HoverCardContent>

@@ -1,6 +1,14 @@
 from typing import Optional
+
+from sqlalchemy import func
+
 from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
-from .customer_models import Customer
+from .customer_models import (
+    Customer,
+    CustomerStats,
+    MessageSnapshot,
+    ReservationSnapshot,
+)
 
 
 class CustomerRepository:
@@ -94,3 +102,70 @@ class CustomerRepository:
             else:
                 session.rollback()
             return total_rows
+
+    def get_customer_stats(self, wa_id: str) -> Optional[CustomerStats]:
+        """Aggregate messaging and reservation statistics for a customer."""
+
+        with get_session() as session:
+            customer = session.get(CustomerModel, wa_id)
+            if customer is None:
+                return None
+
+            message_count = (
+                session.query(func.count(ConversationModel.id))
+                .filter(ConversationModel.wa_id == wa_id)
+                .scalar()
+            ) or 0
+
+            first_message_row = (
+                session.query(ConversationModel.date, ConversationModel.time)
+                .filter(ConversationModel.wa_id == wa_id)
+                .order_by(ConversationModel.date.asc(), ConversationModel.time.asc())
+                .first()
+            )
+
+            last_message_row = (
+                session.query(ConversationModel.date, ConversationModel.time)
+                .filter(ConversationModel.wa_id == wa_id)
+                .order_by(ConversationModel.date.desc(), ConversationModel.time.desc())
+                .first()
+            )
+
+            reservation_rows = (
+                session.query(ReservationModel)
+                .filter(ReservationModel.wa_id == wa_id)
+                .order_by(ReservationModel.date.asc(), ReservationModel.time_slot.asc())
+                .all()
+            )
+
+            reservations = [
+                ReservationSnapshot(
+                    id=row.id if row.id is not None else None,
+                    date=row.date,
+                    time_slot=row.time_slot,
+                    type=row.type,
+                    status=row.status,
+                    cancelled=row.status == "cancelled",
+                )
+                for row in reservation_rows
+            ]
+
+            return CustomerStats(
+                wa_id=wa_id,
+                customer_name=getattr(customer, "customer_name", None),
+                message_count=int(message_count),
+                reservation_count=len(reservations),
+                reservations=reservations,
+                first_message=MessageSnapshot(
+                    date=first_message_row.date if first_message_row else None,
+                    time=first_message_row.time if first_message_row else None,
+                )
+                if first_message_row
+                else None,
+                last_message=MessageSnapshot(
+                    date=last_message_row.date if last_message_row else None,
+                    time=last_message_row.time if last_message_row else None,
+                )
+                if last_message_row
+                else None,
+            )

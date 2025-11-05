@@ -1,4 +1,9 @@
 import type React from "react";
+import {
+  markBackendConnected,
+  markWebSocketConnectCompleted,
+  markWebSocketConnecting,
+} from "@/shared/libs/backend-connection-store";
 import { connectionManager } from "@/shared/libs/ws/connection-manager";
 import { processWebSocketMessage } from "@/shared/libs/ws/message-processor";
 import { calculateReconnectionDelay } from "@/shared/libs/ws/reconnection-strategy";
@@ -196,6 +201,10 @@ export class WebSocketConnectionHandler {
     connectionManager.lock = true;
 
     connectingRef.current = true;
+
+    // Mark WebSocket as connecting to suppress HTTP failures during connection
+    markWebSocketConnecting();
+
     try {
       const wsUrl = resolveWebSocketUrl();
       if (WS_DEBUG) {
@@ -206,6 +215,11 @@ export class WebSocketConnectionHandler {
       connectionManager.instance = ws;
 
       ws.onopen = () => {
+        // Mark WebSocket connection completed successfully
+        markWebSocketConnectCompleted();
+        // Mark backend as connected since WebSocket is now open
+        markBackendConnected();
+
         setState((prev: WebSocketDataState) => ({
           ...prev,
           isConnected: true,
@@ -272,6 +286,9 @@ export class WebSocketConnectionHandler {
       };
 
       ws.onclose = (event: CloseEvent) => {
+        // Mark WebSocket connection attempt completed (failed or closed)
+        markWebSocketConnectCompleted();
+
         setState((prev: WebSocketDataState) => ({
           ...prev,
           isConnected: false,
@@ -320,6 +337,9 @@ export class WebSocketConnectionHandler {
       };
 
       ws.onerror = (_error) => {
+        // Mark WebSocket connection attempt completed (error)
+        markWebSocketConnectCompleted();
+
         if (WS_DEBUG) {
           // Debug logging would go here if enabled
         }
@@ -329,6 +349,9 @@ export class WebSocketConnectionHandler {
 
       wsRef.current = ws;
     } catch (_error) {
+      // Mark WebSocket connection attempt completed (exception)
+      markWebSocketConnectCompleted();
+
       if (WS_DEBUG) {
         // Debug logging would go here if enabled
       }

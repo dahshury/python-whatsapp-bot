@@ -357,6 +357,17 @@ async def api_get_customer_names():
     return JSONResponse(content=names)
 
 
+@router.get("/customers/{wa_id}/stats")
+async def api_get_customer_stats(wa_id: str):
+    """Return aggregated statistics for a specific customer."""
+    service = CustomerService()
+    result = service.get_customer_stats(wa_id)
+    if isinstance(result, tuple):
+        payload, status_code = result
+        return JSONResponse(content=payload, status_code=status_code)
+    return JSONResponse(content=result)
+
+
 @router.post("/conversations/{wa_id}")
 async def api_append_message(wa_id: str, payload: dict = Body(...)):
     append_message(wa_id, payload.get("role"), payload.get("message"), payload.get("date"), payload.get("time"))

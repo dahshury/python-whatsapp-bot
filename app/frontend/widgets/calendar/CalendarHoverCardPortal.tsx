@@ -1,7 +1,5 @@
 import { cn } from "@shared/libs/utils";
 import { createPortal } from "react-dom";
-import type { Conversations } from "@/entities/conversation";
-import type { Reservation } from "@/entities/event";
 import { CustomerStatsCard } from "@/features/dashboard/customer-stats-card";
 
 type CalendarHoverCardPortalProps = {
@@ -15,8 +13,6 @@ type CalendarHoverCardPortalProps = {
   isHoverCardMounted: boolean;
   isHoverCardClosing: boolean;
   isDragging: boolean;
-  conversations: Conversations;
-  reservations: Record<string, Reservation[]>;
   isLocalized: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
@@ -28,8 +24,6 @@ export function CalendarHoverCardPortal({
   isHoverCardMounted,
   isHoverCardClosing,
   isDragging,
-  conversations,
-  reservations,
   isLocalized,
   onMouseEnter,
   onMouseLeave,
@@ -79,10 +73,8 @@ export function CalendarHoverCardPortal({
           }}
         >
           <CustomerStatsCard
-            conversations={conversations}
             isHoverCard={true}
             isLocalized={isLocalized}
-            reservations={reservations}
             selectedConversationId={hoveredEventId}
           />
         </div>

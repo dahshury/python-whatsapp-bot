@@ -49,7 +49,7 @@ export const BACKEND_CONNECTION = {
      * Time window in ms - failures within this window count as consecutive
      * Larger window = more sensitive to intermittent issues
      */
-    FAILURE_WINDOW_MS: 10000, // 10 seconds
+    FAILURE_WINDOW_MS: 10_000, // 10 seconds
     /**
      * Debounce delay in ms before showing disconnection overlay
      * Prevents UI flickering on temporary issues
@@ -64,7 +64,7 @@ export const BACKEND_CONNECTION = {
      * Time after last failure before resetting failure count
      * Prevents accumulated failures from past connection issues
      */
-    FAILURE_RESET_MS: 30000, // 30 seconds
+    FAILURE_RESET_MS: 30_000, // 30 seconds
   },
   /**
    * Fetch timeout settings for slow networks
@@ -74,11 +74,11 @@ export const BACKEND_CONNECTION = {
      * Default timeout for backend requests
      * Increased to handle slow EC2 instances
      */
-    DEFAULT_MS: 30000, // 30 seconds
+    DEFAULT_MS: 30_000, // 30 seconds
     /**
      * Extended timeout for critical operations
      */
-    EXTENDED_MS: 60000, // 60 seconds
+    EXTENDED_MS: 60_000, // 60 seconds
   },
 } as const;
 

@@ -155,3 +155,23 @@ class CustomerService(BaseService):
             self.repository.save(customer)
         
         return customer 
+
+    def get_customer_stats(self, wa_id: str, ar: bool = False):
+        """Return messaging and reservation stats for a specific customer."""
+
+        try:
+            validation_error = self._validate_wa_id(wa_id, ar)
+            if validation_error:
+                return validation_error
+
+            stats = self.repository.get_customer_stats(wa_id)
+            if stats is None:
+                return format_response(
+                    False,
+                    message=get_message("wa_id_not_found", ar),
+                    status_code=404,
+                )
+
+            return format_response(True, data=stats.to_dict())
+        except Exception as e:
+            return self._handle_error("get_customer_stats", e, ar)

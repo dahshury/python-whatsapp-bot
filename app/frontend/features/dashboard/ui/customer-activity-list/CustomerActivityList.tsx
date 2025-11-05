@@ -5,8 +5,6 @@ import { i18n } from "@shared/libs/i18n";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { cn } from "@shared/libs/utils";
 import { motion } from "framer-motion";
-import type { Conversations } from "@/entities/conversation";
-import type { Reservation } from "@/entities/event";
 import { CustomerStatsCard } from "@/features/dashboard/customer-stats-card";
 import type { CustomerActivity } from "@/features/dashboard/types";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -50,11 +48,7 @@ export function CustomerActivityList({
   pagination,
   isLocalized,
 }: CustomerActivityListProps) {
-  const {
-    customers: customerDirectory,
-    conversations,
-    reservations,
-  } = useCustomerData();
+  const { customers: customerDirectory } = useCustomerData();
   const { openConversation } = useSidebarChatStore();
 
   const getCustomerName = (wa_id: string) => {
@@ -245,17 +239,8 @@ export function CustomerActivityList({
                         </HoverCardTrigger>
                         <HoverCardContent className="w-[18.75rem] p-0">
                           <CustomerStatsCard
-                            conversations={
-                              conversations as unknown as Conversations
-                            }
                             isHoverCard={true}
                             isLocalized={isLocalized}
-                            reservations={
-                              reservations as unknown as Record<
-                                string,
-                                Reservation[]
-                              >
-                            }
                             selectedConversationId={customer.wa_id}
                           />
                         </HoverCardContent>

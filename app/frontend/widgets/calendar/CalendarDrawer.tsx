@@ -177,12 +177,6 @@ export function CalendarDrawer({
     [periodData.conversations]
   );
 
-  // Map reservations from period data
-  const mappedReservations = React.useMemo(
-    () => periodData.reservations || {},
-    [periodData.reservations]
-  );
-
   // Process events for calendar
   const allEvents = React.useMemo(() => {
     const filtered = filterEventsForCalendar(
@@ -387,7 +381,6 @@ export function CalendarDrawer({
                     },
                   }}
                   contextMenu={contextMenu}
-                  conversations={mappedConversations}
                   currentDate={calendarCore.calendarState.currentDate}
                   currentView={calendarCore.calendarState.currentView}
                   dataTableEditor={{
@@ -429,7 +422,6 @@ export function CalendarDrawer({
                       : calendarCore.calendarState.setCurrentView
                   }
                   processedEvents={allEvents}
-                  reservations={mappedReservations}
                   setCalendarHeight={handleCalendarHeightChange}
                   setCurrentDate={calendarCore.calendarState.setCurrentDate}
                   setCurrentView={

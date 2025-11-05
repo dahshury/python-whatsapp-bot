@@ -4,9 +4,12 @@ import { i18n } from "@shared/libs/i18n";
 import { Badge } from "@ui/badge";
 import { Card, CardContent } from "@ui/card";
 import { Calendar, Clock, MessageCircle, User } from "lucide-react";
-import { memo, useState } from "react";
-import type { ConversationMessage } from "@/entities/conversation";
-import type { Reservation } from "@/entities/event";
+import { memo, useMemo, useState } from "react";
+import { useCustomerNames } from "@/features/chat/hooks/useCustomerNames";
+import {
+  type CustomerStats,
+  useCustomerStats,
+} from "@/features/customers/hooks/useCustomerStats";
 import { CustomerReservationsGrid } from "@/features/dashboard/customer-reservations-grid";
 import {
   Accordion,
@@ -17,6 +20,7 @@ import {
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { InlineCopyBtn } from "@/shared/ui/inline-copy-btn";
 import { MagicCard } from "@/shared/ui/magicui/magic-card";
+import { Skeleton } from "@/shared/ui/skeleton";
 
 const SAUDI_LOCAL_PREFIX = "5";
 const SAUDI_LOCAL_LENGTH = 9;
@@ -27,25 +31,57 @@ const HOURS_ON_12_HOUR_CLOCK = 12;
 
 type CustomerStatsCardProps = {
   selectedConversationId: string;
-  conversations: Record<string, ConversationMessage[]>;
-  reservations: Record<string, Reservation[]>;
   isLocalized: boolean;
   isHoverCard?: boolean;
+  placeholderStats?: CustomerStats;
 };
 
 export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
   selectedConversationId,
-  conversations,
-  reservations,
   isLocalized,
   isHoverCard = false,
+  placeholderStats,
 }: CustomerStatsCardProps) {
-  const conversation = conversations[selectedConversationId] || [];
-  const customerReservations = reservations[selectedConversationId] || [];
-  const customerName = customerReservations[0]?.customer_name || null;
-
-  // State for accordion
   const [accordionValue, setAccordionValue] = useState<string>("");
+
+  const { data: customerNamesData } = useCustomerNames();
+  const {
+    data: stats,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useCustomerStats(selectedConversationId || null, {
+    enabled: Boolean(selectedConversationId),
+    ...(placeholderStats
+      ? { initialData: placeholderStats, placeholderData: placeholderStats }
+      : {}),
+  });
+
+  const effectiveStats = stats ?? placeholderStats ?? null;
+
+  const resolvedCustomerName = useMemo(() => {
+    if (effectiveStats?.customerName?.trim()) {
+      return effectiveStats.customerName;
+    }
+    const fallbackName =
+      customerNamesData?.[selectedConversationId]?.customer_name ?? null;
+    return fallbackName;
+  }, [effectiveStats, customerNamesData, selectedConversationId]);
+
+  const messageCount =
+    effectiveStats?.messageCount ?? placeholderStats?.messageCount ?? 0;
+  const displayReservations =
+    effectiveStats?.reservations ?? placeholderStats?.reservations ?? [];
+  const reservationCount =
+    effectiveStats?.reservationCount ?? displayReservations.length;
+  const firstMessage = effectiveStats?.firstMessage ?? null;
+  const lastMessage = effectiveStats?.lastMessage ?? null;
+
+  const showLoadingState = !effectiveStats && (isLoading || isFetching);
+  const showErrorState = !effectiveStats && Boolean(error);
+  const errorMessage =
+    error instanceof Error ? error.message : "Failed to load customer stats";
 
   // Format phone number for PhoneInput component
   const formatPhoneForInput = (phone: string) => {
@@ -71,19 +107,76 @@ export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
 
   const formattedPhone = formatPhoneForInput(selectedConversationId);
 
-  // Calculate conversation stats
-  const messageCount = conversation.length;
-  const lastMessage = conversation.length > 0 ? conversation.at(-1) : null;
+  if (showLoadingState) {
+    return (
+      <div className={isHoverCard ? "" : "mb-2"}>
+        <MagicCard
+          className={`bg-background/90 ${isHoverCard ? "border-0 shadow-none" : ""}`}
+          gradientColor="hsl(var(--muted-foreground) / 0.1)"
+          gradientFrom="hsl(var(--primary))"
+          gradientOpacity={0.6}
+          gradientSize={200}
+          gradientTo="hsl(var(--accent))"
+        >
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardContent className={isHoverCard ? "p-1" : "p-2"}>
+              <div className="space-y-2">
+                <div className="flex items-center gap-3">
+                  <Skeleton
+                    className={
+                      isHoverCard
+                        ? "h-8 w-8 rounded-full"
+                        : "h-10 w-10 rounded-full"
+                    }
+                  />
+                  <div className="flex flex-1 flex-col gap-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                  <Skeleton className="h-6 w-6" />
+                </div>
+                <div className="space-y-1">
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-full" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </MagicCard>
+      </div>
+    );
+  }
 
-  // Get first message date for "customer since"
-  const firstMessage =
-    conversation.length > 0
-      ? [...conversation].sort((a, b) => {
-          const aTime = new Date(`${a.date} ${a.time}`);
-          const bTime = new Date(`${b.date} ${b.time}`);
-          return aTime.getTime() - bTime.getTime();
-        })[0]
-      : null;
+  if (showErrorState) {
+    return (
+      <div className={isHoverCard ? "" : "mb-2"}>
+        <MagicCard
+          className={`bg-background/90 ${isHoverCard ? "border-0 shadow-none" : ""}`}
+          gradientColor="hsl(var(--muted-foreground) / 0.1)"
+          gradientFrom="hsl(var(--primary))"
+          gradientOpacity={0.6}
+          gradientSize={200}
+          gradientTo="hsl(var(--accent))"
+        >
+          <Card className="border-0 bg-transparent shadow-none">
+            <CardContent className={isHoverCard ? "p-2" : "p-4"}>
+              <div className="space-y-3 text-center text-muted-foreground text-xs">
+                <p>{errorMessage}</p>
+                <button
+                  className="rounded-sm border border-border px-2 py-1 font-medium text-foreground text-xs transition-colors hover:bg-muted"
+                  onClick={() => refetch()}
+                  type="button"
+                >
+                  Retry
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </MagicCard>
+      </div>
+    );
+  }
 
   const formatDate = (dateStr: string) => {
     try {
@@ -158,8 +251,8 @@ export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
                   <AvatarFallback
                     className={`bg-primary/10 text-primary ${isHoverCard ? "text-sm" : "text-base"}`}
                   >
-                    {customerName ? (
-                      customerName.charAt(0).toUpperCase()
+                    {resolvedCustomerName ? (
+                      resolvedCustomerName.charAt(0).toUpperCase()
                     ) : (
                       <User className={isHoverCard ? "h-4 w-4" : "h-5 w-5"} />
                     )}
@@ -169,11 +262,11 @@ export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
                 <div
                   className={`flex flex-1 flex-col items-center justify-center text-center ${isHoverCard ? "min-w-0 px-1" : ""}`}
                 >
-                  {customerName ? (
+                  {resolvedCustomerName ? (
                     <div
                       className={`font-medium ${isHoverCard ? "text-xs" : "text-sm"} w-full truncate`}
                     >
-                      {customerName}
+                      {resolvedCustomerName}
                     </div>
                   ) : (
                     <div
@@ -271,7 +364,7 @@ export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
             </div>
 
             {/* Reservations Accordion */}
-            {customerReservations.length > 0 && (
+            {displayReservations.length > 0 && (
               <Accordion
                 className="mt-2 w-full"
                 collapsible
@@ -294,7 +387,7 @@ export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
                         className="ml-auto h-4 px-1 text-[0.625rem]"
                         variant="outline"
                       >
-                        {customerReservations.length}
+                        {reservationCount}
                       </Badge>
                     </div>
                   </AccordionTrigger>
@@ -302,7 +395,7 @@ export const CustomerStatsCard = memo(function CustomerStatsCardComponent({
                     <div className={isHoverCard ? "px-0.5" : "px-1"}>
                       <CustomerReservationsGrid
                         isLocalized={isLocalized}
-                        reservations={customerReservations}
+                        reservations={displayReservations}
                       />
                     </div>
                   </AccordionContent>

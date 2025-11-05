@@ -1,5 +1,5 @@
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
 
 // Regex patterns defined at top level for performance
 const MJS_FILE_REGEX = /\.mjs$/;
@@ -16,6 +16,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_TIMEZONE:
       process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
+    NEXT_PUBLIC_BACKEND_URL: process.env.NEXT_PUBLIC_BACKEND_URL || "",
+    NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL || "",
   },
 
   // Allow remote images from YouTube thumbnail hosts and curated Unsplash assets

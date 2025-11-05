@@ -38,9 +38,14 @@ let consecutiveFailures = 0;
 let lastFailureTime = 0;
 let debounceTimeoutId: ReturnType<typeof setTimeout> | null = null;
 let gracePeriodTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let webSocketConnecting = false;
+let webSocketConnectStartTime = 0;
 
 // Use centralized configuration for connection stability
 const CONNECTION_CONFIG = BACKEND_CONNECTION.STABILITY;
+
+// WebSocket connection grace period (increased for slow EC2 instances)
+const WS_CONNECTION_GRACE_PERIOD_MS = 15_000; // 15 seconds
 
 function emit() {
   for (const listener of listeners) {
@@ -135,7 +140,7 @@ function resetFailureTracking(): void {
 export function markBackendConnected(): void {
   // Reset all failure tracking on successful connection
   resetFailureTracking();
-  
+
   if (snapshot.status === "connected" && !snapshot.lastError) {
     return;
   }
@@ -185,50 +190,70 @@ function actuallyMarkDisconnected(failure: BackendConnectionFailure): void {
   emit();
 }
 
+/**
+ * Mark that WebSocket connection is starting
+ * This suppresses backend disconnection warnings during WS connection
+ */
+export function markWebSocketConnecting(): void {
+  webSocketConnecting = true;
+  webSocketConnectStartTime = Date.now();
+}
+
+/**
+ * Mark that WebSocket connection completed (success or failure)
+ */
+export function markWebSocketConnectCompleted(): void {
+  webSocketConnecting = false;
+  webSocketConnectStartTime = 0;
+}
+
 export function markBackendDisconnected(
   reason: BackendConnectionFailureInput
 ): void {
   const now = Date.now();
   const timeSinceLastFailure = now - lastFailureTime;
-  
+
+  // Special handling: If WebSocket is connecting, be VERY tolerant of failures
+  // Slow EC2 instances can take 10-15 seconds to establish WS connection
+  if (webSocketConnecting) {
+    const wsConnectDuration = now - webSocketConnectStartTime;
+    if (wsConnectDuration < WS_CONNECTION_GRACE_PERIOD_MS) {
+      return;
+    }
+  }
+
   // Reset consecutive failures if enough time has passed since last failure
   if (timeSinceLastFailure > CONNECTION_CONFIG.FAILURE_RESET_MS) {
     consecutiveFailures = 0;
   }
-  
+
   // Check if this failure is within the failure window
-  const isWithinWindow = timeSinceLastFailure < CONNECTION_CONFIG.FAILURE_WINDOW_MS;
-  
+  const isWithinWindow =
+    timeSinceLastFailure < CONNECTION_CONFIG.FAILURE_WINDOW_MS;
+
   if (isWithinWindow) {
-    consecutiveFailures++;
+    consecutiveFailures += 1;
   } else {
     // Start a new failure sequence
     consecutiveFailures = 1;
   }
-  
+
   lastFailureTime = now;
   const failure = toFailure(reason, snapshot.lastError);
-  
+
   // If this is the first failure, start a grace period
   if (consecutiveFailures === 1) {
     // Clear any existing timers
     clearAllTimers();
-    
+
     // Set grace period - don't show overlay immediately, give slow networks time
     gracePeriodTimeoutId = setTimeout(() => {
       // After grace period, if we're still having failures, they'll be counted
       gracePeriodTimeoutId = null;
     }, CONNECTION_CONFIG.GRACE_PERIOD_MS);
-    
-    // Don't mark as disconnected yet - just log it
-    console.warn('[Backend Connection] First failure detected, starting grace period', {
-      reason: failure.reason,
-      message: failure.message,
-      consecutiveFailures,
-    });
     return;
   }
-  
+
   // Check if we've reached the failure threshold
   if (consecutiveFailures >= CONNECTION_CONFIG.FAILURE_THRESHOLD) {
     // Clear any existing debounce
@@ -236,32 +261,19 @@ export function markBackendDisconnected(
       clearTimeout(debounceTimeoutId);
       debounceTimeoutId = null;
     }
-    
+
     // Debounce the disconnection to prevent flickering
     debounceTimeoutId = setTimeout(() => {
       debounceTimeoutId = null;
-      
+
       // Double-check we're still having issues
       const timeSinceLastCheck = Date.now() - lastFailureTime;
       if (timeSinceLastCheck < CONNECTION_CONFIG.FAILURE_WINDOW_MS) {
-        console.error('[Backend Connection] Connection lost after threshold reached', {
-          consecutiveFailures,
-          lastFailure: failure,
-        });
         actuallyMarkDisconnected(failure);
       } else {
-        // Failures stopped during debounce period - likely recovered
-        console.info('[Backend Connection] Recovered during debounce period');
         resetFailureTracking();
       }
     }, CONNECTION_CONFIG.DEBOUNCE_DELAY_MS);
-  } else {
-    // Under threshold - log but don't show overlay
-    console.warn('[Backend Connection] Failure detected but under threshold', {
-      consecutiveFailures,
-      threshold: CONNECTION_CONFIG.FAILURE_THRESHOLD,
-      reason: failure.reason,
-    });
   }
 }
 

@@ -61,6 +61,8 @@ services:
       - backend
     environment:
       - ENV=${ENVIRONMENT:-development}
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-}
+      - NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL:-}
     restart: on-failure
     logging:
       driver: json-file
