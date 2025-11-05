@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile
+    pull_policy: build
     container_name: reservation_postgres
     restart: always
     environment:

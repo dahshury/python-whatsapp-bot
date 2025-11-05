@@ -90,7 +90,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.prod.yml,prometheus/**"
+          source: "docker-compose.prod.yml,prometheus/**,docker/"
           target: "/home/ubuntu/python-whatsapp-bot"
           overwrite: true
 
@@ -141,9 +141,14 @@ jobs:
               # Clean build cache
               docker builder prune -f
               
+              # Build the postgres image first (it's a custom image that needs building)
+              echo "Building postgres image..."
+              docker compose -f docker-compose.prod.yml build postgres
+              
               # Now pull the new images - this ensures we have space for them
+              # Use --ignore-pull-failures to skip services that need building
               echo "Pulling updated images..."
-              docker compose -f docker-compose.prod.yml pull
+              docker compose -f docker-compose.prod.yml pull --ignore-pull-failures || true
 
               # SQLite checkpoint steps removed post-migration to PostgreSQL
 
