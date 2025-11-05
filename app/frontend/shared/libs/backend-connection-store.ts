@@ -33,6 +33,15 @@ const initialSnapshot: BackendConnectionSnapshot = {
 
 let snapshot: BackendConnectionSnapshot = initialSnapshot;
 
+// Connection stability tracking
+let consecutiveFailures = 0;
+let lastFailureTime = 0;
+let debounceTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let gracePeriodTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+// Use centralized configuration for connection stability
+const CONNECTION_CONFIG = BACKEND_CONNECTION.STABILITY;
+
 function emit() {
   for (const listener of listeners) {
     listener();
@@ -106,7 +115,27 @@ export function getServerSnapshot(): BackendConnectionSnapshot {
   return initialSnapshot;
 }
 
+function clearAllTimers(): void {
+  if (debounceTimeoutId) {
+    clearTimeout(debounceTimeoutId);
+    debounceTimeoutId = null;
+  }
+  if (gracePeriodTimeoutId) {
+    clearTimeout(gracePeriodTimeoutId);
+    gracePeriodTimeoutId = null;
+  }
+}
+
+function resetFailureTracking(): void {
+  consecutiveFailures = 0;
+  lastFailureTime = 0;
+  clearAllTimers();
+}
+
 export function markBackendConnected(): void {
+  // Reset all failure tracking on successful connection
+  resetFailureTracking();
+  
   if (snapshot.status === "connected" && !snapshot.lastError) {
     return;
   }
@@ -141,10 +170,7 @@ export function markBackendChecking(reason?: string): void {
   emit();
 }
 
-export function markBackendDisconnected(
-  reason: BackendConnectionFailureInput
-): void {
-  const failure = toFailure(reason, snapshot.lastError);
+function actuallyMarkDisconnected(failure: BackendConnectionFailure): void {
   const next: BackendConnectionSnapshot = {
     status: "disconnected",
     lastError: failure,
@@ -157,6 +183,86 @@ export function markBackendDisconnected(
   }
   snapshot = next;
   emit();
+}
+
+export function markBackendDisconnected(
+  reason: BackendConnectionFailureInput
+): void {
+  const now = Date.now();
+  const timeSinceLastFailure = now - lastFailureTime;
+  
+  // Reset consecutive failures if enough time has passed since last failure
+  if (timeSinceLastFailure > CONNECTION_CONFIG.FAILURE_RESET_MS) {
+    consecutiveFailures = 0;
+  }
+  
+  // Check if this failure is within the failure window
+  const isWithinWindow = timeSinceLastFailure < CONNECTION_CONFIG.FAILURE_WINDOW_MS;
+  
+  if (isWithinWindow) {
+    consecutiveFailures++;
+  } else {
+    // Start a new failure sequence
+    consecutiveFailures = 1;
+  }
+  
+  lastFailureTime = now;
+  const failure = toFailure(reason, snapshot.lastError);
+  
+  // If this is the first failure, start a grace period
+  if (consecutiveFailures === 1) {
+    // Clear any existing timers
+    clearAllTimers();
+    
+    // Set grace period - don't show overlay immediately, give slow networks time
+    gracePeriodTimeoutId = setTimeout(() => {
+      // After grace period, if we're still having failures, they'll be counted
+      gracePeriodTimeoutId = null;
+    }, CONNECTION_CONFIG.GRACE_PERIOD_MS);
+    
+    // Don't mark as disconnected yet - just log it
+    console.warn('[Backend Connection] First failure detected, starting grace period', {
+      reason: failure.reason,
+      message: failure.message,
+      consecutiveFailures,
+    });
+    return;
+  }
+  
+  // Check if we've reached the failure threshold
+  if (consecutiveFailures >= CONNECTION_CONFIG.FAILURE_THRESHOLD) {
+    // Clear any existing debounce
+    if (debounceTimeoutId) {
+      clearTimeout(debounceTimeoutId);
+      debounceTimeoutId = null;
+    }
+    
+    // Debounce the disconnection to prevent flickering
+    debounceTimeoutId = setTimeout(() => {
+      debounceTimeoutId = null;
+      
+      // Double-check we're still having issues
+      const timeSinceLastCheck = Date.now() - lastFailureTime;
+      if (timeSinceLastCheck < CONNECTION_CONFIG.FAILURE_WINDOW_MS) {
+        console.error('[Backend Connection] Connection lost after threshold reached', {
+          consecutiveFailures,
+          lastFailure: failure,
+        });
+        actuallyMarkDisconnected(failure);
+      } else {
+        // Failures stopped during debounce period - likely recovered
+        console.info('[Backend Connection] Recovered during debounce period');
+        resetFailureTracking();
+      }
+    }, CONNECTION_CONFIG.DEBOUNCE_DELAY_MS);
+  } else {
+    // Under threshold - log but don't show overlay
+    console.warn('[Backend Connection] Failure detected but under threshold', {
+      consecutiveFailures,
+      threshold: CONNECTION_CONFIG.FAILURE_THRESHOLD,
+      reason: failure.reason,
+    });
+  }
 }
 
 export const backendConnectionStore = {

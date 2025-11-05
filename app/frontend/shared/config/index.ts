@@ -35,6 +35,51 @@ export const BACKEND_CONNECTION = {
    * Maximum length of response preview to store
    */
   RESPONSE_PREVIEW_MAX_LENGTH: 2000,
+  /**
+   * Connection stability detection settings
+   * Designed to handle slow EC2 instances and unreliable networks
+   */
+  STABILITY: {
+    /**
+     * Number of consecutive failures before marking as disconnected
+     * Higher = more tolerant of transient failures
+     */
+    FAILURE_THRESHOLD: 3,
+    /**
+     * Time window in ms - failures within this window count as consecutive
+     * Larger window = more sensitive to intermittent issues
+     */
+    FAILURE_WINDOW_MS: 10000, // 10 seconds
+    /**
+     * Debounce delay in ms before showing disconnection overlay
+     * Prevents UI flickering on temporary issues
+     */
+    DEBOUNCE_DELAY_MS: 2000, // 2 seconds
+    /**
+     * Grace period after first failure before counting failures
+     * Gives slow networks time to complete initial requests
+     */
+    GRACE_PERIOD_MS: 5000, // 5 seconds
+    /**
+     * Time after last failure before resetting failure count
+     * Prevents accumulated failures from past connection issues
+     */
+    FAILURE_RESET_MS: 30000, // 30 seconds
+  },
+  /**
+   * Fetch timeout settings for slow networks
+   */
+  TIMEOUT: {
+    /**
+     * Default timeout for backend requests
+     * Increased to handle slow EC2 instances
+     */
+    DEFAULT_MS: 30000, // 30 seconds
+    /**
+     * Extended timeout for critical operations
+     */
+    EXTENDED_MS: 60000, // 60 seconds
+  },
 } as const;
 
 /**

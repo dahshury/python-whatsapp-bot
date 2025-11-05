@@ -2,7 +2,6 @@
 
 services:
   postgres:
-    image: python-whatsapp-bot-postgres:latest
     build:
       context: .
       dockerfile: docker/postgres/Dockerfile

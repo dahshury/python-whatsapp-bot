@@ -1,4 +1,4 @@
-import { HTTP_STATUS } from "@/shared/config";
+import { HTTP_STATUS, BACKEND_CONNECTION } from "@/shared/config";
 import {
   markBackendConnected,
   markBackendDisconnected,
@@ -27,7 +27,35 @@ function joinUrl(base: string, path: string): string {
 
 type CallPythonBackendOptions = {
   cache?: RequestCache;
+  timeoutMs?: number;
 };
+
+/**
+ * Create a fetch request with timeout support
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Request timeout after ${timeoutMs}ms`);
+    }
+    throw error;
+  }
+}
 
 export async function callPythonBackend<T = unknown>(
   path: string,
@@ -35,6 +63,7 @@ export async function callPythonBackend<T = unknown>(
   options?: CallPythonBackendOptions
 ): Promise<T> {
   const bases = resolveBackendBaseUrlCandidates();
+  const timeoutMs = options?.timeoutMs ?? BACKEND_CONNECTION.TIMEOUT.DEFAULT_MS;
   let lastError: unknown;
   let capturedFailure: {
     data: unknown;
@@ -48,15 +77,19 @@ export async function callPythonBackend<T = unknown>(
   for (const baseUrl of bases) {
     const url = joinUrl(baseUrl, path);
     try {
-      const res = await fetch(url, {
-        method: init?.method || "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(init?.headers as Record<string, string>),
+      const res = await fetchWithTimeout(
+        url,
+        {
+          method: init?.method || "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(init?.headers as Record<string, string>),
+          },
+          body: (init?.body ?? null) as BodyInit | null,
+          cache: options?.cache ?? "no-store",
         },
-        body: (init?.body ?? null) as BodyInit | null,
-        cache: options?.cache ?? "no-store",
-      });
+        timeoutMs
+      );
 
       const contentType = res.headers.get("content-type") || "";
       const isJson = contentType.includes("application/json");
