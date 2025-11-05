@@ -69,8 +69,15 @@ def create_app() -> FastAPI:
         "http://localhost:3000",  # Next.js dev/production port
         "http://127.0.0.1:3000",  # Next.js dev/production port (IP-based)
         "null",  # Allow requests from file:/// URLs (for local testing)
-        # Add any other origins your frontend might be served from, e.g., a deployed URL
     ]
+    
+    # Add production frontend origin from environment if set
+    production_frontend = os.getenv("APP_URL")
+    if production_frontend:
+        # Strip trailing slash if present
+        production_frontend = production_frontend.rstrip("/")
+        if production_frontend not in origins:
+            origins.append(production_frontend)
 
     app.add_middleware(
         CORSMiddleware,
