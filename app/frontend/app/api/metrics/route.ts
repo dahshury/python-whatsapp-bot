@@ -46,8 +46,6 @@ function parsePrometheusText(text: string): Record<string, number> {
   return values;
 }
 
-export const revalidate = 60;
-
 export async function GET() {
   try {
     const response = await callPythonBackendCached<string>(

@@ -1,8 +1,15 @@
 import path from "node:path";
+import os from "node:os";
 
 // Regex patterns defined at top level for performance
 const MJS_FILE_REGEX = /\.mjs$/;
 const NODE_MODULES_REGEX = /[\\/]node_modules[\\/]/;
+
+// Enable standalone output only on non-Windows platforms or when explicitly requested
+// Windows has symlink permission issues with pnpm + Next.js standalone output
+const shouldUseStandalone =
+  process.env.FORCE_STANDALONE === "true" ||
+  (os.platform() !== "win32" && process.env.DISABLE_STANDALONE !== "true");
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -175,7 +182,8 @@ const nextConfig = {
   },
 
   // Use standalone output to minimize runtime image size
-  output: "standalone",
+  // Disabled on Windows due to symlink permission issues with pnpm
+  ...(shouldUseStandalone && { output: "standalone" }),
 
   // TypeScript configuration for builds
   typescript: {
@@ -202,9 +210,10 @@ const nextConfig = {
     optimizeCss: true,
     // Enable Turbopack file system caching for faster compilation in development
     turbopackFileSystemCacheForDev: true,
-    // Enable cache components for static UI caching (Next.js 16)
-    cacheComponents: true,
   },
+
+  // Enable cache components for static UI caching (Next.js 16)
+  cacheComponents: true,
 
   // Enable React Compiler for optimized rendering
   reactCompiler: true,
