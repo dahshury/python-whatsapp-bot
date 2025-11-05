@@ -36,22 +36,4 @@ function resolveWebSocketUrl(): string {
   return "ws://localhost:8000/ws";
 }
 
-/**
- * Get the WebSocket connection port
- */
-function getWebSocketPort(): number {
-  try {
-    if (typeof window !== "undefined") {
-      // Check if we're on a non-standard port (like when deployed)
-      const currentPort = window.location.port;
-      // If we're on port 3000 (dev), use 8000 for backend
-      // Otherwise assume backend is on same host
-      return currentPort === "3000" ? 8000 : Number(currentPort) || 8000;
-    }
-  } catch {
-    // Port resolution failed - return default
-  }
-  return 8000;
-}
-
 export { resolveWebSocketUrl, getOrCreateTabId };

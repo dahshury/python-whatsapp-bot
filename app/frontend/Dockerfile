@@ -34,6 +34,10 @@ COPY . .
 # Build-time configuration
 ARG NEXT_PUBLIC_TIMEZONE=Asia/Riyadh
 ENV NEXT_PUBLIC_TIMEZONE=${NEXT_PUBLIC_TIMEZONE}
+ARG NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
+ENV NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL}
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 
 # Build Next.js app (without turbo for stability)
 RUN pnpm build

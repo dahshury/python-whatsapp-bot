@@ -1,4 +1,4 @@
-import { HTTP_STATUS, BACKEND_CONNECTION } from "@/shared/config";
+import { BACKEND_CONNECTION, HTTP_STATUS } from "@/shared/config";
 import {
   markBackendConnected,
   markBackendDisconnected,
