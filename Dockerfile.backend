@@ -74,8 +74,6 @@ COPY scripts/ /app/scripts/
 
 # Include license files in image
 COPY LICENSE /licenses/
-COPY LICENCE.txt /licenses/
-
 
 # Default DATABASE_URL inside container: target the compose service hostname
 # Note: docker compose will override this; when running the image directly, this ensures it reaches the postgres container

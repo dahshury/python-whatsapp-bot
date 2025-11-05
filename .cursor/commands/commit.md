@@ -82,9 +82,9 @@ git diff --cached --name-only --diff-filter=ACMR -z \
 
 ```bash
 # format markdown using mdformat with plugins and re-add
-cat markdown-staged.zlst | xargs -0 -r uv run \
+cat markdown-staged.zlst | xargs -0 -r -I {} uv run \
   --with mdformat --with mdformat-gfm --with mdformat-frontmatter --with mdformat-ruff \
-  mdformat --
+  mdformat {}
 cat markdown-staged.zlst | xargs -0 -r git add --
 ```
 
@@ -158,9 +158,9 @@ while :; do
 
   # MARKDOWN
   if [ -s markdown-staged.zlst ]; then
-    cat markdown-staged.zlst | xargs -0 -r uv run \
+    cat markdown-staged.zlst | xargs -0 -r -I {} uv run \
       --with mdformat --with mdformat-gfm --with mdformat-frontmatter --with mdformat-ruff \
-      mdformat -- && CHANGED=1 || true
+      mdformat {} && CHANGED=1 || true
     cat markdown-staged.zlst | xargs -0 -r git add --
   fi
 
