@@ -1,4 +1,3 @@
-import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import type { MutableRefObject } from "react";
 
 type ViewerSceneData = {
@@ -7,8 +6,12 @@ type ViewerSceneData = {
   files?: Record<string, unknown>;
 };
 
+type ViewerApi = {
+  updateScene?: (s: ViewerSceneData) => void;
+} | null;
+
 type ViewerSyncAdapterOptions = {
-  viewerApiRef: MutableRefObject<ExcalidrawImperativeAPI | null>;
+  viewerApiRef: MutableRefObject<ViewerApi>;
   pendingViewerInitRef: MutableRefObject<ViewerSceneData | null>;
   onError?: (context: string, error: unknown) => void;
 };
@@ -25,9 +28,7 @@ export function createViewerSyncAdapter(
 
   const applyScene = (scene: ViewerSceneData, context?: string) => {
     try {
-      const api = viewerApiRef.current as unknown as {
-        updateScene?: (s: ViewerSceneData) => void;
-      } | null;
+      const api = viewerApiRef.current;
       if (api?.updateScene) {
         api.updateScene(scene);
         return;

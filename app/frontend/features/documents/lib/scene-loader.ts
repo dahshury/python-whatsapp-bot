@@ -59,8 +59,7 @@ function createSnapshot(
 export type DocumentSceneLoader = {
   /**
    * Resets the loader for the provided waId and returns a blank scene snapshot.
-   * Mirrors the official Excalidraw example by preparing a promise that will be
-   * resolved when the real document data arrives.
+   * Prepares a promise that will be resolved when the real document data arrives.
    */
   beginTransition: (waId: string | null | undefined) => DocumentSceneSnapshot;
   /**
@@ -78,7 +77,7 @@ export type DocumentSceneLoader = {
     waId: string | null | undefined
   ) => ScenePromise<DocumentSceneSnapshot>;
   /**
-   * Returns a promise that resolves with the initial data tuple expected by Excalidraw.
+   * Returns a promise that resolves with the initial data tuple.
    */
   getInitialDataPromise: (
     waId: string | null | undefined
@@ -91,8 +90,7 @@ export type DocumentSceneLoader = {
 };
 
 /**
- * Factory that mirrors the promise-based scene loading experience from the
- * official Excalidraw example. Each waId maintains a dedicated resolvable
+ * Factory that provides promise-based scene loading. Each waId maintains a dedicated resolvable
  * promise that callers can await to know when the real scene payload arrived.
  */
 export function createSceneLoader(): DocumentSceneLoader {

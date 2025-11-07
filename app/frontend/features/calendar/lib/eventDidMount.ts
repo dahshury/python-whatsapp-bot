@@ -76,7 +76,13 @@ export function eventDidMountHandler(opts: EventDidMountOptions) {
         .includes("list")
     ) {
       const row = el.closest(".fc-list-event") as HTMLElement | null;
+      // Normalize immediately - MutationObserver will handle any later updates
       normalizeListViewTimeCell(row);
+      // Also normalize after a short delay to catch FullCalendar's async updates
+      const LIST_VIEW_NORMALIZATION_DELAY_MS = 50;
+      setTimeout(() => {
+        normalizeListViewTimeCell(row);
+      }, LIST_VIEW_NORMALIZATION_DELAY_MS);
     }
   } catch {
     // Ignore errors in list view normalization

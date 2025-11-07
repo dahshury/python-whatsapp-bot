@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-
-
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
 
 from app.db import Base

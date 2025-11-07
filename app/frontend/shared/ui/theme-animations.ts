@@ -87,7 +87,7 @@ export const createAnimation = (
       ::view-transition-old(root),
       .dark::view-transition-old(root) {
         animation: none;
-        z-index: -1;
+        z-index: var(--z-behind);
       }
       .dark::view-transition-new(root) {
         animation-name: reveal-dark;
@@ -129,7 +129,7 @@ export const createAnimation = (
       ::view-transition-old(root),
       .dark::view-transition-old(root) {
         animation: none;
-        z-index: -1;
+        z-index: var(--z-behind);
       }
       .dark::view-transition-new(root) {
         animation-name: reveal-dark;
@@ -206,7 +206,7 @@ export const createAnimation = (
       .dark::view-transition-old(root) {
         animation: scale-${start} 1s;
         transform-origin: ${transformOrigin};
-        z-index: -1;
+        z-index: var(--z-behind);
       }
       @keyframes scale-${start} {
         to {

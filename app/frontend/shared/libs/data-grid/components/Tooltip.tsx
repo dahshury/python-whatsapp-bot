@@ -1,4 +1,3 @@
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { CircleAlert } from "lucide-react";
 import type React from "react";
 import { createPortal } from "react-dom";
@@ -32,7 +31,7 @@ const Tooltip: React.FC<TooltipProps> = ({
         left: x,
         top: y,
         pointerEvents: "none",
-        zIndex: Z_INDEX.GRID_TOOLTIP,
+        zIndex: "var(--z-grid-tooltip)",
       }}
     >
       <div

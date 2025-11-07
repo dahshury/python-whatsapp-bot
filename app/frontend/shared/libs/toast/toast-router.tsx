@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import type { FC } from "react";
 import { useCallback, useEffect } from "react";
 import { Toaster } from "sonner";
@@ -137,7 +136,7 @@ export const ToastRouter: FC = () => {
     <Toaster
       gap={8}
       position="bottom-right"
-      style={{ zIndex: Z_INDEX.TOASTER }}
+      style={{ zIndex: "var(--z-toaster)" }}
       toastOptions={{
         className: "sonner-toast",
         descriptionClassName: "sonner-description",
@@ -145,7 +144,7 @@ export const ToastRouter: FC = () => {
           background: "transparent",
           border: "none",
           // @ts-expect-error custom css var forwarded to CSS
-          "--toaster-z": Z_INDEX.TOASTER,
+          "--toaster-z": "var(--z-toaster)",
         },
         classNames: {
           toast: "sonner-toast group",

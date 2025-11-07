@@ -48,10 +48,10 @@ export class CameraState extends ValueObject<CameraStateProps> {
   }
 
   /**
-   * Creates a camera state from Excalidraw viewer/editor state.
+   * Creates a camera state from viewer/editor state.
    * Normalizes zoom to 3 decimal places and rounds scroll positions.
    *
-   * @param viewerState - The Excalidraw app state object
+   * @param viewerState - The app state object
    */
   static fromViewerState(viewerState: Record<string, unknown>): CameraState {
     try {

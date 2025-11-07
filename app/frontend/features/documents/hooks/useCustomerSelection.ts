@@ -61,7 +61,7 @@ export function useCustomerSelection(params: UseCustomerSelectionParams): void {
           );
         });
         setWaId(next);
-        // Document load is handled by useDocumentScene hook automatically when waId changes
+        // Document loading is handled automatically when waId changes
       } catch (error) {
         logCustomerSelectionWarning(
           "Processing customer selection failed",

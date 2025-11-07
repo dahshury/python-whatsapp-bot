@@ -44,6 +44,11 @@
   /* a <td> */
   height: 1.5em;
   border-bottom: 0; /* each cell owns its top border */
+  padding: 0 5px; /* small horizontal padding so events don't consume all space */
+}
+
+.fc-timegrid-slot-lane {
+  padding: 0 5px; /* small horizontal padding so events don't consume all space */
 }
 
 .fc-timegrid-slot:empty:before {
@@ -233,8 +238,8 @@
   position: absolute; /* absolute WITHIN the harness */
   top: 0; /* for when not yet positioned */
   bottom: 0; /* " */
-  left: 0;
-  right: 0;
+  left: 5px; /* small left offset to match slot padding */
+  right: 5px; /* small right offset to match slot padding */
   z-index: var(
     --z-calendar-event
   ) !important; /* Ensure event is clickable and above background */
@@ -267,7 +272,7 @@
 }
 
 .fc-timegrid-event .fc-event-main {
-  padding: 0 3px;
+  padding: 0 1px; /* minimal horizontal padding for text */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

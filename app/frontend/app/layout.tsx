@@ -4,7 +4,6 @@ import type React from "react";
 import "./globals.css";
 import "@glideapps/glide-data-grid/dist/index.css";
 import "@ncdai/react-wheel-picker/style.css";
-import "@excalidraw/excalidraw/index.css";
 import { AppProviders } from "@/app/providers";
 import { THEME_OPTIONS } from "@/features/settings/settings/theme-data";
 
@@ -36,7 +35,7 @@ const geist = localFont({
 
 const geistMono = localFont({
   src: "../app/fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
+  variable: "--font-mono",
   display: "swap",
   weight: "100 900",
 });

@@ -3,7 +3,6 @@ import contextlib
 import datetime
 import json
 import logging
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
@@ -382,7 +381,7 @@ async def api_get_all_reservations(
     to_date: str = Query(None)
 ):
     reservations = get_all_reservations(
-        future=future, 
+        future=future,
         include_cancelled=include_cancelled,
         from_date=from_date,
         to_date=to_date
@@ -526,22 +525,25 @@ async def api_phone_recent(limit: int = Query(50, ge=1, le=100)):
 async def api_phone_all(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
-    country: Optional[str] = Query(None),
-    registration: Optional[str] = Query(None),
-    date_range_type: Optional[str] = Query(None),
-    date_from: Optional[str] = Query(None),
-    date_to: Optional[str] = Query(None)
+    country: str | None = Query(None),
+    registration: str | None = Query(None),
+    date_range_type: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    exclude: str | None = Query(None)
 ):
     """
     Get all contacts with pagination.
     Supports filtering by country, registration status, and date range.
+    Can exclude specific phone numbers (comma-separated).
     """
     try:
         from datetime import datetime
+
         from app.services.domain.customer.phone_search_service import PhoneSearchService
 
         service = PhoneSearchService()
-        
+
         # Build filters dict
         filters = {}
         if country:
@@ -561,11 +563,17 @@ async def api_phone_all(
                 }
             except Exception as e:
                 logging.warning(f"Invalid date range: {e}")
-        
+
+        # Parse exclude phone numbers
+        exclude_phone_numbers = None
+        if exclude:
+            exclude_phone_numbers = [p.strip() for p in exclude.split(',') if p.strip()]
+
         results, total_count = service.get_all_contacts(
             page=page,
             page_size=page_size,
-            filters=filters if filters else None
+            filters=filters if filters else None,
+            exclude_phone_numbers=exclude_phone_numbers
         )
 
         return JSONResponse(
@@ -640,7 +648,7 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
     try:
         name = payload.get("name")
         age = payload.get("age")
-        document = payload.get("document")  # expected to be JSON (.excalidraw content)
+        document = payload.get("document")  # expected to be JSON document content
 
         # Fast path: document-only update (most common case for autosave)
         has_name = name is not None

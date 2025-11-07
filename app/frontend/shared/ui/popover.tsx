@@ -7,7 +7,6 @@ import {
   Root as PopoverRootPrimitive,
   Trigger as PopoverTriggerPrimitive,
 } from "@radix-ui/react-popover";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 
 import { cn } from "@shared/libs/utils";
 import type * as React from "react";
@@ -61,7 +60,7 @@ const PopoverContent = ({
         className
       )}
       style={{
-        zIndex: Z_INDEX.POPOVER,
+        zIndex: "var(--z-popover)",
         ...(props as { style?: React.CSSProperties }).style,
       }}
     />

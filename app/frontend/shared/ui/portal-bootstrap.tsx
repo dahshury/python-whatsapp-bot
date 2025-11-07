@@ -1,6 +1,5 @@
 "use client";
 
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { useEffect } from "react";
 
 export function PortalBootstrap(): null {
@@ -24,13 +23,7 @@ export function PortalBootstrap(): null {
         top: "0px",
         left: "0px",
         pointerEvents: "none",
-        zIndex: String(
-          Z_INDEX.DIALOG_OVERLAY_PORTAL ??
-            (() => {
-              const DEFAULT_DIALOG_Z_INDEX = 1000;
-              return DEFAULT_DIALOG_Z_INDEX;
-            })()
-        ),
+        zIndex: "var(--z-dialog-overlay-portal, 720)",
         width: "0px",
         height: "0px",
       } as Partial<CSSStyleDeclaration>);

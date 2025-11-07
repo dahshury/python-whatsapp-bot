@@ -11,7 +11,6 @@
 import { i18n } from "@shared/libs/i18n";
 import { useLanguage } from "@shared/libs/state/language-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
 import {
@@ -200,7 +199,7 @@ export function CalendarLegend({
         collisionPadding={16}
         side="bottom"
         sideOffset={8}
-        style={{ zIndex: Z_INDEX.HOVER_CARD }}
+        style={{ zIndex: "var(--z-hover-card)" }}
       >
         <div className="space-y-3">
           <div className="mb-2 flex items-center gap-1.5 font-medium text-foreground text-xs">

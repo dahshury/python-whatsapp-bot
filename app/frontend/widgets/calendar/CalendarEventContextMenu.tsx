@@ -2,7 +2,6 @@
 
 import { i18n } from "@shared/libs/i18n";
 import { useLanguage } from "@shared/libs/state/language-context";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import {
   Calendar,
   CalendarX,
@@ -111,7 +110,10 @@ export function CalendarEventContextMenu({
             initial={{ opacity: 0 }}
             key="context-menu-overlay"
             onClick={() => onClose()}
-            style={{ zIndex: Z_INDEX.GRID_MENU - 1, background: "transparent" }}
+            style={{
+              zIndex: "var(--z-grid-menu-minus-1)",
+              background: "transparent",
+            }}
             transition={{ duration: 0.1 }}
           />
 
@@ -133,7 +135,7 @@ export function CalendarEventContextMenu({
               position: "fixed",
               left: position.x,
               top: position.y,
-              zIndex: Z_INDEX.GRID_MENU,
+              zIndex: "var(--z-grid-menu)",
               transformOrigin: "top left",
             }}
             transition={{ duration: 0.14, ease: "easeOut" }}

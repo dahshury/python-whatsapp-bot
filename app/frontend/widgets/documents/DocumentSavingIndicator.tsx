@@ -4,28 +4,21 @@ import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import type { FC } from "react";
 import { i18n } from "@/shared/libs/i18n";
 import { useLanguage } from "@/shared/libs/state/language-context";
-
-type SaveStatus =
-  | { status: "idle" }
-  | { status: "dirty" }
-  | { status: "saving" }
-  | { status: "saved"; at: number }
-  | { status: "error"; message?: string };
+import type { SaveStatus } from "@/features/documents/types/save-state.types";
 
 export const DocumentSavingIndicator: FC<{
   status: SaveStatus;
-  loading?: boolean;
-}> = ({ status, loading }) => {
+}> = ({ status }) => {
   const { isLocalized } = useLanguage();
-  if (loading) {
-    return (
-      <div className="inline-flex items-center gap-1 rounded-md bg-muted/70 px-2 py-1 text-foreground text-xs shadow-sm">
-        <Loader2 className="size-3 animate-spin" />
-        <span>{i18n.getMessage("loading", isLocalized)}</span>
-      </div>
-    );
-  }
+
   switch (status?.status) {
+    case "loading":
+      return (
+        <div className="inline-flex items-center gap-1 rounded-md bg-muted/70 px-2 py-1 text-foreground text-xs shadow-sm">
+          <Loader2 className="size-3 animate-spin" />
+          <span>{i18n.getMessage("loading", isLocalized)}</span>
+        </div>
+      );
     case "saving":
       return (
         <div className="inline-flex items-center gap-1 rounded-md bg-blue-500/15 px-2 py-1 text-blue-600 text-xs dark:text-blue-400">
@@ -61,7 +54,16 @@ export const DocumentSavingIndicator: FC<{
       return (
         <div className="inline-flex items-center gap-1 rounded-md bg-red-500/15 px-2 py-1 text-red-600 text-xs dark:text-red-400">
           <AlertCircle className="size-3" />
-          <span>Error</span>
+          <span>
+            {status.message || i18n.getMessage("error", isLocalized)}
+          </span>
+        </div>
+      );
+    case "ready":
+      return (
+        <div className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-card/90 px-2 py-1 text-muted-foreground text-xs shadow-sm backdrop-blur">
+          <div className="size-3 rounded-full border-2 border-current" />
+          <span>{i18n.getMessage("ready", isLocalized) || "Ready"}</span>
         </div>
       );
     default:

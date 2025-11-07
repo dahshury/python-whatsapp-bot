@@ -5,3 +5,5 @@ export type ColumnConfig = {
   hidden?: boolean;
 };
 
+
+

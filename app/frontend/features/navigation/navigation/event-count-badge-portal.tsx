@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { cn } from "@shared/libs/utils";
 import { CalendarRange } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -171,7 +170,7 @@ export function EventCountBadgePortal({
     <div
       style={{
         position: "fixed",
-        zIndex: Z_INDEX.EVENT_COUNT_BADGE,
+        zIndex: "var(--z-event-count-badge)",
         top: position?.top ?? HIDDEN_POSITION_OFFSET,
         left: position?.left ?? HIDDEN_POSITION_OFFSET,
         pointerEvents: "auto",

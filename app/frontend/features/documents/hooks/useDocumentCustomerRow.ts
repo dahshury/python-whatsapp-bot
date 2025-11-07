@@ -63,7 +63,7 @@ export default function useDocumentCustomerRow(
         dataType: ColumnDataType.TEXT,
         isEditable: true,
         isRequired: true,
-        width: 220,
+        width: 150,
       },
       {
         id: "age",
@@ -72,7 +72,7 @@ export default function useDocumentCustomerRow(
         dataType: ColumnDataType.NUMBER,
         isEditable: true,
         isRequired: false,
-        width: 120,
+        width: 50,
         metadata: { useWheel: true },
         validationRules: [
           { type: "min", value: 10, message: "Minimum age is 10" },
@@ -86,7 +86,7 @@ export default function useDocumentCustomerRow(
         dataType: ColumnDataType.PHONE,
         isEditable: true,
         isRequired: true,
-        width: 220,
+        width: 150,
       },
     ],
     [localized]

@@ -141,6 +141,7 @@
   "phone_filter_registration": "Registration",
   "phone_filter_registration_registered": "Registered",
   "phone_filter_registration_unknown": "Unknown",
+  "phone_add_filter_button": "Add filter",
   "date_preset_today": "Today",
   "date_preset_yesterday": "Yesterday",
   "date_preset_last_7_days": "Last 7 days",

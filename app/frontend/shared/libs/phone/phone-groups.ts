@@ -108,16 +108,8 @@ export function buildPhoneGroups<T extends IndexedPhoneOption>(
 
   // Sort by recency and select top N with known message timestamps
   const recencySorted = uniqueOptions
-    .filter((option) => {
-      const lastMessage = option.lastMessageAt ?? 0;
-      const lastReservation = option.lastReservationAt ?? 0;
-      return Math.max(lastMessage ?? 0, lastReservation ?? 0) > 0;
-    })
-    .sort((a, b) => {
-      const aLatest = Math.max(a.lastMessageAt ?? 0, a.lastReservationAt ?? 0);
-      const bLatest = Math.max(b.lastMessageAt ?? 0, b.lastReservationAt ?? 0);
-      return bLatest - aLatest;
-    });
+    .filter((option) => (option.lastMessageAt ?? 0) > 0)
+    .sort((a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0));
 
   const recentOptions = recencySorted.slice(0, Math.max(recentLimit, 0));
 

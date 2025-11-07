@@ -23,8 +23,6 @@
 @import "../styles/chat.css";
 /* Keep ButtonGroup overrides after Tailwind so they can win specificity when needed */
 @import "../styles/button-group.css";
-/* Excalidraw theme integration - must come after themes are loaded */
-@import "../styles/excalidraw-theme.css";
 
 /* Global Error Suppression for React Timekeeper Issues */
 @layer base {

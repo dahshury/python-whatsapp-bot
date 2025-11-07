@@ -20,9 +20,9 @@ from app.metrics import (
     SCHEDULER_JOB_MISSED_BY_REASON,
     monitor_system_metrics,
 )
+from app.services.backup import S3DatabaseBackupService, build_config_from_environment
 from app.utils.service_utils import get_tomorrow_reservations, parse_time
 from app.utils.whatsapp_utils import append_message, send_whatsapp_template
-from app.services.backup import S3DatabaseBackupService, build_config_from_environment
 
 # Track if scheduler has been initialized in this process
 _scheduler_initialized = False

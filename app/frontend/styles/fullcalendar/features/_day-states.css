@@ -10,7 +10,22 @@
 }
 
 .fc-multimonth
-  :where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame),
+  :where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.15) 0%,
+    hsl(var(--primary) / 0.2) 50%,
+    hsl(var(--accent) / 0.15) 100%
+  );
+  border: 2px solid hsl(var(--primary) / 0.4);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  transform: none;
+  z-index: var(--z-calendar-event);
+  position: relative;
+}
+
 .fc-daygrid
   :where(.fc-daygrid-day.fc-day-today:not(.fc-day-past) .fc-daygrid-day-frame) {
   background: linear-gradient(

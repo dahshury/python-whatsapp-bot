@@ -8,9 +8,7 @@
   overflow: hidden;
   background: hsl(var(--card));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  transition:
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow 0.3s ease;
+  transition: none;
   flex: 1 1 calc(33.333% - 0.67rem); /* 3 columns with gap - adjusted for 1rem gap */
   min-width: 260px; /* Minimum width for readability */
   position: relative;
@@ -40,8 +38,8 @@
 
 /* SUBTLE HOVER EFFECT */
 .fc-multimonth-month:hover {
-  transform: translate3d(0, -2px, 0);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border-color: hsl(var(--border) / 0.8);
 }
 
@@ -109,7 +107,7 @@
   border-radius: var(--radius) var(--radius) 0 0;
   border: none;
   position: relative;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
   margin-bottom: 0.125em; /* Reduced from 0.25em */
   box-shadow: none;
   flex-shrink: 0; /* Don't allow title to shrink */
@@ -126,7 +124,7 @@
   /* background removed - handled in _headers.css */
   border-bottom-color: hsl(var(--border) / 0.3);
   box-shadow: none;
-  transform: translate3d(0, -1px, 0);
+  transform: none;
 }
 
 /* Month daygrid */
@@ -140,28 +138,15 @@
   min-height: 0; /* Allow shrinking */
 }
 
-/* Add transition to month containers for smooth animations */
+/* Remove all transitions and animations */
 .fc-multimonth-month {
-  transition:
-    opacity 0.3s ease-in-out,
-    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
 }
 
-/* Style for scrolling animation */
+/* Remove scrolling animation */
 .fc-multimonth-month.fc-scrolling-enter {
-  opacity: 0;
-  animation: fadeInUp 0.4s ease-out forwards;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 20px, 0);
-  }
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
+  opacity: 1;
+  animation: none;
 }
 
 /* Dark mode month container */

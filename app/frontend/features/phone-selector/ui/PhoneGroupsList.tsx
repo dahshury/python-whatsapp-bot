@@ -15,6 +15,7 @@ type PhoneGroupsListProps = {
   selectedHeading: string;
   recentHeading: string;
   allHeading: string;
+  allTotalCount?: number;
 };
 
 export function PhoneGroupsList({
@@ -24,6 +25,7 @@ export function PhoneGroupsList({
   selectedHeading,
   recentHeading,
   allHeading,
+  allTotalCount,
 }: PhoneGroupsListProps) {
   return (
     <>
@@ -43,7 +45,11 @@ export function PhoneGroupsList({
               heading={
                 <PhoneGroupHeading
                   allHeading={allHeading}
-                  count={group.items.length}
+                  count={
+                    group.key === "all" && allTotalCount
+                      ? allTotalCount
+                      : group.items.length
+                  }
                   groupKey={group.key}
                   recentHeading={recentHeading}
                   selectedHeading={selectedHeading}

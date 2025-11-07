@@ -77,9 +77,56 @@ const SidebarProvider = ({
   const isMobile = useIsMobile();
   const [openMobile, setOpenMobile] = useState(false);
 
-  // This is the internal state of the sidebar.
-  // We use openProp and setOpenProp for control from outside the component.
+  // Initialize with defaultOpen to ensure server/client consistency
+  // Then update from persisted state after hydration
   const [_open, _setOpen] = useState(defaultOpen);
+
+  // Read persisted state after hydration only
+  useEffect(() => {
+    if (openProp !== undefined) {
+      return; // Don't override controlled state
+    }
+
+    try {
+      const w = window as unknown as {
+        cookieStore?: {
+          get: (opts: { name: string }) => Promise<{ value: string } | null>;
+        };
+      };
+
+      if (w.cookieStore && typeof w.cookieStore.get === "function") {
+        w.cookieStore
+          .get({ name: SIDEBAR_COOKIE_NAME })
+          .then((cookie) => {
+            if (cookie?.value === "false") {
+              _setOpen(false);
+            } else if (cookie?.value === "true") {
+              _setOpen(true);
+            }
+          })
+          .catch(() => {
+            // Fallback to localStorage
+            const stored = localStorage.getItem(SIDEBAR_COOKIE_NAME);
+            if (stored === "false") {
+              _setOpen(false);
+            } else if (stored === "true") {
+              _setOpen(true);
+            }
+          });
+      } else {
+        // Fallback to localStorage
+        const stored = localStorage.getItem(SIDEBAR_COOKIE_NAME);
+        if (stored === "false") {
+          _setOpen(false);
+        } else if (stored === "true") {
+          _setOpen(true);
+        }
+      }
+    } catch {
+      // Ignore errors reading persisted state
+    }
+  }, [openProp]);
+
   const open = openProp ?? _open;
   const setOpen = useCallback(
     (value: boolean | ((previousValue: boolean) => boolean)) => {
@@ -261,6 +308,7 @@ const Sidebar = ({
       data-state={state}
       data-variant={variant}
       ref={ref}
+      suppressHydrationWarning
     >
       {/* This is what handles the sidebar gap on desktop */}
       <div

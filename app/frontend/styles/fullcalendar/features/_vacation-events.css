@@ -83,7 +83,7 @@
   color: transparent;
   pointer-events: none;
   opacity: 0.8;
-  z-index: 1; /* Above day cells but below regular events */
+  z-index: var(--z-calendar-vacation-event);
 }
 
 .fc-event.vacation-period-event .fc-event-title,

@@ -765,7 +765,7 @@ def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: 
     # Include source in data if provided to track event origin (assistant vs frontend)
     if source:
         data = {**data, "_source": source}
-    
+
     # Prefer scheduling on the current running loop if present (i.e., inside ASGI handlers)
     try:
         loop = asyncio.get_running_loop()

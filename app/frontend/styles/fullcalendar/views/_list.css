@@ -83,7 +83,7 @@
 .fc-list-sticky .fc-list-day > * {
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-sticky-header);
   background: hsl(var(--muted) / 0.95);
   backdrop-filter: blur(4px);
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import type * as React from "react";
 import { Toaster } from "sonner";
 
@@ -9,7 +8,7 @@ export function ToastHost(): React.JSX.Element {
     <Toaster
       gap={8}
       position="bottom-right"
-      style={{ zIndex: Z_INDEX.TOASTER }}
+      style={{ zIndex: "var(--z-toaster)" }}
       toastOptions={{
         className: "sonner-toast",
         descriptionClassName: "sonner-description",
@@ -17,7 +16,7 @@ export function ToastHost(): React.JSX.Element {
           background: "transparent",
           border: "none",
           // @ts-expect-error custom css var forwarded to CSS
-          "--toaster-z": Z_INDEX.TOASTER,
+          "--toaster-z": "var(--z-toaster)",
         },
         classNames: {
           toast: "sonner-toast group",

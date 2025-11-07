@@ -9,17 +9,17 @@ MESSAGES = {
     "past_date_error": {"en": "Cannot schedule for past dates.", "ar": "لا يمكنك الجدولة لتواريخ ماضية."},
     "system_error_contact_secretary": {"en": "System error occurred. Ask user to contact the secretary to reserve.", "ar": "حدث خطأ في النظام. اطلب من المستخدم الاتصال بالسكرتيرة للحجز."},
     "non_working_day": {"en": "The clinic is closed on this day.", "ar": "العيادة مغلقة في هذا اليوم."},
-    
+
     # send_business_location
     "location_sent": {"en": "Location sent.", "ar": "تم إرسال الموقع."},
-    
+
     # get_current_datetime
     # No user-facing messages beyond data fields
-    
+
     # modify_id
     "wa_id_same": {"en": "The new wa_id is the same as the old wa_id.", "ar": "رقم الواتساب الجديد هو نفسه رقم الواتساب القديم."},
     "wa_id_modified": {"en": "wa_id modified successfully.", "ar": "تم تعديل رقم الواتساب بنجاح."},
-    
+
     # Reservation errors
     "invalid_date": {"en": "Invalid date format.", "ar": "تاريخ غير صالح."},
     "invalid_time": {"en": "Invalid time format.", "ar": "صيغة الوقت غير صالحة."},
@@ -41,27 +41,27 @@ MESSAGES = {
     "no_future_reservations_on_date": {"en": "No future reservations found on {date}. Cannot cancel past reservations.", "ar": "لم يتم العثور على حجوزات مستقبلية في {date}. لا يمكن إلغاء الحجوزات السابقة."},
     "no_reservation_on_date": {"en": "No reservations found on {date}.", "ar": "لم يتم العثور على حجوزات في {date}."},
     "cancellation_failed_date": {"en": "Failed to cancel reservations on {date}.", "ar": "فشل في إلغاء الحجوزات في {date}."},
-    
+
     # reserve_time_slot success
     "reservation_successful": {"en": "Reservation successful.", "ar": "تم الحجز بنجاح."},
-    
+
     # modify_reservation success
     "reservation_modified": {"en": "Reservation modified successfully.", "ar": "تم تعديل الحجز بنجاح."},
-    
+
     # get_customer_reservations
     # data-only, no messages
-    
+
     # search_available_appointments
     # data-only, no messages
-    
+
     # modify_reservation early errors
     "no_new_details": {"en": "No new details provided for modification.", "ar": "لم يتم تقديم تفاصيل جديدة للتعديل."},
     "no_future_reservations": {"en": "No upcoming reservations found to modify. Please reserve a new appointment.", "ar": "لم يتم العثور على حجوزات قادمة للتعديل. الرجاء حجز موعد جديد."},
     "multiple_future_reservations": {"en": "Multiple upcoming reservations found: {reservations}. You can only have one future reservation. Please cancel unused reservations.", "ar": "تم العثور على حجوزات متعددة قادمة: {reservations}\nيمكنك أن تمتلك حجز مستقبلي واحد فقط. الرجاء إلغاء الحجوزات الغير مستعملة"},
-    
+
     # reserve_time_slot early error
     "customer_name_required": {"en": "Customer name has to be provided.", "ar": "يجب تقديم اسم العميل."},
-    
+
     # cancel_reservation early errors
     "no_reservations_found": {"en": "No reservations found for the customer.", "ar": "لم يتم العثور على حجوزات للعميل."},
     "reservation_not_found": {"en": "Reservation not found for the specified date.", "ar": "لم يتم العثور على حجز في التاريخ المحدد."},
@@ -77,17 +77,17 @@ MESSAGES = {
     "reservation_already_active": {"en": "Reservation with ID {id} is already active.", "ar": "الحجز بالمعرف {id} نشط بالفعل."},
     "reservation_reinstate_failed": {"en": "Failed to reinstate reservation with ID {id}. It might not be in a cancellable state or an error occurred.", "ar": "فشل إعادة تفعيل الحجز بالمعرف {id}. قد لا يكون في حالة قابلة للإلغاء أو حدث خطأ."},
     "reservation_cancelled_for_undo": {"en": "Reservation with ID {id} has been cancelled (undone).", "ar": "تم إلغاء الحجز بالمعرف {id} (تم التراجع)."},
-    
+
     # Customer Service messages for undo/modify
     "customer_not_found_for_update": {"en": "Customer with wa_id {wa_id} not found for update.", "ar": "لم يتم العثور على عميل برقم الواتساب {wa_id} للتحديث."},
     "customer_name_no_change": {"en": "Customer name is the same, no update performed.", "ar": "اسم العميل مطابق، لم يتم إجراء تحديث."},
     "customer_name_updated": {"en": "Customer name updated successfully.", "ar": "تم تحديث اسم العميل بنجاح."},
     "customer_name_update_failed": {"en": "Failed to update customer name.", "ar": "فشل تحديث اسم العميل."},
-    
+
     # Calendar view messages
     "cannot_select_past": {"en": "Cannot select past time slots.", "ar": "لا يمكن اختيار مواعيد سابقة."},
     "reservation_changed": {"en": "Reservation changed.", "ar": "تم تعديل الحجز."},
-    
+
     # Calendar view UI elements
     "calendar_week_grid": {"en": "Week Grid", "ar": "شبكة الوقت"},
     "calendar_timeline": {"en": "Timeline", "ar": "الجدول الزمني"},
@@ -95,10 +95,10 @@ MESSAGES = {
     "calendar_multi_month": {"en": "Multi-Month", "ar": "عدة أشهر"},
     "vacation": {"en": "Vacation", "ar": "إجازة"},
     "conversation": {"en": "Conversation: {name}", "ar": "محادثة: {name}"},
-    
+
     # delete_user
     "user_deleted": {"en": "User deleted successfully.", "ar": "تم حذف المستخدم بنجاح."},
-    
+
     # Vacation period messages
     "vacation_periods_updated": {"en": "Vacation periods updated successfully", "ar": "تم تحديث فترات الإجازة بنجاح"},
     "vacation_periods_update_failed": {"en": "Failed to update vacation periods", "ar": "فشل في تحديث فترات الإجازة"},
@@ -126,4 +126,4 @@ def get_message(key: str, ar: bool = False, **kwargs) -> str:
             text = text.format(**kwargs)
         except Exception:
             pass
-    return text 
+    return text

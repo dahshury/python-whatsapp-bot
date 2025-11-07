@@ -1,8 +1,8 @@
-from typing import Optional
 
 from sqlalchemy import func
 
-from app.db import get_session, CustomerModel, ConversationModel, ReservationModel
+from app.db import ConversationModel, CustomerModel, ReservationModel, get_session
+
 from .customer_models import (
     Customer,
     CustomerStats,
@@ -16,14 +16,14 @@ class CustomerRepository:
     Repository for customer data access operations.
     Implements repository pattern to abstract data access.
     """
-    
-    def find_by_wa_id(self, wa_id: str) -> Optional[Customer]:
+
+    def find_by_wa_id(self, wa_id: str) -> Customer | None:
         """
         Find customer by WhatsApp ID.
-        
+
         Args:
             wa_id: WhatsApp ID to search for
-            
+
         Returns:
             Customer instance if found, None otherwise
         """
@@ -37,14 +37,14 @@ class CustomerRepository:
                     age_recorded_at=getattr(db_customer, "age_recorded_at", None),
                 )
             return None
-    
+
     def save(self, customer: Customer) -> bool:
         """
         Save or update customer in database.
-        
+
         Args:
             customer: Customer instance to save
-            
+
         Returns:
             True if save was successful, False otherwise
         """
@@ -64,27 +64,27 @@ class CustomerRepository:
                     existing.customer_name = customer.customer_name
                     # Age column may not exist in older DBs; guard with getattr
                     try:
-                        setattr(existing, "age", customer.age)
+                        existing.age = customer.age
                     except Exception:
                         pass
                     # Record/update age_recorded_at if column exists
                     try:
-                        setattr(existing, "age_recorded_at", customer.age_recorded_at)
+                        existing.age_recorded_at = customer.age_recorded_at
                     except Exception:
                         pass
                 session.commit()
                 return True
         except Exception:
             return False
-    
+
     def update_wa_id(self, old_wa_id: str, new_wa_id: str) -> int:
         """
         Update customer's WhatsApp ID across all related tables.
-        
+
         Args:
             old_wa_id: Current WhatsApp ID
             new_wa_id: New WhatsApp ID
-            
+
         Returns:
             Total number of rows affected across all tables
         """
@@ -103,7 +103,7 @@ class CustomerRepository:
                 session.rollback()
             return total_rows
 
-    def get_customer_stats(self, wa_id: str) -> Optional[CustomerStats]:
+    def get_customer_stats(self, wa_id: str) -> CustomerStats | None:
         """Aggregate messaging and reservation statistics for a customer."""
 
         with get_session() as session:

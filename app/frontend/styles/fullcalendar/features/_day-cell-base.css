@@ -12,7 +12,12 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: none;
+}
+
+/* Remove transitions for multimonth day cells */
+.fc-multimonth .fc-daygrid-day {
+  transition: none;
 }
 
 /* DAY CELL FRAME - The inner container with visual styling */
@@ -35,6 +40,11 @@
     box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
     border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Remove transitions for multimonth day cell frames */
+.fc-multimonth .fc-daygrid-day-frame {
+  transition: none;
   /* Enhanced GPU acceleration */
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
@@ -108,6 +118,11 @@
   font-weight: 500;
   transition: transform 0.2s ease;
   border-radius: var(--radius-sm);
+}
+
+/* Remove transitions for multimonth day numbers */
+.fc-multimonth .fc-daygrid-day-number {
+  transition: none;
   font-size: 1.045em;
   line-height: 1.2;
   display: inline-block;

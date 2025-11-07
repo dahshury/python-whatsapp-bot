@@ -30,17 +30,27 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
     ctx.beginPath();
     ctx.rect(rect.x, rect.y, rect.width, rect.height);
     ctx.clip();
-    ctx.fillStyle = cell.style === "faded" ? theme.textLight : theme.textDark;
+
+    // Apply theme override if present
+    const cellThemeOverride = (cell as { themeOverride?: { baseFontStyle?: string; textDark?: string } }).themeOverride;
+    const effectiveFontStyle = cellThemeOverride?.baseFontStyle ?? theme.baseFontStyle;
+    const effectiveTextColor = cellThemeOverride?.textDark ?? (cell.style === "faded" ? theme.textLight : theme.textDark);
+
+    ctx.fillStyle = effectiveTextColor;
     ctx.textBaseline = "middle";
-    ctx.font = theme.baseFontStyle;
+    ctx.font = effectiveFontStyle;
+    
     // Force LTR rendering regardless of page direction
     try {
       (ctx as unknown as { direction?: CanvasDirection }).direction = "ltr";
     } catch {
       // Canvas direction setting failed; continue
     }
+
+    // Respect contentAlign from cell (default to left if not specified)
+    const contentAlign = (cell as { contentAlign?: "left" | "center" | "right" }).contentAlign ?? "left";
     try {
-      ctx.textAlign = "left";
+      ctx.textAlign = contentAlign;
     } catch {
       // Canvas textAlign setting failed; continue
     }
@@ -50,7 +60,18 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
     const LRI = "\u2066"; // Left-to-Right Isolate
     const PDI = "\u2069"; // Pop Directional Isolate
     const text = `${LRI}${String(raw)}${PDI}`;
-    ctx.fillText(text, rect.x + paddingX, y);
+    
+    // Calculate x position based on alignment
+    let x: number;
+    if (contentAlign === "center") {
+      x = rect.x + rect.width / 2;
+    } else if (contentAlign === "right") {
+      x = rect.x + rect.width - paddingX;
+    } else {
+      x = rect.x + paddingX;
+    }
+    
+    ctx.fillText(text, x, y);
     ctx.restore();
   },
 

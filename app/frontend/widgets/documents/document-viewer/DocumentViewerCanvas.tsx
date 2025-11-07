@@ -1,69 +1,37 @@
-"use client";
+'use client'
 
-import type {
-  ExcalidrawImperativeAPI,
-  ExcalidrawProps,
-} from "@excalidraw/excalidraw/types";
-import { memo } from "react";
-import { DocumentCanvas } from "@/widgets/document-canvas/DocumentCanvas";
-import "@/styles/excalidraw-viewer.css";
+import type { ReactNode } from 'react'
+import type { TldrawStoreState } from '@/features/documents/hooks/useTldrawStore'
+import { cn } from '@/lib/utils'
+import { DocumentEditorCanvas } from '../document-editor/DocumentEditorCanvas'
 
 type DocumentViewerCanvasProps = {
-  theme: "light" | "dark";
-  langCode: string;
-  onApiReady: (api: ExcalidrawImperativeAPI) => void;
-  onChange: ExcalidrawProps["onChange"];
-  scene?:
-    | {
-        elements?: unknown[];
-        appState?: Record<string, unknown>;
-        files?: Record<string, unknown>;
-      }
-    | undefined;
-  className?: string;
-};
-
-/**
- * Reusable viewer canvas component.
- * Provides a read-only mirror of the editor with independent camera controls.
- */
-function DocumentViewerCanvasComponent({
-  theme,
-  langCode,
-  onApiReady,
-  onChange,
-  scene,
-  className,
-}: DocumentViewerCanvasProps) {
-  return (
-    <div
-      className={`excalidraw-viewer-container h-full w-full ${className || ""}`}
-    >
-      <DocumentCanvas
-        forceLTR={true}
-        hideHelpIcon={true}
-        hideToolbar={true}
-        langCode={langCode}
-        onApiReady={onApiReady}
-        onChange={onChange}
-        scrollable={false}
-        theme={theme}
-        {...(scene ? { scene } : {})}
-        uiOptions={{
-          canvasActions: {
-            toggleTheme: false,
-            export: false,
-            saveAsImage: false,
-            clearCanvas: false,
-            loadScene: false,
-            saveToActiveFile: false,
-          },
-        }}
-        viewModeEnabled={true}
-        zenModeEnabled={true}
-      />
-    </div>
-  );
+	storeState: TldrawStoreState
+	className?: string
+	focusMode?: boolean
+	errorMessage?: string
+	children?: ReactNode
 }
 
-export const DocumentViewerCanvas = memo(DocumentViewerCanvasComponent);
+/**
+ * TLDraw viewer component - read-only canvas for viewing drawings.
+ * Wraps the editor canvas in focus mode with interactions disabled.
+ */
+export const DocumentViewerCanvas = ({
+	storeState,
+	className,
+	focusMode = true,
+	errorMessage,
+	children,
+}: DocumentViewerCanvasProps) => (
+	<div className={cn('h-full w-full', className)}>
+		<DocumentEditorCanvas
+			focusMode={focusMode}
+			loadingLabel="Loading viewer..."
+			storeState={storeState}
+			{...(errorMessage ? { errorMessage } : {})}
+		>
+			{children}
+		</DocumentEditorCanvas>
+	</div>
+)

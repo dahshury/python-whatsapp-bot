@@ -38,7 +38,8 @@ type AllContactsFilters = {
 export function useAllContacts(
   page: number,
   pageSize = 100,
-  filters?: AllContactsFilters
+  filters?: AllContactsFilters,
+  excludePhoneNumbers?: string[]
 ) {
   const filterKey = React.useMemo(() => {
     if (!filters) {
@@ -57,8 +58,13 @@ export function useAllContacts(
     });
   }, [filters]);
 
+  const excludeKey = React.useMemo(
+    () => (excludePhoneNumbers?.length ? excludePhoneNumbers.join(",") : null),
+    [excludePhoneNumbers]
+  );
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["phone-all", page, pageSize, filterKey],
+    queryKey: ["phone-all", page, pageSize, filterKey, excludeKey],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: page.toString(),
@@ -82,6 +88,9 @@ export function useAllContacts(
         if (filters.dateRange.range.to) {
           params.append("date_to", filters.dateRange.range.to.toISOString());
         }
+      }
+      if (excludePhoneNumbers && excludePhoneNumbers.length > 0) {
+        params.append("exclude", excludePhoneNumbers.join(","));
       }
 
       const result = await callPythonBackend<{

@@ -58,33 +58,44 @@ def create_app() -> FastAPI:
     app = FastAPI(default_response_class=ORJSONResponse, lifespan=lifespan)
 
     # Configure CORS
-    origins = [
-        "http://localhost",
-        "http://localhost:8080",  # Common port for live-server or similar dev servers
-        "http://127.0.0.1:8080",  # Adding the specific IP-based origin
-        "http://localhost:3831",  # React dev server port
-        "http://127.0.0.1:3831",  # React dev server IP-based origin
-        "http://localhost:16532",  # Common React dev server port
-        "http://127.0.0.1:16532",  # Common React dev server IP-based origin
-        "http://localhost:3000",  # Next.js dev/production port
-        "http://127.0.0.1:3000",  # Next.js dev/production port (IP-based)
-        "null",  # Allow requests from file:/// URLs (for local testing)
-    ]
-    
-    # Add production frontend origin from environment if set
-    production_frontend = os.getenv("APP_URL")
-    if production_frontend:
-        # Strip trailing slash if present
-        production_frontend = production_frontend.rstrip("/")
-        if production_frontend not in origins:
-            origins.append(production_frontend)
+    # In development, allow all origins from local network for testing on mobile/other devices
+    # In production, restrict to specific origins
+    dev_mode = os.getenv("ENVIRONMENT", "development") == "development"
+
+    if dev_mode:
+        # Allow all origins in development for network testing
+        origins = ["*"]
+        allow_origin_regex = r"^http://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|172\.\d+\.\d+\.\d+)(:\d+)?$"
+    else:
+        origins = [
+            "http://localhost",
+            "http://localhost:8080",
+            "http://127.0.0.1:8080",
+            "http://localhost:3831",
+            "http://127.0.0.1:3831",
+            "http://localhost:16532",
+            "http://127.0.0.1:16532",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "null",
+        ]
+
+        # Add production frontend origin from environment if set
+        production_frontend = os.getenv("APP_URL")
+        if production_frontend:
+            production_frontend = production_frontend.rstrip("/")
+            if production_frontend not in origins:
+                origins.append(production_frontend)
+
+        allow_origin_regex = None
 
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
+        allow_origin_regex=allow_origin_regex,
         allow_credentials=True,
-        allow_methods=["*"],  # Allows all methods
-        allow_headers=["*"],  # Allows all headers
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
 
     # Add GZip compression for large JSON payloads (documents, etc.)

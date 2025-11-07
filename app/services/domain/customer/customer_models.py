@@ -1,5 +1,4 @@
 from dataclasses import asdict, dataclass
-from typing import List, Optional
 from datetime import date
 
 
@@ -9,22 +8,22 @@ class Customer:
     Customer domain entity representing a WhatsApp user.
     """
     wa_id: str
-    customer_name: Optional[str] = None
-    age: Optional[int] = None
-    age_recorded_at: Optional[date] = None
-    
+    customer_name: str | None = None
+    age: int | None = None
+    age_recorded_at: date | None = None
+
     def __post_init__(self) -> None:
         """Validate customer data after initialization."""
         if not self.wa_id:
             raise ValueError("Customer wa_id cannot be empty")
-    
+
     def update_name(self, new_name: str) -> None:
         """Update customer name with validation."""
         if not new_name or not new_name.strip():
             raise ValueError("Customer name cannot be empty")
-        self.customer_name = new_name.strip() 
+        self.customer_name = new_name.strip()
 
-    def update_age(self, new_age: Optional[int]) -> None:
+    def update_age(self, new_age: int | None) -> None:
         """Update customer's age; None clears it. Enforce sensible bounds."""
         if new_age is None:
             self.age = None
@@ -38,7 +37,7 @@ class Customer:
         # Reset recorded date to today whenever age is explicitly updated
         self.age_recorded_at = date.today()
 
-    def compute_effective_age(self, as_of: Optional[date] = None) -> Optional[int]:
+    def compute_effective_age(self, as_of: date | None = None) -> int | None:
         """
         Compute age as of 'as_of' date by adding elapsed full years since age_recorded_at.
         Returns None if base age or recorded date is missing.
@@ -57,15 +56,15 @@ class Customer:
 class MessageSnapshot:
     """Minimal representation of a customer's message timestamp."""
 
-    date: Optional[str] = None
-    time: Optional[str] = None
+    date: str | None = None
+    time: str | None = None
 
 
 @dataclass
 class ReservationSnapshot:
     """Lean representation of a customer's reservation for hover-card usage."""
 
-    id: Optional[int]
+    id: int | None
     date: str
     time_slot: str
     type: int
@@ -78,12 +77,12 @@ class CustomerStats:
     """Aggregate customer statistics for hover-card and analytics views."""
 
     wa_id: str
-    customer_name: Optional[str]
+    customer_name: str | None
     message_count: int
     reservation_count: int
-    reservations: List[ReservationSnapshot]
-    first_message: Optional[MessageSnapshot] = None
-    last_message: Optional[MessageSnapshot] = None
+    reservations: list[ReservationSnapshot]
+    first_message: MessageSnapshot | None = None
+    last_message: MessageSnapshot | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Convert the dataclass structure into a plain dictionary."""

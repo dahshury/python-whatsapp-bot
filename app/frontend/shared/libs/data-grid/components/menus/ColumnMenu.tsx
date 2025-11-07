@@ -12,7 +12,6 @@ import {
 } from "@emotion-icons/material-outlined";
 import type { GridColumn } from "@glideapps/glide-data-grid";
 import { useLanguage } from "@shared/libs/state/language-context";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { i18n } from "@/shared/libs/i18n";
@@ -187,9 +186,7 @@ export function ColumnMenu({
     position: "absolute",
     left: adjustedMenuLeft,
     top: adjustedY,
-    zIndex:
-      Number((Z_INDEX as Record<string, number>).GRID_MENU) ||
-      Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) + 1,
+    zIndex: "var(--z-grid-menu)",
     pointerEvents: "auto",
   };
 
@@ -199,9 +196,7 @@ export function ColumnMenu({
     borderRadius: 4,
     boxShadow: "0 2px 5px rgba(0,0,0,0.12)",
     minWidth: 160,
-    zIndex:
-      Number((Z_INDEX as Record<string, number>).GRID_MENU) ||
-      Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT) + 1,
+    zIndex: "var(--z-grid-menu)",
     padding: 3,
   };
 

@@ -5,7 +5,7 @@
 .fc-event.reservation-event {
   border-width: var(--fc-event-stroke-width); /* rem-based outline */
   border-radius: 6px;
-  padding: 2px 6px; /* horizontal breathing room */
+  padding: 2px 2px; /* minimal horizontal padding for text */
   box-shadow: none;
   font-weight: 600; /* stronger label */
   /* Opaque backgrounds per type (set below) */
@@ -162,23 +162,23 @@
 
 /* Colors are sourced from variables in _variables.css and applied in _universal.css */
 
-/* Default (light): black stroke for all non-vacation events */
-.fc-event.reservation-event,
+/* Default (light): black stroke for all non-vacation events without documents */
+.fc-event.reservation-event.no-document,
 .fc-event.conversation-event,
-.fc-timegrid-event.reservation-event,
+.fc-timegrid-event.reservation-event.no-document,
 .fc-timegrid-event.conversation-event,
-.fc-daygrid-event.reservation-event,
+.fc-daygrid-event.reservation-event.no-document,
 .fc-daygrid-event.conversation-event {
   border-width: var(--fc-event-stroke-width);
   border-color: #000;
 }
 
-/* Dark theme: white stroke for all non-vacation events */
-.dark .fc-event.reservation-event,
+/* Dark theme: white stroke for all non-vacation events without documents */
+.dark .fc-event.reservation-event.no-document,
 .dark .fc-event.conversation-event,
-.dark .fc-timegrid-event.reservation-event,
+.dark .fc-timegrid-event.reservation-event.no-document,
 .dark .fc-timegrid-event.conversation-event,
-.dark .fc-daygrid-event.reservation-event,
+.dark .fc-daygrid-event.reservation-event.no-document,
 .dark .fc-daygrid-event.conversation-event {
   border-width: var(--fc-event-stroke-width);
   border-color: #fff;

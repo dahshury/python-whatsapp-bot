@@ -31,7 +31,12 @@ import {
   RegistrationFilterBadge,
 } from "@/features/phone-selector/ui";
 import { buildPhoneGroups } from "@/shared/libs/phone/phone-groups";
-import { Command, CommandInput, CommandList } from "@/shared/ui/command";
+import {
+  Command,
+  CommandInput,
+  CommandList,
+  CommandSeparator,
+} from "@/shared/ui/command";
 import { ThemedScrollbar } from "@/shared/ui/themed-scrollbar";
 
 export const PhoneNumberSelectorContent: React.FC<
@@ -123,12 +128,23 @@ export const PhoneNumberSelectorContent: React.FC<
   const { contacts: recentContacts, isLoading: isLoadingRecent } =
     useRecentContacts();
 
+  // Get recent phone numbers to exclude from "all" contacts query
+  const recentPhoneNumbers = React.useMemo(
+    () => recentContacts.map((c) => c.number),
+    [recentContacts]
+  );
+
   // Fetch paginated all contacts - only when not searching
   const {
     contacts: allContacts,
     pagination,
     isLoading: isLoadingAll,
-  } = useAllContacts(allContactsPage, PAGE_SIZE, allContactsFilters);
+  } = useAllContacts(
+    allContactsPage,
+    PAGE_SIZE,
+    allContactsFilters,
+    recentPhoneNumbers
+  );
 
   // Use backend search when searching
   const backendSearch = useBackendPhoneSearch(
@@ -171,14 +187,9 @@ export const PhoneNumberSelectorContent: React.FC<
     // Separate recent from all
     const recentGroup = groups.find((g) => g.key === "recent");
 
-    // For "all" section, use paginated contacts (excluding recent)
-    // Note: Backend already sorts alphabetically, so we don't need to sort again
-    const recentPhoneNumbers = new Set(
-      recentGroup?.items.map((item) => item.number) || []
-    );
-    const allSectionContacts = allContacts.filter(
-      (contact) => !recentPhoneNumbers.has(contact.number)
-    );
+    // For "all" section, use paginated contacts
+    // Backend already excludes recent contacts and sorts alphabetically
+    const allSectionContacts = allContacts;
 
     // Rebuild groups with proper separation
     const finalGroups: typeof groups = [];
@@ -368,8 +379,11 @@ export const PhoneNumberSelectorContent: React.FC<
         </div>
       )}
 
-      <CommandList className="overflow-hidden" dir="ltr">
-        <ThemedScrollbar className="h-96" rtl={false}>
+      <CommandList
+        className="max-h-[400px] min-h-[300px] overflow-y-auto"
+        dir="ltr"
+      >
+        <ThemedScrollbar className="min-h-[300px]" rtl={false}>
           {(isSearching || isLoadingContacts) && (
             <div className="flex items-center justify-center p-8">
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -417,6 +431,9 @@ export const PhoneNumberSelectorContent: React.FC<
               {hasFilteredItems && (
                 <PhoneGroupsList
                   allHeading={messages.allHeading}
+                  {...(pagination?.total
+                    ? { allTotalCount: pagination.total }
+                    : {})}
                   filteredGroups={filteredGroups}
                   onSelect={onSelect}
                   recentHeading={messages.recentHeading}
@@ -438,11 +455,16 @@ export const PhoneNumberSelectorContent: React.FC<
           return null;
         }
         return (
-          <PhoneSelectorPagination
-            currentPage={allContactsPage}
-            onPageChange={setAllContactsPage}
-            totalPages={pagination.total_pages}
-          />
+          <>
+            <CommandSeparator />
+            <div className="p-1">
+              <PhoneSelectorPagination
+                currentPage={allContactsPage}
+                onPageChange={setAllContactsPage}
+                totalPages={pagination.total_pages}
+              />
+            </div>
+          </>
         );
       })()}
     </Command>

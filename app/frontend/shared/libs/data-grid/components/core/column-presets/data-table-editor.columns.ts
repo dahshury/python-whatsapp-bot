@@ -46,7 +46,7 @@ export function getDataTableColumns(
       isEditable: true,
       isRequired: true,
       defaultValue: defaultDateTimeValue,
-      width: 190,
+      width: 170,
       metadata: { freeRoam: !!freeRoam },
     },
     {
@@ -57,7 +57,7 @@ export function getDataTableColumns(
       isEditable: true,
       isRequired: true,
       defaultValue: "",
-      width: 320,
+      width: 150,
     },
     {
       id: "type",
@@ -72,7 +72,7 @@ export function getDataTableColumns(
           i18n.getMessage("appt_followup", isLocalized),
         ],
       },
-      width: 140,
+      width: 100,
     },
     {
       id: "name",
@@ -81,7 +81,7 @@ export function getDataTableColumns(
       dataType: ColumnDataType.TEXT,
       isEditable: true,
       isRequired: true,
-      width: 220,
+      width: 150,
     },
   ];
 

@@ -302,7 +302,13 @@ export const BasicChatInput: React.FC<{
   const effectiveDisabled = disabled || isInactive;
 
   return (
-    <div className="space-y-2">
+    <div
+      className="space-y-2"
+      style={{
+        backgroundColor: "hsl(var(--card))",
+        background: "hsl(var(--card))",
+      }}
+    >
       <InputGroup
         aria-disabled={effectiveDisabled}
         className={cn(
@@ -325,10 +331,21 @@ export const BasicChatInput: React.FC<{
             e.stopPropagation();
           }
         }}
+        style={{
+          backgroundColor: "hsl(var(--card))",
+          background: "hsl(var(--card))",
+        }}
       >
         {/* Inactivity message in top bar when messaging is disabled due to inactivity */}
         {isInactive && (
-          <InputGroupAddon align="block-start" className="flex-shrink-0">
+          <InputGroupAddon
+            align="block-start"
+            className="flex-shrink-0"
+            style={{
+              backgroundColor: "hsl(var(--card))",
+              background: "hsl(var(--card))",
+            }}
+          >
             <div className="flex w-full items-center justify-center py-1">
               <div className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/60 px-3 py-1.5 font-medium text-foreground text-sm shadow-xs">
                 <Clock className="h-4 w-4 opacity-70" />
@@ -341,7 +358,14 @@ export const BasicChatInput: React.FC<{
         )}
         {/* Toolbar */}
         {!effectiveDisabled && (
-          <InputGroupAddon align="block-start" className="flex-shrink-0">
+          <InputGroupAddon
+            align="block-start"
+            className="flex-shrink-0"
+            style={{
+              backgroundColor: "hsl(var(--card))",
+              background: "hsl(var(--card))",
+            }}
+          >
             <ChatFormatToolbar
               disabled={effectiveDisabled}
               editor={editor as unknown as EditorLike}
@@ -354,8 +378,8 @@ export const BasicChatInput: React.FC<{
           className={cn(
             "w-full overflow-hidden",
             effectiveDisabled
-              ? "!cursor-not-allowed select-none bg-muted/70"
-              : "cursor-text bg-background",
+              ? "!cursor-not-allowed select-none"
+              : "cursor-text",
             effectiveDisabled && "opacity-40"
           )}
           data-slot="input-group-control"
@@ -383,7 +407,16 @@ export const BasicChatInput: React.FC<{
           }}
           ref={editorWrapperRef}
           role="textbox"
-          style={{ height: `${BASE_MIN_HEIGHT_PX}px`, maxHeight: "40vh" }}
+          style={{
+            backgroundColor: effectiveDisabled
+              ? "hsl(var(--muted) / 0.7)"
+              : "hsl(var(--card))",
+            background: effectiveDisabled
+              ? "hsl(var(--muted) / 0.7)"
+              : "hsl(var(--card))",
+            height: `${BASE_MIN_HEIGHT_PX}px`,
+            maxHeight: "40vh",
+          }}
           tabIndex={-1}
         >
           <ThemedScrollbar
@@ -394,7 +427,11 @@ export const BasicChatInput: React.FC<{
                 : "cursor-text"
             )}
             noScrollX
-            style={{ height: "100%" }}
+            style={{
+              height: "100%",
+              backgroundColor: "hsl(var(--card))",
+              background: "hsl(var(--card))",
+            }}
           >
             {/* biome-ignore lint/a11y/useSemanticElements: padding wrapper to make entire area clickable */}
             <div
@@ -426,6 +463,10 @@ export const BasicChatInput: React.FC<{
                 }
               }}
               role="button"
+              style={{
+                backgroundColor: "hsl(var(--card))",
+                background: "hsl(var(--card))",
+              }}
               tabIndex={-1}
             >
               <EditorContent
@@ -458,7 +499,14 @@ export const BasicChatInput: React.FC<{
             </div>
           </ThemedScrollbar>
         </div>
-        <InputGroupAddon align="block-end" className="flex-shrink-0">
+        <InputGroupAddon
+          align="block-end"
+          className="flex-shrink-0"
+          style={{
+            backgroundColor: "hsl(var(--card))",
+            background: "hsl(var(--card))",
+          }}
+        >
           {/* Character counter */}
           <InputGroupText
             className={cn(

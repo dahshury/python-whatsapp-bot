@@ -1,18 +1,18 @@
 import asyncio
+import datetime
 import logging
 import platform
 import re
-import datetime
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
 import phonenumbers
 from dateutil import parser  # Requires: pip install python-dateutil
 from hijri_converter import convert
+from sqlalchemy import and_, select, text
 
 from app.config import config
-from sqlalchemy import select, text, and_
-from app.db import get_session, CustomerModel, ConversationModel, ReservationModel, VacationPeriodModel
+from app.db import ConversationModel, CustomerModel, ReservationModel, VacationPeriodModel, get_session
 from app.i18n import get_message
 from app.utils.realtime import enqueue_broadcast
 
@@ -65,7 +65,7 @@ def fix_unicode_sequence(customer_name):
 def get_tomorrow_reservations():
     """
     Retrieve reservations for tomorrow from the database.
-    
+
     Returns:
         list: A list of reservation records for tomorrow.
     """
@@ -165,14 +165,14 @@ def find_nearest_time_slot(target_slot, available_slots):
 def get_all_reservations(future=True, include_cancelled=False, from_date=None, to_date=None):
     """
     Retrieve reservations from the database with optional date range filtering.
-    
+
     IMPORTANT: This function NEVER loads ALL reservations without a date range.
     If no date range is provided and future=False, it defaults to a 30-day backward
     and 90-day forward window to prevent loading excessive data.
-    
+
     OPTIMIZATION: This endpoint NO LONGER returns customer_name to eliminate redundancy.
     Frontend should use /customers/names to resolve names from wa_id.
-    
+
     Parameters:
         future (bool): If True, only return reservations for today and future dates.
                       If False, return reservations within default window (last 30 days + next 90 days)
@@ -181,11 +181,12 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                                  If False, only return active reservations.
         from_date (str, optional): Start date in YYYY-MM-DD format. If provided, filters reservations from this date onwards.
         to_date (str, optional): End date in YYYY-MM-DD format. If provided, filters reservations up to this date.
-    
+
     Returns:
         dict: Dictionary with wa_id as keys and list of reservation dicts as values.
-             Each reservation dict contains id, date, time_slot, type, and cancelled flag.
+             Each reservation dict contains id, date, time_slot, type, cancelled flag, and has_document.
              Customer names are NOT included - use /customers/names to resolve.
+             Document status (has_document) is fetched for all wa_ids in the result set.
     """
     try:
         with get_session() as session:
@@ -200,7 +201,7 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
             )
 
             filters = []
-            
+
             # Date range filtering takes precedence over future parameter
             if from_date and to_date:
                 # Both dates provided - filter by range
@@ -225,7 +226,7 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                 default_to_date = (today + datetime.timedelta(days=90)).isoformat()
                 filters.append(ReservationModel.date >= default_from_date)
                 filters.append(ReservationModel.date <= default_to_date)
-            
+
             # Status filtering
             if not include_cancelled:
                 filters.append(ReservationModel.status == "active")
@@ -236,6 +237,30 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
             stmt = stmt.order_by(ReservationModel.wa_id.asc(), ReservationModel.date.asc(), ReservationModel.time_slot.asc())
 
             rows = session.execute(stmt).all()
+
+            # Get unique wa_ids from reservations
+            wa_ids = list({r.wa_id for r in rows})
+
+            # Fetch document status for these wa_ids only
+            document_status = {}
+            if wa_ids:
+                from app.db import CustomerModel
+                doc_stmt = select(CustomerModel.wa_id, CustomerModel.document).where(
+                    CustomerModel.wa_id.in_(wa_ids)
+                )
+                doc_rows = session.execute(doc_stmt).all()
+
+                for wa_id, document in doc_rows:
+                    # Check if document exists and has elements
+                    has_doc = False
+                    if document:
+                        try:
+                            doc_dict = document if isinstance(document, dict) else {}
+                            elements = doc_dict.get("elements", [])
+                            has_doc = isinstance(elements, list) and len(elements) > 0
+                        except Exception:
+                            has_doc = False
+                    document_status[wa_id] = has_doc
 
         reservations = {}
         for r in rows:
@@ -250,6 +275,7 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                     "time_slot": r.time_slot,
                     "type": r.type,
                     "cancelled": r.status == "cancelled",
+                    "has_document": document_status.get(user_id, False),
                 }
             )
 
@@ -355,14 +381,14 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
     Get lightweight conversation events for calendar with optional date range filtering.
     Returns only the last message per customer within the specified date range.
     This is optimized for calendar display - no need to load all messages.
-    
+
     OPTIMIZATION: This endpoint NO LONGER returns customer_name to eliminate redundancy.
     Frontend should use /customers/names to resolve names from wa_id.
-    
+
     Parameters:
         from_date (str, optional): Start date in YYYY-MM-DD format. If provided, filters conversations from this date onwards.
         to_date (str, optional): End date in YYYY-MM-DD format. If provided, filters conversations up to this date.
-    
+
     Returns:
         dict: Dictionary with wa_id as keys and list of conversation event dicts as values.
              Each event contains role, message, date, time (customer_name removed).
@@ -373,7 +399,7 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
             # Start with base query
             base_query = """
                 WITH filtered_conversations AS (
-                    SELECT 
+                    SELECT
                         wa_id,
                         role,
                         message,
@@ -381,7 +407,7 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
                         time
                     FROM conversation c
                 """
-            
+
             # Add date filtering conditions if provided
             conditions = []
             params = {}
@@ -391,12 +417,12 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
             if to_date:
                 conditions.append("c.date <= :to_date")
                 params['to_date'] = to_date
-            
+
             if conditions:
                 where_clause = "WHERE " + " AND ".join(conditions)
             else:
                 where_clause = ""
-            
+
             query = base_query + where_clause + """
                 ),
                 last_messages AS (
@@ -409,7 +435,7 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
                     FROM filtered_conversations
                     ORDER BY wa_id, date DESC, time DESC
                 )
-                SELECT 
+                SELECT
                     lm.wa_id,
                     lm.role,
                     lm.message,
@@ -418,10 +444,10 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
                 FROM last_messages lm
                 ORDER BY lm.date DESC, lm.time DESC
             """
-            
+
             stmt = text(query)
             rows = session.execute(stmt, params).all()
-            
+
             # Format as calendar events structure
             events = {}
             for r in rows:
@@ -435,7 +461,7 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
                     "time": r.time,
                     # customer_name removed - use /customers/names to resolve
                 })
-            
+
             return format_response(True, data=events)
     except Exception as e:
         logging.error(f"get_calendar_conversation_events failed, error: {e}")
@@ -454,9 +480,9 @@ def get_all_customer_names():
                 CustomerModel.wa_id,
                 CustomerModel.customer_name,
             ).order_by(CustomerModel.wa_id)
-            
+
             rows = session.execute(stmt).all()
-            
+
             # Format as simple list
             customers = {}
             for r in rows:
@@ -464,7 +490,7 @@ def get_all_customer_names():
                     "wa_id": r.wa_id,
                     "customer_name": r.customer_name,
                 }
-            
+
             return format_response(True, data=customers)
     except Exception as e:
         logging.error(f"get_all_customer_names failed, error: {e}")
@@ -619,7 +645,7 @@ def make_thread(wa_id, customer_name=None):
             ):
                 existing.customer_name = customer_name
         session.commit()
-        
+
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
     Convert a Unix timestamp to formatted date and time strings, including seconds.
@@ -628,43 +654,43 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
     dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
     saudi_timezone = ZoneInfo(config['TIMEZONE'])
     dt_saudi = dt_utc.astimezone(saudi_timezone)
-    
+
     if to_hijri:
         hijri_date = convert.Gregorian(dt_saudi.year, dt_saudi.month, dt_saudi.day).to_hijri()
         date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
     else:
         date_str = dt_saudi.strftime("%Y-%m-%d")
-    
+
     time_str = dt_saudi.strftime("%H:%M:%S")
     return date_str, time_str
 
 def parse_time(time_str, to_24h=True):
     """
     Parse a time string and convert it to the specified format.
-    
+
     Parameters:
         time_str (str): A time string in any recognizable format
         to_24h (bool): If True, returns time in 24-hour format (HH:MM), otherwise in 12-hour format (h:MM AM/PM)
-    
+
     Returns:
         str: The formatted time string
-        
+
     Raises:
         ValueError: If the time string cannot be parsed in any recognizable format
     """
     if not time_str or not isinstance(time_str, str):
         raise ValueError(f"Invalid time string: {time_str}")
-    
+
     # Replace Arabic AM/PM with English equivalents
     time_str = time_str.replace('ص', 'AM').replace('م', 'PM')
-    
+
     # Normalize the input string
     normalized = re.sub(r'\s+', ' ', time_str.strip().upper())
-    
+
     try:
         # Parse the string into a datetime object (date is arbitrary)
         dt = parser.parse(normalized)
-        
+
         if to_24h:
             # Return 24-hour format for internal use and database storage
             return dt.strftime("%H:%M")
@@ -678,7 +704,7 @@ def parse_time(time_str, to_24h=True):
             return dt.strftime(time_format)
     except Exception as e:
         logging.debug(f"Error while parsing time with dateutil: {e}, trying manual parsing")
-        
+
         # Manual parsing fallback for common formats
         try:
             # Handle 12-hour format (e.g., "11:00 PM", "1:30 AM")
@@ -686,7 +712,7 @@ def parse_time(time_str, to_24h=True):
                 # Extract time part and AM/PM
                 time_part = normalized.replace("AM", "").replace("PM", "").strip()
                 is_pm = "PM" in normalized
-                
+
                 # Parse hour and minute
                 if ":" in time_part:
                     hour_str, minute_str = time_part.split(":")
@@ -695,22 +721,22 @@ def parse_time(time_str, to_24h=True):
                 else:
                     hour = int(time_part.strip())
                     minute = 0
-                
+
                 # Validate hour and minute ranges
                 if not (1 <= hour <= 12):
                     raise ValueError(f"Invalid hour in 12-hour format: {hour}")
                 if not (0 <= minute <= 59):
                     raise ValueError(f"Invalid minute: {minute}")
-                
+
                 # Convert to 24-hour format
                 if is_pm and hour != 12:
                     hour += 12
                 elif not is_pm and hour == 12:
                     hour = 0
-                
+
                 # Create datetime object for formatting
                 dt = datetime.datetime(2000, 1, 1, hour, minute)
-                
+
                 if to_24h:
                     return dt.strftime("%H:%M")
                 else:
@@ -720,21 +746,21 @@ def parse_time(time_str, to_24h=True):
                     else:
                         time_format = "%-I:%M %p"
                     return dt.strftime(time_format)
-            
+
             # Handle 24-hour format (e.g., "14:30", "09:00")
             elif ":" in normalized:
                 hour_str, minute_str = normalized.split(":", 1)  # Only split on first ':'
                 hour = int(hour_str.strip())
                 minute = int(minute_str.strip())
-                
+
                 # Validate hour and minute ranges
                 if not (0 <= hour <= 23):
                     raise ValueError(f"Invalid hour in 24-hour format: {hour}")
                 if not (0 <= minute <= 59):
                     raise ValueError(f"Invalid minute: {minute}")
-                
+
                 dt = datetime.datetime(2000, 1, 1, hour, minute)
-                
+
                 if to_24h:
                     return dt.strftime("%H:%M")
                 else:
@@ -743,7 +769,7 @@ def parse_time(time_str, to_24h=True):
                     else:
                         time_format = "%-I:%M %p"
                     return dt.strftime(time_format)
-            
+
             # Handle hour-only format (e.g., "14", "2")
             else:
                 try:
@@ -758,7 +784,7 @@ def parse_time(time_str, to_24h=True):
                         dt = datetime.datetime(2000, 1, 1, hour, 0)
                     else:
                         raise ValueError(f"Invalid hour: {hour}")
-                    
+
                     if to_24h:
                         return dt.strftime("%H:%M")
                     else:
@@ -769,10 +795,10 @@ def parse_time(time_str, to_24h=True):
                         return dt.strftime(time_format)
                 except ValueError:
                     pass
-            
+
             # If we reach here, we couldn't parse the time
             raise ValueError(f"Could not parse time format: '{time_str}' (normalized: '{normalized}')")
-            
+
         except Exception as manual_error:
             logging.error(f"Manual time parsing failed for '{time_str}': {manual_error}")
             raise ValueError(f"Could not parse time '{time_str}': {manual_error}")
@@ -780,21 +806,21 @@ def parse_time(time_str, to_24h=True):
 def normalize_time_format(time_str, to_24h=True):
     """
     Convert a time string from one format to another.
-    
+
     Parameters:
         time_str (str): A time string in either 12-hour (h:MM AM/PM) or 24-hour (HH:MM) format
         to_24h (bool): If True, converts to 24-hour format, otherwise to 12-hour format
-    
+
     Returns:
         str: The time string in the requested format
-        
+
     Raises:
         ValueError: If the time string cannot be parsed
     """
     try:
         # Try to determine if input is already in 24-hour format
         is_24h_format = ":" in time_str and " " not in time_str
-        
+
         if is_24h_format:
             # Input is already in 24h format (HH:MM)
             if to_24h:
@@ -811,7 +837,7 @@ def normalize_time_format(time_str, to_24h=True):
                 try:
                     hour, minute = map(int, time_str.split(':'))
                     dt = datetime.datetime(2000, 1, 1, hour, minute)
-                    
+
                     # Format based on operating system
                     if platform.system() == "Windows":
                         time_format = "%#I:%M %p"
@@ -832,7 +858,7 @@ def normalize_time_format(time_str, to_24h=True):
             else:
                 # Convert from 12h to 24h
                 return parse_time(time_str, to_24h=True)
-    
+
     except Exception as e:
         logging.error(f"Error normalizing time format: {e}")
         raise ValueError(f"Could not normalize time format '{time_str}': {e}")
@@ -852,14 +878,14 @@ def parse_gregorian_date(date_str):
         "%m-%d-%Y",  # MM-DD-YYYY (lower priority)
         "%m/%d/%Y"   # MM/DD/YYYY (lower priority)
     ]
-    
+
     for fmt in formats_to_try:
         try:
             dt = datetime.datetime.strptime(date_str, fmt)
             return dt.strftime("%Y-%m-%d")
         except ValueError:
             continue
-    
+
     # If specific formats fail, try dateutil with dayfirst=True
     try:
         dt = parser.parse(date_str, dayfirst=True)
@@ -927,7 +953,7 @@ def parse_hijri_date(date_str):
         hijri_date = convert.Hijri(int(year), int(found_month), int(day))
         gregorian_date = hijri_date.to_gregorian()
         return f"{gregorian_date.year}-{gregorian_date.month:02d}-{gregorian_date.day:02d}"
-    
+
     # If no month name is found, assume the date is fully numeric.
     if len(numbers) == 3:
         # Heuristic: if the first number is 4 digits, assume it's year-month-day.
@@ -954,29 +980,29 @@ def parse_date(date_str, hijri=False):
 def format_enhanced_vacation_message(start_date, end_date, base_message=""):
     """
     Create a comprehensive vacation message with day names and dates in both Hijri and Gregorian calendars.
-    
+
     Parameters:
         start_date (datetime): Start date of vacation
-        end_date (datetime): End date of vacation  
+        end_date (datetime): End date of vacation
         base_message (str): Base vacation message from config
-        
+
     Returns:
         str: Formatted vacation message with both calendar systems and day names
     """
     # Get day names in English
     start_day_name = start_date.strftime('%A')
     end_day_name = end_date.strftime('%A')
-    
+
     # Convert to Hijri dates
     start_hijri = convert.Gregorian(start_date.year, start_date.month, start_date.day).to_hijri()
     end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
-    
+
     # Format dates in both calendars
     start_gregorian = start_date.strftime('%Y-%m-%d')
     end_gregorian = end_date.strftime('%Y-%m-%d')
     start_hijri_str = f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
     end_hijri_str = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
-    
+
     # Create vacation message with English names and both calendar dates
     message = f"""🏖️:
 • {start_day_name} {start_gregorian} ({start_hijri_str} Hijri)
@@ -984,7 +1010,7 @@ To:
 • {end_day_name} {end_gregorian} ({end_hijri_str} Hijri)
 
 {base_message}"""
-    
+
     return message
 
 def _load_vacations_from_db() -> dict:
@@ -1023,22 +1049,22 @@ def _load_vacations_from_db() -> dict:
 def is_vacation_period(date_obj, vacation_dict=None):
     """
     Check if a given date falls within a vacation period.
-    
+
     Parameters:
         date_obj (datetime.date): The date to check
         vacation_dict (dict, optional): Dictionary of vacation periods with start dates and durations
-        
+
     Returns:
         tuple: (is_vacation, message)
             - is_vacation (bool): True if the date is within a vacation period
             - message (str or None): Vacation message if is_vacation is True, otherwise None
-    """    
+    """
     try:
         # Set up the vacation dictionary if not provided
         if vacation_dict is None:
             # Only DB
             vacation_dict = _load_vacations_from_db()
-        
+
         # Check if the date falls within any vacation period
         for start_day, duration in vacation_dict.items():
             try:
@@ -1049,15 +1075,15 @@ def is_vacation_period(date_obj, vacation_dict=None):
                 if start_date.date() <= date_obj <= end_date.date():
                     # Get base vacation message
                     vacation_msg = config.get('VACATION_MESSAGE', 'The business is closed during this period.')
-                    
+
                     # Create comprehensive vacation message with both calendars and day names
                     message = format_enhanced_vacation_message(start_date, end_date, vacation_msg)
-                    
+
                     return True, message
             except (ValueError, TypeError) as e:
                 logging.error(f"Error checking vacation period for date {start_day}: {e}")
                 # Continue checking other dates if one fails
-        
+
         return False, None
     except Exception as e:
         logging.error(f"Error in is_vacation_period: {e}")
@@ -1066,19 +1092,19 @@ def is_vacation_period(date_obj, vacation_dict=None):
 def find_vacation_end_date(date_obj, vacation_dict=None):
     """
     Find the end date of the vacation period if the given date falls within one.
-    
+
     Parameters:
         date_obj (datetime.date): The date to check
         vacation_dict (dict, optional): Dictionary of vacation periods with start dates and durations
-        
+
     Returns:
         datetime.date or None: The end date of the vacation period if date_obj is within one, otherwise None
-    """    
+    """
     try:
         # Set up the vacation dictionary if not provided
         if vacation_dict is None:
             vacation_dict = _load_vacations_from_db()
-        
+
         # Check if the date falls within any vacation period and return the end date
         for start_day, duration in vacation_dict.items():
             try:
@@ -1089,7 +1115,7 @@ def find_vacation_end_date(date_obj, vacation_dict=None):
             except (ValueError, TypeError) as e:
                 logging.error(f"Error checking vacation period for date {start_day}: {e}")
                 # Continue checking other dates if one fails
-        
+
         return None
     except Exception as e:
         logging.error(f"Error in find_vacation_end_date: {e}")
@@ -1098,7 +1124,7 @@ def find_vacation_end_date(date_obj, vacation_dict=None):
 def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2, schedule=None):
     """
     Comprehensive function to get time slots for a specific date with all business rules applied.
-    
+
     Parameters:
         date_str (str, optional): Gregorian iso-format date string to get time slots for.
                                   If provided, this will be converted to a date_obj
@@ -1110,48 +1136,48 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
                                   Keys are weekdays (0=Monday, 6=Sunday)
                                   Values are either None (non-working day) or [start_hour, end_hour]
                                   If None, defaults to clinic's regular schedule
-        
+
     Returns:
-        dict or tuple: 
+        dict or tuple:
             If not in vacation period: Dictionary of time slots with initial count of 0
             If in vacation period and check_vacation=True: Tuple (False, vacation_message)
             If error occurs: Dictionary with error information
             If date is invalid: Dictionary with error information
-    
+
     Example:
         >>> get_time_slots("2023-10-15")
         {'11:00 AM': 0, '01:00 PM': 0, '03:00 PM': 0, '05:00 PM': 0}
-        
+
         >>> get_time_slots("2023-10-15", to_24h=True)
         {'11:00': 0, '13:00': 0, '15:00': 0, '17:00': 0}
-        
+
     """
     try:
         now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
-        
+
         # Convert date_str to date_obj if date_str is provided
         if date_str is not None:
             # First validate the date using is_valid_date_time
             is_valid, error_message, parsed_date_str, _ = is_valid_date_time(date_str)
             if not is_valid:
                 return format_response(False, message=error_message)
-                
+
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
         else:
             date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
             # Ensure the provided date_obj is not in the past
             if date_obj < now.date():
                 return format_response(False, message=get_message("past_date_error"))
-            
+
         # Check if the date falls within a vacation period
         if check_vacation:
             is_vacation, vacation_message = is_vacation_period(date_obj)
             if is_vacation:
                 return format_response(False, message=vacation_message)
-        
+
         # Get day of week (0=Monday, 6=Sunday)
         day_of_week = date_obj.weekday()
-        
+
         # Set default schedule if not provided
         if schedule is None:
             schedule = {
@@ -1163,15 +1189,15 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
                 5: [16, 22],  # Saturday: 4 PM to 10 PM
                 6: [11, 17]   # Sunday: 11 AM to 5 PM
             }
-        
+
         # Check if the day is a non-working day
         if schedule.get(day_of_week) is None:
             return format_response(False, message=get_message("non_working_day"))
-        
+
         # Check if the date falls within Ramadan
         hijri_date = convert.Gregorian(date_obj.year, date_obj.month, date_obj.day).to_hijri()
         is_ramadan = hijri_date.month == 9
-        
+
         # Define time slots in 12-hour format based on day and Ramadan status
         if is_ramadan:
             # Ramadan hours override regular schedule
@@ -1181,12 +1207,12 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
             day_schedule = schedule.get(day_of_week, [11, 17])
             start_hour, end_hour = day_schedule
             available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(start_hour, end_hour, interval)}
-        
+
         # Filter out past time slots if the date is today
         if date_obj == now.date():
             current_time = now.time()
             available_12h = filter_past_time_slots(available_12h, current_time)
-        
+
         # Convert to 24-hour format if requested
         if to_24h:
             available_24h = {}
@@ -1194,9 +1220,9 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
                 slot_24h = normalize_time_format(slot_12h, to_24h=True)
                 available_24h[slot_24h] = count
             return available_24h
-        
+
         return available_12h
-        
+
     except Exception as e:
         logging.error(f"Error getting time slots: {e}")
         # System error fallback
@@ -1205,11 +1231,11 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
 def validate_reservation_type(reservation_type, ar=False):
     """
     Validates that reservation_type is either 0 or 1.
-    
+
     Parameters:
         reservation_type: The reservation type to validate (can be string or int)
         ar (bool): If True, returns error messages in Arabic
-        
+
     Returns:
         tuple: (is_valid, result, parsed_type)
             is_valid (bool): True if valid, False otherwise
@@ -1219,10 +1245,10 @@ def validate_reservation_type(reservation_type, ar=False):
     try:
         # Convert to integer if it's not already
         parsed_type = int(reservation_type)
-        
+
         if parsed_type not in (0, 1):
             return False, format_response(False, message=get_message("invalid_reservation_type", ar)), None
-            
+
         return True, None, parsed_type
     except (ValueError, TypeError):
         return False, format_response(False, message=get_message("invalid_reservation_type", ar)), None
@@ -1230,22 +1256,22 @@ def validate_reservation_type(reservation_type, ar=False):
 def filter_past_time_slots(time_slots_dict, current_time=None, slot_duration_hours: int = 2):
     """
     Filter out time slots that have completely ended from a dictionary of time slots.
-    
+
     Parameters:
         time_slots_dict (dict): Dictionary of time slots
         current_time (datetime.time, optional): Current time for comparison. If None, uses the current time.
         slot_duration_hours (int): Duration of each slot in hours (default: 2)
-        
+
     Returns:
         dict: Dictionary of time slots with past slots removed
     """
     if not time_slots_dict:
         return {}
-    
+
     # If current_time is not provided, use the current time
     if current_time is None:
         current_time = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE'])).time()
-    
+
     # Filter out past time slots
     filtered_slots = {}
     for time_slot, count in time_slots_dict.items():
@@ -1266,19 +1292,19 @@ def filter_past_time_slots(time_slots_dict, current_time=None, slot_duration_hou
             # If we can't parse the time, log error but keep the slot to be safe
             logging.error(f"Could not parse time slot '{time_slot}' in filter_past_time_slots: {e}")
             filtered_slots[time_slot] = count
-    
+
     return filtered_slots
 
 def is_valid_date_time(date_str, time_str=None, hijri=False):
     """
-    Check if a given date and time (optional) are valid for scheduling 
+    Check if a given date and time (optional) are valid for scheduling
     (not in the past, and if time is provided, not earlier on the same day).
-    
+
     Parameters:
         date_str (str): Gregorian Date string to check
         time_str (str, optional): Time string to check (in either 12-hour or 24-hour format)
         hijri (bool): Flag indicating if the provided date string is in Hijri format
-        
+
     Returns:
         tuple: (is_valid, message, parsed_date, parsed_time)
             - is_valid (bool): True if the date/time is valid for scheduling
@@ -1290,25 +1316,25 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
         # Parse the date and convert to a datetime.date object
         parsed_date_str = parse_date(date_str, hijri)
         date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
-        
+
         # Get current date and time
         now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
         today = now.date()
-        
+
         # Default value for parsed_time
         parsed_time_str = None
-        
+
         # Check if the date is in the past
         if date_obj < today:
             return False, get_message("cannot_reserve_past"), parsed_date_str, parsed_time_str
-        
+
         # If time string is provided, check if it's valid for today
         if time_str:
             try:
                 parsed_time_str = parse_time(time_str, to_24h=True)
             except ValueError as time_error:
                 return False, get_message("invalid_time_format", error=str(time_error)), parsed_date_str, None
-            
+
             if date_obj == today:
                 # Convert time to datetime objects for comparison
                 time_obj = datetime.datetime.strptime(parsed_time_str, "%H:%M").time()
@@ -1322,9 +1348,9 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
                 # If the slot has completely ended, treat as past; otherwise allow
                 if current_time >= slot_end_time:
                     return False, get_message("cannot_reserve_past"), parsed_date_str, parsed_time_str
-        
+
         return True, None, parsed_date_str, parsed_time_str
-    
+
     except Exception as e:
         return False, get_message("invalid_date_format", error=str(e)), None, None
 

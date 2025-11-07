@@ -179,21 +179,23 @@ export const AutosaveOrchestrationService = {
     ) {
       return false;
     }
-    // Camera changes (with or without content): always schedule
-    // The idle controller's schedule() resets the timer, so continuous movement
-    // will keep resetting, and when movement stops, timer will complete after 3s
 
-    // Use combined signature if available (includes camera), otherwise use content signature
-    // The idle controller always saves with combined signatures, so we should compare them
+    // ✅ PERFORMANCE OPTIMIZATION: For camera changes, always schedule without signature comparison
+    // This avoids expensive signature computation/comparison during continuous camera movement
+    // The idle controller's schedule() resets the timer, so continuous movement keeps resetting
+    // When movement stops, timer fires after 3s and saves the final camera position
+    // The save logic (flush) will handle checking if state actually changed before persisting
+    if (hasCameraChanges) {
+      return true;
+    }
+
+    // For content-only changes: check if signature already scheduled to avoid redundant schedules
     const signatureToCompare = combinedSignature || newSignature;
-
-    // Check if this exact signature (combined or content) is already scheduled
     const isAlreadyScheduled =
       state.lastScheduledSignature &&
       signatureToCompare.equalsSignature(state.lastScheduledSignature);
 
     if (!isAlreadyScheduled) {
-      // Store the signature we're comparing (combined when available, content otherwise)
       state.lastScheduledSignature = signatureToCompare;
       return true;
     }

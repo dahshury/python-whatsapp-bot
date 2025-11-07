@@ -28,11 +28,12 @@ export const DocumentLockOverlay: FC<DocumentLockOverlayProps> = ({
     <div
       aria-hidden={!active}
       className={cn(
-        "absolute inset-0 z-[4] flex items-center justify-center bg-background/85 backdrop-blur-sm transition-opacity",
+        "absolute inset-0 flex items-center justify-center bg-background/85 backdrop-blur-sm transition-opacity",
         active
           ? "pointer-events-auto opacity-100 duration-100"
           : "pointer-events-none opacity-0 duration-300"
       )}
+      style={{ zIndex: "var(--z-document-overlay)" }}
     >
       <div
         className={cn(

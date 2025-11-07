@@ -21,7 +21,14 @@
 
 /* Special hover for today (lowest specificity) */
 .fc-multimonth .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
-  .fc-daygrid-day-frame,
+  .fc-daygrid-day-frame {
+  background: hsl(var(--accent) / 0.35);
+  transform: none;
+  border-color: hsl(var(--accent) / 0.7);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-radius: calc(var(--radius) * 0.75);
+}
+
 .fc-daygrid
   .fc-daygrid-day.fc-day-today:not(.fc-day-past):hover
   .fc-daygrid-day-frame {
@@ -34,7 +41,12 @@
 
 /* Active/pressed day cell styling (low specificity) */
 .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
-  .fc-daygrid-day-frame,
+  .fc-daygrid-day-frame {
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: calc(var(--radius) * 0.75);
+}
+
 .fc-daygrid
   .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):active
   .fc-daygrid-day-frame {
@@ -52,7 +64,13 @@
   .fc-daygrid-day:has(.fc-highlight):not(.fc-day-past):not(
     .fc-day-disabled
   ):hover
-  .fc-daygrid-day-frame,
+  .fc-daygrid-day-frame {
+  background: hsl(var(--primary) / 0.3);
+  border-color: hsl(var(--primary) / 0.7);
+  border-radius: calc(var(--radius) * 0.75);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
 .fc-daygrid
   .fc-daygrid
   .fc-daygrid-day.fc-day-selected:not(.fc-day-past):not(.fc-day-disabled):hover
@@ -73,7 +91,21 @@
 .fc-multimonth .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
     .fc-day-today
   ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-  .fc-daygrid-day-frame,
+  .fc-daygrid-day-frame {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--muted) / 0.15) 0%,
+    hsl(var(--muted) / 0.25) 100%
+  );
+  border-color: hsl(var(--muted) / 0.4);
+  border-radius: calc(var(--radius) * 0.75);
+  transform: none;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  z-index: var(--z-fc-free-roam);
+}
+
 .fc-daygrid
   .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
     .fc-day-today
@@ -135,7 +167,12 @@
 .fc-multimonth .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
     .fc-day-today
   ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-  .fc-daygrid-day-number,
+  .fc-daygrid-day-number {
+  background: hsl(var(--muted) / 0.3);
+  color: hsl(var(--muted-foreground));
+  transform: none;
+}
+
 .fc-daygrid
   .fc-daygrid-day:not(.fc-day-disabled):not(.fc-day-past):not(
     .fc-day-today
@@ -165,7 +202,13 @@
   .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
     .fc-day-today
   ):not(.fc-day-selected):not(:has(.fc-highlight)):hover
-  .fc-daygrid-day-frame,
+  .fc-daygrid-day-frame {
+  transform: none;
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
 .dark
   .fc-daygrid
   .fc-daygrid-day:not(.fc-day-past):not(.fc-day-disabled):not(
@@ -192,4 +235,9 @@
   transition: opacity 0.2s ease;
   pointer-events: none;
   z-index: var(--z-hover-effects);
+}
+
+/* Remove transitions for multimonth hover effects */
+.fc-multimonth .fc-day-hover-effect {
+  transition: none;
 }

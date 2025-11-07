@@ -3,7 +3,7 @@ export const SLOT_PREFIX_LEN = 5;
 export const MIN_SLOT_MINUTES = 60;
 export const DEFAULT_SLOT_HOURS = 2;
 export const MANY_EVENTS_THRESHOLD = 6;
-export const DURATION_PER_RESERVATION_MANY = 15;
+export const DURATION_PER_RESERVATION_MANY = 20;
 export const DURATION_PER_RESERVATION_FEW = 20;
 export const GAP_MINUTES = 1;
 

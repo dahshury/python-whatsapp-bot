@@ -130,11 +130,17 @@ export function FiltersMenu({
       open={isOpen}
     >
       <DropdownMenuTrigger asChild>
-        <Button className="h-6 w-6 shrink-0 p-0" size="icon" variant="ghost">
+        <Button className="h-6 w-6 shrink-0 p-0" size="icon" variant="outline">
           <Plus className="size-3.5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" style={{ zIndex: 300 }}>
+      <DropdownMenuContent
+        align="start"
+        className="w-56"
+        side="right"
+        sideOffset={8}
+        style={{ zIndex: "var(--z-filter-menu)" }}
+      >
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>
             <Globe className="mr-2 size-4" />
@@ -145,7 +151,7 @@ export function FiltersMenu({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent
             className="w-[18.75rem] p-0"
-            style={{ zIndex: 350 }}
+            style={{ zIndex: "var(--z-submenu)" }}
           >
             <Command dir="ltr" shouldFilter={false}>
               <CommandInput
@@ -213,7 +219,10 @@ export function FiltersMenu({
                 "Registration"}
             </span>
           </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-48 p-0" style={{ zIndex: 350 }}>
+          <DropdownMenuSubContent
+            className="w-48 p-0"
+            style={{ zIndex: "var(--z-submenu)" }}
+          >
             <DropdownMenuItem
               onSelect={() => handleRegistrationFilterSelect("registered")}
             >
@@ -262,7 +271,7 @@ export function FiltersMenu({
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent
             className="w-auto p-0"
-            style={{ zIndex: 350 }}
+            style={{ zIndex: "var(--z-submenu)" }}
           >
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
@@ -273,7 +282,7 @@ export function FiltersMenu({
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
                 className="w-auto p-0"
-                style={{ zIndex: 400 }}
+                style={{ zIndex: "var(--z-submenu-nested)" }}
               >
                 <div className="min-w-[56rem] p-3">
                   <InlineDateRangePicker
@@ -293,7 +302,7 @@ export function FiltersMenu({
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent
                 className="w-auto p-0"
-                style={{ zIndex: 400 }}
+                style={{ zIndex: "var(--z-submenu-nested)" }}
               >
                 <div className="min-w-[56rem] p-3">
                   <InlineDateRangePicker

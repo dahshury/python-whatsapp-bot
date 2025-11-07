@@ -1,6 +1,10 @@
 type EventLike = {
   classNames?: string[];
-  extendedProps?: { type?: number; __vacation?: boolean };
+  extendedProps?: {
+    type?: number;
+    __vacation?: boolean;
+    hasDocument?: boolean;
+  };
 };
 
 type ArgLike = { event?: EventLike };
@@ -12,6 +16,7 @@ export function getEventClassNames(arg: ArgLike): string[] {
   const event = arg?.event;
   const classes: string[] = ["text-xs"];
   const type = event?.extendedProps?.type;
+  const hasDocument = event?.extendedProps?.hasDocument;
   const isVacation =
     Boolean(event?.extendedProps?.__vacation) ||
     event?.classNames?.includes("vacation-event") ||
@@ -30,6 +35,13 @@ export function getEventClassNames(arg: ArgLike): string[] {
       classes.push("reservation-type-1");
     } else {
       classes.push("reservation-type-0");
+    }
+
+    // Add document status class for border color logic
+    if (hasDocument === false) {
+      classes.push("no-document");
+    } else if (hasDocument === true) {
+      classes.push("has-document");
     }
   }
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import uuid
-from typing import AsyncGenerator, Optional
 import os
+import uuid
+from collections.abc import AsyncGenerator
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, FastAPIUsers
@@ -14,9 +14,9 @@ from fastapi_users.authentication import (
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import get_async_session
 from app.auth.models import User
 from app.config import config
+from app.db import get_async_session
 
 
 # User DB adapter
@@ -31,7 +31,7 @@ class UserManager(BaseUserManager[User, uuid.UUID]):
 	reset_password_token_secret = config.get("APP_SECRET") or os.getenv("APP_SECRET") or "change-me"
 	verification_token_secret = config.get("APP_SECRET") or os.getenv("APP_SECRET") or "change-me"
 
-	async def on_before_register(self, user_create, request: Optional[Request] = None) -> None:
+	async def on_before_register(self, user_create, request: Request | None = None) -> None:
 		# Optional gate to disable registration in production
 		allow_reg_env = os.getenv("ALLOW_USER_REGISTRATION")
 		if allow_reg_env is None:

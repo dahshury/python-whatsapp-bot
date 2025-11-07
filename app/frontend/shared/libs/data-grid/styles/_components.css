@@ -23,7 +23,7 @@
 /* Grid toolbar - now a simple horizontal bar above the grid */
 .grid-toolbar {
   /* Ensure it appears above other content */
-  z-index: 10;
+  z-index: var(--z-grid-component);
   /* Smooth transitions */
   transition: all 150ms ease-in-out;
 }

@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 
 type BackdropProps = {
   onRequestClose: () => void;
-  zIndex: number;
+  zIndex: number | string;
   backdropClassName?: string;
   backdropKey?: string;
 };

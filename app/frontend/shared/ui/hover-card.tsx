@@ -6,7 +6,6 @@ import {
   Root as HoverCardRootPrimitive,
   Trigger as HoverCardTriggerPrimitive,
 } from "@radix-ui/react-hover-card";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { cn } from "@shared/libs/utils";
 import type {
   ComponentProps,
@@ -77,7 +76,7 @@ const HoverCardContent = ({
         ref={ref}
         sideOffset={sideOffset}
         style={{
-          zIndex: Z_INDEX.DIALOG_CONTENT + 1,
+          zIndex: "var(--z-dialog-content-plus-1)",
           ...(props as { style?: CSSProperties }).style,
         }}
         {...props}

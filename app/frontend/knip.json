@@ -49,7 +49,6 @@
     "@fortawesome/free-solid-svg-icons",
     "@fortawesome/react-fontawesome",
     "@diceui/combobox",
-    "@excalidraw/utils",
     "color2k"
   ],
   "ignoreBinaries": ["python"]

@@ -17,7 +17,6 @@ import {
   SubTrigger as ContextMenuSubTriggerPrimitive,
   Trigger as ContextMenuTriggerPrimitive,
 } from "@radix-ui/react-context-menu";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { cn } from "@shared/libs/utils";
 import { Check, ChevronRight, Circle } from "lucide-react";
 import type {
@@ -79,7 +78,7 @@ const ContextMenuSubContent = ({
     )}
     ref={ref}
     style={{
-      zIndex: Z_INDEX.CONTEXT_MENU,
+      zIndex: "var(--z-context-menu)",
       ...(props as { style?: React.CSSProperties }).style,
     }}
     {...props}
@@ -102,7 +101,7 @@ const ContextMenuContent = ({
       )}
       ref={ref}
       style={{
-        zIndex: Z_INDEX.CONTEXT_MENU,
+        zIndex: "var(--z-context-menu)",
         ...(props as { style?: React.CSSProperties }).style,
       }}
       {...props}

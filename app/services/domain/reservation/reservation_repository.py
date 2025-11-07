@@ -1,8 +1,10 @@
-from typing import List, Optional
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from sqlalchemy import select, and_
-from app.db import get_session, ReservationModel, CustomerModel
+
+from sqlalchemy import and_, select
+
+from app.db import CustomerModel, ReservationModel, get_session
+
 from .reservation_models import Reservation, ReservationType
 
 
@@ -11,19 +13,19 @@ class ReservationRepository:
     Repository for reservation data access operations.
     Implements repository pattern to abstract data access.
     """
-    
+
     def __init__(self, timezone: str = "UTC"):
         """Initialize repository with timezone configuration."""
         self.timezone = timezone
-    
-    def find_by_wa_id(self, wa_id: str, include_past: bool = False) -> List[Reservation]:
+
+    def find_by_wa_id(self, wa_id: str, include_past: bool = False) -> list[Reservation]:
         """
         Find all reservations for a customer.
-        
+
         Args:
             wa_id: WhatsApp ID to search for
             include_past: Whether to include past reservations
-            
+
         Returns:
             List of Reservation instances
         """
@@ -46,7 +48,7 @@ class ReservationRepository:
             )
             rows = session.execute(stmt).all()
 
-        reservations: List[Reservation] = []
+        reservations: list[Reservation] = []
         now = datetime.now(tz=ZoneInfo(self.timezone))
         for r in rows:
             reservation = Reservation(
@@ -64,15 +66,15 @@ class ReservationRepository:
             if include_past or reservation.is_future(now):
                 reservations.append(reservation)
         return reservations
-    
-    def find_active_by_slot(self, date_str: str, time_slot: str) -> List[Reservation]:
+
+    def find_active_by_slot(self, date_str: str, time_slot: str) -> list[Reservation]:
         """
         Find active reservations for a specific date and time slot.
-        
+
         Args:
             date_str: Date in YYYY-MM-DD format
             time_slot: Time slot in 24-hour format (HH:MM)
-            
+
         Returns:
             List of active reservations for the slot
         """
@@ -116,16 +118,16 @@ class ReservationRepository:
             )
             for r in rows
         ]
-    
-    def find_cancelled_reservation(self, wa_id: str, date_str: str, time_slot: str) -> Optional[Reservation]:
+
+    def find_cancelled_reservation(self, wa_id: str, date_str: str, time_slot: str) -> Reservation | None:
         """
         Find a cancelled reservation that can be reinstated.
-        
+
         Args:
             wa_id: WhatsApp ID
             date_str: Date in YYYY-MM-DD format
             time_slot: Time slot in 24-hour format
-            
+
         Returns:
             Cancelled reservation if found, None otherwise
         """
@@ -170,14 +172,14 @@ class ReservationRepository:
                 customer_name=r.customer_name,
             )
         return None
-    
-    def find_by_id(self, reservation_id: int) -> Optional[Reservation]:
+
+    def find_by_id(self, reservation_id: int) -> Reservation | None:
         """
         Find a reservation by its ID.
-        
+
         Args:
             reservation_id: The ID of the reservation.
-            
+
         Returns:
             Reservation instance if found, None otherwise.
         """
@@ -214,20 +216,20 @@ class ReservationRepository:
                 customer_name=r.customer_name,
             )
         return None
-    
+
     def save(self, reservation: Reservation) -> int:
         """
         Save a new reservation to database.
-        
+
         Args:
             reservation: Reservation instance to save
-            
+
         Returns:
             ID of the newly created reservation
         """
         import logging
         logger = logging.getLogger(self.__class__.__name__)
-        
+
         try:
             with get_session() as session:
                 db_obj = ReservationModel(
@@ -237,27 +239,27 @@ class ReservationRepository:
                     type=int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
                     status=reservation.status,
                 )
-                
+
                 logger.debug(f"Saving reservation: wa_id={reservation.wa_id}, type={reservation.type}, date={reservation.date}, time={reservation.time_slot}")
-                
+
                 session.add(db_obj)
                 session.commit()
                 session.refresh(db_obj)
-                
+
                 logger.debug(f"Successfully saved reservation with ID: {db_obj.id}")
                 return int(db_obj.id)
-                
+
         except Exception as e:
             logger.error(f"Failed to save reservation: wa_id={reservation.wa_id}, type={reservation.type}, error={e}", exc_info=True)
             raise  # Re-raise the exception so it can be handled by the service layer
-    
+
     def update(self, reservation: Reservation) -> bool:
         """
         Update an existing reservation.
-        
+
         Args:
             reservation: Reservation instance with updates
-            
+
         Returns:
             True if update was successful, False otherwise
         """
@@ -278,14 +280,14 @@ class ReservationRepository:
             )
             session.commit()
             return result > 0
-    
+
     def cancel_by_id(self, reservation_id: int) -> bool:
         """
         Cancel a reservation by its ID.
-        
+
         Args:
             reservation_id: The ID of the reservation to cancel.
-            
+
         Returns:
             True if cancellation was successful, False otherwise.
         """
@@ -303,14 +305,14 @@ class ReservationRepository:
             )
             session.commit()
             return result > 0
-    
+
     def reinstate_by_id(self, reservation_id: int) -> bool:
         """
         Reinstate a cancelled reservation by its ID.
-        
+
         Args:
             reservation_id: The ID of the reservation to reinstate.
-            
+
         Returns:
             True if reinstatement was successful, False otherwise.
         """
@@ -328,15 +330,15 @@ class ReservationRepository:
             )
             session.commit()
             return result > 0
-    
-    def cancel_by_wa_id(self, wa_id: str, date_str: Optional[str] = None) -> int:
+
+    def cancel_by_wa_id(self, wa_id: str, date_str: str | None = None) -> int:
         """
         Cancel reservations for a customer.
-        
+
         Args:
             wa_id: WhatsApp ID
             date_str: Optional specific date to cancel. If None, cancels all active reservations
-            
+
         Returns:
             Number of reservations cancelled
         """

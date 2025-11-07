@@ -17,7 +17,6 @@ import {
   Value as SelectValuePrimitive,
   Viewport as SelectViewportPrimitive,
 } from "@radix-ui/react-select";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { cn } from "@shared/libs/utils";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import type * as React from "react";
@@ -160,7 +159,7 @@ const SelectContent = ({
         ref={ref}
         {...props}
         style={{
-          zIndex: Z_INDEX.SELECT,
+          zIndex: "var(--z-select)",
           ...(props as { style?: React.CSSProperties }).style,
         }}
       >

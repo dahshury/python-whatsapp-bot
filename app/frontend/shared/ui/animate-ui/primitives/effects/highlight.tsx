@@ -262,7 +262,10 @@ function Highlight<T extends ElementType = "div">({
             className={containerClassName}
             data-slot="motion-highlight-container"
             ref={localRef}
-            style={{ position: "relative", zIndex: 1 }}
+            style={{
+              position: "relative",
+              zIndex: "var(--z-highlight-content)",
+            }}
           >
             <AnimatePresence initial={false} mode="wait">
               {boundsState && (
@@ -298,7 +301,7 @@ function Highlight<T extends ElementType = "div">({
                   }}
                   style={{
                     position: "absolute",
-                    zIndex: 0,
+                    zIndex: "var(--z-highlight-background)",
                     ...(style
                       ? {
                           top: style.top,
@@ -605,7 +608,7 @@ function HighlightItem<T extends ElementType>({
                 layoutId={`transition-background-${contextId}`}
                 style={{
                   position: "absolute",
-                  zIndex: 0,
+                  zIndex: "var(--z-highlight-background)",
                   ...contextStyle,
                   ...style,
                 }}
@@ -618,7 +621,10 @@ function HighlightItem<T extends ElementType>({
           <Component
             className={className}
             data-slot="motion-highlight-item"
-            style={{ position: "relative", zIndex: 1 }}
+            style={{
+              position: "relative",
+              zIndex: "var(--z-highlight-content)",
+            }}
             {...dataAttributes}
           >
             {children}
@@ -672,7 +678,7 @@ function HighlightItem<T extends ElementType>({
               layoutId={`transition-background-${contextId}`}
               style={{
                 position: "absolute",
-                zIndex: 0,
+                zIndex: "var(--z-highlight-background)",
                 ...contextStyle,
                 ...style,
               }}
@@ -684,7 +690,7 @@ function HighlightItem<T extends ElementType>({
       )}
 
       {cloneElement(element, {
-        style: { position: "relative", zIndex: 1 },
+        style: { position: "relative", zIndex: "var(--z-highlight-content)" },
         className: element.props.className,
         ...getNonOverridingDataAttributes(element, {
           ...dataAttributes,

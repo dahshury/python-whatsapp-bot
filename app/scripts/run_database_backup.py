@@ -6,9 +6,9 @@ import logging
 import os
 import sys
 import traceback
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable
 
 from app.db import DATABASE_URL, engine
 from app.services.backup import S3BackupConfig, S3DatabaseBackupService, build_config_from_environment
@@ -100,6 +100,10 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+
+
+
+
 
 
 

@@ -1,13 +1,16 @@
-from tenacity import retry, wait_exponential, stop_after_delay, retry_if_exception_type
+import functools
+import logging
+import time
+import traceback
+
 import httpx
 import openai
-import logging
-from anthropic import AnthropicError, RateLimitError, APIStatusError, APIError, APIConnectionError
+from anthropic import AnthropicError, APIConnectionError, APIError, APIStatusError, RateLimitError
 from openai import APITimeoutError
-from app.metrics import RETRY_ATTEMPTS, RETRY_LAST_TIMESTAMP, RETRY_EXHAUSTED
-import time
-import functools
-import traceback
+from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_exponential
+
+from app.metrics import RETRY_ATTEMPTS, RETRY_EXHAUSTED, RETRY_LAST_TIMESTAMP
+
 
 def retry_decorator(func):
     """
@@ -19,7 +22,7 @@ def retry_decorator(func):
         RETRY_ATTEMPTS.labels(exception_type=exc_name).inc()
         # Record the Unix timestamp of this retry
         RETRY_LAST_TIMESTAMP.labels(exception_type=exc_name).set(time.time())
-        
+
     # The retry function from tenacity
     retry_func = retry(
         wait=wait_exponential(multiplier=3, min=10, max=3600),
@@ -41,7 +44,7 @@ def retry_decorator(func):
         )),
         after=_record_retry
     )(func)
-    
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
@@ -63,5 +66,5 @@ def retry_decorator(func):
                 pass
             # Re-raise the exception so it can be handled by the caller
             raise
-            
+
     return wrapper

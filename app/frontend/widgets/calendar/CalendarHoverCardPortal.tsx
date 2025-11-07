@@ -61,7 +61,7 @@ export function CalendarHoverCardPortal({
         onMouseLeave={onMouseLeave}
         role="tooltip"
         style={{
-          zIndex: 1,
+          zIndex: "var(--z-base)",
           // Ensure card doesn't interfere with calendar event interactions
           pointerEvents: isHoverCardMounted && !isDragging ? "auto" : "none",
         }}

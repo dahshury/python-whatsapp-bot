@@ -1,0 +1,15 @@
+/* Center headers for documents grid only */
+/* Note: Headers are canvas-rendered, so CSS cannot directly style them. */
+/* The centering is handled by the drawHeader prop in GridDataEditor.tsx */
+/* This CSS file is here for any future DOM-based header elements */
+
+/* Target any potential header DOM elements within the documents grid */
+.documents-grid-container [class*="header"],
+.documents-grid-container [data-header],
+.documents-grid-container .dvn-scroller [class*="header"] {
+	text-align: center;
+	justify-content: center;
+	display: flex;
+	align-items: center;
+}
+

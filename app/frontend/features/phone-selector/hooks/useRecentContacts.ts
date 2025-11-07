@@ -39,47 +39,49 @@ export function useRecentContacts() {
   });
 
   // Convert to IndexedPhoneOption format
-  const indexedOptions: IndexedPhoneOption[] = React.useMemo(
-    () =>
-      (data || []).map((result) => {
-        const phoneNumber = result.wa_id.startsWith("+")
-          ? result.wa_id
-          : `+${result.wa_id}`;
+  const indexedOptions: IndexedPhoneOption[] = React.useMemo(() => {
+    const mapped = (data || []).map((result) => {
+      const phoneNumber = result.wa_id.startsWith("+")
+        ? result.wa_id
+        : `+${result.wa_id}`;
 
-        // Parse phone to extract country
-        let country: RPNInput.Country = "US";
-        try {
-          const parsed = parsePhoneNumber(phoneNumber);
-          country = (parsed?.country as RPNInput.Country) || "US";
-        } catch {
-          // Keep default
-        }
+      // Parse phone to extract country
+      let country: RPNInput.Country = "US";
+      try {
+        const parsed = parsePhoneNumber(phoneNumber);
+        country = (parsed?.country as RPNInput.Country) || "US";
+      } catch {
+        // Keep default
+      }
 
-        const name = result.customer_name || phoneNumber;
-        const lastMessageAt = result.last_message_at
-          ? new Date(result.last_message_at).getTime()
-          : null;
-        const lastReservationAt = result.last_reservation_at
-          ? new Date(result.last_reservation_at).getTime()
-          : null;
+      const name = result.customer_name || phoneNumber;
+      const lastMessageAt = result.last_message_at
+        ? new Date(result.last_message_at).getTime()
+        : null;
+      const lastReservationAt = result.last_reservation_at
+        ? new Date(result.last_reservation_at).getTime()
+        : null;
 
-        return {
-          number: phoneNumber,
-          name,
-          country,
-          label: name,
-          id: result.wa_id,
-          displayNumber: phoneNumber,
-          lastMessageAt,
-          lastReservationAt,
-          __normalizedNumber: result.wa_id.replace(/[\s\-+]/g, ""),
-          __searchName: name.toLowerCase(),
-          __searchLabel: name.toLowerCase(),
-          __country: country,
-        };
-      }),
-    [data]
-  );
+      return {
+        number: phoneNumber,
+        name,
+        country,
+        label: name,
+        id: result.wa_id,
+        displayNumber: phoneNumber,
+        lastMessageAt,
+        lastReservationAt,
+        __normalizedNumber: result.wa_id.replace(/[\s\-+]/g, ""),
+        __searchName: name.toLowerCase(),
+        __searchLabel: name.toLowerCase(),
+        __country: country,
+      };
+    });
+
+    mapped.sort((a, b) => (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0));
+
+    return mapped;
+  }, [data]);
 
   return {
     contacts: indexedOptions,

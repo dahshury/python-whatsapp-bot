@@ -1,0 +1,76 @@
+/* TLDraw Styles - Centralized Configuration */
+
+/* ============================================================================
+   Attribution and Branding Customizations
+   ============================================================================ */
+
+/* Hide tldraw "made with tldraw" attribution button */
+button[title="made with tldraw"] {
+  display: none !important;
+}
+
+/* Hide tldraw watermark */
+.tl-watermark_SEE-LICENSE {
+  display: none !important;
+}
+
+/* ============================================================================
+   Toolbar Configuration
+   ============================================================================ */
+
+/* Move toolbar from bottom to top */
+.tlui-toolbar {
+  bottom: auto !important;
+  top: 0 !important;
+}
+
+/* ============================================================================
+   Canvas Container Layouts
+   ============================================================================ */
+
+/* TLDraw canvas wrapper - flexible layout container */
+.tldraw-canvas-wrapper {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+}
+
+/* TLDraw viewer container - read-only view */
+.tldraw-viewer-container {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* TLDraw editor container - full editor */
+.tldraw-editor-container {
+  display: flex;
+  flex-direction: column;
+  flex: 4 1 0;
+  min-height: 0;
+}
+
+/* TLDraw canvas fill */
+.tldraw-canvas-fill {
+  height: 100%;
+  width: 100%;
+}
+
+/* ============================================================================
+   Control Overlays
+   ============================================================================ */
+
+/* Status indicator overlay styling */
+.tldraw-status-overlay {
+  z-index: var(--z-document-controls);
+}
+
+/* Fullscreen button overlay styling */
+.tldraw-fullscreen-button {
+  z-index: var(--z-document-controls);
+}
+

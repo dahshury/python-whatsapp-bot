@@ -141,6 +141,7 @@
   "phone_filter_registration": "التسجيل",
   "phone_filter_registration_registered": "مسجل",
   "phone_filter_registration_unknown": "غير معروف",
+  "phone_add_filter_button": "إضافة عامل تصفية",
   "date_preset_today": "اليوم",
   "date_preset_yesterday": "أمس",
   "date_preset_last_7_days": "آخر 7 أيام",

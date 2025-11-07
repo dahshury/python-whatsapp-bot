@@ -35,7 +35,7 @@
 }
 .message-list > .message-row {
   position: relative;
-  z-index: 1;
+  z-index: var(--z-chat-message);
 }
 .message-list :where(.message-row) {
   padding: 0;
@@ -127,7 +127,7 @@
   filter: blur(8px);
   opacity: 0;
   transition: opacity 200ms ease;
-  z-index: -1;
+  z-index: var(--z-behind);
 }
 .icon-neon:hover::after,
 .icon-neon:focus-visible::after {
@@ -135,11 +135,11 @@
 }
 .avatar-neon {
   position: relative;
-  z-index: 0;
+  z-index: var(--z-chat-background);
 }
 .avatar-neon > * {
   position: relative;
-  z-index: 2;
+  z-index: var(--z-chat-content);
 }
 .avatar-neon::before {
   content: "";
@@ -151,7 +151,7 @@
   transition:
     opacity 200ms ease,
     transform 200ms ease;
-  z-index: 1;
+  z-index: var(--z-chat-message);
 }
 .message-row:hover .avatar-neon::before {
   opacity: 0.9;

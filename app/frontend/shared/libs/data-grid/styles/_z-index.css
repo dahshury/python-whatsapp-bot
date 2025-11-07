@@ -15,6 +15,16 @@
    * LAYER 1: CALENDAR & BASE UI (0-100)
    * ======================================== */
   --z-background: 0;
+  --z-base: 1;
+  --z-sticky-header: 10;
+  --z-focus-ring: 10;
+  --z-sidebar-resizer: 20;
+  --z-navigation: 10;
+  --z-navigation-indicator: 1;
+  --z-document-overlay: 4;
+  --z-document-controls: 3;
+  --z-chat-footer: 100;
+  --z-toast: 100;
   --z-calendar-day-bg-non-business: 1;
   --z-calendar-day-bg-event: 2;
   --z-calendar-vacation-bg: 3;
@@ -23,22 +33,35 @@
   --z-calendar-week-number: 6;
   --z-calendar-event: 7;
   --z-calendar-event-mirror: 8;
-  --z-base: 1;
-  --z-sticky-header: 10;
+  --z-calendar-vacation-event: 1;
   --z-calendar-events: 20;
   --z-hover-effects: 30;
-  --z-sidebar: 49;
-  --z-dropdown: 50;
-  --z-hover-card: 2600;
-  --z-tooltip: 70;
-  --z-popover: 80;
-  --z-context-menu: 90;
-  --z-sidebar-chat-overlay: 150;
-  --z-sidebar-chat-tooltip: 160;
+  --z-scroll-button: 50;
+  --z-highlight-background: 0;
+  --z-highlight-content: 1;
+  --z-sidebar: 400;
+  --z-dropdown: 200;
+  --z-hover-card: 270;
+  --z-tooltip: 100;
+  --z-popover: 450;
+  --z-context-menu: 250;
+  --z-sidebar-chat-overlay: 410;
+  --z-sidebar-chat-tooltip: 415;
 
   /* ========================================
-   * FULLCALENDAR INTERNAL LAYERS
+   * POPOVER & DROPDOWN SYSTEM (100-500)
    * ======================================== */
+  --z-filter-menu: 500;
+  --z-submenu: 550;
+  --z-submenu-nested: 600;
+  --z-combobox-dropdown: 450;
+  --z-select: 450;
+
+  /* ========================================
+   * ANIMATED & INTERACTIVE ELEMENTS (40-100)
+   * ======================================== */
+  --z-animated-trigger: 40;
+  --z-event-count-badge: 45;
   --z-fc-scrollgrid: 3;
   --z-fc-sticky: 3;
   --z-fc-button: 1;
@@ -55,6 +78,112 @@
   --z-fc-more-popover: 2500;
 
   /* ========================================
+   * DIALOG SYSTEM (700-750)
+   * ======================================== */
+  --z-dialog-backdrop: 700;
+  --z-dialog-content: 710;
+  --z-dialog-overlays: 720;
+  --z-dialog-overlay-portal: 720;
+  --z-video-dialog-content: 750;
+
+  /* ========================================
+   * SPECIALIZED OVERLAYS (800-900)
+   * ======================================== */
+  --z-grid-overlay: 800;
+  --z-grid-overlay-editor: 810;
+  --z-grid-editor-max: 810;
+  --z-date-picker: 820;
+  --z-date-picker-widget: 830;
+  --z-grid-dropdown: 840;
+  --z-grid-tooltip: 680;
+  --z-grid-menu: 970;
+  --z-enhanced-column-menu: 975;
+  --z-grid-component: 10;
+
+  /* ========================================
+   * THEME LAYERS
+   * ======================================== */
+  --z-theme-layer-0: 0;
+  --z-theme-layer-1: 1;
+  --z-theme-layer-2: 2;
+
+  /* ========================================
+   * CHAT LAYERS
+   * ======================================== */
+  --z-chat-background: 0;
+  --z-chat-message: 1;
+  --z-chat-content: 2;
+  --z-behind: -1;
+
+  /* ========================================
+   * MODAL SYSTEM (500-600)
+   * ======================================== */
+  --z-modal-backdrop: 500;
+  --z-modal-content: 510;
+  --z-confirmation-backdrop: 520;
+  --z-confirmation-content: 530;
+  --z-sheet-backdrop: 500;
+  --z-sheet-content: 510;
+  --z-debug-overlay: 600;
+
+  /* ========================================
+   * DIALOG SYSTEM (700-750)
+   * ======================================== */
+  --z-dialog-backdrop: 700;
+  --z-dialog-content: 710;
+  --z-dialog-overlays: 720;
+  --z-dialog-overlay-portal: 720;
+  --z-video-dialog-content: 750;
+  --z-animated-trigger-above-dialog: 730;
+  --z-elements-below-dialog: 39;
+  --z-dialog-content-plus-1: 711; /* For tooltips/hover cards above dialog content */
+  --z-grid-menu-minus-1: 969; /* For context menu backgrounds */
+
+  /* ========================================
+   * SPECIALIZED OVERLAYS (800-900)
+   * ======================================== */
+  --z-grid-overlay: 800;
+  --z-grid-overlay-editor: 810;
+  --z-grid-editor-max: 810;
+  --z-date-picker: 820;
+  --z-date-picker-widget: 830;
+  --z-grid-dropdown: 840;
+  --z-grid-tooltip: 680;
+  --z-grid-modal: 950;
+  --z-command-overlay: 1300;
+
+  /* ========================================
+   * FULLSCREEN MODE (1100-1455)
+   * ======================================== */
+  --z-fullscreen-backdrop: 1100;
+  --z-fullscreen-content: 1110;
+  --z-grid-fullscreen-backdrop: 1100;
+  --z-grid-fullscreen-content: 1110;
+  --z-grid-fullscreen-overlay: 1450;
+  --z-grid-fullscreen: 1455;
+
+  /* ========================================
+   * ELEVATED CONFIRMATIONS (950-1000)
+   * ======================================== */
+  --z-confirmation-overlay-backdrop: 950;
+  --z-confirmation-overlay-content: 960;
+  --z-grid-menu: 970;
+  --z-enhanced-column-menu: 975;
+
+  /* ========================================
+   * CRITICAL SYSTEM OVERLAYS (1400-1500)
+   * ======================================== */
+  --z-enhanced-overlay: 1400;
+  --z-backend-connection: 1400;
+  --z-toaster: 1500;
+
+  /* ========================================
+   * EMERGENCY/DEBUG LAYERS (2000+)
+   * ======================================== */
+  --z-emergency-overlay: 2000;
+  --z-debug-overlay-legacy: 50000;
+
+  /* ========================================
    * GLIDE DATA GRID LAYERS (Base grid only)
    * ======================================== */
   --z-grid-base: 1;
@@ -63,57 +192,7 @@
   --z-grid-header-active: 11;
   --z-grid-selection: 20;
   --z-grid-hover: 25;
-
-  /* ========================================
-   * LAYER 2: DIALOG BACKDROP (700)
-   * ======================================== */
-  --z-dialog-backdrop: 700;
-
-  /* ========================================
-   * LAYER 3: DIALOG CONTENT (710)
-   * ======================================== */
-  --z-dialog-content: 710;
-
-  /* ========================================
- * LAYER 4: DATA CELL EDITORS & WIDGETS (680-900)
-   * ======================================== */
-  --z-dialog-overlays: 720;
-  --z-grid-overlay: 800;
-  --z-grid-overlay-editor: 810;
-  --z-grid-editor: 810;
-  --z-date-picker: 820;
-  --z-date-picker-widget: 830;
-  --z-grid-dropdown: 840;
-  --z-grid-menu: 970;
-  --z-grid-tooltip: 680;
-  --z-grid-modal: 950;
-  --z-command-overlay: 1300;
-
-  /* ========================================
-   * LAYER 5: FULLSCREEN MODE (1100-1120)
-   * ======================================== */
-  --z-fullscreen-backdrop: 1100;
-  --z-fullscreen-content: 1110;
-  --z-grid-fullscreen-overlay: 1450;
-  --z-grid-fullscreen: 1455;
-
-  /* ========================================
-   * LAYER 6: DISCARD CHANGES DIALOG (950-960)
-   * ======================================== */
-  --z-confirmation-backdrop: 950;
-  --z-confirmation-content: 960;
-
-  /* ========================================
-   * LEGACY/COMPATIBILITY
-   * ======================================== */
-  --z-modal-backdrop: 500;
-  --z-modal-content: 510;
-  --z-grid-editor-max: 3600;
-
-  /* ========================================
-   * EMERGENCY/DEBUG LAYERS (50000+)
-   * ======================================== */
-  --z-debug-overlay: 50000;
+  --z-grid-component: 10;
 }
 
 /* ========================================
@@ -376,7 +455,6 @@
 .click-outside-ignore,
 select,
 .column-menu,
-.enhanced-column-menu,
 .glide-column-menu,
 [data-radix-popper-content-wrapper],
 [data-radix-select-content],
@@ -397,6 +475,11 @@ select,
   z-index: var(--z-dialog-overlays);
 }
 
+/* Enhanced column menu should use its own z-index (above grid menu) */
+.enhanced-column-menu {
+  z-index: var(--z-enhanced-column-menu);
+}
+
 /* Hover card content: default to hover-card layer, not dialog overlays */
 [data-radix-hover-card-content] {
   z-index: var(--z-hover-card);
@@ -411,12 +494,12 @@ select,
 
 /* Force all potentially conflicting elements to lower z-index */
 .animated-sidebar-trigger {
-  z-index: 10001; /* Above sticky header/backdrop */
+  z-index: var(--z-animated-trigger-above-dialog); /* Above sticky header/backdrop */
   pointer-events: auto;
 }
 
 .calendar-legend-trigger {
-  z-index: 10001; /* Above sticky header/backdrop */
+  z-index: var(--z-animated-trigger-above-dialog); /* Above sticky header/backdrop */
   pointer-events: auto;
 }
 
@@ -428,7 +511,7 @@ select,
 html:has(.dialog-backdrop) .animated-sidebar-trigger,
 html:has(.dialog-backdrop) .calendar-legend-trigger,
 html:has(.dialog-backdrop) [data-radix-hover-card-content] {
-  z-index: 39;
+  z-index: var(--z-elements-below-dialog);
   opacity: 0.3; /* Visual debugging: make them dimmed */
 }
 
@@ -436,19 +519,19 @@ html:has(.dialog-backdrop) [data-radix-hover-card-content] {
 .dialog-backdrop ~ * .animated-sidebar-trigger,
 .dialog-backdrop ~ * .calendar-legend-trigger,
 .dialog-backdrop ~ * [data-radix-hover-card-content] {
-  z-index: 39;
+  z-index: var(--z-elements-below-dialog);
   opacity: 0.3;
 }
 
 /* Direct override approach - check for dialog backdrop in document */
 body:has(.dialog-backdrop) .animated-sidebar-trigger,
 body:has(.dialog-backdrop) .calendar-legend-trigger {
-  z-index: 39;
+  z-index: var(--z-elements-below-dialog);
   opacity: 0.3;
 }
 
 body:has(.dialog-backdrop) [data-radix-hover-card-content] {
-  z-index: 39;
+  z-index: var(--z-elements-below-dialog);
   opacity: 0.3;
   pointer-events: none;
 }
@@ -456,12 +539,12 @@ body:has(.dialog-backdrop) [data-radix-hover-card-content] {
 /* JavaScript-based fallback using body class */
 body.has-dialog-backdrop .animated-sidebar-trigger,
 body.has-dialog-backdrop .calendar-legend-trigger {
-  z-index: 39;
+  z-index: var(--z-elements-below-dialog);
   opacity: 0.3;
 }
 
 body.has-dialog-backdrop [data-radix-hover-card-content] {
-  z-index: 39;
+  z-index: var(--z-elements-below-dialog);
   opacity: 0.3;
   pointer-events: none;
 }
@@ -517,6 +600,16 @@ body:has(.click-outside-ignore) :where([data-radix-popover-content]) {
 .glide-data-grid-overlay-editor [cmdk-root],
 .click-outside-ignore [cmdk-root] {
   z-index: var(--z-command-overlay);
+}
+
+/* CRITICAL FIX: Reset z-index for Command components inside dropdown menus to stay within their container */
+[data-radix-dropdown-menu-content] [cmdk-root],
+[data-radix-dropdown-menu-content] [cmdk-list],
+[data-radix-dropdown-menu-content] [cmdk-group],
+[data-radix-dropdown-menu-content] [cmdk-item],
+[data-radix-dropdown-menu-content] [data-radix-popover-content]:has([cmdk-root]) {
+  z-index: auto !important;
+  position: relative;
 }
 
 /* Force positioned elements to use dialog overlay z-index - REMOVED as too broad */

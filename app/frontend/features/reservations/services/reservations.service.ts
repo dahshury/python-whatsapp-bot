@@ -146,8 +146,8 @@ export const ReservationsService = (
                   ev.setStart?.(startInput);
                   ev.setEnd?.(new Date(startInput.getTime() + durationMs));
                 } else {
-                  // No prior duration, set a small default (30 minutes)
-                  const DEFAULT_DURATION_MINUTES = 30;
+                  // No prior duration, set default (20 minutes)
+                  const DEFAULT_DURATION_MINUTES = 20;
                   const MS_PER_MINUTE = 60;
                   const MS_PER_SECOND = 1000;
                   ev.setStart?.(startInput);

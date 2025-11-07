@@ -2,7 +2,6 @@
 
 import type { DataEditorRef } from "@glideapps/glide-data-grid";
 import { useSettings } from "@shared/libs/state/settings-context";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
@@ -394,7 +393,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
               onRequestClose={() =>
                 handleCloseAttempt(() => onOpenChange(false))
               }
-              zIndex={Z_INDEX.DIALOG_BACKDROP}
+              zIndex={"var(--z-dialog-backdrop)"}
             />
 
             <motion.dialog
@@ -418,7 +417,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
               }}
               open
               style={{
-                zIndex: Z_INDEX.DIALOG_CONTENT,
+                zIndex: "var(--z-dialog-content)",
                 animation: "none",
                 x: "-50%",
               }}

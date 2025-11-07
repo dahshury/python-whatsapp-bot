@@ -71,6 +71,7 @@ export function ChatMessagesViewport({
   isLocalized,
   showToolCalls = true,
   isTyping,
+  loadMoreButton,
 }: {
   messages: ConversationMessage[];
   messageListRef: RefObject<HTMLDivElement>;
@@ -78,6 +79,7 @@ export function ChatMessagesViewport({
   isLocalized: boolean;
   showToolCalls?: boolean;
   isTyping: boolean;
+  loadMoreButton?: React.ReactNode;
 }) {
   const [atBottom, setAtBottom] = useState(true);
   const previousShowToolCalls = useRef(showToolCalls);
@@ -373,6 +375,8 @@ export function ChatMessagesViewport({
         style={{ height: "100%" }}
       >
         <div className="message-list px-4 pt-4 pb-2" ref={messageListRef}>
+          {/* Load More Button - rendered inside scrollable container for proper sticky behavior */}
+          {loadMoreButton}
           {messages.length === 0 ? (
             <Empty>
               <EmptyHeader>
@@ -492,7 +496,10 @@ export function ChatMessagesViewport({
             className="pointer-events-none absolute right-4"
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
-            style={{ bottom: SCROLL_BUTTON_BOTTOM_OFFSET, zIndex: 50 }}
+            style={{
+              bottom: SCROLL_BUTTON_BOTTOM_OFFSET,
+              zIndex: "var(--z-scroll-button)",
+            }}
             transition={{
               duration: FLOATING_BUTTON_ANIMATION_DURATION,
               ease: FLOATING_BUTTON_ANIMATION_EASE,

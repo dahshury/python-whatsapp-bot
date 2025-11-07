@@ -1,4 +1,3 @@
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { useTheme } from "next-themes";
 import React from "react";
 import { createPortal } from "react-dom";
@@ -44,10 +43,8 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
       container.style.bottom = "0";
       container.style.width = "100vw";
       container.style.height = "100vh";
-      container.style.zIndex = (
-        Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_BACKDROP) ||
-        Number((Z_INDEX as Record<string, number>).FULLSCREEN_BACKDROP)
-      ).toString();
+      container.style.zIndex =
+        "var(--z-grid-fullscreen-backdrop, var(--z-fullscreen-backdrop))";
       container.style.pointerEvents = "auto";
 
       // Provide a separate portal above fullscreen content for overlays like the toolbar
@@ -59,11 +56,8 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
       overlayPortal.style.width = "0";
       overlayPortal.style.height = "0";
       overlayPortal.style.overflow = "visible";
-      overlayPortal.style.zIndex = (
-        Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_OVERLAY) ||
-        Number((Z_INDEX as Record<string, number>).ENHANCED_OVERLAY) ||
-        Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT)
-      ).toString();
+      overlayPortal.style.zIndex =
+        "var(--z-grid-fullscreen-overlay, var(--z-enhanced-overlay, var(--z-fullscreen-content)))";
       overlayPortal.style.pointerEvents = "auto";
 
       // Copy theme classes
@@ -115,9 +109,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
     backdropFilter: "blur(10px)",
     display: "flex",
     flexDirection: "column",
-    zIndex:
-      Number((Z_INDEX as Record<string, number>).GRID_FULLSCREEN_BACKDROP) ||
-      Number((Z_INDEX as Record<string, number>).FULLSCREEN_BACKDROP),
+    zIndex: "var(--z-grid-fullscreen-backdrop, var(--z-fullscreen-backdrop))",
   };
 
   const contentStyle: React.CSSProperties = {
@@ -154,9 +146,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
           ...contentStyle,
           position: "relative",
           zIndex:
-            Number(
-              (Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT
-            ) || Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
+            "var(--z-grid-fullscreen-content, var(--z-fullscreen-content))",
         }}
       >
         <div
@@ -174,10 +164,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
             fontSize: "12px",
             fontFamily: "system-ui, -apple-system, sans-serif",
             zIndex:
-              Number(
-                (Z_INDEX as Record<string, number>).GRID_FULLSCREEN_CONTENT
-              ) ||
-              Number((Z_INDEX as Record<string, number>).FULLSCREEN_CONTENT),
+              "var(--z-grid-fullscreen-content, var(--z-fullscreen-content))",
           }}
         >
           {i18n.getMessage("press_esc_to_exit_fullscreen", isLocalized)}

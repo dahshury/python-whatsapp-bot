@@ -2,7 +2,6 @@
 
 import type { GridColumn } from "@glideapps/glide-data-grid";
 import { useLanguage } from "@shared/libs/state/language-context";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import {
   BarChart3,
   Calculator,
@@ -182,7 +181,6 @@ export function FormattingMenu({
 
   const FORMAT_MENU_CLOSE_DELAY_MS = 150;
   const TRANSFORM_ORIGIN_THRESHOLD = 500;
-  const Z_INDEX_OFFSET = 1;
   const handleMouseLeave = () => {
     if (parentTimeoutRef) {
       try {
@@ -235,9 +233,7 @@ export function FormattingMenu({
         backdropFilter: "blur(8px)",
         minWidth: "144px",
         maxWidth: "192px",
-        zIndex:
-          Number((Z_INDEX as Record<string, number>).GRID_MENU) +
-          Z_INDEX_OFFSET,
+        zIndex: "calc(var(--z-grid-menu) + 1)",
         padding: "3px 0",
         animation: "submenuSlideIn 150ms ease-out",
         transformOrigin:

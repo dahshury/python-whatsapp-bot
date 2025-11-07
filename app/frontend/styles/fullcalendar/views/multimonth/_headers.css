@@ -24,12 +24,8 @@
   letter-spacing: 0.025em;
   z-index: var(--z-fc-multimonth-header);
   color: hsl(var(--foreground));
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease,
-    border-color 0.2s ease;
-  will-change: transform, box-shadow, background, border-color;
+  transition: none;
+  will-change: auto;
   flex: 1;
   box-shadow:
     0 2px 8px rgba(0, 0, 0, 0.12),
@@ -86,12 +82,9 @@
     inset 0 1px 0 hsl(var(--background) / 0.5),
     inset 0 -1px 0 hsl(var(--muted) / 0.4),
     0 1px 2px hsl(var(--muted) / 0.1);
-  /* Smooth transitions */
-  transition:
-    background 0.2s ease,
-    color 0.2s ease,
-    box-shadow 0.2s ease;
-  will-change: background, color, box-shadow;
+  /* No transitions */
+  transition: none;
+  will-change: auto;
   /* Subtle backdrop for glass effect */
   backdrop-filter: blur(2px);
   /* Original height - no reduction */

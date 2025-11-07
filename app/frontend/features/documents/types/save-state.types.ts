@@ -3,7 +3,8 @@
  * Used to provide user feedback about save status.
  */
 export type SaveStatus =
-  | { status: "idle" }
+  | { status: "ready" }
+  | { status: "loading" }
   | { status: "dirty" }
   | { status: "saving" }
   | { status: "saved"; at: number }
@@ -21,4 +22,6 @@ export type SceneChangePayload = {
   editorAppState?: Record<string, unknown>;
   signature?: string;
 };
+
+
 

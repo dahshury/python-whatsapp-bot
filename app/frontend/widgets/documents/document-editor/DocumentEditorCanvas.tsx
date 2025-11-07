@@ -1,55 +1,77 @@
-"use client";
+'use client'
 
-import type {
-  ExcalidrawImperativeAPI,
-  ExcalidrawProps,
-} from "@excalidraw/excalidraw/types";
-import { memo } from "react";
-import { DocumentCanvas } from "@/widgets/document-canvas/DocumentCanvas";
+import { Tldraw } from 'tldraw'
+import 'tldraw/tldraw.css'
+import '@/styles/tldraw.css'
+import type { ReactNode } from 'react'
+import type { TldrawStoreState } from '@/features/documents/hooks/useTldrawStore'
+import { cn } from '@/lib/utils'
 
 type DocumentEditorCanvasProps = {
-  theme: "light" | "dark";
-  langCode: string;
-  onApiReady: (api: ExcalidrawImperativeAPI) => void;
-  onChange: ExcalidrawProps["onChange"];
-  scene?:
-    | {
-        elements?: unknown[];
-        appState?: Record<string, unknown>;
-        files?: Record<string, unknown>;
-      }
-    | undefined;
-  className?: string;
-};
-
-/**
- * Reusable editor canvas component.
- * Provides full editing capabilities for document canvases.
- */
-function DocumentEditorCanvasComponent({
-  theme,
-  langCode,
-  onApiReady,
-  onChange,
-  scene,
-  className,
-}: DocumentEditorCanvasProps) {
-  return (
-    <div className={`h-full w-full ${className || ""}`}>
-      <DocumentCanvas
-        langCode={langCode}
-        onApiReady={onApiReady}
-        onChange={onChange}
-        theme={theme}
-        {...(scene ? { scene } : {})}
-        forceLTR={true}
-        hideHelpIcon={true}
-        scrollable={false}
-        viewModeEnabled={false}
-        zenModeEnabled={false}
-      />
-    </div>
-  );
+	storeState: TldrawStoreState
+	className?: string
+	readOnly?: boolean
+	focusMode?: boolean
+	loadingLabel?: string
+	errorMessage?: string
+	children?: ReactNode
 }
 
-export const DocumentEditorCanvas = memo(DocumentEditorCanvasComponent);
+/**
+ * TLDraw canvas component with loading/error handling.
+ * Accepts an external TLDraw store state for flexible data loading workflows.
+ */
+export const DocumentEditorCanvas = ({
+	storeState,
+	className,
+	readOnly = false,
+	focusMode = false,
+	loadingLabel,
+	errorMessage,
+	children,
+}: DocumentEditorCanvasProps) => {
+	const loadingText = loadingLabel ?? 'Loading canvas...'
+	const errorText = errorMessage ?? 'Unable to load canvas'
+
+	let content: ReactNode
+
+	if (storeState.status === 'loading') {
+		content = (
+			<div className="flex h-full w-full items-center justify-center text-muted-foreground text-sm">
+				{loadingText}
+			</div>
+		)
+	} else if (storeState.status === 'error') {
+		content = (
+			<div className="flex h-full w-full items-center justify-center px-4 text-destructive/80 text-sm">
+				{errorText}
+			</div>
+		)
+	} else {
+		content = (
+			<Tldraw
+				hideUi={focusMode}
+				inferDarkMode
+				onMount={(editor) => {
+					if (readOnly) {
+						editor.updateInstanceState({ isReadonly: true })
+					}
+				}}
+				store={storeState.store}
+			>
+				{children}
+			</Tldraw>
+		)
+	}
+
+	return (
+		<div
+			className={cn(
+				'tldraw-canvas-wrapper relative flex h-full w-full items-stretch',
+				className
+			)}
+		>
+			{content}
+		</div>
+	)
+}

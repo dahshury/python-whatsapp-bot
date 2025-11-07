@@ -7,7 +7,7 @@ export const DEFAULT_DOCUMENT_WA_ID = "" as const;
  */
 export const TEMPLATE_USER_WA_ID = "12125550123" as const;
 
-export const DEFAULT_EXCALIDRAW_SCENE: {
+export const DEFAULT_DOCUMENT_SCENE: {
   elements: unknown[];
   appState: Record<string, unknown>;
   files: Record<string, unknown>;

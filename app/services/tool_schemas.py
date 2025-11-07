@@ -1,5 +1,6 @@
 # Centralized definitions of functions/tools for LLM providers.
 import inspect
+
 from app.services import assistant_functions
 
 TOOL_DEFINITIONS = [
@@ -50,7 +51,7 @@ TOOL_DEFINITIONS = [
         "schema": {"type": "object", "properties": {"thought": {"type": "string", "description": "A thought to think about."}}, "required": ["thought"], "additionalProperties": False},
         "cache_control": {"type": "ephemeral"}
     },
-] 
+]
 
 FUNCTION_MAPPING = {
     name: func for name, func in inspect.getmembers(assistant_functions)

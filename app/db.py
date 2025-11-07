@@ -122,7 +122,7 @@ class CustomerModel(Base):
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Date when the age value was recorded/reset. Used to auto-increment age yearly.
     age_recorded_at: Mapped[date | None] = mapped_column(Date, nullable=True)
-    # JSON/JSONB document for Excalidraw data
+    # JSON/JSONB document data
     document: Mapped[object | None] = mapped_column(JSON_TYPE, nullable=True)
 
     __table_args__ = (Index("idx_customers_wa_id", "wa_id"),)
@@ -286,8 +286,8 @@ def init_models() -> None:
                 conn.exec_driver_sql("""
                     CREATE OR REPLACE FUNCTION normalize_arabic(text) RETURNS text AS $$
                     BEGIN
-                        RETURN TRANSLATE($1, 
-                            'أإآٱةىَُِّْ', 
+                        RETURN TRANSLATE($1,
+                            'أإآٱةىَُِّْ',
                             'اااا' || 'ه' || 'ي' || ''
                         );
                     END;
@@ -303,7 +303,7 @@ def init_models() -> None:
                 conn.exec_driver_sql(
                     "CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON customers USING gin (customer_name gin_trgm_ops);"
                 )
-            
+
             # Create GIN index on normalized customer names for better Arabic search
             with contextlib.suppress(Exception):
                 conn.exec_driver_sql(

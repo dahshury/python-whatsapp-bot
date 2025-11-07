@@ -1,10 +1,13 @@
 import datetime
-from typing import Dict, Any, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
+
 from hijri_converter import convert
-from .base_service import BaseService
-from app.utils import format_response, is_vacation_period, find_vacation_end_date, format_enhanced_vacation_message
+
 from app.config import config
+from app.utils import find_vacation_end_date, format_enhanced_vacation_message, format_response, is_vacation_period
+
+from .base_service import BaseService
 
 
 class DateTimeService(BaseService):
@@ -12,17 +15,17 @@ class DateTimeService(BaseService):
     Service responsible for date and time operations.
     Handles both Gregorian and Hijri calendar systems.
     """
-    
+
     def get_service_name(self) -> str:
         return "DateTimeService"
-    
-    def _get_upcoming_vacation_info(self, current_date: datetime.date) -> Optional[Dict[str, Any]]:
+
+    def _get_upcoming_vacation_info(self, current_date: datetime.date) -> dict[str, Any] | None:
         """
         Check for vacations approaching within 1 month or currently active.
-        
+
         Args:
             current_date: The current date to check from
-            
+
         Returns:
             Dictionary with vacation info if applicable, None otherwise
         """
@@ -36,10 +39,10 @@ class DateTimeService(BaseService):
                     "message": vacation_message,
                     "end_date": vacation_end.strftime("%Y-%m-%d") if vacation_end else None
                 }
-            
+
             # Check DB vacations within 1 month
             try:
-                from app.db import get_session, VacationPeriodModel
+                from app.db import VacationPeriodModel, get_session
                 with get_session() as session:
                     rows = session.query(VacationPeriodModel).all()
                     for r in rows:
@@ -67,18 +70,18 @@ class DateTimeService(BaseService):
                             continue
             except Exception:
                 pass
-            
+
             return None
-            
+
         except Exception as e:
             self.logger.error(f"Error checking vacation info: {e}")
             return None
-    
-    def get_current_datetime(self) -> Dict[str, Any]:
+
+    def get_current_datetime(self) -> dict[str, Any]:
         """
         Get the current date and time in both Hijri and Gregorian calendars.
         Includes vacation information when applicable.
-        
+
         Returns:
             dict: A dictionary containing current datetime information in both calendars
         """
@@ -86,13 +89,13 @@ class DateTimeService(BaseService):
             now = datetime.datetime.now(tz=ZoneInfo(self.timezone))
             gregorian_date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M %p")
-            
+
             hijri_date = convert.Gregorian(now.year, now.month, now.day).to_hijri()
             hijri_date_str = f"{hijri_date.year}-{hijri_date.month:02d}-{hijri_date.day:02d}"
-            
+
             day_name = now.strftime("%a")
             is_ramadan = hijri_date.month == 9
-            
+
             data = {
                 "gregorian_date": gregorian_date_str,
                 "makkah_time": time_str,
@@ -100,12 +103,12 @@ class DateTimeService(BaseService):
                 "day_name": day_name,
                 "is_ramadan": is_ramadan
             }
-            
+
             # Check for vacation information
             vacation_info = self._get_upcoming_vacation_info(now.date())
             if vacation_info:
                 data["vacation_info"] = vacation_info
-                
+
                 # Add specific vacation dates in both formats
                 if vacation_info["status"] == "current":
                     if vacation_info.get("end_date"):
@@ -114,23 +117,23 @@ class DateTimeService(BaseService):
                         end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
                         data["vacation_end_gregorian"] = end_date_str
                         data["vacation_end_hijri"] = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
-                
+
                 elif vacation_info["status"] == "upcoming":
                     start_date_str = vacation_info["start_date"]
                     end_date_str = vacation_info["end_date"]
-                    
+
                     start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d").date()
                     end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
-                    
+
                     start_hijri = convert.Gregorian(start_date.year, start_date.month, start_date.day).to_hijri()
                     end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
-                    
+
                     data["vacation_start_gregorian"] = start_date_str
                     data["vacation_start_hijri"] = f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
                     data["vacation_end_gregorian"] = end_date_str
                     data["vacation_end_hijri"] = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
-            
+
             return format_response(True, data=data)
-            
+
         except Exception as e:
-            return self._handle_error("get_current_datetime", e) 
+            return self._handle_error("get_current_datetime", e)

@@ -4,10 +4,12 @@ import { i18n } from "@shared/libs/i18n";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { Button } from "@ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PhoneOption } from "@/entities/phone";
 import { useReservationsForDateRange } from "@/features/calendar/hooks/useCalendarReservations";
 import { CustomerStatsCard } from "@/features/dashboard/customer-stats-card";
+import { useRecentContacts } from "@/features/phone-selector";
 import { ButtonGroup } from "@/shared/ui/button-group";
 import {
   HoverCard,
@@ -25,6 +27,67 @@ type ConversationComboboxProps = {
 
 const HOVER_CARD_OPEN_DELAY_MS = 1500;
 const HOVER_CARD_CLOSE_DELAY_MS = 100;
+
+type ReservationEntry = {
+  start?: string;
+  end?: string;
+  date?: string;
+  time?: string;
+  time_slot?: string;
+  updated_at?: string;
+  modified_at?: string;
+  last_modified?: string;
+  modified_on?: string;
+  update_ts?: string;
+};
+
+type EnrichedContact = {
+  waId: string;
+  label: string;
+  customerName: string | null;
+  lastMessageAt: number;
+  lastReservationTime: number;
+};
+
+const RESERVATION_TIMESTAMP_FIELDS: ReadonlyArray<keyof ReservationEntry> = [
+  "start",
+  "end",
+  "updated_at",
+  "modified_at",
+  "last_modified",
+  "modified_on",
+  "update_ts",
+  "date",
+];
+
+function getReservationTimestamp(entry: ReservationEntry | undefined): number {
+  if (!entry) {
+    return 0;
+  }
+
+  const date = entry.date || null;
+  const timeSlot = entry.time_slot || entry.time || null;
+
+  if (date && timeSlot) {
+    const combined = Date.parse(`${date} ${timeSlot}`);
+    if (!Number.isNaN(combined)) {
+      return combined;
+    }
+  }
+
+  for (const field of RESERVATION_TIMESTAMP_FIELDS) {
+    const candidate = entry[field];
+    if (!candidate || typeof candidate !== "string") {
+      continue;
+    }
+    const timestamp = Date.parse(candidate);
+    if (!Number.isNaN(timestamp)) {
+      return timestamp;
+    }
+  }
+
+  return 0;
+}
 
 export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
   selectedConversationId,
@@ -55,78 +118,142 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
     false // Don't include cancelled reservations
   );
 
+  const { contacts: recentContacts } = useRecentContacts();
+
+  const recentMessageLookup = useMemo(() => {
+    const map = new Map<string, number>();
+
+    const register = (key: string | undefined, value: number) => {
+      if (!key || value <= 0) {
+        return;
+      }
+      const existing = map.get(key);
+      if (!existing || existing < value) {
+        map.set(key, value);
+      }
+    };
+
+    for (const contact of recentContacts) {
+      const timestamp = contact.lastMessageAt ?? 0;
+      if (!timestamp) {
+        continue;
+      }
+
+      register(contact.id, timestamp);
+
+      if (contact.id) {
+        const stripped = contact.id.startsWith("+")
+          ? contact.id.slice(1)
+          : contact.id;
+        register(stripped, timestamp);
+        register(
+          contact.id.startsWith("+") ? contact.id : `+${contact.id}`,
+          timestamp
+        );
+      }
+
+      register(contact.number, timestamp);
+
+      if (contact.number) {
+        const strippedNumber = contact.number.startsWith("+")
+          ? contact.number.slice(1)
+          : contact.number;
+        register(strippedNumber, timestamp);
+      }
+    }
+
+    return map;
+  }, [recentContacts]);
+
   // Only use persisted selection after hydration is complete, otherwise use prop
   const effectiveSelectedId =
     _hasHydrated && persistentSelectedId
       ? persistentSelectedId
       : selectedConversationId;
 
-  // Create conversation options from customer names (not conversations)
-  const conversationOptions = React.useMemo(() => {
+  const enrichedContacts = useMemo<EnrichedContact[]>(() => {
     if (!customerNames) {
       return [];
     }
 
-    return Object.entries(customerNames)
-      .map(([waId, customer]) => {
-        const key = String(waId ?? "");
-        // Get last message from reservations for sorting (if available)
-        const reservationEntries = reservations[key] ?? [];
-        const lastReservation = reservationEntries.at(-1);
+    return Object.entries(customerNames).map(([waId, customer]) => {
+      const key = String(waId ?? "");
+      const normalizedKey = key.startsWith("+") ? key.slice(1) : key;
+      const plusKey = key.startsWith("+") ? key : `+${normalizedKey}`;
 
-        return {
-          value: key,
-          label: customer.customer_name
-            ? `${customer.customer_name} (${key})`
-            : key,
-          customerName: customer.customer_name || null,
-          messageCount: 0, // Not needed - conversations loaded on-demand
-          lastMessage: undefined, // Not needed - conversations loaded on-demand
-          lastReservation, // Use for sorting
-          hasConversation: true,
-        };
-      })
-      .sort((a, b) => {
-        // Multi-criteria sorting: 1) last reservation time, 2) has name, 3) phone number
+      const messageTimestamps = [
+        recentMessageLookup.get(key) ?? 0,
+        recentMessageLookup.get(normalizedKey) ?? 0,
+        recentMessageLookup.get(plusKey) ?? 0,
+      ];
+      const lastMessageAt = Math.max(...messageTimestamps, 0);
 
-        // 1. Sort by most recent reservation first (primary criteria)
-        if (a.lastReservation && b.lastReservation) {
-          const aReservationTime = new Date(
-            `${a.lastReservation.date || ""} ${a.lastReservation.time_slot || ""}`
-          ).getTime();
-          const bReservationTime = new Date(
-            `${b.lastReservation.date || ""} ${b.lastReservation.time_slot || ""}`
-          ).getTime();
-          const aIsValid = !Number.isNaN(aReservationTime);
-          const bIsValid = !Number.isNaN(bReservationTime);
-          if (aIsValid && bIsValid) {
-            const timeDiff = bReservationTime - aReservationTime;
-            if (timeDiff !== 0) {
-              return timeDiff;
-            }
-          }
-        }
-        if (a.lastReservation && !b.lastReservation) {
-          return -1; // a has reservation, b doesn't - a comes first
-        }
-        if (!a.lastReservation && b.lastReservation) {
-          return 1; // b has reservation, a doesn't - b comes first
-        }
+      const reservationEntries: ReservationEntry[] = [];
+      const reservationKeys = new Set([key, normalizedKey, plusKey]);
+      for (const candidate of reservationKeys) {
+        const entries = Array.isArray(reservations[candidate])
+          ? (reservations[candidate] as ReservationEntry[])
+          : [];
+        reservationEntries.push(...entries);
+      }
 
-        // 2. Sort by customers who have names (secondary criteria)
-        const aHasName = !!a.customerName;
-        const bHasName = !!b.customerName;
-        if (aHasName && !bHasName) {
-          return -1; // a has name, b doesn't - a comes first
-        }
-        if (!aHasName && bHasName) {
-          return 1; // b has name, a doesn't - b comes first
-        }
+      const lastReservationTime = reservationEntries.reduce((latest, entry) => {
+        const ts = getReservationTimestamp(entry);
+        return ts > latest ? ts : latest;
+      }, 0);
 
-        // 3. Sort by phone number (tertiary criteria)
-        return a.value.localeCompare(b.value, undefined, { numeric: true });
-      });
-  }, [customerNames, reservations]);
+      return {
+        waId: key,
+        label: customer.customer_name
+          ? `${customer.customer_name} (${key})`
+          : key,
+        customerName: customer.customer_name || null,
+        lastMessageAt,
+        lastReservationTime,
+      };
+    });
+  }, [customerNames, reservations, recentMessageLookup]);
+
+  const sortedContacts = useMemo(() => {
+    const contacts = [...enrichedContacts];
+    contacts.sort((a, b) => {
+      const messageDiff = (b.lastMessageAt ?? 0) - (a.lastMessageAt ?? 0);
+      if (messageDiff !== 0) {
+        return messageDiff;
+      }
+
+      const reservationDiff =
+        (b.lastReservationTime ?? 0) - (a.lastReservationTime ?? 0);
+      if (reservationDiff !== 0) {
+        return reservationDiff;
+      }
+
+      const aHasName = Boolean(a.customerName);
+      const bHasName = Boolean(b.customerName);
+      if (aHasName !== bHasName) {
+        return aHasName ? -1 : 1;
+      }
+
+      return a.waId.localeCompare(b.waId, undefined, { numeric: true });
+    });
+
+    return contacts;
+  }, [enrichedContacts]);
+
+  const conversationOptions = useMemo(
+    () =>
+      sortedContacts.map((contact) => ({
+        value: contact.waId,
+        label: contact.label,
+        customerName: contact.customerName,
+        messageCount: 0,
+        lastMessage: undefined,
+        hasConversation: true,
+        lastMessageAt: contact.lastMessageAt,
+        lastReservationTime: contact.lastReservationTime,
+      })),
+    [sortedContacts]
+  );
 
   // Current index for navigation (must be after conversationOptions is defined)
   const currentIndex = conversationOptions.findIndex(
@@ -251,79 +378,23 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
   // Note: Scroll behavior is now handled by the PhoneCombobox component
 
   // Build PhoneCombobox options from centralized customer data, sorted by recency
-  const phoneOptions: PhoneOption[] = React.useMemo(() => {
-    const getReservationTimestamp = (entry: {
-      start?: string;
-      end?: string;
-      date?: string;
-      updated_at?: string;
-      modified_at?: string;
-      last_modified?: string;
-      modified_on?: string;
-      update_ts?: string;
-    }) => {
-      const candidates = [
-        entry?.start,
-        entry?.end,
-        entry?.date,
-        entry?.updated_at,
-        entry?.modified_at,
-        entry?.last_modified,
-        entry?.modified_on,
-        entry?.update_ts,
-      ];
-      for (const candidate of candidates) {
-        if (candidate && typeof candidate === "string") {
-          const ts = Date.parse(candidate);
-          if (!Number.isNaN(ts)) {
-            return ts;
-          }
-        }
-      }
-      return 0;
-    };
-
-    if (!customerNames) {
-      return [];
-    }
-
-    const enriched = Object.entries(customerNames).map(([waId, customer]) => {
-      const key = String(waId ?? "");
-      // Conversations are loaded on-demand - no need to include them here
-      const reservationEntries = reservations[key] ?? [];
-      const lastReservationTime = reservationEntries.reduce<number>(
-        (latest, entry) => {
-          const ts = getReservationTimestamp(entry);
-          if (!ts) {
-            return latest;
-          }
-          return Math.max(latest, ts);
-        },
-        0
-      );
-      return {
-        number: key,
-        name: customer.customer_name || "",
+  const phoneOptions: PhoneOption[] = useMemo(
+    () =>
+      sortedContacts.map((contact) => ({
+        number: contact.waId,
+        name: contact.customerName || "",
         country: "US",
-        label: customer.customer_name || key,
-        id: key,
-        __lastMessageTime: 0, // Not used - conversations loaded on-demand
-        __lastReservationTime: lastReservationTime,
-      };
-    });
-    enriched.sort(
-      (a, b) => (b.__lastReservationTime || 0) - (a.__lastReservationTime || 0)
-    );
-    return enriched.map(
-      ({ __lastMessageTime, __lastReservationTime, ...rest }) => ({
-        ...rest,
-        ...(__lastMessageTime ? { lastMessageAt: __lastMessageTime } : {}),
-        ...(__lastReservationTime
-          ? { lastReservationAt: __lastReservationTime }
+        label: contact.customerName || contact.waId,
+        id: contact.waId,
+        ...(contact.lastMessageAt
+          ? { lastMessageAt: contact.lastMessageAt }
           : {}),
-      })
-    );
-  }, [customerNames, reservations]);
+        ...(contact.lastReservationTime
+          ? { lastReservationAt: contact.lastReservationTime }
+          : {}),
+      })),
+    [sortedContacts]
+  );
 
   return (
     <div className="space-y-2">

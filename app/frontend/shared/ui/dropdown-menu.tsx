@@ -17,7 +17,6 @@ import {
   SubTrigger as DropdownMenuSubTriggerPrimitive,
   Trigger as DropdownMenuTriggerPrimitive,
 } from "@radix-ui/react-dropdown-menu";
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { cn } from "@shared/libs/utils";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
@@ -70,20 +69,26 @@ const DropdownMenuSubContent = ({
   ref?: React.RefObject<React.ElementRef<
     typeof DropdownMenuSubContentPrimitive
   > | null>;
-}) => (
-  <DropdownMenuSubContentPrimitive
-    className={cn(
-      "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=open]:animate-in",
-      className
-    )}
-    ref={ref}
-    style={{
-      zIndex: Z_INDEX.DROPDOWN,
-      ...(props as { style?: React.CSSProperties }).style,
-    }}
-    {...props}
-  />
-);
+}) => {
+  // Use provided zIndex from style prop if present, otherwise default to SUBMENU
+  const styleProps = (props as { style?: React.CSSProperties }).style;
+  const zIndex = styleProps?.zIndex ?? "var(--z-submenu)";
+
+  return (
+    <DropdownMenuSubContentPrimitive
+      className={cn(
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[state=closed]:animate-out data-[state=open]:animate-in",
+        className
+      )}
+      ref={ref}
+      style={{
+        zIndex,
+        ...styleProps,
+      }}
+      {...props}
+    />
+  );
+};
 DropdownMenuSubContent.displayName =
   DropdownMenuSubContentPrimitive.displayName;
 
@@ -106,7 +111,7 @@ const DropdownMenuContent = ({
       ref={ref}
       sideOffset={sideOffset}
       style={{
-        zIndex: Z_INDEX.DROPDOWN,
+        zIndex: "var(--z-dropdown)",
         ...(props as { style?: React.CSSProperties }).style,
       }}
       {...props}

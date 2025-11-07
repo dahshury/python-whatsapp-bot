@@ -51,7 +51,7 @@
 
 .timekeeper-portal {
   position: fixed;
-  z-index: var(--z-index-date-picker, 3000);
+  z-index: var(--z-date-picker);
   background: hsl(var(--card));
   border-radius: calc(var(--radius) + 2px);
   box-shadow: var(--shadow-lg);
@@ -246,5 +246,5 @@
 
 /* Ensure proper layering above grid overlays */
 .timekeeper-portal {
-  z-index: calc(var(--z-index-date-picker, 3000) + 100);
+  z-index: var(--z-date-picker-widget);
 }

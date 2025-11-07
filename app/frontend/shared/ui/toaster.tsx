@@ -25,7 +25,10 @@ export function Toaster() {
           <ToastClose />
         </Toast>
       ))}
-      <ToastViewport className="fixed top-4 right-4 z-[100] flex max-h-screen w-full flex-col p-4 md:max-w-[26.25rem]" />
+      <ToastViewport
+        className="fixed top-4 right-4 flex max-h-screen w-full flex-col p-4 md:max-w-[26.25rem]"
+        style={{ zIndex: "var(--z-toast)" }}
+      />
     </ToastProvider>
   );
 }

@@ -2,7 +2,7 @@ import { CameraState } from "../value-objects/camera-state.vo";
 import { SceneSignature } from "../value-objects/scene-signature.vo";
 
 /**
- * Represents the raw scene data structure from Excalidraw
+ * Represents the raw scene data structure
  */
 export type SceneElements = {
   elements: unknown[];

@@ -1,5 +1,5 @@
 /**
- * Represents the complete scene data structure from Excalidraw,
+ * Represents the complete scene data structure,
  * including optional viewer and editor camera states.
  */
 export type DocumentScene = {
@@ -38,4 +38,6 @@ export type SceneSaveResult = {
   success: boolean;
   message?: string;
 };
+
+
 

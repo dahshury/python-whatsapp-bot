@@ -306,7 +306,11 @@ export function EnhancedColumnMenu({
   );
 
   return (
-    <div className="fixed inset-0 z-[999998]" data-enhanced-column-menu>
+    <div
+      className="fixed inset-0"
+      data-enhanced-column-menu
+      style={{ zIndex: "var(--z-enhanced-column-menu)" }}
+    >
       {/* Backdrop */}
       <button
         aria-label="Close menu overlay"

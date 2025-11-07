@@ -309,6 +309,22 @@ export function useCalendarEvents(
     [customerNamesData]
   );
 
+  // Extract document status from reservation data
+  const documentStatus = useMemo(() => {
+    const status: Record<string, boolean> = {};
+    for (const [waId, reservations] of Object.entries(allCachedReservations)) {
+      // Get has_document from first reservation (all reservations for same customer have same status)
+      if (reservations.length > 0) {
+        const firstReservation = reservations[0] as unknown as Record<
+          string,
+          unknown
+        >;
+        status[waId] = Boolean(firstReservation.has_document);
+      }
+    }
+    return status;
+  }, [allCachedReservations]);
+
   // Memoize event processor
   const eventProcessor = useMemo(() => getReservationEventProcessor(), []);
 
@@ -327,8 +343,9 @@ export function useCalendarEvents(
       isLocalized,
       customerNames, // Single source of truth for names
       excludeConversations,
+      documentStatus, // Document existence status for border color logic
     }),
-    [freeRoam, isLocalized, customerNames, excludeConversations]
+    [freeRoam, isLocalized, customerNames, excludeConversations, documentStatus]
   );
 
   /**

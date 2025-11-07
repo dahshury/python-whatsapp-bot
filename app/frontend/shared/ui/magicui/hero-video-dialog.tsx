@@ -142,7 +142,10 @@ export default function HeroVideoDialog({
               <motion.button className="-top-16 absolute right-0 rounded-full bg-neutral-900/50 p-2 text-white text-xl ring-1 backdrop-blur-md dark:bg-neutral-100/50 dark:text-black">
                 <XIcon className="size-5" />
               </motion.button>
-              <div className="relative isolate z-[1] size-full overflow-hidden rounded-2xl border-2 border-white">
+              <div
+                className="relative isolate size-full overflow-hidden rounded-2xl border-2 border-white"
+                style={{ zIndex: "var(--z-video-dialog-content)" }}
+              >
                 <iframe
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen

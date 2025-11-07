@@ -19,7 +19,6 @@ import { ErrorRecoveryInit } from "@/shared/ui/error-recovery-init";
 import { MainContentWrapper } from "@/shared/ui/main-content-wrapper";
 import { PortalBootstrap } from "@/shared/ui/portal-bootstrap";
 import { SidebarProvider } from "@/shared/ui/sidebar";
-import { SuppressExcalidrawWarnings } from "@/shared/ui/suppress-excalidraw-warnings";
 import { SuppressResizeObserverWarnings } from "@/shared/ui/suppress-resize-observer-warnings";
 import { SpacemanThemeBridge } from "@/shared/ui/theme/spaceman-theme-bridge";
 import { UiThemeBridge } from "@/shared/ui/theme/ui-theme-bridge";
@@ -54,7 +53,6 @@ export function AppProvidersClient({
   return (
     <>
       <ErrorRecoveryInit />
-      <SuppressExcalidrawWarnings />
       <SuppressResizeObserverWarnings />
       <AppServiceProvider>
         <LanguageProvider>

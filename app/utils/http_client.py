@@ -1,8 +1,9 @@
+import asyncio
+import logging
 import ssl
+
 import certifi
 import httpx
-import logging
-import asyncio
 
 # Build a standard SSL context using the certifi CA bundle
 ssl_context = ssl.create_default_context()
@@ -32,7 +33,7 @@ async def ensure_client_healthy():
     Returns the global client, ensuring it's usable.
     """
     global async_client
-    
+
     async with _client_lock:
         # Check if client needs to be reset
         if async_client.is_closed:
@@ -41,12 +42,12 @@ async def ensure_client_healthy():
                 await async_client.aclose()
             except Exception:
                 pass
-                
+
             # Recreate the client with the same parameters
             async_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(30.0, connect=10.0, read=30.0, write=30.0),
                 limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
                 verify=ssl_context
             )
-            
-    return async_client 
+
+    return async_client

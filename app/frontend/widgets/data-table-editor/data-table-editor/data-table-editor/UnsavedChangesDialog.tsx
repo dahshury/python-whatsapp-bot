@@ -1,6 +1,5 @@
 // Using custom portal-based dialog for proper centering on viewport
 
-import { Z_INDEX } from "@shared/libs/ui/z-index";
 import { Button } from "@ui/button";
 import { AlertTriangle } from "lucide-react";
 import { useEffect, useId, useState } from "react";
@@ -64,7 +63,7 @@ export function UnsavedChangesDialog({
         className="fixed inset-0 bg-black/80 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
         style={{
-          zIndex: Z_INDEX.CONFIRMATION_OVERLAY_BACKDROP,
+          zIndex: "var(--z-confirmation-overlay-backdrop)",
           pointerEvents: "auto",
         }}
         type="button"
@@ -74,7 +73,7 @@ export function UnsavedChangesDialog({
       <div
         className="fixed inset-0 flex items-center justify-center p-4"
         style={{
-          zIndex: Z_INDEX.CONFIRMATION_OVERLAY_CONTENT,
+          zIndex: "var(--z-confirmation-overlay-content)",
           pointerEvents: "auto",
         }}
       >

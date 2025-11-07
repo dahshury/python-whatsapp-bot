@@ -2,7 +2,7 @@ import type { GridColumn } from "@glideapps/glide-data-grid";
 
 const DEFAULT_ROW_HEIGHT = 33;
 const DEFAULT_HEADER_HEIGHT = 35;
-const BORDER_WIDTH = 2;
+const BORDER_WIDTH = 1;
 const MIN_TABLE_WIDTH = 300;
 const DEFAULT_TABLE_HEIGHT = 400;
 const DEFAULT_COLUMN_WIDTH = 150;
@@ -21,6 +21,7 @@ type UseGridSizerOptions = {
   rowHeightOverride?: number;
   headerHeightOverride?: number;
   showAppendRowPlaceholder?: boolean;
+  hideOuterFrame?: boolean;
 };
 
 // Hook for calculating grid dimensions (inspired by Streamlit's useTableSizer)
@@ -36,11 +37,13 @@ export function useGridSizer(options: UseGridSizerOptions) {
     rowHeightOverride,
     headerHeightOverride,
     showAppendRowPlaceholder = true,
+    hideOuterFrame = false,
   } = options;
 
   const rowHeight = rowHeightOverride ?? DEFAULT_ROW_HEIGHT;
   const headerHeight = headerHeightOverride ?? DEFAULT_HEADER_HEIGHT;
-  const minTableHeight = headerHeight + rowHeight + 2 * BORDER_WIDTH;
+  const borderHeight = hideOuterFrame ? 0 : BORDER_WIDTH;
+  const minTableHeight = headerHeight + rowHeight + borderHeight;
 
   const contentWidth = displayColumns.reduce(
     (sum, col) =>
@@ -48,7 +51,7 @@ export function useGridSizer(options: UseGridSizerOptions) {
     INITIAL_CONTENT_WIDTH
   );
   const totalRows = filteredRowCount + (showAppendRowPlaceholder ? 1 : 0);
-  const contentHeight = headerHeight + totalRows * rowHeight + 2 * BORDER_WIDTH;
+  const contentHeight = headerHeight + totalRows * rowHeight + borderHeight;
 
   let maxHeight = Math.max(contentHeight, minTableHeight);
   let initialHeight = Math.min(maxHeight, DEFAULT_TABLE_HEIGHT);

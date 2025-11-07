@@ -79,7 +79,7 @@ export function PhoneSelectorPagination({
   }
 
   return (
-    <div className={cn("flex justify-center border-t p-1.5", className)}>
+    <div className={cn("flex justify-center", className)}>
       <ButtonGroup>
         <Button
           className="h-7 px-2 text-xs"
