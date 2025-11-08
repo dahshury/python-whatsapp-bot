@@ -23,6 +23,7 @@ export async function POST(request: Request) {
           date_str: date, // Python backend expects 'date_str', not 'date'
           hijri: false, // Default to Gregorian calendar
           ar: isLocalized, // Use the passed language setting
+          _call_source: "frontend", // Tag as frontend-initiated to filter notifications
         }),
       }
     );

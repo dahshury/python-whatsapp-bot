@@ -584,7 +584,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         ok = False
 
                     if ok:
-                        # Persist to DB and broadcast via append_message (which handles broadcast)
+                        # Persist to DB (no broadcast here)
                         try:
                             from app.utils.service_utils import append_message
 
@@ -594,6 +594,17 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                             append_message(wa_id, "secretary", message, date_str, time_str)
                         except Exception as persist_err:
                             logging.error(f"append_message failed after WS send: {persist_err}")
+                        
+                        # Broadcast notification (only for messages sent via WhatsApp)
+                        try:
+                            enqueue_broadcast(
+                                "conversation_new_message",
+                                {"wa_id": wa_id, "role": "secretary", "message": message, "date": date_str, "time": time_str},
+                                affected_entities=[wa_id],
+                                source="frontend",
+                            )
+                        except Exception as broadcast_err:
+                            logging.error(f"Broadcast failed after WS send: {broadcast_err}")
 
                         await conn.send_json(
                             {

@@ -25,5 +25,3 @@ export function orderColumnsByPinning(
   return [...pinnedColumns, ...unpinnedColumns];
 }
 
-
-

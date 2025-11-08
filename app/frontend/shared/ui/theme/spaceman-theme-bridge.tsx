@@ -1,6 +1,5 @@
 "use client";
 
-import { useSettings } from "@shared/libs/state/settings-context";
 import {
   SpacemanThemeProvider,
   ThemeAnimationType,
@@ -9,6 +8,7 @@ import { useTheme as useNextThemes } from "next-themes";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { THEME_OPTIONS } from "@/features/settings/settings/theme-data";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 
 /**
  * SpacemanThemeBridge
@@ -23,7 +23,7 @@ export function SpacemanThemeBridge({
   children: React.ReactNode;
 }) {
   const { resolvedTheme, theme: nextTheme } = useNextThemes();
-  const { theme: styleTheme } = useSettings();
+  const { theme: styleTheme } = useSettingsStore();
 
   // Track mounted state to avoid hydration issues
   const [mounted, setMounted] = useState(false);

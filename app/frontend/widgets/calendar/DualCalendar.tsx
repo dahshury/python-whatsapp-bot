@@ -28,7 +28,6 @@ import {
 } from "@shared/libs/calendar/calendar-callbacks";
 import { getTimezone } from "@shared/libs/calendar/calendar-config";
 import { useCalendarHeight } from "@shared/libs/calendar/useCalendarHeight";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import type { CalendarEvent } from "@/entities/event";
 import type { CalendarCoreRef } from "@/features/calendar";
@@ -36,6 +35,7 @@ import type { CalendarCoreRef } from "@/features/calendar";
 import { useCalendarEvents, useCalendarState } from "@/features/calendar";
 import { processEventsForCalendar } from "@/features/calendar/lib/process-events";
 import { createVacationDateChecker } from "@/features/calendar/lib/vacation-date-checker";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { ErrorBoundary } from "@/shared/ui/error-boundary";
 import { useSidebar } from "@/shared/ui/sidebar";
 import { CalendarErrorFallback } from ".";
@@ -81,7 +81,7 @@ export const DualCalendarComponent = ({
     rightView: string;
   } | null>;
 }) => {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const {
     handleDateClick: handleVacationDateClick,
     recordingState,

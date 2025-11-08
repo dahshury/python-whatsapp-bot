@@ -1,12 +1,12 @@
 import { i18n } from "@shared/libs/i18n";
 import { getLocalizedCountryOptions } from "@shared/libs/phone/countries";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { getSizeClasses } from "@shared/libs/ui/size";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
 import { CheckCircle2, ChevronsUpDown } from "lucide-react";
 import React, { type RefObject } from "react";
 import type * as RPNInput from "react-phone-number-input";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import {
   Command,
   CommandEmpty,
@@ -47,7 +47,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
   className,
   availableCountries,
 }) => {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const countryOptions = React.useMemo(() => {
     const allOptions = getLocalizedCountryOptions(isLocalized);
     // Filter to only show countries that exist in availableCountries
@@ -82,8 +82,10 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
         </Button>
       </PopoverTrigger>
       <PopoverContent
+        avoidCollisions={false}
         className={cn("w-[18.75rem] p-0", "click-outside-ignore")}
         dir="ltr"
+        side="bottom"
       >
         <Command dir="ltr" shouldFilter={false}>
           <CommandInput

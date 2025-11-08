@@ -32,14 +32,19 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
     ctx.clip();
 
     // Apply theme override if present
-    const cellThemeOverride = (cell as { themeOverride?: { baseFontStyle?: string; textDark?: string } }).themeOverride;
-    const effectiveFontStyle = cellThemeOverride?.baseFontStyle ?? theme.baseFontStyle;
-    const effectiveTextColor = cellThemeOverride?.textDark ?? (cell.style === "faded" ? theme.textLight : theme.textDark);
+    const cellThemeOverride = (
+      cell as { themeOverride?: { baseFontStyle?: string; textDark?: string } }
+    ).themeOverride;
+    const effectiveFontStyle =
+      cellThemeOverride?.baseFontStyle ?? theme.baseFontStyle;
+    const effectiveTextColor =
+      cellThemeOverride?.textDark ??
+      (cell.style === "faded" ? theme.textLight : theme.textDark);
 
     ctx.fillStyle = effectiveTextColor;
     ctx.textBaseline = "middle";
     ctx.font = effectiveFontStyle;
-    
+
     // Force LTR rendering regardless of page direction
     try {
       (ctx as unknown as { direction?: CanvasDirection }).direction = "ltr";
@@ -48,7 +53,9 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
     }
 
     // Respect contentAlign from cell (default to left if not specified)
-    const contentAlign = (cell as { contentAlign?: "left" | "center" | "right" }).contentAlign ?? "left";
+    const contentAlign =
+      (cell as { contentAlign?: "left" | "center" | "right" }).contentAlign ??
+      "left";
     try {
       ctx.textAlign = contentAlign;
     } catch {
@@ -60,7 +67,7 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
     const LRI = "\u2066"; // Left-to-Right Isolate
     const PDI = "\u2069"; // Pop Directional Isolate
     const text = `${LRI}${String(raw)}${PDI}`;
-    
+
     // Calculate x position based on alignment
     let x: number;
     if (contentAlign === "center") {
@@ -70,7 +77,7 @@ const PhoneCellRenderer: CustomRenderer<PhoneCell> = {
     } else {
       x = rect.x + paddingX;
     }
-    
+
     ctx.fillText(text, x, y);
     ctx.restore();
   },

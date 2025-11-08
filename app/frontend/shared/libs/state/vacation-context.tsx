@@ -1,6 +1,5 @@
 "use client";
 import { useVacationsData } from "@shared/libs/data/websocket-data-provider";
-import { useLanguage } from "@shared/libs/state/language-context";
 import {
   createContext,
   type FC,
@@ -14,6 +13,7 @@ import {
 } from "react";
 import type { CalendarEvent } from "@/entities/event";
 import type { Vacation } from "@/entities/vacation";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
 
 // Suppression window duration in milliseconds
@@ -310,7 +310,7 @@ export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
     [recordingState.periodIndex, recordingState.field, sendVacationUpdate]
   );
 
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   // Convert vacation periods to calendar events
   const vacationEvents = useMemo(() => {

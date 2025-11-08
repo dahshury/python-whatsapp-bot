@@ -1,8 +1,8 @@
-export { CountryFilterBadge } from "./CountryFilterBadge";
+export { CountryFilter } from "./CountryFilter";
 export { FiltersMenu } from "./CountryFilterMenu";
 export { CreatePhonePanel } from "./CreatePhonePanel";
 export { CreatePhoneShortcut } from "./CreatePhoneShortcut";
-export { DateRangeFilterBadge } from "./DateRangeFilterBadge";
+export { DateRangeFilter } from "./DateRangeFilter";
 export { InlineDateRangePicker } from "./InlineDateRangePicker";
 export { PhoneGroupHeading } from "./PhoneGroupHeading";
 export { PhoneGroupsList } from "./PhoneGroupsList";
@@ -10,4 +10,4 @@ export { PhoneListItem } from "./PhoneListItem";
 export { PhoneSelectorEmptyStates } from "./PhoneSelectorEmptyStates";
 export { PhoneSelectorError } from "./PhoneSelectorError";
 export { PhoneSelectorPagination } from "./PhoneSelectorPagination";
-export { RegistrationFilterBadge } from "./RegistrationFilterBadge";
+export { RegistrationFilter } from "./RegistrationFilter";

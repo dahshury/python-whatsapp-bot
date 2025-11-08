@@ -6,12 +6,15 @@ type UndoCreateResponse = {
   message?: string;
   data?: unknown;
 };
-// import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path as needed
 
+/**
+ * Undo reservation creation by canceling it
+ * Now uses the base /reservations/{wa_id}/cancel endpoint instead of the deprecated /undo-reserve
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { reservationId, ar } = body; // ar is optional for language
+    const { reservationId, waId, ar } = body;
 
     if (typeof reservationId !== "number") {
       return NextResponse.json(
@@ -20,13 +23,22 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!waId) {
+      return NextResponse.json(
+        { success: false, message: "Missing waId." },
+        { status: 400 }
+      );
+    }
+
+    // Use the base cancel endpoint
     const pythonResponse = await callPythonBackend<UndoCreateResponse>(
-      "/undo-reserve",
+      `/reservations/${waId}/cancel`,
       {
         method: "POST",
         body: JSON.stringify({
-          reservation_id: reservationId,
+          reservation_id_to_cancel: reservationId,
           ar,
+          _call_source: "frontend", // Tag as frontend-initiated to filter notifications
         }),
       }
     );

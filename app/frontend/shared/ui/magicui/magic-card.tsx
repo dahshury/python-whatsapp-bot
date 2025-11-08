@@ -75,26 +75,44 @@ export function MagicCard({
     mouseY.set(-gradientSize);
   }, [gradientSize, mouseX, mouseY]);
 
+  // Check if border-0 is applied (for hover cards)
+  // When border-0 is applied, the border comes from the parent (HoverCardContent)
+  // We need to ensure inner divs don't cover the parent's border
+  const hasNoBorder = className?.includes("border-0");
+  // Use inset-[1px] to account for parent's 1px border width
+  const insetClass = hasNoBorder ? "inset-[1px]" : "inset-px";
+  // Explicitly set rounded-lg when border-0 to match HoverCardContent border-radius (0.5rem = 8px)
+  const borderRadiusClass = hasNoBorder ? "rounded-lg" : "rounded-[inherit]";
+  // When using inset-[1px], inner border-radius should be border-radius - inset
+  // rounded-lg = 8px, so inner radius = 8px - 1px = 7px
+  // Using direct pixel value to ensure proper rendering
+  const innerBorderRadiusClass = hasNoBorder ? "rounded-[7px]" : borderRadiusClass;
+  // Don't use overflow-hidden when border-0 is applied, as it can clip the parent's border
+  const overflowClass = hasNoBorder ? "" : "overflow-hidden";
+
   return (
     <div
-      className={cn("group relative rounded-[inherit]", className)}
+      className={cn("group relative", overflowClass, borderRadiusClass, className)}
       ref={cardRef}
     >
+      {/* Outer gradient layer - only show when card has its own border */}
+      {!hasNoBorder && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 rounded-[inherit] bg-border duration-300 group-hover:opacity-100"
+          style={{
+            background: useMotionTemplate`
+            radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px,
+            ${gradientFrom}, 
+            ${gradientTo}, 
+            var(--border) 100%
+            )
+            `,
+          }}
+        />
+      )}
+      <div className={cn("absolute bg-background", innerBorderRadiusClass, insetClass)} />
       <motion.div
-        className="pointer-events-none absolute inset-0 rounded-[inherit] bg-border duration-300 group-hover:opacity-100"
-        style={{
-          background: useMotionTemplate`
-          radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px,
-          ${gradientFrom}, 
-          ${gradientTo}, 
-          var(--border) 100%
-          )
-          `,
-        }}
-      />
-      <div className="absolute inset-px rounded-[inherit] bg-background" />
-      <motion.div
-        className="pointer-events-none absolute inset-px rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        className={cn("pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100", innerBorderRadiusClass, insetClass)}
         style={{
           background: useMotionTemplate`
             radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${gradientColor}, transparent 100%)

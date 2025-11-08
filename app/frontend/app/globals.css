@@ -21,9 +21,6 @@
 /* Theme inline configuration - must be loaded after all theme definitions */
 @import "../styles/themes/theme-inline.css";
 @import "../styles/chat.css";
-/* Keep ButtonGroup overrides after Tailwind so they can win specificity when needed */
-@import "../styles/button-group.css";
-
 /* Global Error Suppression for React Timekeeper Issues */
 @layer base {
   /* This CSS is loaded early to suppress console errors from React Timekeeper */
@@ -92,6 +89,19 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@keyframes spin-around {
+  0% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(270deg);
+  }
+}
+
+.animate-spin-around {
+  animation: spin-around 0.8s linear infinite;
 }
 
 /* Tooltip animations for bottom-menu (scoped to avoid affecting Radix etc.) */

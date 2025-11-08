@@ -503,6 +503,9 @@ def append_message(wa_id, role, message, date_str, time_str):
     Ensures that a customer record exists in the 'customers' table and then inserts
     the message into the 'conversation' table. Any database errors are caught
     and logged without interrupting execution.
+    
+    Note: This function does NOT broadcast events. Only messages sent via WhatsApp API
+    should trigger notifications. Use enqueue_broadcast separately after sending via WhatsApp.
 
     Args:
         wa_id (str): WhatsApp user identifier.
@@ -530,15 +533,6 @@ def append_message(wa_id, role, message, date_str, time_str):
                 )
             )
             session.commit()
-        try:
-            enqueue_broadcast(
-                "conversation_new_message",
-                {"wa_id": wa_id, "role": role, "message": message, "date": date_str, "time": time_str},
-                affected_entities=[wa_id],
-                source="assistant",  # All conversation messages are backend-initiated (webhook/LLM)
-            )
-        except Exception:
-            pass
     except Exception as e:
         logging.error(f"Error appending message to database: {e}")
 

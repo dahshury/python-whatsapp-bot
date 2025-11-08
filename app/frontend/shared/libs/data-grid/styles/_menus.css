@@ -99,6 +99,7 @@ body #column-menu > div[style*="height: 1px"] {
   border-color: hsl(var(--border));
   color: hsl(var(--foreground));
   min-height: 32px;
+  border-radius: var(--radius);
 }
 
 [class*="react-select"] [class*="control"]:hover {
@@ -114,21 +115,27 @@ body #column-menu > div[style*="height: 1px"] {
   background-color: hsl(var(--popover));
   border: 1px solid hsl(var(--border));
   box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 [class*="react-select"] [class*="option"] {
   background-color: transparent;
   color: hsl(var(--popover-foreground));
+  border-radius: var(--radius-sm);
+  margin: 2px 4px;
 }
 
 [class*="react-select"] [class*="option"][class*="focused"] {
   background-color: hsl(var(--accent));
   color: hsl(var(--accent-foreground));
+  border-radius: var(--radius-sm);
 }
 
 [class*="react-select"] [class*="option"][class*="selected"] {
   background-color: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
+  border-radius: var(--radius-sm);
 }
 
 [class*="react-select"] [class*="singleValue"] {

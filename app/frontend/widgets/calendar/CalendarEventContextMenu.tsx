@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import {
   Calendar,
   CalendarX,
@@ -13,6 +12,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CalendarEvent } from "@/entities/event";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 
 type CalendarEventContextMenuProps = {
   event: CalendarEvent | null;
@@ -33,7 +33,7 @@ export function CalendarEventContextMenu({
   onOpenConversation,
   onOpenDocument,
 }: CalendarEventContextMenuProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

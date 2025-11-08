@@ -35,6 +35,7 @@ export async function POST(request: Request) {
         message,
         date,
         time,
+        // No _call_source needed - this endpoint doesn't broadcast notifications
       }),
     });
 

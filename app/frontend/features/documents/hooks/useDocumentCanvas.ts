@@ -55,7 +55,7 @@ export function useDocumentCanvas(waId: string | null | undefined) {
 
       const resp = await documentsService.getByWaId(waId);
       const rawDocument = resp?.document ?? null;
-      
+
       // Extract snapshot and cameras separately
       const doc = rawDocument as {
         type?: string;
@@ -78,4 +78,3 @@ export function useDocumentCanvas(waId: string | null | undefined) {
     retry: 1,
   });
 }
-

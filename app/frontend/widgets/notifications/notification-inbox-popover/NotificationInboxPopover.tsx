@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { Badge } from "@ui/badge";
 import { Button } from "@ui/button";
@@ -20,13 +19,14 @@ import {
   NotificationList,
 } from "@/features/notifications/ui/notification-list";
 import { NotificationTabsHeader } from "@/features/notifications/ui/notification-tabs";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Tabs } from "@/shared/ui/tabs";
 
 const MAX_UNREAD_COUNT_DISPLAY = 99;
 
 function NotificationInboxPopover() {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const { data: customerNames } = useCustomerNames();
   const [tab, setTab] = useState("all");
 
@@ -154,13 +154,6 @@ function NotificationInboxPopover() {
             )}
           </div>
         </Tabs>
-
-        {/* Footer */}
-        <div className="px-3 py-2 text-center">
-          <Button className="w-full" size="sm" variant="ghost">
-            {i18n.getMessage("view_all_notifications", isLocalized)}
-          </Button>
-        </div>
       </PopoverContent>
     </Popover>
   );

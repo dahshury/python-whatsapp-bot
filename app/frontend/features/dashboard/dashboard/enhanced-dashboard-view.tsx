@@ -1,8 +1,8 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { Button } from "@ui/button";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { Card, CardContent } from "@/shared/ui/card";
 import { useEnhancedDashboardController } from "../services/enhanced-dashboard-controller";
 import { DashboardHeader } from "../ui/DashboardHeader";
@@ -10,7 +10,7 @@ import { DashboardTabs } from "../ui/DashboardTabs";
 
 export function EnhancedDashboardView() {
   const controller = useEnhancedDashboardController();
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   if (controller.error) {
     return (

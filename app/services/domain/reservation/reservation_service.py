@@ -414,7 +414,7 @@ class ReservationService(BaseService):
             changes_made = False
 
             # Update name if provided
-            if new_name and new_name != original_data["customer_name"]:
+            if new_name and new_name != reservation_to_modify.customer_name:
                 name_update_result = self.customer_service.update_customer_name(wa_id, new_name, ar)
                 if not name_update_result.get("success"):
                     return name_update_result # Propagate error
@@ -538,6 +538,7 @@ class ReservationService(BaseService):
                             "type": reservation_to_modify.type.value,
                             "customer_name": reservation_to_modify.customer_name,
                             "status": reservation_to_modify.status,
+                            "original_data": original_data,
                         },
                         affected_entities=[reservation_to_modify.wa_id],
                         source=_call_source,
@@ -746,7 +747,25 @@ class ReservationService(BaseService):
                     hijri_date_obj = convert.Gregorian(*map(int, reinstated_reservation.date.split('-'))).to_hijri()
                     hijri_date_str = f"{hijri_date_obj.year}-{hijri_date_obj.month:02d}-{hijri_date_obj.day:02d}"
                     display_time_slot = normalize_time_format(reinstated_reservation.time_slot, to_24h=False)
-
+                    
+                    # Broadcast reservation reinstated
+                    try:
+                        enqueue_broadcast(
+                            "reservation_reinstated",
+                            {
+                                "id": reinstated_reservation.id,
+                                "wa_id": reinstated_reservation.wa_id,
+                                "date": reinstated_reservation.date,
+                                "time_slot": reinstated_reservation.time_slot,
+                                "type": reinstated_reservation.type.value,
+                                "customer_name": reinstated_reservation.customer_name,
+                            },
+                            affected_entities=[reinstated_reservation.wa_id],
+                            source="undo",
+                        )
+                    except Exception:
+                        pass
+                    
                     return format_response(True, message=get_message("reservation_reinstated", ar, id=reservation_id), data={
                         "reservation_id": reinstated_reservation.id,
                         "gregorian_date": reinstated_reservation.date,
@@ -786,6 +805,22 @@ class ReservationService(BaseService):
 
             success = self.reservation_repository.cancel_by_id(reservation_id)
             if success:
+                # Broadcast reservation cancelled
+                try:
+                    enqueue_broadcast(
+                        "reservation_cancelled",
+                        {
+                            "id": reservation_id,
+                            "wa_id": reservation.wa_id,
+                            "date": reservation.date,
+                            "time_slot": reservation.time_slot,
+                        },
+                        affected_entities=[reservation.wa_id],
+                        source="undo",
+                    )
+                except Exception:
+                    pass
+                    
                 return format_response(True, message=get_message("reservation_cancelled_for_undo", ar, id=reservation_id), data={"cancelled_ids": [reservation_id]})
             else:
                  # This implies it was not 'active' or a DB error.

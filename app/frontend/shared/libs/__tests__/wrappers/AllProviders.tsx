@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
-import { LanguageProvider } from "@/shared/libs/state/language-context";
+import { StoreProvider } from "@/infrastructure/providers/store-provider";
 
 const AllProviders: React.FC<React.PropsWithChildren> = ({ children }) => {
   const clientRef = React.useRef<QueryClient>();
@@ -11,7 +11,7 @@ const AllProviders: React.FC<React.PropsWithChildren> = ({ children }) => {
   }
   return (
     <QueryClientProvider client={clientRef.current}>
-      <LanguageProvider>{children}</LanguageProvider>
+      <StoreProvider>{children}</StoreProvider>
     </QueryClientProvider>
   );
 };

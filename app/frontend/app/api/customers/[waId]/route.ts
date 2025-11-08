@@ -47,7 +47,10 @@ export async function PUT(
       `/customers/${encodeURIComponent(waId)}`,
       {
         method: "PUT",
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          ...body,
+          _call_source: "frontend", // Tag as frontend-initiated to filter notifications
+        }),
       }
     );
 

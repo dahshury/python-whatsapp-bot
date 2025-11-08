@@ -1,8 +1,8 @@
 import { useTheme } from "next-themes";
 import React from "react";
 import { createPortal } from "react-dom";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
-import { useLanguage } from "@/shared/libs/state/language-context";
 import { useFullscreen } from "../contexts/FullscreenContext";
 
 type FullscreenWrapperProps = {
@@ -21,7 +21,7 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
   const [portalContainer, setPortalContainer] =
     React.useState<HTMLElement | null>(null);
   const { theme: appTheme } = useTheme();
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   // Handle SSR - wait for client mount
   React.useEffect(() => {

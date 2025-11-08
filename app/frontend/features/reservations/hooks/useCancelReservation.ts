@@ -27,32 +27,36 @@ const normalizeTime = (value?: string): string => {
   return value.slice(0, SLOT_PREFIX_LEN);
 };
 
+/**
+ * Standalone mutation function for cancelling reservations
+ * This can be used outside of React hooks (e.g., in context menu handlers)
+ */
+export async function cancelReservationMutation(
+  params: CancelReservationParams
+) {
+  const service = new ReservationsWsService();
+  const response = await service.cancelReservation(params.waId, params.date, {
+    ...(params.isLocalized !== undefined
+      ? { isLocalized: params.isLocalized }
+      : {}),
+  });
+
+  if (!response.success) {
+    throw new Error(
+      response.message ||
+        (response as { error?: string }).error ||
+        "Failed to cancel reservation"
+    );
+  }
+
+  return response;
+}
+
 export function useCancelReservation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (params: CancelReservationParams) => {
-      const service = new ReservationsWsService();
-      const response = await service.cancelReservation(
-        params.waId,
-        params.date,
-        {
-          ...(params.isLocalized !== undefined
-            ? { isLocalized: params.isLocalized }
-            : {}),
-        }
-      );
-
-      if (!response.success) {
-        throw new Error(
-          response.message ||
-            (response as { error?: string }).error ||
-            "Failed to cancel reservation"
-        );
-      }
-
-      return response;
-    },
+    mutationFn: cancelReservationMutation,
 
     onMutate: async (params) => {
       await queryClient.cancelQueries({ queryKey: ["calendar-reservations"] });

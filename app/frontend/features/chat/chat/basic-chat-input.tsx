@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useSettings } from "@shared/libs/state/settings-context";
 import {
   SingleAsteriskBold,
   SingleTildeStrike,
@@ -14,11 +13,14 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Youtube from "@tiptap/extension-youtube";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Button } from "@ui/button";
 import { Separator } from "@ui/separator";
 import { ArrowUp, Clock, Smile } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { logger } from "@/shared/libs/logger";
+import { ButtonGroup } from "@/shared/ui/button-group";
 import {
   EmojiPicker,
   EmojiPickerContent,
@@ -28,7 +30,6 @@ import {
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupText,
 } from "@/shared/ui/input-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
@@ -39,6 +40,7 @@ import { ChatFormatToolbar, type EditorLike } from "./chat-format-toolbar";
 const BASE_MIN_HEIGHT_PX = 70;
 const WHATSAPP_TEXT_MAX_CHARS = 4096;
 const MAX_HEIGHT_VIEWPORT_RATIO = 0.4;
+const PERCENTAGE_MULTIPLIER = 100;
 
 const logChatInputWarning = (context: string, error: unknown) => {
   logger.warn(`[BasicChatInput] ${context}`, error);
@@ -70,7 +72,7 @@ export const BasicChatInput: React.FC<{
   isLocalized = false,
 }) => {
   const [emojiOpen, setEmojiOpen] = useState(false);
-  const { sendTypingIndicator } = useSettings();
+  const { sendTypingIndicator } = useSettingsStore();
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const [maxHeightPx, setMaxHeightPx] = useState(0);
   const [charCount, setCharCount] = useState(0);
@@ -519,67 +521,83 @@ export const BasicChatInput: React.FC<{
             {charCount}/{WHATSAPP_TEXT_MAX_CHARS}
           </InputGroupText>
           <Separator className="!h-4" orientation="vertical" />
-          {/* Emoji (outline, rounded-full, icon-xs) */}
-          <Popover onOpenChange={setEmojiOpen} open={emojiOpen}>
-            <PopoverTrigger asChild>
-              <InputGroupButton
-                className="rounded-full"
-                disabled={effectiveDisabled}
-                size="icon-xs"
-                type="button"
-                variant="outline"
+          {/* Emoji and Send buttons in a ButtonGroup */}
+          <ButtonGroup>
+            {/* Emoji (outline, rounded-full, icon-xs) */}
+            <Popover onOpenChange={setEmojiOpen} open={emojiOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  className="h-8 w-8 rounded-full p-0"
+                  disabled={effectiveDisabled || emojiOpen}
+                  size="icon"
+                  type="button"
+                  variant="outline"
+                >
+                  <Smile className="h-3.5 w-3.5" />
+                  <span className="sr-only">Emoji</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-fit p-0"
+                side="top"
+                sideOffset={8}
               >
-                <Smile className="h-3.5 w-3.5" />
-                <span className="sr-only">Emoji</span>
-              </InputGroupButton>
-            </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              className="w-fit p-0"
-              side="top"
-              sideOffset={8}
-            >
-              <EmojiPicker
-                className="h-[21.375rem] rounded-lg border"
-                onEmojiSelect={handleEmojiSelect}
-              >
-                <EmojiPickerSearch
-                  placeholder={i18n.getMessage("emoji_search", isLocalized)}
-                />
-                <EmojiPickerContent />
-                <EmojiPickerFooter />
-              </EmojiPicker>
-            </PopoverContent>
-          </Popover>
-          {/* Send (default, rounded-full, icon-xs) */}
-          <InputGroupButton
-            className="rounded-full transition-all duration-200"
-            disabled={
-              charCount === 0 ||
-              charCount > WHATSAPP_TEXT_MAX_CHARS ||
-              effectiveDisabled ||
-              isSending
-            }
-            onClick={(e) => {
-              e.preventDefault();
-              const html = (editor?.getHTML() || "").trim();
-              const textOut = serializeHtmlToMarkers(html);
-              if (textOut && !effectiveDisabled && !isSending) {
-                onSend(textOut);
-                editor?.commands.clearContent(true);
+                <EmojiPicker
+                  className="h-[21.375rem] rounded-lg border"
+                  onEmojiSelect={handleEmojiSelect}
+                >
+                  <EmojiPickerSearch
+                    placeholder={i18n.getMessage("emoji_search", isLocalized)}
+                  />
+                  <EmojiPickerContent />
+                  <EmojiPickerFooter />
+                </EmojiPicker>
+              </PopoverContent>
+            </Popover>
+            {/* Send (outline variant, fills with primary color as characters are added) */}
+            <Button
+              className="relative h-8 w-8 overflow-hidden rounded-full p-0 transition-all duration-200"
+              disabled={
+                charCount === 0 ||
+                charCount > WHATSAPP_TEXT_MAX_CHARS ||
+                effectiveDisabled ||
+                isSending
               }
-            }}
-            size="icon-xs"
-            type="button"
-            variant="default"
-          >
-            {isSending ? (
-              <Spinner className="size-3 text-primary-foreground" />
-            ) : (
-              <ArrowUp className="h-3 w-3 transition-transform duration-200" />
-            )}
-            <span className="sr-only">Send</span>
-          </InputGroupButton>
+              onClick={(e) => {
+                e.preventDefault();
+                const html = (editor?.getHTML() || "").trim();
+                const textOut = serializeHtmlToMarkers(html);
+                if (textOut && !effectiveDisabled && !isSending) {
+                  onSend(textOut);
+                  editor?.commands.clearContent(true);
+                }
+              }}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              {/* Fill overlay that grows from bottom with primary color */}
+              {charCount > 0 && charCount <= WHATSAPP_TEXT_MAX_CHARS && (
+                <span
+                  className="absolute right-0 bottom-0 left-0 transition-all duration-200"
+                  style={{
+                    height: `${(charCount / WHATSAPP_TEXT_MAX_CHARS) * PERCENTAGE_MULTIPLIER}%`,
+                    backgroundColor: "hsl(var(--primary))",
+                  }}
+                />
+              )}
+              {/* Content layer - icons should be above the fill */}
+              <span className="relative z-10 flex items-center justify-center">
+                {isSending ? (
+                  <Spinner className="size-3" />
+                ) : (
+                  <ArrowUp className="h-3 w-3 transition-transform duration-200" />
+                )}
+              </span>
+              <span className="sr-only">Send</span>
+            </Button>
+          </ButtonGroup>
         </InputGroupAddon>
       </InputGroup>
     </div>

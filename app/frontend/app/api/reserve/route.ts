@@ -31,6 +31,7 @@ export async function POST(request: Request) {
         max_reservations:
           max_reservations || RESERVATION_CONFIG.MAX_RESERVATIONS_FRONTEND,
         ar, // Arabic language flag
+        _call_source: "frontend", // Tag as frontend-initiated to filter notifications
       }),
     });
 

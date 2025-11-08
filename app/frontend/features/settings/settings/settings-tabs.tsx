@@ -1,11 +1,11 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { cn } from "@shared/libs/utils";
 import { Plane, Settings2, View } from "lucide-react";
 import { type ReactElement, useMemo } from "react";
 import { VacationPeriods } from "@/features/settings";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import {
   Tabs,
   TabsContent,
@@ -49,7 +49,7 @@ export function SettingsTabs({
   allowedTabs,
   hideViewModeToolbar = false,
 }: SettingsTabsProps) {
-  useSettings();
+  useSettingsStore();
   // View mode change logic lives in ViewModeToolbar
 
   // Removed auto-switching tabs when not on calendar page to avoid update loops.

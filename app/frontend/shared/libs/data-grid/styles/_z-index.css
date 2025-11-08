@@ -572,6 +572,14 @@ body:has([data-radix-dialog-content]) [data-radix-popover-content] {
   z-index: inherit;
 }
 
+/* Dropdown menus should appear above popovers */
+/* Since dropdowns are portaled, we target them when popover exists */
+/* This ensures dropdowns inside popovers (like language selector) appear correctly */
+/* Using !important to override inline styles from the component */
+body:has([data-radix-popover-content]) [data-radix-dropdown-menu-content] {
+  z-index: var(--z-submenu) !important;
+}
+
 /* ========================================
  * COMMAND COMPONENT GRID EDITOR OVERRIDES - Critical Fix
  * ======================================== */

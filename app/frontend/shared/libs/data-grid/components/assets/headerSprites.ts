@@ -34,5 +34,3 @@ export function createHeaderSprites(): SpriteMap {
   };
 }
 
-
-

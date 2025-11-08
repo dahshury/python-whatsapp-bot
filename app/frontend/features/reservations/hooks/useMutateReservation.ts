@@ -4,12 +4,12 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { Reservation } from "@/entities/event";
 import {
   LOCAL_OPERATION_TIMEOUT_MS,
-  SLOT_PREFIX_LEN,
   TOAST_TIMEOUT_MS,
 } from "@/features/calendar/lib/constants";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
 import { ReservationsWsService } from "../services/reservations.ws.service";
+import { updateReservationCache } from "./utils/reservation-cache";
 
 export type MutateReservationParams = {
   waId: string;
@@ -25,13 +25,6 @@ export type MutateReservationParams = {
 type InternalMutateParams = MutateReservationParams & {
   previousDate?: string;
   previousTimeSlot?: string;
-};
-
-const normalizeTime = (value?: string): string => {
-  if (!value) {
-    return "";
-  }
-  return value.slice(0, SLOT_PREFIX_LEN);
 };
 
 export function useMutateReservation() {
@@ -95,120 +88,59 @@ export function useMutateReservation() {
       }
 
       const previousDate = extendedParams.previousDate || params.date;
-      const previousTimeSlot = normalizeTime(
-        extendedParams.previousTimeSlot || params.time
-      );
-      const nextTimeSlot = normalizeTime(params.time);
+      const previousTimeSlotRaw =
+        extendedParams.previousTimeSlot || params.time;
 
-      queryClient.setQueriesData(
-        { queryKey: ["calendar-reservations"] },
-        (old: Record<string, Reservation[]> | undefined) => {
-          if (!old) {
-            return old;
-          }
-
-          const updated = { ...old };
-          let anyChanges = false;
-
-          for (const [customerId, reservations] of Object.entries(updated)) {
-            let mutated = false;
-            const nextReservations = reservations.map((r) => {
-              const matchesById =
-                params.reservationId !== undefined &&
-                r.id === params.reservationId;
-              const matchesBySlot =
-                customerId === params.waId &&
-                r.date === previousDate &&
-                normalizeTime(r.time_slot) === previousTimeSlot;
-
-              if (matchesById || matchesBySlot) {
-                mutated = true;
-                return {
-                  ...r,
-                  date: params.date,
-                  time_slot: nextTimeSlot,
-                  ...(params.title !== undefined
-                    ? { customer_name: params.title }
-                    : {}),
-                  ...(params.type !== undefined ? { type: params.type } : {}),
-                  cancelled: false,
-                };
-              }
-              return r;
-            });
-
-            if (mutated) {
-              updated[customerId] = nextReservations;
-              anyChanges = true;
-            }
-          }
-
-          return anyChanges ? updated : old;
-        }
-      );
+      updateReservationCache({
+        queryClient,
+        payload: { cancelled: false } as Partial<Reservation>,
+        waId: params.waId,
+        reservationId: params.reservationId,
+        previousDate,
+        previousTimeSlot: previousTimeSlotRaw,
+        nextDate: params.date,
+        nextTimeSlot: params.time,
+        ...(params.title !== undefined
+          ? { "nextCustomerName": params.title }
+          : {}),
+        ...(params.type !== undefined ? { "nextType": params.type } : {}),
+      });
 
       return { previousData };
     },
 
     onSuccess: (response, params) => {
       const extendedParams = params as InternalMutateParams;
-      const previousDate = extendedParams.previousDate || params.date;
-      const previousTimeSlot = normalizeTime(
-        extendedParams.previousTimeSlot || params.time
-      );
-      const nextTimeSlot = normalizeTime(params.time);
-      if (response.data) {
-        queryClient.setQueriesData(
-          { queryKey: ["calendar-reservations"] },
-          (old: Record<string, Reservation[]> | undefined) => {
-            if (!old) {
-              return old;
-            }
+      const rawData = (response.data || {}) as Record<string, unknown>;
+      const { original_data: responseOriginalData, ...restPayload } = rawData;
+      const previousOriginal = (responseOriginalData || {}) as Record<
+        string,
+        unknown
+      >;
 
-            const updated = { ...old };
-            let anyChanges = false;
-            const payload = response.data as Partial<Reservation>;
-            const responseTimeSlot = normalizeTime(
-              payload?.time_slot as string | undefined
-            );
+      const previousDate =
+        (previousOriginal?.date as string | undefined) ||
+        extendedParams.previousDate ||
+        params.date;
+      const previousTimeSlotRaw =
+        (previousOriginal?.time_slot as string | undefined) ||
+        extendedParams.previousTimeSlot ||
+        params.time;
 
-            for (const [customerId, reservations] of Object.entries(updated)) {
-              let mutated = false;
-              const nextReservations = reservations.map((r) => {
-                const matchesById =
-                  params.reservationId !== undefined &&
-                  r.id === params.reservationId;
-                const matchesBySlot =
-                  customerId === params.waId &&
-                  r.date === previousDate &&
-                  normalizeTime(r.time_slot) === previousTimeSlot;
-
-                if (matchesById || matchesBySlot) {
-                  mutated = true;
-                  return {
-                    ...r,
-                    ...payload,
-                    date: params.date,
-                    time_slot: responseTimeSlot || nextTimeSlot,
-                    ...(params.title !== undefined
-                      ? { customer_name: params.title }
-                      : {}),
-                    ...(params.type !== undefined ? { type: params.type } : {}),
-                  };
-                }
-                return r;
-              });
-
-              if (mutated) {
-                updated[customerId] = nextReservations;
-                anyChanges = true;
-              }
-            }
-
-            return anyChanges ? updated : old;
-          }
-        );
-      }
+      updateReservationCache({
+        queryClient,
+        payload: restPayload as Partial<Reservation>,
+        waId: params.waId,
+        reservationId: params.reservationId,
+        previousDate,
+        previousTimeSlot: previousTimeSlotRaw,
+        nextDate: params.date,
+        nextTimeSlot: params.time,
+        ...(params.title !== undefined
+          ? { "nextCustomerName": params.title }
+          : {}),
+        ...(params.type !== undefined ? { "nextType": params.type } : {}),
+      });
     },
 
     onError: (error, params, context) => {

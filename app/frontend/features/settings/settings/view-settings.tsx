@@ -1,22 +1,21 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { toastService } from "@shared/libs/toast";
 import { Label } from "@ui/label";
-import { Eye, MessageCircle, Wrench } from "lucide-react";
-import { useId } from "react";
+import { Eye, MessageCircle, Minus, Plus, Wrench } from "lucide-react";
 import { getCalendarViewOptions } from "@/features/calendar";
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/shared/ui/select";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
+import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
+import { Input } from "@/shared/ui/input";
 import { Switch } from "@/shared/ui/switch";
 import { ViewModeToolbar } from "./view-mode-toolbar";
+
+// Chat message limit constants
+const CHAT_MESSAGE_LIMIT_MIN = 50;
+const CHAT_MESSAGE_LIMIT_MAX = 300;
+const CHAT_MESSAGE_LIMIT_STEP = 50;
 
 type ViewSettingsProps = {
   isLocalized?: boolean;
@@ -43,10 +42,9 @@ export function ViewSettings({
     setChatMessageLimit,
     sendTypingIndicator,
     setSendTypingIndicator,
-  } = useSettings();
+  } = useSettingsStore();
 
   const viewOptions = getCalendarViewOptions(isLocalized);
-  const idPrefix = useId();
 
   const handleToolCallsToggle = (checked: boolean) => {
     setShowToolCalls(checked);
@@ -59,10 +57,43 @@ export function ViewSettings({
 
   const handleMessageLimitChange = (value: string) => {
     const numValue = Number(value);
+    if (
+      Number.isNaN(numValue) ||
+      numValue < CHAT_MESSAGE_LIMIT_MIN ||
+      numValue > CHAT_MESSAGE_LIMIT_MAX
+    ) {
+      return;
+    }
     setChatMessageLimit(numValue);
     toastService.success(
       `${i18n.getMessage("settings_message_limit_set_prefix", isLocalized)} ${numValue}`
     );
+  };
+
+  const handleDecreaseLimit = () => {
+    if (chatMessageLimit > CHAT_MESSAGE_LIMIT_MIN) {
+      const newValue = Math.max(
+        CHAT_MESSAGE_LIMIT_MIN,
+        chatMessageLimit - CHAT_MESSAGE_LIMIT_STEP
+      );
+      setChatMessageLimit(newValue);
+      toastService.success(
+        `${i18n.getMessage("settings_message_limit_set_prefix", isLocalized)} ${newValue}`
+      );
+    }
+  };
+
+  const handleIncreaseLimit = () => {
+    if (chatMessageLimit < CHAT_MESSAGE_LIMIT_MAX) {
+      const newValue = Math.min(
+        CHAT_MESSAGE_LIMIT_MAX,
+        chatMessageLimit + CHAT_MESSAGE_LIMIT_STEP
+      );
+      setChatMessageLimit(newValue);
+      toastService.success(
+        `${i18n.getMessage("settings_message_limit_set_prefix", isLocalized)} ${newValue}`
+      );
+    }
   };
 
   const handleTypingToggle = (checked: boolean) => {
@@ -89,40 +120,32 @@ export function ViewSettings({
           {!hideViewModeToolbar && <ViewModeToolbar />}
         </div>
 
-        <RadioGroup
-          className="flex flex-row gap-2"
-          onValueChange={
-            onCalendarViewChange ??
-            (() => {
-              // Default no-op handler
-            })
-          }
-          value={activeView || currentCalendarView}
-        >
+        <div className="flex justify-center">
+          <ButtonGroup className="justify-center">
           {viewOptions.map((option) => {
-            const itemId = `${idPrefix}-${option.value}`;
+            const isSelected =
+              (activeView || currentCalendarView) === option.value;
             return (
-              <div
-                className="relative flex flex-row items-center gap-2 rounded-md border border-input p-2 shadow-xs outline-none [&:has([data-state=checked])]:border-primary/60"
+              <Button
+                className="h-7 gap-2"
                 key={option.value}
+                onClick={() => {
+                  onCalendarViewChange?.(option.value);
+                }}
+                size="sm"
+                variant={isSelected ? "default" : "outline"}
               >
-                <RadioGroupItem
-                  className="order-1 after:absolute after:inset-0"
-                  id={itemId}
-                  value={option.value}
-                />
                 <option.icon
                   aria-hidden="true"
                   className="opacity-70"
                   size={16}
                 />
-                <Label className="text-[0.82rem] leading-none" htmlFor={itemId}>
-                  {option.label}
-                </Label>
-              </div>
+                {option.label}
+              </Button>
             );
           })}
-        </RadioGroup>
+          </ButtonGroup>
+        </div>
         {!hideChatSettings && (
           <>
             <hr className="border-border/70" />
@@ -136,7 +159,7 @@ export function ViewSettings({
               </div>
 
               {/* Tool Calls Display Setting */}
-              <div className="flex items-center justify-between rounded-lg border bg-background/40 p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-4 rounded-lg border bg-background/40 p-3 backdrop-blur-sm">
                 <div className="space-y-0.5">
                   <Label className="flex items-center gap-2 font-medium text-sm">
                     <Wrench className="h-4 w-4" />
@@ -154,7 +177,7 @@ export function ViewSettings({
               </div>
 
               {/* Typing Indicator Setting */}
-              <div className="flex items-center justify-between rounded-lg border bg-background/40 p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-4 rounded-lg border bg-background/40 p-3 backdrop-blur-sm">
                 <div className="space-y-0.5">
                   <Label className="flex items-center gap-2 font-medium text-sm">
                     <MessageCircle className="h-4 w-4" />
@@ -172,7 +195,7 @@ export function ViewSettings({
               </div>
 
               {/* Chat Message Limit Setting */}
-              <div className="flex items-center justify-between rounded-lg border bg-background/40 p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-4 rounded-lg border bg-background/40 p-3 backdrop-blur-sm">
                 <div className="flex-1 space-y-0.5">
                   <Label className="flex items-center gap-2 font-medium text-sm">
                     <MessageCircle className="h-4 w-4" />
@@ -188,21 +211,35 @@ export function ViewSettings({
                     )}
                   </p>
                 </div>
-                <Select
-                  onValueChange={handleMessageLimitChange}
-                  value={String(chatMessageLimit)}
-                >
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                    <SelectItem value="200">200</SelectItem>
-                    <SelectItem value="500">500</SelectItem>
-                  </SelectContent>
-                </Select>
+                <ButtonGroup>
+                  <Button
+                    className="h-8 px-1"
+                    disabled={chatMessageLimit <= CHAT_MESSAGE_LIMIT_MIN}
+                    onClick={handleDecreaseLimit}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Minus />
+                  </Button>
+                  <Input
+                    className="h-8 w-12 bg-background text-center text-sm"
+                    max={CHAT_MESSAGE_LIMIT_MAX}
+                    min={CHAT_MESSAGE_LIMIT_MIN}
+                    onChange={(e) => handleMessageLimitChange(e.target.value)}
+                    readOnly
+                    type="number"
+                    value={chatMessageLimit}
+                  />
+                  <Button
+                    className="h-8 px-1"
+                    disabled={chatMessageLimit >= CHAT_MESSAGE_LIMIT_MAX}
+                    onClick={handleIncreaseLimit}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Plus />
+                  </Button>
+                </ButtonGroup>
               </div>
             </div>
           </>

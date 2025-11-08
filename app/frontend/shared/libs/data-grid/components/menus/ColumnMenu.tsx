@@ -11,9 +11,9 @@ import {
   VisibilityOff,
 } from "@emotion-icons/material-outlined";
 import type { GridColumn } from "@glideapps/glide-data-grid";
-import { useLanguage } from "@shared/libs/state/language-context";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/ui/popover";
 import { useGridPortal } from "../contexts/GridPortalContext";
@@ -53,7 +53,7 @@ export function ColumnMenu({
   const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const portalContainer = useGridPortal();
   const menuId = React.useId();
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   const FORMAT_MENU_CLOSE_DELAY_MS = 150;
   const MENU_WIDTH = 160;

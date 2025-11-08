@@ -43,6 +43,7 @@ type EventClickInfo = {
     title: string;
     start: Date | null;
     end?: Date | null;
+    extendedProps?: Record<string, unknown>;
   };
   el: HTMLElement;
   view: {
@@ -330,6 +331,17 @@ export function createCalendarCallbacks(
 
     // Event click (used primarily in dual calendar)
     eventClick: (info: EventClickInfo) => {
+      // Prevent vacation events from being clickable
+      const extendedProps = info?.event?.extendedProps as
+        | { __vacation?: boolean; isVacationPeriod?: boolean }
+        | undefined;
+      if (
+        extendedProps?.__vacation === true ||
+        extendedProps?.isVacationPeriod === true
+      ) {
+        return;
+      }
+
       const id: string | undefined = info?.event?.id;
       if (id) {
         handlers.handleOpenConversation(id);

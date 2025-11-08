@@ -1,7 +1,6 @@
 "use client";
 
 import type { DataEditorRef } from "@glideapps/glide-data-grid";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { AnimatePresence, motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import { useTheme } from "next-themes";
@@ -21,6 +20,7 @@ import { useDebouncedValidation } from "@/features/data-table/hooks/useDebounced
 import { useEditingStateCanSave } from "@/features/data-table/hooks/useEditingStateCanSave";
 import { mergeEventsWithLocalEdits } from "@/features/data-table/hooks/useMergeEventsWithLocalEdits";
 import { createPhoneEditInterceptor } from "@/features/documents/grid/phoneEditInterceptor";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { useCustomerData } from "@/shared/libs/data/customer-data-context";
 import { FullscreenProvider } from "@/shared/libs/data-grid/components/contexts/FullscreenContext";
 import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
@@ -76,7 +76,7 @@ export function DataTableEditor(props: DataTableEditorProps) {
   >(null);
   const [isExiting, setIsExiting] = useState(false);
   const { theme: appTheme } = useTheme();
-  const { theme: _styleTheme } = useSettings();
+  const { theme: _styleTheme } = useSettingsStore();
   const isDarkMode = appTheme === "dark";
   const { onExitComplete: onBackdropExitComplete } = useDialogBackdrop(
     open,

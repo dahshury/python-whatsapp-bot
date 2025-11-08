@@ -26,7 +26,6 @@ from app.services.assistant_functions import (
     modify_reservation,
     reserve_time_slot,
     undo_cancel_reservation,
-    undo_reserve_time_slot,
 )
 from app.services.domain.customer.customer_service import CustomerService
 from app.services.llm_service import get_llm_service
@@ -249,7 +248,7 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
         return JSONResponse(content={"status": "error", "message": "Invalid text"}, status_code=400)
     response = await send_whatsapp_message(wa_id, text)
 
-    # On success, persist the message using append_message (which also broadcasts)
+    # On success, persist the message and broadcast (only messages sent via WhatsApp should broadcast)
     try:
         ok = False
         if isinstance(response, tuple) or response is None:
@@ -262,9 +261,17 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
                 now_local = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
                 date_str = now_local.strftime("%Y-%m-%d")
                 time_str = now_local.strftime("%H:%M")
+                # Save to database (no broadcast)
                 append_message(wa_id, "secretary", text, date_str, time_str)
+                # Broadcast notification (only for messages sent via WhatsApp)
+                enqueue_broadcast(
+                    "conversation_new_message",
+                    {"wa_id": wa_id, "role": "secretary", "message": text, "date": date_str, "time": time_str},
+                    affected_entities=[wa_id],
+                    source=payload.get("_call_source", "assistant"),
+                )
             except Exception as persist_err:
-                logging.error(f"append_message failed after HTTP send: {persist_err}")
+                logging.error(f"append_message or broadcast failed after HTTP send: {persist_err}")
     except Exception:
         pass
 
@@ -307,18 +314,6 @@ async def api_test_whatsapp_config():
     """Test WhatsApp API configuration and connectivity."""
     success, message, details = await test_whatsapp_api_config()
     return JSONResponse(content={"success": success, "message": message, "details": details})
-
-
-@router.get("/conversations")
-async def api_get_all_conversations(recent: str = Query(None), limit: int = Query(0)):
-    """
-    DEPRECATED: This endpoint loads all conversations at once.
-    Use /conversations/{wa_id} for on-demand per-customer loading instead.
-    Use /conversations/calendar/events for lightweight calendar events.
-    Kept for backward compatibility with dashboard (will be refactored).
-    """
-    conversations = get_all_conversations(recent=recent, limit=limit)
-    return JSONResponse(content=conversations)
 
 
 @router.get("/conversations/{wa_id}")
@@ -369,6 +364,7 @@ async def api_get_customer_stats(wa_id: str):
 
 @router.post("/conversations/{wa_id}")
 async def api_append_message(wa_id: str, payload: dict = Body(...)):
+    # Just append to DB, no broadcast (not sent via WhatsApp)
     append_message(wa_id, payload.get("role"), payload.get("message"), payload.get("date"), payload.get("time"))
     return JSONResponse(content={"success": True})
 
@@ -418,14 +414,9 @@ async def api_reserve_time_slot(payload: dict = Body(...)):
         hijri=payload.get("hijri", False),
         max_reservations=payload.get("max_reservations", 5),
         ar=payload.get("ar", False),
+        _call_source=payload.get("_call_source", "assistant"),  # Use provided source or default to assistant
     )
     return JSONResponse(content=resp)
-
-
-# Reservation creation endpoint (legacy endpoint for backward compatibility)
-@router.post("/reservations")
-async def api_reserve_time_slot_legacy(payload: dict = Body(...)):
-    return await api_reserve_time_slot(payload)
 
 
 # Cancel reservation endpoint
@@ -437,6 +428,7 @@ async def api_cancel_reservation(wa_id: str, payload: dict = Body(...)):
         hijri=payload.get("hijri", False),
         ar=payload.get("ar", False),
         reservation_id_to_cancel=payload.get("reservation_id_to_cancel"),
+        _call_source=payload.get("_call_source", "assistant"),  # Use provided source or default to assistant
     )
     return JSONResponse(content=resp)
 
@@ -700,7 +692,7 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
                 # Broadcast lightweight notification (no document payload)
                 broadcast_start = time.perf_counter()
                 try:
-                    enqueue_broadcast("customer_document_updated", {"wa_id": wa_id}, [wa_id])
+                    enqueue_broadcast("customer_document_updated", {"wa_id": wa_id}, [wa_id], source=payload.get("_call_source", "assistant"))
                 except Exception as be:
                     logging.debug(f"Broadcast document update failed (non-fatal): {be}")
                 broadcast_time = (time.perf_counter() - broadcast_start) * 1000
@@ -788,6 +780,7 @@ async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
         hijri=payload.get("hijri", False),
         ar=payload.get("ar", False),
         reservation_id_to_modify=payload.get("reservation_id_to_modify"),
+        _call_source=payload.get("_call_source", "assistant"),  # Use provided source or default to assistant
     )
     return JSONResponse(content=resp)
 
@@ -843,9 +836,8 @@ async def api_get_vacation_periods():
                             else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
                         )
                     else:
-                        # for legacy rows with only duration_days
-                        dur = max(1, int(getattr(r, "duration_days", 1)))
-                        e_date = s_date + datetime.timedelta(days=dur - 1)
+                        # Skip rows without end_date (legacy data should be migrated)
+                        continue
                     start_dt = datetime.datetime(
                         s_date.year, s_date.month, s_date.day, tzinfo=ZoneInfo(config["TIMEZONE"])
                     )
@@ -928,7 +920,7 @@ async def api_update_vacation_periods(payload: dict = Body(...)):
 
         # Broadcast updated vacations
         with contextlib.suppress(Exception):
-            enqueue_broadcast("vacation_period_updated", {"periods": []})
+            enqueue_broadcast("vacation_period_updated", {"periods": []}, source=payload.get("_call_source", "assistant"))
         return JSONResponse(content={"success": True, "message": get_message("vacation_periods_updated", ar)})
 
     except Exception as e:
@@ -996,7 +988,7 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
             session.commit()
 
         with contextlib.suppress(Exception):
-            enqueue_broadcast("vacation_period_updated", {"periods": []})
+            enqueue_broadcast("vacation_period_updated", {"periods": []}, source=payload.get("_call_source", "assistant"))
         return JSONResponse(content={"success": True, "message": get_message("vacation_update_undone", ar)})
 
     except Exception as e:
@@ -1009,16 +1001,6 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
 
 # === UNDO ENDPOINTS ===
 
-
-@router.post("/undo-reserve")
-async def api_undo_reserve_time_slot(payload: dict = Body(...)):
-    """
-    Undo a reservation creation by cancelling the reservation.
-    """
-    resp = undo_reserve_time_slot(payload.get("reservation_id"), ar=payload.get("ar", False))
-    return JSONResponse(content=resp)
-
-
 @router.post("/undo-cancel")
 async def api_undo_cancel_reservation(payload: dict = Body(...)):
     """
@@ -1026,26 +1008,6 @@ async def api_undo_cancel_reservation(payload: dict = Body(...)):
     """
     resp = undo_cancel_reservation(
         payload.get("reservation_id"), ar=payload.get("ar", False), max_reservations=payload.get("max_reservations", 5)
-    )
-    return JSONResponse(content=resp)
-
-
-@router.post("/undo-modify")
-async def api_undo_modify_reservation(payload: dict = Body(...)):
-    """
-    Undo a reservation modification by reverting to original data.
-    """
-    resp = modify_reservation(
-        payload.get("wa_id"),
-        payload.get("new_date"),
-        payload.get("new_time_slot"),
-        payload.get("new_name"),
-        payload.get("new_type"),
-        max_reservations=payload.get("max_reservations", 5),
-        approximate=payload.get("approximate", False),
-        hijri=payload.get("hijri", False),
-        ar=payload.get("ar", False),
-        reservation_id_to_modify=payload.get("reservation_id_to_modify"),
     )
     return JSONResponse(content=resp)
 

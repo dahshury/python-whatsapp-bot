@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { Button } from "@ui/button";
 import {
   Card,
@@ -12,6 +11,8 @@ import {
 } from "@ui/card";
 import { AlertTriangle, RefreshCw, Server } from "lucide-react";
 import { useCallback, useState } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
+import { writeClipboardText } from "@/shared/libs/clipboard";
 import { Spinner } from "@/shared/ui/spinner";
 
 type BackendConnectionOverlayProps = {
@@ -23,17 +24,17 @@ export function BackendConnectionOverlay({
   onRetry,
   isRetrying = false,
 }: BackendConnectionOverlayProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText("python app/backend/main.py");
+      await writeClipboardText("python app/backend/main.py");
       setCopied(true);
       const COPY_RESET_DELAY_MS = 2000;
       setTimeout(() => setCopied(false), COPY_RESET_DELAY_MS);
-    } catch {
-      // Clipboard write failed - copy button not updated
+    } catch (_error) {
+      // Clipboard write failed - user may need to copy manually
     }
   }, []);
 

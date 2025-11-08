@@ -1,12 +1,14 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useSettings } from "@shared/libs/state/settings-context";
 import type { LucideIcon } from "lucide-react";
 import { LayoutGrid, Split, Unlock } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import type { ViewMode } from "@/features/navigation/types";
+import {
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
 import { toastService } from "@/shared/libs/toast/toast-service";
 import { ExpandableTabs } from "@/shared/ui/expandable-tabs";
 
@@ -15,9 +17,9 @@ type ViewModeToolbarProps = {
 };
 
 export function ViewModeToolbar({ className = "" }: ViewModeToolbarProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const { freeRoam, setFreeRoam, showDualCalendar, setShowDualCalendar } =
-    useSettings();
+    useSettingsStore();
 
   const items = useMemo(
     () => [

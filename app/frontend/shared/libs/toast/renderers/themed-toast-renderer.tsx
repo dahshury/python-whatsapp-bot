@@ -2,6 +2,8 @@
 
 import React from "react";
 import { toast as sonner } from "sonner";
+
+import { i18n } from "@shared/libs/i18n";
 import { DEFAULT_TOAST_DURATION_MS } from "../constants";
 
 export function themed(
@@ -9,6 +11,8 @@ export function themed(
   subtitle?: string,
   duration = DEFAULT_TOAST_DURATION_MS
 ) {
+  const dismissLabel = i18n.getMessage("toast_dismiss");
+
   sonner.custom(
     (id) =>
       React.createElement(
@@ -54,7 +58,7 @@ export function themed(
                   }
                 },
               },
-              "Dismiss"
+              dismissLabel
             )
           )
         )

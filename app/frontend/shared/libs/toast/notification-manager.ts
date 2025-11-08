@@ -18,6 +18,7 @@ export class NotificationManager {
     date: string;
     time: string;
     isLocalized?: boolean;
+    onUndo?: () => void;
   }): void {
     toastService.reservationModified({
       ...(payload.customer && { customer: payload.customer }),
@@ -27,6 +28,7 @@ export class NotificationManager {
       ...(payload.isLocalized !== undefined && {
         isLocalized: payload.isLocalized,
       }),
+      ...(payload.onUndo && { onUndo: payload.onUndo }),
     });
   }
 
@@ -36,6 +38,7 @@ export class NotificationManager {
     date: string;
     time: string;
     isLocalized?: boolean;
+    onUndo?: () => void;
   }): void {
     toastService.reservationCreated({
       ...(payload.customer && { customer: payload.customer }),
@@ -45,6 +48,7 @@ export class NotificationManager {
       ...(payload.isLocalized !== undefined && {
         isLocalized: payload.isLocalized,
       }),
+      ...(payload.onUndo && { onUndo: payload.onUndo }),
     });
   }
 
@@ -54,6 +58,7 @@ export class NotificationManager {
     date: string;
     time: string;
     isLocalized?: boolean;
+    onUndo?: () => void;
   }): void {
     toastService.reservationCancelled({
       ...(payload.customer && { customer: payload.customer }),
@@ -63,6 +68,7 @@ export class NotificationManager {
       ...(payload.isLocalized !== undefined && {
         isLocalized: payload.isLocalized,
       }),
+      ...(payload.onUndo && { onUndo: payload.onUndo }),
     });
   }
 }

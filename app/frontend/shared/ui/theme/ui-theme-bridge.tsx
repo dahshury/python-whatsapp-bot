@@ -1,7 +1,7 @@
 "use client";
 
-import { useSettings } from "@shared/libs/state/settings-context";
 import { useMemo } from "react";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import {
   getUiCompositePresetForTheme,
   getUiPresetForTheme,
@@ -13,7 +13,7 @@ import {
 } from "@/shared/libs/ui-registry";
 
 export function UiThemeBridge({ children }: { children: React.ReactNode }) {
-  const { theme } = useSettings();
+  const { theme } = useSettingsStore();
   const components = useMemo<UiRegistryMap>(
     () => getUiPresetForTheme(theme),
     [theme]

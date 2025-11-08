@@ -1,18 +1,25 @@
 'use client'
 
 import { i18n } from '@shared/libs/i18n'
-import { useLanguage } from '@shared/libs/state/language-context'
 import { useSidebarChatStore } from '@shared/libs/store/sidebar-chat-store'
 import { cn } from '@shared/libs/utils'
 import { Button } from '@ui/button'
 import { useGeolocation } from '@uidotdev/usehooks'
-import { Calendar, Clock, MessageSquare, MoonIcon, SunIcon } from 'lucide-react'
+import {
+	Calendar,
+	Clock,
+	LayoutGrid,
+	MessageSquare,
+	MoonIcon,
+	SunIcon,
+} from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChatSidebarContent } from '@/features/chat/chat-sidebar-content'
 import { ConversationCombobox } from '@/features/chat/conversation-combobox'
 import { useCustomerNames } from '@/features/chat/hooks/useCustomerNames'
+import { useLanguageStore } from '@/infrastructure/store/app-store'
 import { ButtonGroup } from '@/shared/ui/button-group'
 import {
 	Sidebar,
@@ -26,10 +33,18 @@ import {
 import { PrayerTimesWidget } from '@/widgets/prayer-times-widget'
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-	const { isLocalized } = useLanguage()
+	const { isLocalized } = useLanguageStore()
 	const { setOpenMobile, setOpen, open, openMobile } = useSidebar()
 	const pathname = usePathname()
 	const isDashboardPage = pathname?.startsWith('/dashboard') ?? false
+
+	// Prevent hydration mismatch by ensuring server and initial client render match
+	const [mounted, setMounted] = useState(false)
+	useEffect(() => {
+		setMounted(true)
+	}, [])
+	// Use false during SSR/initial render, then use actual value after mount
+	const safeIsLocalized = mounted ? isLocalized : false
 
 	const DAYTIME_START_HOUR = 6
 	const DAYTIME_END_HOUR = 18
@@ -381,7 +396,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					<div className="flex items-center gap-2">
 						<Calendar className="h-6 w-6" />
 						<span className="font-semibold">
-							{i18n.getMessage('reservation_manager', isLocalized)}
+							{i18n.getMessage('reservation_manager', safeIsLocalized)}
 						</span>
 					</div>
 					{(dateInfo || locationTime) && (
@@ -442,8 +457,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						onClick={() => handleTabChange('calendar')}
 						type="button"
 					>
-						<Calendar className="h-3.5 w-3.5" />
-						{i18n.getMessage('calendar', isLocalized)}
+						<LayoutGrid className="h-3.5 w-3.5" />
+						{i18n.getMessage('widgets', safeIsLocalized)}
 					</button>
 					<button
 						className={`flex flex-1 items-center justify-center gap-1.5 rounded px-2 py-1.5 text-xs transition-colors ${
@@ -455,15 +470,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						type="button"
 					>
 						<MessageSquare className="h-3.5 w-3.5" />
-						{i18n.getMessage('chat', isLocalized)}
+						{i18n.getMessage('chat', safeIsLocalized)}
 					</button>
 				</div>
 
 				{/* Chat Conversation Selector - Part of sidebar header when chat tab is active */}
 				{activeTab === 'chat' && (
-					<div className="mt-2 border-sidebar-border border-t pt-2">
+					<div className="mt-2 pt-2">
 						<ConversationCombobox
-							isLocalized={isLocalized}
+							isLocalized={safeIsLocalized}
 							onConversationSelect={selectConversation}
 							selectedConversationId={selectedConversationId ?? null}
 						/>
@@ -478,7 +493,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						<SidebarGroup className="p-4">
 							<SidebarGroupLabel className="flex items-center gap-2">
 								<Clock className="h-4 w-4" />
-								{i18n.getMessage('prayer_times', isLocalized)}
+								{i18n.getMessage('prayer_times', safeIsLocalized)}
 							</SidebarGroupLabel>
 							<SidebarGroupContent>
 								<PrayerTimesWidget />

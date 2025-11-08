@@ -1,12 +1,13 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { type Theme, useSettings } from "@shared/libs/state/settings-context";
+import type { Theme } from "@space-man/react-theme-animation";
 import { useSpacemanTheme } from "@space-man/react-theme-animation";
 import { Label } from "@ui/label";
 import { Monitor, Moon, Palette, Sun } from "lucide-react";
 import { useTheme as useNextThemes } from "next-themes";
 import { useThemeSetting } from "@/features/settings";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { toastService } from "@/shared/libs/toast/toast-service";
 import { ExpandableTabs } from "@/shared/ui/expandable-tabs";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
@@ -17,7 +18,7 @@ type ThemeSelectorProps = {
 };
 
 export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
-  const { theme: appTheme, setTheme: setAppTheme } = useSettings();
+  const { theme: appTheme, setTheme: setAppTheme } = useSettingsStore();
   const { setTheme } = useThemeSetting();
   const { setColorTheme } = useSpacemanTheme();
   const { theme: nextTheme, setTheme: setNextTheme } = useNextThemes();
@@ -28,7 +29,7 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
 
     // Apply the style theme through both animation and settings store
     setColorTheme(value as Theme);
-    setAppTheme(value as Theme);
+    setAppTheme(value);
     try {
       setTheme((value as unknown as "light" | "dark") ?? "light");
     } catch {
@@ -129,6 +130,7 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
         {THEME_OPTIONS.map((themeOption) => {
           const isRounded =
             !themeOption.borderStyle || themeOption.borderStyle === "0px";
+          const isSelected = appTheme === themeOption.value;
 
           return (
             <div key={themeOption.value}>
@@ -138,7 +140,11 @@ export function ThemeSelector({ isLocalized = false }: ThemeSelectorProps) {
                 value={themeOption.value}
               />
               <Label
-                className="flex cursor-pointer flex-col items-center justify-between rounded-md border border-muted bg-transparent p-1.5 text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
+                className={`flex cursor-pointer flex-col items-center justify-between rounded-md border p-1.5 text-sm transition-colors hover:bg-accent hover:text-accent-foreground ${
+                  isSelected
+                    ? "border-2 border-primary bg-accent/50"
+                    : "border border-muted bg-transparent"
+                }`}
                 htmlFor={themeOption.value}
               >
                 <div className="mb-0.5 flex gap-1">

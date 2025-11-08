@@ -29,6 +29,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           original_vacation_data: originalVacationData,
           ar,
+          _call_source: "frontend", // Tag as frontend-initiated to filter notifications
         }),
       }
     );

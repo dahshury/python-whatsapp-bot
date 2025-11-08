@@ -3,7 +3,6 @@ import { useShrinkToFitText } from "@shared/libs/hooks/use-shrink-to-fit-text";
 import { i18n } from "@shared/libs/i18n";
 import { DEFAULT_COUNTRY } from "@shared/libs/phone/config";
 import { CALLING_CODES_SORTED } from "@shared/libs/phone/countries";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { getSizeClasses } from "@shared/libs/ui/size";
 import { cn } from "@shared/libs/utils";
 import { getCountryFromPhone } from "@shared/libs/utils/phone-utils";
@@ -27,6 +26,7 @@ import {
 } from "react-phone-number-input";
 import type { PhoneOption } from "@/entities/phone";
 import { useBackendPhoneSearch } from "@/features/phone-selector/hooks/useBackendPhoneSearch";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import type { IndexedPhoneOption } from "@/shared/libs/phone/indexed.types";
 import { buildPhoneGroups } from "@/shared/libs/phone/phone-groups";
 import { buildIndexedOptions } from "@/shared/libs/phone/phone-index";
@@ -105,7 +105,7 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
   preferPlaceholderWhenEmpty = false,
   rounded = true,
 }) => {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const [selectedPhone, setSelectedPhone] = useState<string>(value || "");
   const [mounted, setMounted] = useState(false);
   const [dropdownWidth, setDropdownWidth] = useState<number | undefined>(
@@ -591,7 +591,7 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
                       ? "rounded-s-none rounded-e-lg border-l-0"
                       : "rounded-none border-l-0";
                   }
-                  return rounded ? "rounded-lg" : "rounded-none";
+                  return rounded ? "rounded-lg" : "rounded-none border-l-0";
                 })(),
                 getSizeClasses(_size)
               )}
@@ -688,8 +688,10 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent
+            avoidCollisions={false}
             className={cn("p-0", "click-outside-ignore")}
             dir="ltr"
+            side="bottom"
             style={{
               width: dropdownWidth,
               maxWidth: "min(90vw, 560px)",

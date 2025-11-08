@@ -6,7 +6,6 @@ import {
   calculateCalendarHeight,
   useCalendarResize,
 } from "@shared/libs/calendar/calendar-view-utils";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -17,6 +16,7 @@ import {
   processEventsForFreeRoam,
 } from "@/features/calendar";
 import { useCalendarDataTableEditor } from "@/features/data-table";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { useSidebar } from "@/shared/ui/sidebar";
 import { useCalendarContextMenu } from "./useCalendarContextMenu";
 import type { ViewType } from "./useCalendarDateRange";
@@ -57,7 +57,7 @@ export function useCalendarCore({
   excludeConversations,
   enabled = true,
 }: UseCalendarCoreProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const {
     handleDateClick: handleVacationDateClick,
     recordingState,

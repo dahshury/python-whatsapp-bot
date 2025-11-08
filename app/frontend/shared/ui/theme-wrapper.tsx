@@ -1,11 +1,11 @@
 "use client";
 
-import { useSettings } from "@shared/libs/state/settings-context";
 import { useTheme as useNextThemes } from "next-themes";
 import { useEffect, useLayoutEffect } from "react";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 
 export function ThemeWrapper({ children }: { children: React.ReactNode }) {
-  const { theme } = useSettings();
+  const { theme } = useSettingsStore();
   const { resolvedTheme, theme: nextTheme } = useNextThemes();
 
   useLayoutEffect(() => {

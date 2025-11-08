@@ -12,6 +12,7 @@ import {
   useCreateReservation,
   useMutateReservation,
 } from "@/features/reservations/hooks";
+import { extractCancellationData } from "@/features/reservations/utils/extract-cancellation-data";
 import type { IColumnDefinition } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
 import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
 import type { BaseColumnProps } from "@/shared/libs/data-grid/components/core/types";
@@ -277,42 +278,10 @@ export function useDataTableSaveHandler({
     [formattingService, isLocalized]
   );
 
-  // Helper to extract cancellation data from CalendarEvent
-  const extractCancellationData = useCallback(
-    (original: CalendarEvent): CancelReservationParams | null => {
-      const waId = (
-        original.extendedProps?.waId ||
-        original.id ||
-        ""
-      ).toString();
-      const date = original.start?.split("T")[0] || "";
-      const TIME_FORMAT_LENGTH = 5;
-      const slotTime = (
-        original.extendedProps as { slotTime?: string } | undefined
-      )?.slotTime;
-      const startTimePart = original.start?.split("T")[1];
-      const startTime = startTimePart
-        ? startTimePart.slice(0, TIME_FORMAT_LENGTH)
-        : undefined;
-      const time = slotTime || startTime || undefined;
-
-      if (!date) {
-        return null;
-      }
-      if (!waId) {
-        return null;
-      }
-
-      const reservationId = original.extendedProps?.reservationId;
-      return {
-        waId,
-        date,
-        ...(time !== undefined ? { time } : {}),
-        ...(reservationId !== undefined ? { reservationId } : {}),
-        isLocalized,
-        freeRoam,
-      };
-    },
+  // Helper to extract cancellation data from CalendarEvent (using shared utility)
+  const extractCancellationDataForGrid = useCallback(
+    (original: CalendarEvent): CancelReservationParams | null =>
+      extractCancellationData(original, isLocalized, freeRoam),
     [isLocalized, freeRoam]
   );
 
@@ -392,7 +361,7 @@ export function useDataTableSaveHandler({
             continue;
           }
 
-          const cancelParams = extractCancellationData(original);
+          const cancelParams = extractCancellationDataForGrid(original);
           if (!cancelParams) {
             hasErrors = true;
             continue;
@@ -497,10 +466,10 @@ export function useDataTableSaveHandler({
     cancelMutation,
     extractModificationData,
     extractCreationData,
-    extractCancellationData,
     onEventCancelled,
     onEventModified,
     refreshCustomerData,
+    extractCancellationDataForGrid,
   ]);
 
   return {

@@ -6,6 +6,7 @@ import { Button } from "@ui/button";
 import { Check, Copy } from "lucide-react";
 import { motion } from "motion/react";
 import { type HTMLAttributes, useState } from "react";
+import { writeClipboardText } from "@/shared/libs/clipboard";
 
 interface InlineCopyBtnProps extends HTMLAttributes<HTMLButtonElement> {
   text: string;
@@ -21,12 +22,16 @@ export function InlineCopyBtn({
 }: InlineCopyBtnProps) {
   const [copied, setCopied] = useState(false);
 
-  const copyToClipboard = (e: React.MouseEvent) => {
+  const copyToClipboard = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation(); // Prevent triggering parent button (collapsible trigger)
     const COPY_FEEDBACK_DURATION_MS = 2000;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
+    try {
+      await writeClipboardText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
+    } catch (_error) {
+      // Clipboard write failed - user may need to copy manually
+    }
   };
 
   return (

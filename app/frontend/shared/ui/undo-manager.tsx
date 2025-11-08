@@ -1,14 +1,14 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useUndoStore } from "@shared/libs/store/use-undo-store";
 import { useEffect } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { toastService } from "@/shared/libs/toast/toast-service";
 
 export function UndoManager() {
   const { popUndo, canUndo } = useUndoStore();
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   useEffect(() => {
     const handleUndo = (event: KeyboardEvent) => {

@@ -121,14 +121,13 @@ class AssistantFunctionService:
         self.logger.debug(f"Thinking: {thought}")
         return format_response(True, data={"thought": thought})
 
-    # --- New Undo-specific methods exposed through AssistantFunctionService ---
+    # --- Undo-specific methods exposed through AssistantFunctionService ---
+    # Note: undo_reserve_time_slot has been removed as redundant.
+    # Frontend should call cancel_reservation directly instead.
+    
     def undo_cancel_reservation(self, reservation_id: int, ar: bool = False, max_reservations: int = 5) -> dict[str, Any]:
         """Undo a reservation cancellation (reinstate it)."""
         return self.reservation_service.undo_cancel_reservation_by_id(reservation_id, ar, max_reservations)
-
-    def undo_reserve_time_slot(self, reservation_id: int, ar: bool = False) -> dict[str, Any]:
-        """Undo a time slot reservation (cancel it)."""
-        return self.reservation_service.undo_reserve_time_slot_by_id(reservation_id, ar)
 
 
 # Global service instance
@@ -332,20 +331,6 @@ def undo_cancel_reservation(reservation_id: int, ar: bool = False, max_reservati
         dict: Result of the reinstatement operation.
     """
     return _service.undo_cancel_reservation(reservation_id, ar, max_reservations)
-
-
-def undo_reserve_time_slot(reservation_id: int, ar: bool = False) -> dict[str, Any]:
-    """
-    Cancels a newly created reservation by its ID (undo for reserve).
-
-    Parameters:
-        reservation_id (int): The ID of the reservation to cancel.
-        ar (bool, optional): If True, returns messages in Arabic.
-
-    Returns:
-        dict: Result of the cancellation operation.
-    """
-    return _service.undo_reserve_time_slot(reservation_id, ar)
 
 
 def think(thought: str) -> dict[str, Any]:

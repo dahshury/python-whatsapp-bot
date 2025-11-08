@@ -6,8 +6,11 @@ type UndoModifyResponse = {
   message?: string;
   data?: unknown;
 };
-// import {AssistantFunctionService} from '@/../../app/services/assistant_functions'; // Adjust path
 
+/**
+ * Undo reservation modification by reverting to original data
+ * Now uses the base /reservations/{wa_id}/modify endpoint instead of the deprecated /undo-modify
+ */
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -29,11 +32,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // The Python `modify_reservation` function expects parameters like:
-    // wa_id, new_date, new_time_slot, new_name, new_type, max_reservations, approximate, hijri, ar, reservation_id_to_modify
-    // Ensure originalData from the client maps to these with proper defaults.
+    if (!originalData.wa_id) {
+      return NextResponse.json(
+        { success: false, message: "originalData is missing wa_id." },
+        { status: 400 }
+      );
+    }
+
+    // Use the base modify endpoint
     const payloadForPython = {
-      wa_id: originalData.wa_id, // This must be present in originalData
       new_date: originalData.date,
       new_time_slot: originalData.time_slot,
       new_name: originalData.customer_name,
@@ -43,17 +50,11 @@ export async function POST(request: Request) {
       hijri: false, // Default value for undo operations
       ar,
       reservation_id_to_modify: reservationId, // Crucial: target specific reservation
+      _call_source: "frontend", // Tag as frontend-initiated to filter notifications
     };
 
-    if (!payloadForPython.wa_id) {
-      return NextResponse.json(
-        { success: false, message: "originalData is missing wa_id." },
-        { status: 400 }
-      );
-    }
-
     const pythonResponse = await callPythonBackend<UndoModifyResponse>(
-      "/undo-modify",
+      `/reservations/${originalData.wa_id}/modify`,
       {
         method: "POST",
         body: JSON.stringify(payloadForPython),

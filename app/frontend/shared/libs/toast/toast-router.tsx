@@ -6,6 +6,7 @@ import { useCallback, useEffect } from "react";
 import { Toaster } from "sonner";
 import { useCustomerNames } from "@/features/chat/hooks/useCustomerNames";
 import { notificationManager } from "@/shared/libs/toast/notification-manager";
+import { useUndoReservation } from "@/features/reservations/hooks/useUndoReservation";
 import { toastService } from "./toast-service";
 
 // Maximum length for time slot display (HH:MM format)
@@ -15,6 +16,7 @@ const MAX_MESSAGE_DESCRIPTION_LENGTH = 100;
 
 export const ToastRouter: FC = () => {
   const { data: customerNames } = useCustomerNames();
+  const { undoCreate, undoModify, undoCancel } = useUndoReservation();
 
   const resolveCustomerName = useCallback(
     (waId?: string, fallbackName?: string): string | undefined => {
@@ -55,32 +57,90 @@ export const ToastRouter: FC = () => {
           }
         })();
 
+        const eventSource = (data as { _source?: string })?._source;
+        const isUndoEvent = eventSource === "undo";
+
+        if (isUndoEvent) {
+          return;
+        }
+
         if (type === "reservation_created") {
+          const reservationId = data.id as number | undefined;
+          const waId = data.wa_id as string | undefined;
+          
           notificationManager.showReservationCreated({
             customer: data.customer_name,
             wa_id: data.wa_id,
             date: data.date,
             time: (data.time_slot || "").slice(0, TIME_SLOT_DISPLAY_LENGTH),
             isLocalized,
+            onUndo:
+              reservationId && waId
+                ? () => {
+                    undoCreate.mutate({
+                      reservationId,
+                      waId,
+                      ar: isLocalized,
+                    });
+                  }
+                : undefined,
           });
         } else if (
           type === "reservation_updated" ||
           type === "reservation_reinstated"
         ) {
+          const reservationId = data.id as number | undefined;
+          const waId = data.wa_id as string | undefined;
+          const date = data.date as string | undefined;
+          const timeSlot = data.time_slot as string | undefined;
+          const customerName = data.customer_name as string | undefined;
+          const reservationType = data.type as number | undefined;
+          const originalData = (data as { original_data?: Record<string, unknown> })?.original_data;
+
           notificationManager.showReservationModified({
             customer: data.customer_name,
             wa_id: data.wa_id,
             date: data.date,
             time: (data.time_slot || "").slice(0, TIME_SLOT_DISPLAY_LENGTH),
             isLocalized,
+            onUndo:
+              reservationId && originalData && typeof originalData === "object"
+                && originalData.date && originalData.time_slot
+                ? () => {
+                    const safeOriginalData = {
+                      wa_id: (originalData.wa_id as string) || waId,
+                      date: String(originalData.date || date || ""),
+                      time_slot: String(originalData.time_slot || timeSlot || ""),
+                      customer_name: (originalData.customer_name as string) || customerName,
+                      type: originalData.type as number | undefined,
+                    };
+
+                    undoModify.mutate({
+                      reservationId,
+                      originalData: safeOriginalData,
+                      ar: isLocalized,
+                    });
+                  }
+                : undefined,
           });
         } else if (type === "reservation_cancelled") {
+          const reservationId = data.id as number | undefined;
+          
           notificationManager.showReservationCancelled({
             customer: data.customer_name,
             wa_id: data.wa_id,
             date: data.date,
             time: (data.time_slot || "").slice(0, TIME_SLOT_DISPLAY_LENGTH),
             isLocalized,
+            onUndo:
+              reservationId
+                ? () => {
+                    undoCancel.mutate({
+                      reservationId,
+                      ar: isLocalized,
+                    });
+                  }
+                : undefined,
           });
         } else if (type === "conversation_new_message") {
           const messageLabel = i18n.getMessage(
@@ -130,7 +190,7 @@ export const ToastRouter: FC = () => {
         handleAny as EventListener
       );
     };
-  }, [resolveCustomerName]);
+  }, [resolveCustomerName, undoCreate, undoModify, undoCancel]);
 
   return (
     <Toaster

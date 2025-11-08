@@ -1,6 +1,5 @@
 "use client";
 
-import { useLanguage } from "@shared/libs/state/language-context";
 import { cn } from "@shared/libs/utils";
 import {
   AtSignIcon,
@@ -13,6 +12,7 @@ import {
   ZapIcon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
 import {
   Accordion,
@@ -70,7 +70,7 @@ function getViolatedRuleHints(_err: ValidationErrorItem): string[] {
 
 export function ValidationErrorsPopover(props: ValidationErrorsPopoverProps) {
   const { errors, triggerClassName } = props;
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const [open, setOpen] = useState(false);
 
   const grouped = useMemo(() => {

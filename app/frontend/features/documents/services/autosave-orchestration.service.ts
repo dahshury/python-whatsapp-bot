@@ -231,7 +231,7 @@ export const AutosaveOrchestrationService = {
     if (state.hasLocalEditsDuringSave) {
       return "dirty";
     }
-    return "idle";
+    return "ready";
   },
 
   /**

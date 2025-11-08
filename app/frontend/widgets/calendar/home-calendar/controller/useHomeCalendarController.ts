@@ -7,8 +7,6 @@ import {
 } from "@shared/libs/calendar/calendar-config";
 import { mark } from "@shared/libs/dev-profiler";
 import { useDockBridge } from "@shared/libs/dock-bridge-context";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { useRouter } from "next/navigation";
@@ -27,6 +25,10 @@ import {
   useVacationDateChecker,
 } from "@/features/calendar";
 import { useCalendarDataTableEditor } from "@/features/data-table";
+import {
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
 import type { CalendarMainContentProps } from "@/widgets/calendar/CalendarMainContent";
 import type { DualCalendarComponentProps } from "@/widgets/calendar/DualCalendar";
 import type { CalendarDataTableEditorWrapperProps } from "@/widgets/data-table-editor/calendar-data-table-editor-wrapper";
@@ -64,7 +66,7 @@ export type HomeCalendarControllerResult = {
 };
 
 export function useHomeCalendarController(): HomeCalendarControllerResult {
-  const { freeRoam, showDualCalendar } = useSettings();
+  const { freeRoam, showDualCalendar } = useSettingsStore();
   const {
     vacationPeriods,
     handleDateClick: handleVacationDateClick,
@@ -102,7 +104,7 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
 
   const calendarRef = useRef<CalendarCoreRef | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   const calendarState = useCalendarState({
     freeRoam,

@@ -1,12 +1,12 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { Badge } from "@ui/badge";
 import { Button } from "@ui/button";
 import { CalendarDays, Circle, Plane, Plus, Trash2 } from "lucide-react";
 import { memo, useCallback, useMemo } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 
 type VacationPeriodRowProps = {
   index: number;
@@ -184,7 +184,7 @@ const VacationPeriodRow = memo(
 );
 
 function VacationPeriodsComponent() {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const {
     vacationPeriods,
     recordingState,

@@ -168,6 +168,17 @@ export function CalendarMainContent({
           }
         }}
         onEventClick={(info) => {
+          // Prevent vacation events from being clickable
+          const extendedProps = info.event?.extendedProps as
+            | { __vacation?: boolean; isVacationPeriod?: boolean }
+            | undefined;
+          if (
+            extendedProps?.__vacation === true ||
+            extendedProps?.isVacationPeriod === true
+          ) {
+            return;
+          }
+
           const waId =
             (
               info as {

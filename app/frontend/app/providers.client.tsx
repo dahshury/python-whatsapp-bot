@@ -1,6 +1,9 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import "@/shared/libs/clipboard/polyfill";
+
+import { usePathname } from "next/navigation";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { TanstackQueryProvider } from "@/app/provider/tanstack-query/tanstack-query-provider";
 import { AppServiceProvider } from "@/infrastructure/providers/app-service-provider";
 import { BackendConnectionProvider } from "@/shared/libs/backend-connection-provider";
@@ -9,8 +12,6 @@ import { UnifiedDataProvider } from "@/shared/libs/data/unified-data-provider";
 import { WebSocketDataProvider } from "@/shared/libs/data/websocket-data-provider";
 import { DockBridgeProvider } from "@/shared/libs/dock-bridge-context";
 import { RealtimeEventBus } from "@/shared/libs/realtime-event-bus";
-import { LanguageProvider } from "@/shared/libs/state/language-context";
-import { SettingsProvider } from "@/shared/libs/state/settings-context";
 import { VacationProvider } from "@/shared/libs/state/vacation-context";
 import { ToastRouter } from "@/shared/libs/toast/toast-router";
 import { AppShellVisibilityProvider } from "@/shared/ui/app-shell-visibility";
@@ -37,7 +38,14 @@ export function AppProvidersClient({
   headerSlot,
   sidebarSlot,
 }: AppProvidersClientProps) {
-  const [showShell, setShowShell] = useState(true);
+  const pathname = usePathname();
+  const isMinimalRoute = pathname === "/tldraw";
+  const [showShell, setShowShell] = useState(!isMinimalRoute);
+
+  useEffect(() => {
+    setShowShell(!isMinimalRoute);
+  }, [isMinimalRoute]);
+
   const appShellContextValue = useMemo(
     () => ({
       showShell,
@@ -55,67 +63,72 @@ export function AppProvidersClient({
       <ErrorRecoveryInit />
       <SuppressResizeObserverWarnings />
       <AppServiceProvider>
-        <LanguageProvider>
-          <SettingsProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              disableTransitionOnChange
-              enableSystem
-            >
-              <UiThemeBridge>
-                <SpacemanThemeBridge>
-                  <BackendConnectionProvider>
-                    <WebSocketDataProvider>
-                      <UnifiedDataProvider>
-                        <TanstackQueryProvider>
-                          <ThemeWrapper>
-                            <VacationProvider>
-                              <CustomerDataProvider>
-                                <DockBridgeProvider>
-                                  <DvhInit />
-                                  <div
-                                    className="flex h-screen flex-col overflow-hidden"
-                                    style={{
-                                      height: "var(--doc-dvh, 100dvh)",
-                                    }}
-                                  >
-                                    <div className="flex flex-1 overflow-hidden">
-                                      <AppShellVisibilityProvider
-                                        value={appShellContextValue}
-                                      >
-                                        <SidebarProvider>
-                                          {showShell ? (
-                                            <div data-app-shell="sidebar">
-                                              {sidebarSlot}
-                                            </div>
-                                          ) : null}
-                                          <MainContentWrapper
-                                            header={headerContent}
-                                          >
-                                            {children}
-                                          </MainContentWrapper>
-                                        </SidebarProvider>
-                                      </AppShellVisibilityProvider>
-                                    </div>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          disableTransitionOnChange
+          enableSystem
+        >
+          <UiThemeBridge>
+            <SpacemanThemeBridge>
+              <BackendConnectionProvider>
+                <WebSocketDataProvider>
+                  <UnifiedDataProvider>
+                    <TanstackQueryProvider>
+                      <ThemeWrapper>
+                        <VacationProvider>
+                          <CustomerDataProvider>
+                            <DockBridgeProvider>
+                              <DvhInit />
+                              {showShell ? (
+                                <div
+                                  className="flex h-screen flex-col overflow-hidden"
+                                  style={{
+                                    height: "var(--doc-dvh, 100dvh)",
+                                  }}
+                                >
+                                  <div className="flex flex-1 overflow-hidden">
+                                    <AppShellVisibilityProvider
+                                      value={appShellContextValue}
+                                    >
+                                      <SidebarProvider>
+                                        <div data-app-shell="sidebar">
+                                          {sidebarSlot}
+                                        </div>
+                                        <MainContentWrapper
+                                          header={headerContent}
+                                        >
+                                          {children}
+                                        </MainContentWrapper>
+                                      </SidebarProvider>
+                                    </AppShellVisibilityProvider>
                                   </div>
-                                  <RealtimeEventBus />
-                                  <ToastRouter />
-                                  <PortalBootstrap />
-                                </DockBridgeProvider>
-                              </CustomerDataProvider>
-                            </VacationProvider>
-                            <UndoManager />
-                          </ThemeWrapper>
-                        </TanstackQueryProvider>
-                      </UnifiedDataProvider>
-                    </WebSocketDataProvider>
-                  </BackendConnectionProvider>
-                </SpacemanThemeBridge>
-              </UiThemeBridge>
-            </ThemeProvider>
-          </SettingsProvider>
-        </LanguageProvider>
+                                </div>
+                              ) : (
+                                <div
+                                  className="h-screen w-screen"
+                                  style={{
+                                    height: "var(--doc-dvh, 100dvh)",
+                                  }}
+                                >
+                                  {children}
+                                </div>
+                              )}
+                              <RealtimeEventBus />
+                              <ToastRouter />
+                              <PortalBootstrap />
+                            </DockBridgeProvider>
+                          </CustomerDataProvider>
+                        </VacationProvider>
+                        <UndoManager />
+                      </ThemeWrapper>
+                    </TanstackQueryProvider>
+                  </UnifiedDataProvider>
+                </WebSocketDataProvider>
+              </BackendConnectionProvider>
+            </SpacemanThemeBridge>
+          </UiThemeBridge>
+        </ThemeProvider>
       </AppServiceProvider>
     </>
   );

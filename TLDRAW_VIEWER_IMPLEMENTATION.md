@@ -153,3 +153,5 @@ Potential improvements:
 - SSR is avoided using Next.js dynamic imports
 - The implementation follows the existing DDD architecture
 
+
+

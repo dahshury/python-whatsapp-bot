@@ -17,6 +17,3 @@ export function useDocumentTransitionState(initial = false) {
     endSceneTransition,
   } as const;
 }
-
-
-

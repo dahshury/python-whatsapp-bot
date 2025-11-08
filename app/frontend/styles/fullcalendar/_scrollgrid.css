@@ -7,8 +7,6 @@
 /* biome-ignore lint/style/noDescendingSpecificity: We need base selector following themed selector for proper cascade */
 .fc-scrollgrid {
   border-collapse: separate;
-  border-right-width: 0;
-  border-bottom-width: 0;
 }
 
 /* biome-ignore lint/style/noDescendingSpecificity: Keep base selector grouped after themed one */
@@ -58,6 +56,17 @@
 .fc-scrollgrid-section-body table,
 .fc-scrollgrid-section-footer table {
   border-bottom-style: hidden;
+}
+
+/* Remove borders from rightmost and bottom cells to prevent double borders */
+.fc-scrollgrid-section > td:last-child,
+.fc-scrollgrid-section table td:last-child {
+  border-right: none;
+}
+
+.fc-scrollgrid-section-body > td:last-child,
+.fc-scrollgrid-section-body table tr:last-child td {
+  border-bottom: none;
 }
 
 /* Stickiness */

@@ -12,6 +12,7 @@ export async function POST(request: NextRequest) {
         start_dates,
         durations,
         ar,
+        _call_source: "frontend", // Tag as frontend-initiated to filter notifications
       }),
     });
     return NextResponse.json(result as unknown as Record<string, unknown>);

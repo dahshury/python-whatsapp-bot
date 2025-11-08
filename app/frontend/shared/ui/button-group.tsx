@@ -1,72 +1,84 @@
-"use client";
+import { Slot } from '@radix-ui/react-slot'
+import { cva, type VariantProps } from 'class-variance-authority'
+import type * as React from 'react'
 
-import { Slot } from "@radix-ui/react-slot";
-import { cn } from "@shared/libs/utils";
-import type * as React from "react";
+import { cn } from '@/shared/libs/utils'
+import { Separator } from '@/shared/ui/separator'
 
-interface ButtonGroupProps
-  extends React.FieldsetHTMLAttributes<HTMLFieldSetElement> {
-  orientation?: "horizontal" | "vertical";
-}
+const buttonGroupVariants = cva(
+	"flex w-fit items-stretch has-[>[data-slot=button-group]]:gap-2 [&>*]:focus-visible:relative [&>*]:focus-visible:z-10 has-[select[aria-hidden=true]:last-child]:[&>[data-slot=select-trigger]:last-of-type]:rounded-r-md [&>[data-slot=select-trigger]:not([class*='w-'])]:w-fit [&>input]:flex-1",
+	{
+		variants: {
+			orientation: {
+				horizontal:
+					'[&>*:not(:first-child)]:rounded-l-none [&>*:not(:first-child)]:border-l-0 [&>*:not(:last-child)]:rounded-r-none',
+				vertical:
+					'flex-col [&>*:not(:first-child)]:rounded-t-none [&>*:not(:first-child)]:border-t-0 [&>*:not(:last-child)]:rounded-b-none',
+			},
+		},
+		defaultVariants: {
+			orientation: 'horizontal',
+		},
+	}
+)
 
 function ButtonGroup({
-  className,
-  orientation = "horizontal",
-  ...props
-}: ButtonGroupProps) {
-  return (
-    <fieldset
-      className={cn(
-        "flex",
-        orientation === "vertical" ? "flex-col" : "flex-row",
-        className
-      )}
-      data-button-group
-      data-orientation={orientation}
-      {...props}
-    />
-  );
-}
-
-interface ButtonGroupSeparatorProps
-  extends React.HTMLAttributes<HTMLDivElement> {
-  orientation?: "horizontal" | "vertical";
-}
-
-function ButtonGroupSeparator({
-  className,
-  orientation = "vertical",
-  ...props
-}: ButtonGroupSeparatorProps) {
-  return (
-    <div
-      aria-hidden
-      className={cn(
-        "bg-border",
-        orientation === "vertical" ? "h-px w-full" : "h-full w-px",
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-interface ButtonGroupTextProps extends React.HTMLAttributes<HTMLSpanElement> {
-  asChild?: boolean;
+	className,
+	orientation,
+	...props
+}: React.ComponentProps<'div'> & VariantProps<typeof buttonGroupVariants>) {
+	return (
+		<div
+			className={cn(buttonGroupVariants({ orientation }), className)}
+			data-orientation={orientation}
+			data-slot="button-group"
+			role="group"
+			{...props}
+		/>
+	)
 }
 
 function ButtonGroupText({
-  asChild,
-  className,
-  ...props
-}: ButtonGroupTextProps) {
-  const Comp: React.ElementType = asChild ? Slot : "span";
-  return (
-    <Comp
-      className={cn("px-2 text-muted-foreground text-sm", className)}
-      {...props}
-    />
-  );
+	className,
+	asChild = false,
+	...props
+}: React.ComponentProps<'div'> & {
+	asChild?: boolean
+}) {
+	const Comp = asChild ? Slot : 'div'
+
+	return (
+		<Comp
+			className={cn(
+				"flex items-center gap-2 rounded-md border bg-muted px-4 font-medium text-sm shadow-xs [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none",
+				className
+			)}
+			{...props}
+		/>
+	)
 }
 
-export { ButtonGroup, ButtonGroupSeparator, ButtonGroupText };
+function ButtonGroupSeparator({
+	className,
+	orientation = 'vertical',
+	...props
+}: React.ComponentProps<typeof Separator>) {
+	return (
+		<Separator
+			className={cn(
+				'!m-0 relative self-stretch bg-input data-[orientation=vertical]:h-auto',
+				className
+			)}
+			data-slot="button-group-separator"
+			orientation={orientation}
+			{...props}
+		/>
+	)
+}
+
+export {
+	ButtonGroup,
+	ButtonGroupSeparator,
+	ButtonGroupText,
+	buttonGroupVariants,
+}

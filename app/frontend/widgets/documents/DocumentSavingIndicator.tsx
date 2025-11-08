@@ -2,14 +2,14 @@
 
 import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import type { FC } from "react";
-import { i18n } from "@/shared/libs/i18n";
-import { useLanguage } from "@/shared/libs/state/language-context";
 import type { SaveStatus } from "@/features/documents/types/save-state.types";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
+import { i18n } from "@/shared/libs/i18n";
 
 export const DocumentSavingIndicator: FC<{
   status: SaveStatus;
 }> = ({ status }) => {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   switch (status?.status) {
     case "loading":
@@ -54,9 +54,7 @@ export const DocumentSavingIndicator: FC<{
       return (
         <div className="inline-flex items-center gap-1 rounded-md bg-red-500/15 px-2 py-1 text-red-600 text-xs dark:text-red-400">
           <AlertCircle className="size-3" />
-          <span>
-            {status.message || i18n.getMessage("error", isLocalized)}
-          </span>
+          <span>{status.message || i18n.getMessage("error", isLocalized)}</span>
         </div>
       );
     case "ready":

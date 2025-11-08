@@ -1,24 +1,32 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { toastService } from "@shared/libs/toast";
 import { Label } from "@ui/label";
-import { Languages } from "lucide-react";
-import { Switch } from "@/shared/ui/switch";
+import { Globe, Languages } from "lucide-react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
+import { Button } from "@/shared/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 
 type GeneralSettingsProps = {
   isLocalized?: boolean;
 };
 
 export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
-  const { isLocalized: currentIsLocalized, setUseLocalizedText } =
-    useLanguage();
+  const { locale, setLocale } = useLanguageStore();
 
-  const handleLanguageToggle = (checked: boolean) => {
-    setUseLocalizedText(checked);
+  const handleLanguageChange = (value: string) => {
+    setLocale(value);
     toastService.success(
-      checked
+      value === "ar"
         ? i18n.getMessage("language_switched_to_arabic", true)
         : "Switched to English"
     );
@@ -37,11 +45,36 @@ export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
             {i18n.getMessage("language_toggle_hint", isLocalized)}
           </p>
         </div>
-        <Switch
-          checked={currentIsLocalized}
-          className="data-[state=checked]:bg-primary"
-          onCheckedChange={handleLanguageToggle}
-        />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="icon" variant="outline">
+              <Languages className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-48">
+            <DropdownMenuLabel>
+              {i18n.getMessage("language_label", isLocalized)}
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup
+              onValueChange={handleLanguageChange}
+              value={locale}
+            >
+              <DropdownMenuRadioItem value="en">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4" />
+                  <span>English</span>
+                </div>
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="ar">
+                <div className="flex items-center gap-2">
+                  <Languages className="h-4 w-4" />
+                  <span>العربية</span>
+                </div>
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

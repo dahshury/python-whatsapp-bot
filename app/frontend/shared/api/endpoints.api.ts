@@ -97,7 +97,8 @@ export async function undoModifyReservation(input: {
   ar?: boolean;
 }): Promise<Json> {
   const { callPythonBackend } = await import("@shared/libs/backend");
-  return (await callPythonBackend("/reservations/undo-modify", {
+  // Note: This now calls the Next.js API route which calls the base /reservations/{wa_id}/modify endpoint
+  return (await callPythonBackend("/api/reservations/undo-modify", {
     method: "POST",
     body: JSON.stringify(input),
   })) as Json;
@@ -140,7 +141,7 @@ export async function saveCustomerDocument(input: {
 }): Promise<Json> {
   const id = encodeURIComponent(input.waId);
   const { waId: _wa, ...body } = input;
-  const payload = JSON.stringify(body);
+  const payload = JSON.stringify({ ...body, _call_source: "frontend" }); // Tag as frontend-initiated to filter notifications
   // Use callPythonBackend to bypass Next.js proxy and call Python directly
   const { callPythonBackend } = await import("@shared/libs/backend");
   const result = await callPythonBackend(`/customers/${id}`, {

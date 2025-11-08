@@ -2,8 +2,6 @@
 
 import { createCalendarCallbacks } from "@shared/libs/calendar/calendar-callbacks";
 import { getTimezone } from "@shared/libs/calendar/calendar-config";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { cn } from "@shared/libs/utils";
 import { useRouter } from "next/navigation";
@@ -20,6 +18,10 @@ import {
   useVacationDateChecker,
 } from "@/features/calendar";
 import { useCalendarPeriodData } from "@/features/calendar/hooks/useCalendarPeriodData";
+import {
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
 import { PREFETCH } from "@/shared/config";
 import {
   Sheet,
@@ -61,8 +63,8 @@ export function CalendarDrawer({
   const [isPrefetched, setIsPrefetched] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
   const router = useRouter();
-  const { freeRoam } = useSettings();
-  const { isLocalized } = useLanguage();
+  const { freeRoam } = useSettingsStore();
+  const { isLocalized } = useLanguageStore();
   const {
     handleDateClick: handleVacationDateClick,
     recordingState,
@@ -368,9 +370,23 @@ export function CalendarDrawer({
                     eventClick: (info: {
                       event?: {
                         id?: string;
-                        extendedProps?: { wa_id?: string; waId?: string };
+                        extendedProps?: {
+                          wa_id?: string;
+                          waId?: string;
+                          __vacation?: boolean;
+                          isVacationPeriod?: boolean;
+                        };
                       };
                     }) => {
+                      // Prevent vacation events from being clickable
+                      const extendedProps = info?.event?.extendedProps;
+                      if (
+                        extendedProps?.__vacation === true ||
+                        extendedProps?.isVacationPeriod === true
+                      ) {
+                        return;
+                      }
+
                       const waId =
                         info?.event?.extendedProps?.wa_id ||
                         info?.event?.extendedProps?.waId ||

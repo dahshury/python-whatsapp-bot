@@ -2,8 +2,6 @@
 
 import { getValidRange } from "@shared/libs/calendar/calendar-config";
 import { useDockBridge } from "@shared/libs/dock-bridge-context";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { cn } from "@shared/libs/utils";
 import { type RefObject, useCallback, useEffect, useState } from "react";
 import type { CalendarCoreRef } from "@/features/calendar";
@@ -24,6 +22,10 @@ import type {
   ExtendedNavigationContextValue,
 } from "@/features/navigation/types";
 import { SettingsPopover } from "@/features/settings/settings/settings-popover";
+import {
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
 import { Dock } from "@/shared/ui/dock";
 import { FitWidthScale } from "@/shared/ui/fit-width-scale";
 import { TooltipProvider } from "@/shared/ui/tooltip";
@@ -51,9 +53,9 @@ export function DockNav({
         // Default no-op handler
       }),
   }) as ExtendedNavigationContextValue;
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const { state: dockBridgeState } = useDockBridge();
-  const { freeRoam } = useSettings();
+  const { freeRoam } = useSettingsStore();
   const { setView } = useNavigationView();
 
   // All hooks must be called before any early returns

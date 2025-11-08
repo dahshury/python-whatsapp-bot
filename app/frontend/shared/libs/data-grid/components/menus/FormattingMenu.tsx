@@ -1,7 +1,6 @@
 "use client";
 
 import type { GridColumn } from "@glideapps/glide-data-grid";
-import { useLanguage } from "@shared/libs/state/language-context";
 import {
   BarChart3,
   Calculator,
@@ -15,6 +14,7 @@ import {
 import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
 import { useGridPortal } from "../contexts/GridPortalContext";
 
@@ -125,7 +125,7 @@ export function FormattingMenu({
   isDarkTheme = false,
   parentTimeoutRef,
 }: FormattingMenuProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const formats = getFormatsForColumn(column);
   const [mounted, setMounted] = useState(false);
   const portalContainer = useGridPortal();

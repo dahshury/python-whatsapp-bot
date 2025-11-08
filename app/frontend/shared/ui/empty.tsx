@@ -1,90 +1,105 @@
-import { cn } from "@shared/libs/utils";
+import { cva, type VariantProps } from "class-variance-authority";
 import type * as React from "react";
 
-const Empty = ({
-  className,
-  ref,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement> & {
-  ref?: React.RefObject<HTMLDivElement | null>;
-}) => (
-  <div
-    className={cn("flex flex-col items-center justify-center py-12", className)}
-    ref={ref}
-    {...props}
-  />
+import { cn } from "@/shared/libs/utils";
+
+function Empty({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 flex-1 flex-col items-center justify-center gap-6 text-balance rounded-lg border-dashed p-6 text-center md:p-12",
+        className
+      )}
+      data-slot="empty"
+      {...props}
+    />
+  );
+}
+
+function EmptyHeader({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex max-w-sm flex-col items-center gap-2 text-center",
+        className
+      )}
+      data-slot="empty-header"
+      {...props}
+    />
+  );
+}
+
+const emptyMediaVariants = cva(
+  "mb-2 flex shrink-0 items-center justify-center [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  {
+    variants: {
+      variant: {
+        default: "bg-transparent",
+        icon: "flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-6",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
 );
 
-Empty.displayName = "Empty";
-
-const EmptyHeader = ({
+function EmptyMedia({
   className,
-  ref,
+  variant = "default",
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & {
-  ref?: React.RefObject<HTMLDivElement | null>;
-}) => (
-  <div
-    className={cn("flex flex-col items-center gap-3 text-center", className)}
-    ref={ref}
-    {...props}
-  />
-);
+}: React.ComponentProps<"div"> & VariantProps<typeof emptyMediaVariants>) {
+  return (
+    <div
+      className={cn(emptyMediaVariants({ variant, className }))}
+      data-slot="empty-icon"
+      data-variant={variant}
+      {...props}
+    />
+  );
+}
 
-EmptyHeader.displayName = "EmptyHeader";
+function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn("font-medium text-lg tracking-tight", className)}
+      data-slot="empty-title"
+      {...props}
+    />
+  );
+}
 
-const EmptyMedia = ({
-  className,
-  ref,
-  variant,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement> & {
-  ref?: React.RefObject<HTMLDivElement | null>;
-  variant?: "icon" | "image";
-}) => (
-  <div
-    className={cn(
-      "flex items-center justify-center",
-      variant === "icon" && "text-muted-foreground",
-      className
-    )}
-    ref={ref}
-    {...props}
-  />
-);
+function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
+  return (
+    <div
+      className={cn(
+        "text-muted-foreground text-sm/relaxed [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4",
+        className
+      )}
+      data-slot="empty-description"
+      {...props}
+    />
+  );
+}
 
-EmptyMedia.displayName = "EmptyMedia";
+function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex w-full min-w-0 max-w-sm flex-col items-center gap-4 text-balance text-sm",
+        className
+      )}
+      data-slot="empty-content"
+      {...props}
+    />
+  );
+}
 
-const EmptyTitle = ({
-  className,
-  ref,
-  ...props
-}: React.HTMLAttributes<HTMLHeadingElement> & {
-  ref?: React.RefObject<HTMLHeadingElement | null>;
-}) => (
-  <h3
-    className={cn("font-semibold text-foreground text-lg", className)}
-    ref={ref}
-    {...props}
-  />
-);
-
-EmptyTitle.displayName = "EmptyTitle";
-
-const EmptyDescription = ({
-  className,
-  ref,
-  ...props
-}: React.HTMLAttributes<HTMLParagraphElement> & {
-  ref?: React.RefObject<HTMLParagraphElement | null>;
-}) => (
-  <p
-    className={cn("max-w-sm text-muted-foreground text-sm", className)}
-    ref={ref}
-    {...props}
-  />
-);
-
-EmptyDescription.displayName = "EmptyDescription";
-
-export { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription };
+export {
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+  EmptyMedia,
+};

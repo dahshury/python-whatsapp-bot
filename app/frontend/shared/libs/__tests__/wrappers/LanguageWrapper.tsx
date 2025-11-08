@@ -1,8 +1,8 @@
 import type React from "react";
-import { LanguageProvider } from "@/shared/libs/state/language-context";
+import { StoreProvider } from "@/infrastructure/providers/store-provider";
 
 const LanguageWrapper: React.FC<React.PropsWithChildren> = ({ children }) => (
-  <LanguageProvider>{children}</LanguageProvider>
+  <StoreProvider>{children}</StoreProvider>
 );
 
 export default LanguageWrapper;

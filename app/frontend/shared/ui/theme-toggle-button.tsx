@@ -1,13 +1,12 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { toastService } from "@shared/libs/toast";
-
 import { Button } from "@ui/button";
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 import React from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 
 import {
   type AnimationStart,
@@ -31,7 +30,7 @@ export default function ThemeToggleButton({
   url = "",
 }: ThemeToggleAnimationProps) {
   const { theme, setTheme } = useTheme();
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   const styleId = "theme-transition-styles";
 

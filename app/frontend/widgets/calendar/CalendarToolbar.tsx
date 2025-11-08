@@ -1,7 +1,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
@@ -9,6 +8,7 @@ import type { RefObject } from "react";
 import { useState } from "react";
 import type { CalendarCoreRef } from "@/features/calendar";
 import { useCalendarToolbar } from "@/features/calendar";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import {
   Tooltip,
   TooltipContent,
@@ -28,7 +28,7 @@ export function CalendarToolbar({
   currentView,
   className,
 }: CalendarToolbarProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const [isHoveringDate, setIsHoveringDate] = useState(false);
 
   // Use the custom hook for all calendar logic

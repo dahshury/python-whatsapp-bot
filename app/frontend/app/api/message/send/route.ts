@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         wa_id,
         text,
+        _call_source: "frontend", // Tag as frontend-initiated to filter notifications
       }),
     });
 

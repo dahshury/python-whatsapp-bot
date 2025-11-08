@@ -2,7 +2,6 @@
 
 import { hashToHue } from "@shared/libs/color/hash-to-hue";
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { formatTimeAgo as formatTimeAgoUtil } from "@shared/libs/time/format-time-ago";
 import { cn } from "@shared/libs/utils";
@@ -22,6 +21,7 @@ import type {
   RenderEntry,
 } from "@/entities/notification/types";
 import { useCustomerNames } from "@/features/chat/hooks/useCustomerNames";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
@@ -81,7 +81,7 @@ export function NotificationsButton({
   className,
   notificationCount: _notificationCount = 0,
 }: NotificationsButtonProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const { data: customerNames } = useCustomerNames();
 
   const resolveCustomerName = React.useCallback(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { InMemoryDataSource } from "@/shared/libs/data-grid/components/core/data-sources/InMemoryDataSource";
 import type {
   IColumnDefinition,
@@ -10,7 +11,6 @@ import { ColumnDataType } from "@/shared/libs/data-grid/components/core/interfac
 import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
 import { i18n } from "@/shared/libs/i18n";
 import { logger } from "@/shared/libs/logger";
-import { useLanguage } from "@/shared/libs/state/language-context";
 import { createDocumentsService } from "../services/documents.service.factory";
 
 const FETCH_IN_FLIGHT_RESET_DELAY_MS = 100;
@@ -46,7 +46,7 @@ export default function useDocumentCustomerRow(
   _isLocalized?: boolean
 ) {
   const waId = selectedWaId || "";
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const localized = _isLocalized ?? isLocalized;
   const [customerLoading, setCustomerLoading] = useState(false);
   const [customerError, setCustomerError] = useState<string | null>(null);

@@ -2,6 +2,10 @@
 
 import React from "react";
 import { toast as sonner } from "sonner";
+import { Undo2, X } from "lucide-react";
+
+import { ButtonGroup } from "@/shared/ui/button-group";
+import { i18n } from "@shared/libs/i18n";
 import { UNDOABLE_TOAST_DURATION_MS } from "../constants";
 
 export type ThemedUndoableOptions = {
@@ -19,6 +23,8 @@ export function themedUndoable({
   onClick,
   duration = UNDOABLE_TOAST_DURATION_MS,
 }: ThemedUndoableOptions) {
+  const dismissLabel = i18n.getMessage("toast_dismiss");
+
   sonner.custom(
     (id) =>
       React.createElement(
@@ -51,40 +57,46 @@ export function themedUndoable({
             "div",
             { className: "flex shrink-0 gap-2" },
             React.createElement(
-              "button",
-              {
-                type: "button",
-                className:
-                  "inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs",
-                onClick: () => {
-                  try {
-                    onClick();
-                  } finally {
+              ButtonGroup,
+              { className: "ml-auto" },
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className:
+                    "inline-flex items-center gap-2 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                  onClick: () => {
+                    try {
+                      onClick();
+                    } finally {
+                      try {
+                        sonner.dismiss(id);
+                      } catch {
+                        /* ignore */
+                      }
+                    }
+                  },
+                },
+                React.createElement(Undo2, { className: "h-3 w-3" }),
+                React.createElement("span", null, actionLabel)
+              ),
+              React.createElement(
+                "button",
+                {
+                  type: "button",
+                  className:
+                    "inline-flex items-center gap-2 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium transition-colors hover:bg-accent hover:text-accent-foreground",
+                  onClick: () => {
                     try {
                       sonner.dismiss(id);
                     } catch {
-                      // Toast dismiss failed - continue execution
+                      /* ignore */
                     }
-                  }
+                  },
                 },
-              },
-              actionLabel
-            ),
-            React.createElement(
-              "button",
-              {
-                type: "button",
-                className:
-                  "inline-flex items-center gap-2 rounded-md border px-2 py-1 text-xs",
-                onClick: () => {
-                  try {
-                    sonner.dismiss(id);
-                  } catch {
-                    // ignore
-                  }
-                },
-              },
-              "Dismiss"
+                React.createElement(X, { className: "h-3 w-3" }),
+                React.createElement("span", null, dismissLabel)
+              )
             )
           )
         )

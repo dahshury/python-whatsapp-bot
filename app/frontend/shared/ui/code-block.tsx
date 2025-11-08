@@ -8,6 +8,7 @@ import {
   atomDark,
   oneLight,
 } from "react-syntax-highlighter/dist/cjs/styles/prism";
+import { writeClipboardText } from "@/shared/libs/clipboard";
 
 type CodeBlockProps = {
   language: string;
@@ -47,11 +48,17 @@ export const CodeBlock = ({
 
   const copyToClipboard = async () => {
     const textToCopy = tabsExist ? tabs[activeTab]?.code : code;
-    if (textToCopy) {
-      await navigator.clipboard.writeText(textToCopy);
+    if (!textToCopy) {
+      return;
+    }
+
+    try {
+      await writeClipboardText(textToCopy);
       setCopied(true);
       const COPY_RESET_DELAY_MS = 2000;
       setTimeout(() => setCopied(false), COPY_RESET_DELAY_MS);
+    } catch (_error) {
+      // Clipboard write failed - user may need to copy manually
     }
   };
 

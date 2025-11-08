@@ -1,9 +1,12 @@
 "use client";
 
 import { AlertTriangle, ArrowLeft, RotateCcw } from "lucide-react";
-import { useContext, useEffect, useMemo } from "react";
-
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
+import { cn } from "@/lib/utils";
+import { i18n } from "@/shared/libs/i18n";
+import { useAppShellVisibility } from "@/shared/ui/app-shell-visibility";
+import { Button } from "@/shared/ui/button";
 import {
   Empty,
   EmptyContent,
@@ -11,11 +14,7 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "@/components/ui/empty";
-import { cn } from "@/lib/utils";
-import { i18n } from "@/shared/libs/i18n";
-import { LanguageContext } from "@/shared/libs/state/language-context";
-import { useAppShellVisibility } from "@/shared/ui/app-shell-visibility";
+} from "@/shared/ui/empty";
 
 type GlobalErrorProps = {
   error: Error & { digest?: string };
@@ -51,16 +50,17 @@ function getIsLocalized(): boolean {
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   const { setShowShell } = useAppShellVisibility();
 
-  // Safely get locale - error boundaries may render outside LanguageProvider
-  const languageContext = useContext(LanguageContext);
+  // Safely get locale - error boundaries may render outside providers
+  // Use Zustand store directly, fallback to localStorage if store not initialized
+  const languageStore = useLanguageStore.getState();
   const isLocalized = useMemo(() => {
-    // Prefer context if available
-    if (languageContext?.isLocalized !== undefined) {
-      return languageContext.isLocalized;
+    // Prefer store if available
+    if (languageStore?.isLocalized !== undefined) {
+      return languageStore.isLocalized;
     }
     // Fallback to localStorage
     return getIsLocalized();
-  }, [languageContext?.isLocalized]);
+  }, [languageStore?.isLocalized]);
 
   // Ensure i18n is initialized with the correct language
   useEffect(() => {

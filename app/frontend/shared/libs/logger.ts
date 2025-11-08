@@ -22,27 +22,31 @@ function shouldLog(level: Exclude<LogLevel, "silent">): boolean {
   return ORDER[level] >= min;
 }
 
-export const logger = {  debug: (...args: unknown[]) => {
+export const logger = {
+  debug: (...args: unknown[]) => {
     if (shouldLog("debug") && typeof console !== "undefined") {
+      // biome-ignore lint/suspicious/noConsole: Intentional console usage in logger
       console.debug(...args);
     }
   },
   info: (...args: unknown[]) => {
     if (shouldLog("info") && typeof console !== "undefined") {
+      // biome-ignore lint/suspicious/noConsole: Intentional console usage in logger
       console.info(...args);
     }
   },
   warn: (...args: unknown[]) => {
     if (shouldLog("warn") && typeof console !== "undefined") {
+      // biome-ignore lint/suspicious/noConsole: Intentional console usage in logger
       console.warn(...args);
     }
   },
   error: (...args: unknown[]) => {
     if (shouldLog("error") && typeof console !== "undefined") {
+      // biome-ignore lint/suspicious/noConsole: Intentional console usage in logger
       console.error(...args);
     }
   },
 };
 
 export type { LogLevel };
-

@@ -1,7 +1,7 @@
 "use client";
 
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useCallback, useRef, useState } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
 
 export const TOOLTIP_DEBOUNCE_MS = 2000;
@@ -106,7 +106,7 @@ export function useGridTooltips(
 ) {
   const [tooltip, setTooltip] = useState<TooltipState | undefined>();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   const clearTooltip = useCallback(() => {
     if (timeoutRef.current) {

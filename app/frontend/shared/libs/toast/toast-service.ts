@@ -2,6 +2,8 @@
 
 import React from "react";
 import { toast as sonner } from "sonner";
+
+import { i18n } from "@shared/libs/i18n";
 import {
   DEFAULT_TOAST_DURATION_MS,
   ERROR_TOAST_DURATION_MS,
@@ -50,6 +52,7 @@ export const toastService = {
     }
   ) {
     const { loading, success, error, duration } = messages;
+    const dismissLabel = i18n.getMessage("toast_dismiss");
     // Show a themed loading toast first, then update it with success/error
     const loadingId = sonner.custom(
       (id) =>
@@ -89,7 +92,7 @@ export const toastService = {
                     }
                   },
                 },
-                "Dismiss"
+                dismissLabel
               )
             )
           )
@@ -143,7 +146,7 @@ export const toastService = {
                           }
                         },
                       },
-                      "Dismiss"
+                      dismissLabel
                     )
                   )
                 )
@@ -212,7 +215,7 @@ export const toastService = {
                           }
                         },
                       },
-                      "Dismiss"
+                      dismissLabel
                     )
                   )
                 )

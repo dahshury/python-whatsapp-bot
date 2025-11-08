@@ -9,7 +9,6 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
@@ -26,6 +25,7 @@ import {
   PlayCircle,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { HeroPill } from "@/shared/ui/hero-pill";
 import {
   HoverCard,
@@ -51,8 +51,17 @@ export function CalendarLegend({
   freeRoam = false,
   className = "",
 }: CalendarLegendProps) {
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
   const { vacationPeriods } = useVacation();
+
+  // Track if component is mounted to prevent hydration mismatch
+  // During SSR, use default English values; after hydration, use localized values
+  const [mounted, setMounted] = useState(false);
+  const effectiveIsLocalized = mounted ? isLocalized : false;
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Only consider upcoming vacations (start strictly after today)
   // Use useEffect to avoid Next.js 16 prerender warning about new Date()
@@ -77,25 +86,28 @@ export function CalendarLegend({
     {
       key: "check-up",
       color: "var(--fc-reservation-type-0-bg)", // Green - Check-up
-      label: i18n.getMessage("appt_checkup", isLocalized),
+      label: i18n.getMessage("appt_checkup", effectiveIsLocalized),
       showAlways: true,
     },
     {
       key: "follow-up",
       color: "var(--fc-reservation-type-1-bg)", // Blue - Follow-up
-      label: i18n.getMessage("appt_followup", isLocalized),
+      label: i18n.getMessage("appt_followup", effectiveIsLocalized),
       showAlways: true,
     },
     {
       key: "conversation",
       color: "var(--fc-conversation-bg)", // Orange/Yellow - Conversation
-      label: i18n.getMessage("calendar_legend_conversation", isLocalized),
+      label: i18n.getMessage(
+        "calendar_legend_conversation",
+        effectiveIsLocalized
+      ),
       showAlways: false, // Only show in free roam
     },
     {
       key: "vacation",
       color: "transparent", // Use transparent; actual swatch uses pattern via background-image
-      label: i18n.getMessage("vacation", isLocalized),
+      label: i18n.getMessage("vacation", effectiveIsLocalized),
       showAlways: false, // Only show when vacation periods exist
       showWhenVacationExists: true,
     },
@@ -103,50 +115,59 @@ export function CalendarLegend({
 
   const showLegendLabel = i18n.getMessage(
     "calendar_legend_show_button",
-    isLocalized
+    effectiveIsLocalized
   );
-  const legendTitle = i18n.getMessage("calendar_legend_title", isLocalized);
+  const legendTitle = i18n.getMessage(
+    "calendar_legend_title",
+    effectiveIsLocalized
+  );
   const shortcutsTitle = i18n.getMessage(
     "calendar_legend_shortcuts",
-    isLocalized
+    effectiveIsLocalized
   );
-  const tutorialTitle = i18n.getMessage("calendar_tutorial_title", isLocalized);
+  const tutorialTitle = i18n.getMessage(
+    "calendar_tutorial_title",
+    effectiveIsLocalized
+  );
   const tutorialAlt = i18n.getMessage(
     "calendar_tutorial_thumbnail_alt",
-    isLocalized
+    effectiveIsLocalized
   );
-  const tutorialHint = i18n.getMessage("calendar_tutorial_hint", isLocalized);
+  const tutorialHint = i18n.getMessage(
+    "calendar_tutorial_hint",
+    effectiveIsLocalized
+  );
   const changeViewUpLabel = i18n.getMessage(
     "calendar_legend_change_view_up",
-    isLocalized
+    effectiveIsLocalized
   );
   const prevDateLabel = i18n.getMessage(
     "calendar_legend_previous_date",
-    isLocalized
+    effectiveIsLocalized
   );
   const prevDateHint = i18n.getMessage(
     "calendar_legend_arrow_left_hint",
-    isLocalized
+    effectiveIsLocalized
   );
   const nextDateLabel = i18n.getMessage(
     "calendar_legend_next_date",
-    isLocalized
+    effectiveIsLocalized
   );
   const nextDateHint = i18n.getMessage(
     "calendar_legend_arrow_right_hint",
-    isLocalized
+    effectiveIsLocalized
   );
   const changeViewDownLabel = i18n.getMessage(
     "calendar_legend_change_view_down",
-    isLocalized
+    effectiveIsLocalized
   );
   const arrowRepeatHint = i18n.getMessage(
     "calendar_legend_arrow_repeat_hint",
-    isLocalized
+    effectiveIsLocalized
   );
   const ctrlArrowHint = i18n.getMessage(
     "calendar_legend_ctrl_arrow_hint",
-    isLocalized
+    effectiveIsLocalized
   );
 
   const filteredItems = legendItems.filter(
@@ -277,7 +298,7 @@ export function CalendarLegend({
                   </TooltipTrigger>
                   <TooltipContent
                     className="px-2 py-1 text-xs"
-                    side={isLocalized ? "right" : "left"}
+                    side={effectiveIsLocalized ? "right" : "left"}
                   >
                     {prevDateHint}
                     <kbd className="-me-1 ms-2 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground/70">
@@ -307,7 +328,7 @@ export function CalendarLegend({
                   </TooltipTrigger>
                   <TooltipContent
                     className="px-2 py-1 text-xs"
-                    side={isLocalized ? "left" : "right"}
+                    side={effectiveIsLocalized ? "left" : "right"}
                   >
                     {nextDateHint}
                     <kbd className="-me-1 ms-2 inline-flex h-5 max-h-full items-center rounded border bg-background px-1 font-[inherit] font-medium text-[0.625rem] text-muted-foreground/70">

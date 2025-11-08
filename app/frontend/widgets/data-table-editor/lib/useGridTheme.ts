@@ -1,6 +1,6 @@
-import { useSettings } from "@shared/libs/state/settings-context";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { createGlideTheme } from "@/shared/libs/data-grid/components/utils/streamlitGlideTheme";
 
 const THEME_UPDATE_DELAY_MS = 50;
@@ -9,7 +9,7 @@ export function useGridTheme(): {
   gridTheme: ReturnType<typeof createGlideTheme>;
 } {
   const { theme: appTheme } = useTheme();
-  const { theme: _styleTheme } = useSettings();
+  const { theme: _styleTheme } = useSettingsStore();
   const isDarkMode = appTheme === "dark";
   const [gridTheme, setGridTheme] = useState(() =>
     createGlideTheme(isDarkMode ? "dark" : "light")

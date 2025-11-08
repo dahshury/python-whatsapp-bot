@@ -1,13 +1,13 @@
 "use client";
 
 import { useDockBridge } from "@shared/libs/dock-bridge-context";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
 import { CalendarRange, FileEdit } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
 import { SidebarTrigger } from "@/shared/ui/sidebar";
 import { CalendarDrawer, CalendarLegend } from "@/widgets/calendar";
@@ -25,7 +25,7 @@ const NotificationInboxPopover = dynamic(
 
 export function PersistentDockHeaderClient() {
   const { state } = useDockBridge();
-  const { freeRoam, showDualCalendar } = useSettings();
+  const { freeRoam, showDualCalendar } = useSettingsStore();
   const pathname = usePathname();
   return (
     <header className="sticky top-0 z-40 flex h-12 flex-col border-b bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:h-14 sm:px-3 md:h-16 md:px-4">

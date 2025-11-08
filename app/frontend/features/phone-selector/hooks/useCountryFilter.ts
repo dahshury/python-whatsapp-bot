@@ -1,10 +1,10 @@
 import { getLocalizedCountryOptions } from "@shared/libs/phone/countries";
-import { useLanguage } from "@shared/libs/state/language-context";
 import React from "react";
 import type * as RPNInput from "react-phone-number-input";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 
 export function useCountryFilter(countryStats?: Record<string, number>) {
-  const { isLocalized: isLangLocalized } = useLanguage();
+  const { isLocalized: isLangLocalized } = useLanguageStore();
   const [countryFilter, setCountryFilter] = React.useState<
     RPNInput.Country | undefined
   >(undefined);

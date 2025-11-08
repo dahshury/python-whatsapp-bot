@@ -40,6 +40,7 @@
 .vacation-event {
   color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
   font-weight: 600;
+  cursor: default !important;
 }
 
 .vacation-event .fc-event-title,
@@ -57,17 +58,28 @@
 .fc-event.vacation-event:focus-visible {
   color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
   text-decoration: none;
+  cursor: default !important;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  box-shadow: none;
 }
 
 .fc-daygrid-day-bottom .vacation-event {
   --fc-event-text-color: hsl(var(--vacation-foreground-hsl, var(--foreground)));
   color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
+  cursor: default !important;
 }
 
 .fc-daygrid-day-bottom .vacation-event:hover,
 .fc-daygrid-day-bottom .vacation-event:focus-visible,
 .fc-daygrid-day-bottom .vacation-event * {
   color: hsl(var(--vacation-foreground-hsl, var(--foreground))) !important;
+  cursor: default !important;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  box-shadow: none;
 }
 
 /**

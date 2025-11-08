@@ -3,8 +3,6 @@
 import { getValidRange } from "@shared/libs/calendar/calendar-config";
 import { count } from "@shared/libs/dev-profiler";
 import { i18n } from "@shared/libs/i18n";
-import { useLanguage } from "@shared/libs/state/language-context";
-import { useSettings } from "@shared/libs/state/settings-context";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { toastService } from "@shared/libs/toast";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,6 +18,10 @@ import {
   getCalendarViewOptions,
   useCalendarToolbar,
 } from "@/features/calendar";
+import {
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
 
 // Toast notification display duration in milliseconds
 const TOAST_DURATION_MS = 1500;
@@ -39,8 +41,8 @@ export function useDockNavigation({
 }: UseDockNavigationProps): ExtendedNavigationContextValue {
   const pathname = usePathname();
   const router = useRouter();
-  const { isLocalized } = useLanguage();
-  const { freeRoam, showDualCalendar } = useSettings();
+  const { isLocalized } = useLanguageStore();
+  const { freeRoam, showDualCalendar } = useSettingsStore();
   const { recordingState } = useVacation();
 
   const [mounted, setMounted] = useState(false);

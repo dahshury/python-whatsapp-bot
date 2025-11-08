@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect } from "react";
+import { i18n } from "@/shared/libs/i18n";
 import { useLanguageStore, useSettingsStore } from "../store/app-store";
 
 /**
@@ -20,7 +21,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 /**
  * Initialize stores with persisted values from localStorage
  * Zustand's persist middleware handles most of this automatically,
- * but we can add custom initialization logic here if needed
+ * but we ensure language store properly initializes i18n
  */
 function initializeStores() {
   if (typeof window === "undefined") {
@@ -28,10 +29,19 @@ function initializeStores() {
   }
 
   // The persist middleware automatically rehydrates from localStorage
-  // We just need to ensure stores are accessed once to trigger rehydration
+  // Access stores to trigger rehydration
   useSettingsStore.getState();
-  useLanguageStore.getState();
+  const languageState = useLanguageStore.getState();
+
+  // Ensure i18n is initialized with the current locale
+  // This handles cases where the store was created before i18n was ready
+  try {
+    i18n.changeLanguage(languageState.locale === "ar" ? "ar" : "en");
+    document.documentElement.setAttribute(
+      "lang",
+      languageState.locale === "ar" ? "ar" : "en"
+    );
+  } catch {
+    // i18n may not be initialized yet, will be handled by store actions
+  }
 }
-
-
-

@@ -111,7 +111,7 @@ const DropdownMenuContent = ({
       ref={ref}
       sideOffset={sideOffset}
       style={{
-        zIndex: "var(--z-dropdown)",
+        zIndex: "var(--z-submenu)",
         ...(props as { style?: React.CSSProperties }).style,
       }}
       {...props}

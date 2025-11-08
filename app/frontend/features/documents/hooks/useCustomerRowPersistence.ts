@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import type { IColumnDefinition, IDataSource } from "@/shared/libs/data-grid";
 import { DEFAULT_DOCUMENT_WA_ID } from "@/shared/libs/documents";
-import { useLanguage } from "@/shared/libs/state/language-context";
 import { CustomerRowPersistenceService } from "../services/customer-row-persistence.service";
 import { createDocumentsService } from "../services/documents.service.factory";
 
@@ -32,7 +32,7 @@ export function useCustomerRowPersistence(
 } {
   const { waId, customerDataSource, customerColumns, onCreateNewCustomer } =
     params;
-  const { isLocalized } = useLanguage();
+  const { isLocalized } = useLanguageStore();
 
   // Track previous persisted values per waId
   const prevByWaRef = useRef<Map<string, { name: string; age: number | null }>>(

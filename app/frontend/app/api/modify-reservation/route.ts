@@ -29,6 +29,7 @@ export async function POST(request: Request) {
           hijri: false,
           ar: false,
           reservation_id_to_modify: reservationId,
+          _call_source: "frontend", // Tag as frontend-initiated to filter notifications
         }),
       }
     );

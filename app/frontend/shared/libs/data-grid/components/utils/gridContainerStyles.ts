@@ -28,5 +28,3 @@ export function getGridContainerClasses(
   return `${containerClass} ${fullscreenClass}`.trim();
 }
 
-
-

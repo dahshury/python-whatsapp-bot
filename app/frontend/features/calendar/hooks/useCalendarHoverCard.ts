@@ -123,6 +123,17 @@ export function useCalendarHoverCard({
         | undefined;
       const el = info.el;
 
+      // Prevent vacation events from showing hover cards
+      const extendedProps = event?.extendedProps as
+        | { __vacation?: boolean; isVacationPeriod?: boolean }
+        | undefined;
+      if (
+        extendedProps?.__vacation === true ||
+        extendedProps?.isVacationPeriod === true
+      ) {
+        return;
+      }
+
       // Don't show hover card while dragging
       if (isDragging) {
         return;
