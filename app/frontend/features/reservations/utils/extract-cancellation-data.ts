@@ -42,4 +42,3 @@ export function extractCancellationData(
     ...(freeRoam !== undefined ? { freeRoam } : {}),
   };
 }
-

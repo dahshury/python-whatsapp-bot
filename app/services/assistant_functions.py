@@ -55,9 +55,17 @@ class AssistantFunctionService:
 
     # Customer operations
 
-    def modify_id(self, old_wa_id: str, new_wa_id: str, ar: bool = False) -> dict[str, Any]:
+    def modify_id(
+        self,
+        old_wa_id: str,
+        new_wa_id: str,
+        ar: bool = False,
+        customer_name: str | None = None,
+    ) -> dict[str, Any]:
         """Modify customer WhatsApp ID."""
-        return self.customer_service.modify_customer_wa_id(old_wa_id, new_wa_id, ar)
+        return self.customer_service.modify_customer_wa_id(
+            old_wa_id, new_wa_id, ar, customer_name
+        )
 
     # Notification operations
 
@@ -163,7 +171,12 @@ def get_current_datetime() -> dict[str, Any]:
     return _service.get_current_datetime()
 
 
-def modify_id(old_wa_id: str, new_wa_id: str, ar: bool = False) -> dict[str, Any]:
+def modify_id(
+    old_wa_id: str,
+    new_wa_id: str,
+    ar: bool = False,
+    customer_name: str | None = None,
+) -> dict[str, Any]:
     """
     Modify the WhatsApp ID (wa_id) for a customer in all related database tables.
 
@@ -175,7 +188,7 @@ def modify_id(old_wa_id: str, new_wa_id: str, ar: bool = False) -> dict[str, Any
     Returns:
         dict: Result of the modification operation with success status and message
     """
-    return _service.modify_id(old_wa_id, new_wa_id, ar)
+    return _service.modify_id(old_wa_id, new_wa_id, ar, customer_name)
 
 
 def modify_reservation(wa_id: str, new_date: str | None = None,

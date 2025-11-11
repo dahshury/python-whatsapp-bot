@@ -1,0 +1,27 @@
+/**
+ * DOCUMENTS STYLES - Only for documents routes
+ * Data grid, tldraw, and minimal calendar (list view only)
+ */
+
+/* Data grid for documents table */
+@import "@glideapps/glide-data-grid/dist/index.css";
+
+/* TLDraw styles for document canvas */
+@import "tldraw.css";
+
+/* Portal - for modals/overlays (needed for grid editors/menus) */
+@import "portal.css";
+
+/* Themed scrollbar - for consistent scrollbar styling */
+@import "themed-scrollbar.css";
+
+/* FullCalendar List View ONLY (for documents calendar list) */
+@import "fullcalendar/_variables.css";
+@import "fullcalendar/_universal.css";
+@import "fullcalendar/_base.css";
+@import "fullcalendar/_icons.css";
+@import "fullcalendar/_buttons.css";
+@import "fullcalendar/_toolbar.css";
+@import "fullcalendar/_scroller.css";
+@import "fullcalendar/views/_list.css";
+

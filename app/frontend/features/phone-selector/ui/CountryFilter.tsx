@@ -1,6 +1,7 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
+import { cn } from "@shared/libs/utils";
 import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import type * as RPNInput from "react-phone-number-input";
@@ -56,13 +57,13 @@ export function CountryFilter({
         filterButton={
           <PopoverTrigger asChild>
             <Button
-              size="sm"
-              variant="outline"
               className="h-[18px] gap-1 px-1.5 text-xs"
               onClick={(event) => {
                 event.stopPropagation();
                 setIsCountryOpen(true);
               }}
+              size="sm"
+              variant="outline"
             >
               <FlagComponent className="size-3" country={countryFilter} />
               <span>{getCountryName(countryFilter)}</span>
@@ -72,7 +73,7 @@ export function CountryFilter({
         onRemove={handleRemoveCountryFilter}
       />
       <PopoverContent
-        className="w-[18.75rem] p-0"
+        className={cn("w-[18.75rem] p-0", "click-outside-ignore")}
         dir="ltr"
         onOpenAutoFocus={(event) => event.preventDefault()}
       >
@@ -141,5 +142,3 @@ export function CountryFilter({
     </Popover>
   );
 }
-
-

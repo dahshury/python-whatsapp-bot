@@ -138,4 +138,9 @@
 @import "timekeeper.css";
 @import "themed-scrollbar.css";
 @import "emoji-picker.css";
-@import "glide-grid.css";
+
+/* =================================
+   GLIDE DATA GRID STYLES
+   ================================= */
+/* All grid styles are now centralized in shared/libs/data-grid/styles/ */
+@import "../shared/libs/data-grid/styles/index.css";

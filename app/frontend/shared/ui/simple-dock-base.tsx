@@ -1,17 +1,14 @@
 "use client";
 
+import { useKeyboardRepeatNavigation } from "@shared/libs/hooks/use-keyboard-repeat-navigation";
+import { useLongPressRepeat } from "@shared/libs/hooks/use-long-press-repeat";
 import { i18n } from "@shared/libs/i18n";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
-import {
-  Calendar,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
-import { useState } from "react";
-import { Dock, DockIcon } from "@/shared/ui/dock";
-import { Spinner } from "@/shared/ui/spinner";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { NavigationDateButton } from "@/features/navigation/navigation/navigation-date-button";
+import { ButtonGroup } from "@/shared/ui/button-group";
+import { Dock } from "@/shared/ui/dock";
 import {
   Tooltip,
   TooltipContent,
@@ -44,124 +41,105 @@ export function SimpleDockBase({
   isPrevDisabled = false,
   isNextDisabled = false,
   isTodayDisabled = false,
-  onPrev,
-  onNext,
+  onPrev = () => {
+    // No-op default handler
+  },
+  onNext = () => {
+    // No-op default handler
+  },
   onToday,
   isLocalized = false,
   prevHoldHandlers,
   nextHoldHandlers,
 }: SimpleDockBaseProps) {
-  const [isHoveringDate, setIsHoveringDate] = useState(false);
+  // Always create long press handlers (hooks must be called unconditionally)
+  const defaultPrevHoldHandlers = useLongPressRepeat(onPrev, {
+    startDelayMs: 2000,
+    intervalMs: 333,
+    disabled: isPrevDisabled,
+  });
+
+  const defaultNextHoldHandlers = useLongPressRepeat(onNext, {
+    startDelayMs: 2000,
+    intervalMs: 333,
+    disabled: isNextDisabled,
+  });
+
+  // Use provided handlers if available, otherwise use defaults
+  const effectivePrevHoldHandlers = prevHoldHandlers || defaultPrevHoldHandlers;
+  const effectiveNextHoldHandlers = nextHoldHandlers || defaultNextHoldHandlers;
+
+  useKeyboardRepeatNavigation({
+    onLeft: onPrev,
+    onRight: onNext,
+    disabledLeft: isPrevDisabled,
+    disabledRight: isNextDisabled,
+    startDelayMs: 2000,
+    intervalMs: 333,
+    isSidebarOpen: false,
+  });
 
   return (
     <TooltipProvider>
       <Dock
-        className={cn("h-auto min-h-[2.75rem]", className)}
+        className={cn(
+          "h-auto min-h-[2.75rem] w-full max-w-full overflow-hidden",
+          className
+        )}
         direction="middle"
       >
-        {/* Left: Previous */}
-        <DockIcon {...(prevHoldHandlers || {})}>
+        {/* Left: Navigation controls button group */}
+        <ButtonGroup className="shrink-0">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                className="size-9 rounded-full transition-all duration-200"
+                data-slot="dock-prev"
                 disabled={isPrevDisabled}
                 onClick={onPrev}
                 size="icon"
-                variant="ghost"
-                {...(prevHoldHandlers || {})}
+                variant="outline"
+                {...effectivePrevHoldHandlers}
               >
-                <ChevronLeft className="size-4" />
+                <ChevronLeft className="size-4 sm:size-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
               <p>{i18n.getMessage("msg_previous", isLocalized)}</p>
             </TooltipContent>
           </Tooltip>
-        </DockIcon>
 
-        {/* Center: Date button (Today) */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              className={cn(
-                "group relative h-9 w-[12.5rem] overflow-hidden rounded-full",
-                "hover:bg-accent hover:text-accent-foreground",
-                "transition-all duration-200",
-                !isTodayDisabled && "cursor-pointer"
-              )}
-              disabled={isTodayDisabled}
-              onClick={onToday}
-              onMouseEnter={() => setIsHoveringDate(true)}
-              onMouseLeave={() => setIsHoveringDate(false)}
-              size="sm"
-              variant="ghost"
-            >
-              <span
-                className={cn(
-                  "absolute inset-0 flex items-center justify-center transition-all duration-200",
-                  isHoveringDate && !isTodayDisabled
-                    ? "scale-75 opacity-0"
-                    : "scale-100 opacity-100"
-                )}
-              >
-                <span className="px-2 font-medium text-sm">
-                  {title ? title : <Spinner className="mx-auto h-4 w-4" />}
-                </span>
-              </span>
-              <Calendar
-                className={cn(
-                  "absolute inset-0 m-auto transition-all duration-200",
-                  "size-4",
-                  isHoveringDate && !isTodayDisabled
-                    ? "scale-100 opacity-100"
-                    : "scale-75 opacity-0"
-                )}
-              />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="flex items-center gap-1.5">
-              {isTodayDisabled ? (
-                <>
-                  {title}
-                  <span className="text-muted-foreground text-xs">
-                    ({i18n.getMessage("already_showing_today", isLocalized)})
-                  </span>
-                </>
-              ) : (
-                <>
-                  <CalendarDays className="h-3.5 w-3.5" />
-                  {i18n.getMessage("go_to_today", isLocalized)}
-                  <span className="text-muted-foreground text-xs">
-                    ({title})
-                  </span>
-                </>
-              )}
-            </p>
-          </TooltipContent>
-        </Tooltip>
-
-        {/* Right: Next */}
-        <DockIcon {...(nextHoldHandlers || {})}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                className="size-9 rounded-full transition-all duration-200"
+                data-slot="dock-next"
                 disabled={isNextDisabled}
                 onClick={onNext}
                 size="icon"
-                variant="ghost"
-                {...(nextHoldHandlers || {})}
+                variant="outline"
+                {...effectiveNextHoldHandlers}
               >
-                <ChevronRight className="size-4" />
+                <ChevronRight className="size-4 sm:size-5" />
               </Button>
             </TooltipTrigger>
             <TooltipContent>
               <p>{i18n.getMessage("msg_next", isLocalized)}</p>
             </TooltipContent>
           </Tooltip>
-        </DockIcon>
+        </ButtonGroup>
+
+        {/* Center: Date button (Today) with flexible width - constrained to container */}
+        <div className="flex min-w-0 max-w-full flex-1 items-center justify-center overflow-hidden">
+          <NavigationDateButton
+            className="w-full max-w-full"
+            isCalendarPage={false}
+            isLocalized={isLocalized}
+            isTodayDisabled={isTodayDisabled}
+            navigationOnly={true}
+            {...(onToday ? { onToday } : {})}
+            showBadge={false}
+            {...(title !== undefined ? { title } : {})}
+          />
+        </div>
       </Dock>
     </TooltipProvider>
   );

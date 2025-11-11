@@ -1,18 +1,18 @@
 "use client";
 
+import type { Editor } from "tldraw";
 import { Tldraw } from "tldraw";
 import "tldraw/tldraw.css";
 import "@/styles/tldraw.css";
+import { useTheme } from "next-themes";
 import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { TldrawStoreState } from "@/features/documents/hooks/useTldrawStore";
-import { cn } from "@/lib/utils";
 import {
-  CircularProgressIndicator,
-  CircularProgressRange,
-  CircularProgressRoot,
-  CircularProgressTrack,
-  CircularProgressValueText,
-} from "@/shared/ui/circular-progress";
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
+import { cn } from "@/lib/utils";
 
 type DocumentEditorCanvasProps = {
   storeState: TldrawStoreState;
@@ -21,8 +21,8 @@ type DocumentEditorCanvasProps = {
   focusMode?: boolean;
   loadingLabel?: string;
   errorMessage?: string;
-  progress?: number | null;
   children?: ReactNode;
+  onEditorMount?: (editor: Editor) => void;
 };
 
 /**
@@ -35,26 +35,100 @@ export const DocumentEditorCanvas = ({
   readOnly = false,
   focusMode = false,
   errorMessage,
-  progress,
   children,
+  onEditorMount,
 }: DocumentEditorCanvasProps) => {
   const errorText = errorMessage ?? "Unable to load canvas";
+  const editorRef = useRef<Editor | null>(null);
+  const { resolvedTheme } = useTheme();
+  const { editorMinimalMode } = useSettingsStore();
+  const { locale } = useLanguageStore();
+
+  const readyStore = useMemo(
+    () => (storeState.status === "ready" ? storeState.store : null),
+    [storeState]
+  );
+
+  const targetColorScheme = useMemo(() => {
+    if (resolvedTheme) {
+      return resolvedTheme;
+    }
+    if (typeof window === "undefined") {
+      return "light";
+    }
+    return document.documentElement.classList.contains("dark")
+      ? "dark"
+      : "light";
+  }, [resolvedTheme]);
+
+  const applyCanvasPreferences = useCallback(
+    (editor: Editor) => {
+      const instanceState = editor.getInstanceState();
+      const updates: Partial<typeof instanceState> = {};
+
+      // Enable grid by default
+      if (!instanceState.isGridMode) {
+        updates.isGridMode = true;
+      }
+
+      // Set read-only state
+      if (instanceState.isReadonly !== readOnly) {
+        updates.isReadonly = readOnly;
+      }
+
+      // Apply instance state updates
+      if (Object.keys(updates).length > 0) {
+        editor.updateInstanceState(updates);
+      }
+
+      // Sync theme via user preferences
+      const shouldBeDark = targetColorScheme === "dark";
+      if (editor.user.getIsDarkMode() !== shouldBeDark) {
+        editor.user.updateUserPreferences({
+          colorScheme: shouldBeDark ? "dark" : "light",
+        });
+      }
+
+      // Sync locale via user preferences
+      editor.user.updateUserPreferences({
+        locale,
+      });
+    },
+    [readOnly, targetColorScheme, locale]
+  );
+
+  useEffect(
+    () => () => {
+      editorRef.current = null;
+    },
+    []
+  );
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    applyCanvasPreferences(editor);
+  }, [applyCanvasPreferences]);
+
+  useEffect(() => {
+    if (!readyStore) {
+      return;
+    }
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    applyCanvasPreferences(editor);
+  }, [readyStore, applyCanvasPreferences]);
 
   let content: ReactNode;
 
   if (storeState.status === "loading") {
-    const progressValue = progress ?? null;
-    content = (
-      <div className="flex h-full w-full items-center justify-center">
-        <CircularProgressRoot size={48} value={progressValue}>
-          <CircularProgressIndicator size={48} strokeWidth={4}>
-            <CircularProgressTrack />
-            <CircularProgressRange />
-          </CircularProgressIndicator>
-          <CircularProgressValueText />
-        </CircularProgressRoot>
-      </div>
-    );
+    // Render transparent container during loading - status indicator shows loading state separately
+    // Use transparent background to match theme instead of white
+    content = <div className="h-full w-full bg-transparent" />;
   } else if (storeState.status === "error") {
     content = (
       <div className="flex h-full w-full items-center justify-center px-4 text-destructive/80 text-sm">
@@ -65,10 +139,12 @@ export const DocumentEditorCanvas = ({
     content = (
       <Tldraw
         hideUi={focusMode}
-        inferDarkMode
+        inferDarkMode={false}
         onMount={(editor) => {
-          if (readOnly) {
-            editor.updateInstanceState({ isReadonly: true });
+          editorRef.current = editor;
+          applyCanvasPreferences(editor);
+          if (onEditorMount) {
+            onEditorMount(editor);
           }
         }}
         store={storeState.store}
@@ -84,6 +160,8 @@ export const DocumentEditorCanvas = ({
         "tldraw-canvas-wrapper relative flex h-full w-full items-stretch",
         className
       )}
+      data-editor-minimal-mode={editorMinimalMode}
+      suppressHydrationWarning
     >
       {content}
     </div>

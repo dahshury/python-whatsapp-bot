@@ -154,9 +154,8 @@ const PhoneCellEditor: FC<PhoneCellEditorProps> = ({
 
   return (
     <div
-      className="glide-data-grid-overlay-editor flex flex-col"
+      className="glide-data-grid-overlay-editor phone-cell-editor flex flex-col"
       dir="ltr"
-      style={{ direction: "ltr" }}
     >
       <GridPhoneCombobox
         allowCreateNew={true}

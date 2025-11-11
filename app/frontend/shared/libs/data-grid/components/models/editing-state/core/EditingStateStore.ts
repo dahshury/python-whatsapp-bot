@@ -2,9 +2,14 @@ import type { GridCell } from "@glideapps/glide-data-grid";
 
 type EditedCells = Map<number, Map<number, GridCell>>;
 
+type AddedRowEntry = {
+  originalRowIndex: number;
+  cells: Map<number, GridCell>;
+};
+
 export class EditingStateStore {
   private readonly editedCells: EditedCells = new Map();
-  private addedRows: Map<number, GridCell>[] = [];
+  private addedRows: AddedRowEntry[] = [];
   private deletedRows: number[] = [];
   private readonly originalCells: Map<number, Map<number, unknown>> = new Map();
   private baseRowCount: number;
@@ -19,8 +24,8 @@ export class EditingStateStore {
 
   getCell(col: number, row: number): GridCell | undefined {
     if (this.isAddedRow(row)) {
-      const addedRowIndex = this.getAddedRowIndex(row);
-      return this.addedRows[addedRowIndex]?.get(col);
+      const entry = this.findAddedRowEntry(row);
+      return entry?.cells.get(col);
     }
     return this.editedCells.get(row)?.get(col);
   }
@@ -32,12 +37,11 @@ export class EditingStateStore {
     matchesOriginal: boolean
   ): void {
     if (this.isAddedRow(row)) {
-      const addedRowIndex = this.getAddedRowIndex(row);
-      const targetRow = this.addedRows[addedRowIndex];
-      if (!targetRow) {
+      const entry = this.findAddedRowEntry(row);
+      if (!entry) {
         return;
       }
-      targetRow.set(col, cell);
+      entry.cells.set(col, cell);
       return;
     }
 
@@ -58,8 +62,16 @@ export class EditingStateStore {
     this.editedCells.get(row)?.set(col, cell);
   }
 
-  addRow(rowCells: Map<number, GridCell>): void {
-    this.addedRows.push(rowCells);
+  addRow(rowCells: Map<number, GridCell>, originalRowIndex?: number): number {
+    const assignedIndex =
+      typeof originalRowIndex === "number" && Number.isFinite(originalRowIndex)
+        ? originalRowIndex
+        : this.baseRowCount + this.addedRows.length;
+    this.addedRows.push({
+      originalRowIndex: assignedIndex,
+      cells: rowCells,
+    });
+    return assignedIndex;
   }
 
   deleteRows(rows: number[]): void {
@@ -75,8 +87,17 @@ export class EditingStateStore {
     }
 
     if (this.isAddedRow(row)) {
-      const addedRowIndex = this.getAddedRowIndex(row);
-      this.addedRows.splice(addedRowIndex, 1);
+      const explicitIndex = this.addedRows.findIndex(
+        (entry) => entry.originalRowIndex === row
+      );
+      if (explicitIndex >= 0) {
+        this.addedRows.splice(explicitIndex, 1);
+        return;
+      }
+      const fallbackIndex = this.getAddedRowIndex(row);
+      if (fallbackIndex >= 0 && fallbackIndex < this.addedRows.length) {
+        this.addedRows.splice(fallbackIndex, 1);
+      }
       return;
     }
 
@@ -140,7 +161,7 @@ export class EditingStateStore {
   }
 
   getAddedRows(): readonly Map<number, GridCell>[] {
-    return this.addedRows;
+    return this.addedRows.map((entry) => entry.cells);
   }
 
   editedRowEntries(): IterableIterator<[number, Map<number, GridCell>]> {
@@ -188,6 +209,19 @@ export class EditingStateStore {
 
   getBaseRowCount(): number {
     return this.baseRowCount;
+  }
+
+  hasAddedRow(row: number): boolean {
+    return this.addedRows.some((entry) => entry.originalRowIndex === row);
+  }
+
+  private findAddedRowEntry(row: number): AddedRowEntry | undefined {
+    const addedRowIndex = this.getAddedRowIndex(row);
+    const directEntry = this.addedRows[addedRowIndex];
+    if (directEntry?.originalRowIndex === row) {
+      return directEntry;
+    }
+    return this.addedRows.find((entry) => entry.originalRowIndex === row);
   }
 
   private getAddedRowIndex(row: number): number {

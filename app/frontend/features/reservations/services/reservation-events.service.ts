@@ -18,6 +18,27 @@ type ConversationItem = {
   [key: string]: unknown;
 };
 
+function toDisplayName(
+  waId: string,
+  primary?: unknown,
+  customerNames?:
+    | Record<string, { wa_id: string; customer_name?: string | null }>
+    | undefined
+): string {
+  const fromPrimary =
+    typeof primary === "string" && primary.trim().length > 0
+      ? primary.trim()
+      : undefined;
+  if (fromPrimary) {
+    return fromPrimary;
+  }
+  const fromMap = customerNames?.[waId]?.customer_name;
+  if (typeof fromMap === "string" && fromMap.trim().length > 0) {
+    return fromMap.trim();
+  }
+  return String(waId);
+}
+
 export type ReservationProcessingOptions = {
   freeRoam: boolean;
   isLocalized: boolean;
@@ -137,12 +158,18 @@ export function getReservationEventProcessor() {
             const type = Number((r as { type?: unknown }).type ?? 0);
             const isConversation = type === 2;
             // Resolve customer name from customerNames map (backend no longer sends it)
-            const customerName =
-              options.customerNames?.[waId]?.customer_name || String(waId);
+            const customerName = toDisplayName(
+              waId,
+              (r as { customer_name?: unknown }).customer_name ??
+                (r as { title?: unknown }).title,
+              options.customerNames
+            );
 
-            // Get has_document directly from reservation data (included by backend)
+            // Get has_document from documentStatus map (preferred) or reservation data (fallback)
             const hasDocument = Boolean(
-              (r as { has_document?: boolean }).has_document ?? false
+              options.documentStatus?.[waId] ??
+                (r as { has_document?: boolean }).has_document ??
+                false
             );
 
             const eventData: Record<string, unknown> = {
@@ -157,6 +184,7 @@ export function getReservationEventProcessor() {
                 waId,
                 slotDate: baseDate,
                 slotTime: baseTime,
+                customerName,
                 hasDocument, // Add document status to extended props
                 ...(typeof (r as { id?: unknown }).id !== "undefined"
                   ? {
@@ -208,8 +236,11 @@ export function getReservationEventProcessor() {
             CONVERSATION_DURATION_MINUTES
           );
           // Resolve customer name from customerNames map (backend no longer sends it in conversations/reservations)
-          const displayTitle =
-            options.customerNames?.[waId]?.customer_name || String(waId);
+          const displayTitle = toDisplayName(
+            waId,
+            (last as { customer_name?: unknown }).customer_name,
+            options.customerNames
+          );
           events.push({
             id: String(waId),
             title: displayTitle,

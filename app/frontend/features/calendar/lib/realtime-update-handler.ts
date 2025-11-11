@@ -112,7 +112,8 @@ export function createRealtimeHandler(
           undefined
         );
         const ts = localMoves?.get(String(reservationData.id));
-        if (ts && Date.now() - ts < SUPPRESS_MS) {
+        const age = ts ? Date.now() - ts : null;
+        if (ts && age && age < SUPPRESS_MS) {
           return;
         }
         const evObj = api.getEventById?.(String(reservationData.id));

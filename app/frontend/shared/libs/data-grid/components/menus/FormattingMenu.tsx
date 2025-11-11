@@ -168,7 +168,6 @@ export function FormattingMenu({
     [onFormatChange, onClose]
   );
 
-  const bgColor = isDarkTheme ? "#2a2a2a" : "white";
   const hoverBg = isDarkTheme ? "#3a3a3a" : "#f0f0f0";
   const textColor = isDarkTheme ? "#f1f1f1" : "#333";
 
@@ -200,7 +199,7 @@ export function FormattingMenu({
 
   const menuContent = (
     <div
-      className="formatting-menu click-outside-ignore"
+      className={`formatting-menu click-outside-ignore ${isDarkTheme ? "dark" : ""}`}
       id={"formatting-menu"}
       onClick={(e) => {
         // Prevent click events from bubbling up to parent popover
@@ -224,18 +223,7 @@ export function FormattingMenu({
       role="menu"
       style={{
         position: "absolute",
-        top: position.y,
-        left: position.x,
-        backgroundColor: bgColor,
-        border: `0.5px solid ${isDarkTheme ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
-        borderRadius: "4px",
-        boxShadow: "0 2px 5px rgba(0, 0, 0, 0.12)",
-        backdropFilter: "blur(8px)",
-        minWidth: "144px",
-        maxWidth: "192px",
-        zIndex: "calc(var(--z-grid-menu) + 1)",
-        padding: "3px 0",
-        animation: "submenuSlideIn 150ms ease-out",
+        transform: `translate(${position.x}px, ${position.y}px)`,
         transformOrigin:
           position.x < TRANSFORM_ORIGIN_THRESHOLD ? "top left" : "top right",
       }}
@@ -296,26 +284,13 @@ function FormatMenuItem({
         e.preventDefault();
         e.stopPropagation();
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = hoverBg;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "transparent";
-      }}
       role="menuitem"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "6px 10px",
-        cursor: "pointer",
-        backgroundColor: "transparent",
-        color: textColor,
-        fontSize: "12px",
-        borderRadius: "4px",
-        margin: "0 3px",
-        transition: "background-color 150ms ease",
-      }}
+      style={
+        {
+          "--gdg-menu-item-color": textColor,
+          "--gdg-menu-item-hover-bg": hoverBg,
+        } as React.CSSProperties
+      }
       tabIndex={0}
     >
       {icon}

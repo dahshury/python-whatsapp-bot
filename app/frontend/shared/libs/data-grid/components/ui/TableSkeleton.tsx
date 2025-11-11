@@ -15,8 +15,12 @@ export function TableSkeleton({
     <div className={`w-full space-y-3 ${className}`}>
       {/* Header */}
       <div
-        className="grid gap-3"
-        style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+        className="table-skeleton-grid"
+        style={
+          {
+            "--gdg-skeleton-columns": `repeat(${columns}, 1fr)`,
+          } as React.CSSProperties
+        }
       >
         {Array.from({ length: columns }, (_, i) => `header-${i}`).map((key) => (
           <div
@@ -31,9 +35,13 @@ export function TableSkeleton({
         {Array.from({ length: rows }, (_, rowIndex) => `row-${rowIndex}`).map(
           (key) => (
             <div
-              className="grid gap-3"
+              className="table-skeleton-grid"
               key={`skeleton-${key}`}
-              style={{ gridTemplateColumns: `repeat(${columns}, 1fr)` }}
+              style={
+                {
+                  "--gdg-skeleton-columns": `repeat(${columns}, 1fr)`,
+                } as React.CSSProperties
+              }
             >
               {Array.from(
                 { length: columns },

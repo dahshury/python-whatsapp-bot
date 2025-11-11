@@ -92,4 +92,3 @@ export function createDrawCellCallback(
     draw();
   };
 }
-

@@ -26,9 +26,13 @@ export const createUseDocuments = (svc: DocumentsUseCase) => ({
         }>;
       }) => svc.save(args.waId, args.snapshot),
       onSuccess: (_data, variables) => {
-        // Invalidate the document query after successful save
+        // Invalidate queries to mark them as stale
+        // The caller is responsible for populating cache before navigation
         queryClient.invalidateQueries({
           queryKey: DOCUMENT_QUERY_KEY.byWaId(variables.waId),
+        });
+        queryClient.invalidateQueries({
+          queryKey: [...DOCUMENT_QUERY_KEY.byWaId(variables.waId), "canvas"],
         });
       },
     });

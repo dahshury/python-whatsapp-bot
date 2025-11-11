@@ -2,6 +2,7 @@ from typing import Any
 
 from app.i18n import get_message
 from app.utils import fix_unicode_sequence, format_response
+from app.utils.realtime import enqueue_broadcast
 
 from ..shared.base_service import BaseService
 from .customer_models import Customer
@@ -27,7 +28,13 @@ class CustomerService(BaseService):
     def get_service_name(self) -> str:
         return "CustomerService"
 
-    def modify_customer_wa_id(self, old_wa_id: str, new_wa_id: str, ar: bool = False) -> dict[str, Any]:
+    def modify_customer_wa_id(
+        self,
+        old_wa_id: str,
+        new_wa_id: str,
+        ar: bool = False,
+        customer_name: str | None = None,
+    ) -> dict[str, Any]:
         """
         Modify customer's WhatsApp ID across all related data.
 
@@ -40,22 +47,88 @@ class CustomerService(BaseService):
             Success/failure response with appropriate message
         """
         try:
+            from ..shared.wa_id import normalize_wa_id
+            
+            # Normalize both IDs to ensure consistent format (remove + prefix, etc.)
+            normalized_old = normalize_wa_id(old_wa_id) if old_wa_id else old_wa_id
+            normalized_new = normalize_wa_id(new_wa_id) if new_wa_id else new_wa_id
+            
             # Validate new WhatsApp ID
-            validation_error = self._validate_wa_id(new_wa_id, ar)
+            validation_error = self._validate_wa_id(normalized_new, ar)
             if validation_error:
                 return validation_error
 
             # Check if IDs are the same
-            if old_wa_id == new_wa_id:
+            if normalized_old == normalized_new:
                 return format_response(True, message=get_message("wa_id_same", ar))
 
-            # Perform the update operation
-            rows_affected = self.repository.update_wa_id(old_wa_id, new_wa_id)
+            # Perform the update operation with normalized IDs
+            name_override = (
+                fix_unicode_sequence(customer_name.strip())
+                if isinstance(customer_name, str) and customer_name.strip()
+                else None
+            )
+            (
+                rows_affected,
+                resulting_name,
+                previous_reservations,
+            ) = self.repository.update_wa_id(
+                normalized_old, normalized_new, name_override
+            )
 
             if rows_affected == 0:
                 return format_response(False, message=get_message("wa_id_not_found", ar))
 
-            return format_response(True, message=get_message("wa_id_modified", ar))
+            data = {
+                "wa_id": normalized_new,
+                "customer_name": resulting_name,
+            }
+
+            try:
+                for reservation in previous_reservations:
+                    try:
+                        enqueue_broadcast(
+                            "reservation_updated",
+                            {
+                                "id": reservation.get("id"),
+                                "wa_id": normalized_new,
+                                "date": reservation.get("date"),
+                                "time_slot": reservation.get("time_slot"),
+                                "type": reservation.get("type"),
+                                "customer_name": resulting_name,
+                                "original_data": {
+                                    "wa_id": normalized_old,
+                                    "date": reservation.get("date"),
+                                    "time_slot": reservation.get("time_slot"),
+                                    "type": reservation.get("type"),
+                                    "customer_name": reservation.get(
+                                        "customer_name"
+                                    ),
+                                },
+                                "_source": "modify_id",
+                            },
+                            affected_entities=[normalized_new],
+                            source="modify_id",
+                        )
+                    except Exception:
+                        continue
+
+                enqueue_broadcast(
+                    "customer_updated",
+                    {
+                        "wa_id": normalized_new,
+                        "phone": normalized_new,
+                        "customer_name": resulting_name,
+                        "_source": "backend",
+                    },
+                    affected_entities=[normalized_new],
+                )
+            except Exception:
+                pass
+
+            return format_response(
+                True, message=get_message("wa_id_modified", ar), data=data
+            )
 
         except Exception as e:
             return self._handle_error("modify_customer_wa_id", e, ar)

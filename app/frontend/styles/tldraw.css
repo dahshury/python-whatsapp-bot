@@ -4,14 +4,33 @@
    Attribution and Branding Customizations
    ============================================================================ */
 
+/* Hide number input spinner arrows */
+.toolbar-size-input::-webkit-inner-spin-button,
+.toolbar-size-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.toolbar-size-input {
+  -moz-appearance: textfield;
+}
+
 /* Hide tldraw "made with tldraw" attribution button */
 button[title="made with tldraw"] {
-  display: none !important;
+  display: none;
 }
 
 /* Hide tldraw watermark */
-.tl-watermark_SEE-LICENSE {
+.tl-watermark_SEE-LICENSE,
+div.tl-watermark_SEE-LICENSE {
   display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
 }
 
 /* ============================================================================
@@ -20,8 +39,39 @@ button[title="made with tldraw"] {
 
 /* Move toolbar from bottom to top */
 .tlui-toolbar {
-  bottom: auto !important;
-  top: 0 !important;
+  bottom: auto;
+  top: 0;
+}
+
+/* Enlarge top-left toolbar - controlled by CSS variable */
+/* Default scale is 1.0 (100%) if variable is not set */
+:root {
+  --tldraw-toolbar-scale: 1;
+}
+
+/* Target the container that holds the top-left toolbar buttons */
+/* Primary: Target parent container using :has() selector */
+.tl-canvas > div:has([data-testid="main-menu.button"]) {
+  transform: scale(var(--tldraw-toolbar-scale, 1));
+  transform-origin: top left;
+}
+
+/* Fallback 1: Target menu zone if it exists */
+.tlui-menu-zone {
+  transform: scale(var(--tldraw-toolbar-scale, 1));
+  transform-origin: top left;
+}
+
+/* Fallback 2: Target any container that has multiple top-left toolbar buttons */
+.tl-canvas > div:has([data-testid="main-menu.button"]):has([data-testid="quick-actions.undo"]) {
+  transform: scale(var(--tldraw-toolbar-scale, 1));
+  transform-origin: top left;
+}
+
+/* Fallback 3: Scale the first child div of tl-canvas (likely contains the toolbar) */
+.tl-canvas > div:first-of-type:has(button[data-testid*="menu"], button[data-testid*="quick-actions"]) {
+  transform: scale(var(--tldraw-toolbar-scale, 1));
+  transform-origin: top left;
 }
 
 /* ============================================================================
@@ -36,6 +86,7 @@ button[title="made with tldraw"] {
   min-height: 0;
   height: 100%;
   width: 100%;
+  background: transparent;
 }
 
 /* TLDraw viewer container - read-only view */
@@ -44,6 +95,7 @@ button[title="made with tldraw"] {
   flex-direction: column;
   flex: 1 1 0;
   min-height: 0;
+  height: 100%;
 }
 
 /* TLDraw editor container - full editor */
@@ -61,6 +113,84 @@ button[title="made with tldraw"] {
 }
 
 /* ============================================================================
+   Theme Integration - Sync TLDraw UI with application theme variables
+   ============================================================================ */
+
+/* Override TLDraw theme variables to use our app's CSS custom properties */
+:root .tl-theme__light,
+:root .tl-theme__dark {
+  /* Canvas colors */
+  --color-background: hsl(var(--background));
+  --color-grid: hsl(var(--border) / 0.55);
+  --color-brush-fill: hsl(var(--foreground) / 0.1);
+  --color-brush-stroke: hsl(var(--foreground) / 0.32);
+  --color-selection-fill: hsl(var(--primary) / 0.32);
+  --color-selection-stroke: hsl(var(--primary));
+  --color-snap: hsl(var(--destructive));
+
+  /* UI panel colors */
+  --color-low: hsl(var(--card));
+  --color-low-border: hsl(var(--border));
+  --color-culled: hsl(var(--muted));
+  --color-muted-none: transparent;
+  --color-muted-0: hsl(var(--foreground) / 0.08);
+  --color-muted-1: hsl(var(--foreground) / 0.14);
+  --color-muted-2: hsl(var(--foreground) / 0.24);
+  --color-hint: hsl(var(--foreground) / 0.28);
+  --color-overlay: hsl(var(--background) / 0.6);
+  --color-divider: hsl(var(--border));
+  --color-panel: hsl(var(--card));
+  --color-panel-contrast: hsl(var(--card-foreground));
+  --color-panel-overlay: hsl(var(--card) / 0.9);
+  --color-panel-transparent: hsl(var(--card) / 0);
+
+  /* Text colors */
+  --color-text: hsl(var(--foreground));
+  --color-text-0: hsl(var(--foreground));
+  --color-text-1: hsl(var(--muted-foreground));
+  --color-text-3: hsl(var(--muted-foreground));
+  --color-text-shadow: hsl(var(--background));
+  --color-text-highlight: hsl(var(--primary));
+  --color-text-highlight-p3: hsl(var(--primary));
+
+  /* Selection and focus */
+  --color-selected: hsl(var(--primary));
+  --color-selected-contrast: hsl(var(--primary-foreground));
+  --color-focus: hsl(var(--ring));
+
+  /* Named colors */
+  --color-primary: hsl(var(--primary));
+  --color-success: hsl(var(--chart-2, var(--primary)));
+  --color-info: hsl(var(--chart-3, var(--primary)));
+  --color-warning: hsl(var(--chart-4, var(--secondary)));
+  --color-danger: hsl(var(--destructive));
+  --color-laser: hsl(var(--primary));
+
+  /* Shadows */
+  --shadow-1: var(--shadow-sm);
+  --shadow-2: var(--shadow);
+  --shadow-3: var(--shadow-md);
+  --shadow-4: var(--shadow-lg);
+}
+
+/* ============================================================================
+   Loading State Overrides
+   ============================================================================ */
+
+/* Hide TLDraw internal loading spinners */
+.tlui-loading-spinner,
+[class*="tlui-loading"],
+[class*="tl-loading"] {
+  display: none;
+}
+
+/* Prevent white background flash during Tldraw initialization */
+.tl-container,
+.tl-canvas-container {
+  background: transparent;
+}
+
+/* ============================================================================
    Control Overlays
    ============================================================================ */
 
@@ -71,6 +201,76 @@ button[title="made with tldraw"] {
 
 /* Fullscreen button overlay styling */
 .tldraw-fullscreen-button {
-  z-index: var(--z-document-controls);
+  z-index: 1700; /* Below document overlay (1800) */
+}
+
+/* ============================================================================
+   UI Element Hiding
+   ============================================================================ */
+
+/* Hide slider container */
+.tlui-slider__container {
+  display: none;
+}
+
+/* Hide specific color picker buttons - only when minimal mode is enabled */
+[data-editor-minimal-mode="true"] button[data-testid="style.color.green"],
+[data-editor-minimal-mode="true"] button[data-testid="style.color.light-red"],
+[data-editor-minimal-mode="true"] button[data-testid="style.color.light-blue"],
+[data-editor-minimal-mode="true"] button[data-testid="style.color.grey"] {
+  display: none;
+}
+
+/* Hide fill style buttons - only when minimal mode is enabled */
+[data-editor-minimal-mode="true"] button[data-testid="style.fill.none"],
+[data-editor-minimal-mode="true"] button[data-testid="style.fill.semi"],
+[data-editor-minimal-mode="true"] button[data-testid="style.fill.solid"],
+[data-editor-minimal-mode="true"] button[data-testid="style.fill.pattern"] {
+  display: none;
+}
+
+/* Hide dash style buttons - only when minimal mode is enabled */
+[data-editor-minimal-mode="true"] button[data-testid="style.dash.draw"],
+[data-editor-minimal-mode="true"] button[data-testid="style.dash.dashed"],
+[data-editor-minimal-mode="true"] button[data-testid="style.dash.dotted"],
+[data-editor-minimal-mode="true"] button[data-testid="style.dash.solid"] {
+  display: none;
+}
+
+/* ============================================================================
+   Resize Performance Optimization
+   ============================================================================ */
+
+/* CRITICAL: Completely block ALL pointer events to canvases during resize drag
+   This prevents pen/stylus input from leaking through to tldraw while dragging the handle */
+[data-resizing="true"] * {
+  pointer-events: none !important;
+  cursor: ns-resize !important;
+}
+
+/* Only allow pointer events on the resize handle itself */
+[data-resizing="true"] [data-panel-resize-handle-enabled] {
+  pointer-events: auto !important;
+  cursor: ns-resize !important;
+}
+
+[data-resizing="true"] [data-resize-handle-grip] {
+  pointer-events: auto !important;
+  cursor: ns-resize !important;
+}
+
+/* Additional safety: explicitly block tldraw elements */
+[data-resizing="true"] .tl-container,
+[data-resizing="true"] .tl-canvas,
+[data-resizing="true"] .tl-canvas-container,
+[data-resizing="true"] .tldraw-canvas-wrapper,
+[data-resizing="true"] .tldraw-viewer-container,
+[data-resizing="true"] .tldraw-editor-container {
+  pointer-events: none !important;
+  /* GPU acceleration for smoother resize */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  will-change: transform;
+  contain: layout style paint;
 }
 

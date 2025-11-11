@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 
 type GridPortalContextType = {
   portalContainer: HTMLElement | null;
@@ -69,36 +69,23 @@ export function GridPortalProvider({
   children,
   container,
 }: GridPortalProviderProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(
     null
   );
 
   useEffect(() => {
-    // Use provided container or fallback to our own
     if (container) {
       setPortalContainer(container);
-    } else if (containerRef.current) {
-      setPortalContainer(containerRef.current);
+      return;
+    }
+    if (typeof document !== "undefined") {
+      setPortalContainer(document.body);
     }
   }, [container]);
 
   return (
     <GridPortalContext.Provider value={{ portalContainer }}>
       {children}
-      {!container && (
-        <div
-          className="grid-portal-container"
-          ref={containerRef}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            pointerEvents: "auto",
-            zIndex: "inherit",
-          }}
-        />
-      )}
     </GridPortalContext.Provider>
   );
 }

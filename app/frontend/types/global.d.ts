@@ -16,3 +16,13 @@ declare module "@fullcalendar/timegrid" {
   const plugin: unknown;
   export default plugin;
 }
+
+declare module "@/styles/themes/*.css" {
+  const content: string;
+  export default content;
+}
+
+declare module "*.css" {
+  const content: string;
+  export default content;
+}

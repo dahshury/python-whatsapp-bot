@@ -302,34 +302,51 @@ class PhoneSearchService(BaseService):
                 if date_range:
                     range_type = date_range.get('type')
                     date_range_obj = date_range.get('range')
-                    if date_range_obj and date_range_obj.get('from') and date_range_obj.get('to'):
-                        from_date = date_range_obj['from']
-                        to_date = date_range_obj['to']
-                        if range_type == 'messages':
-                            where_conditions.append(
-                                "EXISTS ("
-                                "  SELECT 1 FROM conversation conv "
-                                "  WHERE conv.wa_id = c.wa_id "
-                                "    AND conv.role = 'user' "
-                                "    AND conv.date IS NOT NULL "
-                                "    AND conv.time IS NOT NULL "
-                                "    AND (conv.date || ' ' || conv.time) >= :date_from "
-                                "    AND (conv.date || ' ' || conv.time) <= :date_to"
-                                ")"
-                            )
-                            filter_params['date_from'] = from_date.strftime('%Y-%m-%d %H:%M:%S')
-                            filter_params['date_to'] = to_date.strftime('%Y-%m-%d %H:%M:%S')
-                        elif range_type == 'reservations':
-                            where_conditions.append(
-                                "EXISTS ("
-                                "  SELECT 1 FROM reservations res "
-                                "  WHERE res.wa_id = c.wa_id "
-                                "    AND res.updated_at >= :date_from "
-                                "    AND res.updated_at <= :date_to"
-                                ")"
-                            )
-                            filter_params['date_from'] = from_date
-                            filter_params['date_to'] = to_date
+                    # Support single date filtering - if only one date provided, treat as single day
+                    if date_range_obj:
+                        from_date = date_range_obj.get('from')
+                        to_date = date_range_obj.get('to')
+                        
+                        # Ensure both dates are set for single date selection
+                        if from_date and not to_date:
+                            # Only from_date provided - treat as single day
+                            to_date = from_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                            from_date = from_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                        elif to_date and not from_date:
+                            # Only to_date provided - treat as single day
+                            from_date = to_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                            to_date = to_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        
+                        if from_date and to_date:
+                            if range_type == 'messages':
+                                where_conditions.append(
+                                    "EXISTS ("
+                                    "  SELECT 1 FROM conversation conv "
+                                    "  WHERE conv.wa_id = c.wa_id "
+                                    "    AND conv.role = 'user' "
+                                    "    AND conv.date IS NOT NULL "
+                                    "    AND conv.time IS NOT NULL "
+                                    "    AND (conv.date || ' ' || conv.time) >= :date_from "
+                                    "    AND (conv.date || ' ' || conv.time) <= :date_to"
+                                    ")"
+                                )
+                                filter_params['date_from'] = from_date.strftime('%Y-%m-%d %H:%M:%S')
+                                filter_params['date_to'] = to_date.strftime('%Y-%m-%d %H:%M:%S')
+                            elif range_type == 'reservations':
+                                # Use bind parameter for ':00' to avoid SQLAlchemy parsing it as a parameter placeholder
+                                where_conditions.append(
+                                    "EXISTS ("
+                                    "  SELECT 1 FROM reservations res "
+                                    "  WHERE res.wa_id = c.wa_id "
+                                    "    AND res.date IS NOT NULL "
+                                    "    AND res.time_slot IS NOT NULL "
+                                    "    AND (res.date || ' ' || res.time_slot || :seconds_suffix) >= :date_from "
+                                    "    AND (res.date || ' ' || res.time_slot || :seconds_suffix) <= :date_to"
+                                    ")"
+                                )
+                                filter_params['date_from'] = from_date.strftime('%Y-%m-%d %H:%M:%S')
+                                filter_params['date_to'] = to_date.strftime('%Y-%m-%d %H:%M:%S')
+                                filter_params['seconds_suffix'] = ':00'
 
             where_clause = ""
             if where_conditions:

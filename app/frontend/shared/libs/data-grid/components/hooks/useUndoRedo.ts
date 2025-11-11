@@ -58,6 +58,10 @@ type EditAction = {
   batch: Batch;
 };
 
+type UseUndoRedoOptions = {
+  onBeforeUndo?: () => boolean | Promise<boolean>;
+};
+
 function reducer(state: ReducerState, action: Action) {
   const newState = { ...state };
 
@@ -127,13 +131,24 @@ function reducer(state: ReducerState, action: Action) {
   }
 }
 
-export function useUndoRedo(
-  gridRef: React.RefObject<DataEditorRef | null>,
-  getCellContent: (cell: Item) => unknown,
-  onCellEdited: (cell: Item, newValue: EditableGridCell) => void,
-  onGridSelectionChange?: (newVal: GridSelection) => void
-) {
+export type UseUndoRedoParams = {
+  gridRef: React.RefObject<DataEditorRef | null>;
+  getCellContent: (cell: Item) => unknown;
+  onCellEdited: (cell: Item, newValue: EditableGridCell) => void;
+  onGridSelectionChange?: (newVal: GridSelection) => void;
+  options?: UseUndoRedoOptions;
+};
+
+export function useUndoRedo(params: UseUndoRedoParams) {
+  const {
+    gridRef,
+    getCellContent,
+    onCellEdited,
+    onGridSelectionChange,
+    options = {},
+  } = params;
   const [state, dispatch] = useReducer(reducer, initialState);
+  const { onBeforeUndo } = options;
 
   const currentBatch = useRef<Batch | null>(null);
   const timeout = useRef<NodeJS.Timeout | null>(null);
@@ -198,8 +213,33 @@ export function useUndoRedo(
   );
 
   const undo = useCallback(() => {
-    dispatch({ type: "undo" });
-  }, []);
+    if (!onBeforeUndo) {
+      dispatch({ type: "undo" });
+      return;
+    }
+
+    try {
+      const result = onBeforeUndo();
+      if (result && typeof (result as Promise<boolean>).then === "function") {
+        (result as Promise<boolean>)
+          .then((handled) => {
+            if (!handled) {
+              dispatch({ type: "undo" });
+            }
+          })
+          .catch(() => {
+            dispatch({ type: "undo" });
+          });
+        return;
+      }
+
+      if (!result) {
+        dispatch({ type: "undo" });
+      }
+    } catch {
+      dispatch({ type: "undo" });
+    }
+  }, [onBeforeUndo]);
 
   const redo = useCallback(() => {
     dispatch({ type: "redo" });

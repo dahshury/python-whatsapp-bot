@@ -11,11 +11,6 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef } from "react";
 import { useTempusDominusWidget } from "@/shared/libs/data-grid/components/hooks/useTempusDominusWidget";
 import {
-  editorStyle,
-  iconButtonStyle,
-  wrapperStyle,
-} from "@/shared/libs/data-grid/components/styles/tempus-date-editor.styles";
-import {
   formatDisplayDate,
   getInputType,
   getInputValue,
@@ -144,15 +139,18 @@ const renderer: CustomRenderer<TempusDateCell> = {
 
       if (data.readonly) {
         return (
-          <div style={wrapperStyle}>
-            <span style={editorStyle}>{data.displayDate || ""}</span>
+          <div className="tempus-dominus-wrapper">
+            <span className="tempus-dominus-editor">
+              {data.displayDate || ""}
+            </span>
           </div>
         );
       }
 
       return (
-        <div ref={wrapperRef} style={wrapperStyle}>
+        <div className="tempus-dominus-wrapper" ref={wrapperRef}>
           <input
+            className="tempus-dominus-editor"
             defaultValue={getInputValue(
               data.date,
               data.format as unknown as
@@ -178,44 +176,25 @@ const renderer: CustomRenderer<TempusDateCell> = {
               return "";
             })()}
             ref={inputRef}
-            style={editorStyle}
             type={getInputType(
               data.format as unknown as "date" | "datetime" | "time" | undefined
             )}
           />
           <button
+            className={`tempus-dominus-icon-button ${data.readonly ? "readonly" : ""}`}
             disabled={data.readonly}
             onClick={handleIconClick}
-            onMouseEnter={(e) => {
-              if (!data.readonly) {
-                e.currentTarget.style.opacity = "1";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!data.readonly) {
-                const OPACITY_HOVER = 0.7;
-                e.currentTarget.style.opacity = String(OPACITY_HOVER);
-              }
-            }}
             ref={iconButtonRef}
-            style={{
-              ...iconButtonStyle,
-              opacity: (() => {
-                const OPACITY_READONLY = 0.3;
-                const OPACITY_NORMAL = 0.7;
-                return data.readonly ? OPACITY_READONLY : OPACITY_NORMAL;
-              })(),
-            }}
             type="button"
           >
             {data.format === "time" ? (
               // Clock icon
               <svg
                 aria-label="Clock icon"
+                className="tempus-dominus-icon-button-svg"
                 fill="currentColor"
                 height="16"
                 role="img"
-                style={{ pointerEvents: "none" }}
                 viewBox="0 0 16 16"
                 width="16"
               >
@@ -225,10 +204,10 @@ const renderer: CustomRenderer<TempusDateCell> = {
               // Calendar icon
               <svg
                 aria-label="Calendar icon"
+                className="tempus-dominus-icon-button-svg"
                 fill="currentColor"
                 height="16"
                 role="img"
-                style={{ pointerEvents: "none" }}
                 viewBox="0 0 16 16"
                 width="16"
               >

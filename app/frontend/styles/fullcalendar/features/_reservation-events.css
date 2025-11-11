@@ -5,7 +5,7 @@
 .fc-event.reservation-event {
   border-width: var(--fc-event-stroke-width); /* rem-based outline */
   border-radius: 6px;
-  padding: 2px 2px; /* minimal horizontal padding for text */
+  padding: 2px 6px; /* horizontal breathing room */
   box-shadow: none;
   font-weight: 600; /* stronger label */
   /* Opaque backgrounds per type (set below) */
@@ -162,30 +162,18 @@
 
 /* Colors are sourced from variables in _variables.css and applied in _universal.css */
 
-/* Default (light): black stroke for all non-vacation events without documents */
-.fc-event.reservation-event.no-document,
-.fc-event.conversation-event,
-.fc-timegrid-event.reservation-event.no-document,
-.fc-timegrid-event.conversation-event,
-.fc-daygrid-event.reservation-event.no-document,
-.fc-daygrid-event.conversation-event {
-  border-width: var(--fc-event-stroke-width);
-  border-color: #000;
+/* Highlight reservations that include documents with a bright gold stroke */
+/* Higher specificity to override typed border colors from _universal.css */
+.fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.fc-timegrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.fc-daygrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.fc-multimonth .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
+  border-color: #facc15 !important;
 }
 
-/* Dark theme: white stroke for all non-vacation events without documents */
-.dark .fc-event.reservation-event.no-document,
-.dark .fc-event.conversation-event,
-.dark .fc-timegrid-event.reservation-event.no-document,
-.dark .fc-timegrid-event.conversation-event,
-.dark .fc-daygrid-event.reservation-event.no-document,
-.dark .fc-daygrid-event.conversation-event {
-  border-width: var(--fc-event-stroke-width);
-  border-color: #fff;
-}
-
-/* Fallback: ensure ALL non-vacation events invert stroke with theme */
-.dark .fc-event {
-  border-width: var(--fc-event-stroke-width);
-  border-color: #fff;
+.dark .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.dark .fc-timegrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.dark .fc-daygrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
+.dark .fc-multimonth .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
+  border-color: #fde68a !important;
 }

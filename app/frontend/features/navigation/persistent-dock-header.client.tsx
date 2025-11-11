@@ -6,9 +6,11 @@ import { Button } from "@ui/button";
 import { CalendarRange, FileEdit } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
+import { ButtonGroup } from "@/shared/ui/button-group";
 import { SidebarTrigger } from "@/shared/ui/sidebar";
 import { CalendarDrawer, CalendarLegend } from "@/widgets/calendar";
 import { DockNav } from "./dock-nav";
@@ -27,6 +29,11 @@ export function PersistentDockHeaderClient() {
   const { state } = useDockBridge();
   const { freeRoam, showDualCalendar } = useSettingsStore();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Check if we're on the template page
+  const isTemplatePage = searchParams.get("waId") === TEMPLATE_USER_WA_ID;
   return (
     <header className="sticky top-0 z-40 flex h-12 flex-col border-b bg-background/95 px-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:h-14 sm:px-3 md:h-16 md:px-4">
       {/* Main header row with responsive three-part layout */}
@@ -70,33 +77,35 @@ export function PersistentDockHeaderClient() {
             />
           )}
           {pathname === "/documents" ? (
-            <div className="flex items-center gap-1.5">
-              <Link href={`/documents?waId=${TEMPLATE_USER_WA_ID}`}>
-                <Button
-                  aria-label="Edit default document template"
-                  size="icon"
-                  variant="ghost"
-                >
+            <ButtonGroup className="[&>*:first-child]:!rounded-l-md button]:!rounded-r-md button]:!rounded-l-none button]:!border-l-0 button]:!rounded-r-none [&>*:last-child [&>*:not(:first-child) [&>*:not(:first-child) [&>*:not(:last-child)">
+              <Button
+                aria-label="Edit default document template"
+                asChild
+                size="icon"
+                variant={isTemplatePage ? "default" : "outline"}
+              >
+                <Link href={`/documents?waId=${TEMPLATE_USER_WA_ID}`}>
                   <FileEdit className="h-5 w-5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <CalendarDrawer
                 disableDateClick={true}
                 initialView="listMonth"
                 lockView="listMonth"
+                onOpenChange={setIsCalendarOpen}
                 side="right"
                 title="Documents Calendar"
                 trigger={
                   <Button
                     aria-label={"Open Calendar"}
                     size="icon"
-                    variant="ghost"
+                    variant={isCalendarOpen ? "default" : "outline"}
                   >
                     <CalendarRange className="h-5 w-5" />
                   </Button>
                 }
               />
-            </div>
+            </ButtonGroup>
           ) : (
             <NotificationInboxPopover />
           )}

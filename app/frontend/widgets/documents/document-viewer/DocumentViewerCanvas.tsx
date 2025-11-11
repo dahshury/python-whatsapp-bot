@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { Editor } from "tldraw";
 import type { TldrawStoreState } from "@/features/documents/hooks/useTldrawStore";
 import { cn } from "@/lib/utils";
 import { DocumentEditorCanvas } from "../document-editor/DocumentEditorCanvas";
@@ -10,8 +11,8 @@ type DocumentViewerCanvasProps = {
   className?: string;
   focusMode?: boolean;
   errorMessage?: string;
-  progress?: number | null;
   children?: ReactNode;
+  onEditorMount?: (editor: Editor) => void;
 };
 
 /**
@@ -23,16 +24,17 @@ export const DocumentViewerCanvas = ({
   className,
   focusMode = true,
   errorMessage,
-  progress,
   children,
+  onEditorMount,
 }: DocumentViewerCanvasProps) => (
-  <div className={cn("h-full w-full", className)}>
+  <div className={cn("flex h-full min-h-0 flex-1", className)}>
     <DocumentEditorCanvas
+      className="h-full flex-1"
       focusMode={focusMode}
       readOnly={true}
       storeState={storeState}
-      {...(progress !== undefined ? { progress } : {})}
       {...(errorMessage ? { errorMessage } : {})}
+      {...(onEditorMount ? { onEditorMount } : {})}
     >
       {children}
     </DocumentEditorCanvas>

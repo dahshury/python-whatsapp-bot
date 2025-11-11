@@ -46,6 +46,7 @@ export function AppProvidersClient({
     setShowShell(!isMinimalRoute);
   }, [isMinimalRoute]);
 
+  // React hooks must be called unconditionally before any early returns
   const appShellContextValue = useMemo(
     () => ({
       showShell,
@@ -57,6 +58,25 @@ export function AppProvidersClient({
     showShell && headerSlot ? (
       <div data-app-shell="header">{headerSlot}</div>
     ) : null;
+
+  // Note: Heavy CSS is loaded via static imports below
+  // They're code-split by Next.js but will still be in the bundle
+  // The key optimization is skipping all providers and JavaScript execution
+
+  // For minimal routes like /tldraw, skip ALL providers and return children directly
+  // This prevents WebSocket connections, data fetching, and all app infrastructure
+  if (isMinimalRoute) {
+    return (
+      <div
+        className="h-screen w-screen"
+        style={{
+          height: "var(--doc-dvh, 100dvh)",
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
 
   return (
     <>

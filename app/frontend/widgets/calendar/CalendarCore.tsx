@@ -29,8 +29,8 @@ import {
 // removed: dev-profiler count (legacy handlers removed)
 import { useMountReady } from "@shared/libs/dom/useMountReady";
 import { useModifierKeyClasses } from "@shared/libs/keyboard/useModifierKeyClasses";
-import type { RefObject } from "react";
-import {
+import React, {
+  type RefObject,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -47,7 +47,6 @@ import {
 import type { CalendarCoreProps, CalendarCoreRef } from "@/features/calendar";
 import {
   createDatesSet,
-  createEventChangeHandler,
   createViewDidMount,
   eventDidMountHandler,
   getConstraintsProp,
@@ -57,6 +56,7 @@ import {
   eventContent as renderEventContent,
   getEventClassNames as resolveEventClassNames,
   sanitizeEvents,
+  useBatchedEventChangeWithCleanup,
   useCalendarResize,
   useFrozenEventsWhileDragging,
   useSlotTimesEffect,
@@ -160,7 +160,10 @@ const CalendarCoreComponent = ({
   // Stable callbacks for FullCalendar props to avoid conditional hook calls
   const eventClassNamesMemo = useCallback((arg: EventContentArg) => {
     const payload: {
-      event: { classNames?: string[]; extendedProps?: { type?: number } };
+      event: {
+        classNames?: string[];
+        extendedProps?: Record<string, unknown>;
+      };
     } = {
       event: {},
     };
@@ -169,14 +172,20 @@ const CalendarCoreComponent = ({
     if (cls) {
       payload.event.classNames = cls;
     }
-    const ext = (arg?.event as unknown as { extendedProps?: { type?: number } })
-      ?.extendedProps;
+    const ext = (
+      arg?.event as unknown as {
+        extendedProps?: Record<string, unknown>;
+      }
+    )?.extendedProps;
     if (ext) {
       payload.event.extendedProps = ext;
     }
     return resolveEventClassNames(
       payload as unknown as {
-        event?: { classNames?: string[]; extendedProps?: { type?: number } };
+        event?: {
+          classNames?: string[];
+          extendedProps?: Record<string, unknown>;
+        };
       }
     );
   }, []);
@@ -328,10 +337,25 @@ const CalendarCoreComponent = ({
   // 	new Map<string, { startStr: string; endStr?: string }>(),
   // );
 
-  // Enhanced event change handler (delegated)
-  const handleEventChangeWithProcessing = useMemo(
-    () => createEventChangeHandler(onEventChange),
-    [onEventChange]
+  // Batched event change handler to prevent duplicate mutations when updating multiple properties
+  const EVENT_CHANGE_DEBOUNCE_MS = 50;
+  const {
+    handler: handleEventChangeWithProcessing,
+    cleanup: cleanupBatchedEvents,
+  } = useBatchedEventChangeWithCleanup(
+    onEventChange ??
+      (() => {
+        // No-op default handler
+      }),
+    EVENT_CHANGE_DEBOUNCE_MS
+  );
+
+  // Cleanup batched events on unmount
+  React.useEffect(
+    () => () => {
+      cleanupBatchedEvents();
+    },
+    [cleanupBatchedEvents]
   );
 
   // // Navigate calendar when currentDate prop changes
@@ -350,7 +374,7 @@ const CalendarCoreComponent = ({
 
   return (
     <div
-      className={`h-full w-full ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[37.5rem]"} ${getCalendarClassNames(currentView)}`}
+      className={`h-full w-full max-w-full overflow-hidden ${currentView === "listMonth" || currentView === "multiMonthYear" ? "" : "min-h-[37.5rem]"} ${getCalendarClassNames(currentView)}`}
       data-free-roam={freeRoam}
       ref={containerRef}
     >

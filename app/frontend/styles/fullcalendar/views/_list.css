@@ -119,13 +119,37 @@
    EVENT STYLING AND INTERACTIONS
    ================================================================= */
 
-/* Event styles */
+/* Event styles - make all events clickable */
+.fc-list-event {
+  cursor: pointer;
+  /* Improve touch responsiveness on mobile devices */
+  touch-action: manipulation;
+  /* Ensure pointer events work properly */
+  pointer-events: auto;
+}
+
 .fc-list-event.fc-event-forced-url {
   cursor: pointer;
 }
 
 .fc-list-event:hover td {
   background-color: var(--fc-list-event-hover-bg-color);
+}
+
+/* Ensure all cells in the event row are clickable */
+.fc-list-event td {
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* Specifically ensure the title cell is clickable */
+.fc-list-event-title {
+  pointer-events: auto;
+  touch-action: manipulation;
+  cursor: pointer;
+  /* Ensure adequate touch target size for accessibility */
+  min-height: 44px;
 }
 
 /* Shrink certain cols */

@@ -21,8 +21,8 @@
   --z-sidebar-resizer: 20;
   --z-navigation: 10;
   --z-navigation-indicator: 1;
-  --z-document-overlay: 4;
-  --z-document-controls: 3;
+  --z-document-overlay: 1800;
+  --z-document-controls: 1900;
   --z-chat-footer: 100;
   --z-toast: 100;
   --z-calendar-day-bg-non-business: 1;
@@ -575,9 +575,9 @@ body:has([data-radix-dialog-content]) [data-radix-popover-content] {
 /* Dropdown menus should appear above popovers */
 /* Since dropdowns are portaled, we target them when popover exists */
 /* This ensures dropdowns inside popovers (like language selector) appear correctly */
-/* Using !important to override inline styles from the component */
+/* Using high specificity to override inline styles from the component */
 body:has([data-radix-popover-content]) [data-radix-dropdown-menu-content] {
-  z-index: var(--z-submenu) !important;
+  z-index: var(--z-submenu);
 }
 
 /* ========================================
@@ -616,7 +616,7 @@ body:has(.click-outside-ignore) :where([data-radix-popover-content]) {
 [data-radix-dropdown-menu-content] [cmdk-group],
 [data-radix-dropdown-menu-content] [cmdk-item],
 [data-radix-dropdown-menu-content] [data-radix-popover-content]:has([cmdk-root]) {
-  z-index: auto !important;
+  z-index: auto;
   position: relative;
 }
 

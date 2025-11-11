@@ -211,8 +211,14 @@ export class WebSocketConnectionHandler {
         // Debug logging would go here if enabled
       }
       const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
       // Set the global instance immediately so others reuse this while CONNECTING
       connectionManager.instance = ws;
+      try {
+        setWindowProperty("__wsConnection", wsRef);
+      } catch {
+        // Window property set failed - continue with connection
+      }
 
       ws.onopen = () => {
         // Mark WebSocket connection completed successfully
@@ -346,7 +352,6 @@ export class WebSocketConnectionHandler {
         connectingRef.current = false;
         connectionManager.lock = false; // Clear lock on error
       };
-
       wsRef.current = ws;
     } catch (_error) {
       // Mark WebSocket connection attempt completed (exception)

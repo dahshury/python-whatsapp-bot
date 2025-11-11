@@ -12,6 +12,8 @@ export type GridRef = {
   updateCells: (cells: { cell: [number, number] }[]) => void;
 };
 
+export type GridToolbarHiddenAction = "downloadCsv" | "fullscreen" | "search";
+
 export type GridProps = {
   showThemeToggle?: boolean;
   fullWidth?: boolean;
@@ -52,4 +54,7 @@ export type GridProps = {
   onFieldPersist?: (field: string) => void;
   onNotify?: (field: string) => void;
   documentsGrid?: boolean;
+  toolbarAnchor?: "overlay" | "inline";
+  toolbarAlwaysVisible?: boolean;
+  toolbarHiddenActions?: GridToolbarHiddenAction[];
 };

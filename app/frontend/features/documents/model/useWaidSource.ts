@@ -5,6 +5,8 @@ import {
   PersistenceGuardsService,
 } from "./persistence-guards";
 
+const HISTORY_STATE_KEY = "__documentsWaId";
+
 type UseWaIdSourceParams = {
   defaultWaId: string;
   searchParams: ReadonlyURLSearchParams;
@@ -23,7 +25,7 @@ export type UseWaIdSourceResult = {
   setWaId: (waId: string) => void;
   persistWaId: (value: string | null) => void;
   replaceWaIdInUrl: (value: string | null) => void;
-  stripWaIdFromUrl: () => void;
+  createShareableUrl: (value?: string | null) => string;
 };
 
 export function useWaIdSource(
@@ -46,7 +48,21 @@ export function useWaIdSource(
     if (typeof window === "undefined") {
       return null;
     }
+
     try {
+      const historyState = window.history.state as
+        | Record<string, unknown>
+        | null
+        | undefined;
+      const historyWaId =
+        typeof historyState?.[HISTORY_STATE_KEY] === "string"
+          ? (historyState[HISTORY_STATE_KEY] as string)
+          : null;
+
+      if (historyWaId && historyWaId !== defaultWaId) {
+        return historyWaId;
+      }
+
       const stored = window.sessionStorage.getItem(storageKey);
       if (!stored || stored === defaultWaId) {
         return null;
@@ -80,26 +96,68 @@ export function useWaIdSource(
       if (typeof window === "undefined") {
         return;
       }
+
+      const applyStateUpdate = (targetUrl: string) => {
+        const currentState = window.history.state ?? {};
+        const nextState = { ...currentState };
+
+        if (!value || value === defaultWaId) {
+          delete nextState[HISTORY_STATE_KEY];
+        } else {
+          nextState[HISTORY_STATE_KEY] = value;
+        }
+
+        window.history.replaceState(nextState, "", targetUrl);
+      };
+
       try {
         const url = new URL(window.location.href);
-        if (!value || value === defaultWaId) {
-          url.searchParams.delete("waId");
-        } else {
-          url.searchParams.set("waId", value);
-        }
-        const query = url.searchParams.toString();
-        const newUrl = query ? `${url.pathname}?${query}` : url.pathname;
-        window.history.replaceState(null, "", newUrl);
+        url.searchParams.delete("waId");
+        const search = url.searchParams.toString();
+        const pathWithQuery = search
+          ? `${url.pathname}?${search}`
+          : url.pathname;
+        const hash = url.hash ?? "";
+        applyStateUpdate(`${pathWithQuery}${hash}`);
       } catch {
-        // Silently ignore URL manipulation errors
+        try {
+          const path = window.location.pathname;
+          const hash = window.location.hash ?? "";
+          applyStateUpdate(`${path}${hash}`);
+        } catch {
+          // Silently ignore URL manipulation errors
+        }
       }
     },
     [defaultWaId]
   );
 
-  const stripWaIdFromUrl = useCallback(() => {
-    replaceWaIdInUrl(null);
-  }, [replaceWaIdInUrl]);
+  const createShareableUrl = useCallback(
+    (value?: string | null) => {
+      let normalizedInput: string | null;
+      if (typeof value === "string" && value.trim().length > 0) {
+        normalizedInput = value.trim();
+      } else if (waId && waId !== defaultWaId) {
+        normalizedInput = waId;
+      } else {
+        normalizedInput = null;
+      }
+
+      if (!normalizedInput) {
+        return "/documents";
+      }
+
+      const encodedWaId = encodeURIComponent(normalizedInput);
+
+      if (typeof window === "undefined") {
+        return `/documents?waId=${encodedWaId}`;
+      }
+
+      const origin = window.location.origin;
+      return `${origin}/documents?waId=${encodedWaId}`;
+    },
+    [waId, defaultWaId]
+  );
 
   const waIdPersistenceInitializedRef = useRef(false);
 
@@ -115,6 +173,11 @@ export function useWaIdSource(
 
     if (nextWaId === waId) {
       pendingInitialLoadWaIdRef.current = nextWaId;
+      if (nextWaId && nextWaId !== defaultWaId) {
+        replaceWaIdInUrl(nextWaId);
+      } else {
+        replaceWaIdInUrl(null);
+      }
       return;
     }
 
@@ -128,6 +191,9 @@ export function useWaIdSource(
       ensureInitialized(nextWaId).catch(() => {
         // Silently ignore initialization errors (handled by UI state)
       });
+      replaceWaIdInUrl(nextWaId);
+    } else {
+      replaceWaIdInUrl(null);
     }
     setWaId(nextWaId);
   }, [
@@ -140,30 +206,38 @@ export function useWaIdSource(
     persistenceGuards,
     defaultWaId,
     ignorePersistDelayMs,
+    replaceWaIdInUrl,
   ]);
 
   useEffect(() => {
     const urlWaId = searchParams.get("waId");
-    if (urlWaId && urlWaId !== defaultWaId) {
-      PersistenceGuardsService.scheduleIgnoreWindow(
-        persistenceGuards,
-        ignorePersistDelayMs
-      );
-      pendingInitialLoadWaIdRef.current = urlWaId;
-      initializeCameraRef.current?.({});
-      ensureInitialized(urlWaId).catch(() => {
-        // Silently ignore initialization errors (handled by UI state)
-      });
-      setWaId(urlWaId);
-      persistWaId(urlWaId);
-      stripWaIdFromUrl();
+    if (!urlWaId) {
+      return;
     }
+
+    if (urlWaId === defaultWaId) {
+      replaceWaIdInUrl(null);
+      return;
+    }
+
+    PersistenceGuardsService.scheduleIgnoreWindow(
+      persistenceGuards,
+      ignorePersistDelayMs
+    );
+    pendingInitialLoadWaIdRef.current = urlWaId;
+    initializeCameraRef.current?.({});
+    ensureInitialized(urlWaId).catch(() => {
+      // Silently ignore initialization errors (handled by UI state)
+    });
+    replaceWaIdInUrl(urlWaId);
+    setWaId(urlWaId);
+    persistWaId(urlWaId);
   }, [
     searchParams,
     ensureInitialized,
     initializeCameraRef,
     persistWaId,
-    stripWaIdFromUrl,
+    replaceWaIdInUrl,
     persistenceGuards,
     pendingInitialLoadWaIdRef,
     defaultWaId,
@@ -182,11 +256,19 @@ export function useWaIdSource(
     persistWaId(waId);
   }, [waId, persistWaId, defaultWaId]);
 
+  useEffect(() => {
+    if (!waId || waId === defaultWaId) {
+      replaceWaIdInUrl(null);
+      return;
+    }
+    replaceWaIdInUrl(waId);
+  }, [waId, defaultWaId, replaceWaIdInUrl]);
+
   return {
     waId,
     setWaId,
     persistWaId,
     replaceWaIdInUrl,
-    stripWaIdFromUrl,
+    createShareableUrl,
   } as const;
 }

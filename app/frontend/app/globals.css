@@ -1,55 +1,29 @@
-/* External library imports - MUST come first in CSS */
-@import "../styles/imports.css";
+/* Core styles - loaded on all pages */
+@import "../styles/core.css";
+
+/* FontAwesome - used across the app */
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
-/* Theme definitions */
-@import "../styles/themes/themes.css";
-@import "../styles/themes/theme-default.css";
-@import "../styles/themes/theme-claude.css";
-@import "../styles/themes/theme-neo-brutalism.css";
-@import "../styles/themes/theme-perpetuity.css";
-@import "../styles/themes/theme-retro-arcade.css";
-@import "../styles/themes/theme-soft-pop.css";
-@import "../styles/themes/theme-ghibli-studio.css";
-@import "../styles/themes/theme-valorant.css";
-@import "../styles/themes/theme-t3chat.css";
-@import "../styles/themes/theme-perplexity.css";
-@import "../styles/themes/theme-art-deco.css";
-@import "../styles/themes/theme-neomorphism.css";
-@import "../styles/themes/theme-clerk.css";
-
-/* Theme inline configuration - must be loaded after all theme definitions */
-@import "../styles/themes/theme-inline.css";
-@import "../styles/chat.css";
-/* Global Error Suppression for React Timekeeper Issues */
-@layer base {
-  /* This CSS is loaded early to suppress console errors from React Timekeeper */
-}
-
-/* Fluid root sizing and UI density scale */
-:root {
-  /* Bound the base size so 1080p and 4K feel proportionate */
-  font-size: clamp(14px, 0.9vw + 10px, 16px);
-  --ui-scale: 1;
-}
-
-/* Note: Console error suppression is handled via JavaScript in layout.tsx */
+/* Tailwind */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Main Global Styles Entry Point */
-
-/* Calendar event processing states */
-.fc-event.processing {
-  opacity: 0.6;
-  pointer-events: none;
-  position: relative;
+/* Global base layer styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    letter-spacing: var(--tracking-normal);
+  }
 }
 
-/* Global letter-spacing tied to theme variable */
-body {
-  letter-spacing: var(--tracking-normal);
+/* Fluid root sizing and UI density scale */
+:root {
+  font-size: clamp(14px, 0.9vw + 10px, 16px);
+  --ui-scale: 1;
 }
 
 .fc-event.processing::after {
@@ -88,6 +62,15 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  input[type="number"] {
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
   }
 }
 

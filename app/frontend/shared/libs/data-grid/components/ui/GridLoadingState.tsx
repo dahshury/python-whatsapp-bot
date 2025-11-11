@@ -31,30 +31,27 @@ export function GridLoadingState({
     return (
       <div
         className={`grid-loading-skeleton ${className}`}
-        style={{
-          height: typeof height === "number" ? `${height}px` : height,
-          padding: "16px",
-        }}
+        style={
+          {
+            "--gdg-loading-height":
+              typeof height === "number" ? `${height}px` : height,
+          } as React.CSSProperties
+        }
       >
         {/* Header skeleton */}
         <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${skeletonColumns}, 1fr)`,
-            gap: "8px",
-            marginBottom: "12px",
-          }}
+          className="grid-loading-skeleton-header"
+          style={
+            {
+              "--gdg-skeleton-columns": `repeat(${skeletonColumns}, 1fr)`,
+            } as React.CSSProperties
+          }
         >
           {Array.from({ length: skeletonColumns }, (_, i) => `header-${i}`).map(
             (key) => (
               <div
+                className="grid-loading-skeleton-header-cell"
                 key={`skeleton-${key}`}
-                style={{
-                  height: "32px",
-                  backgroundColor: "var(--gdg-bg-header, hsl(var(--muted)))",
-                  borderRadius: "4px",
-                  animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                }}
               />
             )
           )}
@@ -66,30 +63,30 @@ export function GridLoadingState({
           (_, rowIndex) => `row-${rowIndex}`
         ).map((key) => (
           <div
+            className="grid-loading-skeleton-row"
             key={`skeleton-${key}`}
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${skeletonColumns}, 1fr)`,
-              gap: "8px",
-              marginBottom: "8px",
-            }}
+            style={
+              {
+                "--gdg-skeleton-columns": `repeat(${skeletonColumns}, 1fr)`,
+              } as React.CSSProperties
+            }
           >
             {Array.from({ length: skeletonColumns }, (_, colIndex) => ({
               cellKey: `cell-${key.split("-")[1]}-col${colIndex}`,
               colIndex,
             })).map(({ cellKey, colIndex }) => (
               <div
+                className="grid-loading-skeleton-cell"
                 key={`skeleton-${cellKey}`}
-                style={{
-                  height: "24px",
-                  backgroundColor: "var(--gdg-bg-cell, hsl(var(--card)))",
-                  borderRadius: "4px",
-                  animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-                  animationDelay: `${
-                    (Number.parseInt(key.split("-")[1] || "0", 10) + colIndex) *
-                    SKELETON_ANIMATION_STAGGER_SECONDS
-                  }s`,
-                }}
+                style={
+                  {
+                    "--gdg-skeleton-delay": `${
+                      (Number.parseInt(key.split("-")[1] || "0", 10) +
+                        colIndex) *
+                      SKELETON_ANIMATION_STAGGER_SECONDS
+                    }s`,
+                  } as React.CSSProperties
+                }
               />
             ))}
           </div>
@@ -101,36 +98,15 @@ export function GridLoadingState({
   return (
     <div
       className={`grid-loading-spinner ${className}`}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: typeof height === "number" ? `${height}px` : height,
-        gap: "16px",
-      }}
+      style={
+        {
+          "--gdg-loading-height":
+            typeof height === "number" ? `${height}px` : height,
+        } as React.CSSProperties
+      }
     >
-      <div
-        className="glide-loading-spinner"
-        style={{
-          width: "40px",
-          height: "40px",
-          borderRadius: "50%",
-          border: "3px solid var(--gdg-border-color, hsl(var(--border)))",
-          borderTopColor: "var(--gdg-accent-color, hsl(var(--primary)))",
-          animation: "spin 1s linear infinite",
-        }}
-      />
-      <div
-        className="glide-loading-text"
-        style={{
-          fontSize: "14px",
-          color: "var(--gdg-text-medium, hsl(var(--muted-foreground)))",
-          fontFamily: "var(--gdg-font-family, var(--font-sans))",
-        }}
-      >
-        {loadingText}
-      </div>
+      <div className="glide-loading-spinner" />
+      <div className="glide-loading-text">{loadingText}</div>
     </div>
   );
 }

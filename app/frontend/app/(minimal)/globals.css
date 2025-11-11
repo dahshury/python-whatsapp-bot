@@ -1,0 +1,7 @@
+/* Minimal globals.css for tldraw route - matches official template */
+@import 'tldraw/tldraw.css';
+
+body {
+	overscroll-behavior: none;
+}
+

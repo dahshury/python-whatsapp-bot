@@ -5,17 +5,28 @@ import type {
   IDataSource,
 } from "../core/interfaces/IDataSource";
 
-export function useGridColumns(
-  hiddenColumns: Set<number>,
-  dataSource?: IDataSource,
-  fullWidth?: boolean,
-  pinnedColumns: number[] = []
-) {
+export type UseGridColumnsOptions = {
+  hiddenColumns: Set<number>;
+  dataSource?: IDataSource;
+  fullWidth?: boolean;
+  pinnedColumns?: number[];
+  documentsGrid?: boolean;
+};
+
+export function useGridColumns(options: UseGridColumnsOptions) {
+  const {
+    hiddenColumns,
+    dataSource,
+    fullWidth,
+    pinnedColumns = [],
+    documentsGrid,
+  } = options;
   const [columnsState, setColumnsState] = React.useState<GridColumn[]>([]);
 
   React.useEffect(() => {
     if (!dataSource) {
       // Fallback to legacy column definitions
+      const hasMenu = !documentsGrid;
       const defaultColumns: GridColumn[] = [
         {
           id: "name",
@@ -24,7 +35,7 @@ export function useGridColumns(
           icon: GridColumnIcon.HeaderString,
           isRequired: true,
           isEditable: true,
-          hasMenu: true,
+          hasMenu,
           dataType: "text",
         } as GridColumn,
         {
@@ -34,7 +45,7 @@ export function useGridColumns(
           icon: GridColumnIcon.HeaderArray,
           isRequired: true,
           isEditable: true,
-          hasMenu: true,
+          hasMenu,
           dataType: "dropdown",
         } as GridColumn,
         {
@@ -45,7 +56,7 @@ export function useGridColumns(
           themeOverride: { textDark: "#009CA6", textLight: "#009CA6" },
           isRequired: true,
           isEditable: true,
-          hasMenu: true,
+          hasMenu,
           dataType: "number",
         } as GridColumn,
         {
@@ -55,7 +66,7 @@ export function useGridColumns(
           icon: GridColumnIcon.HeaderDate,
           isRequired: true,
           isEditable: true,
-          hasMenu: true,
+          hasMenu,
           dataType: "date",
         } as GridColumn,
         {
@@ -65,7 +76,7 @@ export function useGridColumns(
           icon: GridColumnIcon.HeaderTime,
           isRequired: true,
           isEditable: true,
-          hasMenu: true,
+          hasMenu,
           dataType: "time",
         } as GridColumn,
       ];
@@ -76,6 +87,7 @@ export function useGridColumns(
     // Use dataSource column definitions
     const columnDefinitions = dataSource.getColumnDefinitions();
     const DEFAULT_COLUMN_WIDTH = 150;
+    const hasMenu = !documentsGrid;
     const gridColumns: GridColumn[] = columnDefinitions.map(
       (colDef: IColumnDefinition, index: number) => {
         const icon = getColumnIcon(colDef);
@@ -89,7 +101,7 @@ export function useGridColumns(
           ...(icon && { icon }),
           isRequired: colDef.isRequired,
           isEditable: colDef.isEditable !== false,
-          hasMenu: true,
+          hasMenu,
           dataType: colDef.dataType,
           ...(themeOverride && { themeOverride }),
         };
@@ -97,7 +109,7 @@ export function useGridColumns(
     );
 
     setColumnsState(gridColumns);
-  }, [dataSource]);
+  }, [dataSource, documentsGrid]);
 
   const visibleColumns = React.useMemo(
     () => columnsState.filter((_, idx) => !hiddenColumns.has(idx)),
@@ -119,6 +131,7 @@ export function useGridColumns(
     // Separate pinned and unpinned columns (similar to Streamlit's approach)
     const pinnedCols: GridColumn[] = [];
     const unpinnedCols: GridColumn[] = [];
+    const hasMenu = !documentsGrid;
 
     visibleColumns.forEach((col, idx) => {
       const originalIndex = visibleColumnIndices[idx];
@@ -128,7 +141,7 @@ export function useGridColumns(
       ) {
         pinnedCols.push({
           ...col,
-          hasMenu: true,
+          hasMenu,
           // Pinned columns keep their original width
         } as GridColumn);
       } else {
@@ -140,7 +153,7 @@ export function useGridColumns(
 
         unpinnedCols.push({
           ...col,
-          hasMenu: true,
+          hasMenu,
           // Apply stretching behavior to unpinned columns when fullWidth is enabled
           // BUT ONLY if the column hasn't been explicitly sized (resized or autosized)
           ...(fullWidth &&
@@ -158,6 +171,7 @@ export function useGridColumns(
     visibleColumnIndices,
     fullWidth,
     columnsState,
+    documentsGrid,
   ]);
 
   const onColumnResize = React.useCallback(

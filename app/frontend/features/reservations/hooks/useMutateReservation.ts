@@ -6,6 +6,7 @@ import {
   LOCAL_OPERATION_TIMEOUT_MS,
   TOAST_TIMEOUT_MS,
 } from "@/features/calendar/lib/constants";
+import { updateCustomerNamesCache } from "@/features/customers/hooks/utils/customer-names-cache";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
 import { ReservationsWsService } from "../services/reservations.ws.service";
@@ -71,7 +72,18 @@ export function useMutateReservation() {
 
     onMutate: async (params) => {
       const extendedParams = params as InternalMutateParams;
-      await queryClient.cancelQueries({ queryKey: ["calendar-reservations"] });
+
+      // Cancel only in-flight queries that might conflict (not all calendar queries)
+      // We use the waId to be more specific
+      await queryClient.cancelQueries({
+        predicate: (query) => {
+          if (query.queryKey[0] !== "calendar-reservations") {
+            return false;
+          }
+          // Only cancel if this query is currently fetching
+          return query.state.fetchStatus === "fetching";
+        },
+      });
 
       const previousData = queryClient.getQueriesData({
         queryKey: ["calendar-reservations"],
@@ -95,16 +107,23 @@ export function useMutateReservation() {
         queryClient,
         payload: { cancelled: false } as Partial<Reservation>,
         waId: params.waId,
-        reservationId: params.reservationId,
+        ...(params.reservationId !== undefined
+          ? { reservationId: params.reservationId }
+          : {}),
         previousDate,
         previousTimeSlot: previousTimeSlotRaw,
         nextDate: params.date,
         nextTimeSlot: params.time,
         ...(params.title !== undefined
-          ? { "nextCustomerName": params.title }
+          ? { nextCustomerName: params.title }
           : {}),
-        ...(params.type !== undefined ? { "nextType": params.type } : {}),
+        ...(params.type !== undefined ? { nextType: params.type } : {}),
       });
+
+      // Update customer names cache if name changed
+      if (params.title !== undefined) {
+        updateCustomerNamesCache(queryClient, params.waId, params.title);
+      }
 
       return { previousData };
     },
@@ -131,16 +150,23 @@ export function useMutateReservation() {
         queryClient,
         payload: restPayload as Partial<Reservation>,
         waId: params.waId,
-        reservationId: params.reservationId,
+        ...(params.reservationId !== undefined
+          ? { reservationId: params.reservationId }
+          : {}),
         previousDate,
         previousTimeSlot: previousTimeSlotRaw,
         nextDate: params.date,
         nextTimeSlot: params.time,
         ...(params.title !== undefined
-          ? { "nextCustomerName": params.title }
+          ? { nextCustomerName: params.title }
           : {}),
-        ...(params.type !== undefined ? { "nextType": params.type } : {}),
+        ...(params.type !== undefined ? { nextType: params.type } : {}),
       });
+
+      // Update customer names cache if name changed
+      if (params.title !== undefined) {
+        updateCustomerNamesCache(queryClient, params.waId, params.title);
+      }
     },
 
     onError: (error, params, context) => {

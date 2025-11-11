@@ -170,11 +170,13 @@ export function CalendarLegend({
     effectiveIsLocalized
   );
 
+  // Only include vacation items after mount to prevent hydration mismatch
+  // During SSR, hasUpcomingVacations is false, but after hydration it might be true
   const filteredItems = legendItems.filter(
     (item) =>
       item.showAlways ||
       (freeRoam && item.key === "conversation") ||
-      (item.showWhenVacationExists && hasUpcomingVacations)
+      (item.showWhenVacationExists && mounted && hasUpcomingVacations)
   );
 
   return (

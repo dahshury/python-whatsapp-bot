@@ -1,9 +1,8 @@
 "use client";
 
+import { i18n } from "@shared/libs/i18n";
 import React from "react";
 import { toast as sonner } from "sonner";
-
-import { i18n } from "@shared/libs/i18n";
 import { ERROR_TOAST_DURATION_MS } from "../constants";
 
 export function themedError(

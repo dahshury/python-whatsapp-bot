@@ -149,7 +149,7 @@ const Dock = ({
       onMouseMove={(e) => mouseX.set(e.pageX)}
       ref={ref}
       {...props}
-      className={cn(dockVariants({ className }), {
+      className={cn(dockVariants(), className, {
         "items-start": direction === "top",
         "items-center": direction === "middle",
         "items-end": direction === "bottom",

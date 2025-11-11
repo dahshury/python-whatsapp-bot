@@ -99,9 +99,49 @@ canvas {
 /* Search styles */
 .gdg-search-wrapper {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: var(--z-base);
+  top: 12px;
+  right: 12px;
+  z-index: var(--z-grid-overlay, var(--z-grid-overlay-editor));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 220px;
+  padding: 0.5rem 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--popover));
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+  color: hsl(var(--popover-foreground));
+  pointer-events: auto;
+}
+
+.gdg-search-wrapper input,
+.gdg-search-wrapper button,
+.gdg-search-wrapper span,
+.gdg-search-wrapper svg {
+  color: inherit;
+}
+
+.gdg-search-wrapper input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  font: inherit;
+  color: inherit;
+}
+
+.gdg-search-wrapper input::placeholder {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.8;
+}
+
+[data-theme="dark"] .gdg-search-wrapper,
+.grid-fullscreen-wrapper.dark .gdg-search-wrapper {
+  background: rgba(17, 24, 39, 0.92);
+  border-color: rgba(148, 163, 184, 0.45);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+  color: rgba(248, 250, 252, 0.95);
 }
 
 /* ========================================
@@ -127,4 +167,23 @@ body > .click-outside-ignore {
 /* Grid cell styling with themed variables */
 .gdg-container {
   z-index: var(--z-base);
+}
+
+/* Grid toolbar/scroller z-index - must be below sheet/drawer (510) */
+.dvn-scroller {
+  z-index: var(--z-grid-component, 10);
+  position: relative;
+}
+
+/* Disable Glide Data Grid layout animations to avoid width expansion flicker */
+/* Disable all transitions and animations on grid elements */
+.dvn-scroller,
+.dvn-container,
+.gdg-wmyidgi,
+.glide-grid-wrapper,
+.glide-grid-inner,
+.glide-grid-wrapper > div,
+.glide-grid-inner > div {
+  transition: none;
+  animation: none;
 }

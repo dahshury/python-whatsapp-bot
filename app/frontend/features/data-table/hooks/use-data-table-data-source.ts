@@ -13,7 +13,53 @@ const END_OF_DAY_MINUTE = 59;
 const END_OF_DAY_SECOND = 59;
 const END_OF_DAY_MILLISECOND = 999;
 
+// Regex patterns for date parsing (top-level for performance)
+const TIMEZONE_REGEX = /[+-]\d{2}:\d{2}$/;
+const ISO_LOCAL_DATE_REGEX =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{3}))?)?$/;
+
 type DateRange = { start: string; end: string };
+
+/**
+ * Parse a date string as local time instead of UTC.
+ * When a date string like "2025-01-15T14:00:00" doesn't have timezone info,
+ * JavaScript's Date constructor interprets it as UTC. This function parses it as local time.
+ */
+function parseLocalDate(dateInput: string | Date): Date {
+  if (dateInput instanceof Date) {
+    return dateInput;
+  }
+
+  const dateStr = String(dateInput);
+
+  // If the string already has timezone info (Z or +/-), use standard Date parsing
+  if (dateStr.includes("Z") || TIMEZONE_REGEX.test(dateStr)) {
+    return new Date(dateStr);
+  }
+
+  // Parse as local time by manually extracting date parts
+  // Format: YYYY-MM-DDTHH:mm:ss or YYYY-MM-DDTHH:mm
+  const match = dateStr.match(ISO_LOCAL_DATE_REGEX);
+  if (match) {
+    const [, year, month, day, hour, minute, second = "0", millisecond = "0"] =
+      match;
+    if (!(year && month && day && hour && minute)) {
+      return new Date(dateStr);
+    }
+    return new Date(
+      Number.parseInt(year, 10),
+      Number.parseInt(month, 10) - 1, // Month is 0-indexed
+      Number.parseInt(day, 10),
+      Number.parseInt(hour, 10),
+      Number.parseInt(minute, 10),
+      Number.parseInt(second, 10),
+      Number.parseInt(millisecond, 10)
+    );
+  }
+
+  // Fallback to standard Date parsing
+  return new Date(dateStr);
+}
 
 type UseDataTableDataSourceParams = {
   events: CalendarEvent[];
@@ -68,10 +114,10 @@ export function useDataTableDataSource({
           if (event.extendedProps?.cancelled && !freeRoam) {
             return false;
           }
-          const eventStart = new Date(event.start);
+          const eventStart = parseLocalDate(event.start);
           if (currentSelectedDateRange.start.includes("T")) {
-            const rangeStart = new Date(currentSelectedDateRange.start);
-            const rangeEnd = new Date(
+            const rangeStart = parseLocalDate(currentSelectedDateRange.start);
+            const rangeEnd = parseLocalDate(
               currentSelectedDateRange.end || currentSelectedDateRange.start
             );
             if (rangeStart.getTime() === rangeEnd.getTime()) {
@@ -79,7 +125,7 @@ export function useDataTableDataSource({
             }
             return eventStart >= rangeStart && eventStart < rangeEnd;
           }
-          const rangeStartDay = new Date(currentSelectedDateRange.start);
+          const rangeStartDay = parseLocalDate(currentSelectedDateRange.start);
           rangeStartDay.setHours(
             START_OF_DAY_HOUR,
             START_OF_DAY_MINUTE,
@@ -91,9 +137,9 @@ export function useDataTableDataSource({
             currentSelectedDateRange.end &&
             currentSelectedDateRange.end !== currentSelectedDateRange.start
           ) {
-            rangeEndDay = new Date(currentSelectedDateRange.end);
+            rangeEndDay = parseLocalDate(currentSelectedDateRange.end);
           } else {
-            rangeEndDay = new Date(rangeStartDay);
+            rangeEndDay = new Date(rangeStartDay.getTime());
           }
           rangeEndDay.setHours(
             END_OF_DAY_HOUR,
@@ -104,12 +150,12 @@ export function useDataTableDataSource({
           return eventStart >= rangeStartDay && eventStart <= rangeEndDay;
         },
         sort: (a: CalendarEvent, b: CalendarEvent) => {
-          const dateA = new Date(a.start);
-          const dateB = new Date(b.start);
+          const dateA = parseLocalDate(a.start);
+          const dateB = parseLocalDate(b.start);
           return dateA.getTime() - dateB.getTime();
         },
         getValue: (event: CalendarEvent, columnId: string) => {
-          const eventDate = new Date(event.start);
+          const eventDate = parseLocalDate(event.start);
           const getPhoneFromExtendedProps = (
             extendedProps: unknown
           ): string => {
@@ -204,6 +250,13 @@ export function useDataTableDataSource({
     open,
     buildDataSource,
   ]);
+
+  useEffect(() => {
+    if (!open) {
+      previousEventsRef.current = [];
+      previousConfigRef.current = "";
+    }
+  }, [open]);
 
   return {
     dataSource,

@@ -8,6 +8,13 @@ import { i18n } from "@/shared/libs/i18n";
 
 // Chat message limit constants
 const DEFAULT_CHAT_MESSAGE_LIMIT = 20;
+const VIEWER_SPLIT_MIN_PERCENT = 5;
+const VIEWER_SPLIT_MAX_PERCENT = 95;
+const TOOLBAR_SIZE_PERCENTAGE_SCALE = 100;
+const DEFAULT_TOOLBAR_SIZE_PERCENT = 100;
+
+const clampViewerSplitPercent = (value: number) =>
+  Math.min(Math.max(value, VIEWER_SPLIT_MIN_PERCENT), VIEWER_SPLIT_MAX_PERCENT);
 
 export type SettingsState = {
   // State
@@ -17,6 +24,11 @@ export type SettingsState = {
   showToolCalls: boolean;
   chatMessageLimit: number;
   sendTypingIndicator: boolean;
+  viewerEnabled: boolean;
+  viewerSplitPaneLocked: boolean;
+  viewerSplitPaneHeight: number | null;
+  editorMinimalMode: boolean;
+  editorToolbarSize: number;
 
   // Actions
   setTheme: (theme: string) => void;
@@ -25,6 +37,11 @@ export type SettingsState = {
   setShowToolCalls: (show: boolean) => void;
   setChatMessageLimit: (limit: number) => void;
   setSendTypingIndicator: (send: boolean) => void;
+  setViewerEnabled: (enabled: boolean) => void;
+  setViewerSplitPaneLocked: (locked: boolean) => void;
+  setViewerSplitPaneHeight: (height: number | null) => void;
+  setEditorMinimalMode: (minimal: boolean) => void;
+  setEditorToolbarSize: (size: number) => void;
 };
 
 // Initialize settings with legacy migration support
@@ -37,6 +54,11 @@ function initializeSettings(): Partial<SettingsState> {
       showToolCalls: true,
       chatMessageLimit: 20,
       sendTypingIndicator: false,
+      viewerEnabled: false,
+      viewerSplitPaneLocked: false,
+      viewerSplitPaneHeight: null,
+      editorMinimalMode: true,
+      editorToolbarSize: 100,
     };
   }
 
@@ -61,6 +83,25 @@ function initializeSettings(): Partial<SettingsState> {
   const storedToolCalls = localStorage.getItem("showToolCalls");
   const storedLimit = localStorage.getItem("chatMessageLimit");
   const storedTyping = localStorage.getItem("sendTypingIndicator");
+  const storedViewerEnabled = localStorage.getItem("viewerEnabled");
+  const storedViewerSplitPaneLocked = localStorage.getItem(
+    "viewerSplitPaneLocked"
+  );
+  const storedViewerSplitPaneHeight = localStorage.getItem(
+    "viewerSplitPaneHeight"
+  );
+  const storedEditorMinimalMode = localStorage.getItem("editorMinimalMode");
+  const storedEditorToolbarSize = localStorage.getItem("editorToolbarSize");
+
+  let viewerSplitPaneHeight: number | null = null;
+  if (storedViewerSplitPaneHeight) {
+    const normalized = storedViewerSplitPaneHeight.includes("%")
+      ? Number.parseFloat(storedViewerSplitPaneHeight.replace("%", ""))
+      : Number.parseFloat(storedViewerSplitPaneHeight);
+    if (Number.isFinite(normalized)) {
+      viewerSplitPaneHeight = clampViewerSplitPercent(normalized);
+    }
+  }
 
   return {
     theme,
@@ -70,78 +111,168 @@ function initializeSettings(): Partial<SettingsState> {
     chatMessageLimit:
       storedLimit != null ? Number(storedLimit) : DEFAULT_CHAT_MESSAGE_LIMIT,
     sendTypingIndicator: storedTyping != null ? storedTyping === "true" : false,
+    viewerEnabled:
+      storedViewerEnabled != null ? storedViewerEnabled === "true" : false,
+    viewerSplitPaneLocked:
+      storedViewerSplitPaneLocked != null
+        ? storedViewerSplitPaneLocked === "true"
+        : false,
+    viewerSplitPaneHeight,
+    editorMinimalMode:
+      storedEditorMinimalMode != null
+        ? storedEditorMinimalMode === "true"
+        : true,
+    editorToolbarSize:
+      storedEditorToolbarSize != null
+        ? Number(storedEditorToolbarSize)
+        : DEFAULT_TOOLBAR_SIZE_PERCENT,
   };
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
-      // Initial state with legacy migration
-      ...(initializeSettings() as SettingsState),
+    (set) => {
+      const initialState = initializeSettings() as SettingsState;
 
-      // Actions
-      setTheme: (theme) => {
-        set({ theme });
-        // Persist to legacy key for backward compatibility
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("styleTheme", theme);
-          } catch {
-            // localStorage.setItem failed
+      // Initialize CSS variable for toolbar scale
+      if (typeof window !== "undefined") {
+        const toolbarSize =
+          initialState.editorToolbarSize ?? DEFAULT_TOOLBAR_SIZE_PERCENT;
+        document.documentElement.style.setProperty(
+          "--tldraw-toolbar-scale",
+          String(toolbarSize / TOOLBAR_SIZE_PERCENTAGE_SCALE)
+        );
+      }
+
+      return {
+        // Initial state with legacy migration
+        ...initialState,
+
+        // Actions
+        setTheme: (theme) => {
+          set({ theme });
+          // Persist to legacy key for backward compatibility
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("styleTheme", theme);
+            } catch {
+              // localStorage.setItem failed
+            }
           }
-        }
-      },
-      setFreeRoam: (freeRoam) => {
-        set({ freeRoam });
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("freeRoam", String(freeRoam));
-          } catch {
-            // localStorage.setItem failed
+        },
+        setFreeRoam: (freeRoam) => {
+          set({ freeRoam });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("freeRoam", String(freeRoam));
+            } catch {
+              // localStorage.setItem failed
+            }
           }
-        }
-      },
-      setShowDualCalendar: (show) => {
-        set({ showDualCalendar: show });
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("showDualCalendar", String(show));
-          } catch {
-            // localStorage.setItem failed
+        },
+        setShowDualCalendar: (show) => {
+          set({ showDualCalendar: show });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("showDualCalendar", String(show));
+            } catch {
+              // localStorage.setItem failed
+            }
           }
-        }
-      },
-      setShowToolCalls: (show) => {
-        set({ showToolCalls: show });
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("showToolCalls", String(show));
-          } catch {
-            // localStorage.setItem failed
+        },
+        setShowToolCalls: (show) => {
+          set({ showToolCalls: show });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("showToolCalls", String(show));
+            } catch {
+              // localStorage.setItem failed
+            }
           }
-        }
-      },
-      setChatMessageLimit: (limit) => {
-        set({ chatMessageLimit: limit });
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("chatMessageLimit", String(limit));
-          } catch {
-            // localStorage.setItem failed
+        },
+        setChatMessageLimit: (limit) => {
+          set({ chatMessageLimit: limit });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("chatMessageLimit", String(limit));
+            } catch {
+              // localStorage.setItem failed
+            }
           }
-        }
-      },
-      setSendTypingIndicator: (send) => {
-        set({ sendTypingIndicator: send });
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem("sendTypingIndicator", String(send));
-          } catch {
-            // localStorage.setItem failed
+        },
+        setSendTypingIndicator: (send) => {
+          set({ sendTypingIndicator: send });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("sendTypingIndicator", String(send));
+            } catch {
+              // localStorage.setItem failed
+            }
           }
-        }
-      },
-    }),
+        },
+        setViewerEnabled: (enabled) => {
+          set({ viewerEnabled: enabled });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("viewerEnabled", String(enabled));
+            } catch {
+              // localStorage.setItem failed
+            }
+          }
+        },
+        setViewerSplitPaneLocked: (locked) => {
+          set({ viewerSplitPaneLocked: locked });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("viewerSplitPaneLocked", String(locked));
+            } catch {
+              // localStorage.setItem failed
+            }
+          }
+        },
+        setViewerSplitPaneHeight: (height) => {
+          const clamped =
+            typeof height === "number" ? clampViewerSplitPercent(height) : null;
+          set({ viewerSplitPaneHeight: clamped });
+          if (typeof window !== "undefined") {
+            try {
+              if (clamped === null) {
+                localStorage.removeItem("viewerSplitPaneHeight");
+              } else {
+                localStorage.setItem("viewerSplitPaneHeight", String(clamped));
+              }
+            } catch {
+              // localStorage.setItem failed
+            }
+          }
+        },
+        setEditorMinimalMode: (minimal) => {
+          set({ editorMinimalMode: minimal });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("editorMinimalMode", String(minimal));
+            } catch {
+              // localStorage.setItem failed
+            }
+          }
+        },
+        setEditorToolbarSize: (size) => {
+          set({ editorToolbarSize: size });
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem("editorToolbarSize", String(size));
+              // Update CSS variable
+              document.documentElement.style.setProperty(
+                "--tldraw-toolbar-scale",
+                String(size / TOOLBAR_SIZE_PERCENTAGE_SCALE)
+              );
+            } catch {
+              // localStorage.setItem failed
+            }
+          }
+        },
+      };
+    },
     {
       name: "settings-store",
       version: 1,

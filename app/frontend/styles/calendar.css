@@ -1,0 +1,93 @@
+/**
+ * CALENDAR STYLES - Only for calendar/home routes
+ * All FullCalendar styles and calendar-specific features
+ */
+
+/* External Library Imports */
+@import "@eonasdan/tempus-dominus/dist/css/tempus-dominus.min.css";
+
+/* FullCalendar Core */
+@import "fullcalendar/_variables.css";
+@import "fullcalendar/_universal.css";
+@import "fullcalendar/_base.css";
+@import "fullcalendar/_icons.css";
+@import "fullcalendar/_buttons.css";
+@import "fullcalendar/_toolbar.css";
+@import "fullcalendar/_view-harness.css";
+@import "fullcalendar/_scroller.css";
+@import "fullcalendar/_scrollgrid.css";
+@import "fullcalendar/features/_popover-unified.css";
+@import "fullcalendar/_sticky.css";
+@import "fullcalendar/_h-event.css";
+@import "fullcalendar/_v-event.css";
+@import "fullcalendar/_day-states.css";
+
+/* FullCalendar Views */
+@import "fullcalendar/views/_daygrid.css";
+@import "fullcalendar/views/_timegrid.css";
+@import "fullcalendar/views/_list.css";
+@import "fullcalendar/views/_multimonth.css";
+
+/* Detailed multimonth styles */
+@import "fullcalendar/views/multimonth/_base.css";
+@import "fullcalendar/views/multimonth/_headers.css";
+@import "fullcalendar/views/multimonth/_month-container.css";
+@import "fullcalendar/views/multimonth/_day-cells.css";
+@import "fullcalendar/views/multimonth/_events.css";
+@import "fullcalendar/views/multimonth/_variants.css";
+@import "fullcalendar/views/multimonth/_dark-mode.css";
+
+/* Calendar Features */
+@import "fullcalendar/features/_grid-layout.css";
+@import "fullcalendar/features/_day-cell-base.css";
+@import "fullcalendar/features/_day-states.css";
+@import "fullcalendar/features/_day-hover-effects.css";
+@import "fullcalendar/features/_weekday-headers.css";
+@import "fullcalendar/features/_cancelled-events.css";
+@import "fullcalendar/features/_vacation-events.css";
+@import "fullcalendar/features/_conversation-events.css";
+@import "fullcalendar/features/_reservation-events.css";
+@import "fullcalendar/features/_free-roam.css";
+@import "fullcalendar/features/_hover-card.css";
+@import "fullcalendar/features/_context-menu.css";
+
+/* Week view header overrides */
+@import "fullcalendar/views/_week-header-override.css";
+
+/* Day view overrides */
+@import "fullcalendar/views/_day.css";
+
+/* Calendar Themes */
+@import "fullcalendar/_themes.css";
+@import "fullcalendar/_bootstrap.css";
+@import "fullcalendar/_rtl.css";
+@import "fullcalendar/_media.css";
+
+/* Gradient overrides */
+@import "fullcalendar/_gradients.css";
+
+/* Utilities */
+@import "fullcalendar/utilities/_performance.css";
+@import "fullcalendar/utilities/_scrollbars.css";
+
+/* Component styles needed for calendar */
+@import "component-overrides.css";
+@import "markdown.css";
+@import "sidebar.css";
+@import "portal.css";
+@import "tempus-dominus.css";
+@import "timekeeper.css";
+@import "themed-scrollbar.css";
+
+/* Chat styles (for calendar conversations) */
+@import "chat.css";
+
+/* =================================
+   GLIDE DATA GRID STYLES
+   ================================= */
+/* Base Glide Data Grid CSS from npm package - must load first */
+@import "@glideapps/glide-data-grid/dist/index.css";
+
+/* Custom data grid styles needed for CalendarDataTableEditor */
+@import "../shared/libs/data-grid/styles/index.css";
+

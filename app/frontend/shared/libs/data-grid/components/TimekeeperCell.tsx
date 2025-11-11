@@ -217,36 +217,12 @@ const renderer: CustomRenderer<TimekeeperCell> = {
             value={localDisplayTime || ""}
           />
           <button
-            className={timekeeperClassNames.iconButton}
+            className={`${timekeeperClassNames.iconButton} timekeeper-icon-button ${showPicker ? "show-picker" : ""}`}
             onClick={handleIconClick}
             onMouseDown={(e) => {
               e.preventDefault();
             }}
-            onMouseEnter={(e) => {
-              const OPACITY_FULL = "1";
-              const BACKGROUND_ALPHA = 0.1;
-              e.currentTarget.style.opacity = OPACITY_FULL;
-              e.currentTarget.style.backgroundColor = showPicker
-                ? `rgba(0, 0, 0, ${BACKGROUND_ALPHA})`
-                : "transparent";
-            }}
-            onMouseLeave={(e) => {
-              const OPACITY_NORMAL = 0.7;
-              const BACKGROUND_ALPHA = 0.1;
-              e.currentTarget.style.opacity = String(OPACITY_NORMAL);
-              e.currentTarget.style.backgroundColor = showPicker
-                ? `rgba(0, 0, 0, ${BACKGROUND_ALPHA})`
-                : "transparent";
-            }}
             ref={iconButtonRef}
-            style={{
-              backgroundColor: (() => {
-                const BACKGROUND_ALPHA = 0.1;
-                return showPicker
-                  ? `rgba(0, 0, 0, ${BACKGROUND_ALPHA})`
-                  : "transparent";
-              })(),
-            }}
             type="button"
           >
             <ClockIcon />
@@ -255,13 +231,15 @@ const renderer: CustomRenderer<TimekeeperCell> = {
           {showPicker &&
             createPortal(
               <div
-                className={`${timekeeperClassNames.portal} ${timekeeperClassNames.clickOutsideIgnore}`}
+                className={`${timekeeperClassNames.portal} ${timekeeperClassNames.clickOutsideIgnore} timekeeper-portal`}
                 data-timekeeper-portal="true"
                 ref={portalRef}
-                style={{
-                  top: `${pickerPosition.top}px`,
-                  left: `${pickerPosition.left}px`,
-                }}
+                style={
+                  {
+                    "--gdg-timekeeper-top": `${pickerPosition.top}px`,
+                    "--gdg-timekeeper-left": `${pickerPosition.left}px`,
+                  } as React.CSSProperties
+                }
               >
                 <TimeKeeperRenderer
                   data={data}

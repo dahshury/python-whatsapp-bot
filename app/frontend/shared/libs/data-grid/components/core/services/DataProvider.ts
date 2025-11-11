@@ -350,8 +350,8 @@ export class DataProvider implements IDataProvider {
         rowCells.set(idx, cell);
       }
     });
-    this.editingState.addRow(rowCells);
-    return newRowIndex;
+    const assignedIndex = this.editingState.addRow(rowCells, newRowIndex);
+    return assignedIndex;
   }
 
   async deleteRow(row: number): Promise<boolean> {

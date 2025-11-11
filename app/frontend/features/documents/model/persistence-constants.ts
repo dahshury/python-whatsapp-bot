@@ -29,3 +29,9 @@ export const NEW_CUSTOMER_SUPPRESS_WINDOW_MS = 600;
  */
 export const NEW_CUSTOMER_SUPPRESS_CLEANUP_DELAY_MS = 700;
 
+/**
+ * Delay (in milliseconds) for clearing the autosave suppression flag
+ * after clearing a row. Ensures suppression is cleared after the
+ * clearing operation completes.
+ */
+export const CLEAR_ROW_SUPPRESS_CLEANUP_DELAY_MS = 1100;

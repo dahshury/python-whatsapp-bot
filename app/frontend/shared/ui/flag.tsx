@@ -1,5 +1,5 @@
-import flags from "react-phone-number-input/flags";
 import { cn } from "@shared/libs/utils";
+import flags from "react-phone-number-input/flags";
 
 type CountryCode = keyof typeof flags;
 type FlagProps = {

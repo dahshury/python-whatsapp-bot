@@ -26,22 +26,14 @@ const Tooltip: React.FC<TooltipProps> = ({
   return createPortal(
     <div
       className="gdg-tooltip"
-      style={{
-        position: "fixed",
-        left: x,
-        top: y,
-        pointerEvents: "none",
-        zIndex: "var(--z-grid-tooltip)",
-      }}
+      style={
+        {
+          "--gdg-tooltip-left": `${x}px`,
+          "--gdg-tooltip-top": `${y}px`,
+        } as React.CSSProperties
+      }
     >
-      <div
-        className="relative max-w-[16.25rem] rounded-md border bg-popover px-3 py-3 text-popover-foreground text-xs shadow-md"
-        style={{
-          transform: "translate(-50%, calc(-100% - 8px))",
-          transformOrigin: "50% 100%",
-          animation: "tooltipFadeOnly 150ms ease-out",
-        }}
-      >
+      <div className="gdg-tooltip-content relative max-w-[16.25rem] rounded-md border bg-popover px-3 py-3 text-popover-foreground text-xs shadow-md">
         <div className="flex gap-3">
           <CircleAlert
             aria-hidden="true"

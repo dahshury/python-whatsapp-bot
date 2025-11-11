@@ -1,6 +1,7 @@
 import { type DocumentApiRepository, documentToDto } from "@/entities/document";
 import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
 import type { DocumentsUseCase } from "../usecase/documents.usecase";
+import { hasDocumentContent } from "../utils/documentContent";
 
 export const DocumentsService = (
   repository: DocumentApiRepository
@@ -45,12 +46,10 @@ export const DocumentsService = (
           name: "Default document",
           age: null,
           document: {
-            elements: [],
-            appState: {
-              viewBackgroundColor: "#ffffff",
-              gridSize: null,
+            type: "tldraw",
+            snapshot: {
+              document: {},
             },
-            files: {},
           },
         });
         return true;
@@ -59,27 +58,26 @@ export const DocumentsService = (
 
     // Regular user initialization - copy from template if needed
     const existing = await repository.getByWaId(waId);
-    const hasElements = Array.isArray(
-      (
-        existing.snapshot?.document as
-          | { elements?: unknown[] }
-          | null
-          | undefined
-      )?.elements
-    );
-    if (existing.snapshot?.document && hasElements) {
-      return true;
+
+    // Check if user already has a document with content
+    if (existing.snapshot?.document) {
+      const doc = existing.snapshot.document;
+
+      // Check if it has content using the same logic as useDefaultDocumentCopy
+      if (hasDocumentContent(doc)) {
+        return true; // Document already has content, don't overwrite
+      }
     }
 
-    // Get template document to copy
+    // Document is empty or doesn't exist, copy from template
     const tmpl = await repository.getByWaId(TEMPLATE_USER_WA_ID);
-    const tmplDoc = tmpl.snapshot.document as { elements?: unknown[] } | null;
-    if (
-      !(tmplDoc && Array.isArray(tmplDoc.elements)) ||
-      tmplDoc.elements.length === 0
-    ) {
-      return false;
+    const tmplDoc = tmpl.snapshot.document;
+
+    // Verify template has content before copying
+    if (!(tmplDoc && hasDocumentContent(tmplDoc))) {
+      return false; // Template is empty, can't copy
     }
+
     return await repository.save(waId, { document: tmplDoc });
   },
 });

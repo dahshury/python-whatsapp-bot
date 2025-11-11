@@ -339,13 +339,7 @@ export class NumberColumnType implements IColumnType {
             onChange: handleChange,
             onBlur: finish,
             autoFocus: true,
-            style: {
-              width: "100%",
-              height: "100%",
-              boxSizing: "border-box",
-              padding: "0.25rem",
-              font: "inherit",
-            },
+            className: "number-column-input",
           });
         } catch {
           return null;

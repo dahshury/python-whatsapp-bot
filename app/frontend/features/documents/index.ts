@@ -26,5 +26,8 @@ export {
   persistSelectedWaId,
   restoreSelectedWaId,
 } from "./services/selection-persistence.service";
+// UI bridges
+export { DocumentAutosaveBridge } from "./ui/document-autosave-bridge";
+export { DocumentViewerCameraManager } from "./ui/document-viewer-camera-manager";
 // Template utilities
 export * from "./utils/template-copy";

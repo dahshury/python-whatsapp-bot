@@ -3,14 +3,20 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useEnsureInitialized } from "@/features/documents";
+import { createAgeEditInterceptor } from "@/features/documents/grid/ageEditInterceptor";
+import { createNameEditInterceptor } from "@/features/documents/grid/nameEditInterceptor";
 import { createPhoneEditInterceptor } from "@/features/documents/grid/phoneEditInterceptor";
 import { useDocumentsSection } from "@/features/documents/hooks/useDocumentsSection";
+import { useUpdateCustomerAge } from "@/features/documents/hooks/useUpdateCustomerAge";
+import { useUpdateCustomerName } from "@/features/documents/hooks/useUpdateCustomerName";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { useCustomerData } from "@/shared/libs/data/customer-data-context";
 import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
 import { DocumentsSectionLayout } from "./DocumentsSectionLayout";
 
 function DocumentsPageContent() {
   const { customers } = useCustomerData();
+  const { isLocalized } = useLanguageStore();
   const router = useRouter();
   const searchParams = useSearchParams();
   const ensureInitialized = useEnsureInitialized();
@@ -34,15 +40,17 @@ function DocumentsPageContent() {
     isFullscreen,
     isSceneTransitioning,
     customerDataSource,
+    customerColumns,
+    providerRef,
     validationErrors,
     loading,
     saveStatus,
     setSaveStatus,
     fsContainerRef,
-    handleCreateNewCustomer,
     handleProviderReady,
     enterFullscreen,
     exitFullscreen,
+    startNewCustomer,
   } = useDocumentsSection();
 
   const findCustomerByPhone = useCallback(
@@ -86,12 +94,20 @@ function DocumentsPageContent() {
     []
   );
 
+  const updateAgeMutation = useUpdateCustomerAge();
+  const updateNameMutation = useUpdateCustomerName();
+
   const phoneEditInterceptor = useMemo(
     () =>
       createPhoneEditInterceptor({
         findCustomerByPhone,
         dispatch: gridDispatch,
         documentsMode: true,
+        currentWaId: waId,
+        updateNameMutation,
+        customerDataSource,
+        customerColumns,
+        isLocalized,
         onCustomerSelected: (selectedWaId) => {
           if (!selectedWaId) {
             return;
@@ -114,29 +130,65 @@ function DocumentsPageContent() {
           }
         },
       }),
-    [findCustomerByPhone, gridDispatch, router, searchParams, waId]
+    [
+      findCustomerByPhone,
+      gridDispatch,
+      router,
+      searchParams,
+      waId,
+      updateNameMutation,
+      customerDataSource,
+      customerColumns,
+      isLocalized,
+    ]
+  );
+
+  const nameEditInterceptor = useMemo(
+    () =>
+      createNameEditInterceptor({
+        waId,
+        customerDataSource,
+        customerColumns,
+        isLocalized,
+        updateNameMutation,
+      }),
+    [waId, customerDataSource, customerColumns, isLocalized, updateNameMutation]
+  );
+
+  const ageEditInterceptor = useMemo(
+    () =>
+      createAgeEditInterceptor({
+        waId,
+        customerDataSource,
+        customerColumns,
+        isLocalized,
+        updateAgeMutation,
+      }),
+    [waId, customerDataSource, customerColumns, isLocalized, updateAgeMutation]
   );
 
   const editInterceptors = useMemo(
-    () => [phoneEditInterceptor],
-    [phoneEditInterceptor]
+    () => [phoneEditInterceptor, nameEditInterceptor, ageEditInterceptor],
+    [phoneEditInterceptor, nameEditInterceptor, ageEditInterceptor]
   );
 
   return (
     <DocumentsSectionLayout
+      customerColumns={customerColumns}
       customerDataSource={customerDataSource}
       editInterceptors={editInterceptors}
       enterFullscreen={enterFullscreen}
       exitFullscreen={exitFullscreen}
       fsContainerRef={fsContainerRef}
       gridDispatch={gridDispatch}
-      handleCreateNewCustomer={handleCreateNewCustomer}
       handleProviderReady={handleProviderReady}
       isFullscreen={isFullscreen}
       isSceneTransitioning={isSceneTransitioning}
       loading={loading}
+      providerRef={providerRef}
       saveStatus={saveStatus}
       setSaveStatus={setSaveStatus}
+      startNewCustomer={startNewCustomer}
       validationErrors={validationErrors}
       waId={waId}
     />

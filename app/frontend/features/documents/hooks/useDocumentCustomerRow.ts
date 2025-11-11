@@ -510,6 +510,49 @@ export default function useDocumentCustomerRow(
     });
   }, [waId, loadCustomerData]);
 
+  // Listen for explicit reload requests (e.g., after clearing and returning to same customer)
+  useEffect(() => {
+    if (!waId || waId.trim() === "") {
+      return;
+    }
+
+    const handler = (event: Event) => {
+      try {
+        const detail = (event as CustomEvent).detail as {
+          waId?: string | null;
+        };
+        const targetWaId = detail?.waId ?? null;
+
+        if (!targetWaId || targetWaId !== waId) {
+          return;
+        }
+
+        loadCustomerData(targetWaId).catch((reloadError) => {
+          logDocumentCustomerRowWarning(
+            "Failed to reload customer data after force reload request",
+            reloadError
+          );
+        });
+      } catch (error) {
+        logDocumentCustomerRowWarning(
+          "Failed to handle force customer reload event",
+          error
+        );
+      }
+    };
+
+    window.addEventListener(
+      "doc:force-customer-reload",
+      handler as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "doc:force-customer-reload",
+        handler as EventListener
+      );
+    };
+  }, [waId, loadCustomerData]);
+
   return {
     customerColumns,
     customerDataSource,
@@ -519,5 +562,6 @@ export default function useDocumentCustomerRow(
     onAddRowOverride,
     onDataProviderReady,
     isUnlockReady,
+    providerRef,
   } as const;
 }

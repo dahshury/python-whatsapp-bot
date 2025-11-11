@@ -26,6 +26,7 @@ export function useOfflineOverlay(
   const [isRetrying, setIsRetrying] = useState<boolean>(false);
   const disconnectedSinceRef = useRef<number | null>(null);
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasConnectedRef = useRef<boolean>(false);
 
   // Extract specific properties for stable dependencies
   const isConnected = ws?.isConnected;
@@ -33,6 +34,9 @@ export function useOfflineOverlay(
   const conversations = ws?.conversations;
   const vacations = ws?.vacations;
   const connect = ws?.connect;
+  const isReconnecting = Boolean(
+    (ws as { isReconnecting?: boolean } | null | undefined)?.isReconnecting
+  );
 
   useEffect(() => {
     const hasAnyData = (() => {
@@ -61,6 +65,15 @@ export function useOfflineOverlay(
     })();
 
     if (isConnected || isConnecting) {
+      if (isConnected) {
+        hasConnectedRef.current = true;
+      }
+      disconnectedSinceRef.current = null;
+      setShowOffline(false);
+      return;
+    }
+
+    if (!(isReconnecting || hasConnectedRef.current)) {
       disconnectedSinceRef.current = null;
       setShowOffline(false);
       return;
@@ -83,7 +96,7 @@ export function useOfflineOverlay(
       Math.max(0, thresholdMs - elapsed)
     );
     return () => clearTimeout(t);
-  }, [isConnected, reservations, conversations, vacations]);
+  }, [isConnected, isReconnecting, reservations, conversations, vacations]);
 
   const handleRetry = useCallback(() => {
     if (isRetrying) {

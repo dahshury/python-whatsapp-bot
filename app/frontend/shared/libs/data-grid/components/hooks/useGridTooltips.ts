@@ -1,5 +1,6 @@
 "use client";
 
+import type { RefObject } from "react";
 import { useCallback, useRef, useState } from "react";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { i18n } from "@/shared/libs/i18n";
@@ -90,20 +91,30 @@ function translateMessageIfKey(message: string, isLocalized: boolean): string {
   return message;
 }
 
-export function useGridTooltips(
-  getCellContent: (cell: readonly [number, number]) => unknown,
-  columns: Array<{ isRequired?: boolean; isEditable?: boolean; help?: string }>,
+export type UseGridTooltipsOptions = {
+  getCellContent: (cell: readonly [number, number]) => unknown;
+  columns: Array<{ isRequired?: boolean; isEditable?: boolean; help?: string }>;
   validationErrors?: Array<{
     row: number;
     col: number;
     message: string;
     fieldName?: string;
-  }>,
+  }>;
   getBoundsForCell?: (
     col: number,
     row: number
-  ) => { x: number; y: number; width: number; height: number } | undefined
-) {
+  ) => { x: number; y: number; width: number; height: number } | undefined;
+  containerRef?: RefObject<HTMLElement | null>;
+};
+
+export function useGridTooltips(options: UseGridTooltipsOptions) {
+  const {
+    getCellContent,
+    columns,
+    validationErrors,
+    getBoundsForCell,
+    containerRef,
+  } = options;
   const [tooltip, setTooltip] = useState<TooltipState | undefined>();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { isLocalized } = useLanguageStore();
@@ -227,10 +238,29 @@ export function useGridTooltips(
               bw = args.bounds.width;
             }
             if (bx !== undefined && by !== undefined && tooltipContent) {
+              const containerRect =
+                containerRef?.current?.getBoundingClientRect();
+
+              let viewportX = bx;
+              let viewportY = by;
+
+              if (containerRect) {
+                const withinContainerViewport =
+                  viewportX >= containerRect.left - 1 &&
+                  viewportX <= containerRect.right + 1 &&
+                  viewportY >= containerRect.top - 1 &&
+                  viewportY <= containerRect.bottom + 1;
+
+                if (!withinContainerViewport) {
+                  viewportX = containerRect.left + viewportX;
+                  viewportY = containerRect.top + viewportY;
+                }
+              }
+
               setTooltip({
                 content: tooltipContent,
-                left: bx + (bw ?? 0) / 2,
-                top: by,
+                left: viewportX + (bw ?? 0) / 2,
+                top: viewportY,
                 ...(fieldLabel && { fieldLabel }),
                 ...(message && { message }),
                 ...(bw && { width: bw }),
@@ -246,6 +276,7 @@ export function useGridTooltips(
       validationErrors,
       formatFieldLabel,
       getBoundsForCell,
+      containerRef,
       isLocalized,
     ]
   );

@@ -5,8 +5,8 @@ import type { FC } from "react";
 import { useCallback, useEffect } from "react";
 import { Toaster } from "sonner";
 import { useCustomerNames } from "@/features/chat/hooks/useCustomerNames";
-import { notificationManager } from "@/shared/libs/toast/notification-manager";
 import { useUndoReservation } from "@/features/reservations/hooks/useUndoReservation";
+import { notificationManager } from "@/shared/libs/toast/notification-manager";
 import { toastService } from "./toast-service";
 
 // Maximum length for time slot display (HH:MM format)
@@ -48,6 +48,11 @@ export const ToastRouter: FC = () => {
         if (!(type && data)) {
           return;
         }
+
+        const asString = (value: unknown): string | undefined =>
+          typeof value === "string" ? value : undefined;
+        const asNumber = (value: unknown): number | undefined =>
+          typeof value === "number" ? value : undefined;
         const isLocalized = (() => {
           try {
             const loc = localStorage.getItem("locale");
@@ -65,82 +70,142 @@ export const ToastRouter: FC = () => {
         }
 
         if (type === "reservation_created") {
-          const reservationId = data.id as number | undefined;
-          const waId = data.wa_id as string | undefined;
-          
+          const reservationId = asNumber((data as { id?: unknown }).id);
+          const normalizedWaId =
+            asString((data as { wa_id?: unknown }).wa_id) ??
+            ((data as { wa_id?: unknown }).wa_id != null
+              ? String((data as { wa_id?: unknown }).wa_id)
+              : "");
+          const eventDate = asString((data as { date?: unknown }).date) ?? "";
+          const timeSlot =
+            asString((data as { time_slot?: unknown }).time_slot) ?? "";
+          const customerName =
+            asString((data as { customer_name?: unknown }).customer_name) ??
+            undefined;
+
+          const undoCreateAction =
+            reservationId !== undefined && normalizedWaId !== ""
+              ? () => {
+                  undoCreate.mutate({
+                    reservationId,
+                    waId: normalizedWaId,
+                    ar: isLocalized,
+                  });
+                }
+              : null;
+
           notificationManager.showReservationCreated({
-            customer: data.customer_name,
-            wa_id: data.wa_id,
-            date: data.date,
-            time: (data.time_slot || "").slice(0, TIME_SLOT_DISPLAY_LENGTH),
+            ...(customerName ? { customer: customerName } : {}),
+            wa_id: normalizedWaId,
+            date: eventDate,
+            time: timeSlot.slice(0, TIME_SLOT_DISPLAY_LENGTH),
             isLocalized,
-            onUndo:
-              reservationId && waId
-                ? () => {
-                    undoCreate.mutate({
-                      reservationId,
-                      waId,
-                      ar: isLocalized,
-                    });
-                  }
-                : undefined,
+            ...(undoCreateAction ? { onUndo: undoCreateAction } : {}),
           });
         } else if (
           type === "reservation_updated" ||
           type === "reservation_reinstated"
         ) {
-          const reservationId = data.id as number | undefined;
-          const waId = data.wa_id as string | undefined;
-          const date = data.date as string | undefined;
-          const timeSlot = data.time_slot as string | undefined;
-          const customerName = data.customer_name as string | undefined;
-          const reservationType = data.type as number | undefined;
-          const originalData = (data as { original_data?: Record<string, unknown> })?.original_data;
+          const reservationId = asNumber((data as { id?: unknown }).id);
+          const currentWaId =
+            asString((data as { wa_id?: unknown }).wa_id) ??
+            ((data as { wa_id?: unknown }).wa_id != null
+              ? String((data as { wa_id?: unknown }).wa_id)
+              : "");
+          const currentDate = asString((data as { date?: unknown }).date) ?? "";
+          const currentTimeSlot =
+            asString((data as { time_slot?: unknown }).time_slot) ?? "";
+          const customerName =
+            asString((data as { customer_name?: unknown }).customer_name) ??
+            undefined;
+          const originalData = (
+            data as { original_data?: Record<string, unknown> }
+          )?.original_data;
+
+          let undoModifyAction: (() => void) | null = null;
+
+          if (
+            reservationId !== undefined &&
+            originalData &&
+            typeof originalData === "object"
+          ) {
+            const payload = originalData as Record<string, unknown>;
+            // Use ONLY values from original_data - don't fall back to current values
+            // This ensures undo reverts to the actual original state, not the new state
+            const payloadWaId = asString(payload.wa_id);
+            const payloadDate = asString(payload.date);
+            const payloadTimeSlot = asString(payload.time_slot);
+            const payloadCustomerName = asString(payload.customer_name);
+            const payloadType = asNumber(payload.type);
+
+            // Only create undo action if we have the required fields from original_data
+            if (payloadWaId && payloadDate && payloadTimeSlot) {
+              const safeOriginalData = {
+                wa_id: payloadWaId,
+                date: payloadDate,
+                time_slot: payloadTimeSlot,
+                // Include customer_name and type only if they exist in original_data
+                // This ensures we revert name and type changes correctly
+                ...(payloadCustomerName !== undefined
+                  ? { customer_name: payloadCustomerName }
+                  : {}),
+                ...(payloadType !== undefined ? { type: payloadType } : {}),
+              };
+
+              // Detect if phone number (wa_id) changed by comparing with current wa_id
+              const phoneChanged = currentWaId && currentWaId !== payloadWaId;
+
+              undoModifyAction = () => {
+                undoModify.mutate({
+                  reservationId,
+                  originalData: safeOriginalData,
+                  ar: isLocalized,
+                  // Pass new wa_id if phone changed so undo can revert it
+                  ...(phoneChanged ? { newWaId: currentWaId } : {}),
+                });
+              };
+            }
+          }
 
           notificationManager.showReservationModified({
-            customer: data.customer_name,
-            wa_id: data.wa_id,
-            date: data.date,
-            time: (data.time_slot || "").slice(0, TIME_SLOT_DISPLAY_LENGTH),
+            ...(customerName ? { customer: customerName } : {}),
+            wa_id: currentWaId,
+            date: currentDate,
+            time: currentTimeSlot.slice(0, TIME_SLOT_DISPLAY_LENGTH),
             isLocalized,
-            onUndo:
-              reservationId && originalData && typeof originalData === "object"
-                && originalData.date && originalData.time_slot
-                ? () => {
-                    const safeOriginalData = {
-                      wa_id: (originalData.wa_id as string) || waId,
-                      date: String(originalData.date || date || ""),
-                      time_slot: String(originalData.time_slot || timeSlot || ""),
-                      customer_name: (originalData.customer_name as string) || customerName,
-                      type: originalData.type as number | undefined,
-                    };
-
-                    undoModify.mutate({
-                      reservationId,
-                      originalData: safeOriginalData,
-                      ar: isLocalized,
-                    });
-                  }
-                : undefined,
+            ...(undoModifyAction ? { onUndo: undoModifyAction } : {}),
           });
         } else if (type === "reservation_cancelled") {
-          const reservationId = data.id as number | undefined;
-          
+          const reservationId = asNumber((data as { id?: unknown }).id);
+          const normalizedWaId =
+            asString((data as { wa_id?: unknown }).wa_id) ??
+            ((data as { wa_id?: unknown }).wa_id != null
+              ? String((data as { wa_id?: unknown }).wa_id)
+              : "");
+          const eventDate = asString((data as { date?: unknown }).date) ?? "";
+          const timeSlot =
+            asString((data as { time_slot?: unknown }).time_slot) ?? "";
+          const customerName =
+            asString((data as { customer_name?: unknown }).customer_name) ??
+            undefined;
+
+          const undoCancelAction =
+            reservationId !== undefined
+              ? () => {
+                  undoCancel.mutate({
+                    reservationId,
+                    ar: isLocalized,
+                  });
+                }
+              : null;
+
           notificationManager.showReservationCancelled({
-            customer: data.customer_name,
-            wa_id: data.wa_id,
-            date: data.date,
-            time: (data.time_slot || "").slice(0, TIME_SLOT_DISPLAY_LENGTH),
+            ...(customerName ? { customer: customerName } : {}),
+            wa_id: normalizedWaId,
+            date: eventDate,
+            time: timeSlot.slice(0, TIME_SLOT_DISPLAY_LENGTH),
             isLocalized,
-            onUndo:
-              reservationId
-                ? () => {
-                    undoCancel.mutate({
-                      reservationId,
-                      ar: isLocalized,
-                    });
-                  }
-                : undefined,
+            ...(undoCancelAction ? { onUndo: undoCancelAction } : {}),
           });
         } else if (type === "conversation_new_message") {
           const messageLabel = i18n.getMessage(

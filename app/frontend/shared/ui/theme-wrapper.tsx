@@ -3,10 +3,20 @@
 import { useTheme as useNextThemes } from "next-themes";
 import { useEffect, useLayoutEffect } from "react";
 import { useSettingsStore } from "@/infrastructure/store/app-store";
+import { loadTheme } from "@/shared/libs/theme-loader";
 
 export function ThemeWrapper({ children }: { children: React.ReactNode }) {
   const { theme } = useSettingsStore();
   const { resolvedTheme, theme: nextTheme } = useNextThemes();
+
+  // Load theme CSS dynamically when theme changes or on initial mount
+  useEffect(() => {
+    if (theme) {
+      loadTheme(theme).catch((_error) => {
+        // Ignore theme loading errors
+      });
+    }
+  }, [theme]);
 
   useLayoutEffect(() => {
     // Remove all theme classes

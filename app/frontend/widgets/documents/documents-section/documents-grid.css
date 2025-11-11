@@ -4,12 +4,47 @@
 /* This CSS file is here for any future DOM-based header elements */
 
 /* Target any potential header DOM elements within the documents grid */
-.documents-grid-container [class*="header"],
-.documents-grid-container [data-header],
-.documents-grid-container .dvn-scroller [class*="header"] {
+.documents-grid-wrapper [class*="header"],
+.documents-grid-wrapper [data-header],
+.documents-grid-wrapper .dvn-scroller [class*="header"] {
 	text-align: center;
 	justify-content: center;
 	display: flex;
 	align-items: center;
+}
+
+/* Apply theme border-radius to grid scroller and container */
+.documents-grid-wrapper .dvn-scroller,
+.documents-grid-wrapper .dvn-container,
+.documents-grid-wrapper .glide-grid-wrapper,
+.documents-grid-wrapper .glide-grid-inner,
+.documents-grid-wrapper .gdg-wmyidgi {
+	border-radius: var(--radius);
+	overflow: hidden;
+}
+
+/* Disable all transitions on grid elements to prevent width animation */
+.documents-grid-wrapper .dvn-scroller,
+.documents-grid-wrapper .gdg-wmyidgi,
+.documents-grid-wrapper .glide-grid-wrapper,
+.documents-grid-wrapper .glide-grid-inner,
+.documents-grid-wrapper > div {
+	transition: none;
+}
+
+/* Force all grid containers to 100% width immediately */
+.documents-grid-wrapper .gdg-wmyidgi {
+	width: 100%;
+	transition: none;
+}
+
+/* Disable pointer interactions with TLDraw canvases during panel resizing */
+html[data-panel-resizing='true'] .tldraw-editor-container,
+html[data-panel-resizing='true'] .tldraw-viewer-container,
+html[data-panel-resizing='true'] .tldraw-canvas-wrapper,
+html[data-panel-resizing='true'] .tl-container {
+	pointer-events: none !important;
+	touch-action: none !important;
+	user-select: none !important;
 }
 

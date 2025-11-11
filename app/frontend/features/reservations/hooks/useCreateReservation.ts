@@ -6,6 +6,7 @@ import {
   LOCAL_OPERATION_TIMEOUT_MS,
   TOAST_TIMEOUT_MS,
 } from "@/features/calendar/lib/constants";
+import { updateCustomerNamesCache } from "@/features/customers/hooks/utils/customer-names-cache";
 import { reserveTimeSlot } from "@/shared/api";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
@@ -46,7 +47,16 @@ export function useCreateReservation() {
     },
 
     onMutate: async (params) => {
-      await queryClient.cancelQueries({ queryKey: ["calendar-reservations"] });
+      // Cancel only in-flight queries that might conflict (not all calendar queries)
+      await queryClient.cancelQueries({
+        predicate: (query) => {
+          if (query.queryKey[0] !== "calendar-reservations") {
+            return false;
+          }
+          // Only cancel if this query is currently fetching
+          return query.state.fetchStatus === "fetching";
+        },
+      });
 
       const previousData = queryClient.getQueriesData({
         queryKey: ["calendar-reservations"],
@@ -136,6 +146,11 @@ export function useCreateReservation() {
             return updated;
           }
         );
+      }
+
+      // Update customer names cache if name provided
+      if (params.title) {
+        updateCustomerNamesCache(queryClient, params.waId, params.title);
       }
     },
 

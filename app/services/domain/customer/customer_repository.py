@@ -77,7 +77,12 @@ class CustomerRepository:
         except Exception:
             return False
 
-    def update_wa_id(self, old_wa_id: str, new_wa_id: str) -> int:
+    def update_wa_id(
+        self,
+        old_wa_id: str,
+        new_wa_id: str,
+        customer_name: str | None = None,
+    ) -> tuple[int, str | None, list[dict[str, object]]]:
         """
         Update customer's WhatsApp ID across all related tables.
 
@@ -86,22 +91,99 @@ class CustomerRepository:
             new_wa_id: New WhatsApp ID
 
         Returns:
-            Total number of rows affected across all tables
+            Tuple of (rows affected, resulting customer_name)
         """
+        resulting_name: str | None = None
+        previous_reservations: list[dict[str, object]] = []
         with get_session() as session:
-            # Update customers
-            cust_rows = session.query(CustomerModel).filter(CustomerModel.wa_id == old_wa_id).update({CustomerModel.wa_id: new_wa_id}, synchronize_session=False)
-            # Update conversation
-            conv_rows = session.query(ConversationModel).filter(ConversationModel.wa_id == old_wa_id).update({ConversationModel.wa_id: new_wa_id}, synchronize_session=False)
-            # Update reservations
-            res_rows = session.query(ReservationModel).filter(ReservationModel.wa_id == old_wa_id).update({ReservationModel.wa_id: new_wa_id}, synchronize_session=False)
+            existing_customer: CustomerModel | None = session.get(
+                CustomerModel, old_wa_id
+            )
+            if existing_customer is None:
+                return 0, None, []
 
-            total_rows = (cust_rows or 0) + (conv_rows or 0) + (res_rows or 0)
-            if total_rows > 0:
-                session.commit()
+            existing_res_rows = (
+                session.query(
+                    ReservationModel.id,
+                    ReservationModel.date,
+                    ReservationModel.time_slot,
+                    ReservationModel.type,
+                    ReservationModel.status,
+                )
+                .filter(ReservationModel.wa_id == old_wa_id)
+                .all()
+            )
+            previous_reservations = [
+                {
+                    "id": row.id,
+                    "date": row.date,
+                    "time_slot": row.time_slot,
+                    "type": row.type,
+                    "status": row.status,
+                    "customer_name": existing_customer.customer_name,
+                }
+                for row in existing_res_rows
+            ]
+
+            target_customer: CustomerModel | None = session.get(
+                CustomerModel, new_wa_id
+            )
+            if target_customer is None:
+                target_customer = CustomerModel(
+                    wa_id=new_wa_id,
+                    customer_name=existing_customer.customer_name,
+                )
+                if customer_name is not None and customer_name.strip():
+                    target_customer.customer_name = customer_name.strip()
+                # Copy optional fields if they exist on the model
+                if hasattr(existing_customer, "age"):
+                    target_customer.age = getattr(existing_customer, "age")
+                if hasattr(existing_customer, "age_recorded_at"):
+                    target_customer.age_recorded_at = getattr(
+                        existing_customer, "age_recorded_at"
+                    )
+                session.add(target_customer)
             else:
-                session.rollback()
-            return total_rows
+                target_customer.customer_name = existing_customer.customer_name
+                if customer_name is not None and customer_name.strip():
+                    target_customer.customer_name = customer_name.strip()
+                if hasattr(existing_customer, "age"):
+                    target_customer.age = getattr(existing_customer, "age")
+                if hasattr(existing_customer, "age_recorded_at"):
+                    target_customer.age_recorded_at = getattr(
+                        existing_customer, "age_recorded_at"
+                    )
+
+            # Commit the new customer record first to satisfy FK constraints
+            session.commit()
+            resulting_name = target_customer.customer_name
+
+        # Use a new session for the updates to avoid detached instance issues
+        with get_session() as session:
+            # Update dependent tables
+            res_rows = (
+                session.query(ReservationModel)
+                .filter(ReservationModel.wa_id == old_wa_id)
+                .update({ReservationModel.wa_id: new_wa_id}, synchronize_session=False)
+            )
+            conv_rows = (
+                session.query(ConversationModel)
+                .filter(ConversationModel.wa_id == old_wa_id)
+                .update({ConversationModel.wa_id: new_wa_id}, synchronize_session=False)
+            )
+
+            # Delete old customer record (now safe since FK references are updated)
+            old_customer = session.get(CustomerModel, old_wa_id)
+            if old_customer:
+                session.delete(old_customer)
+            
+            session.commit()
+
+            total_rows = (res_rows or 0) + (conv_rows or 0) + 1
+            if resulting_name is None:
+                new_customer = session.get(CustomerModel, new_wa_id)
+                resulting_name = getattr(new_customer, "customer_name", None) if new_customer else None
+            return total_rows, resulting_name, previous_reservations
 
     def get_customer_stats(self, wa_id: str) -> CustomerStats | None:
         """Aggregate messaging and reservation statistics for a customer."""

@@ -23,10 +23,10 @@ export function Footer({
   validationErrors,
 }: FooterProps) {
   return (
-    <div className="flex flex-col-reverse gap-2 border-t px-4 py-1.5 sm:flex-row sm:justify-between sm:space-x-2">
+    <div className="flex flex-col-reverse gap-2 border-t px-4 py-1 sm:flex-row sm:justify-between sm:space-x-2">
       <div className="relative ms-auto flex items-center gap-2">
         <Button
-          className="gap-2"
+          className="h-8 gap-2"
           disabled={!canSave || isSaving}
           onClick={onSave}
         >

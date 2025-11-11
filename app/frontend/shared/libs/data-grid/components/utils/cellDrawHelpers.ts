@@ -29,7 +29,7 @@ export function drawAttentionIndicator(
   // Draw gradient background first (bottom to top: destructive color to transparent)
   const gradient = ctx.createLinearGradient(0, rect.y + rect.height, 0, rect.y);
 
-  // Get CSS variable colors - these are defined in glide-grid.css
+  // Get CSS variable colors - these are defined in shared/libs/data-grid/styles/_variables.css
   const startColor =
     getComputedStyle(document.documentElement)
       .getPropertyValue("--gdg-validation-error-start")

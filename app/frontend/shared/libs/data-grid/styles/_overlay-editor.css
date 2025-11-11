@@ -17,7 +17,6 @@
   max-height: calc(100vh - var(--d19meir1-4));
   font-family: var(--gdg-font-family);
   font-size: var(--gdg-editor-font-size);
-  text-align: start;
 }
 
 .gdg-d19meir1.gdg-style {
@@ -27,7 +26,8 @@
     0 0 0 1px var(--gdg-accent-color, hsl(var(--primary))),
     0px 0px 1px rgba(62, 65, 86, 0.4),
     0px 6px 12px rgba(62, 65, 86, 0.15);
-  animation: glide_fade_in-gdg-d19meir1 60ms 1;
+  /* Animation disabled for instant render */
+  /* animation: glide_fade_in-gdg-d19meir1 60ms 1; */
 }
 
 .gdg-d19meir1.gdg-pad {

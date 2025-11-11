@@ -38,5 +38,8 @@
   },
   "simple-git-hooks": {
     "pre-commit": "node scripts/ci/pre-commit.mjs"
+  },
+  "dependencies": {
+    "react-resizable-panels": "^3.0.6"
   }
 }

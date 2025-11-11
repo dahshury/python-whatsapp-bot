@@ -4,13 +4,15 @@ You are an expert software architect tasked with analyzing a codebase to identif
 
 ## Phase 1: Data Collection
 
-1. **Run the tokei command:**
+1. **Run the tokei command and export output to a file:**
 
    ```bash
-   tokei -f -s code
+   tokei -f -s code > docs/tokei_output.txt
    ```
 
-2. **Parse the output** to identify the top 10 files by lines of code (LOC). Extract:
+   **Note**: Exporting to a file first is necessary because the output may be too large to process directly.
+
+2. **Read the exported file** (`docs/tokei_output.txt`) and parse it to identify the top 10 files by lines of code (LOC). Extract:
    - File path (relative to project root)
    - Total lines of code
    - File language/type
@@ -248,7 +250,7 @@ After the main tables, create detailed sections for each file:
 
 Before finalizing the output:
 
-1. **Verify accuracy**: Re-check tokei output for correct LOC counts
+1. **Verify accuracy**: Re-check the `docs/tokei_output.txt` file for correct LOC counts
 2. **Consistency**: Ensure star ratings are consistently applied across all files
 3. **Actionability**: Each suggestion should be specific and implementable
 4. **Context**: Ratings should reflect actual code patterns seen in the file

@@ -391,23 +391,17 @@ class ReservationService(BaseService):
                  return format_response(False, message=get_message("reservation_not_found", ar))
 
             # Store original data for undo
+            # IMPORTANT: Use reservation's current state, not customer table's state
+            # The customer table gets updated during modification, so we must capture
+            # the reservation's state BEFORE any changes are applied
             original_data = {
                 "wa_id": reservation_to_modify.wa_id, # Should not change based on this function
                 "date": reservation_to_modify.date,
                 "time_slot": reservation_to_modify.time_slot,
                 "type": reservation_to_modify.type.value,
-                "customer_name": reservation_to_modify.customer_name, # Fetch from customer service if needed, or assume repository has it
+                "customer_name": reservation_to_modify.customer_name, # Use reservation's name, not customer table
                 "status": reservation_to_modify.status # To revert to original status if it was e.g. cancelled
             }
-
-            # Get customer details (original name)
-            customer = self.customer_service.repository.find_by_wa_id(wa_id)
-            if customer:
-                original_data["customer_name"] = customer.customer_name
-            else: # Should not happen if reservation exists
-                self.logger.error(f"Customer not found for wa_id {wa_id} during modification of reservation {reservation_to_modify.id}")
-                # Keep existing name from reservation object as fallback
-                original_data["customer_name"] = reservation_to_modify.customer_name
 
 
             # --- Apply modifications ---

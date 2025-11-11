@@ -1,8 +1,13 @@
 export { enrichSnapshotWithCamera } from "./enrichSnapshotWithCamera";
-export { useCanvasLoadingProgress } from "./useCanvasLoadingProgress";
+export { useClearDocumentAndRow } from "./useClearDocumentAndRow";
 export { useDefaultDocumentCopy } from "./useDefaultDocumentCopy";
 export { useDocumentCanvas } from "./useDocumentCanvas";
+export { useDocumentCanvasLockState } from "./useDocumentCanvasLockState";
 export { default as useDocumentCustomerRow } from "./useDocumentCustomerRow";
+export { useDocumentStoreStatus } from "./useDocumentStoreStatus";
+export { useDocumentStoreSync } from "./useDocumentStoreSync";
+export { useDocumentsGridAddRow } from "./useDocumentsGridAddRow";
+export { useDocumentsGridRefresh } from "./useDocumentsGridRefresh";
 export { useDocumentsSection } from "./useDocumentsSection";
 export { useEnsureInitialized } from "./useEnsureInitialized";
 export { useFullscreenManagement as useFullscreen } from "./useFullscreenManagement";

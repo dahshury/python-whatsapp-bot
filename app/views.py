@@ -542,17 +542,32 @@ async def api_phone_all(
             filters['country'] = country
         if registration:
             filters['registration'] = registration
-        if date_range_type and date_from and date_to:
+        if date_range_type and (date_from or date_to):
             try:
-                from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
-                to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
-                filters['date_range'] = {
-                    'type': date_range_type,
-                    'range': {
-                        'from': from_date,
-                        'to': to_date
+                from_date = None
+                to_date = None
+                
+                if date_from:
+                    from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                    # If only from_date is provided, set to start of day
+                    from_date = from_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                
+                if date_to:
+                    to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                    # If only to_date is provided, set to end of day
+                    to_date = to_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                elif from_date:
+                    # If only from_date provided, treat as single day (end of same day)
+                    to_date = from_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                
+                if from_date or to_date:
+                    filters['date_range'] = {
+                        'type': date_range_type,
+                        'range': {
+                            'from': from_date or to_date.replace(hour=0, minute=0, second=0, microsecond=0),
+                            'to': to_date or from_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                        }
                     }
-                }
             except Exception as e:
                 logging.warning(f"Invalid date range: {e}")
 
@@ -788,7 +803,12 @@ async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
 # Modify WhatsApp ID endpoint
 @router.post("/reservations/{wa_id}/modify_id")
 async def api_modify_id(wa_id: str, payload: dict = Body(...)):
-    resp = modify_id(payload.get("old_wa_id", wa_id), payload.get("new_wa_id"), ar=payload.get("ar", False))
+    resp = modify_id(
+        payload.get("old_wa_id", wa_id),
+        payload.get("new_wa_id"),
+        ar=payload.get("ar", False),
+        customer_name=payload.get("customer_name"),
+    )
     return JSONResponse(content=resp)
 
 

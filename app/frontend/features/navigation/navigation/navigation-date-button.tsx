@@ -35,7 +35,7 @@ const BADGE_ALLOWANCE_SMALL = 32; // For counts <= 99
 // Layout cushion for locale variations and hover transitions (in pixels)
 const LAYOUT_CUSHION = 16;
 // Text scale constants for useFitTextScale
-const MIN_SCALE_NAVIGATION_ONLY = 0.8;
+const MIN_SCALE_NAVIGATION_ONLY = 0.7;
 const MIN_SCALE_DEFAULT = 0.75;
 const MAX_SCALE_NAVIGATION_ONLY = 1.8;
 const MAX_SCALE_DEFAULT = 1.5;
@@ -111,7 +111,7 @@ export const NavigationDateButton = memo(
 
     const recomputeMinWidth = useCallback(() => {
       // In drawer (navigationOnly) we still want to reserve space like on calendar page
-      const wantsMinWidth = _isCalendarPage || navigationOnly;
+      const wantsMinWidth = _isCalendarPage || !navigationOnly;
       if (!wantsMinWidth) {
         setMinWidthPx(undefined);
         return;
@@ -193,7 +193,8 @@ export const NavigationDateButton = memo(
     if (_isCalendarPage) {
       width = "max-w-[min(95vw,120rem)]";
     } else {
-      width = "w-auto max-w-full";
+      // In drawer/navigation mode, fill available width
+      width = navigationOnly ? "w-full max-w-full" : "w-auto max-w-full";
     }
     const textSize = navigationOnly
       ? "text-[0.95rem] sm:text-lg"
@@ -211,8 +212,8 @@ export const NavigationDateButton = memo(
               !isTodayDisabled && "cursor-pointer",
               width,
               className,
-              // Prevent collapse only in drawer context
-              navigationOnly ? "shrink-0" : undefined
+              // In navigation mode, allow shrinking but ensure it can expand
+              navigationOnly ? "min-w-0" : undefined
             )}
             disabled={isTodayDisabled}
             onClick={onToday}
@@ -221,7 +222,7 @@ export const NavigationDateButton = memo(
             size="sm"
             style={{
               minWidth:
-                (_isCalendarPage || navigationOnly) && minWidthPx
+                (_isCalendarPage || !navigationOnly) && minWidthPx
                   ? `${minWidthPx}px`
                   : undefined,
             }}
@@ -233,14 +234,17 @@ export const NavigationDateButton = memo(
             />
             <span
               className={cn(
-                "absolute inset-0 flex items-center justify-center transition-all duration-200",
+                "absolute inset-0 z-10 flex items-center justify-center transition-all duration-200",
                 isHoveringDate && !isTodayDisabled
                   ? "scale-75 opacity-0"
                   : "scale-100 opacity-100"
               )}
             >
               <div
-                className="w-full max-w-full px-6 text-center"
+                className={cn(
+                  "w-full min-w-0 max-w-full overflow-hidden text-center",
+                  navigationOnly ? "px-4 sm:px-6" : "px-6"
+                )}
                 ref={containerRef}
                 style={{
                   // Override right padding to ensure badge overlay area is text-free
@@ -269,15 +273,16 @@ export const NavigationDateButton = memo(
               </div>
             </span>
 
-            <CalendarDays
+            <span
               className={cn(
-                "absolute inset-0 m-auto transition-all duration-200",
-                "size-4 sm:size-5",
+                "absolute inset-0 z-20 flex items-center justify-center transition-all duration-200",
                 isHoveringDate && !isTodayDisabled
                   ? "scale-100 opacity-100"
                   : "scale-75 opacity-0"
               )}
-            />
+            >
+              <CalendarDays className="size-4 sm:size-5" />
+            </span>
             {showBadge && (
               <EventCountBadgePortal
                 anchorRef={anchorRef}

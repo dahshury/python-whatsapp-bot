@@ -122,28 +122,28 @@ export function ViewSettings({
 
         <div className="flex justify-center">
           <ButtonGroup className="justify-center">
-          {viewOptions.map((option) => {
-            const isSelected =
-              (activeView || currentCalendarView) === option.value;
-            return (
-              <Button
-                className="h-7 gap-2"
-                key={option.value}
-                onClick={() => {
-                  onCalendarViewChange?.(option.value);
-                }}
-                size="sm"
-                variant={isSelected ? "default" : "outline"}
-              >
-                <option.icon
-                  aria-hidden="true"
-                  className="opacity-70"
-                  size={16}
-                />
-                {option.label}
-              </Button>
-            );
-          })}
+            {viewOptions.map((option) => {
+              const isSelected =
+                (activeView || currentCalendarView) === option.value;
+              return (
+                <Button
+                  className="h-7 gap-2"
+                  key={option.value}
+                  onClick={() => {
+                    onCalendarViewChange?.(option.value);
+                  }}
+                  size="sm"
+                  variant={isSelected ? "default" : "outline"}
+                >
+                  <option.icon
+                    aria-hidden="true"
+                    className="opacity-70"
+                    size={16}
+                  />
+                  {option.label}
+                </Button>
+              );
+            })}
           </ButtonGroup>
         </div>
         {!hideChatSettings && (

@@ -4,7 +4,7 @@ import { callPythonBackend } from "@/shared/libs/backend";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { old_id, new_id, ar } = body;
+    const { old_id, new_id, ar, customer_name } = body;
 
     // Validate required fields
     if (!(old_id && new_id)) {
@@ -24,6 +24,7 @@ export async function POST(request: Request) {
           old_wa_id: old_id, // Old WhatsApp ID
           new_wa_id: new_id, // New WhatsApp ID
           ar, // Arabic language flag
+          ...(customer_name !== undefined ? { customer_name } : {}),
         }),
       }
     );

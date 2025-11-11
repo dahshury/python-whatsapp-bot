@@ -36,29 +36,12 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
       // Create a dedicated portal container for fullscreen content
       const container = document.createElement("div");
       container.id = "grid-fullscreen-portal";
-      container.style.position = "fixed";
-      container.style.top = "0";
-      container.style.left = "0";
-      container.style.right = "0";
-      container.style.bottom = "0";
-      container.style.width = "100vw";
-      container.style.height = "100vh";
-      container.style.zIndex =
-        "var(--z-grid-fullscreen-backdrop, var(--z-fullscreen-backdrop))";
-      container.style.pointerEvents = "auto";
+      container.className = "grid-fullscreen-portal";
 
       // Provide a separate portal above fullscreen content for overlays like the toolbar
       const overlayPortal = document.createElement("div");
       overlayPortal.id = "grid-fullscreen-overlay-portal";
-      overlayPortal.style.position = "fixed";
-      overlayPortal.style.top = "0";
-      overlayPortal.style.left = "0";
-      overlayPortal.style.width = "0";
-      overlayPortal.style.height = "0";
-      overlayPortal.style.overflow = "visible";
-      overlayPortal.style.zIndex =
-        "var(--z-grid-fullscreen-overlay, var(--z-enhanced-overlay, var(--z-fullscreen-content)))";
-      overlayPortal.style.pointerEvents = "auto";
+      overlayPortal.className = "grid-fullscreen-overlay-portal";
 
       // Copy theme classes
       if (document.documentElement.classList.contains("dark")) {
@@ -97,76 +80,11 @@ export const FullscreenWrapper: React.FC<FullscreenWrapperProps> = ({
     return <>{children}</>;
   }
 
-  const wrapperStyle: React.CSSProperties = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    width: "100vw",
-    height: "100vh",
-    backgroundColor: isDark ? "rgb(0 0 0 / 0.95)" : "rgb(255 255 255 / 0.95)",
-    backdropFilter: "blur(10px)",
-    display: "flex",
-    flexDirection: "column",
-    zIndex: "var(--z-grid-fullscreen-backdrop, var(--z-fullscreen-backdrop))",
-  };
-
-  const contentStyle: React.CSSProperties = {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    overflow: "auto", // Allow scrolling when content is larger than viewport
-    flex: 1,
-  };
-
-  const gridContainerStyle: React.CSSProperties = {
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    paddingTop: "60px", // Space for toolbar
-    paddingLeft: "20px",
-    paddingRight: "20px",
-    paddingBottom: "40px", // Space for ESC message
-    boxSizing: "border-box",
-    overflow: "auto", // Allow scrolling if content is larger
-  };
-
   const fullscreenContent = (
-    <div
-      className={`grid-fullscreen-wrapper ${isDark ? "dark" : ""}`}
-      style={wrapperStyle}
-    >
-      <div
-        style={{
-          ...contentStyle,
-          position: "relative",
-          zIndex:
-            "var(--z-grid-fullscreen-content, var(--z-fullscreen-content))",
-        }}
-      >
-        <div
-          className="glide-grid-fullscreen-container"
-          style={gridContainerStyle}
-        >
-          {children}
-        </div>
-        <div
-          className="rounded-md bg-background/80 px-3 py-1 text-muted-foreground backdrop-blur-sm"
-          style={{
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            fontSize: "12px",
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            zIndex:
-              "var(--z-grid-fullscreen-content, var(--z-fullscreen-content))",
-          }}
-        >
+    <div className={`grid-fullscreen-wrapper ${isDark ? "dark" : "light"}`}>
+      <div className="grid-fullscreen-content">
+        <div className="glide-grid-fullscreen-container">{children}</div>
+        <div className="grid-fullscreen-esc-message rounded-md bg-background/80 px-3 py-1 text-muted-foreground backdrop-blur-sm">
           {i18n.getMessage("press_esc_to_exit_fullscreen", isLocalized)}
         </div>
       </div>

@@ -3,6 +3,10 @@ export {
   getGlobalValidRange,
   getViewsProp,
 } from "./config/fullcalendar";
+export {
+  useBatchedEventChange,
+  useBatchedEventChangeWithCleanup,
+} from "./hooks/useBatchedEventChange";
 export { useCalendarContextMenu } from "./hooks/useCalendarContextMenu";
 export { useCalendarCore } from "./hooks/useCalendarCore";
 export { useCalendarDragHandlers } from "./hooks/useCalendarDragHandlers";
@@ -19,7 +23,6 @@ export { useValidRangeEffect } from "./hooks/useValidRangeEffect";
 export { createDatesSet } from "./lib/datesSet";
 export { eventDidMountHandler } from "./lib/eventDidMount";
 export { getEventClassNames } from "./lib/getEventClassNames";
-export { createEventChangeHandler } from "./lib/handleEventChangeWithProcessing";
 // Libs & Hooks (public surface for widgets)
 export { optimizeEventsForView } from "./lib/optimizeEventsForView";
 export { sanitizeEvents } from "./lib/sanitizeEvents";

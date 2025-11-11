@@ -28,7 +28,7 @@ export function reservationCreated(payload: ReservationToastWithUndoPayload) {
   const details = [name, date, displayTime]
     .filter(Boolean)
     .join(isLocalized ? " • " : " • ");
-  
+
   if (onUndo) {
     themedUndoable({
       title,
@@ -49,7 +49,7 @@ export function reservationModified(payload: ReservationToastWithUndoPayload) {
   const details = [name, date, displayTime]
     .filter(Boolean)
     .join(isLocalized ? " • " : " • ");
-  
+
   if (onUndo) {
     themedUndoable({
       title,
@@ -71,7 +71,7 @@ export function reservationCancelled(payload: ReservationToastWithUndoPayload) {
   const details = [name, phone, date, displayTime]
     .filter(Boolean)
     .join(isLocalized ? " • " : " • ");
-  
+
   if (onUndo) {
     themedUndoable({
       title,
@@ -101,4 +101,3 @@ export function reservationModificationFailed(
   const subtitle = error ? `${errorPrefix}: ${error}` : details;
   themedError(title, subtitle);
 }
-

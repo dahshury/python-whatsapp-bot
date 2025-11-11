@@ -4,6 +4,8 @@ type EventLike = {
     type?: number;
     __vacation?: boolean;
     hasDocument?: boolean;
+    waId?: string;
+    [key: string]: unknown;
   };
 };
 
@@ -22,6 +24,14 @@ export function getEventClassNames(arg: ArgLike): string[] {
     event?.classNames?.includes("vacation-event") ||
     event?.classNames?.includes("vacation-background-event");
 
+  // Debug logging
+  if (process.env.NODE_ENV === "development") {
+    const waId = event?.extendedProps?.waId;
+    if (waId && type !== undefined && type !== 2 && hasDocument) {
+      classes.push("has-document");
+    }
+  }
+
   if (isVacation) {
     classes.push("vacation-event");
     return classes;
@@ -37,10 +47,9 @@ export function getEventClassNames(arg: ArgLike): string[] {
       classes.push("reservation-type-0");
     }
 
-    // Add document status class for border color logic
-    if (hasDocument === false) {
-      classes.push("no-document");
-    } else if (hasDocument === true) {
+    // Add has-document class when event has a document
+    // Check for boolean true (most common case)
+    if (hasDocument === true) {
       classes.push("has-document");
     }
   }

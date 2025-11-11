@@ -52,29 +52,40 @@ export function useCustomerRowPersistence(
           return;
         }
 
-        if (onCreateNewCustomer && (!waId || waId === DEFAULT_DOCUMENT_WA_ID)) {
-          const nameCol = customerColumns.findIndex((c) => c.id === "name");
-          const ageCol = customerColumns.findIndex((c) => c.id === "age");
-          const phoneCol = customerColumns.findIndex((c) => c.id === "phone");
+        const nameCol = customerColumns.findIndex((c) => c.id === "name");
+        const ageCol = customerColumns.findIndex((c) => c.id === "age");
+        const phoneCol = customerColumns.findIndex((c) => c.id === "phone");
 
-          const [nameVal, ageVal, phoneVal] = await Promise.all([
-            nameCol !== -1
-              ? customerDataSource.getCellData(nameCol, 0)
-              : Promise.resolve(""),
-            ageCol !== -1
-              ? customerDataSource.getCellData(ageCol, 0)
-              : Promise.resolve(null),
-            phoneCol !== -1
-              ? customerDataSource.getCellData(phoneCol, 0)
-              : Promise.resolve(""),
-          ]);
+        const [nameVal, ageVal, phoneVal] = await Promise.all([
+          nameCol !== -1
+            ? customerDataSource.getCellData(nameCol, 0)
+            : Promise.resolve(""),
+          ageCol !== -1
+            ? customerDataSource.getCellData(ageCol, 0)
+            : Promise.resolve(null),
+          phoneCol !== -1
+            ? customerDataSource.getCellData(phoneCol, 0)
+            : Promise.resolve(""),
+        ]);
 
-          const name = (nameVal as string) || "";
-          const age = (ageVal as number | null) ?? null;
-          const phone =
-            typeof phoneVal === "string" ? phoneVal : String(phoneVal ?? "");
+        const name = (nameVal as string) || "";
+        const age = (ageVal as number | null) ?? null;
+        const phone =
+          typeof phoneVal === "string" ? phoneVal : String(phoneVal ?? "");
 
-          const sanitizedPhone = phone.replace(/\D+/g, "");
+        const sanitizedPhone = phone.replace(/\D+/g, "");
+
+        // Check if we should create a new customer:
+        // 1. If waId is empty/default, OR
+        // 2. If phone number doesn't match current waId (user entered a different phone)
+        const shouldCreateNew =
+          onCreateNewCustomer &&
+          sanitizedPhone &&
+          (!waId ||
+            waId === DEFAULT_DOCUMENT_WA_ID ||
+            sanitizedPhone !== waId.replace(/\D+/g, ""));
+
+        if (shouldCreateNew) {
           if (!sanitizedPhone) {
             return;
           }

@@ -1,6 +1,7 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
+import { cn } from "@shared/libs/utils";
 import { CheckCircle2 } from "lucide-react";
 import type React from "react";
 import { Button } from "@/shared/ui/button";
@@ -58,13 +59,13 @@ export function RegistrationFilter({
         filterButton={
           <PopoverTrigger asChild>
             <Button
-              size="sm"
-              variant="outline"
               className="h-[18px] gap-1 px-1.5 text-xs"
               onClick={(event) => {
                 event.stopPropagation();
                 setIsRegistrationOpen(true);
               }}
+              size="sm"
+              variant="outline"
             >
               <span>
                 {getRegistrationLabel(registrationFilter)}
@@ -79,7 +80,10 @@ export function RegistrationFilter({
         }
         onRemove={handleRemoveRegistrationFilter}
       />
-      <PopoverContent className="w-48 p-0" dir="ltr">
+      <PopoverContent
+        className={cn("w-48 p-0", "click-outside-ignore")}
+        dir="ltr"
+      >
         <Command dir="ltr" shouldFilter={false}>
           <CommandList dir="ltr">
             <CommandGroup dir="ltr">
@@ -113,5 +117,3 @@ export function RegistrationFilter({
     </Popover>
   );
 }
-
-

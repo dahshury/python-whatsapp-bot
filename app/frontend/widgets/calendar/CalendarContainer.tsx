@@ -23,18 +23,22 @@ export function CalendarContainer({
 
   const content = (
     <div
-      className="calendar-bg-wrap relative flex h-full w-full"
+      className="calendar-bg-wrap relative flex h-full w-full max-w-full overflow-hidden"
       style={{
         // Make FC internal sticky backgrounds use transparency so glow shows through
         // @ts-expect-error -- CSS variable custom property
         "--fc-page-bg-color": "transparent",
       }}
     >
-      <div className="relative z-10 flex h-full w-full flex-1">{children}</div>
+      <div className="relative z-10 flex h-full w-full max-w-full flex-1 overflow-hidden">
+        {children}
+      </div>
       <style jsx>{`
 				/* Ensure the radial glow is visible through FullCalendar */
 				.calendar-bg-wrap :global(.fc) {
 					background-color: transparent;
+					max-width: 100%;
+					overflow: hidden;
 				}
 				.calendar-bg-wrap :global(.fc-scrollgrid-section-sticky > *) {
 					background: transparent;
@@ -56,6 +60,19 @@ export function CalendarContainer({
 				.calendar-bg-wrap :global(.fc td) {
 					background: transparent;
 					background-color: transparent;
+				}
+				/* Constrain FullCalendar list view width */
+				.calendar-bg-wrap :global(.fc-list-view),
+				.calendar-bg-wrap :global(.fc-list),
+				.calendar-bg-wrap :global(.fc-list-table) {
+					max-width: 100%;
+					overflow: hidden;
+				}
+				.calendar-bg-wrap :global(.fc-list-event-title),
+				.calendar-bg-wrap :global(.fc-list-event-time) {
+					overflow: hidden;
+					text-overflow: ellipsis;
+					white-space: nowrap;
 				}
 				/* Also paint glow on scrollgrid to cover cases where harness isn't filling */
 				.calendar-bg-wrap :global(.fc .fc-scrollgrid) {

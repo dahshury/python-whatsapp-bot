@@ -4,4 +4,3 @@ export type ColumnConfig = {
   width?: number;
   hidden?: boolean;
 };
-

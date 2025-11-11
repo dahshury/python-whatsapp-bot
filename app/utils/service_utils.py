@@ -251,13 +251,38 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                 doc_rows = session.execute(doc_stmt).all()
 
                 for wa_id, document in doc_rows:
-                    # Check if document exists and has elements
+                    # Check if document exists and has TLDraw content
                     has_doc = False
                     if document:
                         try:
-                            doc_dict = document if isinstance(document, dict) else {}
-                            elements = doc_dict.get("elements", [])
-                            has_doc = isinstance(elements, list) and len(elements) > 0
+                            # TLDraw format: { type: 'tldraw', snapshot: { document: {...} } }
+                            if isinstance(document, dict) and document.get("type") == "tldraw":
+                                snapshot = document.get("snapshot")
+                                if isinstance(snapshot, dict):
+                                    doc_records = snapshot.get("document")
+                                    if isinstance(doc_records, dict):
+                                        # Check if document has any shape keys (not instance/camera/pointer/presence)
+                                        shape_keys = [
+                                            k for k in doc_records.keys()
+                                            if not k.startswith("instance")
+                                            and not k.startswith("camera")
+                                            and not k.startswith("pointer")
+                                            and not k.startswith("presence")
+                                        ]
+                                        has_doc = len(shape_keys) > 0
+
+                            # Direct TLDraw snapshot format: { document: {...} }
+                            elif isinstance(document, dict) and "document" in document:
+                                doc_records = document.get("document")
+                                if isinstance(doc_records, dict):
+                                    shape_keys = [
+                                        k for k in doc_records.keys()
+                                        if not k.startswith("instance")
+                                        and not k.startswith("camera")
+                                        and not k.startswith("pointer")
+                                        and not k.startswith("presence")
+                                    ]
+                                    has_doc = len(shape_keys) > 0
                         except Exception:
                             has_doc = False
                     document_status[wa_id] = has_doc

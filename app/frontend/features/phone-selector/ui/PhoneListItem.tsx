@@ -26,8 +26,7 @@ export function PhoneListItem({
     "";
   const isRecentGroup = groupKey === "recent";
   const isSelectedGroup = groupKey === "selected";
-  const rawName =
-    typeof option.name === "string" ? option.name.trim() : "";
+  const rawName = typeof option.name === "string" ? option.name.trim() : "";
   const hasName = rawName.length > 0;
   const displayNumber = option.displayNumber || option.number;
   const itemClassName = cn(
@@ -59,8 +58,8 @@ export function PhoneListItem({
           <div className="flex shrink-0 items-center justify-center self-stretch">
             <FlagComponent
               className="h-full w-10 min-w-[2.5rem] overflow-hidden rounded-sm"
-              showBackground={false}
               country={optionCountry}
+              showBackground={false}
             />
           </div>
         )}

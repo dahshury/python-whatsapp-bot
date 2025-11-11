@@ -211,3 +211,34 @@
     padding-top: 40px;
   }
 }
+
+/* Validation error cell styles */
+@keyframes validation-pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Cell with validation error - subtle border effect */
+.gdg-cell-validation-error {
+  position: relative;
+  animation: validation-pulse 2s ease-in-out infinite;
+}
+
+/* Additional visual cue - subtle left border for error cells */
+.gdg-cell-validation-error::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: var(--gdg-validation-error-indicator);
+  opacity: 0.5;
+}

@@ -25,6 +25,8 @@ type SettingsPopoverProps = {
   allowedTabs?: ReadonlyArray<"view" | "general" | "vacation">;
   /** Hide free roam / dual calendar / default selector toolbar */
   hideViewModeToolbar?: boolean;
+  /** Whether this is the documents page */
+  isDocumentsPage?: boolean;
 };
 
 export function SettingsPopover({
@@ -40,6 +42,7 @@ export function SettingsPopover({
   customViewSelector,
   allowedTabs,
   hideViewModeToolbar,
+  isDocumentsPage = false,
 }: SettingsPopoverProps) {
   const { recordingState, stopRecording } = useVacation();
 
@@ -145,6 +148,7 @@ export function SettingsPopover({
             activeView={activeView ?? currentCalendarView ?? "timeGridWeek"}
             currentCalendarView={currentCalendarView ?? "timeGridWeek"}
             isCalendarPage={isCalendarPage}
+            isDocumentsPage={isDocumentsPage}
             isLocalized={isLocalized}
             onCalendarViewChange={
               onCalendarViewChange ??

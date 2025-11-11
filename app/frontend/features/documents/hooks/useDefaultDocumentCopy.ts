@@ -6,6 +6,11 @@ import {
   TEMPLATE_USER_WA_ID,
 } from "@/shared/libs/documents";
 import { createDocumentsService } from "../services/documents.service.factory";
+import {
+  extractDocumentForSave,
+  hasDocumentContent,
+  isDocumentEmpty,
+} from "../utils/documentContent";
 
 type UseDefaultDocumentCopyParams = {
   waId: string | null | undefined;
@@ -60,7 +65,6 @@ export function useDefaultDocumentCopy({
       return;
     }
 
-    // Check if document is empty
     const isEmpty = isDocumentEmpty(snapshot);
 
     if (!isEmpty) {
@@ -143,128 +147,4 @@ export function useDefaultDocumentCopy({
       cancelled = true;
     };
   }, [waId, snapshot, isLoading, isError, queryClient, documentsService]);
-}
-
-/**
- * Checks if a TLDraw document snapshot is empty (has no shapes/content)
- */
-function isDocumentEmpty(snapshot: unknown | null): boolean {
-  if (!snapshot) {
-    return true;
-  }
-
-  return !hasDocumentContent(snapshot);
-}
-
-/**
- * Checks if a record key represents a shape (not instance/session state)
- */
-function isShapeKey(key: string): boolean {
-  if (key.startsWith("instance")) {
-    return false;
-  }
-  if (key.startsWith("camera")) {
-    return false;
-  }
-  if (key.startsWith("pointer")) {
-    return false;
-  }
-  if (key.startsWith("presence")) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * Checks if a document has content (shapes/elements)
- * Handles both TLDraw format and legacy Excalidraw format
- */
-function hasDocumentContent(doc: unknown): boolean {
-  if (!doc || typeof doc !== "object") {
-    return false;
-  }
-
-  const docObj = doc as {
-    type?: string;
-    snapshot?: unknown;
-    document?: unknown;
-    elements?: unknown[];
-    [key: string]: unknown;
-  };
-
-  // TLDraw format: { type: 'tldraw', snapshot: { document: {...} } }
-  if (docObj.type === "tldraw" && docObj.snapshot) {
-    const snapshot = docObj.snapshot as { document?: Record<string, unknown> };
-    if (snapshot?.document) {
-      const documentRecords = snapshot.document;
-      return Object.keys(documentRecords).some(isShapeKey);
-    }
-    return false;
-  }
-
-  // Legacy Excalidraw format: { elements: [...] }
-  if (Array.isArray(docObj.elements)) {
-    return docObj.elements.length > 0;
-  }
-
-  // Direct TLDraw snapshot format: { document: {...} }
-  if (docObj.document && typeof docObj.document === "object") {
-    const documentRecords = docObj.document as Record<string, unknown>;
-    return Object.keys(documentRecords).some(isShapeKey);
-  }
-
-  return false;
-}
-
-/**
- * Extracts the document for saving from template document
- * Preserves the original format of the template document
- */
-function extractDocumentForSave(templateDoc: unknown): unknown {
-  if (!templateDoc || typeof templateDoc !== "object") {
-    return {
-      type: "tldraw",
-      snapshot: { document: {} },
-    };
-  }
-
-  const docObj = templateDoc as {
-    type?: string;
-    snapshot?: { document?: Record<string, unknown> };
-    document?: Record<string, unknown>;
-    elements?: unknown[];
-    [key: string]: unknown;
-  };
-
-  // TLDraw format: { type: 'tldraw', snapshot: { document: {...} } }
-  if (docObj.type === "tldraw" && docObj.snapshot) {
-    // Preserve the full structure
-    return templateDoc;
-  }
-
-  // Direct TLDraw snapshot format: { document: {...} }
-  if (docObj.document && typeof docObj.document === "object") {
-    // Wrap it in the standard format
-    return {
-      type: "tldraw",
-      snapshot: {
-        document: docObj.document,
-      },
-    };
-  }
-
-  // Legacy Excalidraw format - return empty TLDraw format
-  // This shouldn't happen for template, but handle it gracefully
-  if (Array.isArray(docObj.elements)) {
-    return {
-      type: "tldraw",
-      snapshot: { document: {} },
-    };
-  }
-
-  // Unknown format - return empty
-  return {
-    type: "tldraw",
-    snapshot: { document: {} },
-  };
 }

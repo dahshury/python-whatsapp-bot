@@ -19,47 +19,32 @@ export const GridThemeToggle: React.FC<GridThemeToggleProps> = ({
   onThemeChange,
 }) => (
   <div
-    style={{
-      padding: "16px",
-      marginBottom: "16px",
-      backgroundColor: currentTheme === darkTheme ? "#2a2a2a" : "#f5f5f5",
-      borderRadius: "8px",
-      display: "flex",
-      gap: "12px",
-      alignItems: "center",
-    }}
+    className={`grid-theme-toggle ${currentTheme === darkTheme ? "dark" : ""}`}
   >
-    <span style={{ color: iconColor }}>Theme:</span>
+    <span
+      className="grid-theme-toggle-label"
+      style={{ "--gdg-theme-toggle-text": iconColor } as React.CSSProperties}
+    >
+      Theme:
+    </span>
     <button
+      className={`grid-theme-toggle-button ${currentTheme === lightTheme ? "active" : ""}`}
       onClick={() => onThemeChange(lightTheme)}
-      style={{
-        padding: "8px 16px",
-        backgroundColor:
-          currentTheme === lightTheme ? "#4F5DFF" : "transparent",
-        color: currentTheme === lightTheme ? "white" : iconColor,
-        border: "1px solid #4F5DFF",
-        borderRadius: "4px",
-        cursor: "pointer",
-      }}
       type="button"
     >
       Light
     </button>
     <button
+      className={`grid-theme-toggle-button ${currentTheme === darkTheme ? "active" : ""}`}
       onClick={() => onThemeChange(darkTheme)}
-      style={{
-        padding: "8px 16px",
-        backgroundColor: currentTheme === darkTheme ? "#4F5DFF" : "transparent",
-        color: currentTheme === darkTheme ? "white" : iconColor,
-        border: "1px solid #4F5DFF",
-        borderRadius: "4px",
-        cursor: "pointer",
-      }}
       type="button"
     >
       Dark
     </button>
-    <span style={{ marginLeft: "auto", color: iconColor, fontSize: "14px" }}>
+    <span
+      className="grid-theme-toggle-info"
+      style={{ "--gdg-theme-toggle-text": iconColor } as React.CSSProperties}
+    >
       Rows: {filteredRowCount} | Press Ctrl+F to search | Right-click column
       headers for options
     </span>

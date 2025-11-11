@@ -45,6 +45,16 @@ const nextConfig = {
     poweredByHeader: false,
   }),
 
+  // Rewrite theme CSS requests to remove .css extension for route matching
+  async rewrites() {
+    return [
+      {
+        source: "/themes/:theme.css",
+        destination: "/themes/:theme",
+      },
+    ];
+  },
+
   // Headers to improve security and performance
   headers() {
     return [
@@ -201,6 +211,9 @@ const nextConfig = {
       },
     },
   },
+
+  // Note: tldraw CSS can't be externalized (CSS files aren't handled by Node.js)
+  // The package itself will be code-split automatically by Next.js
 
   // Experimental features for stability
   experimental: {

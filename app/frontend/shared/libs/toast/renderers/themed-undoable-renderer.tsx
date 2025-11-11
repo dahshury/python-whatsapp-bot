@@ -1,11 +1,10 @@
 "use client";
 
+import { i18n } from "@shared/libs/i18n";
+import { Undo2, X } from "lucide-react";
 import React from "react";
 import { toast as sonner } from "sonner";
-import { Undo2, X } from "lucide-react";
-
 import { ButtonGroup } from "@/shared/ui/button-group";
-import { i18n } from "@shared/libs/i18n";
 import { UNDOABLE_TOAST_DURATION_MS } from "../constants";
 
 export type ThemedUndoableOptions = {

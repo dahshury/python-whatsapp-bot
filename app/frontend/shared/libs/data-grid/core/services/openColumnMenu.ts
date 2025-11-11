@@ -1,5 +1,5 @@
 import type { GridColumn } from "@glideapps/glide-data-grid";
-import { DEFAULT_COLUMN_WIDTH, MENU_WIDTH_PX } from "../constants/grid";
+import { DEFAULT_COLUMN_WIDTH } from "../constants/grid";
 
 type Bounds = { x: number; y: number; width: number; height: number };
 
@@ -23,7 +23,7 @@ export function createOpenColumnMenu(columnMenu: {
         isIndex: false,
         indexNumber: 0,
       },
-      bounds.x + bounds.width - MENU_WIDTH_PX,
+      bounds.x + bounds.width,
       bounds.y + bounds.height
     );
   };

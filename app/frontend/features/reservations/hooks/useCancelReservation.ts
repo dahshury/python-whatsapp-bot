@@ -59,7 +59,16 @@ export function useCancelReservation() {
     mutationFn: cancelReservationMutation,
 
     onMutate: async (params) => {
-      await queryClient.cancelQueries({ queryKey: ["calendar-reservations"] });
+      // Cancel only in-flight queries that might conflict (not all calendar queries)
+      await queryClient.cancelQueries({
+        predicate: (query) => {
+          if (query.queryKey[0] !== "calendar-reservations") {
+            return false;
+          }
+          // Only cancel if this query is currently fetching
+          return query.state.fetchStatus === "fetching";
+        },
+      });
 
       const previousData = queryClient.getQueriesData({
         queryKey: ["calendar-reservations"],

@@ -307,9 +307,8 @@ export function EnhancedColumnMenu({
 
   return (
     <div
-      className="fixed inset-0"
+      className="enhanced-column-menu-wrapper fixed inset-0"
       data-enhanced-column-menu
-      style={{ zIndex: "var(--z-enhanced-column-menu)" }}
     >
       {/* Backdrop */}
       <button
@@ -328,104 +327,35 @@ export function EnhancedColumnMenu({
       {/* Menu */}
       <div
         className="enhanced-column-menu"
-        style={{
-          position: "absolute",
-          left: `${Math.min(x, window.innerWidth - MENU_VIEWPORT_MARGIN_X)}px`,
-          top: `${Math.min(y, window.innerHeight - MENU_VIEWPORT_MARGIN_Y)}px`,
-          minWidth: "200px",
-          backgroundColor: "var(--gdg-menu-bg, hsl(var(--popover)))",
-          border: "1px solid var(--gdg-menu-border, hsl(var(--border)))",
-          borderRadius: "var(--radius, 6px)",
-          boxShadow: "var(--gdg-menu-shadow, 0 4px 12px rgba(0, 0, 0, 0.1))",
-          overflow: "hidden",
-          animation: "menuSlideIn 150ms ease-out",
-        }}
+        style={
+          {
+            "--gdg-menu-right": `${Math.max(window.innerWidth - x, MENU_VIEWPORT_MARGIN_X)}px`,
+            "--gdg-menu-top": `${Math.min(y, window.innerHeight - MENU_VIEWPORT_MARGIN_Y)}px`,
+          } as React.CSSProperties
+        }
       >
         {/* Header */}
-        <div
-          className="enhanced-column-menu-header"
-          style={{
-            padding: "8px 12px",
-            borderBottom:
-              "1px solid var(--gdg-menu-border, hsl(var(--border)))",
-            fontSize: "14px",
-            fontWeight: "500",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            color: "var(--gdg-menu-text, hsl(var(--popover-foreground)))",
-          }}
-        >
+        <div className="enhanced-column-menu-header">
           {getColumnIcon()}
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {columnTitle}
-          </span>
+          <span className="enhanced-column-menu-title">{columnTitle}</span>
         </div>
 
         {/* Menu sections */}
-        <div style={{ padding: "4px 0" }}>
+        <div className="enhanced-column-menu-section">
           {sections.map(([section, items], sectionIndex) => (
             <div key={section}>
               {sectionIndex > 0 && (
-                <div
-                  style={{
-                    height: "1px",
-                    margin: "4px 8px",
-                    backgroundColor:
-                      "var(--gdg-menu-border, hsl(var(--border)))",
-                  }}
-                />
+                <div className="enhanced-column-menu-divider" />
               )}
 
               {items.map((item) => (
                 <button
-                  className="enhanced-column-menu-item"
+                  className={`enhanced-column-menu-item ${item.hasSubmenu ? "has-submenu" : ""}`}
                   key={item.id}
                   onClick={item.onClick}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor =
-                      "var(--gdg-menu-hover-bg, hsl(var(--accent)))";
-                    e.currentTarget.style.color =
-                      "var(--gdg-menu-hover-text, hsl(var(--accent-foreground)))";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = "transparent";
-                    e.currentTarget.style.color =
-                      "var(--gdg-menu-text, hsl(var(--popover-foreground)))";
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    textAlign: "left",
-                    fontSize: "14px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    border: "none",
-                    background: "transparent",
-                    color:
-                      "var(--gdg-menu-text, hsl(var(--popover-foreground)))",
-                    cursor: "pointer",
-                    transition: "background-color 0.15s ease",
-                    justifyContent: item.hasSubmenu
-                      ? "space-between"
-                      : "flex-start",
-                  }}
                   type="button"
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px",
-                    }}
-                  >
+                  <div className="enhanced-column-menu-item-content">
                     {item.icon}
                     <span>{item.label}</span>
                   </div>
@@ -438,112 +368,33 @@ export function EnhancedColumnMenu({
 
         {/* Format submenu */}
         {showFormatMenu && onFormat && (
-          <div
-            className="enhanced-column-menu-submenu"
-            style={{
-              position: "absolute",
-              left: "100%",
-              top: "0",
-              marginLeft: "4px",
-              minWidth: "160px",
-              backgroundColor: "var(--gdg-menu-bg, hsl(var(--popover)))",
-              border: "1px solid var(--gdg-menu-border, hsl(var(--border)))",
-              borderRadius: "var(--radius, 6px)",
-              boxShadow:
-                "var(--gdg-menu-shadow, 0 4px 12px rgba(0, 0, 0, 0.1))",
-              overflow: "hidden",
-              animation: "submenuSlideIn 150ms ease-out",
-            }}
-          >
-            <div style={{ padding: "4px 0" }}>
+          <div className="enhanced-column-menu-submenu">
+            <div className="enhanced-column-menu-submenu-section">
               <button
+                className="enhanced-column-menu-submenu-button"
                 onClick={() => {
                   onFormat();
                   onClose();
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--gdg-menu-hover-bg, hsl(var(--accent)))";
-                  e.currentTarget.style.color =
-                    "var(--gdg-menu-hover-text, hsl(var(--accent-foreground)))";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color =
-                    "var(--gdg-menu-text, hsl(var(--popover-foreground)))";
-                }}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--gdg-menu-text, hsl(var(--popover-foreground)))",
-                  cursor: "pointer",
-                  transition: "background-color 0.15s ease",
                 }}
                 type="button"
               >
                 {defaultLabels.textFormat}
               </button>
               <button
+                className="enhanced-column-menu-submenu-button"
                 onClick={() => {
                   onFormat();
                   onClose();
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--gdg-menu-hover-bg, hsl(var(--accent)))";
-                  e.currentTarget.style.color =
-                    "var(--gdg-menu-hover-text, hsl(var(--accent-foreground)))";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color =
-                    "var(--gdg-menu-text, hsl(var(--popover-foreground)))";
-                }}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--gdg-menu-text, hsl(var(--popover-foreground)))",
-                  cursor: "pointer",
-                  transition: "background-color 0.15s ease",
                 }}
                 type="button"
               >
                 {defaultLabels.numberFormat}
               </button>
               <button
+                className="enhanced-column-menu-submenu-button"
                 onClick={() => {
                   onFormat();
                   onClose();
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor =
-                    "var(--gdg-menu-hover-bg, hsl(var(--accent)))";
-                  e.currentTarget.style.color =
-                    "var(--gdg-menu-hover-text, hsl(var(--accent-foreground)))";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color =
-                    "var(--gdg-menu-text, hsl(var(--popover-foreground)))";
-                }}
-                style={{
-                  width: "100%",
-                  padding: "8px 12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  border: "none",
-                  background: "transparent",
-                  color: "var(--gdg-menu-text, hsl(var(--popover-foreground)))",
-                  cursor: "pointer",
-                  transition: "background-color 0.15s ease",
                 }}
                 type="button"
               >

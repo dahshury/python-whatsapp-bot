@@ -1,60 +1,33 @@
+import { useDropdownWidth } from "@shared/libs/hooks/use-dropdown-width";
 import { useScrollSelectedIntoView } from "@shared/libs/hooks/use-scroll-selected-into-view";
 import { useShrinkToFitText } from "@shared/libs/hooks/use-shrink-to-fit-text";
-import { i18n } from "@shared/libs/i18n";
 import { DEFAULT_COUNTRY } from "@shared/libs/phone/config";
-import { CALLING_CODES_SORTED } from "@shared/libs/phone/countries";
 import { getSizeClasses } from "@shared/libs/ui/size";
 import { cn } from "@shared/libs/utils";
 import { getCountryFromPhone } from "@shared/libs/utils/phone-utils";
-// ThemedScrollbar is used inside sub-components
-import { Button } from "@ui/button";
-import { ChevronDown } from "lucide-react";
 import {
   type FC,
   type MouseEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import type * as RPNInput from "react-phone-number-input";
-import {
-  getCountryCallingCode,
-  parsePhoneNumber,
-} from "react-phone-number-input";
+import { getCountryCallingCode } from "react-phone-number-input";
 import type { PhoneOption } from "@/entities/phone";
-import { useBackendPhoneSearch } from "@/features/phone-selector/hooks/useBackendPhoneSearch";
+import { usePhoneComboboxCountry } from "@/features/phone-selector/hooks/usePhoneComboboxCountry";
+import { usePhoneComboboxSelection } from "@/features/phone-selector/hooks/usePhoneComboboxSelection";
+import { usePhoneComboboxState } from "@/features/phone-selector/hooks/usePhoneComboboxState";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
-import type { IndexedPhoneOption } from "@/shared/libs/phone/indexed.types";
-import { buildPhoneGroups } from "@/shared/libs/phone/phone-groups";
-import { buildIndexedOptions } from "@/shared/libs/phone/phone-index";
-import { createNewPhoneOption as createNewPhoneOptionSvc } from "@/shared/libs/phone/phone-options";
-import {
-  canCreateNewPhone,
-  getAddPreviewDisplay,
-} from "@/shared/libs/phone/search";
+import { PhoneComboboxTrigger } from "@/shared/ui/phone/phone-combobox-trigger";
 import { PhoneCountrySelector } from "@/shared/ui/phone/phone-country-selector";
-// (Command UI moved into PhoneCountrySelector/PhoneNumberSelectorContent)
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { validatePhoneNumber as validatePhoneNumberSvc } from "@/shared/validation/phone";
 import { PhoneNumberSelectorContent } from "@/widgets/phone";
 
 // (types and helpers moved to shared modules)
-
-const PHONE_SEARCH_DEBOUNCE_MS = 400;
-const FLAG_ICON_WIDTH_PX = 24;
-const FLAG_ICON_GAP_PX = 6;
-const FLAG_ICON_TOTAL_WIDTH_PX = FLAG_ICON_WIDTH_PX + FLAG_ICON_GAP_PX;
-const DROPDOWN_MAX_WIDTH_PX = 560;
-const DROPDOWN_MAX_WIDTH_VW_PERCENT = 0.9;
-const EMPTY_STATE_ICON_SIZE_PX = 48;
-const EMPTY_STATE_SEARCH_ICON_SIZE_PX = 32;
-const EMPTY_STATE_GAP_PX = 16;
-const EMPTY_STATE_PADDING_PX = 32;
-const EMPTY_STATE_BADGE_PADDING_PX = 24;
-const EMPTY_STATE_BUTTON_EXTRA_PX = 40;
 
 type PhoneComboboxProps = {
   value?: string;
@@ -108,10 +81,12 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
   const { isLocalized } = useLanguageStore();
   const [selectedPhone, setSelectedPhone] = useState<string>(value || "");
   const [mounted, setMounted] = useState(false);
-  const [dropdownWidth, setDropdownWidth] = useState<number | undefined>(
-    undefined
-  );
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Ref callback to merge refs for PopoverTrigger and our width calculation
+  const triggerRefCallback = useCallback((node: HTMLButtonElement | null) => {
+    triggerRef.current = node;
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -130,75 +105,6 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
 
   const [countrySearch, setCountrySearch] = useState("");
   const [phoneSearch, setPhoneSearch] = useState("");
-
-  // Build indexed options from provided phoneOptions for initial display
-  const localIndexedOptions: IndexedPhoneOption[] = useMemo(
-    () => buildIndexedOptions(phoneOptions) as IndexedPhoneOption[],
-    [phoneOptions]
-  );
-
-  // Use backend search with pg_trgm when user is actively searching
-  const backendSearch = useBackendPhoneSearch(
-    phoneSearch,
-    selectedPhone,
-    PHONE_SEARCH_DEBOUNCE_MS
-  );
-
-  // Use backend search results when searching, otherwise use local options
-  const isActiveSearch = phoneSearch.trim().length > 0;
-  const isSearching = isActiveSearch && backendSearch.isSearching;
-  const searchError = isActiveSearch && backendSearch.hasError;
-
-  const indexedOptions = isActiveSearch
-    ? backendSearch.indexedOptions
-    : localIndexedOptions;
-
-  // Extract unique countries from all phone options for country selector filtering
-  const availableCountries = useMemo(() => {
-    const countries = new Set<RPNInput.Country>();
-    // Use both local and backend search results to get all available countries
-    for (const option of localIndexedOptions) {
-      if (option.country) {
-        countries.add(option.country as RPNInput.Country);
-      }
-    }
-    return countries;
-  }, [localIndexedOptions]);
-
-  const phoneGroups = useMemo(() => {
-    if (isActiveSearch) {
-      return backendSearch.groups;
-    }
-    // Build groups from local options when not searching
-    return buildPhoneGroups(localIndexedOptions, {
-      selectedPhone,
-      recentLimit: 50,
-      totalLimit: 400,
-    }).groups;
-  }, [
-    isActiveSearch,
-    backendSearch.groups,
-    localIndexedOptions,
-    selectedPhone,
-  ]);
-
-  const orderedPhones = useMemo(() => {
-    if (isActiveSearch) {
-      return backendSearch.orderedPhones;
-    }
-    return buildPhoneGroups(localIndexedOptions, {
-      selectedPhone,
-      recentLimit: 50,
-      totalLimit: 400,
-    }).ordered;
-  }, [
-    isActiveSearch,
-    backendSearch.orderedPhones,
-    localIndexedOptions,
-    selectedPhone,
-  ]);
-
-  // Country options are handled inside PhoneCountrySelector
 
   // Handle controlled vs uncontrolled behavior
   useEffect(() => {
@@ -238,177 +144,6 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
 
   // Do not auto-change country based on the typed phone value after initialization
 
-  // Preview label for creating a new phone using the currently selected country
-  const addPreviewDisplay = useMemo(
-    () =>
-      getAddPreviewDisplay(phoneSearch, country, (c: string) =>
-        String(getCountryCallingCode(c as unknown as RPNInput.Country))
-      ),
-    [phoneSearch, country]
-  );
-
-  // Decide whether to show the create-new option even if there are matches
-  const canCreateNew = useMemo(
-    () =>
-      canCreateNewPhone(
-        allowCreateNew,
-        phoneSearch,
-        indexedOptions as IndexedPhoneOption[]
-      ),
-    [allowCreateNew, phoneSearch, indexedOptions]
-  );
-
-  // Create a new phone number option via service
-  const createNewPhoneOption = (phoneNumber: string): PhoneOption => {
-    // Validate but do not block creation in UI
-    validatePhone(phoneNumber);
-    return createNewPhoneOptionSvc(phoneNumber, country, isLocalized);
-  };
-
-  // Handle phone selection with different behavior for controlled vs uncontrolled
-  const handlePhoneSelectInternal = (phoneNumber: string) => {
-    // Validate the phone number (suppress inline errors)
-    validatePhone(phoneNumber);
-
-    setSelectedPhone(phoneNumber);
-    if (!uncontrolled && onChange) {
-      onChange(phoneNumber);
-    }
-    setPhoneSearch("");
-    setIsPhoneOpen(false);
-  };
-
-  // Handle creating and selecting a new phone number
-  const handleCreateNewPhone = (phoneNumber: string) => {
-    const newOption = createNewPhoneOption(phoneNumber);
-    if (newOption) {
-      handlePhoneSelectInternal(newOption.number);
-    }
-  };
-
-  // For controlled mode, call onChange immediately when user selects
-  const handlePhoneSelectControlled = (phoneNumber: string) => {
-    // Normalize phone number for comparison (remove + and spaces)
-    const normalizePhone = (phone: string) =>
-      phone.replace(/[\s\-+]/g, "").trim();
-    const normalizedPhone = normalizePhone(phoneNumber);
-
-    // Find the customer data for auto-fill (normalize both sides for comparison)
-    const selectedCustomer = phoneOptions.find(
-      (option) => normalizePhone(option.number) === normalizedPhone
-    );
-
-    // When selecting an existing option, adapt country to the selected number
-    try {
-      const inferred = getCountryFromPhone(phoneNumber);
-      if (inferred) {
-        setCountry(inferred);
-      }
-    } catch {
-      // Ignore errors when inferring country from phone number during selection
-    }
-    // Trigger customer auto-fill if we have a real customer name
-    if (
-      onCustomerSelect &&
-      selectedCustomer &&
-      selectedCustomer.name !== "New Phone Number" &&
-      selectedCustomer.name !== "Unknown Customer"
-    ) {
-      onCustomerSelect(phoneNumber, selectedCustomer.name);
-    }
-
-    if (!uncontrolled && onChange) {
-      // Update local state immediately for better UX (optimistic update)
-      // The parent will update the value prop which will sync via useEffect
-      setSelectedPhone(phoneNumber);
-      // Use the customer's phone format if found, otherwise use the normalized phone number
-      // This ensures the format matches what's used in conversation keys
-      const phoneForOnChange = selectedCustomer?.number || normalizedPhone;
-      onChange(phoneForOnChange);
-      setIsPhoneOpen(false);
-    } else {
-      handlePhoneSelectInternal(phoneNumber);
-    }
-  };
-
-  const handleCountrySelect = (selectedCountry: RPNInput.Country) => {
-    setCountry(selectedCountry);
-    setCountrySearch("");
-    setIsCountryOpen(false);
-
-    // Re-validate current phone number when country changes (no inline errors)
-    if (selectedPhone) {
-      validatePhone(selectedPhone);
-    }
-
-    // If there's a selected phone number, convert it to the new country's format
-    if (selectedPhone?.trim()) {
-      let updated = false;
-      try {
-        // Parse the current phone number
-        const phoneNumber = parsePhoneNumber(selectedPhone);
-        if (phoneNumber) {
-          // Get the national (local) number without country code
-          const nationalNumber = String(phoneNumber.nationalNumber || "");
-          // Format with the new country's calling code
-          const newCountryCode = getCountryCallingCode(selectedCountry);
-          if (newCountryCode) {
-            const newPhoneNumber = nationalNumber
-              ? `+${newCountryCode}${nationalNumber}`
-              : `+${newCountryCode} `;
-            setSelectedPhone(newPhoneNumber);
-            if (!uncontrolled && onChange) {
-              onChange(newPhoneNumber);
-            }
-            updated = true;
-          }
-        }
-      } catch {
-        // Ignore errors when parsing phone number during country change
-      }
-
-      if (!updated) {
-        // Fallback: derive local digits by stripping existing calling code prefix
-        const digits = String(selectedPhone).replace(/\D/g, "");
-        let localDigits = digits;
-        const matched = CALLING_CODES_SORTED.find((code) =>
-          digits.startsWith(code)
-        );
-        if (matched) {
-          localDigits = digits.slice(matched.length);
-        }
-        try {
-          const newCc = getCountryCallingCode(selectedCountry);
-          if (newCc) {
-            const newPhoneNumber = localDigits
-              ? `+${newCc}${localDigits}`
-              : `+${newCc} `;
-            setSelectedPhone(newPhoneNumber);
-            if (!uncontrolled && onChange) {
-              onChange(newPhoneNumber);
-            }
-          }
-        } catch {
-          // Ignore errors when getting country calling code during country change
-        }
-      }
-    } else {
-      // No phone yet: initialize to +[country code] to keep field non-empty
-      try {
-        const newCountryCode = getCountryCallingCode(selectedCountry);
-        if (newCountryCode) {
-          const newPhoneNumber = `+${newCountryCode} `;
-          setSelectedPhone(newPhoneNumber);
-          if (!uncontrolled && onChange) {
-            onChange(newPhoneNumber);
-          }
-        }
-      } catch {
-        // Ignore errors when initializing phone number with country code
-      }
-    }
-  };
-
   // Track popover states and selected refs via hooks
   const {
     selectedRef: selectedCountryRef,
@@ -421,101 +156,66 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
     setIsOpen: setIsPhoneOpen,
   } = useScrollSelectedIntoView<HTMLDivElement>();
 
+  // Use state management hook
+  const {
+    phoneGroups,
+    orderedPhones,
+    availableCountries,
+    isSearching,
+    searchError,
+    canCreateNew,
+    addPreviewDisplay,
+  } = usePhoneComboboxState({
+    phoneOptions,
+    phoneSearch,
+    selectedPhone,
+    country,
+    allowCreateNew,
+    isLocalized,
+  });
+
+  // Use phone selection hook
+  const { handlePhoneSelectControlled, handleCreateNewPhone } =
+    usePhoneComboboxSelection({
+      selectedPhone,
+      setSelectedPhone,
+      phoneOptions,
+      uncontrolled,
+      onChange,
+      onCustomerSelect,
+      onCountryChange: setCountry,
+      setIsPhoneOpen,
+      setPhoneSearch,
+      selectedCountry: country,
+      isLocalized,
+      validatePhone,
+    });
+
+  // Use country selection hook
+  const { handleCountrySelect } = usePhoneComboboxCountry({
+    selectedPhone,
+    setSelectedPhone,
+    uncontrolled,
+    onChange,
+    validatePhone,
+  });
+
+  // Wrapper to handle country selection with UI state updates
+  const handleCountrySelectWrapper = (selectedCountry: RPNInput.Country) => {
+    setCountry(selectedCountry);
+    setCountrySearch("");
+    setIsCountryOpen(false);
+    handleCountrySelect(selectedCountry);
+  };
+
   // Compute a dynamic dropdown width based on the widest visible option
-  useLayoutEffect(() => {
-    if (!isPhoneOpen) {
-      return;
-    }
-    try {
-      // Build a canvas context for fast text measurement
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        return;
-      }
-      const bodyStyle = getComputedStyle(document.body);
-      const fontFamily = bodyStyle.fontFamily || "ui-sans-serif, system-ui";
-      const primaryFont = `600 14px ${fontFamily}`; // text-sm font-medium
-      const secondaryFont = `400 14px ${fontFamily}`; // text-sm normal
-
-      const measure = (text: string, font: string): number => {
-        ctx.font = font;
-        return Math.ceil(ctx.measureText(text || "").width);
-      };
-
-      let maxContent = 0;
-      for (const opt of orderedPhones) {
-        const primary = opt.name || opt.displayNumber || opt.number;
-        const secondary = opt.displayNumber || opt.number;
-        const primaryW = measure(primary, primaryFont);
-        const secondaryW = measure(secondary, secondaryFont);
-        // Include flag + gap on secondary line
-        const secondaryTotal = secondaryW + FLAG_ICON_TOTAL_WIDTH_PX;
-        const line = Math.max(primaryW, secondaryTotal);
-        maxContent = Math.max(maxContent, line);
-      }
-
-      // Calculate minimum width for empty states (add new phone, no results, no data)
-      let minEmptyStateWidth = 0;
-      if (orderedPhones.length === 0) {
-        const titleFont = `600 14px ${fontFamily}`; // font-semibold text-sm
-        const descFont = `400 12px ${fontFamily}`; // text-xs
-        const titleText = "Add new phone number";
-        const descText =
-          "We couldn't find this number. Create it to start tracking conversations.";
-
-        if (canCreateNew) {
-          // Use create-new state text
-          const badgeText = addPreviewDisplay || "Enter a phone number";
-          const buttonText = "Add number";
-          const titleW = measure(titleText, titleFont);
-          const descW = measure(descText, descFont);
-          const badgeW =
-            measure(badgeText, secondaryFont) + EMPTY_STATE_BADGE_PADDING_PX;
-          const buttonW =
-            measure(buttonText, secondaryFont) + EMPTY_STATE_BUTTON_EXTRA_PX;
-          const emptyStateContent = Math.max(titleW, descW, badgeW, buttonW);
-          minEmptyStateWidth =
-            emptyStateContent +
-            EMPTY_STATE_ICON_SIZE_PX +
-            EMPTY_STATE_GAP_PX +
-            EMPTY_STATE_PADDING_PX;
-        } else {
-          // Use no-results/no-data state text with constrained width (text wraps)
-          // Cap at 280px to prevent overly wide dropdown
-          const MAX_EMPTY_STATE_TEXT_WIDTH = 280;
-          minEmptyStateWidth =
-            MAX_EMPTY_STATE_TEXT_WIDTH +
-            EMPTY_STATE_SEARCH_ICON_SIZE_PX +
-            EMPTY_STATE_GAP_PX +
-            EMPTY_STATE_PADDING_PX;
-        }
-      }
-
-      // Account for paddings (px-3), internal gaps, potential scrollbar, and trailing check icon
-      const H_PADDING = 24; // px-3 on both sides
-      const CHECK_ICON = 28; // space for check icon at end
-      const SCROLLBAR = 16; // guard for scrollbar / layout
-      const INPUT_PADDING = 20; // breathing room for the input
-      let computed =
-        maxContent + H_PADDING + CHECK_ICON + SCROLLBAR + INPUT_PADDING;
-
-      // Use minimum empty state width if applicable, otherwise respect trigger width
-      const triggerW = triggerRef.current?.offsetWidth || 0;
-      const minWidth = minEmptyStateWidth > 0 ? minEmptyStateWidth : triggerW;
-      computed = Math.max(computed, minWidth);
-
-      // Clamp to reasonable bounds so it is never too wide
-      const MAX = Math.min(
-        Math.floor(window.innerWidth * DROPDOWN_MAX_WIDTH_VW_PERCENT),
-        DROPDOWN_MAX_WIDTH_PX
-      ); // <= 35rem, <= 90vw
-      computed = Math.min(computed, MAX);
-      setDropdownWidth(computed);
-    } catch {
-      // Ignore errors when computing dropdown width
-    }
-  }, [isPhoneOpen, orderedPhones, canCreateNew, addPreviewDisplay]);
+  const dropdownWidth = useDropdownWidth({
+    isOpen: isPhoneOpen,
+    orderedPhones,
+    canCreateNew,
+    addPreviewDisplay,
+    triggerRef,
+  });
 
   // Size utilities moved to lib/ui/size
 
@@ -572,7 +272,7 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
             isOpen={isCountryOpen}
             search={countrySearch}
             selectedRef={selectedCountryRef}
-            setCountry={handleCountrySelect}
+            setCountry={handleCountrySelectWrapper}
             setIsOpen={setIsCountryOpen}
             setSearch={setCountrySearch}
             size={_size}
@@ -582,110 +282,28 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
         {/* Phone Number Selector */}
         <Popover onOpenChange={setIsPhoneOpen} open={isPhoneOpen}>
           <PopoverTrigger asChild>
-            <Button
-              className={cn(
-                "w-full min-w-0 max-w-full flex-1 justify-between overflow-hidden text-left",
-                (() => {
-                  if (showCountrySelector) {
-                    return rounded
-                      ? "rounded-s-none rounded-e-lg border-l-0"
-                      : "rounded-none border-l-0";
-                  }
-                  return rounded ? "rounded-lg" : "rounded-none border-l-0";
-                })(),
-                getSizeClasses(_size)
-              )}
+            <PhoneComboboxTrigger
+              {...(country ? { country } : {})}
               disabled={disabled}
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-              ref={triggerRef}
-              type="button"
-              variant="outline"
-            >
-              <div className="mr-2 min-w-0 flex-1 overflow-hidden text-left">
-                <div
-                  className={cn(
-                    "flex w-full items-center gap-1.5",
-                    shrinkTextToFit ? "whitespace-nowrap" : "",
-                    !selectedPhone && "text-muted-foreground"
-                  )}
-                >
-                  {showNameAndPhoneWhenClosed && selectedPhone ? (
-                    <>
-                      <span
-                        className="flex-shrink-0 rounded bg-muted/30 px-1.5 py-0.5 font-mono text-muted-foreground text-sm"
-                        style={{ direction: "ltr" }}
-                      >
-                        [{selectedPhone}]
-                      </span>
-                      <div
-                        className="min-w-0 flex-1 overflow-hidden"
-                        ref={textContainerRef}
-                      >
-                        <span
-                          className={cn(
-                            "inline-block whitespace-nowrap font-medium text-foreground text-sm",
-                            shrinkTextToFit && !isMeasured && "opacity-0"
-                          )}
-                          ref={textRef}
-                          style={
-                            shrinkTextToFit
-                              ? {
-                                  transform: `scale(${textScale})`,
-                                  transformOrigin: "left center",
-                                  willChange: "transform",
-                                  direction: "ltr",
-                                  transition: isMeasured
-                                    ? "transform 0.1s ease-out, opacity 0.05s ease-out"
-                                    : "none",
-                                }
-                              : { direction: "ltr" }
-                          }
-                        >
-                          {(() => {
-                            // Normalize phone numbers for comparison
-                            const normalizePhone = (phone: string) =>
-                              phone.replace(/[\s\-+]/g, "").trim();
-                            const normalizedSelected =
-                              normalizePhone(selectedPhone);
-                            const selectedOption = phoneOptions.find(
-                              (option) =>
-                                normalizePhone(option.number) ===
-                                normalizedSelected
-                            );
-                            return (
-                              selectedOption?.name ||
-                              i18n.getMessage(
-                                "phone_unknown_label",
-                                isLocalized
-                              )
-                            );
-                          })()}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <span className="block w-full text-left" dir="ltr">
-                      {selectedPhone ||
-                        (() => {
-                          if (preferPlaceholderWhenEmpty) {
-                            return placeholder;
-                          }
-                          return country
-                            ? `+${getCountryCallingCode(country) || ""} ...`
-                            : placeholder;
-                        })()}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <ChevronDown
-                className={cn(
-                  "-mr-2 size-4 opacity-50 transition-transform duration-200",
-                  isPhoneOpen && "rotate-180"
-                )}
-              />
-            </Button>
+              isLocalized={isLocalized}
+              isMeasured={isMeasured}
+              isPhoneOpen={isPhoneOpen}
+              phoneOptions={phoneOptions}
+              placeholder={placeholder}
+              preferPlaceholderWhenEmpty={preferPlaceholderWhenEmpty}
+              ref={triggerRefCallback}
+              rounded={rounded}
+              selectedPhone={selectedPhone}
+              showCountrySelector={showCountrySelector}
+              showNameAndPhoneWhenClosed={showNameAndPhoneWhenClosed}
+              shrinkTextToFit={shrinkTextToFit}
+              size={_size}
+              textContainerRef={textContainerRef}
+              textRef={textRef}
+              textScale={textScale}
+              {...(onMouseEnter ? { onMouseEnter } : {})}
+              {...(onMouseLeave ? { onMouseLeave } : {})}
+            />
           </PopoverTrigger>
           <PopoverContent
             avoidCollisions={false}

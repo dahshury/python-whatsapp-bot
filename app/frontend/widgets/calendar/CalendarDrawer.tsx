@@ -42,6 +42,7 @@ type CalendarDrawerProps = {
   initialView?: string;
   disableDateClick?: boolean;
   lockView?: string;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
@@ -57,6 +58,7 @@ export function CalendarDrawer({
   initialView = "listMonth",
   disableDateClick = false,
   lockView,
+  onOpenChange,
 }: CalendarDrawerProps) {
   const [open, setOpen] = React.useState(false);
   const [shouldPrefetch, setShouldPrefetch] = React.useState(false);
@@ -81,13 +83,18 @@ export function CalendarDrawer({
     setShouldPrefetch(true);
   }, []);
 
-  const handleOpenChange = React.useCallback((newOpen: boolean) => {
-    setOpen(newOpen);
-    // Start prefetching when drawer starts opening
-    if (newOpen) {
-      setShouldPrefetch(true);
-    }
-  }, []);
+  const handleOpenChange = React.useCallback(
+    (newOpen: boolean) => {
+      setOpen(newOpen);
+      // Start prefetching when drawer starts opening
+      if (newOpen) {
+        setShouldPrefetch(true);
+      }
+      // Call external callback if provided
+      onOpenChange?.(newOpen);
+    },
+    [onOpenChange]
+  );
 
   // Mark as prefetched after a short delay to allow data to start loading
   React.useEffect(() => {
@@ -343,16 +350,17 @@ export function CalendarDrawer({
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2">
           <CalendarContainer
             isHydrated={mounted}
             isRefreshing={false}
             loading={calendarCore.eventsState.loading && !isPrefetched}
           >
             {open || isPrefetched ? (
-              <div className="flex h-full flex-1 flex-col rounded-lg border border-border/50 bg-card/50 p-2">
+              <div className="flex h-full w-full max-w-full flex-1 flex-col overflow-hidden rounded-lg border border-border/50 bg-card/50 p-2">
                 <CalendarDock
                   calendarRef={calendarRef}
+                  className="mx-0 w-full"
                   currentView={calendarCore.calendarState.currentView}
                   isLocalized={isLocalized}
                 />

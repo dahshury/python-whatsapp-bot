@@ -230,7 +230,7 @@
   position: absolute; /* top/left/right/bottom will all be set by JS */
   z-index: var(
     --z-calendar-event
-  ) !important; /* Override FullCalendar's inline z-index - ensure harness is above background layers */
+  ); /* Override FullCalendar's inline z-index - ensure harness is above background layers */
   pointer-events: auto; /* Allow clicks on harness to reach events */
 }
 
@@ -242,7 +242,7 @@
   right: 5px; /* small right offset to match slot padding */
   z-index: var(
     --z-calendar-event
-  ) !important; /* Ensure event is clickable and above background */
+  ); /* Ensure event is clickable and above background */
   pointer-events: auto; /* Make event clickable */
 }
 
@@ -265,8 +265,8 @@
 /* Ensure all fc-event elements in timegrid are clickable - including conversation events */
 .fc-timegrid .fc-event,
 .fc-timegrid-event-harness .fc-event {
-  z-index: var(--z-calendar-event) !important;
-  pointer-events: auto !important;
+  z-index: var(--z-calendar-event);
+  pointer-events: auto;
   cursor: pointer;
   position: relative; /* Establish stacking context */
 }
@@ -389,7 +389,7 @@
 
 /* Re-enable pointer events on the actual event element */
 .fc-timegrid-event {
-  pointer-events: auto !important;
+  pointer-events: auto;
 }
 
 /* Time grid hack - use popover z-index

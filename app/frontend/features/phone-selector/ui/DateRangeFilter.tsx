@@ -2,12 +2,12 @@
 
 import { Calendar, MessageCircle } from "lucide-react";
 import { Button } from "@/shared/ui/button";
-import type { DateRangeFilter } from "../hooks/useDateRangeFilter";
+import type { DateRangeFilter as DateRangeFilterType } from "../hooks/useDateRangeFilter";
 import { FilterButtonGroup } from "./FilterButtonGroup";
 
 type DateRangeFilterProps = {
-  dateRangeFilter: DateRangeFilter;
-  formatDateRangeLabel: (filter: DateRangeFilter) => string;
+  dateRangeFilter: DateRangeFilterType;
+  formatDateRangeLabel: (filter: DateRangeFilterType) => string;
   onRemove: () => void;
 };
 
@@ -22,9 +22,9 @@ export function DateRangeFilter({
     <FilterButtonGroup
       filterButton={
         <Button
+          className="h-[18px] gap-1 px-1.5 text-xs"
           size="sm"
           variant="outline"
-          className="h-[18px] gap-1 px-1.5 text-xs"
         >
           <Icon className="size-3" />
           <span>{formatDateRangeLabel(dateRangeFilter)}</span>
@@ -37,5 +37,3 @@ export function DateRangeFilter({
     />
   );
 }
-
-

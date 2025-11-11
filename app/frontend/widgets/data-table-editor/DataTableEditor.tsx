@@ -116,6 +116,15 @@ export function DataTableEditor(props: DataTableEditorProps) {
   const [sourceEvents, setSourceEvents] =
     useState<DataTableCalendarEvent[]>(events);
   const previousEventsRef = useRef<DataTableCalendarEvent[]>(events);
+  const prevOpenRef = useRef<boolean>(open);
+
+  useEffect(() => {
+    if (open && !prevOpenRef.current) {
+      setSourceEvents(events);
+      previousEventsRef.current = events;
+    }
+    prevOpenRef.current = open;
+  }, [open, events]);
 
   // Stable reservation identity used for locking and dedupe
   const getReservationKey = useCallback(

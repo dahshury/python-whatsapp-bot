@@ -51,6 +51,80 @@ function buildReservationKey(
   return `slot:${customerId}:${date}:${time}`;
 }
 
+type ProcessedReservation = {
+  date: string;
+  time_slot: string;
+  customer_name?: string;
+  title?: string;
+  [key: string]: unknown;
+};
+
+type ProcessedConversation = {
+  id?: string;
+  text?: string;
+  ts?: string;
+  date?: string;
+  time?: string;
+  customer_name?: string;
+};
+
+type ReservationPayload = Record<string, ProcessedReservation[]>;
+type ConversationPayload = Record<string, ProcessedConversation[]>;
+
+function normalizeReservationsForProcessing(
+  reservationsByCustomer: Record<string, Reservation[]>
+): ReservationPayload {
+  const normalized: ReservationPayload = {};
+  for (const [waId, reservations] of Object.entries(reservationsByCustomer)) {
+    if (!Array.isArray(reservations) || reservations.length === 0) {
+      normalized[waId] = [];
+      continue;
+    }
+    normalized[waId] = reservations.map((reservation) => {
+      const reservationObj = reservation as unknown as Record<string, unknown>;
+      const {
+        date: _date,
+        time_slot: _timeSlot,
+        customer_name: _customerName,
+        ...base
+      } = reservationObj;
+      const normalizedReservation: ProcessedReservation = {
+        ...base,
+        date: (reservation as { date?: string }).date ?? "",
+        time_slot: (reservation as { time_slot?: string }).time_slot ?? "",
+      };
+      const customerName = (reservation as { customer_name?: string })
+        .customer_name;
+      if (typeof customerName !== "undefined") {
+        normalizedReservation.customer_name = customerName;
+      }
+      return normalizedReservation;
+    });
+  }
+  return normalized;
+}
+
+function stableStringify(value: unknown): string {
+  const seen = new WeakSet<object>();
+  const replacer = (_key: string, val: unknown) => {
+    if (val && typeof val === "object") {
+      if (seen.has(val as object)) {
+        return undefined as unknown as never;
+      }
+      seen.add(val as object);
+      if (!Array.isArray(val)) {
+        const sortedKeys = Object.keys(val as Record<string, unknown>).sort();
+        return sortedKeys.reduce((acc: Record<string, unknown>, key) => {
+          acc[key] = (val as Record<string, unknown>)[key];
+          return acc;
+        }, {});
+      }
+    }
+    return val as unknown as never;
+  };
+  return JSON.stringify(value, replacer);
+}
+
 export type UseCalendarEventsOptions = {
   freeRoam: boolean;
   isLocalized: boolean;
@@ -310,6 +384,8 @@ export function useCalendarEvents(
   );
 
   // Extract document status from reservation data
+  // Use a ref to track previous documentStatus to prevent unnecessary updates
+  const prevDocumentStatusRef = useRef<string>("");
   const documentStatus = useMemo(() => {
     const status: Record<string, boolean> = {};
     for (const [waId, reservations] of Object.entries(allCachedReservations)) {
@@ -332,190 +408,178 @@ export function useCalendarEvents(
   const isDataLoading =
     reservationsLoading || conversationsLoading || vacationsLoading;
   const dataError = reservationsError || conversationsError || vacationsError;
+  const normalizedError = dataError ? String(dataError) : null;
 
   // Prepare static processing options
-  const processingOptions = useMemo(
-    (): Omit<
+  // Use refs to track previous values to prevent unnecessary re-renders
+  const prevProcessingOptionsRef = useRef<Omit<
+    ReservationProcessingOptions,
+    "vacationPeriods" | "ageByWaId" | "conversationsByUser"
+  > | null>(null);
+  const prevCustomerNamesRef = useRef<string>("");
+
+  // Serialize documentStatus and customerNames for comparison
+  const documentStatusKey = useMemo(
+    () => JSON.stringify(documentStatus),
+    [documentStatus]
+  );
+  const customerNamesKey = useMemo(
+    () => JSON.stringify(customerNames),
+    [customerNames]
+  );
+
+  // Only update processingOptions when values actually change
+  const processingOptions = useMemo(() => {
+    const newOptions: Omit<
       ReservationProcessingOptions,
       "vacationPeriods" | "ageByWaId" | "conversationsByUser"
-    > => ({
+    > = {
       freeRoam,
       isLocalized,
       customerNames, // Single source of truth for names
       excludeConversations,
       documentStatus, // Document existence status for border color logic
-    }),
-    [freeRoam, isLocalized, customerNames, excludeConversations, documentStatus]
+    };
+
+    // Compare with previous options using serialized keys for deep comparison
+    const prevOptions = prevProcessingOptionsRef.current;
+    if (
+      prevOptions &&
+      prevOptions.freeRoam === newOptions.freeRoam &&
+      prevOptions.isLocalized === newOptions.isLocalized &&
+      prevOptions.excludeConversations === newOptions.excludeConversations &&
+      prevDocumentStatusRef.current === documentStatusKey &&
+      prevCustomerNamesRef.current === customerNamesKey
+    ) {
+      // No change, return previous reference to prevent re-renders
+      return prevOptions;
+    }
+
+    // Update refs
+    prevDocumentStatusRef.current = documentStatusKey;
+    prevCustomerNamesRef.current = customerNamesKey;
+    prevProcessingOptionsRef.current = newOptions;
+    return newOptions;
+  }, [
+    freeRoam,
+    isLocalized,
+    customerNames,
+    excludeConversations,
+    documentStatus,
+    documentStatusKey,
+    customerNamesKey,
+  ]);
+
+  const reservationsPayload = useMemo(
+    () => normalizeReservationsForProcessing(allCachedReservations),
+    [allCachedReservations]
   );
 
-  /**
-   * Process calendar events from unified data
-   */
-  useEffect(() => {
-    try {
-      // Only update loading/error state if it actually changed
-      setState((prev) => {
-        if (
-          prev.loading === isDataLoading &&
-          prev.error === (dataError ? String(dataError) : null)
-        ) {
-          // No change, return previous state to prevent re-render
-          return prev;
-        }
-        return {
-          ...prev,
-          loading: isDataLoading,
-          error: dataError ? String(dataError) : null,
-        };
-      });
-
-      // Only process if loading is complete and no errors
-      // Allow processing even with empty data (empty objects/arrays) as long as loading is complete
-      if (isDataLoading) {
-        // Still loading - don't process yet
-        return;
-      }
-
-      if (dataError) {
-        // Has error - set error state only if changed
-        setState((prev) => {
-          const errorStr = String(dataError);
-          if (prev.loading === false && prev.error === errorStr) {
-            return prev;
-          }
-          return {
-            ...prev,
-            loading: false,
-            error: errorStr,
-            lastUpdated: new Date(),
-          };
-        });
-        return;
-      }
-
-      // All data has loaded successfully - process events
-      // Always process events, but only include conversations if not excluded
-      // Process events even if conversation data is empty (might be loading or no conversations)
-      const processedEvents = eventProcessor.generateCalendarEvents(
-        Object.fromEntries(
-          Object.entries(allCachedReservations).map(
-            ([key, reservationList]) => [
-              key,
-              reservationList.map((reservation) => {
-                const reservationObj = reservation as unknown as Record<
-                  string,
-                  unknown
-                >;
-                const {
-                  date: _date,
-                  time_slot: _timeSlot,
-                  customer_name: _customerName,
-                  ...base
-                } = reservationObj;
-                return {
-                  ...base,
-                  date: (reservation as { date?: string }).date as string,
-                  time_slot: (reservation as { time_slot?: string })
-                    .time_slot as string,
-                  customer_name: (reservation as { customer_name?: string })
-                    .customer_name,
-                };
-              }),
-            ]
-          )
-        ) as Record<
-          string,
-          Array<{
-            date: string;
-            time_slot: string;
-            customer_name?: string;
-            title?: string;
-            [key: string]: unknown;
-          }>
-        >,
-        excludeConversations
-          ? ({} as Record<
-              string,
-              Array<{
-                id?: string;
-                text?: string;
-                ts?: string;
-                date?: string;
-                time?: string;
-                customer_name?: string;
-              }>
-            >)
-          : (allCachedConversationEvents as Record<
-              string,
-              Array<{
-                id?: string;
-                text?: string;
-                ts?: string;
-                date?: string;
-                time?: string;
-                customer_name?: string;
-              }>
-            >),
-        {
-          ...processingOptions,
-          vacationPeriods,
-          ...(ageByWaId ? { ageByWaId } : {}),
-        }
-      );
-
-      // Only update state if events actually changed
-      // Use a hash of the input data to detect changes without expensive comparisons
-      const dataHash = JSON.stringify({
-        reservations: Object.keys(allCachedReservations).length,
-        conversations: Object.keys(allCachedConversationEvents).length,
-        vacations: vacationPeriods.length,
-        excludeConversations,
-      });
-
-      if (
-        prevDataHashRef.current === dataHash &&
-        prevEventsRef.current.length === processedEvents.length
-      ) {
-        // Data hasn't changed, skip update to prevent infinite loop
-        return;
-      }
-
-      prevDataHashRef.current = dataHash;
-      prevEventsRef.current = processedEvents;
-
-      setState((prev) => ({
-        ...prev,
-        events: processedEvents,
-        loading: false,
-        error: null,
-        lastUpdated: new Date(),
-      }));
-    } catch (error) {
-      setState((prev) => {
-        const errorMessage =
-          error instanceof Error ? error.message : "Unknown error occurred";
-        if (prev.loading === false && prev.error === errorMessage) {
-          return prev;
-        }
-        return {
-          ...prev,
-          loading: false,
-          error: errorMessage,
-          lastUpdated: new Date(),
-        };
-      });
+  const conversationsPayload = useMemo<ConversationPayload>(() => {
+    if (excludeConversations) {
+      return {} as ConversationPayload;
     }
+    return allCachedConversationEvents as ConversationPayload;
+  }, [allCachedConversationEvents, excludeConversations]);
+
+  const dataFingerprint = useMemo(
+    () =>
+      stableStringify({
+        reservations: reservationsPayload,
+        conversations: conversationsPayload,
+        vacations: vacationPeriods,
+        excludeConversations,
+        ageByWaId: ageByWaId ?? null,
+      }),
+    [
+      reservationsPayload,
+      conversationsPayload,
+      vacationPeriods,
+      excludeConversations,
+      ageByWaId,
+    ]
+  );
+
+  const processedEvents = useMemo(() => {
+    if (isDataLoading || dataError) {
+      return prevEventsRef.current;
+    }
+
+    return eventProcessor.generateCalendarEvents(
+      reservationsPayload,
+      conversationsPayload,
+      {
+        ...processingOptions,
+        vacationPeriods,
+        ...(ageByWaId ? { ageByWaId } : {}),
+      }
+    );
   }, [
     isDataLoading,
     dataError,
-    allCachedReservations,
-    allCachedConversationEvents,
-    vacationPeriods,
     eventProcessor,
+    reservationsPayload,
+    conversationsPayload,
     processingOptions,
+    vacationPeriods,
     ageByWaId,
-    excludeConversations,
   ]);
+
+  /**
+   * Sync loading/error flags with local state
+   */
+  useEffect(() => {
+    setState((prev) => {
+      if (prev.loading === isDataLoading && prev.error === normalizedError) {
+        return prev;
+      }
+      return {
+        ...prev,
+        loading: isDataLoading,
+        error: normalizedError,
+      };
+    });
+  }, [isDataLoading, normalizedError]);
+
+  /**
+   * Process calendar events and update local cache
+   */
+  useEffect(() => {
+    if (isDataLoading) {
+      return;
+    }
+
+    if (normalizedError) {
+      setState((prev) => {
+        if (!prev.loading && prev.error === normalizedError) {
+          return prev;
+        }
+        prevDataHashRef.current = "";
+        return {
+          ...prev,
+          loading: false,
+          error: normalizedError,
+          lastUpdated: new Date(),
+        };
+      });
+      return;
+    }
+
+    if (prevDataHashRef.current === dataFingerprint) {
+      return;
+    }
+
+    prevDataHashRef.current = dataFingerprint;
+    prevEventsRef.current = processedEvents;
+
+    setState((prev) => ({
+      ...prev,
+      events: processedEvents,
+      loading: false,
+      error: null,
+      lastUpdated: new Date(),
+    }));
+  }, [isDataLoading, normalizedError, dataFingerprint, processedEvents]);
 
   /**
    * Refresh events by invalidating current period queries

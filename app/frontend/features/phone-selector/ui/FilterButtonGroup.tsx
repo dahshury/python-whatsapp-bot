@@ -18,14 +18,13 @@ export function FilterButtonGroup({
     <ButtonGroup>
       {filterButton}
       <Button
+        className="h-[18px] px-1.5"
+        onClick={onRemove}
         size="sm"
         variant="outline"
-        onClick={onRemove}
-        className="h-[18px] px-1.5"
       >
         <X className="size-3" />
       </Button>
     </ButtonGroup>
   );
 }
-

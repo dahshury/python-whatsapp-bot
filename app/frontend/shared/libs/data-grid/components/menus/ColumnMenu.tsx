@@ -56,10 +56,7 @@ export function ColumnMenu({
   const { isLocalized } = useLanguageStore();
 
   const FORMAT_MENU_CLOSE_DELAY_MS = 150;
-  const MENU_WIDTH = 160;
-  const SUBMENU_WIDTH = 200;
   const MENU_PADDING = 8;
-  const SUBMENU_SPACING_WHEN_OVERFLOW = 10;
   const SUBMENU_SPACING_NORMAL = 18;
 
   useEffect(() => {
@@ -158,10 +155,10 @@ export function ColumnMenu({
   /* ---------- adaptive positioning ---------- */
   const viewportW = typeof window !== "undefined" ? window.innerWidth : 0;
 
-  const leftOverflow = position.x + MENU_WIDTH > viewportW;
-  const menuLeft = leftOverflow
-    ? Math.max(position.x - MENU_WIDTH, MENU_PADDING)
-    : position.x;
+  // Position is now the right edge of the header cell (where the arrow is)
+  // We want the menu to align to the right edge, so position the container there
+  // The PopoverContent with align="end" will align its right edge to the anchor
+  const menuLeft = Math.min(position.x, viewportW - MENU_PADDING);
 
   // Compute container-relative offsets if portal inside dialog
   const containerRect =
@@ -172,46 +169,30 @@ export function ColumnMenu({
   const adjustedMenuLeft = containerRect
     ? menuLeft - containerRect.left
     : menuLeft;
-  // Helper to compute submenu left
-  const submenuLeft = leftOverflow
-    ? adjustedMenuLeft - SUBMENU_WIDTH + SUBMENU_SPACING_WHEN_OVERFLOW
-    : adjustedMenuLeft + MENU_WIDTH - SUBMENU_SPACING_NORMAL;
+  // Helper to compute submenu left - position it to the left of the menu
+  // Since menu is aligned to the right edge, submenu should appear to the left
+  const submenuLeft = adjustedMenuLeft - SUBMENU_SPACING_NORMAL;
 
-  const bgColor = isDarkTheme ? "#2a2a2a" : "white";
-  const borderColor = isDarkTheme ? "#3a3a3a" : "#e1e1e1";
   const hoverBg = isDarkTheme ? "#3a3a3a" : "#f0f0f0";
   const textColor = isDarkTheme ? "#f1f1f1" : "#333";
-
-  const containerStyles: React.CSSProperties = {
-    position: "absolute",
-    left: adjustedMenuLeft,
-    top: adjustedY,
-    zIndex: "var(--z-grid-menu)",
-    pointerEvents: "auto",
-  };
-
-  const contentStyles: React.CSSProperties = {
-    backgroundColor: bgColor,
-    border: `0.5px solid ${isDarkTheme ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)"}`,
-    borderRadius: 4,
-    boxShadow: "0 2px 5px rgba(0,0,0,0.12)",
-    minWidth: 160,
-    zIndex: "var(--z-grid-menu)",
-    padding: 3,
-  };
+  const borderColor = isDarkTheme ? "#3a3a3a" : "#e1e1e1";
 
   const MenuWrapper = (
-    <div className="click-outside-ignore" id={menuId} style={containerStyles}>
+    <div
+      className="click-outside-ignore column-menu-wrapper"
+      id={menuId}
+      style={{
+        position: "absolute",
+        transform: `translate(${adjustedMenuLeft}px, ${adjustedY}px)`,
+      }}
+    >
       <Popover onOpenChange={(o) => !o && onClose()} open>
         {/* Anchor at wrapper origin so popover can position reliably */}
-        <PopoverAnchor
-          style={{ position: "absolute", left: 0, top: 0, width: 0, height: 0 }}
-        />
+        <PopoverAnchor className="column-menu-wrapper" />
         <PopoverContent
-          align="start"
-          className="column-menu click-outside-ignore"
+          align="end"
+          className={`column-menu click-outside-ignore column-menu-content ${isDarkTheme ? "dark" : ""}`}
           sideOffset={0}
-          style={contentStyles}
         >
           <div
             onClick={(e) => {
@@ -362,7 +343,7 @@ function MenuItem({
 }: MenuItemProps) {
   return (
     <div
-      className={`menu-item ${active ? "active" : ""}`}
+      className={`menu-item column-menu-item ${active ? "active" : ""} ${hasSubmenu ? "has-submenu" : ""}`}
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
@@ -380,29 +361,16 @@ function MenuItem({
         e.preventDefault();
         e.stopPropagation();
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = hoverBg;
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          e.currentTarget.style.backgroundColor = "transparent";
-        }
-      }}
       role="menuitem"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "6px 10px",
-        cursor: "pointer",
-        backgroundColor: active ? hoverBg : "transparent",
-        color: textColor,
-        fontSize: "12px",
-        justifyContent: hasSubmenu ? "space-between" : "flex-start",
-      }}
+      style={
+        {
+          "--gdg-menu-item-bg": active ? hoverBg : "transparent",
+          "--gdg-menu-item-color": textColor,
+        } as React.CSSProperties
+      }
       tabIndex={0}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <div className="column-menu-item-content">
         {icon}
         {label}
       </div>
@@ -414,11 +382,12 @@ function MenuItem({
 function MenuDivider({ color }: { color: string }) {
   return (
     <div
-      style={{
-        height: "1px",
-        backgroundColor: color,
-        margin: "4px 0",
-      }}
+      className={`column-menu-divider ${color === "#3a3a3a" ? "dark" : ""}`}
+      style={
+        {
+          "--gdg-menu-divider-color": color,
+        } as React.CSSProperties
+      }
     />
   );
 }

@@ -84,10 +84,11 @@ export class EditingState {
     this.triggerOnChange();
   }
 
-  addRow(rowCells: Map<number, GridCell>): void {
-    this.store.addRow(rowCells);
+  addRow(rowCells: Map<number, GridCell>, originalRowIndex?: number): number {
+    const assignedIndex = this.store.addRow(rowCells, originalRowIndex);
     // Trigger onChange callbacks after adding row
     this.triggerOnChange();
+    return assignedIndex;
   }
 
   deleteRows(rows: number[]): void {
@@ -195,6 +196,10 @@ export class EditingState {
 
   getDeletedRows(): number[] {
     return this.store.getDeletedRows();
+  }
+
+  hasAddedRow(row: number): boolean {
+    return this.store.hasAddedRow(row);
   }
 
   updateTheme(theme: Partial<Theme>, isDarkTheme: boolean): void {

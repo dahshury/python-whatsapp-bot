@@ -1,119 +1,118 @@
 "use client";
 
+import {
+  read as polyfillRead,
+  readText as polyfillReadText,
+  write as polyfillWrite,
+  writeText as polyfillWriteText,
+} from "clipboard-polyfill";
+
 /**
- * Clipboard utility helpers with graceful fallbacks for environments where the
- * async Clipboard API is unavailable (e.g. certain mobile browsers or
- * insecure contexts).
+ * Clipboard utility helpers powered by clipboard-polyfill.
+ * Provides full clipboard API support across all browsers and devices,
+ * including proper handling of images, SVGs, and rich content on mobile.
+ *
+ * The clipboard-polyfill library handles all fallbacks automatically,
+ * so no manual prompt-based fallbacks are needed.
  */
 
 /**
- * Copy text to the clipboard using a DOM-based fallback.
- */
-export function fallbackCopyToClipboard(text: string): Promise<void> {
-  if (typeof document === "undefined") {
-    throw new Error("Clipboard copy is not supported in this environment");
-  }
-
-  return new Promise<void>((resolve, reject) => {
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.setAttribute("readonly", "");
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      textarea.style.pointerEvents = "none";
-      document.body.appendChild(textarea);
-
-      const selection = document.getSelection();
-      const previousRange =
-        selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-
-      textarea.select();
-      textarea.setSelectionRange(0, textarea.value.length);
-      const succeeded = document.execCommand("copy");
-
-      if (previousRange && selection) {
-        selection.removeAllRanges();
-        selection.addRange(previousRange);
-      } else {
-        selection?.removeAllRanges();
-      }
-
-      document.body.removeChild(textarea);
-
-      if (!succeeded) {
-        throw new Error("Copy command was unsuccessful");
-      }
-
-      resolve();
-    } catch (error) {
-      reject(error instanceof Error ? error : new Error("Copy failed"));
-    }
-  });
-}
-
-/**
- * Prompt-based fallback for reading clipboard text. This keeps the operation in
- * the user's control when programmatic clipboard access is not available.
- * Note: Uses window.prompt as intentional fallback for environments without Clipboard API.
- */
-export function fallbackReadFromClipboard(
-  promptMessage = "Paste from clipboard:"
-): Promise<string> {
-  if (typeof window === "undefined") {
-    throw new Error("Clipboard read is not supported in this environment");
-  }
-
-  return new Promise<string>((resolve, reject) => {
-    try {
-      // biome-ignore lint/suspicious/noAlert: Intentional fallback for environments without Clipboard API
-      const pasted = window.prompt(promptMessage, "");
-      if (pasted === null) {
-        reject(new Error("Clipboard paste cancelled"));
-        return;
-      }
-      resolve(pasted);
-    } catch (error) {
-      reject(error instanceof Error ? error : new Error("Paste failed"));
-    }
-  });
-}
-
-/**
- * Write text to the clipboard, falling back when necessary.
+ * Write text to the clipboard.
+ * Works on all devices including mobile browsers.
  */
 export async function writeClipboardText(text: string): Promise<void> {
   if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);
       return;
-    } catch {
-      // Continue to fallback below
+    } catch (_error) {
+      // Try the polyfill if native API fails
+      try {
+        await polyfillWriteText(text);
+        return;
+      } catch {
+        throw new Error("Failed to write to clipboard");
+      }
     }
   }
 
-  await fallbackCopyToClipboard(text);
+  // Use polyfill if native API is not available
+  await polyfillWriteText(text);
 }
 
 /**
- * Read text from the clipboard, falling back to a user prompt when needed.
+ * Read text from the clipboard.
+ * Works on all devices including mobile browsers.
  */
-export async function readClipboardText(options?: {
-  promptMessage?: string;
-}): Promise<string> {
+export async function readClipboardText(): Promise<string> {
   if (typeof navigator !== "undefined" && navigator.clipboard?.readText) {
     try {
       const text = await navigator.clipboard.readText();
       if (typeof text === "string") {
         return text;
       }
-    } catch {
-      // Continue to fallback below
+    } catch (_error) {
+      // Try the polyfill if native API fails
+      try {
+        return await polyfillReadText();
+      } catch {
+        throw new Error("Failed to read from clipboard");
+      }
     }
   }
 
-  const message = options?.promptMessage ?? "Paste from clipboard:";
-  return fallbackReadFromClipboard(message);
+  // Use polyfill if native API is not available
+  return polyfillReadText();
+}
+
+/**
+ * Write rich content (images, HTML, etc.) to the clipboard.
+ * Works on all devices including mobile browsers.
+ */
+export async function writeClipboard(items: ClipboardItem[]): Promise<void> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.write) {
+    try {
+      await navigator.clipboard.write(items);
+      return;
+    } catch (_error) {
+      // Try the polyfill if native API fails
+      try {
+        await polyfillWrite(items);
+        return;
+      } catch {
+        throw new Error("Failed to write to clipboard");
+      }
+    }
+  }
+
+  // Use polyfill if native API is not available
+  await polyfillWrite(items);
+}
+
+/**
+ * Read rich content (images, HTML, etc.) from the clipboard.
+ * Works on all devices including mobile browsers.
+ */
+export async function readClipboard(): Promise<ClipboardItem[]> {
+  if (typeof navigator !== "undefined" && navigator.clipboard?.read) {
+    try {
+      return await navigator.clipboard.read();
+    } catch (_error) {
+      // Try the polyfill if native API fails
+      try {
+        const items = await polyfillRead();
+        // Cast to ClipboardItem[] for type compatibility
+        return items as unknown as ClipboardItem[];
+      } catch {
+        throw new Error("Failed to read from clipboard");
+      }
+    }
+  }
+
+  // Use polyfill if native API is not available
+  const items = await polyfillRead();
+  // Cast to ClipboardItem[] for type compatibility
+  return items as unknown as ClipboardItem[];
 }
 
 export type ClipboardWriteFn = typeof writeClipboardText;

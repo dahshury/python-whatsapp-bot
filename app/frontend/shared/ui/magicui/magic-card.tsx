@@ -86,13 +86,20 @@ export function MagicCard({
   // When using inset-[1px], inner border-radius should be border-radius - inset
   // rounded-lg = 8px, so inner radius = 8px - 1px = 7px
   // Using direct pixel value to ensure proper rendering
-  const innerBorderRadiusClass = hasNoBorder ? "rounded-[7px]" : borderRadiusClass;
+  const innerBorderRadiusClass = hasNoBorder
+    ? "rounded-[7px]"
+    : borderRadiusClass;
   // Don't use overflow-hidden when border-0 is applied, as it can clip the parent's border
   const overflowClass = hasNoBorder ? "" : "overflow-hidden";
 
   return (
     <div
-      className={cn("group relative", overflowClass, borderRadiusClass, className)}
+      className={cn(
+        "group relative",
+        overflowClass,
+        borderRadiusClass,
+        className
+      )}
       ref={cardRef}
     >
       {/* Outer gradient layer - only show when card has its own border */}
@@ -110,9 +117,19 @@ export function MagicCard({
           }}
         />
       )}
-      <div className={cn("absolute bg-background", innerBorderRadiusClass, insetClass)} />
+      <div
+        className={cn(
+          "absolute bg-background",
+          innerBorderRadiusClass,
+          insetClass
+        )}
+      />
       <motion.div
-        className={cn("pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100", innerBorderRadiusClass, insetClass)}
+        className={cn(
+          "pointer-events-none absolute opacity-0 transition-opacity duration-300 group-hover:opacity-100",
+          innerBorderRadiusClass,
+          insetClass
+        )}
         style={{
           background: useMotionTemplate`
             radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px, ${gradientColor}, transparent 100%)

@@ -1,8 +1,9 @@
 import { i18n } from "@shared/libs/i18n";
 import { toastService } from "@shared/libs/toast";
+import { useQueryClient } from "@tanstack/react-query";
 import type React from "react";
 import { useCallback, useState } from "react";
-import type { RowChange } from "@/entities/event";
+import type { Reservation, RowChange } from "@/entities/event";
 import type { CalendarCoreRef } from "@/features/calendar";
 import {
   type CancelReservationParams,
@@ -16,6 +17,7 @@ import { extractCancellationData } from "@/features/reservations/utils/extract-c
 import type { IColumnDefinition } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
 import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
 import type { BaseColumnProps } from "@/shared/libs/data-grid/components/core/types";
+import { useSidebarChatStore } from "@/shared/libs/store/sidebar-chat-store";
 import { FormattingService } from "@/shared/libs/utils/formatting.service";
 import { normalizePhoneForStorage } from "@/shared/libs/utils/phone-utils";
 import type {
@@ -27,10 +29,12 @@ import type {
 const TOAST_ERROR_DURATION_MS = 5000;
 const TOAST_VALIDATION_DURATION_MS = 8000;
 const GRID_DEFAULT_COLUMN_WIDTH = 100;
+const CALENDAR_UPDATE_DELAY_MS = 150;
 
 type ModificationPayload = {
   mutation: MutateReservationParams;
   event: CalendarEvent;
+  waIdChange?: { oldWaId: string; newWaId: string } | null;
 };
 
 type UseDataTableSaveHandlerProps = {
@@ -48,6 +52,7 @@ type UseDataTableSaveHandlerProps = {
 };
 
 export function useDataTableSaveHandler({
+  calendarRef,
   isLocalized,
   slotDurationHours: _slotDurationHours,
   freeRoam,
@@ -55,16 +60,246 @@ export function useDataTableSaveHandler({
   dataProviderRef,
   validateAllCells,
   onEventModified,
-  onEventCancelled,
+  onEventCancelled: _onEventCancelled,
   refreshCustomerData,
 }: UseDataTableSaveHandlerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const formattingService = new FormattingService();
+  const queryClient = useQueryClient();
+  const { selectedConversationId, setSelectedConversation } =
+    useSidebarChatStore();
 
   // Use TanStack Query mutations
   const modifyMutation = useMutateReservation();
   const createMutation = useCreateReservation();
   const cancelMutation = useCancelReservation();
+
+  const modifyCustomerWaId = useCallback(
+    async (
+      oldWaId: string,
+      newWaId: string,
+      nextCustomerName?: string | null
+    ) => {
+      const payloadCustomerName =
+        nextCustomerName ??
+        queryClient.getQueryData<
+          Record<string, { wa_id: string; customer_name: string | null }>
+        >(["customer-names"])?.[oldWaId]?.customer_name ??
+        null;
+
+      const response = await fetch("/api/modify-id", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          old_id: oldWaId,
+          new_id: newWaId,
+          customer_name: payloadCustomerName,
+        }),
+      });
+
+      const result = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+        data?: { customer_name?: string | null };
+      };
+
+      if (!(response.ok && result?.success)) {
+        const errorMessage =
+          result?.message || "Failed to update customer phone number";
+        throw new Error(errorMessage);
+      }
+
+      const resolvedCustomerName =
+        result?.data?.customer_name ?? payloadCustomerName;
+
+      // Update customer names cache (rekey)
+      queryClient.setQueryData<
+        | Record<string, { wa_id: string; customer_name: string | null }>
+        | undefined
+      >(["customer-names"], (old) => {
+        if (!old) {
+          return old;
+        }
+        const updated = { ...old };
+        const entry = updated[oldWaId];
+        if (entry) {
+          delete updated[oldWaId];
+          updated[newWaId] = {
+            ...entry,
+            wa_id: newWaId,
+            customer_name: resolvedCustomerName ?? entry.customer_name ?? null,
+          };
+        } else if (resolvedCustomerName !== undefined) {
+          updated[newWaId] = {
+            wa_id: newWaId,
+            customer_name: resolvedCustomerName ?? null,
+          };
+        }
+        return updated;
+      });
+
+      // Helper to rekey reservation maps
+      const rekeyReservationMap = (
+        map: Record<string, Reservation[]> | undefined
+      ): Record<string, Reservation[]> | undefined => {
+        if (!(map && Object.hasOwn(map, oldWaId))) {
+          return map;
+        }
+        const updated = { ...map };
+        const reservations = updated[oldWaId];
+        delete updated[oldWaId];
+        if (reservations) {
+          updated[newWaId] = reservations.map((reservation) => ({
+            ...reservation,
+            wa_id: newWaId,
+            customer_id: newWaId,
+            customer_name:
+              resolvedCustomerName !== undefined
+                ? (resolvedCustomerName ?? reservation.customer_name ?? "")
+                : reservation.customer_name,
+          }));
+        }
+        return updated;
+      };
+
+      // Rekey calendar reservations caches
+      queryClient.setQueriesData(
+        { queryKey: ["calendar-reservations"] },
+        (old: Record<string, Reservation[]> | undefined) =>
+          rekeyReservationMap(old)
+      );
+
+      // Rekey date-range reservations caches
+      queryClient.setQueriesData(
+        { queryKey: ["reservations-date-range"] },
+        (old: Record<string, Reservation[]> | undefined) =>
+          rekeyReservationMap(old)
+      );
+
+      // Move customer grid data
+      const oldGridData = queryClient.getQueryData<
+        { name: string; age: number | null } | undefined
+      >(["customer-grid-data", oldWaId]);
+      if (oldGridData !== undefined) {
+        queryClient.setQueryData(["customer-grid-data", newWaId], {
+          ...oldGridData,
+          ...(resolvedCustomerName !== undefined
+            ? { name: resolvedCustomerName ?? "" }
+            : {}),
+        });
+        queryClient.removeQueries({
+          queryKey: ["customer-grid-data", oldWaId],
+          exact: true,
+        });
+      }
+
+      // Move customer stats cache
+      const oldStats = queryClient.getQueryData<
+        Record<string, unknown> | undefined
+      >(["customer-stats", oldWaId]);
+      if (oldStats !== undefined) {
+        queryClient.setQueryData(["customer-stats", newWaId], {
+          ...oldStats,
+          ...(resolvedCustomerName !== undefined
+            ? { customerName: resolvedCustomerName }
+            : {}),
+        });
+        queryClient.removeQueries({
+          queryKey: ["customer-stats", oldWaId],
+          exact: true,
+        });
+      }
+
+      // Update calendar API and React state if available
+      const calendarApi = calendarRef?.current?.getApi?.();
+      if (calendarApi) {
+        try {
+          // Suppress eventChange during these programmatic updates
+          const globalScope = globalThis as {
+            __suppressEventChangeDepth?: number;
+          };
+          const currentDepth = globalScope.__suppressEventChangeDepth || 0;
+          globalScope.__suppressEventChangeDepth = currentDepth + 1;
+
+          try {
+            // Find all events with the old waId and update their extendedProps
+            const allEvents = calendarApi.getEvents?.() || [];
+            for (const eventApi of allEvents) {
+              const eventWaId =
+                (eventApi as { extendedProps?: Record<string, unknown> })
+                  ?.extendedProps?.waId ||
+                (eventApi as { extendedProps?: Record<string, unknown> })
+                  ?.extendedProps?.wa_id;
+
+              if (String(eventWaId) === oldWaId) {
+                // Update waId in extendedProps
+                (
+                  eventApi as {
+                    setExtendedProp?: (key: string, value: unknown) => void;
+                  }
+                )?.setExtendedProp?.("waId", newWaId);
+                (
+                  eventApi as {
+                    setExtendedProp?: (key: string, value: unknown) => void;
+                  }
+                )?.setExtendedProp?.("wa_id", newWaId);
+                (
+                  eventApi as {
+                    setExtendedProp?: (key: string, value: unknown) => void;
+                  }
+                )?.setExtendedProp?.("phone", newWaId);
+
+                // Also trigger onEventModified to update React state
+                const eventId = String((eventApi as { id?: unknown }).id || "");
+                if (eventId && onEventModified) {
+                  const updatedEvent: CalendarEvent = {
+                    id: eventId,
+                    title: (eventApi as { title?: string }).title || "",
+                    start: (eventApi as { startStr?: string }).startStr || "",
+                    ...((eventApi as { endStr?: string }).endStr
+                      ? { end: (eventApi as { endStr?: string }).endStr }
+                      : {}),
+                    type: "reservation",
+                    extendedProps: {
+                      ...((
+                        eventApi as { extendedProps?: Record<string, unknown> }
+                      ).extendedProps || {}),
+                      waId: newWaId,
+                      phone: newWaId,
+                    },
+                  };
+                  onEventModified(eventId, updatedEvent);
+                }
+              }
+            }
+          } finally {
+            // Restore suppression depth
+            const d = globalScope.__suppressEventChangeDepth || 0;
+            globalScope.__suppressEventChangeDepth = Math.max(0, d - 1);
+          }
+        } catch (_error) {
+          // Silently ignore errors when restoring event change suppression
+        }
+      }
+
+      // Update selected conversation when it points to the old waId
+      if (
+        selectedConversationId === oldWaId ||
+        selectedConversationId === `+${oldWaId}`
+      ) {
+        setSelectedConversation(newWaId);
+      }
+    },
+    [
+      queryClient,
+      calendarRef,
+      onEventModified,
+      selectedConversationId,
+      setSelectedConversation,
+    ]
+  );
 
   // Helper to extract modification data from RowChange and CalendarEvent
   const extractModificationData = useCallback(
@@ -74,11 +309,13 @@ export function useDataTableSaveHandler({
     ): ModificationPayload | null => {
       const TIME_FORMAT_LENGTH = 5;
       const evId = String(original.id);
-      const waId = (
+      const waIdRaw = (
         original.extendedProps?.waId ||
         original.id ||
         ""
       ).toString();
+      // Normalize the old waId to ensure consistent format (no + prefix)
+      const waId = normalizePhoneForStorage(waIdRaw) || waIdRaw;
       if (!waId) {
         return null;
       }
@@ -135,11 +372,32 @@ export function useDataTableSaveHandler({
         const fallback = Number(original.extendedProps?.type);
         return Number.isFinite(fallback) ? fallback : 0;
       })();
-      const titleNew =
+      const hasPhoneChange = Object.hasOwn(change, "phone");
+      const phoneRaw = hasPhoneChange
+        ? String((change as unknown as { phone?: string }).phone ?? "")
+        : "";
+      const normalizedPhone = hasPhoneChange
+        ? normalizePhoneForStorage(phoneRaw)
+        : "";
+      const waIdNew =
+        hasPhoneChange && normalizedPhone ? normalizedPhone : waId;
+      const titleNew = String(
         change.name ||
-        original.title ||
-        original.extendedProps?.customerName ||
-        waId;
+          original.title ||
+          original.extendedProps?.customerName ||
+          waId
+      );
+      const hasNameChange = Object.hasOwn(change, "name");
+      const customerNameNew = (() => {
+        if (hasNameChange) {
+          return titleNew;
+        }
+        const existingName = original.extendedProps?.customerName;
+        if (typeof existingName === "string" && existingName.length > 0) {
+          return existingName;
+        }
+        return titleNew;
+      })();
       const reservationId =
         typeof original.extendedProps?.reservationId === "number"
           ? original.extendedProps?.reservationId
@@ -176,13 +434,18 @@ export function useDataTableSaveHandler({
           return newStartIso;
         }
       })();
+      const waIdChanged =
+        hasPhoneChange && waIdNew.length > 0 && waIdNew !== waId;
       const extendedProps = {
         ...(original.extendedProps || {}),
-        waId,
+        waId: waIdNew,
+        wa_id: waIdNew,
+        phone: waIdNew,
         slotDate: dateStrNew,
         slotTime: normalizedSlotTime,
         type: typeValue,
         cancelled: false,
+        customerName: customerNameNew,
         ...(reservationId !== undefined ? { reservationId } : {}),
       };
       const calendarEvent: CalendarEvent = {
@@ -197,7 +460,7 @@ export function useDataTableSaveHandler({
         previousDate?: string;
         previousTimeSlot?: string;
       } = {
-        waId,
+        waId: waIdNew,
         date: dateStrNew ?? "",
         time: normalizedSlotTime,
         title: titleNew,
@@ -211,7 +474,11 @@ export function useDataTableSaveHandler({
         mutation.reservationId = reservationId;
       }
 
-      return { mutation, event: calendarEvent };
+      return {
+        mutation,
+        event: calendarEvent,
+        waIdChange: waIdChanged ? { oldWaId: waId, newWaId: waIdNew } : null,
+      };
     },
     [formattingService, isLocalized]
   );
@@ -369,9 +636,7 @@ export function useDataTableSaveHandler({
 
           try {
             await cancelMutation.mutateAsync(cancelParams);
-            if (onEventCancelled) {
-              onEventCancelled(String(original.id));
-            }
+            // NOTE: Don't call onEventCancelled - mutation cache updates are enough
           } catch {
             hasErrors = true;
           }
@@ -384,6 +649,18 @@ export function useDataTableSaveHandler({
         const filteredEditedEntries = Object.entries(
           changes.edited_rows
         ).filter(([rowIdxStr]) => !deletedSet.has(Number(rowIdxStr)));
+
+        type ModificationBatch = {
+          mutation: MutateReservationParams & {
+            previousDate?: string;
+            previousTimeSlot?: string;
+          };
+          event: CalendarEvent;
+          waIdChange?: { oldWaId: string; newWaId: string } | null;
+        };
+
+        type ModificationBatchMutation = ModificationBatch["mutation"];
+        const modificationMap = new Map<string, ModificationBatch>();
 
         for (const [rowIdxStr, change] of filteredEditedEntries) {
           const rowIdx = Number(rowIdxStr);
@@ -398,13 +675,150 @@ export function useDataTableSaveHandler({
             continue;
           }
 
-          try {
-            await modifyMutation.mutateAsync(payload.mutation);
-            if (onEventModified) {
-              onEventModified(payload.event.id, payload.event);
+          const mutation = payload.mutation;
+          const key =
+            String(payload.event.id || "") ||
+            String(
+              mutation.reservationId ??
+                `${mutation.waId}-${mutation.date}-${mutation.time}`
+            );
+
+          const existing = modificationMap.get(key);
+          if (existing) {
+            const existingMutation =
+              existing.mutation as ModificationBatchMutation;
+            const mutationAsExtended = mutation as ModificationBatchMutation;
+            const mergedPreviousDate =
+              existingMutation.previousDate ?? mutationAsExtended.previousDate;
+            const mergedPreviousTimeSlot =
+              existingMutation.previousTimeSlot ??
+              mutationAsExtended.previousTimeSlot;
+
+            const mergedMutation: ModificationBatchMutation = {
+              ...mutation,
+              ...(mergedPreviousDate
+                ? { previousDate: mergedPreviousDate }
+                : {}),
+              ...(mergedPreviousTimeSlot
+                ? { previousTimeSlot: mergedPreviousTimeSlot }
+                : {}),
+            };
+
+            const mergedEvent: CalendarEvent = {
+              ...existing.event,
+              ...payload.event,
+              extendedProps: {
+                ...(existing.event.extendedProps || {}),
+                ...(payload.event.extendedProps || {}),
+              },
+            };
+            const mergedWaIdChange =
+              payload.waIdChange ?? existing.waIdChange ?? null;
+
+            modificationMap.set(key, {
+              mutation: mergedMutation,
+              event: mergedEvent,
+              waIdChange: mergedWaIdChange,
+            });
+          } else {
+            modificationMap.set(key, {
+              mutation,
+              event: payload.event,
+              waIdChange: payload.waIdChange ?? null,
+            });
+          }
+        }
+
+        const waIdChanges = new Map<
+          string,
+          { newWaId: string; context: ModificationBatch }
+        >();
+        for (const batch of modificationMap.values()) {
+          const change = batch.waIdChange;
+          if (change?.newWaId && change.newWaId !== change.oldWaId) {
+            waIdChanges.set(change.oldWaId, {
+              newWaId: change.newWaId,
+              context: batch,
+            });
+          }
+        }
+
+        if (waIdChanges.size > 0) {
+          for (const [oldWaId, info] of waIdChanges.entries()) {
+            try {
+              const contextEvent = info.context.event;
+              await modifyCustomerWaId(
+                oldWaId,
+                info.newWaId,
+                contextEvent.extendedProps?.customerName ??
+                  contextEvent.title ??
+                  null
+              );
+            } catch (error) {
+              const message =
+                error instanceof Error ? error.message : String(error);
+              toastService.error(
+                i18n.getMessage("save_error", isLocalized),
+                message
+              );
+              hasErrors = true;
+              return false;
             }
-          } catch {
-            hasErrors = true;
+          }
+        }
+
+        // Apply changes to calendar API - eventChange callback will trigger mutations
+        const calendarApi = calendarRef?.current?.getApi?.();
+        if (calendarApi) {
+          for (const { event } of modificationMap.values()) {
+            try {
+              const eventApi = calendarApi.getEventById?.(event.id);
+              if (!eventApi) {
+                continue;
+              }
+
+              // Update title
+              eventApi.setProp?.("title", event.title);
+
+              // Update extended properties
+              const extendedProps = event.extendedProps || {};
+              for (const [key, value] of Object.entries(extendedProps)) {
+                if (value !== undefined) {
+                  eventApi.setExtendedProp?.(key, value);
+                }
+              }
+
+              // Update dates last (triggers eventChange)
+              if (event.start) {
+                const startDate =
+                  typeof event.start === "string"
+                    ? new Date(event.start)
+                    : event.start;
+                let endDate: Date;
+                if (event.end) {
+                  endDate =
+                    typeof event.end === "string"
+                      ? new Date(event.end)
+                      : event.end;
+                } else {
+                  endDate = startDate;
+                }
+                eventApi.setDates?.(startDate, endDate);
+              }
+            } catch (_err) {
+              hasErrors = true;
+            }
+          }
+          await new Promise((resolve) =>
+            setTimeout(resolve, CALENDAR_UPDATE_DELAY_MS)
+          );
+        } else {
+          for (const { mutation } of modificationMap.values()) {
+            try {
+              await modifyMutation.mutateAsync(mutation);
+            } catch {
+              hasErrors = true;
+            }
           }
         }
       }
@@ -466,10 +880,10 @@ export function useDataTableSaveHandler({
     cancelMutation,
     extractModificationData,
     extractCreationData,
-    onEventCancelled,
-    onEventModified,
+    modifyCustomerWaId,
     refreshCustomerData,
     extractCancellationDataForGrid,
+    calendarRef?.current?.getApi,
   ]);
 
   return {

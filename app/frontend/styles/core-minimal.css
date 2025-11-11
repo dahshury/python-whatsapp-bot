@@ -1,0 +1,124 @@
+/**
+ * MINIMAL CORE STYLES - Documents page only
+ * Only essential styles that documents page needs
+ */
+
+/* External Library - Z-index variables (needed everywhere) */
+@import "../shared/libs/data-grid/styles/_z-index.css";
+
+/* Core foundation styles */
+@import "base.css";
+@import "fonts.css";
+@import "utilities.css";
+
+/* Default theme only - no other themes needed for documents page */
+@import "themes/themes.css";
+@import "themes/theme-default.css";
+
+/* Fancy toast styling (mirrors shared toast theme) */
+.fancy-toast {
+	position: relative;
+	overflow: hidden;
+	border-radius: var(--radius);
+	border: 0.0625rem solid hsl(var(--border));
+	background: hsl(var(--card));
+	box-shadow: 0 0.625rem 1.875rem rgba(0, 0, 0, 0.25);
+}
+
+.fancy-toast::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background-image:
+		linear-gradient(
+			to right,
+			hsl(var(--border) / 0.6) 0.0625rem,
+			transparent 0.0625rem
+		),
+		linear-gradient(
+			to bottom,
+			hsl(var(--border) / 0.6) 0.0625rem,
+			transparent 0.0625rem
+		);
+	background-size: 2rem 2rem;
+	opacity: 0.08;
+	-webkit-mask-image: radial-gradient(
+		ellipse 80% 80% at 100% 0%,
+		#000 50%,
+		transparent 90%
+	);
+	mask-image: radial-gradient(
+		ellipse 80% 80% at 100% 0%,
+		#000 50%,
+		transparent 90%
+	);
+	z-index: var(--z-theme-layer-1);
+	pointer-events: none;
+}
+
+.fancy-toast-bg {
+	position: absolute;
+	inset: 0;
+	background:
+		radial-gradient(
+			ellipse 120% 80% at 70% 20%,
+			hsl(var(--primary) / 0.15),
+			transparent 50%
+		),
+		radial-gradient(
+			ellipse 100% 60% at 30% 10%,
+			hsl(var(--accent) / 0.12),
+			transparent 60%
+		),
+		radial-gradient(
+			ellipse 90% 70% at 50% 0%,
+			hsl(var(--chart-4) / 0.18),
+			transparent 65%
+		),
+		radial-gradient(
+			ellipse 110% 50% at 80% 30%,
+			hsl(var(--secondary) / 0.08),
+			transparent 40%
+		),
+		hsl(var(--card));
+	filter: blur(0.75rem);
+	border-radius: inherit;
+	z-index: var(--z-theme-layer-0);
+}
+
+.fancy-toast-content {
+	position: relative;
+	padding: 0.75rem 0.875rem;
+	z-index: var(--z-theme-layer-2);
+}
+
+.fancy-toast-title {
+	font-weight: 700;
+	letter-spacing: 0.0125rem;
+}
+
+.fancy-toast-sub {
+	font-size: 0.75rem;
+	opacity: 0.9;
+}
+
+.fancy-toast-error {
+	border: 0.0625rem solid hsl(var(--destructive));
+	background: hsl(var(--card));
+}
+
+.fancy-toast-error .fancy-toast-bg {
+	background:
+		radial-gradient(
+			ellipse 120% 80% at 70% 20%,
+			hsl(var(--destructive) / 0.18),
+			transparent 50%
+		),
+		radial-gradient(
+			ellipse 90% 70% at 50% 0%,
+			hsl(var(--destructive) / 0.12),
+			transparent 65%
+		),
+		hsl(var(--card));
+}
+

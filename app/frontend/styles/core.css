@@ -1,0 +1,30 @@
+/**
+ * CORE STYLES - Loaded on ALL pages
+ * Only essential styles that every page needs
+ */
+
+/* External Library - Z-index variables (needed everywhere) */
+@import "../shared/libs/data-grid/styles/_z-index.css";
+
+/* Core foundation styles */
+@import "base.css";
+@import "fonts.css";
+@import "utilities.css";
+
+/* Theme definitions - needed for consistent theming */
+@import "themes/themes.css";
+@import "themes/theme-default.css";
+@import "themes/theme-claude.css";
+@import "themes/theme-neo-brutalism.css";
+@import "themes/theme-perpetuity.css";
+@import "themes/theme-retro-arcade.css";
+@import "themes/theme-soft-pop.css";
+@import "themes/theme-ghibli-studio.css";
+@import "themes/theme-valorant.css";
+@import "themes/theme-t3chat.css";
+@import "themes/theme-perplexity.css";
+@import "themes/theme-art-deco.css";
+@import "themes/theme-neomorphism.css";
+@import "themes/theme-clerk.css";
+@import "themes/theme-inline.css";
+

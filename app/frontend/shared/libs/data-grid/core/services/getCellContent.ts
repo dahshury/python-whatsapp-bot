@@ -33,6 +33,14 @@ export function createGetCellContent({
 }: CreateGetCellContentArgs) {
   return (cell: Item): GridCell => {
     if (loading || !isDataReady || columnsStateLength === 0) {
+      if (documentsGrid) {
+        return {
+          kind: GridCellKind.Text,
+          data: "",
+          displayData: "",
+          allowOverlay: false,
+        } as GridCell;
+      }
       const [columnIdxLoading] = cell;
       const approxWidth =
         (displayColumns[columnIdxLoading] as { width?: number } | undefined)
@@ -62,8 +70,8 @@ export function createGetCellContent({
         themeOverride: {
           ...(baseCell as { themeOverride?: Record<string, unknown> })
             .themeOverride,
-          baseFontStyle: "16px",
-          editorFontSize: "16px",
+          baseFontStyle: "25px",
+          editorFontSize: "25px",
         },
       } as GridCell;
 

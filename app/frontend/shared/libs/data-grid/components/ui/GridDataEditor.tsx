@@ -3,6 +3,7 @@
 import type {
   GridCell as GDGGridCell,
   GridMouseCellEventArgs as GDGGridMouseCellEventArgs,
+  GridColumn,
   GridMouseEventArgs,
 } from "@glideapps/glide-data-grid";
 import DataEditor, {
@@ -19,7 +20,6 @@ import AgeWheelCellRenderer from "../AgeWheelCell";
 import { useFullscreen } from "../contexts/FullscreenContext";
 import { useColumnPinningStreamlit } from "../hooks/useColumnPinningStreamlit";
 import { useColumnRemeasure } from "../hooks/useColumnRemeasure";
-import { useColumnReorderingStreamlit } from "../hooks/useColumnReorderingStreamlit";
 import { useGridSizer } from "../hooks/useGridSizer";
 import PhoneCellRenderer from "../PhoneCellRenderer";
 import TempusDateCellRenderer from "../TempusDominusDateCell";
@@ -28,10 +28,7 @@ import type { ColumnConfig } from "../types/column-config-streamlit.types";
 import type { GridDataEditorProps } from "../types/grid-data-editor.types";
 import { createDrawCellCallback } from "../utils/cellDrawing";
 import { orderColumnsByPinning } from "../utils/columnOrdering";
-import {
-  getGridContainerClasses,
-  getGridContainerStyles,
-} from "../utils/gridContainerStyles";
+import { getGridContainerClasses } from "../utils/gridContainerStyles";
 import { createGetRowThemeOverride } from "../utils/rowTheme";
 
 const customRenderers = [
@@ -155,7 +152,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
   const noOpClearSelection = useCallback(() => {
     // No-op function for when clearSelection is not provided
   }, []);
-  const { freezeColumns, pinColumn, unpinColumn } = useColumnPinningStreamlit({
+  const { freezeColumns } = useColumnPinningStreamlit({
     columns: displayColumns,
     containerWidth,
     minColumnWidth: MIN_COLUMN_WIDTH,
@@ -165,14 +162,6 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
   });
 
   // Column reordering management
-  const { onColumnMoved } = useColumnReorderingStreamlit({
-    columns: displayColumns,
-    freezeColumns,
-    pinColumn,
-    unpinColumn,
-    columnConfigMapping: effectiveColumnConfig,
-  });
-
   // Autosize functionality using glide-data-grid's built-in remeasureColumns (like st_DataFrame)
   useColumnRemeasure(dataEditorRef, onAutosize);
 
@@ -182,21 +171,53 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
     [displayColumns, effectiveColumnConfig]
   );
 
+  // For documents grid, disable header menu icon on all columns
+  const columnsForDataEditor = useMemo<GridColumn[]>(() => {
+    if (!documentsGrid) {
+      return orderedColumns;
+    }
+    // Disable menu icon for all columns in documents page
+    return orderedColumns.map((column) => ({
+      ...column,
+      hasMenu: false,
+    }));
+  }, [orderedColumns, documentsGrid]);
+
   // Resizable size state
+  // In fullWidth mode, always use '100%' to prevent pixel value changes
+  const getInitialWidth = () => {
+    if (fullWidth ?? false) {
+      return "100%";
+    }
+    if (typeof width === "number") {
+      return width;
+    }
+    return "100%";
+  };
   const [resizableSize, setResizableSize] = useState<ResizableSize>({
-    width: typeof width === "number" ? width : "100%",
+    width: getInitialWidth(),
     height,
   });
 
   // Track previous dimensions to prevent unnecessary updates
   const prevDimensionsRef = useRef<{ width: number | string; height: number }>({
-    width: typeof width === "number" ? width : "100%",
+    width: getInitialWidth(),
     height,
   });
 
   // Update resizable size when dimensions change (only if values actually changed)
+  // In fullWidth mode, always use '100%' to prevent pixel value changes that cause animation
   useEffect(() => {
-    const newWidth = typeof width === "number" ? width : "100%";
+    let newWidth: string | number;
+    if (fullWidth ?? false) {
+      // Always use 100% in fullWidth mode - never switch to pixel values
+      // This prevents animation when measuredContainerWidth changes from undefined to a number
+      newWidth = "100%";
+    } else if (typeof width === "number") {
+      newWidth = width;
+    } else {
+      newWidth = "100%";
+    }
     const newHeight = height;
 
     // Only update if values have actually changed to prevent infinite loops
@@ -210,7 +231,7 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
         height: newHeight,
       });
     }
-  }, [width, height]);
+  }, [width, height, fullWidth]);
 
   const drawCell: DrawCellCallback = useMemo(
     () => createDrawCellCallback(orderedColumns, theme),
@@ -259,23 +280,22 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
-      // For now, just draw centered text (icons could be added later if needed)
+      // Draw centered text
       ctx.fillText(column.title, centerX, centerY);
 
       ctx.restore();
 
-      // Don't call drawContent() to avoid default left-aligned rendering
+      // Return true to indicate custom rendering is complete and skip default rendering
+      return true;
     };
   }, [documentsGrid]);
 
-  const containerStyle = getGridContainerStyles(
-    isFullscreen,
-    fullWidth ?? false
-  );
   const containerClass = getGridContainerClasses(
     fullWidth ?? false,
     isFullscreen
   );
+  const containerClassName =
+    `${containerClass} glide-grid-data-editor-container ${fullWidth || isFullscreen ? "fullwidth" : ""} ${isFullscreen ? "fullscreen" : ""}`.trim();
 
   // Calculate border radius based on hideOuterFrame and isFullscreen
   const borderRadius = useMemo(() => {
@@ -291,13 +311,14 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
   return (
     <div
       aria-hidden="true"
-      className={containerClass}
+      className={containerClassName}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       role="presentation"
-      style={containerStyle}
     >
       <Resizable
+        className="glide-grid-resizable-wrapper"
+        data-hide-outer-frame={hideOuterFrame}
         enable={{
           top: false,
           right: false,
@@ -321,19 +342,19 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
           }
         }}
         size={resizableSize}
-        style={{
-          border: borderWidth
-            ? `${borderWidth}px solid ${String((theme as Theme & { borderColor?: string }).borderColor)}`
-            : "none",
-          borderRadius,
-          overflow: "hidden",
-          backgroundColor: hideOuterFrame
-            ? "transparent"
-            : (theme as Theme).bgCell,
-        }}
+        style={
+          {
+            ...(borderWidth && {
+              "--gdg-resizable-border-color": String(
+                (theme as Theme & { borderColor?: string }).borderColor
+              ),
+            }),
+            "--gdg-resizable-border-radius": borderRadius,
+          } as React.CSSProperties
+        }
       >
         <DataEditor
-          columns={orderedColumns}
+          columns={columnsForDataEditor}
           customRenderers={customRenderers} // Use reordered columns with pinned columns first
           drawCell={drawCell}
           {...(drawHeader ? { drawHeader } : {})}
@@ -355,7 +376,6 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
           {...(readOnly ? {} : { onGridSelectionChange })}
           freezeColumns={freezeColumns} // Use calculated freeze columns count
           {...(onRowAppended ? { onRowAppended } : {})}
-          onColumnMoved={onColumnMoved} // Use Streamlit-style column reordering
           {...(readOnly ? {} : { onCellEdited })}
           onItemHovered={handleItemHovered}
           {...(rowMarkers !== undefined
@@ -389,12 +409,16 @@ export const GridDataEditor: React.FC<GridDataEditorProps> = ({
           fillHandle={!readOnly}
           getCellsForSelection={true}
           headerHeight={headerHeight}
-          onHeaderMenuClick={(colIdx, bounds) => {
-            const col = orderedColumns[colIdx];
-            if (col) {
-              onHeaderMenuClick?.(col, bounds);
-            }
-          }}
+          {...(documentsGrid
+            ? {}
+            : {
+                onHeaderMenuClick: (colIdx, bounds) => {
+                  const col = columnsForDataEditor[colIdx];
+                  if (col) {
+                    onHeaderMenuClick?.(col, bounds);
+                  }
+                },
+              })}
           onSearchClose={onSearchClose}
           onSearchValueChange={onSearchValueChange}
           ref={dataEditorRef}

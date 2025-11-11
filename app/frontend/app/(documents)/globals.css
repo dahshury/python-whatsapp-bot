@@ -1,0 +1,124 @@
+/**
+ * MINIMAL GLOBALS FOR DOCUMENTS PAGE
+ * Only essential styles - no calendar CSS, minimal themes
+ */
+
+/* Core styles - minimal foundation (only default theme, no other themes) */
+@import "../../styles/core-minimal.css";
+
+/* FontAwesome - used for icons in header */
+@import "@fortawesome/fontawesome-free/css/all.min.css";
+
+/* Tailwind - needed for header, drawer, and UI components */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global base layer styles */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    letter-spacing: var(--tracking-normal);
+  }
+}
+
+/* Fluid root sizing and UI density scale */
+:root {
+  font-size: clamp(14px, 0.9vw + 10px, 16px);
+  --ui-scale: 1;
+}
+
+/* Tooltip animations for bottom-menu (mirrors core globals) */
+@keyframes bottom-menu-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.bottom-menu-scope .tooltip-content {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.bottom-menu-scope .tooltip-content-wrapper {
+  position: relative;
+  height: 16px;
+  overflow: hidden;
+  animation: bottom-menu-fadeIn 150ms ease-out;
+}
+
+.bottom-menu-scope .tooltip-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 800ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.bottom-menu-scope [data-state="closed"] {
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.bottom-menu-scope [data-state="open"] {
+  opacity: 1;
+  transition:
+    opacity 150ms ease-out,
+    width 800ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes bottom-menu-slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bottom-menu-slideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+.bottom-menu-scope .tooltip-content.slide-in {
+  animation: bottom-menu-slideIn 150ms ease-out;
+}
+
+.bottom-menu-scope .tooltip-content.slide-out {
+  animation: bottom-menu-slideOut 150ms ease-out;
+}
+
+@keyframes bottom-menu-slideInY {
+  from {
+    transform: translateY(-5px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.bottom-menu-scope .tooltip-animation {
+  animation:
+    bottom-menu-fadeIn 0.3s ease-in-out,
+    bottom-menu-slideInY 0.3s ease-in-out;
+}
+

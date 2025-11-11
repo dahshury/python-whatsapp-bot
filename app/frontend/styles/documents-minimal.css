@@ -1,0 +1,48 @@
+/**
+ * MINIMAL DOCUMENTS STYLES - Optimized for documents page performance
+ * Only includes CSS required for:
+ * - tldraw canvas and containers, status indicator
+ * - glide data grid
+ * - drawer with calendar list view ONLY
+ * - header with icons and dock
+ * 
+ * Note: Core foundation (z-index, base, fonts, utilities, themes) is loaded via globals.css
+ */
+
+/* =================================
+   DATA GRID STYLES
+   ================================= */
+/* Glide data grid for documents table */
+@import "@glideapps/glide-data-grid/dist/index.css";
+/* Custom data grid styles shared with calendar experience */
+@import "../shared/libs/data-grid/styles/index.css";
+
+/* =================================
+   TLDRAW STYLES
+   ================================= */
+/* TLDraw styles for document canvas */
+@import "tldraw.css";
+
+/* =================================
+   FULLCALENDAR LIST VIEW ONLY
+   ================================= */
+/* Minimal FullCalendar imports for list view only */
+@import "fullcalendar/_variables.css";
+@import "fullcalendar/_universal.css";
+@import "fullcalendar/_base.css";
+@import "fullcalendar/_icons.css";
+@import "fullcalendar/_buttons.css";
+@import "fullcalendar/_toolbar.css";
+@import "fullcalendar/_scroller.css";
+/* List view ONLY - no daygrid, timegrid, multimonth, etc. */
+@import "fullcalendar/views/_list.css";
+
+/* =================================
+   SUPPORTING STYLES
+   ================================= */
+/* Portal - for modals/overlays (needed for grid editors/menus and drawer) */
+@import "portal.css";
+
+/* Themed scrollbar - for consistent scrollbar styling */
+@import "themed-scrollbar.css";
+

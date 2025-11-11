@@ -1,9 +1,14 @@
 "use client";
 
 import { i18n } from "@shared/libs/i18n";
-import { cn } from "@shared/libs/utils";
 import { Plane, Settings2, View } from "lucide-react";
-import { type ReactElement, useMemo } from "react";
+import {
+  type ReactElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { VacationPeriods } from "@/features/settings";
 import { useSettingsStore } from "@/infrastructure/store/app-store";
 import {
@@ -12,6 +17,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/shared/ui/animate-ui/components/radix/tabs";
+import { DocumentsViewSettings } from "./documents-view-settings";
 import { GeneralSettings } from "./general-settings";
 import { ThemeSelector } from "./theme-selector";
 import { ViewModeToolbar } from "./view-mode-toolbar";
@@ -33,6 +39,8 @@ type SettingsTabsProps = {
   allowedTabs?: ReadonlyArray<"view" | "general" | "vacation">;
   /** Hide the ViewModeToolbar (free roam / dual / default) controls. */
   hideViewModeToolbar?: boolean;
+  /** Whether this is the documents page (shows documents-specific view settings) */
+  isDocumentsPage?: boolean;
 };
 
 // View mode selection is handled by ViewModeToolbar
@@ -48,6 +56,7 @@ export function SettingsTabs({
   isCalendarPage = true,
   allowedTabs,
   hideViewModeToolbar = false,
+  isDocumentsPage = false,
 }: SettingsTabsProps) {
   useSettingsStore();
   // View mode change logic lives in ViewModeToolbar
@@ -90,37 +99,25 @@ export function SettingsTabs({
     return allowed.includes(activeTab) ? activeTab : defaultTab;
   }, [activeTab, showViewTab, showVacationTab, showGeneralTab, defaultTab]);
 
+  const [tabsValue, setTabsValue] = useState(computedActiveTab);
+
+  useEffect(() => {
+    if (!isDocumentsPage) {
+      setTabsValue(computedActiveTab);
+    }
+  }, [computedActiveTab, isDocumentsPage]);
+
+  const handleTabChange = useCallback(
+    (value: string) => {
+      setTabsValue(value);
+      onTabChange?.(value);
+    },
+    [onTabChange]
+  );
+
   return (
-    <Tabs
-      onValueChange={
-        onTabChange ??
-        (() => {
-          // Default no-op handler
-        })
-      }
-      value={computedActiveTab}
-    >
-      <TabsList
-        className={cn(
-          "grid w-full gap-0 bg-muted/40 backdrop-blur-sm",
-          (() => {
-            const TAB_COUNT_THREE = 3;
-            const TAB_COUNT_TWO = 2;
-            const COUNT_MULTIPLIER = 1;
-            const count =
-              (showViewTab ? COUNT_MULTIPLIER : 0) +
-              (showGeneralTab ? COUNT_MULTIPLIER : 0) +
-              (showVacationTab ? COUNT_MULTIPLIER : 0);
-            if (count === TAB_COUNT_THREE) {
-              return "grid-cols-3";
-            }
-            if (count === TAB_COUNT_TWO) {
-              return "grid-cols-2";
-            }
-            return "grid-cols-1";
-          })()
-        )}
-      >
+    <Tabs className="w-full" onValueChange={handleTabChange} value={tabsValue}>
+      <TabsList className="mx-auto">
         {showViewTab && (
           <TabsTrigger className="py-1" value="view">
             <View className="mr-1.5 h-3.5 w-3.5" />
@@ -156,34 +153,44 @@ export function SettingsTabs({
 
       {showViewTab && (
         <TabsContent className="space-y-3 pt-3" value="view">
-          {customViewSelector ? (
-            <div className="space-y-2 rounded-md border bg-background/40 p-2 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <View className="h-3.5 w-3.5" />
-                  <span className="font-medium text-[0.8rem] leading-none">
-                    {i18n.getMessage("settings_view", isLocalized)}
-                  </span>
-                </div>
-                {!hideViewModeToolbar && <ViewModeToolbar />}
-              </div>
+          {(() => {
+            if (customViewSelector) {
+              return (
+                <div className="space-y-2 rounded-md border bg-background/40 p-2 backdrop-blur-sm">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <View className="h-3.5 w-3.5" />
+                      <span className="font-medium text-[0.8rem] leading-none">
+                        {i18n.getMessage("settings_view", isLocalized)}
+                      </span>
+                    </div>
+                    {!hideViewModeToolbar && <ViewModeToolbar />}
+                  </div>
 
-              {customViewSelector}
-            </div>
-          ) : (
-            <ViewSettings
-              isLocalized={isLocalized}
-              {...(currentCalendarView ? { currentCalendarView } : {})}
-              {...(activeView ? { activeView } : {})}
-              {...(onCalendarViewChange ? { onCalendarViewChange } : {})}
-              hideChatSettings={
-                Array.isArray(allowedTabs) &&
-                allowedTabs.length === 1 &&
-                allowedTabs.includes("view")
-              }
-              hideViewModeToolbar={hideViewModeToolbar}
-            />
-          )}
+                  {customViewSelector}
+                </div>
+              );
+            }
+
+            if (isDocumentsPage) {
+              return <DocumentsViewSettings isLocalized={isLocalized} />;
+            }
+
+            return (
+              <ViewSettings
+                isLocalized={isLocalized}
+                {...(currentCalendarView ? { currentCalendarView } : {})}
+                {...(activeView ? { activeView } : {})}
+                {...(onCalendarViewChange ? { onCalendarViewChange } : {})}
+                hideChatSettings={
+                  Array.isArray(allowedTabs) &&
+                  allowedTabs.length === 1 &&
+                  allowedTabs.includes("view")
+                }
+                hideViewModeToolbar={hideViewModeToolbar}
+              />
+            );
+          })()}
         </TabsContent>
       )}
 

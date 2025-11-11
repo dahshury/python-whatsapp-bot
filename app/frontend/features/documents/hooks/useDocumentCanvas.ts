@@ -1,42 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { DOCUMENT_QUERY_KEY } from "@/entities/document";
+import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
 import { createDocumentsService } from "../services/documents.service.factory";
-
-function normalizeDocumentSnapshot(raw: unknown): unknown {
-  if (!raw || typeof raw !== "object") {
-    return raw;
-  }
-
-  const value = raw as {
-    type?: string;
-    snapshot?: unknown;
-    document?: unknown;
-    session?: unknown;
-    schema?: unknown;
-  };
-
-  // If backend stored as: { type: 'tldraw', snapshot: { document: ... } }
-  if (value.type === "tldraw" && "snapshot" in value) {
-    const snapshot = value.snapshot as { document?: unknown } | null;
-    // Unwrap the document from the snapshot wrapper
-    if (snapshot && typeof snapshot === "object" && "document" in snapshot) {
-      return snapshot.document;
-    }
-    return value.snapshot;
-  }
-
-  // Legacy format: { type: 'tldraw', state: ... }
-  if (value.type === "tldraw" && "state" in value) {
-    return (value as { state?: unknown }).state ?? null;
-  }
-
-  // If already in { document, session, schema } format
-  if ("document" in value || "session" in value || "schema" in value) {
-    return raw;
-  }
-
-  return raw;
-}
+import {
+  hasDocumentContent,
+  normalizeDocumentSnapshot,
+} from "../utils/documentContent";
 
 /**
  * Hook for fetching document canvas data for TLDraw viewer
@@ -50,11 +19,31 @@ export function useDocumentCanvas(waId: string | null | undefined) {
     queryKey: [...DOCUMENT_QUERY_KEY.byWaId(waId ?? ""), "canvas"],
     queryFn: async () => {
       if (!waId || waId.trim() === "") {
-        return { snapshot: null, editorCamera: null, viewerCamera: null };
+        return {
+          snapshot: null,
+          editorCamera: null,
+          viewerCamera: null,
+          editorPageId: null,
+        };
       }
 
-      const resp = await documentsService.getByWaId(waId);
-      const rawDocument = resp?.document ?? null;
+      let response = await documentsService.getByWaId(waId);
+      let rawDocument = response?.document ?? null;
+
+      const shouldInitialize =
+        waId !== TEMPLATE_USER_WA_ID && !hasDocumentContent(rawDocument);
+
+      if (shouldInitialize) {
+        try {
+          const initialized = await documentsService.ensureInitialized(waId);
+          if (initialized) {
+            response = await documentsService.getByWaId(waId);
+            rawDocument = response?.document ?? rawDocument;
+          }
+        } catch {
+          // Ignore initialization errors here; query result will reflect current state
+        }
+      }
 
       // Extract snapshot and cameras separately
       const doc = rawDocument as {
@@ -62,12 +51,14 @@ export function useDocumentCanvas(waId: string | null | undefined) {
         snapshot?: unknown;
         editorCamera?: { x: number; y: number; z: number };
         viewerCamera?: { x: number; y: number; z: number };
+        editorPageId?: string;
       } | null;
 
       return {
         snapshot: normalizeDocumentSnapshot(rawDocument),
         editorCamera: doc?.editorCamera ?? null,
         viewerCamera: doc?.viewerCamera ?? null,
+        editorPageId: doc?.editorPageId ?? null,
       };
     },
     enabled: Boolean(waId && waId.trim() !== ""),

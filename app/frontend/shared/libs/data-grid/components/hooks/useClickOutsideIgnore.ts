@@ -126,15 +126,16 @@ export const useClickOutsideIgnore = ({
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {
           if (node instanceof HTMLElement) {
+            const classNameStr = node.className;
             const isTimekeeperRelated =
-              (node.className &&
-                (node.className.includes("timekeeper") ||
-                  node.className.includes("TimeKeeper") ||
-                  node.className.includes("clock") ||
-                  node.className.includes("Clock") ||
-                  node.className.includes("hour") ||
-                  node.className.includes("minute") ||
-                  node.className.includes("meridiem"))) ||
+              (classNameStr &&
+                (classNameStr.includes("timekeeper") ||
+                  classNameStr.includes("TimeKeeper") ||
+                  classNameStr.includes("clock") ||
+                  classNameStr.includes("Clock") ||
+                  classNameStr.includes("hour") ||
+                  classNameStr.includes("minute") ||
+                  classNameStr.includes("meridiem"))) ||
               node.hasAttribute("data-timekeeper-portal") ||
               portalRef.current?.contains(node) ||
               node.closest("[data-timekeeper-portal]") ||

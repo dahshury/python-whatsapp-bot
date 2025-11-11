@@ -327,7 +327,7 @@ export function DockNav({
       );
     }
     if (navigation.isDocumentsPage) {
-      // Documents page: show all page links + settings button for theme
+      // Documents page: show all page links + settings button with view and general tabs
       return (
         <>
           <CalendarLink isLocalized={navigation.isLocalized} />
@@ -338,10 +338,11 @@ export function DockNav({
           <SettingsPopover
             activeTab={nav.state.activeTab}
             activeView={navigation.activeView}
-            allowedTabs={["general"] as const}
+            allowedTabs={["view", "general"] as const}
             currentCalendarView={currentCalendarView}
             hideViewModeToolbar={true}
             isCalendarPage={false}
+            isDocumentsPage={true}
             isLocalized={navigation.isLocalized}
             onCalendarViewChange={nav.handlers.handleCalendarViewChange}
             onOpenChange={

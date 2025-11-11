@@ -6,7 +6,10 @@ import type {
   Theme,
 } from "@glideapps/glide-data-grid";
 import React from "react";
-import type { ColumnConfig } from "../../core/types/grid";
+import type {
+  ColumnConfig,
+  GridToolbarHiddenAction,
+} from "../../core/types/grid";
 import type { GridViewProps } from "../GridView";
 import { useColumnMenuPinning } from "./useColumnMenuPinning";
 
@@ -16,7 +19,9 @@ type UseGridViewPropsOptions = {
   canRedo: boolean;
   canUndo: boolean;
   className?: string;
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  containerRef:
+    | React.RefObject<HTMLDivElement | null>
+    | React.RefCallback<HTMLDivElement | null>;
   containerWidth?: number | undefined;
   darkTheme: Partial<Theme>;
   displayColumns: GridColumn[];
@@ -36,6 +41,9 @@ type UseGridViewPropsOptions = {
   theme: Partial<Theme>;
   showThemeToggle: boolean;
   toggleFullscreen: () => void;
+  toolbarAnchor?: "overlay" | "inline";
+  toolbarAlwaysVisible?: boolean;
+  toolbarHiddenActions?: GridToolbarHiddenAction[];
   // Toolbar actions
   onAddRow: () => Promise<void> | void;
   onClearSelection: () => void;
@@ -66,6 +74,7 @@ type UseGridViewPropsOptions = {
   onSearchClose: () => void;
   onSearchValueChange: (v: string) => void;
   setIsFocused: (v: boolean) => void;
+  onMouseLeave?: () => void;
   setTheme: (t: Partial<Theme>) => void;
   setSearchValue: (v: string) => void;
   setShowSearch: (updater: (prev: boolean) => boolean) => void;
@@ -202,6 +211,9 @@ export function useGridViewProps(
     showThemeToggle: options.showThemeToggle,
     theme: options.theme,
     toggleFullscreen: options.toggleFullscreen,
+    toolbarAnchor: options.toolbarAnchor ?? "overlay",
+    toolbarAlwaysVisible: options.toolbarAlwaysVisible ?? false,
+    toolbarHiddenActions: options.toolbarHiddenActions ?? [],
     ...(options.disableTrailingRow
       ? {}
       : { onRowAppended: options.onRowAppendedHandler }),
@@ -214,6 +226,7 @@ export function useGridViewProps(
     onSearchClose: options.onSearchClose,
     onSearchValueChange: options.onSearchValueChange,
     setIsFocused: options.setIsFocused,
+    ...(options.onMouseLeave && { onMouseLeave: options.onMouseLeave }),
     ...(typeof options.rowHeight === "number"
       ? { rowHeight: options.rowHeight }
       : {}),

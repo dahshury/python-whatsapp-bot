@@ -7,9 +7,9 @@ type UseContainerWidthOptions = {
 
 export function useContainerWidth<T extends HTMLElement = HTMLDivElement>(
   options: UseContainerWidthOptions = {}
-): [React.RefObject<T | null>, number | undefined] {
+): [React.RefCallback<T>, number | undefined] {
   const { minDeltaPx = 2, throttleMs = 50 } = options;
-  const ref = React.useRef<T | null>(null);
+  const elementRef = React.useRef<T | null>(null);
   const [width, setWidth] = React.useState<number | undefined>(undefined);
 
   const lastWidthRef = React.useRef<number | undefined>(undefined);
@@ -17,8 +17,20 @@ export function useContainerWidth<T extends HTMLElement = HTMLDivElement>(
   const lastUpdateTsRef = React.useRef<number>(0);
   const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
 
+  // Callback ref to measure immediately on mount
+  const ref = React.useCallback((el: T | null) => {
+    elementRef.current = el;
+    if (el) {
+      const w = Math.round(el.offsetWidth || 0);
+      if (w > 0) {
+        lastWidthRef.current = w;
+        setWidth(w);
+      }
+    }
+  }, []);
+
   React.useEffect(() => {
-    const el = ref.current;
+    const el = elementRef.current;
     if (!el) {
       return;
     }
@@ -60,16 +72,6 @@ export function useContainerWidth<T extends HTMLElement = HTMLDivElement>(
 
     resizeObserverRef.current = observer;
     observer.observe(el);
-
-    // Initial measure
-    try {
-      const w = Math.round(el.offsetWidth || 0);
-      if (w > 0) {
-        update(w);
-      }
-    } catch {
-      /* noop */
-    }
 
     return () => {
       if (rafIdRef.current) {

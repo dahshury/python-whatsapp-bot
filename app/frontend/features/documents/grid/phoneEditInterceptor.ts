@@ -23,6 +23,20 @@ export type PhoneEditDeps = {
   ) => void;
   documentsMode?: boolean;
   onCustomerSelected?: (waId: string) => void;
+  // Optional: mutation hook for updating name when phone is edited and both exist
+  updateNameMutation?: {
+    mutate: (params: {
+      waId: string;
+      name: string;
+      isLocalized?: boolean;
+    }) => void;
+  };
+  // Optional: current waId to check if we're staying on the same customer
+  currentWaId?: string;
+  // Optional: data source and columns for checking if both name and phone exist
+  customerDataSource?: unknown;
+  customerColumns?: Array<{ id?: string }>;
+  isLocalized?: boolean;
 };
 
 const isString = (value: unknown): value is string => typeof value === "string";
@@ -48,8 +62,17 @@ const toTextCell = (value: string) => ({
 export function createPhoneEditInterceptor(
   deps: PhoneEditDeps
 ): EditInterceptor {
-  const { findCustomerByPhone, dispatch, documentsMode, onCustomerSelected } =
-    deps;
+  const {
+    findCustomerByPhone,
+    dispatch,
+    documentsMode,
+    onCustomerSelected,
+    updateNameMutation,
+    currentWaId,
+    customerDataSource,
+    customerColumns,
+    isLocalized,
+  } = deps;
 
   return function phoneEditInterceptor(ctx: EditInterceptorContext) {
     try {
@@ -147,6 +170,53 @@ export function createPhoneEditInterceptor(
     }
 
     const waId = customer.id || rawPhone;
+
+    // Check if we're staying on the same customer (not switching) and both name and phone exist
+    // If so, trigger name mutation (phone can't be updated via API)
+    if (
+      documentsMode &&
+      updateNameMutation &&
+      customerDataSource &&
+      customerColumns &&
+      currentWaId &&
+      waId === currentWaId // Only trigger if staying on the same customer
+    ) {
+      // Check if both name and phone exist asynchronously
+      const nameCol = customerColumns.findIndex((c) => c.id === "name");
+      const phoneCol = customerColumns.findIndex((c) => c.id === "phone");
+      if (nameCol !== -1 && phoneCol !== -1) {
+        Promise.all([
+          (
+            customerDataSource as {
+              getCellData?: (col: number, row: number) => Promise<unknown>;
+            }
+          ).getCellData?.(nameCol, 0) ?? Promise.resolve(""),
+          (
+            customerDataSource as {
+              getCellData?: (col: number, row: number) => Promise<unknown>;
+            }
+          ).getCellData?.(phoneCol, 0) ?? Promise.resolve(""),
+        ])
+          .then(([nameVal, phoneVal]) => {
+            const nameOk =
+              typeof nameVal === "string" && nameVal.trim().length > 0;
+            const phoneOk =
+              typeof phoneVal === "string" && phoneVal.trim().length > 0;
+
+            // Only trigger mutation if both name and phone exist
+            if (nameOk && phoneOk && typeof nameVal === "string") {
+              updateNameMutation.mutate({
+                waId,
+                name: nameVal.trim(),
+                ...(isLocalized !== undefined ? { isLocalized } : {}),
+              });
+            }
+          })
+          .catch(() => {
+            // Silently ignore errors
+          });
+      }
+    }
 
     if (documentsMode && typeof onCustomerSelected === "function") {
       try {

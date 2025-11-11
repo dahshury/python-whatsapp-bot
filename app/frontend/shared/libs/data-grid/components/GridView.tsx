@@ -9,6 +9,7 @@ import type {
 } from "@glideapps/glide-data-grid";
 import type React from "react";
 import ReactDOM from "react-dom";
+import type { GridToolbarHiddenAction } from "../core/types/grid";
 import {
   GridPortalProvider,
   useGridPortal,
@@ -37,6 +38,9 @@ export type GridViewProps = {
   actualIconColor: string;
   isFullscreen: boolean;
   toggleFullscreen: () => void;
+  toolbarAnchor?: "overlay" | "inline";
+  toolbarAlwaysVisible?: boolean;
+  toolbarHiddenActions?: GridToolbarHiddenAction[];
   hideToolbar?: boolean;
   className?: string;
 
@@ -66,7 +70,9 @@ export type GridViewProps = {
   // Container sizing
   fullWidth: boolean;
   containerWidth?: number;
-  containerRef: React.RefObject<HTMLDivElement | null>;
+  containerRef:
+    | React.RefObject<HTMLDivElement | null>
+    | React.RefCallback<HTMLDivElement | null>;
 
   // Editor props
   displayColumns: GridColumn[];
@@ -87,6 +93,7 @@ export type GridViewProps = {
   onSearchValueChange: (v: string) => void;
   dataEditorRef: React.RefObject<DataEditorRef | null>;
   setIsFocused: (v: boolean) => void;
+  onMouseLeave?: () => void;
   gridWidth?: number;
   headerIcons: SpriteMap;
   hideHeaders?: boolean;
@@ -165,6 +172,9 @@ export function GridView(props: GridViewProps) {
     isFullscreen,
     toggleFullscreen,
     hideToolbar,
+    toolbarAnchor = "overlay",
+    toolbarAlwaysVisible = false,
+    toolbarHiddenActions = [],
     className,
     filteredRowCount,
     setTheme,
@@ -202,6 +212,7 @@ export function GridView(props: GridViewProps) {
     onSearchValueChange,
     dataEditorRef,
     setIsFocused,
+    onMouseLeave,
     gridWidth,
     headerIcons,
     hideHeaders,
@@ -253,10 +264,12 @@ export function GridView(props: GridViewProps) {
             portalContainer &&
             ReactDOM.createPortal(
               <GridToolbar
+                alwaysVisible={toolbarAlwaysVisible}
                 canRedo={canRedo}
                 canUndo={canUndo}
                 hasHiddenColumns={hasHiddenColumns}
                 hasSelection={hasSelection}
+                hiddenActions={toolbarHiddenActions}
                 isFocused={isFocused || isFullscreen}
                 onAddRow={onAddRow}
                 onClearSelection={onClearSelection}
@@ -267,27 +280,18 @@ export function GridView(props: GridViewProps) {
                 onToggleFullscreen={toggleFullscreen}
                 onToggleSearch={() => setShowSearch((v) => !v)}
                 onUndo={onUndo}
-                overlay={true}
+                overlay={toolbarAnchor === "overlay"}
                 overlayPosition={overlayPosition}
+                toolbarAnchor={toolbarAnchor}
               />,
               portalContainer
             )}
 
           <div
-            className={`glide-grid-inner ${fullWidth || isFullscreen ? "glide-grid-inner-full" : "glide-grid-inner-fit"}`}
+            className={`glide-grid-inner glide-grid-inner-container ${fullWidth || isFullscreen ? "glide-grid-inner-full" : "glide-grid-inner-fit"} ${fullWidth ? "fullwidth" : ""}`}
             data-container-width={containerWidth}
             data-fullwidth={fullWidth}
             ref={containerRef}
-            style={{
-              willChange: (() => {
-                if (fullWidth) {
-                  return containerWidth ? "width" : "auto";
-                }
-                return;
-              })(),
-              margin: 0,
-              padding: 0,
-            }}
           >
             <GridDataEditor
               displayColumns={displayColumns}
@@ -330,7 +334,7 @@ export function GridView(props: GridViewProps) {
               })}
               dataEditorRef={dataEditorRef}
               onMouseEnter={() => setIsFocused(true)}
-              onMouseLeave={() => setIsFocused(false)}
+              onMouseLeave={onMouseLeave || (() => setIsFocused(false))}
               {...(gridWidth !== undefined && { gridWidth })}
               fullWidth={fullWidth}
               {...(containerWidth !== undefined && { containerWidth })}
