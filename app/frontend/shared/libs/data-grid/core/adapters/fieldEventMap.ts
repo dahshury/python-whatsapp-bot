@@ -17,6 +17,7 @@ export function createFieldEventHandler(args: {
     }
     if (columnId === "phone") {
       onNotify?.("phone");
+      onFieldPersist?.("phone"); // Also trigger persist for phone to save new customers
     }
   };
 }

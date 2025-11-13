@@ -37,31 +37,20 @@ export function useUnlockValidation(params: UseUnlockValidationParams): {
   } = params;
 
   const recomputeUnlock = useCallback(async () => {
-    console.log("[useUnlockValidation] recomputeUnlock() called", {
-      waId,
-      isUnlocked,
-      hasDataSource: !!customerDataSource,
-      hasProvider: !!providerRef.current,
-    });
-
     try {
       // Skip check if no customer selected (blank document)
       if (!waId || waId === DEFAULT_DOCUMENT_WA_ID) {
-        console.log("[useUnlockValidation] Skipping - no waId or default document");
         if (isUnlocked) {
           setIsUnlocked(false);
-          console.log("[useUnlockValidation] Set isUnlocked to FALSE");
         }
         return;
       }
 
       if (!customerDataSource) {
-        console.log("[useUnlockValidation] No customerDataSource, setting unlocked to false");
         setIsUnlocked(false);
         return;
       }
 
-      console.log("[useUnlockValidation] Calling UnlockValidationService.validate...");
       const result = await UnlockValidationService.validate({
         waId,
         customerDataSource,
@@ -70,10 +59,8 @@ export function useUnlockValidation(params: UseUnlockValidationParams): {
         pendingInitialLoadWaId: pendingInitialLoadWaIdRef.current,
       });
 
-      console.log("[useUnlockValidation] Setting isUnlocked to:", result.shouldUnlock);
       setIsUnlocked(result.shouldUnlock);
-    } catch (err) {
-      console.error("[useUnlockValidation] Error during recomputeUnlock:", err);
+    } catch (_err) {
       setIsUnlocked(false);
     }
   }, [
@@ -90,30 +77,19 @@ export function useUnlockValidation(params: UseUnlockValidationParams): {
     const handler = (event: Event) => {
       try {
         const detail = (event as CustomEvent).detail as { waId?: string };
-        console.log("[useUnlockValidation] doc:unlock-request event received", {
-          eventWaId: detail?.waId,
-          currentWaId: waId,
-          matches: !detail?.waId || detail.waId === waId,
-        });
-
         if (detail?.waId && detail.waId !== waId) {
-          console.log("[useUnlockValidation] Ignoring event - waId mismatch");
           return;
         }
-
-        console.log("[useUnlockValidation] Triggering recomputeUnlock...");
-        recomputeUnlock().catch((err) => {
-          console.error("[useUnlockValidation] recomputeUnlock error:", err);
+        recomputeUnlock().catch(() => {
+          // Ignore errors here; existing hooks manage failure states
         });
-      } catch (err) {
-        console.error("[useUnlockValidation] Event handler error:", err);
+      } catch {
+        // Ignore malformed events
       }
     };
 
-    console.log("[useUnlockValidation] Registering doc:unlock-request listener for waId:", waId);
     window.addEventListener("doc:unlock-request", handler as EventListener);
     return () => {
-      console.log("[useUnlockValidation] Removing doc:unlock-request listener for waId:", waId);
       window.removeEventListener(
         "doc:unlock-request",
         handler as EventListener

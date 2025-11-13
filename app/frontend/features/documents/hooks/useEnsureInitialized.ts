@@ -7,7 +7,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef } from "react";
 import { DOCUMENT_QUERY_KEY } from "@/entities/document";
-import { logger } from "@/shared/libs/logger";
 import { createDocumentsService } from "../services/documents.service.factory";
 /**
  * Hook for ensuring a document exists for a given waId
@@ -36,20 +35,10 @@ export function useEnsureInitialized(): (waId: string) => Promise<boolean> {
         return existing;
       }
 
-      logger.info(
-        `[useEnsureInitialized] Ensuring document ${waId} is initialized`
-      );
       const promise = (async (): Promise<boolean> => {
         try {
           const result = await documentsService.ensureInitialized(waId);
           const { success, modified } = result;
-          logger.info(
-            `[useEnsureInitialized] Document ${waId} initialization result`,
-            {
-              success,
-              modified,
-            }
-          );
 
           if (success) {
             initializedSetRef.current.add(normalizedWaId);
@@ -65,12 +54,6 @@ export function useEnsureInitialized(): (waId: string) => Promise<boolean> {
           }
 
           return success;
-        } catch (error) {
-          logger.error(
-            `[useEnsureInitialized] Failed to initialize document ${waId}`,
-            error
-          );
-          throw error;
         } finally {
           ensurePromisesRef.current.delete(normalizedWaId);
         }

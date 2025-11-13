@@ -90,10 +90,7 @@ export function useDocumentsSection(): UseDocumentsSectionResult {
     ((viewerCamera: Record<string, unknown>) => void) | null
   >(null);
 
-  const ensureInitializedForWaSource = useCallback(
-    async () => true,
-    []
-  );
+  const ensureInitializedForWaSource = useCallback(async () => true, []);
 
   const { waId, setWaId, persistWaId, replaceWaIdInUrl } = useWaIdSource({
     defaultWaId: DEFAULT_DOCUMENT_WA_ID,

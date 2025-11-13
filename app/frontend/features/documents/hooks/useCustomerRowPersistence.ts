@@ -47,15 +47,8 @@ export function useCustomerRowPersistence(
 
   const persistRow = useCallback(
     async (triggeredBy?: "name" | "age" | "phone") => {
-      console.log("[persistRow] Called", {
-        triggeredBy,
-        waId,
-        hasOnCreateNewCustomer: !!onCreateNewCustomer,
-      });
-
       try {
         if (!customerDataSource) {
-          console.log("[persistRow] No customerDataSource, aborting");
           return;
         }
 
@@ -82,13 +75,6 @@ export function useCustomerRowPersistence(
 
         const sanitizedPhone = phone.replace(/\D+/g, "");
 
-        console.log("[persistRow] Cell values", {
-          name,
-          age,
-          phone,
-          sanitizedPhone,
-        });
-
         // Check if we should create a new customer:
         // 1. If waId is empty/default, OR
         // 2. If phone number doesn't match current waId (user entered a different phone)
@@ -99,27 +85,16 @@ export function useCustomerRowPersistence(
             waId === DEFAULT_DOCUMENT_WA_ID ||
             sanitizedPhone !== waId.replace(/\D+/g, ""));
 
-        console.log("[persistRow] Should create new customer?", {
-          shouldCreateNew,
-          hasCallback: !!onCreateNewCustomer,
-          hasSanitizedPhone: !!sanitizedPhone,
-          waIdCheck: !waId || waId === DEFAULT_DOCUMENT_WA_ID,
-        });
-
         if (shouldCreateNew) {
           if (!sanitizedPhone) {
-            console.log("[persistRow] No sanitized phone, aborting creation");
             return;
           }
 
-          console.log("[persistRow] ✓ Creating new customer via onCreateNewCustomer");
           const createdWaId = await onCreateNewCustomer({
             name,
             phone: sanitizedPhone,
             age,
           });
-
-          console.log("[persistRow] onCreateNewCustomer result:", createdWaId);
 
           if (createdWaId) {
             prevByWaRef.current.set(createdWaId, {
@@ -127,14 +102,9 @@ export function useCustomerRowPersistence(
               age,
             });
             persistInFlightRef.current = null;
-            console.log("[persistRow] ✓ Customer created successfully, waId:", createdWaId);
-          } else {
-            console.warn("[persistRow] ⚠️ onCreateNewCustomer returned null/undefined");
           }
           return;
         }
-        
-        console.log("[persistRow] Not creating new customer, proceeding with normal persistence...");
 
         const documentsService = createDocumentsService();
 

@@ -108,13 +108,8 @@ export type UseGridTooltipsOptions = {
 };
 
 export function useGridTooltips(options: UseGridTooltipsOptions) {
-  const {
-    getCellContent,
-    columns,
-    validationErrors,
-    getBoundsForCell,
-    containerRef,
-  } = options;
+  const { getCellContent, columns, validationErrors, getBoundsForCell } =
+    options;
   const [tooltip, setTooltip] = useState<TooltipState | undefined>();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { isLocalized } = useLanguageStore();
@@ -260,7 +255,6 @@ export function useGridTooltips(options: UseGridTooltipsOptions) {
       validationErrors,
       formatFieldLabel,
       getBoundsForCell,
-      containerRef,
       isLocalized,
     ]
   );
