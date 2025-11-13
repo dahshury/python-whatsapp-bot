@@ -13,4 +13,3 @@ __all__ = [
     "S3DatabaseBackupService",
     "build_config_from_environment",
 ]
-

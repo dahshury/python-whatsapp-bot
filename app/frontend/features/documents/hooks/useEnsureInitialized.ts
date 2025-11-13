@@ -5,7 +5,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { DOCUMENT_QUERY_KEY } from "@/entities/document";
 import { logger } from "@/shared/libs/logger";
 import { createDocumentsService } from "../services/documents.service.factory";
@@ -18,41 +18,62 @@ import { createDocumentsService } from "../services/documents.service.factory";
 export function useEnsureInitialized() {
   const queryClient = useQueryClient();
   const documentsService = useMemo(() => createDocumentsService(), []);
+  const ensurePromisesRef = useRef(new Map<string, Promise<boolean>>());
+  const initializedSetRef = useRef(new Set<string>());
 
   const ensureInitialized = useCallback(
-    async (waId: string): Promise<boolean> => {
-      try {
-        logger.info(
-          `[useEnsureInitialized] Ensuring document ${waId} is initialized`
-        );
-        const result = await documentsService.ensureInitialized(waId);
-        logger.info(
-          `[useEnsureInitialized] Document ${waId} initialization result: ${result}`
-        );
-
-        // If initialization was successful (template was copied), refetch queries
-        // to immediately load the new document into the canvas
-        if (result) {
-          await queryClient.refetchQueries({
-            queryKey: DOCUMENT_QUERY_KEY.byWaId(waId),
-          });
-          // Also refetch canvas query to load the copied template
-          await queryClient.refetchQueries({
-            queryKey: [...DOCUMENT_QUERY_KEY.byWaId(waId), "canvas"],
-          });
-          logger.info(
-            `[useEnsureInitialized] Refetched queries for ${waId} after initialization`
-          );
-        }
-
-        return result;
-      } catch (error) {
-        logger.error(
-          `[useEnsureInitialized] Failed to initialize document ${waId}`,
-          error
-        );
-        return false;
+    (waId: string): Promise<boolean> => {
+      const normalizedWaId = (waId || "").trim();
+      if (!normalizedWaId) {
+        return Promise.resolve(false);
       }
+
+      if (initializedSetRef.current.has(normalizedWaId)) {
+        return Promise.resolve(true);
+      }
+
+      const existing = ensurePromisesRef.current.get(normalizedWaId);
+      if (existing) {
+        return existing;
+      }
+
+      logger.info(
+        `[useEnsureInitialized] Ensuring document ${waId} is initialized`
+      );
+      const promise = (async (): Promise<boolean> => {
+        try {
+          const result = await documentsService.ensureInitialized(waId);
+          logger.info(
+            `[useEnsureInitialized] Document ${waId} initialization result: ${result}`
+          );
+
+          if (result) {
+            initializedSetRef.current.add(normalizedWaId);
+            await queryClient.refetchQueries({
+              queryKey: DOCUMENT_QUERY_KEY.byWaId(waId),
+            });
+            await queryClient.refetchQueries({
+              queryKey: [...DOCUMENT_QUERY_KEY.byWaId(waId), "canvas"],
+            });
+            logger.info(
+              `[useEnsureInitialized] Refetched queries for ${waId} after initialization`
+            );
+          }
+
+          return result;
+        } catch (error) {
+          logger.error(
+            `[useEnsureInitialized] Failed to initialize document ${waId}`,
+            error
+          );
+          throw error;
+        } finally {
+          ensurePromisesRef.current.delete(normalizedWaId);
+        }
+      })();
+
+      ensurePromisesRef.current.set(normalizedWaId, promise);
+      return promise;
     },
     [documentsService, queryClient]
   );

@@ -228,6 +228,7 @@ class ReservationRepository:
             ID of the newly created reservation
         """
         import logging
+
         logger = logging.getLogger(self.__class__.__name__)
 
         try:
@@ -236,11 +237,13 @@ class ReservationRepository:
                     wa_id=reservation.wa_id,
                     date=reservation.date,
                     time_slot=reservation.time_slot,
-                    type=int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
+                    type=int(reservation.type.value if hasattr(reservation.type, "value") else int(reservation.type)),
                     status=reservation.status,
                 )
 
-                logger.debug(f"Saving reservation: wa_id={reservation.wa_id}, type={reservation.type}, date={reservation.date}, time={reservation.time_slot}")
+                logger.debug(
+                    f"Saving reservation: wa_id={reservation.wa_id}, type={reservation.type}, date={reservation.date}, time={reservation.time_slot}"
+                )
 
                 session.add(db_obj)
                 session.commit()
@@ -250,7 +253,10 @@ class ReservationRepository:
                 return int(db_obj.id)
 
         except Exception as e:
-            logger.error(f"Failed to save reservation: wa_id={reservation.wa_id}, type={reservation.type}, error={e}", exc_info=True)
+            logger.error(
+                f"Failed to save reservation: wa_id={reservation.wa_id}, type={reservation.type}, error={e}",
+                exc_info=True,
+            )
             raise  # Re-raise the exception so it can be handled by the service layer
 
     def update(self, reservation: Reservation) -> bool:
@@ -271,7 +277,9 @@ class ReservationRepository:
                     {
                         ReservationModel.date: reservation.date,
                         ReservationModel.time_slot: reservation.time_slot,
-                        ReservationModel.type: int(reservation.type.value if hasattr(reservation.type, 'value') else int(reservation.type)),
+                        ReservationModel.type: int(
+                            reservation.type.value if hasattr(reservation.type, "value") else int(reservation.type)
+                        ),
                         ReservationModel.status: reservation.status,
                         ReservationModel.cancelled_at: reservation.cancelled_at,
                     },

@@ -3,6 +3,7 @@
 Manual test script for phone contacts endpoints.
 Run this to verify the endpoints work correctly.
 """
+
 import os
 import sys
 from datetime import datetime, timedelta
@@ -36,8 +37,9 @@ def test_recent_contacts():
         print("\n✓ Verifying sort order...")
         for i in range(len(results) - 1):
             if results[i].last_message_at and results[i + 1].last_message_at:
-                assert results[i].last_message_at >= results[i + 1].last_message_at, \
+                assert results[i].last_message_at >= results[i + 1].last_message_at, (
                     "Results not sorted by last message time"
+                )
         print("✓ Results are correctly sorted by last message time (descending)")
 
     print("\n✓ Recent contacts test passed!\n")
@@ -86,50 +88,40 @@ def test_all_contacts_filters():
     # Test registration filter - registered
     print("\nTesting registration filter (registered)...")
     registered_results, registered_count = service.get_all_contacts(
-        page=1,
-        page_size=100,
-        filters={'registration': 'registered'}
+        page=1, page_size=100, filters={"registration": "registered"}
     )
     print(f"✓ Found {registered_count} registered contacts")
 
     # Verify all have custom names
     for result in registered_results[:5]:  # Check first 5
         assert result.customer_name is not None
-        assert result.customer_name != ''
+        assert result.customer_name != ""
         assert result.customer_name != result.wa_id
     print("✓ All results have custom names")
 
     # Test registration filter - unknown
     print("\nTesting registration filter (unknown)...")
     unknown_results, unknown_count = service.get_all_contacts(
-        page=1,
-        page_size=100,
-        filters={'registration': 'unknown'}
+        page=1, page_size=100, filters={"registration": "unknown"}
     )
     print(f"✓ Found {unknown_count} unknown contacts")
 
     # Verify none have custom names
     for result in unknown_results[:5]:  # Check first 5
         has_custom_name = (
-            result.customer_name is not None
-            and result.customer_name != ''
-            and result.customer_name != result.wa_id
+            result.customer_name is not None and result.customer_name != "" and result.customer_name != result.wa_id
         )
         assert not has_custom_name
     print("✓ All results lack custom names")
 
     # Test country filter
     print("\nTesting country filter (SA)...")
-    country_results, country_count = service.get_all_contacts(
-        page=1,
-        page_size=100,
-        filters={'country': 'SA'}
-    )
+    country_results, country_count = service.get_all_contacts(page=1, page_size=100, filters={"country": "SA"})
     print(f"✓ Found {country_count} contacts from Saudi Arabia")
 
     # Verify all start with 966
     for result in country_results[:5]:  # Check first 5
-        assert result.wa_id.startswith('966')
+        assert result.wa_id.startswith("966")
     print("✓ All results are from Saudi Arabia")
 
     # Test date range filter
@@ -138,29 +130,14 @@ def test_all_contacts_filters():
     to_date = datetime.now()
 
     date_results, date_count = service.get_all_contacts(
-        page=1,
-        page_size=100,
-        filters={
-            'date_range': {
-                'type': 'messages',
-                'range': {
-                    'from': from_date,
-                    'to': to_date
-                }
-            }
-        }
+        page=1, page_size=100, filters={"date_range": {"type": "messages", "range": {"from": from_date, "to": to_date}}}
     )
     print(f"✓ Found {date_count} contacts with messages in date range")
 
     # Test multiple filters
     print("\nTesting multiple filters...")
     multi_results, multi_count = service.get_all_contacts(
-        page=1,
-        page_size=100,
-        filters={
-            'registration': 'registered',
-            'country': 'SA'
-        }
+        page=1, page_size=100, filters={"registration": "registered", "country": "SA"}
     )
     print(f"✓ Found {multi_count} registered contacts from Saudi Arabia")
 
@@ -187,10 +164,10 @@ def main():
     except Exception as e:
         print(f"\n❌ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
-

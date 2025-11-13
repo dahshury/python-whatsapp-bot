@@ -76,7 +76,7 @@ type DocumentsSectionLayoutProps = {
  */
 export function DocumentsSectionLayout({
   isFullscreen,
-  loading,
+  loading: _loadingProp, // Deprecated - derived from useDocumentCanvas instead
   isSceneTransitioning,
   customerDataSource,
   customerColumns,
@@ -93,7 +93,8 @@ export function DocumentsSectionLayout({
   exitFullscreen,
   startNewCustomer,
 }: DocumentsSectionLayoutProps) {
-  const overlayLoading = loading || isSceneTransitioning;
+  // Loading state is derived from useDocumentCanvas below to prevent double loading
+  // The _loadingProp is kept for backwards compatibility but not used
 
   const documentsService = useMemo(() => createDocumentsService(), []);
 
@@ -132,6 +133,10 @@ export function DocumentsSectionLayout({
     isError: isCanvasError,
     error: canvasError,
   } = useDocumentCanvas(waId);
+
+  // Derive loading state from canvas data fetching to prevent double queries
+  const loading = isCanvasLoading || isCanvasFetching;
+  const overlayLoading = loading || isSceneTransitioning;
 
   // Extract snapshot, cameras, and page ID
   const remoteSnapshot = canvasData?.snapshot ?? null;

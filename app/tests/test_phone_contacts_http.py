@@ -2,6 +2,7 @@
 HTTP-based test script for phone contacts endpoints.
 Tests the actual REST API endpoints.
 """
+
 from datetime import datetime, timedelta
 
 import requests
@@ -33,7 +34,7 @@ def test_recent_contacts_endpoint():
         print("\nFirst 3 results:")
         for i, contact in enumerate(contacts[:3], 1):
             print(f"  {i}. {contact['wa_id']} - {contact.get('customer_name', 'N/A')}")
-            if contact.get('last_message_at'):
+            if contact.get("last_message_at"):
                 print(f"     Last message: {contact['last_message_at']}")
 
     # Verify sorting (most recent first)
@@ -41,8 +42,8 @@ def test_recent_contacts_endpoint():
         print("\n✓ Verifying sort order...")
         timestamps = []
         for contact in contacts:
-            if contact.get('last_message_at'):
-                timestamps.append(contact['last_message_at'])
+            if contact.get("last_message_at"):
+                timestamps.append(contact["last_message_at"])
 
         if len(timestamps) >= 2:
             sorted_timestamps = sorted(timestamps, reverse=True)
@@ -82,7 +83,7 @@ def test_all_contacts_endpoint():
     print(f"  Page size: {pagination['page_size']}")
 
     # Test second page if available
-    if pagination['total_pages'] > 1:
+    if pagination["total_pages"] > 1:
         response2 = requests.get(f"{BASE_URL}/phone/all?page=2&page_size=5")
         data2 = response2.json()
         page2_contacts = data2["data"]
@@ -90,8 +91,8 @@ def test_all_contacts_endpoint():
         print(f"\n✓ Page 2: {len(page2_contacts)} contacts")
 
         # Verify different results
-        page1_ids = {c['wa_id'] for c in page1_contacts}
-        page2_ids = {c['wa_id'] for c in page2_contacts}
+        page1_ids = {c["wa_id"] for c in page1_contacts}
+        page2_ids = {c["wa_id"] for c in page2_contacts}
         assert page1_ids != page2_ids, "Page 1 and Page 2 should have different results"
         print("✓ Pages return different results")
 
@@ -120,9 +121,9 @@ def test_all_contacts_filters():
 
         # Verify all have custom names
         for contact in registered_contacts[:5]:
-            assert contact.get('customer_name'), "Should have customer_name"
-            assert contact['customer_name'] != '', "Should not be empty"
-            assert contact['customer_name'] != contact['wa_id'], "Should not be same as wa_id"
+            assert contact.get("customer_name"), "Should have customer_name"
+            assert contact["customer_name"] != "", "Should not be empty"
+            assert contact["customer_name"] != contact["wa_id"], "Should not be same as wa_id"
         print("✓ All results have custom names")
 
     # Test registration filter - unknown
@@ -137,9 +138,9 @@ def test_all_contacts_filters():
         # Verify none have custom names
         for contact in unknown_contacts[:5]:
             has_custom_name = (
-                contact.get('customer_name')
-                and contact['customer_name'] != ''
-                and contact['customer_name'] != contact['wa_id']
+                contact.get("customer_name")
+                and contact["customer_name"] != ""
+                and contact["customer_name"] != contact["wa_id"]
             )
             assert not has_custom_name, "Should not have custom name"
         print("✓ All results lack custom names")
@@ -155,7 +156,7 @@ def test_all_contacts_filters():
 
         # Verify all start with 966
         for contact in country_contacts[:5]:
-            assert contact['wa_id'].startswith('966'), "Should be from Saudi Arabia"
+            assert contact["wa_id"].startswith("966"), "Should be from Saudi Arabia"
         print("✓ All results are from Saudi Arabia")
 
     # Test date range filter
@@ -164,8 +165,7 @@ def test_all_contacts_filters():
     to_date = datetime.now().isoformat()
 
     response = requests.get(
-        f"{BASE_URL}/phone/all?page=1&page_size=100"
-        f"&date_range_type=messages&date_from={from_date}&date_to={to_date}"
+        f"{BASE_URL}/phone/all?page=1&page_size=100&date_range_type=messages&date_from={from_date}&date_to={to_date}"
     )
     data = response.json()
 
@@ -203,11 +203,12 @@ def main():
     except Exception as e:
         print(f"\n❌ TEST FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
 
 
 if __name__ == "__main__":
     import sys
-    sys.exit(main())
 
+    sys.exit(main())

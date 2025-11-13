@@ -5,12 +5,14 @@ from enum import IntEnum
 
 class ReservationType(IntEnum):
     """Enumeration for reservation types."""
+
     CHECK_UP = 0
     FOLLOW_UP = 1
 
 
 class ReservationStatus(IntEnum):
     """Enumeration for reservation statuses."""
+
     ACTIVE = 0
     CANCELLED = 1
 
@@ -20,11 +22,12 @@ class Reservation:
     """
     Reservation domain entity representing a medical appointment.
     """
+
     wa_id: str
     date: str  # YYYY-MM-DD format
     time_slot: str  # 24-hour format (HH:MM)
     type: ReservationType
-    status: str = 'active'
+    status: str = "active"
     id: int | None = None
     cancelled_at: datetime | None = None
     created_at: datetime | None = None
@@ -68,23 +71,20 @@ class Reservation:
         except (ValueError, Exception) as e:
             # If we can't parse the time, log error and assume it's in the future to be safe
             import logging
+
             logging.error(f"Could not parse time slot '{self.time_slot}' in reservation {self.id}: {e}")
             return True
 
-        slot_start_datetime = datetime.combine(
-            reservation_date,
-            slot_time,
-            tzinfo=now.tzinfo
-        )
+        slot_start_datetime = datetime.combine(reservation_date, slot_time, tzinfo=now.tzinfo)
 
         return now < slot_start_datetime
 
     def cancel(self) -> None:
         """Cancel this reservation."""
-        self.status = 'cancelled'
+        self.status = "cancelled"
         self.cancelled_at = datetime.utcnow()
 
     def activate(self) -> None:
         """Activate this reservation."""
-        self.status = 'active'
+        self.status = "active"
         self.cancelled_at = None

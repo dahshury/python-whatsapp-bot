@@ -117,9 +117,7 @@ def run_database_backup():
     except Exception as exc:  # noqa: BLE001
         logger.error("Failed to build backup configuration: %s", exc)
         BACKUP_SCRIPT_FAILURES.inc()
-        BACKUP_SCRIPT_FAILURES_BY_REASON.labels(
-            reason="config_error", stage="configuration", exit_code="config"
-        ).inc()
+        BACKUP_SCRIPT_FAILURES_BY_REASON.labels(reason="config_error", stage="configuration", exit_code="config").inc()
         FUNCTION_ERRORS.labels(function="run_database_backup").inc()
         return
 

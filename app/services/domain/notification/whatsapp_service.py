@@ -68,8 +68,8 @@ class WhatsAppService(BaseService):
                 "latitude": config["BUSINESS_LATITUDE"],
                 "longitude": config["BUSINESS_LONGITUDE"],
                 "name": config["BUSINESS_NAME"],
-                "address": config["BUSINESS_ADDRESS"]
-            }
+                "address": config["BUSINESS_ADDRESS"],
+            },
         }
 
     def _build_headers(self) -> dict[str, str]:
@@ -79,10 +79,7 @@ class WhatsAppService(BaseService):
         Returns:
             Headers dictionary for WhatsApp API
         """
-        return {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config['ACCESS_TOKEN']}"
-        }
+        return {"Content-Type": "application/json", "Authorization": f"Bearer {config['ACCESS_TOKEN']}"}
 
     def _build_api_url(self) -> str:
         """

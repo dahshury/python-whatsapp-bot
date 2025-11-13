@@ -2,6 +2,7 @@
 Unit tests for phone contacts endpoints (recent and paginated).
 Tests recent contacts sorted by user messages and paginated all contacts with filtering.
 """
+
 from datetime import datetime, timedelta
 
 import pytest
@@ -17,9 +18,9 @@ def setup_database():
 
     with get_session() as session:
         # Clean up existing test data
-        session.query(ReservationModel).filter(ReservationModel.wa_id.like('9666%')).delete()
-        session.query(ConversationModel).filter(ConversationModel.wa_id.like('9666%')).delete()
-        session.query(CustomerModel).filter(CustomerModel.wa_id.like('9666%')).delete()
+        session.query(ReservationModel).filter(ReservationModel.wa_id.like("9666%")).delete()
+        session.query(ConversationModel).filter(ConversationModel.wa_id.like("9666%")).delete()
+        session.query(CustomerModel).filter(CustomerModel.wa_id.like("9666%")).delete()
 
         # Create test customers with various names and countries
         test_customers = [
@@ -46,7 +47,7 @@ def setup_database():
                 role="user",
                 message="Most recent",
                 date=(now - timedelta(days=1)).strftime("%Y-%m-%d"),
-                time=(now - timedelta(hours=2)).strftime("%H:%M:%S")
+                time=(now - timedelta(hours=2)).strftime("%H:%M:%S"),
             ),
             # Older user message
             ConversationModel(
@@ -54,7 +55,7 @@ def setup_database():
                 role="user",
                 message="Old message",
                 date=(now - timedelta(days=10)).strftime("%Y-%m-%d"),
-                time="10:00:00"
+                time="10:00:00",
             ),
             # Even older user message
             ConversationModel(
@@ -62,7 +63,7 @@ def setup_database():
                 role="user",
                 message="Very old",
                 date=(now - timedelta(days=20)).strftime("%Y-%m-%d"),
-                time="09:00:00"
+                time="09:00:00",
             ),
             # User message for Arabic name
             ConversationModel(
@@ -70,7 +71,7 @@ def setup_database():
                 role="user",
                 message="Arabic user",
                 date=(now - timedelta(days=15)).strftime("%Y-%m-%d"),
-                time="11:00:00"
+                time="11:00:00",
             ),
             # Assistant message only (should not appear in recent)
             ConversationModel(
@@ -78,7 +79,7 @@ def setup_database():
                 role="assistant",
                 message="Assistant reply",
                 date=(now - timedelta(days=5)).strftime("%Y-%m-%d"),
-                time="14:00:00"
+                time="14:00:00",
             ),
         ]
 
@@ -93,7 +94,7 @@ def setup_database():
                 time_slot="10:00",
                 type=0,
                 status="active",
-                updated_at=datetime.now() - timedelta(days=5)
+                updated_at=datetime.now() - timedelta(days=5),
             ),
             ReservationModel(
                 wa_id="966655555555",
@@ -101,7 +102,7 @@ def setup_database():
                 time_slot="14:00",
                 type=0,
                 status="active",
-                updated_at=datetime.now() - timedelta(days=2)
+                updated_at=datetime.now() - timedelta(days=2),
             ),
         ]
 
@@ -114,9 +115,9 @@ def setup_database():
 
     # Cleanup after tests
     with get_session() as session:
-        session.query(ReservationModel).filter(ReservationModel.wa_id.like('9666%')).delete()
-        session.query(ConversationModel).filter(ConversationModel.wa_id.like('9666%')).delete()
-        session.query(CustomerModel).filter(CustomerModel.wa_id.like('9666%')).delete()
+        session.query(ReservationModel).filter(ReservationModel.wa_id.like("9666%")).delete()
+        session.query(ConversationModel).filter(ConversationModel.wa_id.like("9666%")).delete()
+        session.query(CustomerModel).filter(CustomerModel.wa_id.like("9666%")).delete()
         session.commit()
 
 
@@ -239,39 +240,37 @@ class TestAllContacts:
     def test_get_all_contacts_registration_filter_registered(self):
         """Test filtering by registered status."""
         service = PhoneSearchService()
-        filters = {'registration': 'registered'}
+        filters = {"registration": "registered"}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should only include contacts with custom names
         for result in results:
             assert result.customer_name is not None
-            assert result.customer_name != ''
+            assert result.customer_name != ""
             assert result.customer_name != result.wa_id
 
     def test_get_all_contacts_registration_filter_unknown(self):
         """Test filtering by unknown status."""
         service = PhoneSearchService()
-        filters = {'registration': 'unknown'}
+        filters = {"registration": "unknown"}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should only include contacts without custom names
         for result in results:
             has_custom_name = (
-                result.customer_name is not None
-                and result.customer_name != ''
-                and result.customer_name != result.wa_id
+                result.customer_name is not None and result.customer_name != "" and result.customer_name != result.wa_id
             )
             assert not has_custom_name
 
     def test_get_all_contacts_country_filter(self):
         """Test filtering by country."""
         service = PhoneSearchService()
-        filters = {'country': 'SA'}  # Saudi Arabia (966)
+        filters = {"country": "SA"}  # Saudi Arabia (966)
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # All results should be from Saudi Arabia (966 prefix)
         for result in results:
-            assert result.wa_id.startswith('9666')
+            assert result.wa_id.startswith("9666")
 
     def test_get_all_contacts_date_range_filter_messages(self):
         """Test filtering by date range for messages."""
@@ -279,15 +278,7 @@ class TestAllContacts:
         from_date = datetime.now() - timedelta(days=25)
         to_date = datetime.now() - timedelta(days=5)
 
-        filters = {
-            'date_range': {
-                'type': 'messages',
-                'range': {
-                    'from': from_date,
-                    'to': to_date
-                }
-            }
-        }
+        filters = {"date_range": {"type": "messages", "range": {"from": from_date, "to": to_date}}}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should only include contacts with messages in the date range
@@ -299,15 +290,7 @@ class TestAllContacts:
         from_date = datetime.now() - timedelta(days=10)
         to_date = datetime.now()
 
-        filters = {
-            'date_range': {
-                'type': 'reservations',
-                'range': {
-                    'from': from_date,
-                    'to': to_date
-                }
-            }
-        }
+        filters = {"date_range": {"type": "reservations", "range": {"from": from_date, "to": to_date}}}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should only include contacts with reservations in the date range
@@ -316,18 +299,15 @@ class TestAllContacts:
     def test_get_all_contacts_multiple_filters(self):
         """Test filtering with multiple filters."""
         service = PhoneSearchService()
-        filters = {
-            'registration': 'registered',
-            'country': 'SA'
-        }
+        filters = {"registration": "registered", "country": "SA"}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should match both filters
         for result in results:
             assert result.customer_name is not None
-            assert result.customer_name != ''
+            assert result.customer_name != ""
             assert result.customer_name != result.wa_id
-            assert result.wa_id.startswith('9666')
+            assert result.wa_id.startswith("9666")
 
     def test_get_all_contacts_no_filters(self):
         """Test getting all contacts without filters."""
@@ -372,9 +352,8 @@ class TestAllContacts:
 
         if len(results) > 0:
             result = results[0]
-            assert hasattr(result, 'wa_id')
-            assert hasattr(result, 'customer_name')
-            assert hasattr(result, 'last_message_at')
-            assert hasattr(result, 'last_reservation_at')
-            assert hasattr(result, 'similarity')
-
+            assert hasattr(result, "wa_id")
+            assert hasattr(result, "customer_name")
+            assert hasattr(result, "last_message_at")
+            assert hasattr(result, "last_reservation_at")
+            assert hasattr(result, "similarity")

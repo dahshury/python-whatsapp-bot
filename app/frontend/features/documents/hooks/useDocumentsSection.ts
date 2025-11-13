@@ -35,7 +35,7 @@ import { usePersistTrigger } from "./usePersistTrigger";
 
 // Create the documents hooks
 const documentsService = createDocumentsService();
-const { useGetByWaId, useSave } = createUseDocuments(documentsService);
+const { useSave } = createUseDocuments(documentsService);
 
 export type UseDocumentsSectionParams = Record<string, never>;
 
@@ -104,8 +104,9 @@ export function useDocumentsSection(): UseDocumentsSectionResult {
   // Document transition state
   const { isSceneTransitioning } = useDocumentTransitionState();
 
-  // Load document data (keep database queries)
-  const { isLoading: loading } = useGetByWaId(waId, { enabled: Boolean(waId) });
+  // Loading state is now managed by useDocumentCanvas in DocumentsSectionLayout
+  // This prevents double loading - removed duplicate useGetByWaId call here
+  const loading = false;
 
   // Customer row management
   const {

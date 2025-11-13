@@ -491,7 +491,9 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                     # Import and call the cancel function
                     from app.services.assistant_functions import cancel_reservation
 
-                    result = cancel_reservation(wa_id=wa_id, date_str=date_str, reservation_id_to_cancel=reservation_id, _call_source="frontend")
+                    result = cancel_reservation(
+                        wa_id=wa_id, date_str=date_str, reservation_id_to_cancel=reservation_id, _call_source="frontend"
+                    )
 
                     if result.get("success"):
                         await conn.send_json(
@@ -594,12 +596,18 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                             append_message(wa_id, "secretary", message, date_str, time_str)
                         except Exception as persist_err:
                             logging.error(f"append_message failed after WS send: {persist_err}")
-                        
+
                         # Broadcast notification (only for messages sent via WhatsApp)
                         try:
                             enqueue_broadcast(
                                 "conversation_new_message",
-                                {"wa_id": wa_id, "role": "secretary", "message": message, "date": date_str, "time": time_str},
+                                {
+                                    "wa_id": wa_id,
+                                    "role": "secretary",
+                                    "message": message,
+                                    "date": date_str,
+                                    "time": time_str,
+                                },
                                 affected_entities=[wa_id],
                                 source="frontend",
                             )
@@ -765,14 +773,18 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         await manager.disconnect(conn)
 
 
-async def broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None, source: str | None = None) -> None:
+async def broadcast(
+    event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None, source: str | None = None
+) -> None:
     # Include source in data if provided to track event origin (assistant vs frontend)
     if source:
         data = {**data, "_source": source}
     await manager.broadcast(event_type, data, affected_entities)
 
 
-def enqueue_broadcast(event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None, source: str | None = None) -> None:
+def enqueue_broadcast(
+    event_type: str, data: dict[str, Any], affected_entities: list[str] | None = None, source: str | None = None
+) -> None:
     # Include source in data if provided to track event origin (assistant vs frontend)
     if source:
         data = {**data, "_source": source}

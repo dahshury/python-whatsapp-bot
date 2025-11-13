@@ -40,13 +40,22 @@ export function useCalendarInitialization({
 
   // Set initial height and update on resize
   useEffect(() => {
-    setCalendarHeight(calculateHeight());
+    try {
+      setCalendarHeight(calculateHeight());
+    } catch {
+      // Fallback to default height if calculation fails
+      setCalendarHeight(DEFAULT_CALENDAR_HEIGHT);
+    }
   }, [calculateHeight]);
 
   // Smooth updateSize handler called on container resize frames
   const handleUpdateSize = useCallback(
     (calendarRef: React.RefObject<CalendarCoreRef | null>) => {
-      calendarRef.current?.updateSize();
+      try {
+        calendarRef.current?.updateSize();
+      } catch {
+        // Silently ignore if calendar API is not ready
+      }
     },
     []
   );
@@ -55,7 +64,12 @@ export function useCalendarInitialization({
   useEffect(() => {
     // Small delay to allow CSS transition to start
     const timer = setTimeout(() => {
-      setCalendarHeight(calculateHeight());
+      try {
+        setCalendarHeight(calculateHeight());
+      } catch {
+        // Fallback to default height if calculation fails
+        setCalendarHeight(DEFAULT_CALENDAR_HEIGHT);
+      }
     }, SIZE_UPDATE_DELAY_MS);
 
     return () => clearTimeout(timer);

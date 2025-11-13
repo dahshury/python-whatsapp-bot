@@ -9,18 +9,20 @@ Your task is to add comprehensive, expressive logging throughout the critical ex
 You will receive:
 
 1. **Issue Description**: A detailed description of the problem or unexpected behavior
-2. **Operation Entry Point**: The specific operation, function, API endpoint, or user action that triggers the issue (e.g., "webhook_post endpoint", "process_message function", "send_whatsapp_message")
+1. **Operation Entry Point**: The specific operation, function, API endpoint, or user action that triggers the issue (e.g., "webhook_post endpoint", "process_message function", "send_whatsapp_message")
 
 ## Task Breakdown
 
 ### Phase 1: Operation Path Tracing and Analysis
 
 1. **Identify the Entry Point**
+
    - Locate the exact entry point in the codebase (file, class, function/method)
    - Understand the input parameters, request structure, and initial state
    - Document the entry point location: `file:line:function_name`
 
-2. **Trace the Complete Execution Flow**
+1. **Trace the Complete Execution Flow**
+
    - Use semantic search and code analysis to follow the execution path step-by-step
    - Identify ALL functions, methods, and code blocks called during execution
    - Follow both synchronous and asynchronous execution paths
@@ -36,8 +38,9 @@ You will receive:
      - Background tasks and async operations
      - Queue processing (if applicable)
 
-3. **Identify Critical Locations**
+1. **Identify Critical Locations**
    For each step in the execution path, mark locations as "CRITICAL" if they:
+
    - Transform or modify data state
    - Make decisions that affect control flow
    - Interact with external systems (APIs, databases, queues)
@@ -105,51 +108,59 @@ logger.info(
 #### Required Log Points
 
 1. **Entry Point Log** (start of operation)
+
    - Operation name
    - Entry point location (file, function, line)
    - All input parameters (sanitize sensitive data)
    - Request metadata (user_id, session_id, request_id, timestamp)
    - Initial state
 
-2. **Pre-Execution Logs** (before critical operations)
+1. **Pre-Execution Logs** (before critical operations)
+
    - Function name and location
    - Input parameters received
    - Pre-conditions checked
    - State before execution
 
-3. **Decision Point Logs** (branches, conditions, validations)
+1. **Decision Point Logs** (branches, conditions, validations)
+
    - Condition being evaluated
    - Condition result (true/false, value checked)
    - Which branch was taken
    - Reasoning if applicable
 
-4. **Data Transformation Logs** (data modifications)
+1. **Data Transformation Logs** (data modifications)
+
    - Data before transformation
    - Transformation applied
    - Data after transformation
    - Fields changed (specific field names)
 
-5. **External Call Logs** (APIs, databases, queues)
+1. **External Call Logs** (APIs, databases, queues)
+
    - System being called (API name, DB table, queue name)
    - Request payload (sanitized)
    - Response received (status, data summary)
    - Duration/timing
    - Error details if failed
 
-6. **State Change Logs** (mutations, updates)
+1. **State Change Logs** (mutations, updates)
+
    - Entity/object being modified
    - Field name and old value → new value
    - Who/what triggered the change
    - State after change
 
-7. **Error/Exception Logs** (error handling)
+1. **Error/Exception Logs** (error handling)
+
    - Exception type and message
    - Full stack trace (if backend)
    - Context when error occurred
    - Recovery action taken (if any)
    - Error code or category
 
-8. **Exit Point Logs** (end of operation)
+1. **Exit Point Logs** (end of operation)
+
    - Final result/return value
    - Success/failure status
    - Total duration
@@ -241,28 +252,33 @@ Every log must include:
 ### Phase 3: Implementation Steps
 
 1. **Create/Update Logging Utilities** (if needed)
+
    - Ensure logging configuration supports structured, flat logs
    - Add helper functions for consistent log formatting if beneficial
    - Ensure log levels are appropriately configured
 
-2. **Add Logs Systematically**
+1. **Add Logs Systematically**
+
    - Start from the entry point
    - Follow execution flow chronologically
    - Add logs at each critical location identified
    - Ensure logs connect (use same operation identifier throughout)
    - Test that logs appear in correct order
 
-3. **Add Operation Tracking**
+1. **Add Operation Tracking**
+
    - Generate unique operation identifier at entry point
    - Pass operation identifier through call chain (via parameters, context, or thread-local storage)
    - Include operation identifier in every log statement
 
-4. **Add Timing Information**
+1. **Add Timing Information**
+
    - Record start time at entry point
    - Calculate elapsed time at each critical point
    - Log duration for external calls and significant operations
 
-5. **Verify Completeness**
+1. **Verify Completeness**
+
    - Ensure all branches of conditionals are logged
    - Ensure all error paths have appropriate error logs
    - Ensure external calls have both request and response logs
@@ -273,6 +289,7 @@ Every log must include:
 After adding logs:
 
 1. **Code Review Checklist**
+
    - [ ] Every critical location has appropriate logging
    - [ ] Logs are flat and self-contained (no expansion needed)
    - [ ] Sensitive data is properly sanitized
@@ -281,7 +298,8 @@ After adding logs:
    - [ ] Error paths have comprehensive error logging
    - [ ] Log levels are appropriate (DEBUG/INFO/WARNING/ERROR)
 
-2. **Log Output Verification**
+1. **Log Output Verification**
+
    - Run the operation and verify logs appear
    - Check that logs are readable without expansion
    - Verify all context is present in each log line
@@ -293,21 +311,25 @@ After adding logs:
 Provide:
 
 1. **Modified Files List**
+
    - List all files modified with logging additions
    - Indicate approximate number of log statements added per file
 
-2. **Execution Flow Summary**
+1. **Execution Flow Summary**
+
    - High-level execution path diagram (text-based)
    - List of critical locations identified with file:line references
    - Brief description of what each critical location does
 
-3. **Logging Strategy Document**
+1. **Logging Strategy Document**
+
    - Explanation of logging approach taken
    - Description of operation identifier strategy
    - Log format used
    - Any helper functions or utilities created
 
-4. **Example Log Output**
+1. **Example Log Output**
+
    - Show 3-5 example log lines as they would appear during operation execution
    - Include logs from different stages (entry, decision, external call, exit)
 
@@ -325,15 +347,15 @@ Provide:
 The logging implementation is successful when:
 
 1. ✅ Every critical location in the operation path has appropriate logging
-2. ✅ Logs are flat, expressive, and self-contained (no expansion needed)
-3. ✅ An operation can be fully traced from entry to exit using logs alone
-4. ✅ Logs contain sufficient context to debug the specified issue
-5. ✅ Logs are searchable and filterable by operation identifier
-6. ✅ Sensitive data is properly sanitized
-7. ✅ Timing information enables performance analysis
-8. ✅ Error paths have comprehensive error logging with context
+1. ✅ Logs are flat, expressive, and self-contained (no expansion needed)
+1. ✅ An operation can be fully traced from entry to exit using logs alone
+1. ✅ Logs contain sufficient context to debug the specified issue
+1. ✅ Logs are searchable and filterable by operation identifier
+1. ✅ Sensitive data is properly sanitized
+1. ✅ Timing information enables performance analysis
+1. ✅ Error paths have comprehensive error logging with context
 
----
+______________________________________________________________________
 
 ## Example Usage
 
@@ -349,32 +371,3 @@ The logging implementation is successful when:
 - Each log includes: operation_id, step name, input parameters, state, result, timing, errors
 - Logs formatted as flat key-value pairs on single lines
 - Operation identifier (`request_id` or `operation_id`) passed through entire call chain
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

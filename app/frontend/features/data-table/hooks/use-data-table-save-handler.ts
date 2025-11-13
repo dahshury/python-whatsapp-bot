@@ -31,6 +31,15 @@ const TOAST_VALIDATION_DURATION_MS = 8000;
 const GRID_DEFAULT_COLUMN_WIDTH = 100;
 const CALENDAR_UPDATE_DELAY_MS = 150;
 
+const reservationDebugEnabled =
+  process.env.NEXT_PUBLIC_DISABLE_RESERVATION_DEBUG !== "true";
+const reservationDebugLog = (_label: string, _payload?: unknown) => {
+  if (!reservationDebugEnabled) {
+    return;
+  }
+  // Debug logging disabled - no-op function
+};
+
 type ModificationPayload = {
   mutation: MutateReservationParams;
   event: CalendarEvent;
@@ -78,7 +87,8 @@ export function useDataTableSaveHandler({
     async (
       oldWaId: string,
       newWaId: string,
-      nextCustomerName?: string | null
+      nextCustomerName?: string | null,
+      reservationId?: number | null
     ) => {
       const payloadCustomerName =
         nextCustomerName ??
@@ -86,6 +96,15 @@ export function useDataTableSaveHandler({
           Record<string, { wa_id: string; customer_name: string | null }>
         >(["customer-names"])?.[oldWaId]?.customer_name ??
         null;
+      reservationDebugLog("modifyCustomerWaId:start", {
+        oldWaId,
+        newWaId,
+        payloadCustomerName,
+        nextCustomerName,
+        reservationId,
+        fallbackSource:
+          nextCustomerName !== undefined ? "event" : "customer-names-cache",
+      });
 
       const response = await fetch("/api/modify-id", {
         method: "POST",
@@ -96,6 +115,7 @@ export function useDataTableSaveHandler({
           old_id: oldWaId,
           new_id: newWaId,
           customer_name: payloadCustomerName,
+          reservation_id: reservationId ?? null,
         }),
       });
 
@@ -104,21 +124,42 @@ export function useDataTableSaveHandler({
         message?: string;
         data?: { customer_name?: string | null };
       };
+      reservationDebugLog("modifyCustomerWaId:response", {
+        status: response.status,
+        ok: response.ok,
+        result,
+      });
 
       if (!(response.ok && result?.success)) {
         const errorMessage =
           result?.message || "Failed to update customer phone number";
+        reservationDebugLog("modifyCustomerWaId:error", {
+          oldWaId,
+          newWaId,
+          errorMessage,
+        });
         throw new Error(errorMessage);
       }
 
       const resolvedCustomerName =
         result?.data?.customer_name ?? payloadCustomerName;
+      reservationDebugLog("modifyCustomerWaId:resolvedName", {
+        oldWaId,
+        newWaId,
+        resolvedCustomerName,
+        payloadCustomerName,
+      });
 
       // Update customer names cache (rekey)
       queryClient.setQueryData<
         | Record<string, { wa_id: string; customer_name: string | null }>
         | undefined
       >(["customer-names"], (old) => {
+        reservationDebugLog("modifyCustomerWaId:customerNamesCacheBefore", {
+          oldSize: old ? Object.keys(old).length : 0,
+          hasOldWaId: old ? Object.hasOwn(old, oldWaId) : false,
+          hasNewWaId: old ? Object.hasOwn(old, newWaId) : false,
+        });
         if (!old) {
           return old;
         }
@@ -129,15 +170,49 @@ export function useDataTableSaveHandler({
           updated[newWaId] = {
             ...entry,
             wa_id: newWaId,
-            customer_name: resolvedCustomerName ?? entry.customer_name ?? null,
+            // Only update customer_name if we have a non-null value, otherwise keep existing
+            customer_name:
+              resolvedCustomerName !== null &&
+              resolvedCustomerName !== undefined
+                ? resolvedCustomerName
+                : (entry.customer_name ?? null),
           };
-        } else if (resolvedCustomerName !== undefined) {
+        } else {
+          // No existing entry, create new one with resolved name (even if null)
           updated[newWaId] = {
             wa_id: newWaId,
             customer_name: resolvedCustomerName ?? null,
           };
         }
+        reservationDebugLog("modifyCustomerWaId:customerNamesCacheAfter", {
+          newSize: Object.keys(updated).length,
+          hasOldWaId: Object.hasOwn(updated, oldWaId),
+          hasNewWaId: Object.hasOwn(updated, newWaId),
+          newEntry: updated[newWaId],
+        });
         return updated;
+      });
+      reservationDebugLog("modifyCustomerWaId:customerNamesCacheVerify", {
+        cacheAfterSet: queryClient.getQueryData<Record<string, unknown>>([
+          "customer-names",
+        ]),
+        sizeAfterSet: Object.keys(
+          queryClient.getQueryData<Record<string, unknown>>([
+            "customer-names",
+          ]) ?? {}
+        ).length,
+        hasNewWaIdAfterSet: Object.hasOwn(
+          queryClient.getQueryData<Record<string, unknown>>([
+            "customer-names",
+          ]) ?? {},
+          newWaId
+        ),
+      });
+
+      // Immediately invalidate to pull authoritative backend snapshot
+      await queryClient.invalidateQueries({
+        queryKey: ["customer-names"],
+        exact: true,
       });
 
       // Helper to rekey reservation maps
@@ -157,8 +232,8 @@ export function useDataTableSaveHandler({
             customer_id: newWaId,
             customer_name:
               resolvedCustomerName !== undefined
-                ? (resolvedCustomerName ?? reservation.customer_name ?? "")
-                : reservation.customer_name,
+                ? (resolvedCustomerName ?? reservation.customer_name ?? null)
+                : (reservation.customer_name ?? null),
           }));
         }
         return updated;
@@ -177,6 +252,18 @@ export function useDataTableSaveHandler({
         (old: Record<string, Reservation[]> | undefined) =>
           rekeyReservationMap(old)
       );
+      const customerNamesEntry = queryClient.getQueryData<
+        Record<string, { wa_id: string; customer_name: string | null }>
+      >(["customer-names"])?.[newWaId];
+      const calendarReservationKeys = queryClient
+        .getQueriesData<Record<string, Reservation[]> | undefined>({
+          queryKey: ["calendar-reservations"],
+        })
+        .flatMap(([, value]) => (value ? Object.keys(value) : []));
+      reservationDebugLog("modifyCustomerWaId:cacheRekey", {
+        customerNamesEntry,
+        calendarReservationKeys,
+      });
 
       // Move customer grid data
       const oldGridData = queryClient.getQueryData<
@@ -234,7 +321,7 @@ export function useDataTableSaveHandler({
                   ?.extendedProps?.wa_id;
 
               if (String(eventWaId) === oldWaId) {
-                // Update waId in extendedProps
+                // Update waId and customer name in extendedProps
                 (
                   eventApi as {
                     setExtendedProp?: (key: string, value: unknown) => void;
@@ -251,13 +338,33 @@ export function useDataTableSaveHandler({
                   }
                 )?.setExtendedProp?.("phone", newWaId);
 
+                // Update customer name if we have one
+                if (
+                  resolvedCustomerName !== undefined &&
+                  resolvedCustomerName !== null
+                ) {
+                  (
+                    eventApi as {
+                      setExtendedProp?: (key: string, value: unknown) => void;
+                    }
+                  )?.setExtendedProp?.("customerName", resolvedCustomerName);
+                  (
+                    eventApi as {
+                      setProp?: (key: string, value: unknown) => void;
+                    }
+                  )?.setProp?.("title", resolvedCustomerName);
+                }
+
                 // Also trigger onEventModified to update React state
                 const eventId = String((eventApi as { id?: unknown }).id || "");
                 if (eventId && onEventModified) {
                   const updatedEvent: CalendarEvent = {
                     id: eventId,
-                    title: (eventApi as { title?: string }).title || "",
-                    start: (eventApi as { startStr?: string }).startStr || "",
+                    title:
+                      resolvedCustomerName ??
+                      (eventApi as { title?: string }).title ??
+                      "",
+                    start: (eventApi as { startStr?: string }).startStr ?? "",
                     ...((eventApi as { endStr?: string }).endStr
                       ? { end: (eventApi as { endStr?: string }).endStr }
                       : {}),
@@ -268,10 +375,19 @@ export function useDataTableSaveHandler({
                       ).extendedProps || {}),
                       waId: newWaId,
                       phone: newWaId,
+                      ...(resolvedCustomerName !== undefined &&
+                      resolvedCustomerName !== null
+                        ? { customerName: resolvedCustomerName }
+                        : {}),
                     },
                   };
                   onEventModified(eventId, updatedEvent);
                 }
+                reservationDebugLog("modifyCustomerWaId:updateCalendarEvent", {
+                  eventId: (eventApi as { id?: string | number }).id,
+                  newWaId,
+                  resolvedCustomerName,
+                });
               }
             }
           } finally {
@@ -290,7 +406,20 @@ export function useDataTableSaveHandler({
         selectedConversationId === `+${oldWaId}`
       ) {
         setSelectedConversation(newWaId);
+        reservationDebugLog("modifyCustomerWaId:updateSelectedConversation", {
+          previous: selectedConversationId,
+          next: newWaId,
+        });
       }
+
+      // Don't invalidate queries - we've already manually updated all caches
+      // Invalidating would cause refetch which might race with our manual updates
+      // The caches will be refetched on next page load anyway
+      reservationDebugLog("modifyCustomerWaId:completed", {
+        oldWaId,
+        newWaId,
+        resolvedCustomerName,
+      });
     },
     [
       queryClient,
@@ -747,12 +876,24 @@ export function useDataTableSaveHandler({
           for (const [oldWaId, info] of waIdChanges.entries()) {
             try {
               const contextEvent = info.context.event;
+              const contextReservationId = (() => {
+                const extendedProps = contextEvent.extendedProps || {};
+                const rawId =
+                  extendedProps.reservationId ??
+                  (extendedProps as Record<string, unknown>).reservation_id;
+                if (typeof rawId === "number") {
+                  return rawId;
+                }
+                const parsed = Number(rawId);
+                return Number.isFinite(parsed) ? parsed : null;
+              })();
               await modifyCustomerWaId(
                 oldWaId,
                 info.newWaId,
                 contextEvent.extendedProps?.customerName ??
                   contextEvent.title ??
-                  null
+                  null,
+                contextReservationId
               );
             } catch (error) {
               const message =

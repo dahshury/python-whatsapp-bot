@@ -1,10 +1,11 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 import { callPythonBackend } from "@/shared/libs/backend";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { old_id, new_id, ar, customer_name } = body;
+    const { old_id, new_id, ar, customer_name, reservation_id } = body;
 
     // Validate required fields
     if (!(old_id && new_id)) {
@@ -16,18 +17,27 @@ export async function POST(request: Request) {
 
     // Call the Python backend with parameters that match modify_id function
     // The endpoint expects a wa_id in the URL (which can be anything) and both old and new IDs in the body
-    const backendResponse = await callPythonBackend(
-      `/reservations/${old_id}/modify_id`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          old_wa_id: old_id, // Old WhatsApp ID
-          new_wa_id: new_id, // New WhatsApp ID
-          ar, // Arabic language flag
-          ...(customer_name !== undefined ? { customer_name } : {}),
-        }),
+    const backendResponse = await callPythonBackend<{
+      success?: boolean;
+      message?: string;
+    }>(`/reservations/${old_id}/modify_id`, {
+      method: "POST",
+      body: JSON.stringify({
+        old_wa_id: old_id, // Old WhatsApp ID
+        new_wa_id: new_id, // New WhatsApp ID
+        ar, // Arabic language flag
+        ...(reservation_id !== undefined ? { reservation_id } : {}),
+        ...(customer_name !== undefined ? { customer_name } : {}),
+      }),
+    });
+
+    if (backendResponse?.success) {
+      try {
+        await revalidateTag("customer-names", "default");
+      } catch {
+        // Silently ignore revalidation errors
       }
-    );
+    }
 
     return NextResponse.json(backendResponse);
   } catch (error) {

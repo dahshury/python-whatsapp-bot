@@ -16,9 +16,9 @@ def setup_database():
 
     with get_session() as session:
         # Clean up existing test data
-        session.query(ReservationModel).filter(ReservationModel.wa_id.like('9665%')).delete()
-        session.query(ConversationModel).filter(ConversationModel.wa_id.like('9665%')).delete()
-        session.query(CustomerModel).filter(CustomerModel.wa_id.like('9665%')).delete()
+        session.query(ReservationModel).filter(ReservationModel.wa_id.like("9665%")).delete()
+        session.query(ConversationModel).filter(ConversationModel.wa_id.like("9665%")).delete()
+        session.query(CustomerModel).filter(CustomerModel.wa_id.like("9665%")).delete()
 
         # Create test customers with Arabic and English names
         test_customers = [
@@ -37,21 +37,13 @@ def setup_database():
 
         # Add conversation data for recency
         conversation = ConversationModel(
-            wa_id="966512345678",
-            role="user",
-            message="Hello",
-            date="2024-01-01",
-            time="12:00:00"
+            wa_id="966512345678", role="user", message="Hello", date="2024-01-01", time="12:00:00"
         )
         session.add(conversation)
 
         # Add reservation for recency
         reservation = ReservationModel(
-            wa_id="966523456789",
-            date="2024-01-02",
-            time_slot="10:00",
-            type=0,
-            status="active"
+            wa_id="966523456789", date="2024-01-02", time_slot="10:00", type=0, status="active"
         )
         session.add(reservation)
 
@@ -61,9 +53,9 @@ def setup_database():
 
     # Cleanup after tests
     with get_session() as session:
-        session.query(ReservationModel).filter(ReservationModel.wa_id.like('9665%')).delete()
-        session.query(ConversationModel).filter(ConversationModel.wa_id.like('9665%')).delete()
-        session.query(CustomerModel).filter(CustomerModel.wa_id.like('9665%')).delete()
+        session.query(ReservationModel).filter(ReservationModel.wa_id.like("9665%")).delete()
+        session.query(ConversationModel).filter(ConversationModel.wa_id.like("9665%")).delete()
+        session.query(CustomerModel).filter(CustomerModel.wa_id.like("9665%")).delete()
         session.commit()
 
 
@@ -152,7 +144,7 @@ class TestPhoneSearch:
         results = service.search_phones("John", limit=10)
 
         if len(results) > 0:
-            assert all(hasattr(r, 'similarity') for r in results)
+            assert all(hasattr(r, "similarity") for r in results)
             assert all(0 <= r.similarity <= 1 for r in results)
 
     def test_search_returns_activity_timestamps(self):
@@ -235,9 +227,8 @@ class TestPhoneSearch:
         if len(results) > 0:
             result_dict = results[0].to_dict()
             assert isinstance(result_dict, dict)
-            assert 'wa_id' in result_dict
-            assert 'customer_name' in result_dict
-            assert 'similarity' in result_dict
-            assert 'last_message_at' in result_dict or result_dict['last_message_at'] is None
-            assert 'last_reservation_at' in result_dict or result_dict['last_reservation_at'] is None
-
+            assert "wa_id" in result_dict
+            assert "customer_name" in result_dict
+            assert "similarity" in result_dict
+            assert "last_message_at" in result_dict or result_dict["last_message_at"] is None
+            assert "last_reservation_at" in result_dict or result_dict["last_reservation_at"] is None

@@ -152,6 +152,7 @@ export function useUndoReservation() {
             body: JSON.stringify({
               old_id: newWaId,
               new_id: originalData.wa_id,
+              reservation_id: reservationId,
             }),
           });
 

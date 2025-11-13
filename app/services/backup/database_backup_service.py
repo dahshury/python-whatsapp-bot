@@ -128,9 +128,7 @@ class S3DatabaseBackupService:
         if raw_row is None:
             raise RuntimeError("aws_s3.pg_dump_to_s3 did not return any rows")
 
-        bytes_uploaded, compression_raw, stored_key = cast(
-            tuple[int, str | None, str], tuple(raw_row)
-        )
+        bytes_uploaded, compression_raw, stored_key = cast(tuple[int, str | None, str], tuple(raw_row))
         compression_used = compression_raw or "none"
 
         completed_at = datetime.now(timezone.utc)
@@ -182,4 +180,3 @@ def build_config_from_environment(env: dict[str, str] | None = None) -> S3Backup
         pg_dump_options=data.get("PG_DUMP_OPTIONS"),
         compression=data.get("PG_DUMP_COMPRESSION", "gzip"),
     )
-

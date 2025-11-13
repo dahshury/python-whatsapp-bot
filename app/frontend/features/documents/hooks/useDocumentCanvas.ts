@@ -1,11 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { DOCUMENT_QUERY_KEY } from "@/entities/document";
-import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
 import { createDocumentsService } from "../services/documents.service.factory";
-import {
-  hasDocumentContent,
-  normalizeDocumentSnapshot,
-} from "../utils/documentContent";
+import { normalizeDocumentSnapshot } from "../utils/documentContent";
 
 /**
  * Hook for fetching document canvas data for TLDraw viewer
@@ -27,23 +23,10 @@ export function useDocumentCanvas(waId: string | null | undefined) {
         };
       }
 
-      let response = await documentsService.getByWaId(waId);
-      let rawDocument = response?.document ?? null;
-
-      const shouldInitialize =
-        waId !== TEMPLATE_USER_WA_ID && !hasDocumentContent(rawDocument);
-
-      if (shouldInitialize) {
-        try {
-          const initialized = await documentsService.ensureInitialized(waId);
-          if (initialized) {
-            response = await documentsService.getByWaId(waId);
-            rawDocument = response?.document ?? rawDocument;
-          }
-        } catch {
-          // Ignore initialization errors here; query result will reflect current state
-        }
-      }
+      // Fetch document data - initialization is handled by useWaidSource
+      // Do NOT call ensureInitialized here to prevent double refetching
+      const response = await documentsService.getByWaId(waId);
+      const rawDocument = response?.document ?? null;
 
       // Extract snapshot and cameras separately
       const doc = rawDocument as {
@@ -54,12 +37,14 @@ export function useDocumentCanvas(waId: string | null | undefined) {
         editorPageId?: string;
       } | null;
 
-      return {
+      const result = {
         snapshot: normalizeDocumentSnapshot(rawDocument),
         editorCamera: doc?.editorCamera ?? null,
         viewerCamera: doc?.viewerCamera ?? null,
         editorPageId: doc?.editorPageId ?? null,
       };
+
+      return result;
     },
     enabled: Boolean(waId && waId.trim() !== ""),
     staleTime: 0, // Always consider data stale - refetch when switching documents

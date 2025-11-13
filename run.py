@@ -1,8 +1,10 @@
+import asyncio
 import logging
+import tracemalloc
+
 import uvicorn
 import uvloop
-import asyncio
-import tracemalloc
+
 from app import create_app
 
 tracemalloc.start()

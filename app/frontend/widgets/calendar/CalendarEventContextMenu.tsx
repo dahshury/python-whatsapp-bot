@@ -9,7 +9,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CalendarEvent } from "@/entities/event";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
@@ -35,10 +35,117 @@ export function CalendarEventContextMenu({
 }: CalendarEventContextMenuProps) {
   const { isLocalized } = useLanguageStore();
   const [mounted, setMounted] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const MENU_WIDTH = 310;
+  const VIEWPORT_MARGIN = 8;
+  const MIN_EDGE_DISTANCE = 8;
+  // Estimate menu height: header (~60px) + separator + items (~40-50px each) + padding
+  // Conservative estimate for initial positioning
+  const ESTIMATED_MENU_HEIGHT = 200;
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Calculate initial adjusted position to prevent overflow
+  const adjustedPosition = useMemo(() => {
+    if (!position) {
+      return null;
+    }
+
+    const viewportWidth = typeof window !== "undefined" ? window.innerWidth : 0;
+    const viewportHeight =
+      typeof window !== "undefined" ? window.innerHeight : 0;
+
+    let adjustedX = position.x;
+    let adjustedY = position.y;
+
+    // Check right edge overflow
+    if (adjustedX + MENU_WIDTH > viewportWidth - VIEWPORT_MARGIN) {
+      // Flip to the left of the click position
+      adjustedX = position.x - MENU_WIDTH;
+      // Ensure it doesn't go off the left edge
+      if (adjustedX < MIN_EDGE_DISTANCE) {
+        adjustedX = MIN_EDGE_DISTANCE;
+      }
+    }
+
+    // Check bottom edge overflow
+    if (adjustedY + ESTIMATED_MENU_HEIGHT > viewportHeight - VIEWPORT_MARGIN) {
+      // Flip above the click position
+      adjustedY = position.y - ESTIMATED_MENU_HEIGHT;
+      // Ensure it doesn't go off the top edge
+      if (adjustedY < MIN_EDGE_DISTANCE) {
+        adjustedY = MIN_EDGE_DISTANCE;
+      }
+    }
+
+    // Ensure minimum distance from left edge
+    if (adjustedX < MIN_EDGE_DISTANCE) {
+      adjustedX = MIN_EDGE_DISTANCE;
+    }
+
+    // Ensure minimum distance from top edge
+    if (adjustedY < MIN_EDGE_DISTANCE) {
+      adjustedY = MIN_EDGE_DISTANCE;
+    }
+
+    return { x: adjustedX, y: adjustedY };
+  }, [position]);
+
+  // Refine position after menu is measured (runs synchronously before paint)
+  const [finalPosition, setFinalPosition] = useState(adjustedPosition);
+
+  // Update finalPosition when adjustedPosition changes
+  useEffect(() => {
+    setFinalPosition(adjustedPosition);
+  }, [adjustedPosition]);
+
+  useLayoutEffect(() => {
+    if (!(menuRef.current && position && adjustedPosition)) {
+      return;
+    }
+
+    const menuRect = menuRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    let adjustedX = position.x;
+    let adjustedY = position.y;
+
+    // Check right edge overflow with actual dimensions
+    if (adjustedX + menuRect.width > viewportWidth - VIEWPORT_MARGIN) {
+      adjustedX = position.x - menuRect.width;
+      if (adjustedX < MIN_EDGE_DISTANCE) {
+        adjustedX = MIN_EDGE_DISTANCE;
+      }
+    }
+
+    // Check bottom edge overflow with actual dimensions
+    if (adjustedY + menuRect.height > viewportHeight - VIEWPORT_MARGIN) {
+      adjustedY = position.y - menuRect.height;
+      if (adjustedY < MIN_EDGE_DISTANCE) {
+        adjustedY = MIN_EDGE_DISTANCE;
+      }
+    }
+
+    // Ensure minimum distance from edges
+    if (adjustedX < MIN_EDGE_DISTANCE) {
+      adjustedX = MIN_EDGE_DISTANCE;
+    }
+    if (adjustedY < MIN_EDGE_DISTANCE) {
+      adjustedY = MIN_EDGE_DISTANCE;
+    }
+
+    const newPosition = { x: adjustedX, y: adjustedY };
+    // Only update if position changed significantly from adjustedPosition
+    if (
+      Math.abs(newPosition.x - adjustedPosition.x) > 1 ||
+      Math.abs(newPosition.y - adjustedPosition.y) > 1
+    ) {
+      setFinalPosition(newPosition);
+    }
+  }, [position, adjustedPosition]);
 
   useEffect(() => {
     const handleClickOutside = () => {
@@ -51,13 +158,31 @@ export function CalendarEventContextMenu({
       }
     };
 
+    // Prevent browser's native context menu when our custom menu is open
+    const handleContextMenu = (e: MouseEvent) => {
+      // Allow right-click on the menu itself (for potential future features)
+      const target = e.target as HTMLElement;
+      if (menuRef.current?.contains(target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // Prevent browser menu and close our menu if right-clicking elsewhere
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
+    };
+
     if (event && position) {
       document.addEventListener("click", handleClickOutside);
       document.addEventListener("keydown", handleEscape);
+      document.addEventListener("contextmenu", handleContextMenu, true); // Use capture phase
 
       return () => {
         document.removeEventListener("click", handleClickOutside);
         document.removeEventListener("keydown", handleEscape);
+        document.removeEventListener("contextmenu", handleContextMenu, true);
       };
     }
 
@@ -98,9 +223,11 @@ export function CalendarEventContextMenu({
     });
   };
 
+  const displayPosition = finalPosition ?? adjustedPosition ?? position;
+
   return createPortal(
     <AnimatePresence>
-      {event && position && (
+      {event && position && displayPosition && (
         <>
           {/* Outside click overlay */}
           <motion.div
@@ -110,6 +237,11 @@ export function CalendarEventContextMenu({
             initial={{ opacity: 0 }}
             key="context-menu-overlay"
             onClick={() => onClose()}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onClose();
+            }}
             style={{
               zIndex: "var(--z-grid-menu-minus-1)",
               background: "transparent",
@@ -125,16 +257,21 @@ export function CalendarEventContextMenu({
             initial={{ opacity: 0, scale: 0.96, y: 6 }}
             key="context-menu"
             onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
                 e.stopPropagation();
               }
             }}
+            ref={menuRef}
             role="menu"
             style={{
               position: "fixed",
-              left: position.x,
-              top: position.y,
+              left: displayPosition.x,
+              top: displayPosition.y,
               zIndex: "var(--z-grid-menu)",
               transformOrigin: "top left",
             }}

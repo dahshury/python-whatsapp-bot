@@ -252,6 +252,7 @@ export async function callPythonBackend<T = unknown>(
 type CallPythonBackendCachedOptions = {
   revalidate?: number;
   keyParts?: string[];
+  tags?: string[];
 };
 
 function serializeHeaders(headers?: HeadersInit): string {
@@ -302,7 +303,7 @@ export function callPythonBackendCached<T = unknown>(
         cache: "force-cache",
       }),
     keyParts,
-    { revalidate }
+    { revalidate, ...(options?.tags ? { tags: options.tags } : {}) }
   );
   return cached();
 }

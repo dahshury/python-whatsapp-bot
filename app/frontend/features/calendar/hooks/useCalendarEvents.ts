@@ -30,6 +30,15 @@ import { useCalendarSlidingWindow } from "./useCalendarSlidingWindow";
 import { useCalendarVacations } from "./useCalendarVacations";
 import { useCalendarWebSocketInvalidation } from "./useCalendarWebSocketInvalidation";
 
+const calendarDebugEnabled =
+  process.env.NEXT_PUBLIC_DISABLE_RESERVATION_DEBUG !== "true";
+const calendarDebugLog = (_label: string, _payload?: unknown) => {
+  if (!calendarDebugEnabled) {
+    return;
+  }
+  // Debug logging disabled - formatting removed to avoid unused variable
+};
+
 function normalizeReservationSlotTime(value?: string): string {
   if (!value) {
     return "";
@@ -368,7 +377,6 @@ export function useCalendarEvents(
     currentPeriodConversations,
     currentPeriodKey,
   ]);
-
   // Fetch calendar vacations (not period-based, always fetch all)
   const {
     data: vacationPeriods = [],
@@ -377,11 +385,60 @@ export function useCalendarEvents(
   } = useCalendarVacations(enabled);
 
   // Fetch customer names (single source of truth - no redundancy)
-  const { data: customerNamesData } = useCustomerNames();
+  const { data: customerNamesData, isLoading: customerNamesLoading } =
+    useCustomerNames();
   const customerNames = useMemo(
     () => customerNamesData || {},
     [customerNamesData]
   );
+  useEffect(() => {
+    calendarDebugLog("calendarEvents:customerNamesState", {
+      loading: customerNamesLoading,
+      size: Object.keys(customerNames).length,
+      has252654834901: Object.hasOwn(customerNames, "252654834901"),
+    });
+  }, [customerNamesLoading, customerNames]);
+
+  const effectiveCustomerNames = useMemo(() => {
+    const merged: Record<
+      string,
+      { wa_id: string; customer_name?: string | null }
+    > = { ...customerNames };
+
+    for (const [waId, reservations] of Object.entries(allCachedReservations)) {
+      if (merged[waId]?.customer_name) {
+        continue;
+      }
+      const derivedName = reservations
+        .map((reservation) => {
+          const candidate =
+            (reservation as { customer_name?: unknown }).customer_name ??
+            (reservation as { title?: unknown }).title;
+          if (typeof candidate !== "string") {
+            return null;
+          }
+          const trimmed = candidate.trim();
+          if (trimmed.length === 0 || trimmed === waId) {
+            return null;
+          }
+          return trimmed;
+        })
+        .find((name): name is string => typeof name === "string");
+
+      if (derivedName) {
+        merged[waId] = {
+          wa_id: waId,
+          customer_name: derivedName,
+        };
+        calendarDebugLog(
+          "calendarEvents:effectiveCustomerNames derived from reservations",
+          { waId, derivedName }
+        );
+      }
+    }
+
+    return merged;
+  }, [customerNames, allCachedReservations]);
 
   // Extract document status from reservation data
   // Use a ref to track previous documentStatus to prevent unnecessary updates
@@ -406,7 +463,25 @@ export function useCalendarEvents(
 
   // Combine loading and error states
   const isDataLoading =
-    reservationsLoading || conversationsLoading || vacationsLoading;
+    reservationsLoading ||
+    conversationsLoading ||
+    vacationsLoading ||
+    customerNamesLoading;
+  useEffect(() => {
+    calendarDebugLog("calendarEvents:loadingState", {
+      reservationsLoading,
+      conversationsLoading,
+      vacationsLoading,
+      customerNamesLoading,
+      isDataLoading,
+    });
+  }, [
+    reservationsLoading,
+    conversationsLoading,
+    vacationsLoading,
+    customerNamesLoading,
+    isDataLoading,
+  ]);
   const dataError = reservationsError || conversationsError || vacationsError;
   const normalizedError = dataError ? String(dataError) : null;
 
@@ -423,9 +498,9 @@ export function useCalendarEvents(
     () => JSON.stringify(documentStatus),
     [documentStatus]
   );
-  const customerNamesKey = useMemo(
-    () => JSON.stringify(customerNames),
-    [customerNames]
+  const effectiveCustomerNamesKey = useMemo(
+    () => JSON.stringify(effectiveCustomerNames),
+    [effectiveCustomerNames]
   );
 
   // Only update processingOptions when values actually change
@@ -436,7 +511,7 @@ export function useCalendarEvents(
     > = {
       freeRoam,
       isLocalized,
-      customerNames, // Single source of truth for names
+      customerNames: effectiveCustomerNames, // Enhanced names map with reservation fallbacks
       excludeConversations,
       documentStatus, // Document existence status for border color logic
     };
@@ -449,7 +524,7 @@ export function useCalendarEvents(
       prevOptions.isLocalized === newOptions.isLocalized &&
       prevOptions.excludeConversations === newOptions.excludeConversations &&
       prevDocumentStatusRef.current === documentStatusKey &&
-      prevCustomerNamesRef.current === customerNamesKey
+      prevCustomerNamesRef.current === effectiveCustomerNamesKey
     ) {
       // No change, return previous reference to prevent re-renders
       return prevOptions;
@@ -457,17 +532,17 @@ export function useCalendarEvents(
 
     // Update refs
     prevDocumentStatusRef.current = documentStatusKey;
-    prevCustomerNamesRef.current = customerNamesKey;
+    prevCustomerNamesRef.current = effectiveCustomerNamesKey;
     prevProcessingOptionsRef.current = newOptions;
     return newOptions;
   }, [
     freeRoam,
     isLocalized,
-    customerNames,
+    effectiveCustomerNames,
     excludeConversations,
     documentStatus,
     documentStatusKey,
-    customerNamesKey,
+    effectiveCustomerNamesKey,
   ]);
 
   const reservationsPayload = useMemo(
@@ -502,10 +577,14 @@ export function useCalendarEvents(
 
   const processedEvents = useMemo(() => {
     if (isDataLoading || dataError) {
+      calendarDebugLog("calendarEvents:processedEventsSkipped", {
+        reason: isDataLoading ? "loading" : "error",
+        dataError,
+      });
       return prevEventsRef.current;
     }
 
-    return eventProcessor.generateCalendarEvents(
+    const events = eventProcessor.generateCalendarEvents(
       reservationsPayload,
       conversationsPayload,
       {
@@ -514,6 +593,36 @@ export function useCalendarEvents(
         ...(ageByWaId ? { ageByWaId } : {}),
       }
     );
+    const fallbackTitles = events
+      .map((event) => {
+        const waId =
+          (event as { extendedProps?: { waId?: string; wa_id?: string } })
+            ?.extendedProps?.waId ??
+          (event as { extendedProps?: { wa_id?: string } })?.extendedProps
+            ?.wa_id;
+        if (typeof waId !== "string" || event.title !== waId) {
+          return null;
+        }
+        return {
+          id: event.id,
+          waId,
+          customerNamesEntry: customerNames[waId] ?? null,
+          effectiveCustomerNamesEntry: effectiveCustomerNames[waId] ?? null,
+          processingOptionsEntry:
+            processingOptions.customerNames?.[waId] ?? null,
+        };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+    calendarDebugLog("calendarEvents:processedEventsGenerated", {
+      count: events.length,
+      processingOptionsCustomerNamesSize: Object.keys(
+        processingOptions.customerNames || {}
+      ).length,
+      effectiveCustomerNamesSize: Object.keys(effectiveCustomerNames).length,
+      customerNamesSize: Object.keys(customerNames).length,
+      fallbackTitles,
+    });
+    return events;
   }, [
     isDataLoading,
     dataError,
@@ -523,6 +632,8 @@ export function useCalendarEvents(
     processingOptions,
     vacationPeriods,
     ageByWaId,
+    customerNames,
+    effectiveCustomerNames,
   ]);
 
   /**

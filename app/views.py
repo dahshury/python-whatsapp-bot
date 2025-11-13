@@ -327,15 +327,13 @@ async def api_get_conversation_by_wa_id(wa_id: str, limit: int = Query(0)):
 
 
 @router.get("/conversations/calendar/events")
-async def api_get_calendar_conversation_events(
-    from_date: str = Query(None),
-    to_date: str = Query(None)
-):
+async def api_get_calendar_conversation_events(from_date: str = Query(None), to_date: str = Query(None)):
     """
     Get lightweight conversation events for calendar (last message + customer names only).
     Returns only the last message per customer and customer names.
     """
     from app.utils.service_utils import get_calendar_conversation_events
+
     events = get_calendar_conversation_events(from_date=from_date, to_date=to_date)
     return JSONResponse(content=events)
 
@@ -347,6 +345,7 @@ async def api_get_customer_names():
     Returns all customers whether they have reservations or conversations.
     """
     from app.utils.service_utils import get_all_customer_names
+
     names = get_all_customer_names()
     return JSONResponse(content=names)
 
@@ -374,13 +373,10 @@ async def api_get_all_reservations(
     future: bool = Query(True),
     include_cancelled: bool = Query(False),
     from_date: str = Query(None),
-    to_date: str = Query(None)
+    to_date: str = Query(None),
 ):
     reservations = get_all_reservations(
-        future=future,
-        include_cancelled=include_cancelled,
-        from_date=from_date,
-        to_date=to_date
+        future=future, include_cancelled=include_cancelled, from_date=from_date, to_date=to_date
     )
     return JSONResponse(content=reservations)
 
@@ -448,18 +444,10 @@ async def api_phone_stats():
         service = PhoneStatsService()
         stats = service.get_all_stats()
 
-        return JSONResponse(
-            content={
-                "success": True,
-                "data": stats
-            }
-        )
+        return JSONResponse(content={"success": True, "data": stats})
     except Exception as e:
         logging.error(f"Error getting phone stats: {e}")
-        return JSONResponse(
-            content={"success": False, "error": str(e)},
-            status_code=500
-        )
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
 
 @router.get("/phone/search")
@@ -473,18 +461,10 @@ async def api_phone_search(q: str = Query(..., min_length=1), limit: int = Query
         service = PhoneSearchService()
         results = service.search_phones(query=q, limit=limit, min_similarity=0.3)
 
-        return JSONResponse(
-            content={
-                "success": True,
-                "data": [result.to_dict() for result in results]
-            }
-        )
+        return JSONResponse(content={"success": True, "data": [result.to_dict() for result in results]})
     except Exception as e:
         logging.error(f"Error searching phones: {e}")
-        return JSONResponse(
-            content={"success": False, "error": str(e)},
-            status_code=500
-        )
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
 
 @router.get("/phone/recent")
@@ -499,18 +479,10 @@ async def api_phone_recent(limit: int = Query(50, ge=1, le=100)):
         service = PhoneSearchService()
         results = service.get_recent_contacts(limit=limit)
 
-        return JSONResponse(
-            content={
-                "success": True,
-                "data": [result.to_dict() for result in results]
-            }
-        )
+        return JSONResponse(content={"success": True, "data": [result.to_dict() for result in results]})
     except Exception as e:
         logging.error(f"Error getting recent contacts: {e}")
-        return JSONResponse(
-            content={"success": False, "error": str(e)},
-            status_code=500
-        )
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
 
 @router.get("/phone/all")
@@ -522,7 +494,7 @@ async def api_phone_all(
     date_range_type: str | None = Query(None),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
-    exclude: str | None = Query(None)
+    exclude: str | None = Query(None),
 ):
     """
     Get all contacts with pagination.
@@ -539,34 +511,34 @@ async def api_phone_all(
         # Build filters dict
         filters = {}
         if country:
-            filters['country'] = country
+            filters["country"] = country
         if registration:
-            filters['registration'] = registration
+            filters["registration"] = registration
         if date_range_type and (date_from or date_to):
             try:
                 from_date = None
                 to_date = None
-                
+
                 if date_from:
-                    from_date = datetime.fromisoformat(date_from.replace('Z', '+00:00'))
+                    from_date = datetime.fromisoformat(date_from.replace("Z", "+00:00"))
                     # If only from_date is provided, set to start of day
                     from_date = from_date.replace(hour=0, minute=0, second=0, microsecond=0)
-                
+
                 if date_to:
-                    to_date = datetime.fromisoformat(date_to.replace('Z', '+00:00'))
+                    to_date = datetime.fromisoformat(date_to.replace("Z", "+00:00"))
                     # If only to_date is provided, set to end of day
                     to_date = to_date.replace(hour=23, minute=59, second=59, microsecond=999999)
                 elif from_date:
                     # If only from_date provided, treat as single day (end of same day)
                     to_date = from_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                
+
                 if from_date or to_date:
-                    filters['date_range'] = {
-                        'type': date_range_type,
-                        'range': {
-                            'from': from_date or to_date.replace(hour=0, minute=0, second=0, microsecond=0),
-                            'to': to_date or from_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                        }
+                    filters["date_range"] = {
+                        "type": date_range_type,
+                        "range": {
+                            "from": from_date or to_date.replace(hour=0, minute=0, second=0, microsecond=0),
+                            "to": to_date or from_date.replace(hour=23, minute=59, second=59, microsecond=999999),
+                        },
                     }
             except Exception as e:
                 logging.warning(f"Invalid date range: {e}")
@@ -574,13 +546,13 @@ async def api_phone_all(
         # Parse exclude phone numbers
         exclude_phone_numbers = None
         if exclude:
-            exclude_phone_numbers = [p.strip() for p in exclude.split(',') if p.strip()]
+            exclude_phone_numbers = [p.strip() for p in exclude.split(",") if p.strip()]
 
         results, total_count = service.get_all_contacts(
             page=page,
             page_size=page_size,
             filters=filters if filters else None,
-            exclude_phone_numbers=exclude_phone_numbers
+            exclude_phone_numbers=exclude_phone_numbers,
         )
 
         return JSONResponse(
@@ -591,16 +563,13 @@ async def api_phone_all(
                     "page": page,
                     "page_size": page_size,
                     "total": total_count,
-                    "total_pages": (total_count + page_size - 1) // page_size if page_size > 0 else 0
-                }
+                    "total_pages": (total_count + page_size - 1) // page_size if page_size > 0 else 0,
+                },
             }
         )
     except Exception as e:
         logging.error(f"Error getting all contacts: {e}")
-        return JSONResponse(
-            content={"success": False, "error": str(e)},
-            status_code=500
-        )
+        return JSONResponse(content={"success": False, "error": str(e)}, status_code=500)
 
 
 @router.get("/customers/{wa_id}")
@@ -707,7 +676,12 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
                 # Broadcast lightweight notification (no document payload)
                 broadcast_start = time.perf_counter()
                 try:
-                    enqueue_broadcast("customer_document_updated", {"wa_id": wa_id}, [wa_id], source=payload.get("_call_source", "assistant"))
+                    enqueue_broadcast(
+                        "customer_document_updated",
+                        {"wa_id": wa_id},
+                        [wa_id],
+                        source=payload.get("_call_source", "assistant"),
+                    )
                 except Exception as be:
                     logging.debug(f"Broadcast document update failed (non-fatal): {be}")
                 broadcast_time = (time.perf_counter() - broadcast_start) * 1000
@@ -808,6 +782,7 @@ async def api_modify_id(wa_id: str, payload: dict = Body(...)):
         payload.get("new_wa_id"),
         ar=payload.get("ar", False),
         customer_name=payload.get("customer_name"),
+        reservation_id=payload.get("reservation_id"),
     )
     return JSONResponse(content=resp)
 
@@ -940,7 +915,9 @@ async def api_update_vacation_periods(payload: dict = Body(...)):
 
         # Broadcast updated vacations
         with contextlib.suppress(Exception):
-            enqueue_broadcast("vacation_period_updated", {"periods": []}, source=payload.get("_call_source", "assistant"))
+            enqueue_broadcast(
+                "vacation_period_updated", {"periods": []}, source=payload.get("_call_source", "assistant")
+            )
         return JSONResponse(content={"success": True, "message": get_message("vacation_periods_updated", ar)})
 
     except Exception as e:
@@ -1008,7 +985,9 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
             session.commit()
 
         with contextlib.suppress(Exception):
-            enqueue_broadcast("vacation_period_updated", {"periods": []}, source=payload.get("_call_source", "assistant"))
+            enqueue_broadcast(
+                "vacation_period_updated", {"periods": []}, source=payload.get("_call_source", "assistant")
+            )
         return JSONResponse(content={"success": True, "message": get_message("vacation_update_undone", ar)})
 
     except Exception as e:
@@ -1020,6 +999,7 @@ async def api_undo_vacation_update(payload: dict = Body(...)):
 
 
 # === UNDO ENDPOINTS ===
+
 
 @router.post("/undo-cancel")
 async def api_undo_cancel_reservation(payload: dict = Body(...)):

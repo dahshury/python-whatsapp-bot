@@ -47,6 +47,7 @@ describe("documentsResolver", () => {
       expect.objectContaining({
         revalidate: 300,
         keyParts: ["prefetch", "customers", "names"],
+        tags: ["customer-names"],
       })
     );
     expect(result.success).toBe(true);

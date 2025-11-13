@@ -54,37 +54,48 @@ class AvailabilityService(BaseService):
             is_vacation_now, vacation_message = is_vacation_period(current_date)
             if is_vacation_now:
                 vacation_end = find_vacation_end_date(current_date)
-                return {
-                    "status": "current",
-                    "message": vacation_message,
-                    "end_date": vacation_end
-                }
+                return {"status": "current", "message": vacation_message, "end_date": vacation_end}
 
             # Check DB vacations approaching within 1 month
             try:
                 from app.db import VacationPeriodModel, get_session
+
                 with get_session() as session:
                     rows = session.query(VacationPeriodModel).all()
                     for r in rows:
                         try:
-                            s_date = r.start_date if isinstance(r.start_date, datetime.date) else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                            s_date = (
+                                r.start_date
+                                if isinstance(r.start_date, datetime.date)
+                                else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                            )
                             if getattr(r, "end_date", None):
-                                e_date = r.end_date if isinstance(r.end_date, datetime.date) else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                                e_date = (
+                                    r.end_date
+                                    if isinstance(r.end_date, datetime.date)
+                                    else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                                )
                             else:
                                 dur = max(1, int(getattr(r, "duration_days", 1)))
-                                e_date = s_date + datetime.timedelta(days=dur-1)
+                                e_date = s_date + datetime.timedelta(days=dur - 1)
                             days_until_vacation = (s_date - current_date).days
                             if 0 < days_until_vacation <= 30:
-                                start_dt = datetime.datetime.combine(s_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
-                                end_dt = datetime.datetime.combine(e_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
-                                base_message = config.get('VACATION_MESSAGE', 'The business will be closed during this period.')
+                                start_dt = datetime.datetime.combine(s_date, datetime.time.min).replace(
+                                    tzinfo=ZoneInfo(self.timezone)
+                                )
+                                end_dt = datetime.datetime.combine(e_date, datetime.time.min).replace(
+                                    tzinfo=ZoneInfo(self.timezone)
+                                )
+                                base_message = config.get(
+                                    "VACATION_MESSAGE", "The business will be closed during this period."
+                                )
                                 vacation_message = format_enhanced_vacation_message(start_dt, end_dt, base_message)
                                 return {
                                     "status": "upcoming",
                                     "message": vacation_message,
                                     "start_date": s_date,
                                     "end_date": e_date,
-                                    "days_until": days_until_vacation
+                                    "days_until": days_until_vacation,
                                 }
                         except Exception:
                             continue
@@ -135,10 +146,7 @@ class AvailabilityService(BaseService):
                 return all_slots
 
             # Create a mapping of 12-hour format to 24-hour format for database queries
-            time_format_map = {
-                slot: normalize_time_format(slot, to_24h=True)
-                for slot in all_slots
-            }
+            time_format_map = {slot: normalize_time_format(slot, to_24h=True) for slot in all_slots}
 
             # Reverse mapping (24-hour to 12-hour) for results
             {v: k for k, v in time_format_map.items()}
@@ -161,7 +169,7 @@ class AvailabilityService(BaseService):
             result_data = {
                 "gregorian_date": gregorian_date_str,
                 "hijri_date": hijri_date_str,
-                "time_slots": available_slots
+                "time_slots": available_slots,
             }
 
             return format_response(True, data=result_data)
@@ -169,9 +177,15 @@ class AvailabilityService(BaseService):
         except Exception as e:
             return self._handle_error("get_available_time_slots", e)
 
-    def search_available_appointments(self, start_date: str | None = None, time_slot: str | None = None,
-                                    days_forward: int = 3, days_backward: int = 0,
-                                    max_reservations: int = 5, hijri: bool = False) -> dict[str, Any]:
+    def search_available_appointments(
+        self,
+        start_date: str | None = None,
+        time_slot: str | None = None,
+        days_forward: int = 3,
+        days_backward: int = 0,
+        max_reservations: int = 5,
+        hijri: bool = False,
+    ) -> dict[str, Any]:
         """
         Search for available appointment slots across a range of dates.
 
@@ -233,7 +247,9 @@ class AvailabilityService(BaseService):
                     if vacation_end_date:
                         # Start searching from the day after vacation ends
                         start_date = vacation_end_date + datetime.timedelta(days=1)
-                        today = datetime.datetime.combine(start_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
+                        today = datetime.datetime.combine(start_date, datetime.time.min).replace(
+                            tzinfo=ZoneInfo(self.timezone)
+                        )
 
             now = today.date()
 
@@ -292,7 +308,7 @@ class AvailabilityService(BaseService):
                         date_slots_map[date_key] = {
                             "gregorian_date": response_gregorian,
                             "hijri_date": response_hijri,
-                            "time_slots": []
+                            "time_slots": [],
                         }
 
                     # Add each available slot for this date
@@ -301,9 +317,11 @@ class AvailabilityService(BaseService):
                         slot_24h = normalize_time_format(slot, to_24h=True)
                         slot_12h = normalize_time_format(slot_24h, to_24h=False)
 
-                        date_slots_map[date_key]["time_slots"].append({
-                            "time_slot": slot_12h,
-                        })
+                        date_slots_map[date_key]["time_slots"].append(
+                            {
+                                "time_slot": slot_12h,
+                            }
+                        )
 
                     continue  # Move to the next date
 
@@ -334,13 +352,11 @@ class AvailabilityService(BaseService):
 
                 # Find the closest slot based on time difference in minutes
                 closest_slot, closest_time = min(
-                    parsed_slots,
-                    key=lambda x: abs((x[1].hour * 60 + x[1].minute) - requested_minutes)
+                    parsed_slots, key=lambda x: abs((x[1].hour * 60 + x[1].minute) - requested_minutes)
                 )
 
                 # Determine if this is an exact match (using 24-hour format for comparison)
-                is_exact = (closest_time.hour == requested_time.hour and
-                           closest_time.minute == requested_time.minute)
+                is_exact = closest_time.hour == requested_time.hour and closest_time.minute == requested_time.minute
 
                 # Get 24-hour format of the closest slot for database query
                 closest_slot_24h = normalize_time_format(closest_slot, to_24h=True)
@@ -349,7 +365,9 @@ class AvailabilityService(BaseService):
 
                 try:
                     # Check reservation count for the closest slot
-                    active_reservations = self.reservation_repository.find_active_by_slot(gregorian_date_str, closest_slot_24h)
+                    active_reservations = self.reservation_repository.find_active_by_slot(
+                        gregorian_date_str, closest_slot_24h
+                    )
                     count = len(active_reservations)
 
                     # Add date if the slot has availability
@@ -358,13 +376,15 @@ class AvailabilityService(BaseService):
                             "gregorian_date": gregorian_date_str,
                             "hijri_date": hijri_date_str,
                             "time_slot": closest_slot_12h,  # Use 12-hour format for display
-                            "is_exact": is_exact
+                            "is_exact": is_exact,
                         }
 
                         available_dates.append(date_entry)
                 except Exception as e:
                     # Log and continue on database errors for individual slots
-                    self.logger.error(f"Database error while checking slot {closest_slot_24h} on {gregorian_date_str}: {e}")
+                    self.logger.error(
+                        f"Database error while checking slot {closest_slot_24h} on {gregorian_date_str}: {e}"
+                    )
                     continue
 
             # If no time_slot was provided, convert the grouped map to a list
@@ -386,7 +406,9 @@ class AvailabilityService(BaseService):
                         end_date = vacation_info["end_date"]
                         end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
                         response_data["vacation_end_gregorian"] = end_date.strftime("%Y-%m-%d")
-                        response_data["vacation_end_hijri"] = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
+                        response_data["vacation_end_hijri"] = (
+                            f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
+                        )
 
                 elif vacation_info["status"] == "upcoming":
                     start_date = vacation_info["start_date"]
@@ -396,7 +418,9 @@ class AvailabilityService(BaseService):
                     end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
 
                     response_data["vacation_start_gregorian"] = start_date.strftime("%Y-%m-%d")
-                    response_data["vacation_start_hijri"] = f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
+                    response_data["vacation_start_hijri"] = (
+                        f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
+                    )
                     response_data["vacation_end_gregorian"] = end_date.strftime("%Y-%m-%d")
                     response_data["vacation_end_hijri"] = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
 

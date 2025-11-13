@@ -27,6 +27,7 @@ export const documentsResolver: PrefetchResolver = async () => {
       {
         revalidate: 300,
         keyParts: ["prefetch", "customers", "names"],
+        tags: ["customer-names"],
       }
     );
     if (response?.success && response.data) {

@@ -29,7 +29,7 @@ class PhoneStatsService(BaseService):
             for (wa_id,) in customers:
                 try:
                     # Parse phone number to extract country
-                    phone_number = wa_id if wa_id.startswith('+') else f'+{wa_id}'
+                    phone_number = wa_id if wa_id.startswith("+") else f"+{wa_id}"
                     parsed = phonenumbers.parse(phone_number, None)
                     if parsed and parsed.country_code:
                         # Get country code from phone number
@@ -66,8 +66,8 @@ class PhoneStatsService(BaseService):
 
             row = result.fetchone()
             return {
-                'registered': int(row.registered_count) if row else 0,
-                'unknown': int(row.unknown_count) if row else 0,
+                "registered": int(row.registered_count) if row else 0,
+                "unknown": int(row.unknown_count) if row else 0,
             }
 
     def get_all_stats(self) -> dict:
@@ -76,7 +76,6 @@ class PhoneStatsService(BaseService):
         Returns country counts and registration status counts.
         """
         return {
-            'countries': self.get_country_stats(),
-            'registration': self.get_registration_stats(),
+            "countries": self.get_country_stats(),
+            "registration": self.get_registration_stats(),
         }
-

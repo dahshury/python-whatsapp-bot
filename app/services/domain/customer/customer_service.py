@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from app.i18n import get_message
@@ -7,6 +8,8 @@ from app.utils.realtime import enqueue_broadcast
 from ..shared.base_service import BaseService
 from .customer_models import Customer
 from .customer_repository import CustomerRepository
+
+logger = logging.getLogger(__name__)
 
 
 class CustomerService(BaseService):
@@ -34,6 +37,7 @@ class CustomerService(BaseService):
         new_wa_id: str,
         ar: bool = False,
         customer_name: str | None = None,
+        reservation_id: int | None = None,
     ) -> dict[str, Any]:
         """
         Modify customer's WhatsApp ID across all related data.
@@ -47,12 +51,25 @@ class CustomerService(BaseService):
             Success/failure response with appropriate message
         """
         try:
+            logger.info(
+                "modify_customer_wa_id request old=%s new=%s reservation_id=%s customer_name=%s ar=%s",
+                old_wa_id,
+                new_wa_id,
+                reservation_id,
+                customer_name,
+                ar,
+            )
             from ..shared.wa_id import normalize_wa_id
-            
+
             # Normalize both IDs to ensure consistent format (remove + prefix, etc.)
             normalized_old = normalize_wa_id(old_wa_id) if old_wa_id else old_wa_id
             normalized_new = normalize_wa_id(new_wa_id) if new_wa_id else new_wa_id
-            
+            logger.info(
+                "modify_customer_wa_id normalized ids old=%s new=%s",
+                normalized_old,
+                normalized_new,
+            )
+
             # Validate new WhatsApp ID
             validation_error = self._validate_wa_id(normalized_new, ar)
             if validation_error:
@@ -72,21 +89,49 @@ class CustomerService(BaseService):
                 rows_affected,
                 resulting_name,
                 previous_reservations,
-            ) = self.repository.update_wa_id(
-                normalized_old, normalized_new, name_override
+            ) = self.repository.update_wa_id(normalized_old, normalized_new, name_override)
+            logger.info(
+                "modify_customer_wa_id repository result rows=%s resulting_name=%s reservations=%s",
+                rows_affected,
+                resulting_name,
+                previous_reservations,
             )
 
             if rows_affected == 0:
+                logger.warning(
+                    "modify_customer_wa_id wa_id_not_found old=%s new=%s",
+                    normalized_old,
+                    normalized_new,
+                )
                 return format_response(False, message=get_message("wa_id_not_found", ar))
+
+            fallback_name = name_override or (
+                previous_reservations[0].get("customer_name") if previous_reservations else None
+            )
+            final_name = resulting_name or fallback_name
 
             data = {
                 "wa_id": normalized_new,
-                "customer_name": resulting_name,
+                "customer_name": final_name,
             }
 
+            targeted_reservations = (
+                previous_reservations
+                if reservation_id is None
+                else [res for res in previous_reservations if res.get("id") == reservation_id]
+            )
+            if reservation_id is not None and not targeted_reservations:
+                targeted_reservations = previous_reservations
+
             try:
-                for reservation in previous_reservations:
+                for reservation in targeted_reservations:
                     try:
+                        logger.info(
+                            "modify_customer_wa_id broadcasting reservation_updated reservation=%s new=%s final_name=%s",
+                            reservation,
+                            normalized_new,
+                            final_name,
+                        )
                         enqueue_broadcast(
                             "reservation_updated",
                             {
@@ -95,15 +140,13 @@ class CustomerService(BaseService):
                                 "date": reservation.get("date"),
                                 "time_slot": reservation.get("time_slot"),
                                 "type": reservation.get("type"),
-                                "customer_name": resulting_name,
+                                "customer_name": final_name,
                                 "original_data": {
                                     "wa_id": normalized_old,
                                     "date": reservation.get("date"),
                                     "time_slot": reservation.get("time_slot"),
                                     "type": reservation.get("type"),
-                                    "customer_name": reservation.get(
-                                        "customer_name"
-                                    ),
+                                    "customer_name": reservation.get("customer_name"),
                                 },
                                 "_source": "modify_id",
                             },
@@ -118,7 +161,7 @@ class CustomerService(BaseService):
                     {
                         "wa_id": normalized_new,
                         "phone": normalized_new,
-                        "customer_name": resulting_name,
+                        "customer_name": final_name,
                         "_source": "backend",
                     },
                     affected_entities=[normalized_new],
@@ -126,11 +169,21 @@ class CustomerService(BaseService):
             except Exception:
                 pass
 
-            return format_response(
-                True, message=get_message("wa_id_modified", ar), data=data
+            logger.info(
+                "modify_customer_wa_id success old=%s new=%s final_name=%s",
+                normalized_old,
+                normalized_new,
+                final_name,
             )
+            return format_response(True, message=get_message("wa_id_modified", ar), data=data)
 
         except Exception as e:
+            logger.exception(
+                "modify_customer_wa_id failed old=%s new=%s reservation_id=%s",
+                old_wa_id,
+                new_wa_id,
+                reservation_id,
+            )
             return self._handle_error("modify_customer_wa_id", e, ar)
 
     def update_customer_name(self, wa_id: str, new_name: str, ar: bool = False) -> dict[str, Any]:
@@ -162,13 +215,21 @@ class CustomerService(BaseService):
 
             old_name = customer.customer_name
             if old_name == new_name:
-                return format_response(True, message=get_message("customer_name_no_change", ar), data={"old_name": old_name, "new_name": new_name})
+                return format_response(
+                    True,
+                    message=get_message("customer_name_no_change", ar),
+                    data={"old_name": old_name, "new_name": new_name},
+                )
 
             customer.update_name(new_name)
-            save_success = self.repository.save(customer) # Assuming save handles insert or update logic
+            save_success = self.repository.save(customer)  # Assuming save handles insert or update logic
 
             if save_success:
-                return format_response(True, message=get_message("customer_name_updated", ar), data={"old_name": old_name, "new_name": new_name, "wa_id": wa_id})
+                return format_response(
+                    True,
+                    message=get_message("customer_name_updated", ar),
+                    data={"old_name": old_name, "new_name": new_name, "wa_id": wa_id},
+                )
             else:
                 return format_response(False, message=get_message("customer_name_update_failed", ar))
 

@@ -7,6 +7,7 @@ class Customer:
     """
     Customer domain entity representing a WhatsApp user.
     """
+
     wa_id: str
     customer_name: str | None = None
     age: int | None = None
@@ -46,8 +47,10 @@ class Customer:
             return self.age
         ref = as_of or date.today()
         # Calculate full years elapsed between recorded date and reference
-        years = ref.year - self.age_recorded_at.year - (
-            (ref.month, ref.day) < (self.age_recorded_at.month, self.age_recorded_at.day)
+        years = (
+            ref.year
+            - self.age_recorded_at.year
+            - ((ref.month, ref.day) < (self.age_recorded_at.month, self.age_recorded_at.day))
         )
         return max(0, self.age + max(0, years))
 

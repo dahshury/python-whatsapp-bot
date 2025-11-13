@@ -60,6 +60,7 @@ export async function reserveTimeSlot(input: {
     max_reservations: input.max_reservations,
     hijri: input.hijri,
     ar: input.ar,
+    _call_source: "frontend", // Tag as frontend-initiated to filter notifications
   };
   return (await callPythonBackend("/reserve", {
     method: "POST",
@@ -81,7 +82,7 @@ export async function modifyReservation(
   const { callPythonBackend } = await import("@shared/libs/backend");
   return (await callPythonBackend("/modify-reservation", {
     method: "POST",
-    body: JSON.stringify({ id, ...updates }),
+    body: JSON.stringify({ id, ...updates, _call_source: "frontend" }), // Tag as frontend-initiated to filter notifications
   })) as Json;
 }
 
@@ -112,7 +113,7 @@ export async function cancelReservation(input: {
   const { callPythonBackend } = await import("@shared/libs/backend");
   return (await callPythonBackend("/cancel-reservation", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({ ...input, _call_source: "frontend" }), // Tag as frontend-initiated to filter notifications
   })) as Json;
 }
 

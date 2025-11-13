@@ -43,7 +43,8 @@ class BaseService(abc.ABC):
 
         # For development/debugging, include more specific error information
         import os
-        if os.environ.get('ENVIRONMENT', '').lower() in ('development', 'dev', 'debug'):
+
+        if os.environ.get("ENVIRONMENT", "").lower() in ("development", "dev", "debug"):
             # In development, return more specific error information
             error_details = str(error) if str(error) else error.__class__.__name__
             return format_response(False, message=f"Operation '{operation}' failed: {error_details}")

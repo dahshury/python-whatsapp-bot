@@ -181,12 +181,12 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
       setSelectedPhone,
       phoneOptions,
       uncontrolled,
-      onChange,
-      onCustomerSelect,
+      ...(onChange ? { onChange } : {}),
+      ...(onCustomerSelect ? { onCustomerSelect } : {}),
       onCountryChange: setCountry,
       setIsPhoneOpen,
       setPhoneSearch,
-      selectedCountry: country,
+      ...(country ? { selectedCountry: country } : {}),
       isLocalized,
       validatePhone,
     });
@@ -196,7 +196,7 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
     selectedPhone,
     setSelectedPhone,
     uncontrolled,
-    onChange,
+    ...(onChange ? { onChange } : {}),
     validatePhone,
   });
 

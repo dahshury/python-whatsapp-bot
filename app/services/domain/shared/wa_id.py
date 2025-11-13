@@ -1,6 +1,7 @@
 """
 WhatsApp ID validation and formatting
 """
+
 import re
 
 import phonenumbers
@@ -14,9 +15,10 @@ class WaId(BaseModel):
     WhatsApp ID wrapper that ensures valid international phone number format
     Stores numbers in plain international dialing format (digits only)
     """
+
     value: str
 
-    @field_validator('value')
+    @field_validator("value")
     @classmethod
     def validate_wa_id(cls, v: str) -> str:
         """
@@ -32,37 +34,25 @@ class WaId(BaseModel):
             PydanticCustomError: If phone number is invalid
         """
         if not v or not isinstance(v, str):
-            raise PydanticCustomError(
-                'wa_id_invalid',
-                'WhatsApp ID cannot be empty',
-                {'input': v}
-            )
+            raise PydanticCustomError("wa_id_invalid", "WhatsApp ID cannot be empty", {"input": v})
 
         # Clean the input - remove any non-digit characters except +
-        cleaned = re.sub(r'[^\d+]', '', v.strip())
+        cleaned = re.sub(r"[^\d+]", "", v.strip())
 
         if not cleaned:
-            raise PydanticCustomError(
-                'wa_id_invalid',
-                'WhatsApp ID must contain digits',
-                {'input': v}
-            )
+            raise PydanticCustomError("wa_id_invalid", "WhatsApp ID must contain digits", {"input": v})
 
         try:
             # Try to parse with phonenumbers library
             # Add + if it doesn't start with one for parsing
-            parse_input = cleaned if cleaned.startswith('+') else f'+{cleaned}'
+            parse_input = cleaned if cleaned.startswith("+") else f"+{cleaned}"
 
             # Parse the phone number (None = international format)
             phone_number = phonenumbers.parse(parse_input, None)
 
             # Validate it's a valid number
             if not phonenumbers.is_valid_number(phone_number):
-                raise PydanticCustomError(
-                    'wa_id_invalid',
-                    'Invalid phone number format',
-                    {'input': v}
-                )
+                raise PydanticCustomError("wa_id_invalid", "Invalid phone number format", {"input": v})
 
             # Format to E164 and remove the + prefix for storage
             e164_format = phonenumbers.format_number(phone_number, PhoneNumberFormat.E164)
@@ -70,22 +60,16 @@ class WaId(BaseModel):
 
         except NumberParseException as e:
             raise PydanticCustomError(
-                'wa_id_invalid',
-                f'Unable to parse phone number: {e.error_type.name}',
-                {'input': v}
+                "wa_id_invalid", f"Unable to parse phone number: {e.error_type.name}", {"input": v}
             ) from e
         except Exception as e:
-            raise PydanticCustomError(
-                'wa_id_invalid',
-                f'Phone number validation failed: {str(e)}',
-                {'input': v}
-            ) from e
+            raise PydanticCustomError("wa_id_invalid", f"Phone number validation failed: {str(e)}", {"input": v}) from e
 
     def __str__(self) -> str:
         return self.value
 
     def __repr__(self) -> str:
-        return f'WaId({self.value!r})'
+        return f"WaId({self.value!r})"
 
     @property
     def display_format(self) -> str:
@@ -95,7 +79,7 @@ class WaId(BaseModel):
         Returns:
             Phone number with + prefix (e.g., +966501234567)
         """
-        return f'+{self.value}'
+        return f"+{self.value}"
 
     @property
     def plain_format(self) -> str:
@@ -108,7 +92,7 @@ class WaId(BaseModel):
         return self.value
 
     @classmethod
-    def from_any_format(cls, phone_input: str) -> 'WaId':
+    def from_any_format(cls, phone_input: str) -> "WaId":
         """
         Create WaId from any phone number format
 
@@ -127,7 +111,7 @@ class WaId(BaseModel):
         Returns:
             True if the number is Saudi (starts with 966)
         """
-        return self.value.startswith('966')
+        return self.value.startswith("966")
 
     def get_country_code(self) -> str | None:
         """
@@ -137,7 +121,7 @@ class WaId(BaseModel):
             ISO country code (e.g., 'SA' for Saudi Arabia) or None if unknown
         """
         try:
-            phone_number = phonenumbers.parse(f'+{self.value}', None)
+            phone_number = phonenumbers.parse(f"+{self.value}", None)
             return phonenumbers.region_code_for_number(phone_number)
         except (NumberParseException, Exception):
             return None

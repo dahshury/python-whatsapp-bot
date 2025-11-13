@@ -38,13 +38,9 @@ class AssistantFunctionService:
         self.datetime_service = DateTimeService(logger=self.logger)
         self.customer_service = CustomerService(logger=self.logger)
         self.whatsapp_service = WhatsAppService(logger=self.logger)
-        self.reservation_service = ReservationService(
-            customer_service=self.customer_service,
-            logger=self.logger
-        )
+        self.reservation_service = ReservationService(customer_service=self.customer_service, logger=self.logger)
         self.availability_service = AvailabilityService(
-            reservation_repository=self.reservation_service.reservation_repository,
-            logger=self.logger
+            reservation_repository=self.reservation_service.reservation_repository, logger=self.logger
         )
 
     # DateTime operations
@@ -61,11 +57,10 @@ class AssistantFunctionService:
         new_wa_id: str,
         ar: bool = False,
         customer_name: str | None = None,
+        reservation_id: int | None = None,
     ) -> dict[str, Any]:
         """Modify customer WhatsApp ID."""
-        return self.customer_service.modify_customer_wa_id(
-            old_wa_id, new_wa_id, ar, customer_name
-        )
+        return self.customer_service.modify_customer_wa_id(old_wa_id, new_wa_id, ar, customer_name, reservation_id)
 
     # Notification operations
 
@@ -79,44 +74,82 @@ class AssistantFunctionService:
         """Get customer reservations."""
         return self.reservation_service.get_customer_reservations(wa_id, include_past)
 
-    def reserve_time_slot(self, wa_id: str, customer_name: str, date_str: str,
-                         time_slot: str, reservation_type: int, hijri: bool = False,
-                         max_reservations: int = 5, ar: bool = False, _call_source: str = "assistant") -> dict[str, Any]:
+    def reserve_time_slot(
+        self,
+        wa_id: str,
+        customer_name: str,
+        date_str: str,
+        time_slot: str,
+        reservation_type: int,
+        hijri: bool = False,
+        max_reservations: int = 5,
+        ar: bool = False,
+        _call_source: str = "assistant",
+    ) -> dict[str, Any]:
         """Reserve a time slot for a customer."""
         return self.reservation_service.reserve_time_slot(
-            wa_id, customer_name, date_str, time_slot, reservation_type,
-            hijri, max_reservations, ar, _call_source
+            wa_id, customer_name, date_str, time_slot, reservation_type, hijri, max_reservations, ar, _call_source
         )
 
-    def modify_reservation(self, wa_id: str, new_date: str | None = None,
-                          new_time_slot: str | None = None, new_name: str | None = None,
-                          new_type: int | None = None, max_reservations: int = 5,
-                          approximate: bool = False, hijri: bool = False, ar: bool = False,
-                          reservation_id_to_modify: int | None = None, _call_source: str = "assistant") -> dict[str, Any]:
+    def modify_reservation(
+        self,
+        wa_id: str,
+        new_date: str | None = None,
+        new_time_slot: str | None = None,
+        new_name: str | None = None,
+        new_type: int | None = None,
+        max_reservations: int = 5,
+        approximate: bool = False,
+        hijri: bool = False,
+        ar: bool = False,
+        reservation_id_to_modify: int | None = None,
+        _call_source: str = "assistant",
+    ) -> dict[str, Any]:
         """Modify an existing reservation."""
         return self.reservation_service.modify_reservation(
-            wa_id, new_date, new_time_slot, new_name, new_type,
-            max_reservations, approximate, hijri, ar, reservation_id_to_modify,
-            _internal_call_context=None, _call_source=_call_source
+            wa_id,
+            new_date,
+            new_time_slot,
+            new_name,
+            new_type,
+            max_reservations,
+            approximate,
+            hijri,
+            ar,
+            reservation_id_to_modify,
+            _internal_call_context=None,
+            _call_source=_call_source,
         )
 
-    def cancel_reservation(self, wa_id: str, date_str: str | None = None,
-                          hijri: bool = False, ar: bool = False,
-                          reservation_id_to_cancel: int | None = None, _call_source: str = "assistant") -> dict[str, Any]:
+    def cancel_reservation(
+        self,
+        wa_id: str,
+        date_str: str | None = None,
+        hijri: bool = False,
+        ar: bool = False,
+        reservation_id_to_cancel: int | None = None,
+        _call_source: str = "assistant",
+    ) -> dict[str, Any]:
         """Cancel a customer reservation."""
-        return self.reservation_service.cancel_reservation(wa_id, date_str, hijri, ar, reservation_id_to_cancel, _call_source)
+        return self.reservation_service.cancel_reservation(
+            wa_id, date_str, hijri, ar, reservation_id_to_cancel, _call_source
+        )
 
     # Availability operations
 
-    def get_available_time_slots(self, date_str: str, max_reservations: int = 5,
-                                hijri: bool = False) -> dict[str, Any]:
+    def get_available_time_slots(self, date_str: str, max_reservations: int = 5, hijri: bool = False) -> dict[str, Any]:
         """Get available time slots for a date."""
         return self.availability_service.get_available_time_slots(date_str, max_reservations, hijri)
 
-    def search_available_appointments(self, start_date: str | None = None,
-                                    time_slot: str | None = None, days_forward: int = 3,
-                                    days_backward: int = 0, max_reservations: int = 5,
-                                    hijri: bool = False) -> dict[str, Any]:
+    def search_available_appointments(
+        self,
+        start_date: str | None = None,
+        time_slot: str | None = None,
+        days_forward: int = 3,
+        days_backward: int = 0,
+        max_reservations: int = 5,
+        hijri: bool = False,
+    ) -> dict[str, Any]:
         """Search for available appointment slots."""
         return self.availability_service.search_available_appointments(
             start_date, time_slot, days_forward, days_backward, max_reservations, hijri
@@ -132,8 +165,10 @@ class AssistantFunctionService:
     # --- Undo-specific methods exposed through AssistantFunctionService ---
     # Note: undo_reserve_time_slot has been removed as redundant.
     # Frontend should call cancel_reservation directly instead.
-    
-    def undo_cancel_reservation(self, reservation_id: int, ar: bool = False, max_reservations: int = 5) -> dict[str, Any]:
+
+    def undo_cancel_reservation(
+        self, reservation_id: int, ar: bool = False, max_reservations: int = 5
+    ) -> dict[str, Any]:
         """Undo a reservation cancellation (reinstate it)."""
         return self.reservation_service.undo_cancel_reservation_by_id(reservation_id, ar, max_reservations)
 
@@ -142,6 +177,7 @@ class AssistantFunctionService:
 _service = AssistantFunctionService()
 
 # Public function interface (maintains complete backward compatibility)
+
 
 def send_business_location(wa_id: str) -> dict[str, Any]:
     """
@@ -176,6 +212,7 @@ def modify_id(
     new_wa_id: str,
     ar: bool = False,
     customer_name: str | None = None,
+    reservation_id: int | None = None,
 ) -> dict[str, Any]:
     """
     Modify the WhatsApp ID (wa_id) for a customer in all related database tables.
@@ -188,14 +225,22 @@ def modify_id(
     Returns:
         dict: Result of the modification operation with success status and message
     """
-    return _service.modify_id(old_wa_id, new_wa_id, ar, customer_name)
+    return _service.modify_id(old_wa_id, new_wa_id, ar, customer_name, reservation_id)
 
 
-def modify_reservation(wa_id: str, new_date: str | None = None,
-                      new_time_slot: str | None = None, new_name: str | None = None,
-                      new_type: int | None = None, max_reservations: int = 5,
-                      approximate: bool = False, hijri: bool = False, ar: bool = False,
-                      reservation_id_to_modify: int | None = None, _call_source: str = "assistant") -> dict[str, Any]:
+def modify_reservation(
+    wa_id: str,
+    new_date: str | None = None,
+    new_time_slot: str | None = None,
+    new_name: str | None = None,
+    new_type: int | None = None,
+    max_reservations: int = 5,
+    approximate: bool = False,
+    hijri: bool = False,
+    ar: bool = False,
+    reservation_id_to_modify: int | None = None,
+    _call_source: str = "assistant",
+) -> dict[str, Any]:
     """
     Modify the reservation for an existing customer.
 
@@ -216,8 +261,17 @@ def modify_reservation(wa_id: str, new_date: str | None = None,
         dict: Result of the modification operation with success status, message, reservation_id, and original_data.
     """
     return _service.modify_reservation(
-        wa_id, new_date, new_time_slot, new_name, new_type,
-        max_reservations, approximate, hijri, ar, reservation_id_to_modify, _call_source
+        wa_id,
+        new_date,
+        new_time_slot,
+        new_name,
+        new_type,
+        max_reservations,
+        approximate,
+        hijri,
+        ar,
+        reservation_id_to_modify,
+        _call_source,
     )
 
 
@@ -235,9 +289,17 @@ def get_customer_reservations(wa_id: str, include_past: bool = False) -> dict[st
     return _service.get_customer_reservations(wa_id, include_past)
 
 
-def reserve_time_slot(wa_id: str, customer_name: str, date_str: str,
-                     time_slot: str, reservation_type: int, hijri: bool = False,
-                     max_reservations: int = 5, ar: bool = False, _call_source: str = "assistant") -> dict[str, Any]:
+def reserve_time_slot(
+    wa_id: str,
+    customer_name: str,
+    date_str: str,
+    time_slot: str,
+    reservation_type: int,
+    hijri: bool = False,
+    max_reservations: int = 5,
+    ar: bool = False,
+    _call_source: str = "assistant",
+) -> dict[str, Any]:
     """
     Reserve a time slot for a customer.
 
@@ -256,14 +318,18 @@ def reserve_time_slot(wa_id: str, customer_name: str, date_str: str,
         dict: Result of the reservation operation with success status and details
     """
     return _service.reserve_time_slot(
-        wa_id, customer_name, date_str, time_slot, reservation_type,
-        hijri, max_reservations, ar, _call_source
+        wa_id, customer_name, date_str, time_slot, reservation_type, hijri, max_reservations, ar, _call_source
     )
 
 
-def cancel_reservation(wa_id: str, date_str: str | None = None,
-                      hijri: bool = False, ar: bool = False,
-                      reservation_id_to_cancel: int | None = None, _call_source: str = "assistant") -> dict[str, Any]:
+def cancel_reservation(
+    wa_id: str,
+    date_str: str | None = None,
+    hijri: bool = False,
+    ar: bool = False,
+    reservation_id_to_cancel: int | None = None,
+    _call_source: str = "assistant",
+) -> dict[str, Any]:
     """
     Cancel a reservation or all reservations for a customer using soft deletion.
 
@@ -297,10 +363,14 @@ def get_available_time_slots(date_str: str, max_reservations: int = 5, hijri: bo
     return _service.get_available_time_slots(date_str, max_reservations, hijri)
 
 
-def search_available_appointments(start_date: str | None = None,
-                                time_slot: str | None = None, days_forward: int = 3,
-                                days_backward: int = 0, max_reservations: int = 5,
-                                hijri: bool = False) -> dict[str, Any]:
+def search_available_appointments(
+    start_date: str | None = None,
+    time_slot: str | None = None,
+    days_forward: int = 3,
+    days_backward: int = 0,
+    max_reservations: int = 5,
+    hijri: bool = False,
+) -> dict[str, Any]:
     """
     Search for available appointment slots across a range of dates.
 

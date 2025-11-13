@@ -15,7 +15,7 @@ class PhoneSearchResult:
         customer_name: str | None = None,
         last_message_at: datetime | None = None,
         last_reservation_at: datetime | None = None,
-        similarity: float = 0.0
+        similarity: float = 0.0,
     ):
         self.wa_id = wa_id
         self.customer_name = customer_name
@@ -26,11 +26,11 @@ class PhoneSearchResult:
     def to_dict(self) -> dict[str, any]:
         """Convert to dictionary for API response."""
         return {
-            'wa_id': self.wa_id,
-            'customer_name': self.customer_name,
-            'last_message_at': self.last_message_at.isoformat() if self.last_message_at else None,
-            'last_reservation_at': self.last_reservation_at.isoformat() if self.last_reservation_at else None,
-            'similarity': self.similarity
+            "wa_id": self.wa_id,
+            "customer_name": self.customer_name,
+            "last_message_at": self.last_message_at.isoformat() if self.last_message_at else None,
+            "last_reservation_at": self.last_reservation_at.isoformat() if self.last_reservation_at else None,
+            "similarity": self.similarity,
         }
 
 
@@ -44,12 +44,7 @@ class PhoneSearchService(BaseService):
         """Return the service name for logging/identification."""
         return "PhoneSearchService"
 
-    def search_phones(
-        self,
-        query: str,
-        limit: int = 100,
-        min_similarity: float = 0.3
-    ) -> list[PhoneSearchResult]:
+    def search_phones(self, query: str, limit: int = 100, min_similarity: float = 0.3) -> list[PhoneSearchResult]:
         """
         Search for phone numbers and customer names using pg_trgm similarity.
 
@@ -76,7 +71,7 @@ class PhoneSearchService(BaseService):
             # We also use similarity() function to get the actual score for sorting
 
             # Normalize phone query: remove spaces, dashes, plus signs
-            normalized_phone_query = query.replace(' ', '').replace('-', '').replace('+', '')
+            normalized_phone_query = query.replace(" ", "").replace("-", "").replace("+", "")
 
             sql_query = text("""
                 WITH customer_similarity AS (
@@ -142,12 +137,12 @@ class PhoneSearchService(BaseService):
             result = session.execute(
                 sql_query,
                 {
-                    'phone_query': query,
-                    'name_query': query,
-                    'normalized_phone': normalized_phone_query,
-                    'min_similarity': min_similarity,
-                    'limit': limit
-                }
+                    "phone_query": query,
+                    "name_query": query,
+                    "normalized_phone": normalized_phone_query,
+                    "min_similarity": min_similarity,
+                    "limit": limit,
+                },
             )
 
             results = []
@@ -156,8 +151,8 @@ class PhoneSearchService(BaseService):
                 last_msg_at = row.last_message_at
                 if last_msg_at and isinstance(last_msg_at, str):
                     try:
-                        last_msg_at = datetime.strptime(last_msg_at, '%Y-%m-%d %H:%M:%S')
-                    except:
+                        last_msg_at = datetime.strptime(last_msg_at, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
                         last_msg_at = None
 
                 results.append(
@@ -166,7 +161,7 @@ class PhoneSearchService(BaseService):
                         customer_name=row.customer_name,
                         last_message_at=last_msg_at,
                         last_reservation_at=row.last_reservation_at,
-                        similarity=float(row.sim_score)
+                        similarity=float(row.sim_score),
                     )
                 )
 
@@ -214,7 +209,7 @@ class PhoneSearchService(BaseService):
                 LIMIT :limit
             """)
 
-            result = session.execute(sql_query, {'limit': limit})
+            result = session.execute(sql_query, {"limit": limit})
 
             results = []
             for row in result:
@@ -222,8 +217,8 @@ class PhoneSearchService(BaseService):
                 last_msg_at = row.last_message_at
                 if last_msg_at and isinstance(last_msg_at, str):
                     try:
-                        last_msg_at = datetime.strptime(last_msg_at, '%Y-%m-%d %H:%M:%S')
-                    except:
+                        last_msg_at = datetime.strptime(last_msg_at, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
                         last_msg_at = None
 
                 results.append(
@@ -232,7 +227,7 @@ class PhoneSearchService(BaseService):
                         customer_name=row.customer_name,
                         last_message_at=last_msg_at,
                         last_reservation_at=row.last_reservation_at,
-                        similarity=1.0  # All recent contacts have similarity 1.0
+                        similarity=1.0,  # All recent contacts have similarity 1.0
                     )
                 )
 
@@ -243,7 +238,7 @@ class PhoneSearchService(BaseService):
         page: int = 1,
         page_size: int = 100,
         filters: dict[str, any] | None = None,
-        exclude_phone_numbers: list[str] | None = None
+        exclude_phone_numbers: list[str] | None = None,
     ) -> tuple[list[PhoneSearchResult], int]:
         """
         Get all contacts with pagination.
@@ -271,25 +266,25 @@ class PhoneSearchService(BaseService):
                 placeholders = ", ".join([f":exclude_{i}" for i in range(len(exclude_phone_numbers))])
                 where_conditions.append(f"c.wa_id NOT IN ({placeholders})")
                 for i, phone in enumerate(exclude_phone_numbers):
-                    filter_params[f'exclude_{i}'] = phone
+                    filter_params[f"exclude_{i}"] = phone
 
             if filters:
                 # Country filter
-                if filters.get('country'):
+                if filters.get("country"):
                     # Extract country code from phone numbers using phonenumbers library
                     # This is complex, so we'll filter in Python for now
                     # For better performance, we could add a country_code column to customers table
                     pass  # Will filter in Python after fetching
 
                 # Registration filter
-                if filters.get('registration') == 'registered':
+                if filters.get("registration") == "registered":
                     where_conditions.append(
                         "c.customer_name IS NOT NULL "
                         "AND c.customer_name != '' "
                         "AND c.customer_name != c.wa_id "
                         "AND c.customer_name != REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', '')"
                     )
-                elif filters.get('registration') == 'unknown':
+                elif filters.get("registration") == "unknown":
                     where_conditions.append(
                         "(c.customer_name IS NULL "
                         "OR c.customer_name = '' "
@@ -298,15 +293,15 @@ class PhoneSearchService(BaseService):
                     )
 
                 # Date range filter
-                date_range = filters.get('date_range')
+                date_range = filters.get("date_range")
                 if date_range:
-                    range_type = date_range.get('type')
-                    date_range_obj = date_range.get('range')
+                    range_type = date_range.get("type")
+                    date_range_obj = date_range.get("range")
                     # Support single date filtering - if only one date provided, treat as single day
                     if date_range_obj:
-                        from_date = date_range_obj.get('from')
-                        to_date = date_range_obj.get('to')
-                        
+                        from_date = date_range_obj.get("from")
+                        to_date = date_range_obj.get("to")
+
                         # Ensure both dates are set for single date selection
                         if from_date and not to_date:
                             # Only from_date provided - treat as single day
@@ -316,9 +311,9 @@ class PhoneSearchService(BaseService):
                             # Only to_date provided - treat as single day
                             from_date = to_date.replace(hour=0, minute=0, second=0, microsecond=0)
                             to_date = to_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-                        
+
                         if from_date and to_date:
-                            if range_type == 'messages':
+                            if range_type == "messages":
                                 where_conditions.append(
                                     "EXISTS ("
                                     "  SELECT 1 FROM conversation conv "
@@ -330,9 +325,9 @@ class PhoneSearchService(BaseService):
                                     "    AND (conv.date || ' ' || conv.time) <= :date_to"
                                     ")"
                                 )
-                                filter_params['date_from'] = from_date.strftime('%Y-%m-%d %H:%M:%S')
-                                filter_params['date_to'] = to_date.strftime('%Y-%m-%d %H:%M:%S')
-                            elif range_type == 'reservations':
+                                filter_params["date_from"] = from_date.strftime("%Y-%m-%d %H:%M:%S")
+                                filter_params["date_to"] = to_date.strftime("%Y-%m-%d %H:%M:%S")
+                            elif range_type == "reservations":
                                 # Use bind parameter for ':00' to avoid SQLAlchemy parsing it as a parameter placeholder
                                 where_conditions.append(
                                     "EXISTS ("
@@ -344,9 +339,9 @@ class PhoneSearchService(BaseService):
                                     "    AND (res.date || ' ' || res.time_slot || :seconds_suffix) <= :date_to"
                                     ")"
                                 )
-                                filter_params['date_from'] = from_date.strftime('%Y-%m-%d %H:%M:%S')
-                                filter_params['date_to'] = to_date.strftime('%Y-%m-%d %H:%M:%S')
-                                filter_params['seconds_suffix'] = ':00'
+                                filter_params["date_from"] = from_date.strftime("%Y-%m-%d %H:%M:%S")
+                                filter_params["date_to"] = to_date.strftime("%Y-%m-%d %H:%M:%S")
+                                filter_params["seconds_suffix"] = ":00"
 
             where_clause = ""
             if where_conditions:
@@ -394,19 +389,19 @@ class PhoneSearchService(BaseService):
                 {where_clause}
                 ORDER BY
                     -- Prioritize contacts with real names (not just phone numbers)
-                    CASE 
-                        WHEN c.customer_name IS NOT NULL 
-                             AND c.customer_name != '' 
-                             AND c.customer_name != c.wa_id 
+                    CASE
+                        WHEN c.customer_name IS NOT NULL
+                             AND c.customer_name != ''
+                             AND c.customer_name != c.wa_id
                              AND c.customer_name != REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', '')
                         THEN 0
                         ELSE 1
                     END ASC,
                     -- Sort alphabetically: names first, then phone numbers
-                    CASE 
-                        WHEN c.customer_name IS NOT NULL 
-                             AND c.customer_name != '' 
-                             AND c.customer_name != c.wa_id 
+                    CASE
+                        WHEN c.customer_name IS NOT NULL
+                             AND c.customer_name != ''
+                             AND c.customer_name != c.wa_id
                              AND c.customer_name != REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', '')
                         THEN LOWER(c.customer_name)
                         ELSE c.wa_id
@@ -414,8 +409,8 @@ class PhoneSearchService(BaseService):
                 LIMIT :page_size OFFSET :offset
             """)
 
-            filter_params['page_size'] = page_size
-            filter_params['offset'] = offset
+            filter_params["page_size"] = page_size
+            filter_params["offset"] = offset
 
             result = session.execute(sql_query, filter_params)
 
@@ -425,8 +420,8 @@ class PhoneSearchService(BaseService):
                 last_msg_at = row.last_message_at
                 if last_msg_at and isinstance(last_msg_at, str):
                     try:
-                        last_msg_at = datetime.strptime(last_msg_at, '%Y-%m-%d %H:%M:%S')
-                    except:
+                        last_msg_at = datetime.strptime(last_msg_at, "%Y-%m-%d %H:%M:%S")
+                    except ValueError:
                         last_msg_at = None
 
                 results.append(
@@ -435,16 +430,17 @@ class PhoneSearchService(BaseService):
                         customer_name=row.customer_name,
                         last_message_at=last_msg_at,
                         last_reservation_at=row.last_reservation_at,
-                        similarity=1.0
+                        similarity=1.0,
                     )
                 )
 
             # Apply country filter in Python if needed (since we don't have country_code column)
             # Note: This should ideally be done in SQL, but requires country_code column
             # For country filter, we need to fetch all results, filter, then paginate
-            if filters and filters.get('country'):
+            if filters and filters.get("country"):
                 import phonenumbers
-                country_code = filters['country']
+
+                country_code = filters["country"]
 
                 # Fetch all results first (without pagination)
                 all_results_query = text(f"""
@@ -474,19 +470,19 @@ class PhoneSearchService(BaseService):
                     LEFT JOIN latest_user_messages lm ON c.wa_id = lm.wa_id
                     LEFT JOIN latest_reservations lr ON c.wa_id = lr.wa_id
                     {where_clause}
-                    ORDER BY 
-                        CASE 
-                            WHEN c.customer_name IS NOT NULL 
-                                 AND c.customer_name != '' 
-                                 AND c.customer_name != c.wa_id 
+                    ORDER BY
+                        CASE
+                            WHEN c.customer_name IS NOT NULL
+                                 AND c.customer_name != ''
+                                 AND c.customer_name != c.wa_id
                                  AND c.customer_name != REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', '')
                             THEN 0
                             ELSE 1
                         END ASC,
-                        CASE 
-                            WHEN c.customer_name IS NOT NULL 
-                                 AND c.customer_name != '' 
-                                 AND c.customer_name != c.wa_id 
+                        CASE
+                            WHEN c.customer_name IS NOT NULL
+                                 AND c.customer_name != ''
+                                 AND c.customer_name != c.wa_id
                                  AND c.customer_name != REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', '')
                             THEN LOWER(c.customer_name)
                             ELSE c.wa_id
@@ -499,15 +495,15 @@ class PhoneSearchService(BaseService):
                 filtered_results = []
                 for row in all_results:
                     try:
-                        phone_number = row.wa_id if row.wa_id.startswith('+') else f'+{row.wa_id}'
+                        phone_number = row.wa_id if row.wa_id.startswith("+") else f"+{row.wa_id}"
                         parsed = phonenumbers.parse(phone_number, None)
                         if parsed and phonenumbers.region_code_for_number(parsed) == country_code:
                             # Parse last_message_at if it's a string
                             last_msg_at = row.last_message_at
                             if last_msg_at and isinstance(last_msg_at, str):
                                 try:
-                                    last_msg_at = datetime.strptime(last_msg_at, '%Y-%m-%d %H:%M:%S')
-                                except:
+                                    last_msg_at = datetime.strptime(last_msg_at, "%Y-%m-%d %H:%M:%S")
+                                except ValueError:
                                     last_msg_at = None
 
                             filtered_results.append(
@@ -516,17 +512,16 @@ class PhoneSearchService(BaseService):
                                     customer_name=row.customer_name,
                                     last_message_at=last_msg_at,
                                     last_reservation_at=row.last_reservation_at,
-                                    similarity=1.0
+                                    similarity=1.0,
                                 )
                             )
-                    except:
+                    except Exception:
                         continue
 
                 # Apply pagination to filtered results
                 total_count = len(filtered_results)
-                paginated_results = filtered_results[offset:offset + page_size]
+                paginated_results = filtered_results[offset : offset + page_size]
 
                 return paginated_results, total_count
 
             return results, total_count
-

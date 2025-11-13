@@ -14,10 +14,10 @@ from sqlalchemy import and_, select, text
 from app.config import config
 from app.db import ConversationModel, CustomerModel, ReservationModel, VacationPeriodModel, get_session
 from app.i18n import get_message
-from app.utils.realtime import enqueue_broadcast
 
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
+
 
 # Helper to standardize API responses across services
 def format_response(success: bool, data=None, message: str = None, status_code: int = None):
@@ -37,6 +37,7 @@ def format_response(success: bool, data=None, message: str = None, status_code: 
         return resp, status_code
     return resp
 
+
 def fix_unicode_sequence(customer_name):
     """
     Fixes Unicode escape sequences in customer names.
@@ -48,15 +49,15 @@ def fix_unicode_sequence(customer_name):
     if customer_name and isinstance(customer_name, str):
         try:
             # Check if the name contains Unicode escape sequences (like \u0623)
-            if '\\u' in customer_name or 'u0' in customer_name:
+            if "\\u" in customer_name or "u0" in customer_name:
                 # Try to decode proper Unicode escape sequences
-                if '\\u' in customer_name:
-                    customer_name = customer_name.encode().decode('unicode_escape')
+                if "\\u" in customer_name:
+                    customer_name = customer_name.encode().decode("unicode_escape")
                 # Handle improperly formatted sequences like u0623 instead of \u0623
-                elif 'u0' in customer_name:
+                elif "u0" in customer_name:
                     # Convert u0623 format to \u0623 format
-                    customer_name = re.sub(r'u([0-9a-fA-F]{4})', r'\\u\1', customer_name)
-                    customer_name = customer_name.encode().decode('unicode_escape')
+                    customer_name = re.sub(r"u([0-9a-fA-F]{4})", r"\\u\1", customer_name)
+                    customer_name = customer_name.encode().decode("unicode_escape")
         except Exception as e:
             logging.warning(f"Failed to decode Unicode in customer name: {e}")
     return customer_name
@@ -71,25 +72,22 @@ def get_tomorrow_reservations():
     """
     try:
         # Calculate tomorrow's date
-        today = datetime.datetime.now(ZoneInfo(config['TIMEZONE']))
+        today = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
         tomorrow = today + datetime.timedelta(days=1)
         tomorrow_date_str = tomorrow.strftime("%Y-%m-%d")
 
         with get_session() as session:
-            stmt = (
-                select(
-                    ReservationModel.id,
-                    ReservationModel.wa_id,
-                    ReservationModel.date,
-                    ReservationModel.time_slot,
-                    ReservationModel.type,
-                    ReservationModel.status,
-                )
-                .where(
-                    and_(
-                        ReservationModel.date == tomorrow_date_str,
-                        ReservationModel.status == "active",
-                    )
+            stmt = select(
+                ReservationModel.id,
+                ReservationModel.wa_id,
+                ReservationModel.date,
+                ReservationModel.time_slot,
+                ReservationModel.type,
+                ReservationModel.status,
+            ).where(
+                and_(
+                    ReservationModel.date == tomorrow_date_str,
+                    ReservationModel.status == "active",
                 )
             )
             rows = session.execute(stmt).all()
@@ -108,6 +106,7 @@ def get_tomorrow_reservations():
     except Exception as e:
         logging.error(f"get_tomorrow_reservations failed, error: {e}")
         return format_response(False, message=get_message("system_error_generic", error=str(e)))
+
 
 def find_nearest_time_slot(target_slot, available_slots):
     """
@@ -129,13 +128,13 @@ def find_nearest_time_slot(target_slot, available_slots):
         return None
 
     # Get current time (timezone-aware) and prepare minute comparator
-    now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
+    now = datetime.datetime.now(tz=ZoneInfo(config["TIMEZONE"]))
     current_time = now.time()
     current_minutes = current_time.hour * 60 + current_time.minute
     slot_duration_minutes = max(60, 2 * 60)
 
     closest_slot = None
-    min_difference = float('inf')
+    min_difference = float("inf")
 
     for slot in available_slots:
         try:
@@ -161,6 +160,7 @@ def find_nearest_time_slot(target_slot, available_slots):
             continue
 
     return closest_slot
+
 
 def get_all_reservations(future=True, include_cancelled=False, from_date=None, to_date=None):
     """
@@ -192,12 +192,12 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
         with get_session() as session:
             # Removed JOIN with CustomerModel - no longer fetching customer_name
             stmt = select(
-                    ReservationModel.id,
-                    ReservationModel.wa_id,
-                    ReservationModel.date,
-                    ReservationModel.time_slot,
-                    ReservationModel.type,
-                    ReservationModel.status,
+                ReservationModel.id,
+                ReservationModel.wa_id,
+                ReservationModel.date,
+                ReservationModel.time_slot,
+                ReservationModel.type,
+                ReservationModel.status,
             )
 
             filters = []
@@ -215,13 +215,13 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                 filters.append(ReservationModel.date <= to_date)
             elif future:
                 # No date range specified, use future parameter (default safe behavior)
-                today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date().isoformat()
+                today = datetime.datetime.now(ZoneInfo(config["TIMEZONE"])).date().isoformat()
                 filters.append(ReservationModel.date >= today)
             # If future=False and no date range, apply a reasonable default window
             # to prevent loading ALL reservations (last 30 days + next 90 days)
             else:
                 # No date range AND future=False - apply default window to prevent loading all data
-                today = datetime.datetime.now(ZoneInfo(config['TIMEZONE'])).date()
+                today = datetime.datetime.now(ZoneInfo(config["TIMEZONE"])).date()
                 default_from_date = (today - datetime.timedelta(days=30)).isoformat()
                 default_to_date = (today + datetime.timedelta(days=90)).isoformat()
                 filters.append(ReservationModel.date >= default_from_date)
@@ -234,7 +234,9 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
             if filters:
                 stmt = stmt.where(and_(*filters))
 
-            stmt = stmt.order_by(ReservationModel.wa_id.asc(), ReservationModel.date.asc(), ReservationModel.time_slot.asc())
+            stmt = stmt.order_by(
+                ReservationModel.wa_id.asc(), ReservationModel.date.asc(), ReservationModel.time_slot.asc()
+            )
 
             rows = session.execute(stmt).all()
 
@@ -245,9 +247,8 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
             document_status = {}
             if wa_ids:
                 from app.db import CustomerModel
-                doc_stmt = select(CustomerModel.wa_id, CustomerModel.document).where(
-                    CustomerModel.wa_id.in_(wa_ids)
-                )
+
+                doc_stmt = select(CustomerModel.wa_id, CustomerModel.document).where(CustomerModel.wa_id.in_(wa_ids))
                 doc_rows = session.execute(doc_stmt).all()
 
                 for wa_id, document in doc_rows:
@@ -263,7 +264,8 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                                     if isinstance(doc_records, dict):
                                         # Check if document has any shape keys (not instance/camera/pointer/presence)
                                         shape_keys = [
-                                            k for k in doc_records.keys()
+                                            k
+                                            for k in doc_records
                                             if not k.startswith("instance")
                                             and not k.startswith("camera")
                                             and not k.startswith("pointer")
@@ -276,7 +278,8 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
                                 doc_records = document.get("document")
                                 if isinstance(doc_records, dict):
                                     shape_keys = [
-                                        k for k in doc_records.keys()
+                                        k
+                                        for k in doc_records
                                         if not k.startswith("instance")
                                         and not k.startswith("camera")
                                         and not k.startswith("pointer")
@@ -310,6 +313,7 @@ def get_all_reservations(future=True, include_cancelled=False, from_date=None, t
         logging.error(f"get_all_reservations failed, error: {e}")
         return format_response(False, message=get_message("system_error_contact_secretary"))
 
+
 def get_all_conversations(wa_id=None, recent=None, limit=0):
     """
     Get all conversations for a specific user (wa_id) from the database. If no wa_id is provided, all conversations in the database are returned.
@@ -321,23 +325,21 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
     try:
         with get_session() as session:
             # Determine the date filter based on the 'recent' parameter
-            now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
-            if recent == 'year':
+            now = datetime.datetime.now(tz=ZoneInfo(config["TIMEZONE"]))
+            if recent == "year":
                 start_date = now - timedelta(days=365)
-            elif recent == 'month':
+            elif recent == "month":
                 start_date = now - timedelta(days=30)
-            elif recent == 'week':
+            elif recent == "week":
                 start_date = now - timedelta(days=7)
-            elif recent == 'day':
+            elif recent == "day":
                 start_date = now - timedelta(days=1)
             else:
                 start_date = None
 
             recent_wa_ids = []
             if start_date and not wa_id:
-                recent_stmt = text(
-                    "SELECT DISTINCT wa_id FROM conversation WHERE (date || ' ' || time) >= :threshold"
-                )
+                recent_stmt = text("SELECT DISTINCT wa_id FROM conversation WHERE (date || ' ' || time) >= :threshold")
                 threshold = start_date.strftime("%Y-%m-%d %H:%M")
                 recent_wa_ids = [row.wa_id for row in session.execute(recent_stmt, {"threshold": threshold}).all()]
 
@@ -364,9 +366,13 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
                     ConversationModel.time,
                 ).where(ConversationModel.wa_id.in_(recent_wa_ids))
                 if limit > 0:
-                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.desc(), ConversationModel.time.desc())
+                    stmt = base_stmt.order_by(
+                        ConversationModel.wa_id.asc(), ConversationModel.date.desc(), ConversationModel.time.desc()
+                    )
                 else:
-                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.asc(), ConversationModel.time.asc())
+                    stmt = base_stmt.order_by(
+                        ConversationModel.wa_id.asc(), ConversationModel.date.asc(), ConversationModel.time.asc()
+                    )
                 rows = session.execute(stmt).all()
             else:
                 base_stmt = select(
@@ -377,9 +383,13 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
                     ConversationModel.time,
                 )
                 if limit > 0:
-                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.desc(), ConversationModel.time.desc())
+                    stmt = base_stmt.order_by(
+                        ConversationModel.wa_id.asc(), ConversationModel.date.desc(), ConversationModel.time.desc()
+                    )
                 else:
-                    stmt = base_stmt.order_by(ConversationModel.wa_id.asc(), ConversationModel.date.asc(), ConversationModel.time.asc())
+                    stmt = base_stmt.order_by(
+                        ConversationModel.wa_id.asc(), ConversationModel.date.asc(), ConversationModel.time.asc()
+                    )
                 rows = session.execute(stmt).all()
 
         conversations = {}
@@ -387,12 +397,14 @@ def get_all_conversations(wa_id=None, recent=None, limit=0):
             user_id = r.wa_id
             if user_id not in conversations:
                 conversations[user_id] = []
-            conversations[user_id].append({
-                "role": r.role,
-                "message": r.message,
-                "date": r.date,
-                "time": r.time,
-            })
+            conversations[user_id].append(
+                {
+                    "role": r.role,
+                    "message": r.message,
+                    "date": r.date,
+                    "time": r.time,
+                }
+            )
 
         return format_response(True, data=conversations)
 
@@ -438,17 +450,20 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
             params = {}
             if from_date:
                 conditions.append("c.date >= :from_date")
-                params['from_date'] = from_date
+                params["from_date"] = from_date
             if to_date:
                 conditions.append("c.date <= :to_date")
-                params['to_date'] = to_date
+                params["to_date"] = to_date
 
             if conditions:
                 where_clause = "WHERE " + " AND ".join(conditions)
             else:
                 where_clause = ""
 
-            query = base_query + where_clause + """
+            query = (
+                base_query
+                + where_clause
+                + """
                 ),
                 last_messages AS (
                     SELECT DISTINCT ON (wa_id)
@@ -469,6 +484,7 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
                 FROM last_messages lm
                 ORDER BY lm.date DESC, lm.time DESC
             """
+            )
 
             stmt = text(query)
             rows = session.execute(stmt, params).all()
@@ -479,13 +495,15 @@ def get_calendar_conversation_events(from_date=None, to_date=None):
                 wa_id = r.wa_id
                 if wa_id not in events:
                     events[wa_id] = []
-                events[wa_id].append({
-                    "role": r.role,
-                    "message": r.message,
-                    "date": r.date,
-                    "time": r.time,
-                    # customer_name removed - use /customers/names to resolve
-                })
+                events[wa_id].append(
+                    {
+                        "role": r.role,
+                        "message": r.message,
+                        "date": r.date,
+                        "time": r.time,
+                        # customer_name removed - use /customers/names to resolve
+                    }
+                )
 
             return format_response(True, data=events)
     except Exception as e:
@@ -528,7 +546,7 @@ def append_message(wa_id, role, message, date_str, time_str):
     Ensures that a customer record exists in the 'customers' table and then inserts
     the message into the 'conversation' table. Any database errors are caught
     and logged without interrupting execution.
-    
+
     Note: This function does NOT broadcast events. Only messages sent via WhatsApp API
     should trigger notifications. Use enqueue_broadcast separately after sending via WhatsApp.
 
@@ -561,6 +579,7 @@ def append_message(wa_id, role, message, date_str, time_str):
     except Exception as e:
         logging.error(f"Error appending message to database: {e}")
 
+
 def get_lock(wa_id):
     """
     Retrieve or create an asyncio.Lock for the given WhatsApp ID.
@@ -570,13 +589,14 @@ def get_lock(wa_id):
         global_locks[wa_id] = asyncio.Lock()
     return global_locks[wa_id]
 
+
 def is_valid_number(phone_number, ar=False):
     """
     Validate if a phone number is a valid WhatsApp number.
     """
     try:
         phone_number = str(phone_number).strip()
-        if phone_number.startswith('+'):
+        if phone_number.startswith("+"):
             phone_number = phone_number[1:]
         # Basic length check
         if len(phone_number) < 8 or len(phone_number) > 15:
@@ -596,6 +616,7 @@ def is_valid_number(phone_number, ar=False):
         logging.error(f"Phone validation error: {e}")
         # General phone validation error
         return format_response(False, message=get_message("phone_validation_error", ar=ar))
+
 
 def retrieve_messages(wa_id):
     """
@@ -617,10 +638,7 @@ def retrieve_messages(wa_id):
         messages = data.get(wa_id) or data.get(str(wa_id), [])
         # Ensure chronological order (ascending) when a limited, descending list is returned
         try:
-            messages = sorted(
-                messages,
-                key=lambda m: (str(m.get("date", "")), str(m.get("time", "")))
-            )
+            messages = sorted(messages, key=lambda m: (str(m.get("date", "")), str(m.get("time", ""))))
         except Exception:
             pass
         input_chat = []
@@ -632,14 +650,12 @@ def retrieve_messages(wa_id):
             # Skip tool-call records from LLM prompt context
             if role.strip().lower() == "tool":
                 continue
-            input_chat.append({
-                "role": "assistant" if role != "user" else "user",
-                "content": msg["message"]
-            })
+            input_chat.append({"role": "assistant" if role != "user" else "user", "content": msg["message"]})
         return input_chat
     except Exception as e:
         logging.error(f"Error retrieving messages from database: {e}")
         return []
+
 
 def make_thread(wa_id, customer_name=None):
     """
@@ -658,12 +674,12 @@ def make_thread(wa_id, customer_name=None):
         if existing is None:
             session.add(CustomerModel(wa_id=wa_id, customer_name=customer_name))
         else:
-            if (
-                customer_name is not None
-                and (existing.customer_name is None or str(existing.customer_name).strip() == "")
+            if customer_name is not None and (
+                existing.customer_name is None or str(existing.customer_name).strip() == ""
             ):
                 existing.customer_name = customer_name
         session.commit()
+
 
 def parse_unix_timestamp(timestamp, to_hijri=False):
     """
@@ -671,7 +687,7 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
     """
     timestamp = int(timestamp)
     dt_utc = datetime.datetime.fromtimestamp(timestamp, tz=datetime.timezone.utc)
-    saudi_timezone = ZoneInfo(config['TIMEZONE'])
+    saudi_timezone = ZoneInfo(config["TIMEZONE"])
     dt_saudi = dt_utc.astimezone(saudi_timezone)
 
     if to_hijri:
@@ -682,6 +698,7 @@ def parse_unix_timestamp(timestamp, to_hijri=False):
 
     time_str = dt_saudi.strftime("%H:%M:%S")
     return date_str, time_str
+
 
 def parse_time(time_str, to_24h=True):
     """
@@ -701,10 +718,10 @@ def parse_time(time_str, to_24h=True):
         raise ValueError(f"Invalid time string: {time_str}")
 
     # Replace Arabic AM/PM with English equivalents
-    time_str = time_str.replace('ص', 'AM').replace('م', 'PM')
+    time_str = time_str.replace("ص", "AM").replace("م", "PM")
 
     # Normalize the input string
-    normalized = re.sub(r'\s+', ' ', time_str.strip().upper())
+    normalized = re.sub(r"\s+", " ", time_str.strip().upper())
 
     try:
         # Parse the string into a datetime object (date is arbitrary)
@@ -822,6 +839,7 @@ def parse_time(time_str, to_24h=True):
             logging.error(f"Manual time parsing failed for '{time_str}': {manual_error}")
             raise ValueError(f"Could not parse time '{time_str}': {manual_error}")
 
+
 def normalize_time_format(time_str, to_24h=True):
     """
     Convert a time string from one format to another.
@@ -845,7 +863,7 @@ def normalize_time_format(time_str, to_24h=True):
             if to_24h:
                 # Validate the format by trying to parse it
                 try:
-                    hour, minute = map(int, time_str.split(':'))
+                    hour, minute = map(int, time_str.split(":"))
                     if not (0 <= hour <= 23) or not (0 <= minute <= 59):
                         raise ValueError(f"Invalid time components: {hour}:{minute}")
                     return time_str  # Already in 24h format
@@ -854,7 +872,7 @@ def normalize_time_format(time_str, to_24h=True):
             else:
                 # Convert from 24h to 12h
                 try:
-                    hour, minute = map(int, time_str.split(':'))
+                    hour, minute = map(int, time_str.split(":"))
                     dt = datetime.datetime(2000, 1, 1, hour, minute)
 
                     # Format based on operating system
@@ -882,6 +900,7 @@ def normalize_time_format(time_str, to_24h=True):
         logging.error(f"Error normalizing time format: {e}")
         raise ValueError(f"Could not normalize time format '{time_str}': {e}")
 
+
 def parse_gregorian_date(date_str):
     """
     Parse a Gregorian date string with explicit format handling.
@@ -895,7 +914,7 @@ def parse_gregorian_date(date_str):
         "%d/%m/%Y",  # DD/MM/YYYY
         "%Y/%m/%d",  # YYYY/MM/DD
         "%m-%d-%Y",  # MM-DD-YYYY (lower priority)
-        "%m/%d/%Y"   # MM/DD/YYYY (lower priority)
+        "%m/%d/%Y",  # MM/DD/YYYY (lower priority)
     ]
 
     for fmt in formats_to_try:
@@ -912,6 +931,7 @@ def parse_gregorian_date(date_str):
     except Exception as e:
         raise ValueError(f"Invalid Gregorian date format: {date_str}. Error: {e}")
 
+
 def parse_hijri_date(date_str):
     """
     Parse a Hijri date string that might be in various non-ISO-like formats.
@@ -919,12 +939,12 @@ def parse_hijri_date(date_str):
     """
     # If already in ISO-like format (e.g. "1447-09-10"), convert to Gregorian.
     if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
-        hijri_date = convert.Hijri(*map(int, date_str.split('-')))
+        hijri_date = convert.Hijri(*map(int, date_str.split("-")))
         gregorian_date = hijri_date.to_gregorian()
         return f"{gregorian_date.year}-{gregorian_date.month:02d}-{gregorian_date.day:02d}"
 
     # Prepare the input by lowercasing and removing commas.
-    s = date_str.lower().replace(',', '')
+    s = date_str.lower().replace(",", "")
 
     # Define a mapping for common Hijri month names.
     hijri_months = {
@@ -952,7 +972,7 @@ def parse_hijri_date(date_str):
         "dhu al-qadah": "11",
         "dhu al-qidah": "11",
         "dhu al-hijjah": "12",
-        "dhu al-hijja": "12"
+        "dhu al-hijja": "12",
     }
 
     # Try to find a month name in the string.
@@ -987,6 +1007,7 @@ def parse_hijri_date(date_str):
 
     raise ValueError(f"Invalid Hijri date format: {date_str}")
 
+
 def parse_date(date_str, hijri=False):
     """
     Parse a date string (Hijri or Gregorian) and returns it in Gregorian ISO format (YYYY-MM-DD).
@@ -995,6 +1016,7 @@ def parse_date(date_str, hijri=False):
         return parse_hijri_date(date_str)
     else:
         return parse_gregorian_date(date_str)
+
 
 def format_enhanced_vacation_message(start_date, end_date, base_message=""):
     """
@@ -1009,16 +1031,16 @@ def format_enhanced_vacation_message(start_date, end_date, base_message=""):
         str: Formatted vacation message with both calendar systems and day names
     """
     # Get day names in English
-    start_day_name = start_date.strftime('%A')
-    end_day_name = end_date.strftime('%A')
+    start_day_name = start_date.strftime("%A")
+    end_day_name = end_date.strftime("%A")
 
     # Convert to Hijri dates
     start_hijri = convert.Gregorian(start_date.year, start_date.month, start_date.day).to_hijri()
     end_hijri = convert.Gregorian(end_date.year, end_date.month, end_date.day).to_hijri()
 
     # Format dates in both calendars
-    start_gregorian = start_date.strftime('%Y-%m-%d')
-    end_gregorian = end_date.strftime('%Y-%m-%d')
+    start_gregorian = start_date.strftime("%Y-%m-%d")
+    end_gregorian = end_date.strftime("%Y-%m-%d")
     start_hijri_str = f"{start_hijri.year}-{start_hijri.month:02d}-{start_hijri.day:02d}"
     end_hijri_str = f"{end_hijri.year}-{end_hijri.month:02d}-{end_hijri.day:02d}"
 
@@ -1031,6 +1053,7 @@ To:
 {base_message}"""
 
     return message
+
 
 def _load_vacations_from_db() -> dict:
     """
@@ -1087,13 +1110,15 @@ def is_vacation_period(date_obj, vacation_dict=None):
         # Check if the date falls within any vacation period
         for start_day, duration in vacation_dict.items():
             try:
-                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
+                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(
+                    tzinfo=ZoneInfo(config["TIMEZONE"])
+                )
                 # Fix: Treat duration as inclusive days count
                 # For 20 days starting May 31: May 31 + 19 days = June 19 (20th day inclusive)
-                end_date = start_date + datetime.timedelta(days=duration-1)
+                end_date = start_date + datetime.timedelta(days=duration - 1)
                 if start_date.date() <= date_obj <= end_date.date():
                     # Get base vacation message
-                    vacation_msg = config.get('VACATION_MESSAGE', 'The business is closed during this period.')
+                    vacation_msg = config.get("VACATION_MESSAGE", "The business is closed during this period.")
 
                     # Create comprehensive vacation message with both calendars and day names
                     message = format_enhanced_vacation_message(start_date, end_date, vacation_msg)
@@ -1107,6 +1132,7 @@ def is_vacation_period(date_obj, vacation_dict=None):
     except Exception as e:
         logging.error(f"Error in is_vacation_period: {e}")
         return False, None
+
 
 def find_vacation_end_date(date_obj, vacation_dict=None):
     """
@@ -1127,8 +1153,10 @@ def find_vacation_end_date(date_obj, vacation_dict=None):
         # Check if the date falls within any vacation period and return the end date
         for start_day, duration in vacation_dict.items():
             try:
-                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(tzinfo=ZoneInfo(config['TIMEZONE']))
-                end_date = start_date + datetime.timedelta(days=duration-1)
+                start_date = datetime.datetime.strptime(start_day, "%Y-%m-%d").replace(
+                    tzinfo=ZoneInfo(config["TIMEZONE"])
+                )
+                end_date = start_date + datetime.timedelta(days=duration - 1)
                 if start_date.date() <= date_obj <= end_date.date():
                     return end_date.date()
             except (ValueError, TypeError) as e:
@@ -1139,6 +1167,7 @@ def find_vacation_end_date(date_obj, vacation_dict=None):
     except Exception as e:
         logging.error(f"Error in find_vacation_end_date: {e}")
         return None
+
 
 def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2, schedule=None):
     """
@@ -1172,7 +1201,7 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
 
     """
     try:
-        now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
+        now = datetime.datetime.now(tz=ZoneInfo(config["TIMEZONE"]))
 
         # Convert date_str to date_obj if date_str is provided
         if date_str is not None:
@@ -1204,9 +1233,9 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
                 1: [11, 17],  # Tuesday: 11 AM to 5 PM
                 2: [11, 17],  # Wednesday: 11 AM to 5 PM
                 3: [11, 17],  # Thursday: 11 AM to 5 PM
-                4: None,      # Friday: Non-working day
+                4: None,  # Friday: Non-working day
                 5: [16, 22],  # Saturday: 4 PM to 10 PM
-                6: [11, 17]   # Sunday: 11 AM to 5 PM
+                6: [11, 17],  # Sunday: 11 AM to 5 PM
             }
 
         # Check if the day is a non-working day
@@ -1220,12 +1249,17 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
         # Define time slots in 12-hour format based on day and Ramadan status
         if is_ramadan:
             # Ramadan hours override regular schedule
-            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, interval)}
+            available_12h = {
+                f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(10, 15, interval)
+            }
         else:
             # Use the configured schedule for this day
             day_schedule = schedule.get(day_of_week, [11, 17])
             start_hour, end_hour = day_schedule
-            available_12h = {f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0 for hour in range(start_hour, end_hour, interval)}
+            available_12h = {
+                f"{hour % 12 or 12}:00 {'AM' if hour < 12 else 'PM'}": 0
+                for hour in range(start_hour, end_hour, interval)
+            }
 
         # Filter out past time slots if the date is today
         if date_obj == now.date():
@@ -1246,6 +1280,7 @@ def get_time_slots(date_str=None, check_vacation=True, to_24h=False, interval=2,
         logging.error(f"Error getting time slots: {e}")
         # System error fallback
         return format_response(False, message=get_message("system_error_generic", error=str(e)))
+
 
 def validate_reservation_type(reservation_type, ar=False):
     """
@@ -1272,6 +1307,7 @@ def validate_reservation_type(reservation_type, ar=False):
     except (ValueError, TypeError):
         return False, format_response(False, message=get_message("invalid_reservation_type", ar)), None
 
+
 def filter_past_time_slots(time_slots_dict, current_time=None, slot_duration_hours: int = 2):
     """
     Filter out time slots that have completely ended from a dictionary of time slots.
@@ -1289,7 +1325,7 @@ def filter_past_time_slots(time_slots_dict, current_time=None, slot_duration_hou
 
     # If current_time is not provided, use the current time
     if current_time is None:
-        current_time = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE'])).time()
+        current_time = datetime.datetime.now(tz=ZoneInfo(config["TIMEZONE"])).time()
 
     # Filter out past time slots
     filtered_slots = {}
@@ -1314,6 +1350,7 @@ def filter_past_time_slots(time_slots_dict, current_time=None, slot_duration_hou
 
     return filtered_slots
 
+
 def is_valid_date_time(date_str, time_str=None, hijri=False):
     """
     Check if a given date and time (optional) are valid for scheduling
@@ -1337,7 +1374,7 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
         date_obj = datetime.datetime.strptime(parsed_date_str, "%Y-%m-%d").date()
 
         # Get current date and time
-        now = datetime.datetime.now(tz=ZoneInfo(config['TIMEZONE']))
+        now = datetime.datetime.now(tz=ZoneInfo(config["TIMEZONE"]))
         today = now.date()
 
         # Default value for parsed_time
@@ -1372,6 +1409,7 @@ def is_valid_date_time(date_str, time_str=None, hijri=False):
 
     except Exception as e:
         return False, get_message("invalid_date_format", error=str(e)), None, None
+
 
 def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=False):
     """
@@ -1439,6 +1477,7 @@ def delete_reservation(wa_id, date_str=None, time_slot=None, hijri=False, ar=Fal
     else:
         key = "system_error_contact_secretary"
     return format_response(removed, message=get_message(key, ar))
+
 
 def delete_user(wa_id):
     """

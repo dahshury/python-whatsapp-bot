@@ -34,10 +34,11 @@ tools = [
         "name": t["name"],
         "description": t["description"],
         "input_schema": t["schema"],
-        **({"cache_control": t["cache_control"]} if t.get("cache_control") else {})
+        **({"cache_control": t["cache_control"]} if t.get("cache_control") else {}),
     }
     for t in TOOL_DEFINITIONS
 ]
+
 
 def map_anthropic_error(e):
     """Map Anthropic exceptions to standardized error types"""
@@ -78,6 +79,7 @@ def _is_retryable_anthropic_exception(e: Exception) -> bool:
     )
     return isinstance(e, retryable_types)
 
+
 @retry_decorator
 def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None, stream=False, timezone=None):
     """
@@ -96,20 +98,14 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     """
     # Create system prompt structure if custom prompt provided
     if system_prompt:
-        system_prompt_obj = [
-            {
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": {"type": "ephemeral"}
-            }
-        ]
+        system_prompt_obj = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
     else:
         # Default empty system prompt
         system_prompt_obj = [
             {
                 "type": "text",
                 "text": "You are a helpful assistant that can answer questions and help with tasks.",
-                "cache_control": {"type": "ephemeral"}
+                "cache_control": {"type": "ephemeral"},
             }
         ]
 
@@ -128,7 +124,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             "tools": tools,
             "max_tokens": max_tokens,
             "stream": stream,
-            "betas": ["token-efficient-tools-2025-02-19"]
+            "betas": ["token-efficient-tools-2025-02-19"],
         }
         # Always include thinking when configured for extended reasoning
         if thinking and enable_thinking:
@@ -143,10 +139,7 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
         logging.info(f"Initial response stop reason: {response.stop_reason}")
 
         # Extract ALL thinking and redacted_thinking blocks in their original order
-        all_thinking_blocks = [
-            block for block in response.content
-            if block.type in ["thinking", "redacted_thinking"]
-        ]
+        all_thinking_blocks = [block for block in response.content if block.type in ["thinking", "redacted_thinking"]]
         # logging.info(f"All thinking blocks: {all_thinking_blocks}")
 
         # Process tool calls if present
@@ -171,14 +164,15 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             try:
                 pretty_args = json.dumps(tool_input or {}, ensure_ascii=False, indent=2)
                 from html import escape as _escape
+
                 html_args = (
-                    f"<details class=\"details\">"
+                    f'<details class="details">'
                     f"<summary>Tool: {tool_name}</summary>"
-                    f"<div><pre><code class=\"language-json\">{_escape(pretty_args)}</code></pre></div>"
+                    f'<div><pre><code class="language-json">{_escape(pretty_args)}</code></pre></div>'
                     f"</details>"
                 )
                 d, t = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
-                append_message(wa_id, 'tool', html_args, d, t)
+                append_message(wa_id, "tool", html_args, d, t)
             except Exception as _persist_args_err:
                 logging.error(f"Persist tool args failed for {tool_name}: {_persist_args_err}")
 
@@ -195,8 +189,8 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                 sig = inspect.signature(function)
 
                 # If the function takes a 'wa_id' parameter, add it
-                if 'wa_id' in sig.parameters and not tool_input.get('wa_id', ""):
-                    tool_input['wa_id'] = wa_id
+                if "wa_id" in sig.parameters and not tool_input.get("wa_id", ""):
+                    tool_input["wa_id"] = wa_id
 
                 try:
                     # Execute tool function (synchronous or asynchronous)
@@ -212,32 +206,40 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                         logging.info(f"Tool output for {tool_name}: {str(output)[:500]}...")
 
                     # Add the assistant message with thinking and tool use, exactly as received
-                    input_chat.append({
-                        "role": "assistant",
-                        "content": assistant_content
-                    })
+                    input_chat.append({"role": "assistant", "content": assistant_content})
 
                     # Add tool result as user message
-                    input_chat.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_use_id,
-                            "content": json.dumps(output.get('message', output)) if isinstance(output, dict | list) else str(output)
-                        }]
-                    })
+                    input_chat.append(
+                        {
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_use_id,
+                                    "content": json.dumps(output.get("message", output))
+                                    if isinstance(output, dict | list)
+                                    else str(output),
+                                }
+                            ],
+                        }
+                    )
                     # Persist tool result
                     try:
-                        pretty_out = json.dumps(output, ensure_ascii=False, indent=2) if isinstance(output, dict | list) else str(output)
+                        pretty_out = (
+                            json.dumps(output, ensure_ascii=False, indent=2)
+                            if isinstance(output, dict | list)
+                            else str(output)
+                        )
                         from html import escape as _escape
+
                         html_out = (
-                            f"<details class=\"details\">"
+                            f'<details class="details">'
                             f"<summary>Result: {tool_name}</summary>"
-                            f"<div><pre><code class=\"language-json\">{_escape(pretty_out)}</code></pre></div>"
+                            f'<div><pre><code class="language-json">{_escape(pretty_out)}</code></pre></div>'
                             f"</details>"
                         )
                         d2, t2 = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
-                        append_message(wa_id, 'tool', html_out, d2, t2)
+                        append_message(wa_id, "tool", html_out, d2, t2)
                     except Exception as _persist_out_err:
                         logging.error(f"Persist tool result failed for {tool_name}: {_persist_out_err}")
 
@@ -247,31 +249,29 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                     LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=tool_name, provider="anthropic").inc()
 
                     # Add the assistant message with thinking and tool use
-                    input_chat.append({
-                        "role": "assistant",
-                        "content": assistant_content
-                    })
+                    input_chat.append({"role": "assistant", "content": assistant_content})
 
                     # Add error result
-                    input_chat.append({
-                        "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": tool_use_id,
-                            "content": f"Error: {str(e)}"
-                        }]
-                    })
+                    input_chat.append(
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "tool_result", "tool_use_id": tool_use_id, "content": f"Error: {str(e)}"}
+                            ],
+                        }
+                    )
                     # Persist error as result
                     try:
                         from html import escape as _escape
+
                         html_out = (
-                            f"<details class=\"details\">"
+                            f'<details class="details">'
                             f"<summary>Result: {tool_name}</summary>"
-                            f"<div><pre><code class=\"language-json\">{_escape(str(e))}</code></pre></div>"
+                            f'<div><pre><code class="language-json">{_escape(str(e))}</code></pre></div>'
                             f"</details>"
                         )
                         d3, t3 = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
-                        append_message(wa_id, 'tool', html_out, d3, t3)
+                        append_message(wa_id, "tool", html_out, d3, t3)
                     except Exception:
                         pass
 
@@ -281,20 +281,21 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
                 LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=tool_name, provider="anthropic").inc()
 
                 # Add the assistant message with thinking and tool use
-                input_chat.append({
-                    "role": "assistant",
-                    "content": assistant_content
-                })
+                input_chat.append({"role": "assistant", "content": assistant_content})
 
                 # Add error about unimplemented tool
-                input_chat.append({
-                    "role": "user",
-                    "content": [{
-                        "type": "tool_result",
-                        "tool_use_id": tool_use_id,
-                        "content": f"Error: Tool '{tool_name}' is not implemented"
-                    }]
-                })
+                input_chat.append(
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": tool_use_id,
+                                "content": f"Error: Tool '{tool_name}' is not implemented",
+                            }
+                        ],
+                    }
+                )
 
             # Follow-up request after tool result
             logging.info(f"Making follow-up Claude API request for {wa_id}")

@@ -16,6 +16,7 @@ def retry_decorator(func):
     """
     A modular retry decorator to handle retries for API calls.
     """
+
     def _record_retry(retry_state):
         exc = retry_state.outcome.exception()
         exc_name = type(exc).__name__ if exc else "Unknown"
@@ -27,22 +28,24 @@ def retry_decorator(func):
     retry_func = retry(
         wait=wait_exponential(multiplier=3, min=10, max=3600),
         stop=stop_after_delay(10800),  # Stop retrying after ~3 hours total delay
-        retry=retry_if_exception_type((
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.HTTPError,
-            AnthropicError,
-            RateLimitError,
-            APIStatusError,
-            APIError,
-            APIConnectionError,
-            openai.APIConnectionError,
-            openai.APIError,
-            openai.RateLimitError,
-            APITimeoutError,
-            # Removed generic Exception to prevent retrying business logic errors
-        )),
-        after=_record_retry
+        retry=retry_if_exception_type(
+            (
+                httpx.ConnectError,
+                httpx.ReadTimeout,
+                httpx.HTTPError,
+                AnthropicError,
+                RateLimitError,
+                APIStatusError,
+                APIError,
+                APIConnectionError,
+                openai.APIConnectionError,
+                openai.APIError,
+                openai.RateLimitError,
+                APITimeoutError,
+                # Removed generic Exception to prevent retrying business logic errors
+            )
+        ),
+        after=_record_retry,
     )(func)
 
     @functools.wraps(func)

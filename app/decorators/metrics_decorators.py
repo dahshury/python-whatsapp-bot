@@ -18,6 +18,7 @@ from app.metrics import (
 
 # Decorators for domain-specific instrumentation
 
+
 def instrument_reservation(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -42,6 +43,7 @@ def instrument_reservation(func):
                 pass
             logging.error(f"Exception in {func.__name__}: {str(e)}")
             raise  # Re-raise the exception
+
     return wrapper
 
 
@@ -68,6 +70,7 @@ def instrument_cancellation(func):
                 pass
             logging.error(f"Exception in {func.__name__}: {str(e)}")
             raise  # Re-raise the exception
+
     return wrapper
 
 
@@ -94,4 +97,5 @@ def instrument_modification(func):
                 pass
             logging.error(f"Exception in {func.__name__}: {str(e)}")
             raise  # Re-raise the exception
+
     return wrapper

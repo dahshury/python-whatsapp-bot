@@ -21,11 +21,12 @@ sync_client = httpx.Client(
 async_client = httpx.AsyncClient(
     timeout=httpx.Timeout(30.0, connect=10.0, read=30.0, write=30.0),
     limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
-    verify=ssl_context
+    verify=ssl_context,
 )
 
 # Client health check and reset lock
 _client_lock = asyncio.Lock()
+
 
 async def ensure_client_healthy():
     """
@@ -47,7 +48,7 @@ async def ensure_client_healthy():
             async_client = httpx.AsyncClient(
                 timeout=httpx.Timeout(30.0, connect=10.0, read=30.0, write=30.0),
                 limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
-                verify=ssl_context
+                verify=ssl_context,
             )
 
     return async_client

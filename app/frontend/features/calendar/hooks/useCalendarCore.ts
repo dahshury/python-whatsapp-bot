@@ -2,10 +2,7 @@ import { createCallbackHandlers } from "@shared/libs/calendar/calendar-callback-
 // Services and utilities
 import { createCalendarCallbacks } from "@shared/libs/calendar/calendar-callbacks";
 import { getTimezone } from "@shared/libs/calendar/calendar-config";
-import {
-  calculateCalendarHeight,
-  useCalendarResize,
-} from "@shared/libs/calendar/calendar-view-utils";
+import { useCalendarResize } from "@shared/libs/calendar/calendar-view-utils";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -126,7 +123,9 @@ export function useCalendarCore({
 
   // Filter cancelled, align and sort within slots, then adjust free roam editability
   const processedEvents = useMemo(() => {
-    const filtered = filterEventsForCalendar(eventsState.events, freeRoam);
+    // Ensure events is always an array to prevent FullCalendar errors
+    const events = Array.isArray(eventsState.events) ? eventsState.events : [];
+    const filtered = filterEventsForCalendar(events, freeRoam);
     const aligned = alignAndSortEventsForCalendar(
       filtered,
       freeRoam,
@@ -136,12 +135,9 @@ export function useCalendarCore({
   }, [eventsState.events, freeRoam, calendarState.currentView]);
 
   // View/height calculation
-  const { calculateHeight } = useCalendarResize(
-    calendarState.currentView,
-    () => {
-      setCalendarHeight(calculateCalendarHeight(calendarState.currentView));
-    }
-  );
+  // Note: onHeightChange callback removed to prevent infinite loop
+  // useCalendarInitialization handles height updates via calculateHeight dependency
+  const { calculateHeight } = useCalendarResize(calendarState.currentView);
 
   // Calendar initialization and refresh
   const {

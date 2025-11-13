@@ -448,8 +448,10 @@ async def process_whatsapp_message(body, run_llm_function):
                 if not lock.locked():
                     with contextlib.suppress(Exception):
                         enqueue_broadcast(
-                            "conversation_typing", {"wa_id": wa_id, "state": "start"}, affected_entities=[wa_id],
-                            source="assistant"  # Typing indicator is always backend/LLM-initiated
+                            "conversation_typing",
+                            {"wa_id": wa_id, "state": "start"},
+                            affected_entities=[wa_id],
+                            source="assistant",  # Typing indicator is always backend/LLM-initiated
                         )
                     await send_typing_indicator(message_id)
             except Exception:
@@ -472,8 +474,11 @@ async def process_whatsapp_message(body, run_llm_function):
                     logging.error(f"Exception while sending WhatsApp message to {wa_id}: {e}", exc_info=True)
             # Regardless of success, clear typing state for UI
             with contextlib.suppress(Exception):
-                enqueue_broadcast("conversation_typing", {"wa_id": wa_id, "state": "stop"}, affected_entities=[wa_id],
-                                source="assistant"  # Typing indicator is always backend/LLM-initiated
+                enqueue_broadcast(
+                    "conversation_typing",
+                    {"wa_id": wa_id, "state": "stop"},
+                    affected_entities=[wa_id],
+                    source="assistant",  # Typing indicator is always backend/LLM-initiated
                 )
 
     except Exception as e:

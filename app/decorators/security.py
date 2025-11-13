@@ -18,6 +18,7 @@ def validate_signature(payload: str, signature: str) -> bool:
     ).hexdigest()
     return hmac.compare_digest(expected_signature, signature)
 
+
 async def verify_signature(request: Request):
     """
     Dependency for FastAPI to ensure that incoming requests are signed correctly.

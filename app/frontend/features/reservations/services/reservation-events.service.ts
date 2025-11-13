@@ -5,6 +5,15 @@ import {
 import { to24h } from "@shared/libs/utils";
 import type { CalendarEvent } from "@/entities/event";
 
+const reservationEventsDebugEnabled =
+  process.env.NEXT_PUBLIC_DISABLE_RESERVATION_DEBUG !== "true";
+const reservationEventsDebugLog = (_label: string, _payload?: unknown) => {
+  if (!reservationEventsDebugEnabled) {
+    return;
+  }
+  // Debug logging disabled - no-op function
+};
+
 type ReservationItem = {
   date: string;
   time_slot: string;
@@ -29,14 +38,20 @@ function toDisplayName(
     typeof primary === "string" && primary.trim().length > 0
       ? primary.trim()
       : undefined;
-  if (fromPrimary) {
-    return fromPrimary;
-  }
   const fromMap = customerNames?.[waId]?.customer_name;
-  if (typeof fromMap === "string" && fromMap.trim().length > 0) {
-    return fromMap.trim();
+  const fromMapTrimmed =
+    typeof fromMap === "string" && fromMap.trim().length > 0
+      ? fromMap.trim()
+      : undefined;
+  const resolved = fromPrimary ?? fromMapTrimmed ?? String(waId);
+  if (resolved === waId) {
+    reservationEventsDebugLog("toDisplayName:fallbackToWaId", {
+      waId,
+      primary,
+      fromMap,
+    });
   }
-  return String(waId);
+  return resolved;
 }
 
 export type ReservationProcessingOptions = {
@@ -241,7 +256,7 @@ export function getReservationEventProcessor() {
             (last as { customer_name?: unknown }).customer_name,
             options.customerNames
           );
-          events.push({
+          const conversationEvent = {
             id: String(waId),
             title: displayTitle,
             start: `${baseDate}T${startTime}`,
@@ -250,7 +265,8 @@ export function getReservationEventProcessor() {
             borderColor: "#EDAE49",
             editable: false,
             extendedProps: { type: 2, cancelled: false },
-          } as unknown as CalendarEvent);
+          };
+          events.push(conversationEvent as unknown as CalendarEvent);
         }
       }
 

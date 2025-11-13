@@ -45,6 +45,7 @@ SYSTEM_PROMPT_TEXT = config.get("SYSTEM_PROMPT")
 client = genai.Client(api_key=GEMINI_API_KEY)
 logging.getLogger("google.genai").setLevel(logging.DEBUG)
 
+
 def map_gemini_error(e):
     """Map Google Gemini exceptions to standardized error types"""
     if isinstance(e, ResourceExhausted):
@@ -77,6 +78,7 @@ def _is_retryable_gemini_exception(e: Exception) -> bool:
     """Return True if the exception is considered retryable by our retry policy."""
     # Mark retries only for network/server/quota and timeouts
     return isinstance(e, GoogleAPIError | ResourceExhausted | DeadlineExceeded | TimeoutError)
+
 
 # Create function declarations dynamically from assistant_functions
 @functools.lru_cache(maxsize=1)
@@ -125,7 +127,7 @@ def create_function_declarations():
     # Create declarations for each function in assistant_functions with schema
     for func_name, func in FUNCTION_MAPPING.items():
         # Skip internal functions (starting with _)
-        if func_name.startswith('_'):
+        if func_name.startswith("_"):
             continue
 
         # Get function docstring
@@ -138,10 +140,12 @@ def create_function_declarations():
             declaration_params = genai.types.Schema(
                 type=genai.types.Type.OBJECT,
                 properties={
-                    k: genai.types.Schema(type=genai.types.Type._from_json(v["type"]), description=v.get("description", ""))
+                    k: genai.types.Schema(
+                        type=genai.types.Type._from_json(v["type"]), description=v.get("description", "")
+                    )
                     for k, v in func_schema.get("properties", {}).items()
                 },
-                required=func_schema.get("required", [])
+                required=func_schema.get("required", []),
             )
             declarations.append(
                 types.FunctionDeclaration(
@@ -168,7 +172,7 @@ def create_function_declarations():
         # Process each parameter
         for param_name, param in params.items():
             # Skip 'wa_id' as it's handled by the service
-            if param_name == 'wa_id':
+            if param_name == "wa_id":
                 continue
 
             # Default description
@@ -188,13 +192,12 @@ def create_function_declarations():
                     param_type = "number"
 
             # If parameter is required (no default)
-            if not has_default and param_name not in ['ar']:  # Exclude 'ar' from required
+            if not has_default and param_name not in ["ar"]:  # Exclude 'ar' from required
                 required_params.append(param_name)
 
             # Add property to schema
             parameters["properties"][param_name] = genai.types.Schema(
-                type=type_mapping.get(param_type, genai.types.Type.STRING),
-                description=param_desc
+                type=type_mapping.get(param_type, genai.types.Type.STRING), description=param_desc
             )
 
         # Set required parameters if any
@@ -211,6 +214,7 @@ def create_function_declarations():
         )
 
     return declarations
+
 
 @retry_decorator
 def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
@@ -270,12 +274,7 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
         # Process content based on type
         if isinstance(content, str):
             # Simple text message
-            contents.append(
-                types.Content(
-                    role=gemini_role,
-                    parts=[types.Part.from_text(text=content)]
-                )
-            )
+            contents.append(types.Content(role=gemini_role, parts=[types.Part.from_text(text=content)]))
         elif isinstance(content, list):
             # Complex message with blocks
             parts = []
@@ -293,15 +292,13 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                         # Tool use block - add as text for now
                         tool_name = block.get("name", "")
                         tool_input = block.get("input", {})
-                        parts.append(types.Part.from_text(
-                            text=f"[Tool use: {tool_name} with input {json.dumps(tool_input)}]"
-                        ))
+                        parts.append(
+                            types.Part.from_text(text=f"[Tool use: {tool_name} with input {json.dumps(tool_input)}]")
+                        )
                     elif block_type == "tool_result":
                         # Tool result block
                         tool_content = block.get("content", "")
-                        parts.append(types.Part.from_text(
-                            text=f"[Tool result: {tool_content}]"
-                        ))
+                        parts.append(types.Part.from_text(text=f"[Tool result: {tool_content}]"))
                 elif isinstance(block, str):
                     # Plain text in array
                     parts.append(types.Part.from_text(text=block))
@@ -332,20 +329,25 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
         response = model_instance.generate_content(
             contents,
             generation_config=generation_config,
-            tools=[types.Tool(function_declarations=function_declarations)]
+            tools=[types.Tool(function_declarations=function_declarations)],
         )
 
         # Process function calls if present with maximum iteration limit to prevent infinite loops
         max_iterations = 10
         iteration_count = 0
 
-        while (hasattr(response, 'candidates') and response.candidates and
-               hasattr(response.candidates[0], 'function_calls') and response.candidates[0].function_calls and
-               iteration_count < max_iterations):
-
+        while (
+            hasattr(response, "candidates")
+            and response.candidates
+            and hasattr(response.candidates[0], "function_calls")
+            and response.candidates[0].function_calls
+            and iteration_count < max_iterations
+        ):
             iteration_count += 1
             function_calls = response.candidates[0].function_calls
-            logging.info(f"Gemini function call iteration {iteration_count}/{max_iterations}, processing {len(function_calls)} function calls")
+            logging.info(
+                f"Gemini function call iteration {iteration_count}/{max_iterations}, processing {len(function_calls)} function calls"
+            )
 
             # Process each function call
             for function_call in function_calls:
@@ -361,14 +363,15 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                 try:
                     pretty_args = json.dumps(function_args or {}, ensure_ascii=False, indent=2)
                     from html import escape as _escape
+
                     html_args = (
-                        f"<details class=\"details\">"
+                        f'<details class="details">'
                         f"<summary>Tool: {function_name}</summary>"
-                        f"<div><pre><code class=\"language-json\">{_escape(pretty_args)}</code></pre></div>"
+                        f'<div><pre><code class="language-json">{_escape(pretty_args)}</code></pre></div>'
                         f"</details>"
                     )
                     d, t = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
-                    append_message(wa_id, 'tool', html_args, d, t)
+                    append_message(wa_id, "tool", html_args, d, t)
                 except Exception as _persist_args_err:
                     logging.error(f"Persist tool args failed for {function_name}: {_persist_args_err}")
 
@@ -378,8 +381,8 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                     sig = inspect.signature(function)
 
                     # Add wa_id if the function expects it
-                    if 'wa_id' in sig.parameters and 'wa_id' not in function_args:
-                        function_args['wa_id'] = wa_id
+                    if "wa_id" in sig.parameters and "wa_id" not in function_args:
+                        function_args["wa_id"] = wa_id
 
                     try:
                         # Execute function (async or sync)
@@ -412,7 +415,9 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                 contents.append(
                     types.Content(
                         role="model",
-                        parts=[types.Part.from_text(text=f"I need to call {function_name}({json.dumps(function_args)})")],
+                        parts=[
+                            types.Part.from_text(text=f"I need to call {function_name}({json.dumps(function_args)})")
+                        ],
                     )
                 )
 
@@ -425,15 +430,20 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                 # Persist tool result
                 try:
                     from html import escape as _escape
-                    pretty_out = result_str if isinstance(result_str, str) else json.dumps(result_str, ensure_ascii=False, indent=2)
+
+                    pretty_out = (
+                        result_str
+                        if isinstance(result_str, str)
+                        else json.dumps(result_str, ensure_ascii=False, indent=2)
+                    )
                     html_out = (
-                        f"<details class=\"details\">"
+                        f'<details class="details">'
                         f"<summary>Result: {function_name}</summary>"
-                        f"<div><pre><code class=\"language-json\">{_escape(pretty_out)}</code></pre></div>"
+                        f'<div><pre><code class="language-json">{_escape(pretty_out)}</code></pre></div>'
                         f"</details>"
                     )
                     d2, t2 = parse_unix_timestamp(int(datetime.datetime.now(datetime.timezone.utc).timestamp()))
-                    append_message(wa_id, 'tool', html_out, d2, t2)
+                    append_message(wa_id, "tool", html_out, d2, t2)
                 except Exception as _persist_out_err:
                     logging.error(f"Persist tool result failed for {function_name}: {_persist_out_err}")
 
@@ -442,21 +452,23 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                 response = model_instance.generate_content(
                     contents,
                     generation_config=generation_config,
-                    tools=[types.Tool(function_declarations=function_declarations)]
+                    tools=[types.Tool(function_declarations=function_declarations)],
                 )
             except Exception as e:
                 logging.error(f"Error generating Gemini follow-up response in iteration {iteration_count}: {e}")
                 break
 
         if iteration_count >= max_iterations:
-            logging.warning(f"Gemini function call loop reached maximum iterations ({max_iterations}), breaking to prevent infinite loop")
+            logging.warning(
+                f"Gemini function call loop reached maximum iterations ({max_iterations}), breaking to prevent infinite loop"
+            )
         else:
             logging.debug(f"Gemini function call loop completed after {iteration_count} iterations")
 
         # Extract final text response
-        if hasattr(response, 'text'):
+        if hasattr(response, "text"):
             final_response = response.text
-        elif hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'content'):
+        elif hasattr(response, "candidates") and response.candidates and hasattr(response.candidates[0], "content"):
             final_response = response.candidates[0].content.parts[0].text
         else:
             final_response = None

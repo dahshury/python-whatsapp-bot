@@ -26,14 +26,14 @@ Fix all Ruff linting and formatting issues in the Python backend codebase system
 Before starting the workflow:
 
 1. Verify you understand the Ruff rules and standards in `pyproject.toml`
-2. Review the Python backend rules in the workspace context
-3. Understand that `--unsafe-fixes` flag enables automatic fixes for potentially unsafe changes
-4. Familiarize yourself with common issues: unused imports, type safety, PEP 8 violations, import organization
-5. Check existing patterns in similar files before making manual changes
-6. Remember: automatic fixes should be reviewed, not blindly accepted
-7. **Understand architectural refactoring priorities**: Complexity violations should be refactored according to project architecture (domain-driven design, clean code) rather than quick fixes
-8. **CRITICAL: Never use Ruff ignore comments when a fix is possible**: Suppressing violations with `# noqa` or `# ruff: noqa` comments is strictly forbidden when a proper fix exists. Always fix the root cause rather than hiding the problem.
-9. Note that mypy type checking is separate - this workflow focuses on Ruff linting, but fixes should not introduce mypy errors
+1. Review the Python backend rules in the workspace context
+1. Understand that `--unsafe-fixes` flag enables automatic fixes for potentially unsafe changes
+1. Familiarize yourself with common issues: unused imports, type safety, PEP 8 violations, import organization
+1. Check existing patterns in similar files before making manual changes
+1. Remember: automatic fixes should be reviewed, not blindly accepted
+1. **Understand architectural refactoring priorities**: Complexity violations should be refactored according to project architecture (domain-driven design, clean code) rather than quick fixes
+1. **CRITICAL: Never use Ruff ignore comments when a fix is possible**: Suppressing violations with `# noqa` or `# ruff: noqa` comments is strictly forbidden when a proper fix exists. Always fix the root cause rather than hiding the problem.
+1. Note that mypy type checking is separate - this workflow focuses on Ruff linting, but fixes should not introduce mypy errors
 
 ## Execution Workflow
 
@@ -58,22 +58,22 @@ To check violations before fixing:
 Steps:
 
 1. Determine the scope (use supplied path or default to `app/`)
-2. Run `uv run ruff check [scope]` to identify violations WITHOUT making changes
-3. Capture ALL error/warning output completely
-4. Count total violations and categorize by type (unused imports, PEP 8 violations, import organization, type safety, formatting, etc.)
-5. Do NOT attempt fixes yet - only gather information
-6. **This is the ONLY time you should re-run the check before fixing** - subsequent runs happen only after you've addressed visible issues
+1. Run `uv run ruff check [scope]` to identify violations WITHOUT making changes
+1. Capture ALL error/warning output completely
+1. Count total violations and categorize by type (unused imports, PEP 8 violations, import organization, type safety, formatting, etc.)
+1. Do NOT attempt fixes yet - only gather information
+1. **This is the ONLY time you should re-run the check before fixing** - subsequent runs happen only after you've addressed visible issues
 
 ### Phase 2: Create Structured Todo List
 
 1. **Use the Cursor built-in todo list** (NOT an .md file)
-2. Create todos using the `todo_write` tool with these guidelines:
+1. Create todos using the `todo_write` tool with these guidelines:
    - **One todo per violation category** initially (e.g., "Fix PEP 8 violations in services", "Remove unused imports in domain")
    - **Break down large categories** into specific file-based todos if the category has 5+ violations
    - **Prioritize by impact**: Fix critical errors first (syntax errors, import errors), then code quality (unused code, PEP 8), then formatting
    - **Include file paths and violation types** in todo titles for clarity
    - Set initial status: `pending` for all
-3. Order todos strategically:
+1. Order todos strategically:
    - First: Syntax and import errors (`app/services/`, `app/domain/`)
    - Second: Unused code and variables (`app/`)
    - Third: PEP 8 violations (`app/`)
@@ -99,7 +99,7 @@ Steps:
    - Categorize: automatic fix candidate vs. requires manual intervention
    - Check if violation is in a dependency or the main code
 
-2. **Analyze Before Fixing**
+1. **Analyze Before Fixing**
 
    - For unused imports: Verify they're not exported as part of public API (`__all__`)
    - For PEP 8 violations: Ensure fixes align with project style (line length 120, double quotes)
@@ -110,7 +110,7 @@ Steps:
    - Review similar patterns in the codebase to maintain consistency
    - Ensure fixes won't break mypy type checking
 
-3. **Categorize Fixes**
+1. **Categorize Fixes**
 
    - **Automatic (via `uv run ruff check --fix --unsafe-fixes`)**: Formatting, unused imports, simple removals, import organization
    - **Manual**: Complex refactoring, logic changes, architectural improvements
@@ -118,7 +118,7 @@ Steps:
    - **Hybrid**: Some violations need both automatic fixes and manual review
    - **🚫 NEVER**: Use `# noqa` or `# ruff: noqa` comments to suppress violations when a fix is possible. Suppressions are only acceptable in extremely rare cases where fixing would break legitimate functionality AND no alternative solution exists. Always attempt a proper fix first.
 
-4. **Apply Fixes (Batch Before Re-running Check)**
+1. **Apply Fixes (Batch Before Re-running Check)**
 
    - For manual fixes: Correct the issues directly following Python best practices
    - For automatic fixes: Use `uv run ruff check --fix --unsafe-fixes [scope]` to apply fixes
@@ -127,7 +127,7 @@ Steps:
    - Ensure changes maintain code quality and project standards
    - Verify fixes don't introduce mypy errors
 
-5. **Verify the Fix (Re-run Check Sparingly)**
+1. **Verify the Fix (Re-run Check Sparingly)**
 
    - **ONLY after completing all violations in the current batch**, run `uv run ruff check [scope]` to verify fixes
    - Do NOT re-run the check between individual fixes — batch your changes
@@ -139,7 +139,8 @@ Steps:
    - If new violations appear, add them to the todo list but do NOT re-run the command until you've handled them all
    - Optionally run `uv run mypy app/` to ensure no type errors were introduced
 
-6. **Document Learnings**
+1. **Document Learnings**
+
    - If a fix reveals a pattern or reusable solution, note it internally
    - If similar violations appear elsewhere, apply the same fix proactively before running the next check
    - Note architectural patterns for future code
@@ -149,14 +150,14 @@ Steps:
 **After completing all todos:**
 
 1. **Only then** run `uv run ruff check [scope]` one final time (supplied path or `app/`)
-2. **If violations remain**:
+1. **If violations remain**:
    - Run `uv run ruff check --fix --unsafe-fixes [scope]` to fix remaining violations
    - Run `uv run ruff format [scope]` to ensure formatting is consistent
    - Create new todos for any remaining violations that require manual intervention (within scope)
    - Repeat Phase 3 until all violations are gone
    - This may involve cascading fixes (fixing one issue reveals another)
    - **Again, batch fixes before re-running the check** - do not run it between each individual fix
-3. **If zero violations**:
+1. **If zero violations**:
    - Success! All Ruff violations are resolved within the defined scope.
    - Run `uv run ruff check [scope]` to confirm no violations remain
    - Run `uv run ruff format [scope]` to ensure consistent formatting
@@ -275,20 +276,6 @@ This approach ensures efficiency while maintaining accuracy. Group similar fixes
 - Note any trade-offs between automatic fixes and manual intervention
 - Report any mypy regressions introduced during fixes
 
----
+______________________________________________________________________
 
 **Ready to begin? Execute this workflow methodically, one step at a time. Remember: Ruff ignore comments should NEVER be used when a fix is possible, and fixes should maintain compatibility with mypy type checking.**
-
-
-
-
-
-
-
-
-
-
-
-
-
-

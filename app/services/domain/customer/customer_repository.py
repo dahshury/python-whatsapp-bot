@@ -1,3 +1,4 @@
+import logging
 
 from sqlalchemy import func
 
@@ -9,6 +10,8 @@ from .customer_models import (
     MessageSnapshot,
     ReservationSnapshot,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CustomerRepository:
@@ -95,11 +98,19 @@ class CustomerRepository:
         """
         resulting_name: str | None = None
         previous_reservations: list[dict[str, object]] = []
+        logger.info(
+            "CustomerRepository.update_wa_id start old=%s new=%s customer_name=%s",
+            old_wa_id,
+            new_wa_id,
+            customer_name,
+        )
         with get_session() as session:
-            existing_customer: CustomerModel | None = session.get(
-                CustomerModel, old_wa_id
-            )
+            existing_customer: CustomerModel | None = session.get(CustomerModel, old_wa_id)
             if existing_customer is None:
+                logger.warning(
+                    "CustomerRepository.update_wa_id old customer missing old=%s",
+                    old_wa_id,
+                )
                 return 0, None, []
 
             existing_res_rows = (
@@ -113,22 +124,15 @@ class CustomerRepository:
                 .filter(ReservationModel.wa_id == old_wa_id)
                 .all()
             )
-            previous_reservations = [
-                {
-                    "id": row.id,
-                    "date": row.date,
-                    "time_slot": row.time_slot,
-                    "type": row.type,
-                    "status": row.status,
-                    "customer_name": existing_customer.customer_name,
-                }
-                for row in existing_res_rows
-            ]
+            previous_reservations = []
 
-            target_customer: CustomerModel | None = session.get(
-                CustomerModel, new_wa_id
-            )
+            target_customer: CustomerModel | None = session.get(CustomerModel, new_wa_id)
             if target_customer is None:
+                logger.info(
+                    "CustomerRepository.update_wa_id creating new customer record new=%s from old=%s",
+                    new_wa_id,
+                    old_wa_id,
+                )
                 target_customer = CustomerModel(
                     wa_id=new_wa_id,
                     customer_name=existing_customer.customer_name,
@@ -137,26 +141,50 @@ class CustomerRepository:
                     target_customer.customer_name = customer_name.strip()
                 # Copy optional fields if they exist on the model
                 if hasattr(existing_customer, "age"):
-                    target_customer.age = getattr(existing_customer, "age")
+                    target_customer.age = existing_customer.age
                 if hasattr(existing_customer, "age_recorded_at"):
-                    target_customer.age_recorded_at = getattr(
-                        existing_customer, "age_recorded_at"
-                    )
+                    target_customer.age_recorded_at = existing_customer.age_recorded_at
                 session.add(target_customer)
             else:
+                logger.info(
+                    "CustomerRepository.update_wa_id reusing existing customer new=%s",
+                    new_wa_id,
+                )
                 target_customer.customer_name = existing_customer.customer_name
                 if customer_name is not None and customer_name.strip():
                     target_customer.customer_name = customer_name.strip()
                 if hasattr(existing_customer, "age"):
-                    target_customer.age = getattr(existing_customer, "age")
+                    target_customer.age = existing_customer.age
                 if hasattr(existing_customer, "age_recorded_at"):
-                    target_customer.age_recorded_at = getattr(
-                        existing_customer, "age_recorded_at"
-                    )
+                    target_customer.age_recorded_at = existing_customer.age_recorded_at
 
             # Commit the new customer record first to satisfy FK constraints
             session.commit()
             resulting_name = target_customer.customer_name
+            logger.info(
+                "CustomerRepository.update_wa_id committed new/updated customer new=%s resulting_name=%s",
+                new_wa_id,
+                resulting_name,
+            )
+
+            if not previous_reservations:
+                for row in existing_res_rows:
+                    logger.debug(
+                        "CustomerRepository.update_wa_id capturing reservation snapshot id=%s date=%s time_slot=%s",
+                        row.id,
+                        row.date,
+                        row.time_slot,
+                    )
+                    previous_reservations.append(
+                        {
+                            "id": row.id,
+                            "date": row.date,
+                            "time_slot": row.time_slot,
+                            "type": row.type,
+                            "status": row.status,
+                            "customer_name": target_customer.customer_name,
+                        }
+                    )
 
         # Use a new session for the updates to avoid detached instance issues
         with get_session() as session:
@@ -171,18 +199,33 @@ class CustomerRepository:
                 .filter(ConversationModel.wa_id == old_wa_id)
                 .update({ConversationModel.wa_id: new_wa_id}, synchronize_session=False)
             )
+            logger.info(
+                "CustomerRepository.update_wa_id updated dependents reservations=%s conversations=%s",
+                res_rows,
+                conv_rows,
+            )
 
             # Delete old customer record (now safe since FK references are updated)
             old_customer = session.get(CustomerModel, old_wa_id)
             if old_customer:
                 session.delete(old_customer)
-            
+                logger.info(
+                    "CustomerRepository.update_wa_id deleted old customer old=%s",
+                    old_wa_id,
+                )
+
             session.commit()
 
             total_rows = (res_rows or 0) + (conv_rows or 0) + 1
             if resulting_name is None:
                 new_customer = session.get(CustomerModel, new_wa_id)
                 resulting_name = getattr(new_customer, "customer_name", None) if new_customer else None
+            logger.info(
+                "CustomerRepository.update_wa_id completed total_rows=%s resulting_name=%s previous_reservations=%s",
+                total_rows,
+                resulting_name,
+                previous_reservations,
+            )
             return total_rows, resulting_name, previous_reservations
 
     def get_customer_stats(self, wa_id: str) -> CustomerStats | None:
@@ -194,9 +237,7 @@ class CustomerRepository:
                 return None
 
             message_count = (
-                session.query(func.count(ConversationModel.id))
-                .filter(ConversationModel.wa_id == wa_id)
-                .scalar()
+                session.query(func.count(ConversationModel.id)).filter(ConversationModel.wa_id == wa_id).scalar()
             ) or 0
 
             first_message_row = (

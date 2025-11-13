@@ -1,25 +1,41 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
+  "includeEntryExports": true,
   "entry": [
     "app/**/*.{ts,tsx}",
-    "components/**/*.{ts,tsx}",
     "widgets/**/*.{ts,tsx}",
     "features/**/*.{ts,tsx}",
     "shared/**/*.{ts,tsx}",
-    "services/**/*.{ts,tsx}",
     "entities/**/*.{ts,tsx}",
+    "compositions/**/*.{ts,tsx}",
+    "infrastructure/**/*.{ts,tsx}",
+    "registry/**/*.{ts,tsx}",
+    "lib/**/*.{ts,tsx}",
+    "scripts/**/*.{ts,tsx,mjs}",
+    "types/**/*.{ts,tsx}",
     "next.config.mjs",
     "tailwind.config.ts",
-    "postcss.config.mjs"
+    "postcss.config.mjs",
+    "vitest.config.ts",
+    "next-i18next.config.ts",
+    "components.json",
+    "biome.jsonc",
+    "tsconfig.json",
+    "setupTests.ts"
   ],
   "project": [
     "app/**/*.{ts,tsx}",
-    "components/**/*.{ts,tsx}",
     "widgets/**/*.{ts,tsx}",
     "features/**/*.{ts,tsx}",
     "shared/**/*.{ts,tsx}",
-    "services/**/*.{ts,tsx}",
-    "entities/**/*.{ts,tsx}"
+    "entities/**/*.{ts,tsx}",
+    "compositions/**/*.{ts,tsx}",
+    "infrastructure/**/*.{ts,tsx}",
+    "registry/**/*.{ts,tsx}",
+    "lib/**/*.{ts,tsx}",
+    "scripts/**/*.{ts,tsx,mjs}",
+    "types/**/*.{ts,tsx}",
+    "*.{ts,tsx,mjs,json,jsonc}"
   ],
   "ignore": [
     "shared/libs/data-grid/pages/**",
@@ -34,7 +50,7 @@
     "next-env.d.ts",
     "types/global.d.ts"
   ],
-  "ignoreExportsUsedInFile": true,
+  "ignoreExportsUsedInFile": false,
   "ignoreDependencies": [
     "@biomejs/biome",
     "critters",

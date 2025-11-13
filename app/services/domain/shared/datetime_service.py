@@ -37,34 +37,49 @@ class DateTimeService(BaseService):
                 return {
                     "status": "current",
                     "message": vacation_message,
-                    "end_date": vacation_end.strftime("%Y-%m-%d") if vacation_end else None
+                    "end_date": vacation_end.strftime("%Y-%m-%d") if vacation_end else None,
                 }
 
             # Check DB vacations within 1 month
             try:
                 from app.db import VacationPeriodModel, get_session
+
                 with get_session() as session:
                     rows = session.query(VacationPeriodModel).all()
                     for r in rows:
                         try:
-                            s_date = r.start_date if isinstance(r.start_date, datetime.date) else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                            s_date = (
+                                r.start_date
+                                if isinstance(r.start_date, datetime.date)
+                                else datetime.datetime.strptime(str(r.start_date), "%Y-%m-%d").date()
+                            )
                             if getattr(r, "end_date", None):
-                                e_date = r.end_date if isinstance(r.end_date, datetime.date) else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                                e_date = (
+                                    r.end_date
+                                    if isinstance(r.end_date, datetime.date)
+                                    else datetime.datetime.strptime(str(r.end_date), "%Y-%m-%d").date()
+                                )
                             else:
                                 dur = max(1, int(getattr(r, "duration_days", 1)))
-                                e_date = s_date + datetime.timedelta(days=dur-1)
+                                e_date = s_date + datetime.timedelta(days=dur - 1)
                             days_until = (s_date - current_date).days
                             if 0 < days_until <= 30:
-                                start_dt = datetime.datetime.combine(s_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
-                                end_dt = datetime.datetime.combine(e_date, datetime.time.min).replace(tzinfo=ZoneInfo(self.timezone))
-                                base_message = config.get('VACATION_MESSAGE', 'The business will be closed during this period.')
+                                start_dt = datetime.datetime.combine(s_date, datetime.time.min).replace(
+                                    tzinfo=ZoneInfo(self.timezone)
+                                )
+                                end_dt = datetime.datetime.combine(e_date, datetime.time.min).replace(
+                                    tzinfo=ZoneInfo(self.timezone)
+                                )
+                                base_message = config.get(
+                                    "VACATION_MESSAGE", "The business will be closed during this period."
+                                )
                                 vacation_message = format_enhanced_vacation_message(start_dt, end_dt, base_message)
                                 return {
                                     "status": "upcoming",
                                     "message": vacation_message,
                                     "start_date": s_date.strftime("%Y-%m-%d"),
                                     "end_date": e_date.strftime("%Y-%m-%d"),
-                                    "days_until": days_until
+                                    "days_until": days_until,
                                 }
                         except Exception:
                             continue
@@ -101,7 +116,7 @@ class DateTimeService(BaseService):
                 "makkah_time": time_str,
                 "hijri_date": hijri_date_str,
                 "day_name": day_name,
-                "is_ramadan": is_ramadan
+                "is_ramadan": is_ramadan,
             }
 
             # Check for vacation information
