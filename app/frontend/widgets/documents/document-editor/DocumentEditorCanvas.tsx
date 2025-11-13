@@ -124,47 +124,6 @@ export const DocumentEditorCanvas = ({
     applyCanvasPreferences(editor);
   }, [readyStore, applyCanvasPreferences]);
 
-  // Prevent browser context menu on touch devices (long-press menu)
-  useEffect(() => {
-    const wrapper = wrapperRef.current;
-    if (!wrapper) {
-      return;
-    }
-
-    const handleContextMenu = (e: Event) => {
-      // Prevent context menu on touch devices to avoid browser's "download, share, print" menu
-      // This prevents the long-press context menu on mobile browsers
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    const handleSelectStart = (e: Event) => {
-      // Prevent text selection on touch devices
-      e.preventDefault();
-      e.stopPropagation();
-    };
-
-    // Add event listeners with capture phase to catch events before they bubble
-    // This ensures we catch events on all child elements including dynamically added TLDraw UI
-    wrapper.addEventListener("contextmenu", handleContextMenu, {
-      passive: false,
-      capture: true,
-    });
-    wrapper.addEventListener("selectstart", handleSelectStart, {
-      passive: false,
-      capture: true,
-    });
-
-    return () => {
-      wrapper.removeEventListener("contextmenu", handleContextMenu, {
-        capture: true,
-      });
-      wrapper.removeEventListener("selectstart", handleSelectStart, {
-        capture: true,
-      });
-    };
-  }, []);
-
   let content: ReactNode;
 
   if (storeState.status === "loading") {

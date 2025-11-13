@@ -119,14 +119,23 @@ export function useNewCustomerFlow(
     UseNewCustomerFlowResult["handleCompleteNewCustomer"]
   >(
     async ({ name, phone, age }) => {
+      console.log("[handleCompleteNewCustomer] Called", { name, phone, age });
+      
       if (!newCustomerDraftRef.current.active) {
+        console.log("[handleCompleteNewCustomer] Draft not active, aborting");
         return null;
       }
 
       const trimmedName = (name || "").trim();
       const digits = (phone || "").replace(/\D+/g, "");
 
+      console.log("[handleCompleteNewCustomer] Trimmed values", {
+        trimmedName,
+        digits,
+      });
+
       if (!(trimmedName && digits)) {
+        console.log("[handleCompleteNewCustomer] Missing name or phone, aborting");
         return null;
       }
 
@@ -151,12 +160,27 @@ export function useNewCustomerFlow(
       const nameColumnIndex = resolveColumnIndex("name");
       const phoneColumnIndex = resolveColumnIndex("phone");
       const provider = providerRef.current;
+      
+      console.log("[handleCompleteNewCustomer] Column indices", {
+        nameColumnIndex,
+        phoneColumnIndex,
+        hasProvider: !!provider,
+      });
+      
       const gridNameValid = isGridCellValid(provider, nameColumnIndex, 0);
       const gridPhoneValid = isGridCellValid(provider, phoneColumnIndex, 0);
 
+      console.log("[handleCompleteNewCustomer] Grid cell validation", {
+        gridNameValid,
+        gridPhoneValid,
+      });
+
       if (!(gridNameValid && gridPhoneValid)) {
+        console.error("[handleCompleteNewCustomer] ❌ Grid cells INVALID - cannot create customer");
         return null;
       }
+      
+      console.log("[handleCompleteNewCustomer] ✓ Validation passed, creating customer...");
 
       if (newCustomerDraftRef.current.pendingWaId) {
         return newCustomerDraftRef.current.pendingWaId;

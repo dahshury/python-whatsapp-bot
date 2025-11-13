@@ -9,7 +9,6 @@ import { useCallback, useMemo, useRef } from "react";
 import { DOCUMENT_QUERY_KEY } from "@/entities/document";
 import { logger } from "@/shared/libs/logger";
 import { createDocumentsService } from "../services/documents.service.factory";
-
 /**
  * Hook for ensuring a document exists for a given waId
  * Calls the service's ensureInitialized method which copies the default template
@@ -57,17 +56,12 @@ export function useEnsureInitialized(): (waId: string) => Promise<boolean> {
           }
 
           if (success && modified) {
-            // Invalidate queries to mark them as stale
-            // They will refetch automatically when components using them are mounted
             await queryClient.invalidateQueries({
               queryKey: DOCUMENT_QUERY_KEY.byWaId(waId),
             });
             await queryClient.invalidateQueries({
               queryKey: [...DOCUMENT_QUERY_KEY.byWaId(waId), "canvas"],
             });
-            logger.info(
-              `[useEnsureInitialized] Invalidated queries for ${waId} after initialization`
-            );
           }
 
           return success;

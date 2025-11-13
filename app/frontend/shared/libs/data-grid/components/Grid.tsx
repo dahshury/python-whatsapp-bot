@@ -376,6 +376,7 @@ const Grid = function GridComponent({
     }),
     ...(validationErrors !== undefined && { validationErrors }),
     ...(getBoundsForCell !== undefined && { getBoundsForCell }),
+    containerRef,
   });
 
   useGridEvents(gs.setShowSearch);

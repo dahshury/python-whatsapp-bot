@@ -90,10 +90,15 @@ export function useDocumentsSection(): UseDocumentsSectionResult {
     ((viewerCamera: Record<string, unknown>) => void) | null
   >(null);
 
+  const ensureInitializedForWaSource = useCallback(
+    async () => true,
+    []
+  );
+
   const { waId, setWaId, persistWaId, replaceWaIdInUrl } = useWaIdSource({
     defaultWaId: DEFAULT_DOCUMENT_WA_ID,
     searchParams,
-    ensureInitialized,
+    ensureInitialized: ensureInitializedForWaSource,
     initializeCameraRef,
     pendingInitialLoadWaIdRef,
     persistenceGuards,
@@ -215,8 +220,8 @@ export function useDocumentsSection(): UseDocumentsSectionResult {
       replaceWaIdInUrl,
       isLocalized,
       saveMutation,
-      ensureInitialized, // Set canvas query cache with the template document
-      queryClient.setQueryData,
+      ensureInitialized,
+      queryClient,
     ]
   );
 
@@ -260,14 +265,18 @@ export function useDocumentsSection(): UseDocumentsSectionResult {
     );
     pendingInitialLoadWaIdRef.current = nextWaId;
     initializeCameraRef.current?.({});
+
     try {
       persistWaId(null);
     } catch {
       // Ignore persistence errors
     }
+
     replaceWaIdInUrl(null);
+
     setWaId(nextWaId);
     setSaveStatus({ status: "ready" });
+
     return Promise.resolve(nextWaId);
   }, [persistenceGuards, persistWaId, replaceWaIdInUrl, setWaId]);
 

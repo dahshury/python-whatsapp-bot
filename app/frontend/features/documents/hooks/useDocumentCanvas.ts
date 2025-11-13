@@ -3,18 +3,29 @@ import { DOCUMENT_QUERY_KEY } from "@/entities/document";
 import { createDocumentsService } from "../services/documents.service.factory";
 import { normalizeDocumentSnapshot } from "../utils/documentContent";
 
+type UseDocumentCanvasOptions = {
+  enabled?: boolean;
+};
+
 /**
  * Hook for fetching document canvas data for TLDraw viewer
  * Returns snapshot and camera positions separately
  * Uses TanStack Query for caching and state management
  */
-export function useDocumentCanvas(waId: string | null | undefined) {
+export function useDocumentCanvas(
+  waId: string | null | undefined,
+  options?: UseDocumentCanvasOptions
+) {
   const documentsService = createDocumentsService();
+  const normalizedWaId = waId?.trim() ?? "";
+  const enabled =
+    Boolean(normalizedWaId) &&
+    (options?.enabled === undefined ? true : options.enabled);
 
   return useQuery({
-    queryKey: [...DOCUMENT_QUERY_KEY.byWaId(waId ?? ""), "canvas"],
+    queryKey: [...DOCUMENT_QUERY_KEY.byWaId(normalizedWaId), "canvas"],
     queryFn: async () => {
-      if (!waId || waId.trim() === "") {
+      if (!normalizedWaId) {
         return {
           snapshot: null,
           editorCamera: null,
@@ -23,10 +34,17 @@ export function useDocumentCanvas(waId: string | null | undefined) {
         };
       }
 
-      // Fetch document data - initialization is handled by useWaidSource
-      // Do NOT call ensureInitialized here to prevent double refetching
-      const response = await documentsService.getByWaId(waId);
-      const rawDocument = response?.document ?? null;
+      // Ensure the document exists (copies default template when needed)
+      const ensureResult =
+        await documentsService.ensureInitialized(normalizedWaId);
+      const ensuredDocument = ensureResult?.document ?? null;
+
+      // Prefer the document returned from ensureInitialized to avoid duplicate fetches
+      let rawDocument = ensuredDocument?.document ?? null;
+      if (!rawDocument) {
+        const response = await documentsService.getByWaId(normalizedWaId);
+        rawDocument = response?.document ?? null;
+      }
 
       // Extract snapshot and cameras separately
       const doc = rawDocument as {
@@ -46,11 +64,11 @@ export function useDocumentCanvas(waId: string | null | undefined) {
 
       return result;
     },
-    enabled: Boolean(waId && waId.trim() !== ""),
-    staleTime: 0, // Always consider data stale - refetch when switching documents
+    enabled,
+    staleTime: 0, // Always treat cached data as stale to force fresh fetches
     gcTime: 300_000, // Keep in cache for 5 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: true, // Always refetch when mounting/switching documents
+    refetchOnMount: "always",
     retry: 1,
   });
 }

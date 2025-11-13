@@ -163,15 +163,28 @@ export function useWaIdSource(
 
   useEffect(() => {
     const urlWaId = searchParams.get("waId");
+    console.log("[useWaIdSource] Initial load effect", {
+      urlWaId,
+      currentWaId: waId,
+      defaultWaId,
+      currentUrl: typeof window !== 'undefined' ? window.location.href : 'N/A',
+    });
+
     if (urlWaId && urlWaId !== defaultWaId) {
+      console.log("[useWaIdSource] Found waId in URL, skipping sessionStorage check");
       return;
     }
 
     const storedWaId = readStoredWaId();
+    console.log("[useWaIdSource] Read from sessionStorage:", storedWaId);
+    
     const nextWaId =
       storedWaId && storedWaId !== defaultWaId ? storedWaId : defaultWaId;
 
+    console.log("[useWaIdSource] Computed nextWaId:", nextWaId);
+
     if (nextWaId === waId) {
+      console.log("[useWaIdSource] nextWaId matches current waId, updating URL only");
       pendingInitialLoadWaIdRef.current = nextWaId;
       if (nextWaId && nextWaId !== defaultWaId) {
         replaceWaIdInUrl(nextWaId);
@@ -183,6 +196,7 @@ export function useWaIdSource(
 
     pendingInitialLoadWaIdRef.current = nextWaId;
     if (nextWaId && nextWaId !== defaultWaId) {
+      console.log("[useWaIdSource] Loading stored customer:", nextWaId);
       PersistenceGuardsService.scheduleIgnoreWindow(
         persistenceGuards,
         ignorePersistDelayMs
@@ -193,6 +207,7 @@ export function useWaIdSource(
       });
       replaceWaIdInUrl(nextWaId);
     } else {
+      console.log("[useWaIdSource] No stored customer, clearing URL");
       replaceWaIdInUrl(null);
     }
     setWaId(nextWaId);

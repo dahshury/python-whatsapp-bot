@@ -75,6 +75,12 @@ export function createPhoneEditInterceptor(
   } = deps;
 
   return function phoneEditInterceptor(ctx: EditInterceptorContext) {
+    console.log("[PHONE INTERCEPTOR] Started", {
+      currentWaId,
+      documentsMode,
+      cell: ctx.cell,
+    });
+
     try {
       const suppressionCounter = (
         globalThis as {
@@ -82,6 +88,7 @@ export function createPhoneEditInterceptor(
         }
       ).__docSuppressPhoneSelect;
       if (typeof suppressionCounter === "number" && suppressionCounter > 0) {
+        console.log("[PHONE INTERCEPTOR] Suppressed by counter", suppressionCounter);
         return false;
       }
     } catch {
@@ -90,6 +97,7 @@ export function createPhoneEditInterceptor(
     const [displayCol, displayRow] = ctx.cell;
     const actualRow = ctx.visibleRows?.[displayRow] ?? displayRow;
     if (actualRow === undefined) {
+      console.log("[PHONE INTERCEPTOR] No actual row found");
       return false;
     }
 
@@ -98,6 +106,7 @@ export function createPhoneEditInterceptor(
       : [];
     const columnId = getColumnId(displayColumns, displayCol);
     if (columnId !== "phone") {
+      console.log("[PHONE INTERCEPTOR] Not phone column:", columnId);
       return false;
     }
 
@@ -105,18 +114,46 @@ export function createPhoneEditInterceptor(
       data?: { kind?: string; value?: string };
     };
     if (phoneCell?.data?.kind !== "phone-cell") {
+      console.log("[PHONE INTERCEPTOR] Not phone-cell kind:", phoneCell?.data?.kind);
       return false;
     }
 
     const rawPhone = phoneCell.data?.value ?? "";
     if (!isString(rawPhone) || rawPhone.trim() === "") {
+      console.log("[PHONE INTERCEPTOR] Empty phone value");
       return false;
     }
 
+    console.log("[PHONE INTERCEPTOR] Phone entered:", rawPhone);
+
     const customer = findCustomerByPhone(rawPhone);
     if (!customer) {
+      console.log("[PHONE INTERCEPTOR] No existing customer found for phone:", rawPhone);
+      console.log("[PHONE INTERCEPTOR] This is a NEW customer - triggering unlock validation");
+      
+      // For new customers, still trigger unlock validation after a delay
+      // This allows the document to unlock once both name and phone are filled
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(
+            new CustomEvent("doc:unlock-request", {
+              detail: { waId: rawPhone },
+            })
+          );
+          console.log("[PHONE INTERCEPTOR] ✓ Dispatched doc:unlock-request for NEW customer");
+        } catch (error) {
+          console.error("[PHONE INTERCEPTOR] Failed to dispatch doc:unlock-request:", error);
+        }
+      }, 50);
+      
       return false;
     }
+
+    console.log("[PHONE INTERCEPTOR] Existing customer found:", {
+      id: customer.id,
+      name: customer.name,
+      phone: customer.phone,
+    });
 
     const dataProvider = ctx.extras?.dataProvider as
       | {
@@ -155,15 +192,37 @@ export function createPhoneEditInterceptor(
             }
           }
           if (shouldUpdate) {
+            console.log("[PHONE INTERCEPTOR] Autofilling name:", desiredName, {
+              nameCol: actualNameCol,
+              row: actualRow,
+            });
             try {
               dataProvider.setCell(
                 actualNameCol,
                 actualRow,
                 toTextCell(desiredName)
               );
-            } catch {
-              /* ignore cell update errors */
+              console.log("[PHONE INTERCEPTOR] Name cell updated successfully");
+              
+              // Force grid to refresh the name cell after programmatic update
+              try {
+                const gridApi = (
+                  window as unknown as {
+                    __docGridApi?: { updateCells?: (cells: { cell: [number, number] }[]) => void };
+                  }
+                ).__docGridApi;
+                if (gridApi?.updateCells) {
+                  gridApi.updateCells([{ cell: [actualNameCol, actualRow] }]);
+                  console.log("[PHONE INTERCEPTOR] Grid cells refreshed");
+                }
+              } catch {
+                /* ignore grid update errors */
+              }
+            } catch (error) {
+              console.error("[PHONE INTERCEPTOR] Failed to set name cell:", error);
             }
+          } else {
+            console.log("[PHONE INTERCEPTOR] Name already matches, skipping update");
           }
         }
       }
@@ -218,35 +277,32 @@ export function createPhoneEditInterceptor(
       }
     }
 
-    if (documentsMode && typeof onCustomerSelected === "function") {
-      try {
-        onCustomerSelected(waId);
-      } catch {
-        /* noop */
-      }
-      return true;
-    }
+    console.log("[PHONE INTERCEPTOR] Dispatching events for waId:", waId);
 
     if (dispatch) {
       try {
         dispatch("doc:user-select", { waId });
+        console.log("[PHONE INTERCEPTOR] ✓ Dispatched doc:user-select");
       } catch {
         /* noop */
       }
       if (documentsMode) {
         try {
           dispatch("doc:notify", { field: "phone", waId });
+          console.log("[PHONE INTERCEPTOR] ✓ Dispatched doc:notify (phone)");
         } catch {
           /* noop */
         }
         try {
           dispatch("doc:persist", { field: "phone", waId });
+          console.log("[PHONE INTERCEPTOR] ✓ Dispatched doc:persist (phone)");
         } catch {
           /* noop */
         }
         if ((customer.name ?? "").trim()) {
           try {
             dispatch("doc:persist", { field: "name", waId });
+            console.log("[PHONE INTERCEPTOR] ✓ Dispatched doc:persist (name)");
           } catch {
             /* noop */
           }
@@ -254,6 +310,33 @@ export function createPhoneEditInterceptor(
       }
     }
 
+    // Trigger unlock validation after autofilling name and phone
+    // Use setTimeout to ensure grid/provider has fully processed the cell updates
+    console.log("[PHONE INTERCEPTOR] Scheduling doc:unlock-request in 50ms");
+    setTimeout(() => {
+      try {
+        window.dispatchEvent(
+          new CustomEvent("doc:unlock-request", {
+            detail: { waId },
+          })
+        );
+        console.log("[PHONE INTERCEPTOR] ✓ Dispatched doc:unlock-request for waId:", waId);
+      } catch (error) {
+        console.error("[PHONE INTERCEPTOR] Failed to dispatch doc:unlock-request:", error);
+      }
+    }, 50);
+
+    if (documentsMode && typeof onCustomerSelected === "function") {
+      try {
+        onCustomerSelected(waId);
+        console.log("[PHONE INTERCEPTOR] ✓ Called onCustomerSelected");
+      } catch {
+        /* noop */
+      }
+      return true;
+    }
+
+    console.log("[PHONE INTERCEPTOR] Completed successfully");
     return true;
   };
 }

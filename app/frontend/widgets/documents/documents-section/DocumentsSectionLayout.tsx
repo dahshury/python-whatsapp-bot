@@ -12,6 +12,7 @@ import {
 } from "react";
 import type { Editor } from "tldraw";
 import {
+  useDefaultDocumentCopy,
   useDocumentCanvas,
   useDocumentCanvasLockState,
   useDocumentStoreStatus,
@@ -134,15 +135,26 @@ export function DocumentsSectionLayout({
     error: canvasError,
   } = useDocumentCanvas(waId);
 
-  // Derive loading state from canvas data fetching to prevent double queries
-  const loading = isCanvasLoading || isCanvasFetching;
-  const overlayLoading = loading || isSceneTransitioning;
-
   // Extract snapshot, cameras, and page ID
   const remoteSnapshot = canvasData?.snapshot ?? null;
   const editorCamera = canvasData?.editorCamera ?? null;
   const viewerCamera = canvasData?.viewerCamera ?? null;
   const editorPageId = canvasData?.editorPageId ?? null;
+
+  const baseCanvasLoading = isCanvasLoading;
+
+  // Auto-copy default document for new customers
+  const { isCopying } = useDefaultDocumentCopy({
+    waId,
+    snapshot: remoteSnapshot,
+    isLoading: baseCanvasLoading,
+    isError: isCanvasError,
+  });
+
+  // Derive loading state from canvas data fetching and template copying
+  // Keep canvas in loading state while copying to prevent empty canvas flash
+  const loading = baseCanvasLoading || isCopying;
+  const overlayLoading = loading || isSceneTransitioning || isCanvasFetching;
 
   const snapshotKey = useMemo(() => {
     if (!remoteSnapshot) {

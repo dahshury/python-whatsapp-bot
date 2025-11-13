@@ -1,6 +1,9 @@
+import type { DocumentDto } from "@/entities/document";
+
 export type EnsureInitializedResult = {
   success: boolean;
   modified: boolean;
+  document?: DocumentDto | null;
 };
 
 export type DocumentsUseCase = {

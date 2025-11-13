@@ -238,29 +238,13 @@ export function useGridTooltips(options: UseGridTooltipsOptions) {
               bw = args.bounds.width;
             }
             if (bx !== undefined && by !== undefined && tooltipContent) {
-              const containerRect =
-                containerRef?.current?.getBoundingClientRect();
-
-              let viewportX = bx;
-              let viewportY = by;
-
-              if (containerRect) {
-                const withinContainerViewport =
-                  viewportX >= containerRect.left - 1 &&
-                  viewportX <= containerRect.right + 1 &&
-                  viewportY >= containerRect.top - 1 &&
-                  viewportY <= containerRect.bottom + 1;
-
-                if (!withinContainerViewport) {
-                  viewportX = containerRect.left + viewportX;
-                  viewportY = containerRect.top + viewportY;
-                }
-              }
-
+              // getBoundsForCell returns viewport coordinates (from getBoundingClientRect)
+              // CSS transform handles centering (-50%) and vertical offset (calc(-100% - 8px))
+              // So we position at the center-top of the cell
               setTooltip({
                 content: tooltipContent,
-                left: viewportX + (bw ?? 0) / 2,
-                top: viewportY,
+                left: bx + (bw ?? 0) / 2, // Center horizontally
+                top: by, // Top of cell (CSS will move it up)
                 ...(fieldLabel && { fieldLabel }),
                 ...(message && { message }),
                 ...(bw && { width: bw }),

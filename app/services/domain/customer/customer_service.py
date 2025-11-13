@@ -131,7 +131,7 @@ class CustomerService(BaseService):
             # Only broadcast notifications if not called from undo/frontend
             # (undo and frontend operations show their own notifications)
             should_broadcast = _call_source not in ("undo", "frontend")
-            
+
             try:
                 if should_broadcast:
                     for reservation in targeted_reservations:
