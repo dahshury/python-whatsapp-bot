@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { customerKeys } from "@/shared/api/query-keys";
 import { createDocumentsService } from "../services/documents.service.factory";
 
 type CustomerGridData = {
@@ -14,8 +15,8 @@ type CustomerGridData = {
 export function useCustomerGridData(waId: string | null | undefined) {
   const documentsService = createDocumentsService();
 
-  return useQuery({
-    queryKey: ["customer-grid-data", waId],
+  return useQuery<CustomerGridData>({
+    queryKey: customerKeys.gridData(waId ?? ""),
     queryFn: async (): Promise<CustomerGridData> => {
       if (!waId || waId.trim() === "") {
         return { name: "", age: null };

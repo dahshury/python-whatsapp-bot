@@ -8,6 +8,11 @@ import {
 } from "@/features/calendar/lib/constants";
 import { updateCustomerNamesCache } from "@/features/customers/hooks/utils/customer-names-cache";
 import { reserveTimeSlot } from "@/shared/api";
+import { calendarKeys, customerKeys } from "@/shared/api/query-keys";
+import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
 
@@ -26,9 +31,15 @@ export function useCreateReservation() {
   return useMutation({
     mutationFn: async (params: CreateReservationParams) => {
       const slotTime = params.time;
+      const normalizedTitle =
+        typeof params.title === "string" ? params.title.trim() : "";
+      const requestTitle =
+        normalizedTitle && !isSameAsWaId(normalizedTitle, params.waId)
+          ? normalizedTitle
+          : getUnknownCustomerLabel(params.isLocalized);
       const response = (await reserveTimeSlot({
         id: params.waId,
-        title: params.title || params.waId,
+        title: requestTitle,
         date: params.date,
         time: slotTime,
         type: params.type ?? 0,
@@ -59,7 +70,7 @@ export function useCreateReservation() {
       });
 
       const previousData = queryClient.getQueriesData({
-        queryKey: ["calendar-reservations"],
+        queryKey: calendarKeys.reservations(),
       });
 
       // Mark as local operation to suppress WebSocket echo
@@ -76,18 +87,28 @@ export function useCreateReservation() {
 
       // Optimistically add temporary reservation with negative ID
       const tempId = -Date.now();
+      const normalizedTitle =
+        typeof params.title === "string" && params.title.trim().length > 0
+          ? params.title.trim()
+          : "";
       const tempReservation: Reservation = {
         id: tempId,
         customer_id: params.waId,
         date: params.date,
         time_slot: params.time,
-        customer_name: params.title || params.waId,
+        customer_name:
+          normalizedTitle && !isSameAsWaId(normalizedTitle, params.waId)
+            ? normalizedTitle
+            : getUnknownCustomerLabel(params.isLocalized),
         type: params.type ?? 0,
         cancelled: false,
       };
 
+      // NOTE: setQueriesData is correct here because we're updating MULTIPLE queries
+      // Calendar has many queries like calendarKeys.reservationsByPeriod(period, freeRoam)
+      // We need to update all of them that might contain this reservation
       queryClient.setQueriesData(
-        { queryKey: ["calendar-reservations"] },
+        { queryKey: calendarKeys.reservations() },
         (old: Record<string, Reservation[]> | undefined) => {
           if (!old) {
             return { [params.waId]: [tempReservation] };
@@ -118,39 +139,15 @@ export function useCreateReservation() {
       return { previousData, tempId };
     },
 
-    onSuccess: (response, params, context) => {
-      // Replace temp reservation with real one from backend
-      const realId = response.data?.reservation_id || response.id;
-      if (realId && context?.tempId) {
-        queryClient.setQueriesData(
-          { queryKey: ["calendar-reservations"] },
-          (old: Record<string, Reservation[]> | undefined) => {
-            if (!old) {
-              return old;
-            }
-
-            const updated = { ...old };
-            const updatedReservations = updated[params.waId];
-            if (updatedReservations) {
-              updated[params.waId] = updatedReservations.map((r) =>
-                r.id === context.tempId
-                  ? {
-                      ...r,
-                      id: typeof realId === "number" ? realId : Number(realId),
-                      ...(response.data as Partial<Reservation>),
-                    }
-                  : r
-              );
-            }
-
-            return updated;
-          }
-        );
-      }
-
+    onSuccess: (_response, params) => {
       // Update customer names cache if name provided
-      if (params.title) {
-        updateCustomerNamesCache(queryClient, params.waId, params.title);
+      const normalizedTitle =
+        typeof params.title === "string" ? params.title.trim() : "";
+      const shouldPersistName =
+        normalizedTitle && !isSameAsWaId(normalizedTitle, params.waId);
+
+      if (shouldPersistName) {
+        updateCustomerNamesCache(queryClient, params.waId, normalizedTitle);
       }
     },
 
@@ -172,6 +169,18 @@ export function useCreateReservation() {
         errorMessage,
         TOAST_TIMEOUT_MS
       );
+    },
+
+    onSettled: () => {
+      // Always refetch to ensure cache consistency
+      // Invalidate all calendar-reservations queries to trigger refetch
+      queryClient.invalidateQueries({
+        queryKey: calendarKeys.reservations(),
+      });
+      // Also invalidate customer names to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: customerKeys.names(),
+      });
     },
   });
 }

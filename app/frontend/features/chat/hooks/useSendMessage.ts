@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { chatKeys } from "@/shared/api/query-keys";
 import type { ChatUseCase } from "../usecase/chat.usecase";
 
 export const createUseSendMessage =
@@ -10,7 +11,7 @@ export const createUseSendMessage =
         chat.sendMessage(conversationId, content),
       onSuccess: async () => {
         await queryClient.invalidateQueries({
-          queryKey: ["chat", conversationId],
+          queryKey: chatKeys.conversation(conversationId),
         });
       },
     });

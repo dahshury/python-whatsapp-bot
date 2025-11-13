@@ -1,8 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-
 import type { Reservation } from "@/entities/event";
+import { customerKeys } from "@/shared/api/query-keys";
 import { callPythonBackend } from "@/shared/libs/backend";
 
 type CustomerStatsApiReservation = {
@@ -53,10 +53,6 @@ type UseCustomerStatsOptions = {
   initialData?: CustomerStats;
   placeholderData?: CustomerStats;
 };
-
-function buildQueryKey(waId: string | null) {
-  return ["customer-stats", waId];
-}
 
 function mapReservation(
   waId: string,
@@ -120,7 +116,7 @@ export function useCustomerStats(
   const enabled = Boolean(waId) && (options?.enabled ?? true);
 
   return useQuery<CustomerStats, Error>({
-    queryKey: buildQueryKey(waId),
+    queryKey: customerKeys.stats(waId ?? ""),
     queryFn: async () =>
       mapApiResponse(
         await callPythonBackend<CustomerStatsApiResponse>(
@@ -132,6 +128,9 @@ export function useCustomerStats(
     gcTime: 300_000,
     retry: 1,
     refetchOnWindowFocus: false,
+    // ✅ BEST PRACTICE: Using both initialData and placeholderData appropriately
+    // initialData: Data treated as fresh, won't refetch
+    // placeholderData: Data shown while fetching, will refetch
     ...(options?.initialData ? { initialData: options.initialData } : {}),
     ...(options?.placeholderData
       ? { placeholderData: options.placeholderData }

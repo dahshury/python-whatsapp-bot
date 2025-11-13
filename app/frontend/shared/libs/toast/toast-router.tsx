@@ -6,6 +6,10 @@ import { useCallback, useEffect } from "react";
 import { Toaster } from "sonner";
 import { useCustomerNames } from "@/features/chat/hooks/useCustomerNames";
 import { useUndoReservation } from "@/features/reservations/hooks/useUndoReservation";
+import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
 import { notificationManager } from "@/shared/libs/toast/notification-manager";
 import { toastService } from "./toast-service";
 
@@ -221,8 +225,11 @@ export const ToastRouter: FC = () => {
             waId,
             (data as { customer_name?: string })?.customer_name
           );
-          const who = name || waId;
-          const title = `${messageLabel} • ${who}`;
+          const safeName =
+            name && !isSameAsWaId(name, waId)
+              ? name
+              : getUnknownCustomerLabel(isLocalized);
+          const title = `${messageLabel} • ${safeName}`;
           const maybeDate = (data as { date?: string }).date;
           const maybeTime = (data as { time?: string }).time;
           const maybeMessage = (data as { message?: string }).message;
@@ -233,7 +240,9 @@ export const ToastRouter: FC = () => {
               MAX_MESSAGE_DESCRIPTION_LENGTH
             ),
             wa_id: waId,
-            ...(name ? { customerName: name } : {}),
+            ...(name && !isSameAsWaId(name, waId)
+              ? { customerName: name }
+              : {}),
             ...(typeof maybeDate === "string" ? { date: maybeDate } : {}),
             ...(typeof maybeTime === "string" ? { time: maybeTime } : {}),
             ...(typeof maybeMessage === "string"

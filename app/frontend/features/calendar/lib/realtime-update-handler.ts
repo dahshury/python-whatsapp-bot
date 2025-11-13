@@ -1,3 +1,4 @@
+import { resolveCustomerDisplayName } from "@shared/libs/customer-name";
 import { to24h } from "@shared/libs/utils";
 import { computeSlotBase } from "./compute-slot-base";
 import { reflowSlot } from "./reflow-slot";
@@ -69,6 +70,20 @@ export function createRealtimeHandler(
       if (type === "reservation_created") {
         const existing = api.getEventById?.(String(reservationData.id));
         if (!existing) {
+          const resolvedWaId = String(
+            reservationData.wa_id ||
+              reservationData.waId ||
+              reservationData.id ||
+              ""
+          );
+          const displayName = resolveCustomerDisplayName({
+            waId: resolvedWaId,
+            candidates: [
+              (reservationData as { customer_name?: unknown }).customer_name,
+              reservationData.wa_id,
+              reservationData.waId,
+            ],
+          });
           const baseTime = to24h(
             String(reservationData.time_slot || DEFAULT_TIME_SLOT)
           ).slice(0, TIME_SLOT_PREFIX_LENGTH);
@@ -76,9 +91,7 @@ export function createRealtimeHandler(
           const startDate = new Date(start);
           api.addEvent?.({
             id: String(reservationData.id),
-            title: String(
-              reservationData?.customer_name || reservationData?.wa_id || ""
-            ),
+            title: displayName,
             start,
             end: new Date(
               startDate.getTime() +
@@ -92,6 +105,7 @@ export function createRealtimeHandler(
               reservationId: String(reservationData.id),
               slotDate: reservationData.date,
               slotTime: baseTime,
+              customerName: displayName,
             },
           });
         }
@@ -121,14 +135,25 @@ export function createRealtimeHandler(
           String(reservationData.time_slot || DEFAULT_TIME_SLOT)
         ).slice(0, TIME_SLOT_PREFIX_LENGTH);
         const start = `${reservationData.date}T${startBase}:00`;
+        const resolvedWaId = String(
+          reservationData.wa_id ||
+            reservationData.waId ||
+            reservationData.id ||
+            ""
+        );
+        const displayName = resolveCustomerDisplayName({
+          waId: resolvedWaId,
+          candidates: [
+            (reservationData as { customer_name?: unknown }).customer_name,
+            reservationData.wa_id,
+            reservationData.waId,
+            (evObj?.extendedProps as { customerName?: unknown } | undefined)
+              ?.customerName,
+          ],
+        });
         if (evObj) {
           try {
-            evObj.setProp?.(
-              "title",
-              String(
-                reservationData?.customer_name || reservationData?.wa_id || ""
-              )
-            );
+            evObj.setProp?.("title", displayName);
           } catch {
             /* noop */
           }
@@ -173,6 +198,11 @@ export function createRealtimeHandler(
             /* noop */
           }
           try {
+            evObj.setExtendedProp?.("customerName", displayName);
+          } catch {
+            /* noop */
+          }
+          try {
             const startDate = new Date(start);
             const endDate = new Date(
               startDate.getTime() +
@@ -206,9 +236,7 @@ export function createRealtimeHandler(
         } else {
           api.addEvent?.({
             id: String(reservationData.id),
-            title: String(
-              reservationData?.customer_name || reservationData?.wa_id || ""
-            ),
+            title: displayName,
             start,
             end: new Date(
               new Date(start).getTime() +
@@ -222,6 +250,7 @@ export function createRealtimeHandler(
               reservationId: String(reservationData.id),
               slotDate: reservationData.date,
               slotTime: startBase,
+              customerName: displayName,
             },
           });
         }

@@ -7,6 +7,7 @@ import {
   SLOT_PREFIX_LEN,
   TOAST_TIMEOUT_MS,
 } from "@/features/calendar/lib/constants";
+import { calendarKeys } from "@/shared/api/query-keys";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
 import { ReservationsWsService } from "../services/reservations.ws.service";
@@ -71,7 +72,7 @@ export function useCancelReservation() {
       });
 
       const previousData = queryClient.getQueriesData({
-        queryKey: ["calendar-reservations"],
+        queryKey: calendarKeys.reservations(),
       });
 
       // Mark as local operation to suppress WebSocket echo
@@ -89,9 +90,11 @@ export function useCancelReservation() {
 
       const targetTime = normalizeTime(params.time);
 
-      // Optimistically update cache
+      // NOTE: setQueriesData is correct here because we're updating MULTIPLE queries
+      // Calendar has many queries like calendarKeys.reservationsByPeriod(period, freeRoam)
+      // We need to update all of them that might contain this reservation
       queryClient.setQueriesData(
-        { queryKey: ["calendar-reservations"] },
+        { queryKey: calendarKeys.reservations() },
         (old: Record<string, Reservation[]> | undefined) => {
           if (!old) {
             return old;
@@ -175,6 +178,14 @@ export function useCancelReservation() {
         errorMessage,
         TOAST_TIMEOUT_MS
       );
+    },
+
+    onSettled: () => {
+      // Always refetch to ensure cache consistency
+      // Invalidate all calendar-reservations queries to trigger refetch
+      queryClient.invalidateQueries({
+        queryKey: calendarKeys.reservations(),
+      });
     },
   });
 }

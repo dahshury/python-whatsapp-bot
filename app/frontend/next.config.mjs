@@ -46,7 +46,7 @@ const nextConfig = {
   }),
 
   // Rewrite theme CSS requests to remove .css extension for route matching
-  async rewrites() {
+  rewrites() {
     return [
       {
         source: "/themes/:theme.css",
@@ -59,7 +59,7 @@ const nextConfig = {
   headers() {
     return [
       {
-        source: "/(.*)",
+        source: "/:path*",
         headers: [
           {
             key: "X-Content-Type-Options",

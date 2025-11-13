@@ -1,7 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { customerKeys } from "@/shared/api/query-keys";
 import { callPythonBackend } from "@/shared/libs/backend";
+import { useBackendReconnectRefetch } from "@/shared/libs/hooks/useBackendReconnectRefetch";
 
 type CustomerName = {
   wa_id: string;
@@ -19,8 +21,8 @@ type CustomerNamesResponse = {
  * Uses TanStack Query for caching and state management.
  */
 export function useCustomerNames() {
-  return useQuery({
-    queryKey: ["customer-names"],
+  const query = useQuery<Record<string, CustomerName>>({
+    queryKey: customerKeys.names(),
     queryFn: async (): Promise<Record<string, CustomerName>> => {
       const response =
         await callPythonBackend<CustomerNamesResponse>("/customers/names");
@@ -37,4 +39,8 @@ export function useCustomerNames() {
     refetchOnMount: true,
     retry: 1,
   });
+  useBackendReconnectRefetch(query.refetch, {
+    enabled: !query.isFetching,
+  });
+  return query;
 }

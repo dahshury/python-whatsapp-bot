@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import { customerKeys } from "@/shared/api/query-keys";
 
 type CustomerName = {
   wa_id: string;
@@ -15,7 +16,7 @@ export const updateCustomerNamesCache = (
   customerName: string | null
 ): void => {
   queryClient.setQueryData<Record<string, CustomerName>>(
-    ["customer-names"],
+    customerKeys.names(),
     (old) => {
       if (!old) {
         return old;
@@ -39,7 +40,7 @@ export const updateCustomerNamesCache = (
 
   // Also update customer grid data cache if it exists
   queryClient.setQueryData<{ name: string; age: number | null }>(
-    ["customer-grid-data", waId],
+    customerKeys.gridData(waId),
     (old) => {
       if (!old) {
         return old;

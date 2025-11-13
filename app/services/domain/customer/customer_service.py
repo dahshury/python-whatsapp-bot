@@ -38,6 +38,7 @@ class CustomerService(BaseService):
         ar: bool = False,
         customer_name: str | None = None,
         reservation_id: int | None = None,
+        _call_source: str = "assistant",
     ) -> dict[str, Any]:
         """
         Modify customer's WhatsApp ID across all related data.
@@ -46,18 +47,22 @@ class CustomerService(BaseService):
             old_wa_id: Current WhatsApp ID
             new_wa_id: New WhatsApp ID
             ar: Whether to return Arabic messages
+            customer_name: Optional customer name to set
+            reservation_id: Optional specific reservation ID to target
+            _call_source: Source of the call (assistant, frontend, undo) - affects notification behavior
 
         Returns:
             Success/failure response with appropriate message
         """
         try:
             logger.info(
-                "modify_customer_wa_id request old=%s new=%s reservation_id=%s customer_name=%s ar=%s",
+                "modify_customer_wa_id request old=%s new=%s reservation_id=%s customer_name=%s ar=%s _call_source=%s",
                 old_wa_id,
                 new_wa_id,
                 reservation_id,
                 customer_name,
                 ar,
+                _call_source,
             )
             from ..shared.wa_id import normalize_wa_id
 
@@ -123,49 +128,59 @@ class CustomerService(BaseService):
             if reservation_id is not None and not targeted_reservations:
                 targeted_reservations = previous_reservations
 
+            # Only broadcast notifications if not called from undo/frontend
+            # (undo and frontend operations show their own notifications)
+            should_broadcast = _call_source not in ("undo", "frontend")
+            
             try:
-                for reservation in targeted_reservations:
-                    try:
-                        logger.info(
-                            "modify_customer_wa_id broadcasting reservation_updated reservation=%s new=%s final_name=%s",
-                            reservation,
-                            normalized_new,
-                            final_name,
-                        )
-                        enqueue_broadcast(
-                            "reservation_updated",
-                            {
-                                "id": reservation.get("id"),
-                                "wa_id": normalized_new,
-                                "date": reservation.get("date"),
-                                "time_slot": reservation.get("time_slot"),
-                                "type": reservation.get("type"),
-                                "customer_name": final_name,
-                                "original_data": {
-                                    "wa_id": normalized_old,
+                if should_broadcast:
+                    for reservation in targeted_reservations:
+                        try:
+                            logger.info(
+                                "modify_customer_wa_id broadcasting reservation_updated reservation=%s new=%s final_name=%s",
+                                reservation,
+                                normalized_new,
+                                final_name,
+                            )
+                            enqueue_broadcast(
+                                "reservation_updated",
+                                {
+                                    "id": reservation.get("id"),
+                                    "wa_id": normalized_new,
                                     "date": reservation.get("date"),
                                     "time_slot": reservation.get("time_slot"),
                                     "type": reservation.get("type"),
-                                    "customer_name": reservation.get("customer_name"),
+                                    "customer_name": final_name,
+                                    "original_data": {
+                                        "wa_id": normalized_old,
+                                        "date": reservation.get("date"),
+                                        "time_slot": reservation.get("time_slot"),
+                                        "type": reservation.get("type"),
+                                        "customer_name": reservation.get("customer_name"),
+                                    },
+                                    "_source": "modify_id",
                                 },
-                                "_source": "modify_id",
-                            },
-                            affected_entities=[normalized_new],
-                            source="modify_id",
-                        )
-                    except Exception:
-                        continue
+                                affected_entities=[normalized_new],
+                                source="modify_id",
+                            )
+                        except Exception:
+                            continue
 
-                enqueue_broadcast(
-                    "customer_updated",
-                    {
-                        "wa_id": normalized_new,
-                        "phone": normalized_new,
-                        "customer_name": final_name,
-                        "_source": "backend",
-                    },
-                    affected_entities=[normalized_new],
-                )
+                    enqueue_broadcast(
+                        "customer_updated",
+                        {
+                            "wa_id": normalized_new,
+                            "phone": normalized_new,
+                            "customer_name": final_name,
+                            "_source": "backend",
+                        },
+                        affected_entities=[normalized_new],
+                    )
+                else:
+                    logger.info(
+                        "modify_customer_wa_id skipping broadcast due to _call_source=%s",
+                        _call_source,
+                    )
             except Exception:
                 pass
 

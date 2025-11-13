@@ -58,9 +58,12 @@ class AssistantFunctionService:
         ar: bool = False,
         customer_name: str | None = None,
         reservation_id: int | None = None,
+        _call_source: str = "assistant",
     ) -> dict[str, Any]:
         """Modify customer WhatsApp ID."""
-        return self.customer_service.modify_customer_wa_id(old_wa_id, new_wa_id, ar, customer_name, reservation_id)
+        return self.customer_service.modify_customer_wa_id(
+            old_wa_id, new_wa_id, ar, customer_name, reservation_id, _call_source
+        )
 
     # Notification operations
 
@@ -213,6 +216,7 @@ def modify_id(
     ar: bool = False,
     customer_name: str | None = None,
     reservation_id: int | None = None,
+    _call_source: str = "assistant",
 ) -> dict[str, Any]:
     """
     Modify the WhatsApp ID (wa_id) for a customer in all related database tables.
@@ -221,11 +225,14 @@ def modify_id(
         old_wa_id (str): The current WhatsApp ID to be replaced
         new_wa_id (str): The new WhatsApp ID to replace with
         ar (bool, optional): If True, returns error messages in Arabic
+        customer_name (str, optional): New customer name to set
+        reservation_id (int, optional): Specific reservation ID to target
+        _call_source (str): Source of the call (assistant, frontend, undo) - affects notification behavior
 
     Returns:
         dict: Result of the modification operation with success status and message
     """
-    return _service.modify_id(old_wa_id, new_wa_id, ar, customer_name, reservation_id)
+    return _service.modify_id(old_wa_id, new_wa_id, ar, customer_name, reservation_id, _call_source)
 
 
 def modify_reservation(

@@ -11,6 +11,10 @@ import type {
   SuccessfulOperation,
 } from "@/entities/event";
 import { reserveTimeSlot } from "@/shared/api";
+import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import type { FormattingService } from "@/shared/libs/utils/formatting.service";
 import type { LocalEchoManager } from "@/shared/libs/utils/local-echo.manager";
@@ -52,6 +56,10 @@ export class ReservationCreateService {
           creationData.dStr,
           creationData.tStr
         );
+        const displayName = this.resolveDisplayName(
+          creationData.name,
+          creationData.waId
+        );
 
         this.markLocalEchoForCreationPreApi({
           ...creationData,
@@ -60,7 +68,7 @@ export class ReservationCreateService {
 
         const resp = (await reserveTimeSlot({
           id: creationData.waId,
-          title: creationData.name || creationData.waId,
+          title: displayName,
           date: creationData.dStr,
           time: slotTime,
           type: Number(creationData.type),
@@ -132,9 +140,17 @@ export class ReservationCreateService {
     }
 
     const type = this.formattingService.parseType(row.type, this.isLocalized);
-    const name = (row.name || "").toString();
+    const name = (row.name || "").toString().trim();
 
     return { dStr, tStr, waId, type, name };
+  }
+
+  private resolveDisplayName(name: string, waId: string): string {
+    const trimmed = name.trim();
+    if (trimmed && !isSameAsWaId(trimmed, waId)) {
+      return trimmed;
+    }
+    return getUnknownCustomerLabel(this.isLocalized);
   }
 
   private validateCreationData(
@@ -168,6 +184,7 @@ export class ReservationCreateService {
     resp: ApiResponse,
     data: ReturnType<typeof this.prepareCreationData>
   ): string {
+    const displayName = this.resolveDisplayName(data.name, data.waId);
     const rawReason =
       (typeof resp?.message === "string" && resp.message) ||
       (typeof (resp as unknown as { error?: string })?.error === "string" &&
@@ -179,7 +196,7 @@ export class ReservationCreateService {
     const reason = this.localizeReason(rawReason);
     return [
       i18n.getMessage("create_failed_verbose", this.isLocalized),
-      `${data.name || data.waId} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
+      `${displayName} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
       reason
         ? `${i18n.getMessage("reason_label", this.isLocalized)}: ${reason}`
         : "",
@@ -225,9 +242,10 @@ export class ReservationCreateService {
   ): void {
     const base = i18n.getMessage("create_failed", this.isLocalized);
     const msg = this.localizeReason(error?.message || String(error) || "");
+    const displayName = this.resolveDisplayName(data.name, data.waId);
     const desc = [
       i18n.getMessage("request_label", this.isLocalized),
-      `${data.name || data.waId} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
+      `${displayName} • ${data.dStr} ${data.tStr} • type ${Number(data.type)}`,
       msg && `${i18n.getMessage("reason_label", this.isLocalized)}: ${msg}`,
     ]
       .filter(Boolean)

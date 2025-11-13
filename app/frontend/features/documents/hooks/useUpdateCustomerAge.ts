@@ -3,6 +3,7 @@ import { toastService } from "@shared/libs/toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { TOAST_TIMEOUT_MS } from "@/features/calendar/lib/constants";
 import { saveCustomerDocument } from "@/shared/api/endpoints.api";
+import { customerKeys, documentKeys } from "@/shared/api/query-keys";
 import { updateCustomerCaches } from "../utils/updateCustomerCaches";
 
 export type UpdateCustomerAgeParams = {
@@ -71,6 +72,16 @@ export function useUpdateCustomerAge() {
         errorMessage,
         TOAST_TIMEOUT_MS
       );
+    },
+
+    onSettled: (_data, _error, params) => {
+      // Always refetch to ensure cache consistency
+      queryClient.invalidateQueries({
+        queryKey: documentKeys.byWaId(params.waId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: customerKeys.gridData(params.waId),
+      });
     },
   });
 }

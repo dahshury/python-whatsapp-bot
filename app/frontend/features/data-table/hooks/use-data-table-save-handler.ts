@@ -14,6 +14,10 @@ import {
   useMutateReservation,
 } from "@/features/reservations/hooks";
 import { extractCancellationData } from "@/features/reservations/utils/extract-cancellation-data";
+import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
 import type { IColumnDefinition } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
 import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
 import type { BaseColumnProps } from "@/shared/libs/data-grid/components/core/types";
@@ -90,20 +94,36 @@ export function useDataTableSaveHandler({
       nextCustomerName?: string | null,
       reservationId?: number | null
     ) => {
+      // Try to get customer name from multiple sources
+      const customerNamesCache = queryClient.getQueryData<
+        Record<string, { wa_id: string; customer_name: string | null }>
+      >(["customer-names"]);
+
       const payloadCustomerName =
         nextCustomerName ??
-        queryClient.getQueryData<
-          Record<string, { wa_id: string; customer_name: string | null }>
-        >(["customer-names"])?.[oldWaId]?.customer_name ??
+        customerNamesCache?.[oldWaId]?.customer_name ??
+        customerNamesCache?.[newWaId]?.customer_name ?? // Fallback in case oldWaId was already changed
         null;
+
       reservationDebugLog("modifyCustomerWaId:start", {
         oldWaId,
         newWaId,
         payloadCustomerName,
         nextCustomerName,
         reservationId,
-        fallbackSource:
-          nextCustomerName !== undefined ? "event" : "customer-names-cache",
+        fallbackSource: (() => {
+          if (nextCustomerName !== undefined) {
+            return "event";
+          }
+          if (customerNamesCache?.[oldWaId]) {
+            return "customer-names-cache[oldWaId]";
+          }
+          if (customerNamesCache?.[newWaId]) {
+            return "customer-names-cache[newWaId]";
+          }
+          return "null";
+        })(),
+        cacheKeys: Object.keys(customerNamesCache ?? {}),
       });
 
       const response = await fetch("/api/modify-id", {
@@ -137,6 +157,13 @@ export function useDataTableSaveHandler({
           oldWaId,
           newWaId,
           errorMessage,
+          requestBody: {
+            old_id: oldWaId,
+            new_id: newWaId,
+            customer_name: payloadCustomerName,
+            reservation_id: reservationId ?? null,
+          },
+          response: result,
         });
         throw new Error(errorMessage);
       }
@@ -150,47 +177,10 @@ export function useDataTableSaveHandler({
         payloadCustomerName,
       });
 
-      // Update customer names cache (rekey)
-      queryClient.setQueryData<
-        | Record<string, { wa_id: string; customer_name: string | null }>
-        | undefined
-      >(["customer-names"], (old) => {
-        reservationDebugLog("modifyCustomerWaId:customerNamesCacheBefore", {
-          oldSize: old ? Object.keys(old).length : 0,
-          hasOldWaId: old ? Object.hasOwn(old, oldWaId) : false,
-          hasNewWaId: old ? Object.hasOwn(old, newWaId) : false,
-        });
-        if (!old) {
-          return old;
-        }
-        const updated = { ...old };
-        const entry = updated[oldWaId];
-        if (entry) {
-          delete updated[oldWaId];
-          updated[newWaId] = {
-            ...entry,
-            wa_id: newWaId,
-            // Only update customer_name if we have a non-null value, otherwise keep existing
-            customer_name:
-              resolvedCustomerName !== null &&
-              resolvedCustomerName !== undefined
-                ? resolvedCustomerName
-                : (entry.customer_name ?? null),
-          };
-        } else {
-          // No existing entry, create new one with resolved name (even if null)
-          updated[newWaId] = {
-            wa_id: newWaId,
-            customer_name: resolvedCustomerName ?? null,
-          };
-        }
-        reservationDebugLog("modifyCustomerWaId:customerNamesCacheAfter", {
-          newSize: Object.keys(updated).length,
-          hasOldWaId: Object.hasOwn(updated, oldWaId),
-          hasNewWaId: Object.hasOwn(updated, newWaId),
-          newEntry: updated[newWaId],
-        });
-        return updated;
+      // Invalidate customer names cache to force fresh fetch from backend
+      // This ensures that on page refresh, we get the most up-to-date data
+      await queryClient.invalidateQueries({
+        queryKey: ["customer-names"],
       });
       reservationDebugLog("modifyCustomerWaId:customerNamesCacheVerify", {
         cacheAfterSet: queryClient.getQueryData<Record<string, unknown>>([
@@ -660,13 +650,17 @@ export function useDataTableSaveHandler({
 
       const slotTime = formattingService.normalizeToSlotBase(dStr, tStr);
       const type = formattingService.parseType(row.type, isLocalized);
-      const name = (row.name || "").toString();
+      const name = (row.name || "").toString().trim();
+      const displayTitle =
+        name && !isSameAsWaId(name, waId)
+          ? name
+          : getUnknownCustomerLabel(isLocalized);
 
       return {
         waId,
         date: dStr,
         time: slotTime,
-        title: name || waId,
+        title: displayTitle,
         type,
         isLocalized,
       };
@@ -841,8 +835,25 @@ export function useDataTableSaveHandler({
                 ...(payload.event.extendedProps || {}),
               },
             };
-            const mergedWaIdChange =
-              payload.waIdChange ?? existing.waIdChange ?? null;
+
+            // Chain phone number changes: if we have A→B and then B→C, result should be A→C
+            const mergedWaIdChange = (() => {
+              const existingChange = existing.waIdChange;
+              const newChange = payload.waIdChange;
+
+              if (!newChange) {
+                return existingChange ?? null;
+              }
+              if (!existingChange) {
+                return newChange;
+              }
+
+              // Chain the changes: use the original oldWaId and the latest newWaId
+              return {
+                oldWaId: existingChange.oldWaId,
+                newWaId: newChange.newWaId,
+              };
+            })();
 
             modificationMap.set(key, {
               mutation: mergedMutation,
@@ -895,6 +906,30 @@ export function useDataTableSaveHandler({
                   null,
                 contextReservationId
               );
+
+              // Update gridRowToEventMap with new phone number so subsequent edits use correct waId
+              for (const [rowIdx, event] of gridRowToEventMap.entries()) {
+                const eventWaId =
+                  event.extendedProps?.waId || event.extendedProps?.phone;
+                if (eventWaId === oldWaId) {
+                  const updatedEvent = {
+                    ...event,
+                    extendedProps: {
+                      ...(event.extendedProps || {}),
+                      waId: info.newWaId,
+                      wa_id: info.newWaId,
+                      phone: info.newWaId,
+                    },
+                  };
+                  gridRowToEventMap.set(rowIdx, updatedEvent);
+                  reservationDebugLog("updateGridRowEventMap", {
+                    rowIdx,
+                    oldWaId,
+                    newWaId: info.newWaId,
+                    eventId: event.id,
+                  });
+                }
+              }
             } catch (error) {
               const message =
                 error instanceof Error ? error.message : String(error);

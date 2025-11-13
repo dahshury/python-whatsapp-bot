@@ -14,6 +14,8 @@ import {
   getReservationEventProcessor,
   type ReservationProcessingOptions,
 } from "@/features/reservations";
+import { calendarKeys } from "@/shared/api/query-keys";
+import { isPlaceholderName, isSameAsWaId } from "@/shared/libs/customer-name";
 import { SLOT_PREFIX_LEN } from "../lib/constants";
 import {
   type CalendarConversationEvent,
@@ -293,10 +295,10 @@ export function useCalendarEvents(
     for (const periodKey of Array.from(currentPeriods)) {
       const reservations = queryClient.getQueryData<
         Record<string, Reservation[]>
-      >(["calendar-reservations", periodKey, freeRoam]);
+      >(calendarKeys.reservationsByPeriod(periodKey, freeRoam));
       const conversations = queryClient.getQueryData<
         Record<string, CalendarConversationEvent[]>
-      >(["calendar-conversation-events", periodKey, freeRoam]);
+      >(calendarKeys.conversationsByPeriod(periodKey, freeRoam));
 
       if (reservations) {
         cachedReservationsByPeriod.current.set(periodKey, reservations);
@@ -391,6 +393,28 @@ export function useCalendarEvents(
     () => customerNamesData || {},
     [customerNamesData]
   );
+  const sanitizedCustomerNames = useMemo(() => {
+    const sanitized: Record<
+      string,
+      { wa_id: string; customer_name?: string | null }
+    > = {};
+    for (const [waId, entry] of Object.entries(customerNames || {})) {
+      const candidate = entry?.customer_name;
+      if (typeof candidate === "string") {
+        const trimmed = candidate.trim();
+        if (
+          trimmed &&
+          !isSameAsWaId(trimmed, waId) &&
+          !isPlaceholderName(trimmed)
+        ) {
+          sanitized[waId] = { wa_id: waId, customer_name: trimmed };
+          continue;
+        }
+      }
+      sanitized[waId] = { wa_id: waId };
+    }
+    return sanitized;
+  }, [customerNames]);
   useEffect(() => {
     calendarDebugLog("calendarEvents:customerNamesState", {
       loading: customerNamesLoading,
@@ -403,7 +427,7 @@ export function useCalendarEvents(
     const merged: Record<
       string,
       { wa_id: string; customer_name?: string | null }
-    > = { ...customerNames };
+    > = { ...sanitizedCustomerNames };
 
     for (const [waId, reservations] of Object.entries(allCachedReservations)) {
       if (merged[waId]?.customer_name) {
@@ -418,7 +442,11 @@ export function useCalendarEvents(
             return null;
           }
           const trimmed = candidate.trim();
-          if (trimmed.length === 0 || trimmed === waId) {
+          if (
+            trimmed.length === 0 ||
+            isSameAsWaId(trimmed, waId) ||
+            isPlaceholderName(trimmed)
+          ) {
             return null;
           }
           return trimmed;
@@ -438,7 +466,7 @@ export function useCalendarEvents(
     }
 
     return merged;
-  }, [customerNames, allCachedReservations]);
+  }, [sanitizedCustomerNames, allCachedReservations]);
 
   // Extract document status from reservation data
   // Use a ref to track previous documentStatus to prevent unnecessary updates
@@ -697,20 +725,22 @@ export function useCalendarEvents(
    */
   const refreshData = useCallback(async (): Promise<void> => {
     try {
-      // Invalidate current period queries (must match query key format exactly)
+      // Invalidate current period queries using query key factories
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["calendar-reservations", currentPeriodKey, freeRoam],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: [
-            "calendar-conversation-events",
+          queryKey: calendarKeys.reservationsByPeriod(
             currentPeriodKey,
-            freeRoam,
-          ],
+            freeRoam
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["calendar-vacations"],
+          queryKey: calendarKeys.conversationsByPeriod(
+            currentPeriodKey,
+            freeRoam
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: calendarKeys.vacations(),
         }),
       ]);
     } catch (_error) {
@@ -729,14 +759,12 @@ export function useCalendarEvents(
    * Invalidate cache without refetching
    */
   const invalidateCache = useCallback((): void => {
+    // Invalidate all calendar queries using query key factories
     queryClient.invalidateQueries({
-      predicate: (query) => {
-        const key = query.queryKey;
-        return (
-          key[0] === "calendar-reservations" ||
-          key[0] === "calendar-conversation-events"
-        );
-      },
+      queryKey: calendarKeys.reservations(),
+    });
+    queryClient.invalidateQueries({
+      queryKey: calendarKeys.conversations(),
     });
   }, [queryClient]);
 

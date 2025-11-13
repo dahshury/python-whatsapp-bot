@@ -5,7 +5,8 @@ import { callPythonBackend } from "@/shared/libs/backend";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { old_id, new_id, ar, customer_name, reservation_id } = body;
+    const { old_id, new_id, ar, customer_name, reservation_id, _call_source } =
+      body;
 
     // Validate required fields
     if (!(old_id && new_id)) {
@@ -28,12 +29,13 @@ export async function POST(request: Request) {
         ar, // Arabic language flag
         ...(reservation_id !== undefined ? { reservation_id } : {}),
         ...(customer_name !== undefined ? { customer_name } : {}),
+        ...(_call_source !== undefined ? { _call_source } : {}),
       }),
     });
 
     if (backendResponse?.success) {
       try {
-        await revalidateTag("customer-names", "default");
+        revalidateTag("customer-names", "max");
       } catch {
         // Silently ignore revalidation errors
       }

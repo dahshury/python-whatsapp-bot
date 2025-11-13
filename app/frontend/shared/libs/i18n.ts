@@ -117,6 +117,8 @@ export const i18n = {
     ensureInitialized().t(key, { defaultValue: fallback }),
   getMessage: (key: string, isLocalizedArg?: boolean): string =>
     translate(key, isLocalizedArg),
+  getUnknownCustomerLabel: (isLocalizedArg?: boolean): string =>
+    translate("phone_unknown_label", isLocalizedArg),
   changeLanguage: (lng: "en" | "ar") => ensureInitialized().changeLanguage(lng),
   messages,
 };

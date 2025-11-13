@@ -7,6 +7,10 @@ import { getInitials } from "@shared/libs/utils/initials";
 import React from "react";
 import { toast as sonner } from "sonner";
 import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
+import {
   INFO_TOAST_DURATION_MS,
   MAX_MESSAGE_CONTENT_LENGTH,
 } from "./constants";
@@ -16,8 +20,13 @@ export function newMessage(payload: MessageToastPayload) {
   const { description, customerName, date, time, message, isLocalized } =
     payload;
   const waId = String(payload.wa_id || payload.waId || "");
-  const displayName = customerName || waId || "Unknown";
-  const initials = getInitials(customerName || waId);
+  const normalizedName =
+    typeof customerName === "string" ? customerName.trim() : "";
+  const displayName =
+    normalizedName && !isSameAsWaId(normalizedName, waId)
+      ? normalizedName
+      : getUnknownCustomerLabel(isLocalized);
+  const initials = getInitials(displayName);
   const messageContent = (message || description || "").slice(
     0,
     MAX_MESSAGE_CONTENT_LENGTH

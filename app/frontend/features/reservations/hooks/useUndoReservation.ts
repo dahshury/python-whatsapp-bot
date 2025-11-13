@@ -6,6 +6,10 @@ import {
 } from "@/features/calendar/lib/constants";
 import { updateCustomerNamesCache } from "@/features/customers/hooks/utils/customer-names-cache";
 import { callPythonBackend } from "@/shared/libs/backend";
+import {
+  isSameAsWaId,
+  resolveCustomerDisplayName,
+} from "@/shared/libs/customer-name";
 import { i18n } from "@/shared/libs/i18n";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { toastService } from "@/shared/libs/toast";
@@ -146,24 +150,28 @@ export function useUndoReservation() {
       // If phone changed, we need to revert it first before modifying the reservation
       // This is because the reservation modification uses wa_id in the URL path
       if (newWaId && newWaId !== originalData.wa_id) {
-        try {
-          const phoneResponse = await callPythonBackend("/api/modify-id", {
-            method: "POST",
-            body: JSON.stringify({
-              old_id: newWaId,
-              new_id: originalData.wa_id,
-              reservation_id: reservationId,
-            }),
-          });
+        const phoneResponse = await fetch("/api/modify-id", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            old_id: newWaId,
+            new_id: originalData.wa_id,
+            reservation_id: reservationId,
+            customer_name: originalData.customer_name || null,
+            _call_source: "undo", // Suppress notification - undo will show its own notification
+          }),
+        });
 
-          const phoneResult = phoneResponse as { success?: boolean };
-          if (!phoneResult.success) {
-            throw new Error("Failed to revert phone number change");
-          }
-        } catch (error) {
-          throw new Error(
-            `Phone revert failed: ${error instanceof Error ? error.message : "Unknown error"}`
-          );
+        const phoneResult = (await phoneResponse.json()) as {
+          success?: boolean;
+          message?: string;
+        };
+        if (!phoneResult.success) {
+          const backendMessage =
+            phoneResult.message || "Failed to revert phone number change";
+          throw new Error(backendMessage);
         }
       }
 
@@ -216,36 +224,15 @@ export function useUndoReservation() {
 
       return result;
     },
-    onSuccess: (response, params) => {
+    onSuccess: async (response, params) => {
       const { reservationId, originalData, newWaId } = params;
 
       // If phone was changed and reverted, update all caches
       if (newWaId && newWaId !== originalData.wa_id) {
-        // Update customer names cache (rekey from newWaId back to originalData.wa_id)
-        queryClient.setQueryData<
-          Record<string, { wa_id: string; customer_name: string | null }>
-        >(["customer-names"], (old) => {
-          if (!old) {
-            return old;
-          }
-          const updated = { ...old };
-          const entry = updated[newWaId];
-          if (entry) {
-            delete updated[newWaId];
-            updated[originalData.wa_id] = {
-              ...entry,
-              wa_id: originalData.wa_id,
-              customer_name: originalData.customer_name ?? entry.customer_name,
-            };
-            return updated;
-          }
-          if (originalData.customer_name !== undefined) {
-            updated[originalData.wa_id] = {
-              wa_id: originalData.wa_id,
-              customer_name: originalData.customer_name,
-            };
-          }
-          return updated;
+        // Invalidate customer names cache to force fresh fetch from backend
+        // This ensures the most up-to-date customer data after phone revert
+        await queryClient.invalidateQueries({
+          queryKey: ["customer-names"],
         });
 
         // Rekey reservation caches
@@ -385,10 +372,14 @@ export function useUndoReservation() {
           if (typeof handleEventModified === "function") {
             const baseTime = normalizeTime(originalData.time_slot);
             const startIso = `${originalData.date}T${baseTime}:00`;
+            const displayName = resolveCustomerDisplayName({
+              waId: String(originalData.wa_id || ""),
+              candidates: [originalData.customer_name],
+            });
 
             handleEventModified(String(reservationId), {
               id: String(reservationId),
-              title: originalData.customer_name || originalData.wa_id,
+              title: displayName,
               start: startIso,
               extendedProps: {
                 type: originalData.type ?? 0,
@@ -399,9 +390,7 @@ export function useUndoReservation() {
                 reservationId: String(reservationId),
                 slotDate: originalData.date,
                 slotTime: baseTime,
-                ...(originalData.customer_name
-                  ? { customerName: originalData.customer_name }
-                  : {}),
+                customerName: displayName,
               },
             });
           }
@@ -411,11 +400,15 @@ export function useUndoReservation() {
       }
 
       // Update customer names cache if name was reverted
-      if (originalData.customer_name !== undefined) {
+      if (
+        typeof originalData.customer_name === "string" &&
+        originalData.customer_name.trim().length > 0 &&
+        !isSameAsWaId(originalData.customer_name.trim(), originalData.wa_id)
+      ) {
         updateCustomerNamesCache(
           queryClient,
           originalData.wa_id,
-          originalData.customer_name
+          originalData.customer_name.trim()
         );
       }
 

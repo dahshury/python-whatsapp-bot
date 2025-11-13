@@ -27,6 +27,10 @@ MESSAGES = {
         "en": "The new wa_id is the same as the old wa_id.",
         "ar": "رقم الواتساب الجديد هو نفسه رقم الواتساب القديم.",
     },
+    "wa_id_not_found": {
+        "en": "Customer with phone number not found. The phone number may have been changed already.",
+        "ar": "لم يتم العثور على العميل برقم الهاتف هذا. ربما تم تغيير رقم الهاتف بالفعل.",
+    },
     "wa_id_modified": {"en": "wa_id modified successfully.", "ar": "تم تعديل رقم الواتساب بنجاح."},
     # Reservation errors
     "invalid_date": {"en": "Invalid date format.", "ar": "تاريخ غير صالح."},

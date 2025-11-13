@@ -336,9 +336,10 @@ const Sidebar = ({
         {...props}
       >
         <div
-          className="flex h-full w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
+          className="flex h-full max-h-screen w-full flex-col bg-sidebar group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow"
           data-sidebar="sidebar"
           dir="ltr"
+          style={{ maxHeight: "var(--doc-dvh, 100dvh)" } as CSSProperties}
         >
           {children}
         </div>

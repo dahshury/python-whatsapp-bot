@@ -6,6 +6,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { Reservation } from "@/entities/event";
+import { calendarKeys } from "@/shared/api/query-keys";
 import {
   getPeriodDateRange,
   getPeriodKey,
@@ -40,16 +41,16 @@ export function useCalendarPeriodData(options: UseCalendarPeriodDataOptions) {
     const toDate = end.toISOString().split("T")[0];
 
     return () => {
-      // Get reservations from cache
+      // Get reservations from cache using query key factory
       const reservationsQuery = queryClient.getQueryData<
         Record<string, Reservation[]>
-      >(["calendar-reservations", periodKey, freeRoam]);
+      >(calendarKeys.reservationsByPeriod(periodKey, freeRoam));
       const reservations = reservationsQuery || {};
 
-      // Get conversation events from cache
+      // Get conversation events from cache using query key factory
       const conversationsQuery = queryClient.getQueryData<
         Record<string, CalendarConversationEvent[]>
-      >(["calendar-conversation-events", periodKey, freeRoam]);
+      >(calendarKeys.conversationsByPeriod(periodKey, freeRoam));
       const conversations = conversationsQuery || {};
 
       return {

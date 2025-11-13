@@ -4,6 +4,10 @@ import {
   modifyReservation as httpModifyReservation,
   reserveTimeSlot,
 } from "@/shared/api";
+import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
 import type {
   CreateReservationRequest,
   CreateReservationResponse,
@@ -19,6 +23,12 @@ export class ReservationsPortAdapter implements ReservationsPort {
   async create(
     reservation: CreateReservationRequest
   ): Promise<CreateReservationResponse> {
+    const normalizedTitle =
+      typeof reservation.title === "string" ? reservation.title.trim() : "";
+    const displayTitle =
+      normalizedTitle && !isSameAsWaId(normalizedTitle, reservation.waId)
+        ? normalizedTitle
+        : getUnknownCustomerLabel();
     const wsOk = await this.wsService.sendMessage({
       type: "create_reservation",
       data: {
@@ -34,7 +44,7 @@ export class ReservationsPortAdapter implements ReservationsPort {
       return {
         event: {
           id: "",
-          title: reservation.title || reservation.waId,
+          title: displayTitle,
           date: reservation.date,
           time: reservation.time,
         } as unknown as CalendarEvent,
@@ -43,7 +53,7 @@ export class ReservationsPortAdapter implements ReservationsPort {
     }
     const resp = (await reserveTimeSlot({
       id: reservation.waId,
-      title: reservation.title || reservation.waId,
+      title: displayTitle,
       date: reservation.date,
       time: reservation.time,
       type: 0,
@@ -52,7 +62,7 @@ export class ReservationsPortAdapter implements ReservationsPort {
     return {
       event: {
         id: "",
-        title: reservation.title || reservation.waId,
+        title: displayTitle,
         date: reservation.date,
         time: reservation.time,
       } as unknown as CalendarEvent,

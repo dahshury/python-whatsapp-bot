@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import type * as RPNInput from "react-phone-number-input";
 import { parsePhoneNumber } from "react-phone-number-input";
+import { phoneKeys } from "@/shared/api/query-keys";
 import { callPythonBackend } from "@/shared/libs/backend";
 import type { IndexedPhoneOption } from "@/shared/libs/phone/indexed.types";
 import { buildPhoneGroups } from "@/shared/libs/phone/phone-groups";
@@ -47,7 +48,7 @@ export function useBackendPhoneSearch(
 
   const { data, isLoading, error, isError, refetch } = useQuery<SearchResponse>(
     {
-      queryKey: ["phone-search", debouncedSearch],
+      queryKey: phoneKeys.search(debouncedSearch),
       queryFn: async (): Promise<SearchResponse> => {
         // Skip empty or very short queries that match too many results
         if (!debouncedSearch || debouncedSearch.trim().length < 2) {

@@ -1,8 +1,13 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { callPythonBackend } from "@/shared/libs/backend";
+import { calendarKeys } from "@/shared/api/query-keys";
+import { useBackendReconnectRefetch } from "@/shared/libs/hooks/useBackendReconnectRefetch";
 import { CACHE_GC_TIME_MS } from "../lib/constants";
+import {
+  fetchAllConversationEvents,
+  fetchCalendarConversationEvents,
+} from "../lib/query-functions";
 
 export type CalendarConversationEvent = {
   role: string;
@@ -12,41 +17,25 @@ export type CalendarConversationEvent = {
   customer_name: string | null;
 };
 
-type CalendarConversationEventsResponse = {
-  success: boolean;
-  data: Record<string, CalendarConversationEvent[]>;
-};
-
 /**
  * Hook for fetching lightweight conversation events for calendar.
  * Returns only the last message per customer and customer names.
  * Uses TanStack Query for caching and state management.
  */
 export function useCalendarConversationEvents() {
-  return useQuery({
-    queryKey: ["calendar-conversation-events"],
-    queryFn: async (): Promise<Record<string, CalendarConversationEvent[]>> => {
-      const response =
-        await callPythonBackend<CalendarConversationEventsResponse>(
-          "/conversations/calendar/events"
-        );
-
-      if (!response.success) {
-        return {};
-      }
-
-      if (!response.data) {
-        return {};
-      }
-
-      return response.data;
-    },
+  const query = useQuery({
+    queryKey: calendarKeys.conversationsAll(),
+    queryFn: fetchAllConversationEvents,
     staleTime: 60_000, // Cache for 1 minute
     gcTime: 300_000, // Keep in cache for 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: true,
     retry: 1,
   });
+  useBackendReconnectRefetch(query.refetch, {
+    enabled: !query.isFetching,
+  });
+  return query;
 }
 
 /**
@@ -66,35 +55,20 @@ export function useCalendarConversationEventsForPeriod(
   toDate: string,
   options?: { freeRoam?: boolean; enabled?: boolean }
 ) {
-  const { freeRoam, enabled = true } = options || {};
+  const { freeRoam = false, enabled = true } = options || {};
   const queryClient = useQueryClient();
 
   // Check if we have cached data for this period
   const cachedData = queryClient.getQueryData<
     Record<string, CalendarConversationEvent[]>
-  >(["calendar-conversation-events", periodKey, freeRoam]);
+  >(calendarKeys.conversationsByPeriod(periodKey, freeRoam));
 
-  return useQuery({
-    queryKey: ["calendar-conversation-events", periodKey, freeRoam],
-    queryFn: async (): Promise<Record<string, CalendarConversationEvent[]>> => {
-      // Backend now supports date filtering - pass date range parameters
-      const params = new URLSearchParams();
-      params.set("from_date", fromDate);
-      params.set("to_date", toDate);
-
-      const response =
-        await callPythonBackend<CalendarConversationEventsResponse>(
-          `/conversations/calendar/events?${params.toString()}`
-        );
-
-      if (!(response.success && response.data)) {
-        return {};
-      }
-
-      // Backend now filters by date range, so return data directly
-      return response.data;
-    },
-    ...(cachedData ? { placeholderData: cachedData } : {}), // Use cached data immediately if available
+  const query = useQuery({
+    queryKey: calendarKeys.conversationsByPeriod(periodKey, freeRoam),
+    queryFn: () => fetchCalendarConversationEvents({ fromDate, toDate }),
+    // ✅ BEST PRACTICE: placeholderData provides instant UI while refetching
+    // Shows cached data immediately, then updates with fresh data when available
+    ...(cachedData ? { placeholderData: cachedData } : {}),
     staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
     gcTime: CACHE_GC_TIME_MS, // Keep in cache for 10 minutes after last use (cleanup for old periods)
     refetchOnWindowFocus: false, // Don't refetch when window regains focus
@@ -102,4 +76,9 @@ export function useCalendarConversationEventsForPeriod(
     retry: 1,
     enabled: Boolean(enabled && periodKey && fromDate && toDate),
   });
+  useBackendReconnectRefetch(query.refetch, {
+    enabled:
+      Boolean(enabled && periodKey && fromDate && toDate) && !query.isFetching,
+  });
+  return query;
 }

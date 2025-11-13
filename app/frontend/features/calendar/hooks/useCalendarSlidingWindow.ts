@@ -8,6 +8,11 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
+import { calendarKeys } from "@/shared/api/query-keys";
+import {
+  fetchCalendarConversationEvents,
+  fetchCalendarReservations,
+} from "../lib/query-functions";
 import type { ViewType } from "./useCalendarDateRange";
 import {
   getNewestPeriod,
@@ -119,24 +124,24 @@ export function useCalendarSlidingWindow(
           const oldest = getOldestPeriod(allCachedPeriods);
           if (oldest && oldest !== currentPeriod) {
             cachedPeriodsRef.current.delete(oldest);
-            // Invalidate queries for the oldest period (must match query key format)
+            // Invalidate queries for the oldest period
             queryClient.invalidateQueries({
-              queryKey: ["calendar-reservations", oldest, freeRoam],
+              queryKey: calendarKeys.reservationsByPeriod(oldest, freeRoam),
             });
             queryClient.invalidateQueries({
-              queryKey: ["calendar-conversation-events", oldest, freeRoam],
+              queryKey: calendarKeys.conversationsByPeriod(oldest, freeRoam),
             });
           }
         } else if (wasGoingBackward) {
           const newest = getNewestPeriod(allCachedPeriods);
           if (newest && newest !== currentPeriod) {
             cachedPeriodsRef.current.delete(newest);
-            // Invalidate queries for the newest period (must match query key format)
+            // Invalidate queries for the newest period
             queryClient.invalidateQueries({
-              queryKey: ["calendar-reservations", newest, freeRoam],
+              queryKey: calendarKeys.reservationsByPeriod(newest, freeRoam),
             });
             queryClient.invalidateQueries({
-              queryKey: ["calendar-conversation-events", newest, freeRoam],
+              queryKey: calendarKeys.conversationsByPeriod(newest, freeRoam),
             });
           }
         } else {
@@ -145,10 +150,10 @@ export function useCalendarSlidingWindow(
           if (oldest && oldest !== currentPeriod) {
             cachedPeriodsRef.current.delete(oldest);
             queryClient.invalidateQueries({
-              queryKey: ["calendar-reservations", oldest, freeRoam],
+              queryKey: calendarKeys.reservationsByPeriod(oldest, freeRoam),
             });
             queryClient.invalidateQueries({
-              queryKey: ["calendar-conversation-events", oldest, freeRoam],
+              queryKey: calendarKeys.conversationsByPeriod(oldest, freeRoam),
             });
           }
         }
@@ -186,39 +191,18 @@ export function useCalendarSlidingWindow(
       }
 
       // Prefetch reservations (only if not already cached)
-      const reservationsKey = ["calendar-reservations", periodKey, freeRoam];
+      const reservationsKey = calendarKeys.reservationsByPeriod(
+        periodKey,
+        freeRoam
+      );
       const reservationsCache = queryClient.getQueryData(reservationsKey);
       if (!reservationsCache) {
         prefetchPromises.push(
           queryClient
             .prefetchQuery({
               queryKey: reservationsKey,
-              queryFn: async () => {
-                const params = new URLSearchParams();
-
-                // When freeRoam is false, only fetch future reservations
-                // When freeRoam is true, fetch all (past and future) by explicitly setting future=false
-                // This ensures past reservations are included when prefetching past periods
-                if (freeRoam) {
-                  params.set("future", "false");
-                } else {
-                  params.set("future", "true");
-                }
-
-                params.set("from_date", fromDate);
-                params.set("to_date", toDate);
-                params.set("include_cancelled", String(freeRoam));
-
-                const { callPythonBackend } = await import(
-                  "@shared/libs/backend"
-                );
-                const response = await callPythonBackend<{
-                  success: boolean;
-                  data: Record<string, unknown[]>;
-                }>(`/reservations?${params.toString()}`);
-
-                return response.success && response.data ? response.data : {};
-              },
+              queryFn: () =>
+                fetchCalendarReservations({ fromDate, toDate, freeRoam }),
               staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
             })
             .then(() => undefined as undefined)
@@ -227,39 +211,18 @@ export function useCalendarSlidingWindow(
 
       // Prefetch conversation events if not excluded (only if not already cached)
       if (!excludeConversations) {
-        const conversationsKey = [
-          "calendar-conversation-events",
+        const conversationsKey = calendarKeys.conversationsByPeriod(
           periodKey,
-          freeRoam,
-        ];
+          freeRoam
+        );
         const conversationsCache = queryClient.getQueryData(conversationsKey);
         if (!conversationsCache) {
           prefetchPromises.push(
             queryClient
               .prefetchQuery({
                 queryKey: conversationsKey,
-                queryFn: async () => {
-                  const { callPythonBackend } = await import(
-                    "@shared/libs/backend"
-                  );
-
-                  // Backend now supports date filtering - pass date range parameters
-                  const params = new URLSearchParams();
-                  params.set("from_date", fromDate);
-                  params.set("to_date", toDate);
-
-                  const response = await callPythonBackend<{
-                    success: boolean;
-                    data: Record<string, unknown[]>;
-                  }>(`/conversations/calendar/events?${params.toString()}`);
-
-                  if (!(response.success && response.data)) {
-                    return {};
-                  }
-
-                  // Backend now filters by date range, so return data directly
-                  return response.data;
-                },
+                queryFn: () =>
+                  fetchCalendarConversationEvents({ fromDate, toDate }),
                 staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
               })
               .then(() => undefined as undefined)

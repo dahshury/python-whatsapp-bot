@@ -6,6 +6,10 @@ import type {
   ReservationData,
 } from "@/entities/notification/types";
 import { getWaId } from "@/entities/notification/value-objects";
+import {
+  getUnknownCustomerLabel,
+  isSameAsWaId,
+} from "@/shared/libs/customer-name";
 
 export function aggregateNotifications(
   items: NotificationItem[],
@@ -42,14 +46,18 @@ export function aggregateNotifications(
           existing.latest = it;
         }
       } else {
+        const resolvedName = resolveCustomerName(
+          (it.data as ReservationData | undefined)?.wa_id,
+          (it.data as ReservationData | undefined)?.customer_name
+        );
+        const safeName =
+          resolvedName && !isSameAsWaId(resolvedName, waId)
+            ? resolvedName
+            : getUnknownCustomerLabel();
         groups.set(key, {
           items: [it],
           latest: it,
-          customerName:
-            resolveCustomerName(
-              (it.data as ReservationData | undefined)?.wa_id,
-              (it.data as ReservationData | undefined)?.customer_name
-            ) || waId,
+          customerName: safeName,
           date: dateStr,
         });
       }

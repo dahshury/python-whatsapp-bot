@@ -216,130 +216,129 @@ export const GridToolbar: React.FC<GridToolbarProps> = ({
   };
 
   return (
+    // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Toolbar container follows ARIA best practices with role="toolbar", tabIndex for focusability, and capture-phase event handlers for focus management. No semantic interactive element is appropriate for this use case.
     <div
+      aria-label="Grid toolbar"
       className={containerClassName}
       data-has-position={isOverlayAnchor ? hasOverlayPosition : undefined}
+      onBlurCapture={handleBlurCapture}
+      onFocusCapture={handleFocusCapture}
+      onKeyDown={handleKeyDown}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
+      ref={containerRef}
+      role="toolbar"
       style={toolbarStyle}
+      tabIndex={-1}
     >
-      <div
-        aria-label="Grid toolbar"
-        onBlurCapture={handleBlurCapture}
-        onFocusCapture={handleFocusCapture}
-        onKeyDown={handleKeyDown}
-        ref={containerRef}
-        role="toolbar"
-      >
-        <div className={toolbarClassName}>
-          <MenuBar
-            buttonClassName="w-[1.3rem] h-[1.3rem] p-0 hover:bg-muted/80"
-            iconWrapperClassName="w-[1rem] h-[1rem]"
-            items={[
-              ...(hasSelection
-                ? [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Close {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Clear selection",
-                      onClick: onClearSelection,
-                    },
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Delete {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Delete selected rows",
-                      onClick: onDeleteRows,
-                    },
-                  ]
-                : []),
-              {
-                icon: (p: React.SVGProps<SVGSVGElement>) => (
-                  <Undo {...p} size={ICON_SIZE} />
-                ),
-                label: "Undo (Ctrl+Z)",
-                onClick: onUndo,
-                disabled: !canUndo,
-              },
-              {
-                icon: (p: React.SVGProps<SVGSVGElement>) => (
-                  <Redo {...p} size={ICON_SIZE} />
-                ),
-                label: "Redo (Ctrl+Shift+Z)",
-                onClick: onRedo,
-                disabled: !canRedo,
-              },
-              ...(hasSelection
-                ? []
-                : [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Plus {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Add row",
-                      onClick: onAddRow,
-                    },
-                  ]),
-              ...(hasHiddenColumns
-                ? [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Eye {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Show/hide columns",
-                      onClick: onToggleColumnVisibility,
-                    },
-                  ]
-                : []),
-              ...(hiddenActionSet.has("downloadCsv")
-                ? []
-                : [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Download {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Download as CSV",
-                      onClick: onDownloadCsv,
-                    },
-                  ]),
-              ...(hiddenActionSet.has("search")
-                ? []
-                : [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Search {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Search",
-                      onClick: onToggleSearch,
-                    },
-                  ]),
-              ...(hiddenActionSet.has("fullscreen")
-                ? []
-                : [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Maximize {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Toggle fullscreen",
-                      onClick: onToggleFullscreen,
-                    },
-                  ]),
-              ...(onClose
-                ? [
-                    {
-                      icon: (p: React.SVGProps<SVGSVGElement>) => (
-                        <Close {...p} size={ICON_SIZE} />
-                      ),
-                      label: "Close",
-                      onClick: onClose,
-                    },
-                  ]
-                : []),
-            ]}
-            menuClassName="h-[1.15rem] px-2 rounded-[0.25rem] border border-border/50 shadow-sm"
-          />
-        </div>
+      <div className={toolbarClassName}>
+        <MenuBar
+          buttonClassName="w-[1.3rem] h-[1.3rem] p-0 hover:bg-muted/80"
+          iconWrapperClassName="w-[1rem] h-[1rem]"
+          items={[
+            ...(hasSelection
+              ? [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Close {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Clear selection",
+                    onClick: onClearSelection,
+                  },
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Delete {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Delete selected rows",
+                    onClick: onDeleteRows,
+                  },
+                ]
+              : []),
+            {
+              icon: (p: React.SVGProps<SVGSVGElement>) => (
+                <Undo {...p} size={ICON_SIZE} />
+              ),
+              label: "Undo (Ctrl+Z)",
+              onClick: onUndo,
+              disabled: !canUndo,
+            },
+            {
+              icon: (p: React.SVGProps<SVGSVGElement>) => (
+                <Redo {...p} size={ICON_SIZE} />
+              ),
+              label: "Redo (Ctrl+Shift+Z)",
+              onClick: onRedo,
+              disabled: !canRedo,
+            },
+            ...(hasSelection
+              ? []
+              : [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Plus {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Add row",
+                    onClick: onAddRow,
+                  },
+                ]),
+            ...(hasHiddenColumns
+              ? [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Eye {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Show/hide columns",
+                    onClick: onToggleColumnVisibility,
+                  },
+                ]
+              : []),
+            ...(hiddenActionSet.has("downloadCsv")
+              ? []
+              : [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Download {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Download as CSV",
+                    onClick: onDownloadCsv,
+                  },
+                ]),
+            ...(hiddenActionSet.has("search")
+              ? []
+              : [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Search {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Search",
+                    onClick: onToggleSearch,
+                  },
+                ]),
+            ...(hiddenActionSet.has("fullscreen")
+              ? []
+              : [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Maximize {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Toggle fullscreen",
+                    onClick: onToggleFullscreen,
+                  },
+                ]),
+            ...(onClose
+              ? [
+                  {
+                    icon: (p: React.SVGProps<SVGSVGElement>) => (
+                      <Close {...p} size={ICON_SIZE} />
+                    ),
+                    label: "Close",
+                    onClick: onClose,
+                  },
+                ]
+              : []),
+          ]}
+          menuClassName="h-[1.15rem] px-2 rounded-[0.25rem] border border-border/50 shadow-sm"
+        />
       </div>
     </div>
   );

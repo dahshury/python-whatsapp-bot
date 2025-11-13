@@ -2,17 +2,9 @@ import {
   getSlotTimes,
   SLOT_DURATION_HOURS,
 } from "@shared/libs/calendar/calendar-config";
+import { resolveCustomerDisplayName } from "@shared/libs/customer-name";
 import { to24h } from "@shared/libs/utils";
 import type { CalendarEvent } from "@/entities/event";
-
-const reservationEventsDebugEnabled =
-  process.env.NEXT_PUBLIC_DISABLE_RESERVATION_DEBUG !== "true";
-const reservationEventsDebugLog = (_label: string, _payload?: unknown) => {
-  if (!reservationEventsDebugEnabled) {
-    return;
-  }
-  // Debug logging disabled - no-op function
-};
 
 type ReservationItem = {
   date: string;
@@ -26,33 +18,6 @@ type ConversationItem = {
   customer_name?: string;
   [key: string]: unknown;
 };
-
-function toDisplayName(
-  waId: string,
-  primary?: unknown,
-  customerNames?:
-    | Record<string, { wa_id: string; customer_name?: string | null }>
-    | undefined
-): string {
-  const fromPrimary =
-    typeof primary === "string" && primary.trim().length > 0
-      ? primary.trim()
-      : undefined;
-  const fromMap = customerNames?.[waId]?.customer_name;
-  const fromMapTrimmed =
-    typeof fromMap === "string" && fromMap.trim().length > 0
-      ? fromMap.trim()
-      : undefined;
-  const resolved = fromPrimary ?? fromMapTrimmed ?? String(waId);
-  if (resolved === waId) {
-    reservationEventsDebugLog("toDisplayName:fallbackToWaId", {
-      waId,
-      primary,
-      fromMap,
-    });
-  }
-  return resolved;
-}
 
 export type ReservationProcessingOptions = {
   freeRoam: boolean;
@@ -173,12 +138,15 @@ export function getReservationEventProcessor() {
             const type = Number((r as { type?: unknown }).type ?? 0);
             const isConversation = type === 2;
             // Resolve customer name from customerNames map (backend no longer sends it)
-            const customerName = toDisplayName(
+            const customerName = resolveCustomerDisplayName({
               waId,
-              (r as { customer_name?: unknown }).customer_name ??
+              candidates: [
+                (r as { customer_name?: unknown }).customer_name,
                 (r as { title?: unknown }).title,
-              options.customerNames
-            );
+                options.customerNames?.[waId]?.customer_name,
+              ],
+              isLocalized: options.isLocalized,
+            });
 
             // Get has_document from documentStatus map (preferred) or reservation data (fallback)
             const hasDocument = Boolean(
@@ -251,11 +219,14 @@ export function getReservationEventProcessor() {
             CONVERSATION_DURATION_MINUTES
           );
           // Resolve customer name from customerNames map (backend no longer sends it in conversations/reservations)
-          const displayTitle = toDisplayName(
+          const displayTitle = resolveCustomerDisplayName({
             waId,
-            (last as { customer_name?: unknown }).customer_name,
-            options.customerNames
-          );
+            candidates: [
+              (last as { customer_name?: unknown }).customer_name,
+              options.customerNames?.[waId]?.customer_name,
+            ],
+            isLocalized: options.isLocalized,
+          });
           const conversationEvent = {
             id: String(waId),
             title: displayTitle,

@@ -7,6 +7,7 @@ import {
   TOAST_TIMEOUT_MS,
 } from "@/features/calendar/lib/constants";
 import { updateCustomerNamesCache } from "@/features/customers/hooks/utils/customer-names-cache";
+import { calendarKeys, customerKeys } from "@/shared/api/query-keys";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
 import { ReservationsWsService } from "../services/reservations.ws.service";
@@ -86,7 +87,7 @@ export function useMutateReservation() {
       });
 
       const previousData = queryClient.getQueriesData({
-        queryKey: ["calendar-reservations"],
+        queryKey: calendarKeys.reservations(),
       });
 
       const localKeys = generateLocalOpKeys("reservation_updated", {
@@ -103,6 +104,9 @@ export function useMutateReservation() {
       const previousTimeSlotRaw =
         extendedParams.previousTimeSlot || params.time;
 
+      // NOTE: updateReservationCache uses setQueriesData which is correct here
+      // Calendar has many queries like ["calendar-reservations", periodKey, freeRoam]
+      // We need to update all of them that might contain this reservation
       updateReservationCache({
         queryClient,
         payload: { cancelled: false } as Partial<Reservation>,
@@ -128,41 +132,7 @@ export function useMutateReservation() {
       return { previousData };
     },
 
-    onSuccess: (response, params) => {
-      const extendedParams = params as InternalMutateParams;
-      const rawData = (response.data || {}) as Record<string, unknown>;
-      const { original_data: responseOriginalData, ...restPayload } = rawData;
-      const previousOriginal = (responseOriginalData || {}) as Record<
-        string,
-        unknown
-      >;
-
-      const previousDate =
-        (previousOriginal?.date as string | undefined) ||
-        extendedParams.previousDate ||
-        params.date;
-      const previousTimeSlotRaw =
-        (previousOriginal?.time_slot as string | undefined) ||
-        extendedParams.previousTimeSlot ||
-        params.time;
-
-      updateReservationCache({
-        queryClient,
-        payload: restPayload as Partial<Reservation>,
-        waId: params.waId,
-        ...(params.reservationId !== undefined
-          ? { reservationId: params.reservationId }
-          : {}),
-        previousDate,
-        previousTimeSlot: previousTimeSlotRaw,
-        nextDate: params.date,
-        nextTimeSlot: params.time,
-        ...(params.title !== undefined
-          ? { nextCustomerName: params.title }
-          : {}),
-        ...(params.type !== undefined ? { nextType: params.type } : {}),
-      });
-
+    onSuccess: (_response, params) => {
       // Update customer names cache if name changed
       if (params.title !== undefined) {
         updateCustomerNamesCache(queryClient, params.waId, params.title);
@@ -185,6 +155,18 @@ export function useMutateReservation() {
         errorMessage,
         TOAST_TIMEOUT_MS
       );
+    },
+
+    onSettled: () => {
+      // Always refetch to ensure cache consistency
+      // Invalidate all calendar-reservations queries to trigger refetch
+      queryClient.invalidateQueries({
+        queryKey: calendarKeys.reservations(),
+      });
+      // Also invalidate customer names to ensure fresh data
+      queryClient.invalidateQueries({
+        queryKey: customerKeys.names(),
+      });
     },
   });
 }

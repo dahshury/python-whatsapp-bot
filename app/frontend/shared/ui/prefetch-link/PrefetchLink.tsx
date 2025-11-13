@@ -12,6 +12,45 @@ import {
 } from "react";
 import { preloadPathModules } from "@/shared/libs/prefetch/registry";
 
+/**
+ * PrefetchLink Component
+ *
+ * Enhanced Next.js Link with data prefetching capabilities.
+ *
+ * ## Custom Prefetch Strategy
+ *
+ * This component uses a custom `/api/prefetch` endpoint instead of individual
+ * `queryClient.prefetchQuery` calls. Here's why:
+ *
+ * ### Benefits:
+ * 1. **Reduced HTTP Requests**: Single request fetches all page data instead of
+ *    N separate requests for N queries.
+ * 2. **Server-Side Batching**: Backend can optimize and batch database queries.
+ * 3. **Faster Perceived Performance**: All data arrives together, avoiding
+ *    progressive loading states during navigation.
+ * 4. **Network Efficiency**: Especially beneficial on high-latency connections
+ *    where request overhead is significant.
+ *
+ * ### Tradeoffs:
+ * - Not the standard TanStack Query pattern (adds custom API layer)
+ * - Requires maintaining prefetch endpoint routes
+ * - Less granular cache control per query
+ *
+ * ### When to Use:
+ * - Pages with predictable, static query patterns
+ * - High-latency network environments
+ * - When navigation performance is critical
+ *
+ * ### Standard Alternative:
+ * For simpler cases, use TanStack Query's built-in prefetch:
+ * ```tsx
+ * queryClient.prefetchQuery({
+ *   queryKey: ['users', id],
+ *   queryFn: () => fetchUser(id)
+ * })
+ * ```
+ */
+
 type PrefetchLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & LinkProps;
 
 type PrefetchResult = {

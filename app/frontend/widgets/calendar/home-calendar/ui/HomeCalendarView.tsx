@@ -49,7 +49,13 @@ export function HomeCalendarView({ controller }: HomeCalendarViewProps) {
   } = controller;
 
   return (
-    <SidebarInset className="overflow-hidden" style={{ height: "100%" }}>
+    <SidebarInset
+      className="overflow-hidden"
+      style={{
+        height: "100%",
+        maxHeight: "var(--doc-dvh, 100dvh)",
+      }}
+    >
       <div className={layout.contentWrapperClassName} ref={wrapperRef}>
         <CalendarContainer {...calendarContainerProps}>
           {shouldRenderContent && (

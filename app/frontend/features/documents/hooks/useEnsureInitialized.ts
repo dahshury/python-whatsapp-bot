@@ -15,7 +15,7 @@ import { createDocumentsService } from "../services/documents.service.factory";
  * Calls the service's ensureInitialized method which copies the default template
  * for users who don't have a document yet
  */
-export function useEnsureInitialized() {
+export function useEnsureInitialized(): (waId: string) => Promise<boolean> {
   const queryClient = useQueryClient();
   const documentsService = useMemo(() => createDocumentsService(), []);
   const ensurePromisesRef = useRef(new Map<string, Promise<boolean>>());
@@ -43,24 +43,34 @@ export function useEnsureInitialized() {
       const promise = (async (): Promise<boolean> => {
         try {
           const result = await documentsService.ensureInitialized(waId);
+          const { success, modified } = result;
           logger.info(
-            `[useEnsureInitialized] Document ${waId} initialization result: ${result}`
+            `[useEnsureInitialized] Document ${waId} initialization result`,
+            {
+              success,
+              modified,
+            }
           );
 
-          if (result) {
+          if (success) {
             initializedSetRef.current.add(normalizedWaId);
-            await queryClient.refetchQueries({
+          }
+
+          if (success && modified) {
+            // Invalidate queries to mark them as stale
+            // They will refetch automatically when components using them are mounted
+            await queryClient.invalidateQueries({
               queryKey: DOCUMENT_QUERY_KEY.byWaId(waId),
             });
-            await queryClient.refetchQueries({
+            await queryClient.invalidateQueries({
               queryKey: [...DOCUMENT_QUERY_KEY.byWaId(waId), "canvas"],
             });
             logger.info(
-              `[useEnsureInitialized] Refetched queries for ${waId} after initialization`
+              `[useEnsureInitialized] Invalidated queries for ${waId} after initialization`
             );
           }
 
-          return result;
+          return success;
         } catch (error) {
           logger.error(
             `[useEnsureInitialized] Failed to initialize document ${waId}`,

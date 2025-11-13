@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { chatKeys } from "@/shared/api/query-keys";
 import type { ChatUseCase } from "../usecase/chat.usecase";
 
 export const createUseChatMessages =
   (chat: ChatUseCase) => (conversationId: string) => {
     const queryClient = useQueryClient();
     const query = useQuery({
-      queryKey: ["chat", conversationId],
+      queryKey: chatKeys.conversation(conversationId),
       queryFn: () => chat.listMessages(conversationId),
       enabled: Boolean(conversationId),
     });
@@ -15,7 +16,7 @@ export const createUseChatMessages =
         chat.sendMessage(conversationId, content),
       onSuccess: async () => {
         await queryClient.invalidateQueries({
-          queryKey: ["chat", conversationId],
+          queryKey: chatKeys.conversation(conversationId),
         });
       },
     });

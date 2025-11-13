@@ -1,13 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import type { Vacation } from "@/entities/vacation";
-import { callPythonBackend } from "@/shared/libs/backend";
-
-type CalendarVacationsResponse = {
-  success: boolean;
-  data: Vacation[];
-};
+import { calendarKeys } from "@/shared/api/query-keys";
+import { useBackendReconnectRefetch } from "@/shared/libs/hooks/useBackendReconnectRefetch";
+import { fetchCalendarVacations } from "../lib/query-functions";
 
 /**
  * Hook for fetching vacations for calendar.
@@ -16,18 +12,9 @@ type CalendarVacationsResponse = {
  * @param enabled - Whether the query should be enabled (default: true)
  */
 export function useCalendarVacations(enabled = true) {
-  return useQuery({
-    queryKey: ["calendar-vacations"],
-    queryFn: async (): Promise<Vacation[]> => {
-      const response =
-        await callPythonBackend<CalendarVacationsResponse>("/vacations");
-
-      if (!(response.success && response.data)) {
-        return [];
-      }
-
-      return response.data;
-    },
+  const query = useQuery({
+    queryKey: calendarKeys.vacations(),
+    queryFn: fetchCalendarVacations,
     staleTime: 60_000, // Cache for 1 minute
     gcTime: 300_000, // Keep in cache for 5 minutes
     refetchOnWindowFocus: false,
@@ -35,4 +22,8 @@ export function useCalendarVacations(enabled = true) {
     retry: 1,
     enabled,
   });
+  useBackendReconnectRefetch(query.refetch, {
+    enabled: Boolean(enabled && !query.isFetching),
+  });
+  return query;
 }

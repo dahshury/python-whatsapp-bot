@@ -783,6 +783,7 @@ async def api_modify_id(wa_id: str, payload: dict = Body(...)):
         ar=payload.get("ar", False),
         customer_name=payload.get("customer_name"),
         reservation_id=payload.get("reservation_id"),
+        _call_source=payload.get("_call_source", "assistant"),
     )
     return JSONResponse(content=resp)
 

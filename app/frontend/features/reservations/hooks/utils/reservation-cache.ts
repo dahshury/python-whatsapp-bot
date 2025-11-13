@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { Reservation } from "@/entities/event";
 import { SLOT_PREFIX_LEN } from "@/features/calendar/lib/constants";
+import { calendarKeys } from "@/shared/api/query-keys";
 
 export const normalizeTimeToSlot = (value?: string): string => {
   if (!value) {
@@ -105,8 +106,9 @@ export const updateReservationCache = ({
   );
 
   // Update calendar-reservations queries (period-based)
+  // NOTE: setQueriesData is correct here - updating multiple period-based queries
   queryClient.setQueriesData(
-    { queryKey: ["calendar-reservations"] },
+    { queryKey: calendarKeys.reservations() },
     (old: Record<string, Reservation[]> | undefined) => {
       if (!old) {
         return old;
@@ -141,8 +143,9 @@ export const updateReservationCache = ({
   );
 
   // Update reservations-date-range queries
+  // NOTE: setQueriesData is correct here - updating multiple date-range queries
   queryClient.setQueriesData(
-    { queryKey: ["reservations-date-range"] },
+    { queryKey: calendarKeys.reservations() },
     (old: Record<string, Reservation[]> | undefined) => {
       if (!old) {
         return old;
