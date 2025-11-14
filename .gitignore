@@ -108,6 +108,7 @@ node_modules
 
 data/
 # But allow frontend data context (not database data)
+!app/frontend/shared/data/
 !app/frontend/shared/libs/data/
 app/frontend/.prettiercache
 /examples/
