@@ -3,7 +3,6 @@
 import datetime
 import json
 import logging
-from typing import Any
 
 from hijri_converter import convert
 from sqlalchemy import select
@@ -31,14 +30,14 @@ def _generate_ramadan_ranges() -> list[CustomCalendarRangeConfig]:
     """Generate Ramadan date ranges for 2022-2031."""
     ranges: list[CustomCalendarRangeConfig] = []
     RAMADAN_MONTH = 9  # Hijri month 9 is Ramadan
-    
+
     try:
         start_date = datetime.date(2022, 1, 1)
         end_date = datetime.date(2031, 12, 31)
         current_date = start_date
         in_ramadan = False
         range_start: datetime.date | None = None
-        
+
         while current_date <= end_date:
             try:
                 # Convert to Hijri
@@ -46,7 +45,7 @@ def _generate_ramadan_ranges() -> list[CustomCalendarRangeConfig]:
                     current_date.year, current_date.month, current_date.day
                 ).to_hijri()
                 is_ramadan = hijri.month == RAMADAN_MONTH
-                
+
                 if is_ramadan and not in_ramadan:
                     # Start of Ramadan period
                     in_ramadan = True
@@ -67,13 +66,13 @@ def _generate_ramadan_ranges() -> list[CustomCalendarRangeConfig]:
                     )
                     in_ramadan = False
                     range_start = None
-                
+
                 current_date += datetime.timedelta(days=1)
             except Exception:
                 # Skip dates that can't be converted
                 current_date += datetime.timedelta(days=1)
                 continue
-        
+
         # Handle case where Ramadan extends to end date
         if in_ramadan and range_start:
             ranges.append(
@@ -89,7 +88,7 @@ def _generate_ramadan_ranges() -> list[CustomCalendarRangeConfig]:
             )
     except Exception as e:
         logger.warning(f"Failed to generate Ramadan ranges: {e}")
-    
+
     return ranges
 
 
@@ -97,7 +96,6 @@ def get_default_config() -> AppConfigBase:
     """Get default configuration values."""
     from app.services.domain.config.config_schemas import (
         ColumnConfig,
-        CustomCalendarRangeConfig,
         WorkingHoursConfig,
     )
 
@@ -176,7 +174,7 @@ def get_default_config() -> AppConfigBase:
 
     # Generate Ramadan ranges
     ramadan_ranges = _generate_ramadan_ranges()
-    
+
     # Default day-specific hours: Saturday has different hours
     day_specific_hours = [
         DaySpecificWorkingHours(
@@ -185,10 +183,10 @@ def get_default_config() -> AppConfigBase:
             end_time="22:00",
         )
     ]
-    
+
     # Default day-specific slot durations: empty by default (all days use default)
     day_specific_slot_durations: list[DaySpecificSlotDuration] = []
-    
+
     return AppConfigBase(
         working_days=[0, 1, 2, 3, 4, 6],  # Sunday through Thursday, Saturday
         default_working_hours=WorkingHoursConfig(
@@ -229,7 +227,7 @@ def get_config(session: Session | None = None) -> AppConfigRead:
         if config_model:
             # Parse JSON and create AppConfigRead
             config_dict = json.loads(config_model.config_data)
-            
+
             # Migration: Convert old saturday_working_hours to day_specific_hours
             needs_migration = False
             if "saturday_working_hours" in config_dict:
@@ -246,16 +244,16 @@ def get_config(session: Session | None = None) -> AppConfigRead:
                     else:
                         config_dict["day_specific_hours"] = []
                     needs_migration = True
-            
+
             config_base = AppConfigBase(**config_dict)
-            
+
             # Migrate: Add Ramadan ranges if custom_calendar_ranges is empty
             if not config_base.custom_calendar_ranges:
                 ramadan_ranges = _generate_ramadan_ranges()
                 if ramadan_ranges:
                     config_base.custom_calendar_ranges = ramadan_ranges
                     needs_migration = True
-            
+
             if needs_migration:
                 # Update database with migrated config
                 config_model.config_data = json.dumps(
@@ -264,7 +262,7 @@ def get_config(session: Session | None = None) -> AppConfigRead:
                 session.commit()
                 session.refresh(config_model)
                 logger.info("Migrated config: Updated structure")
-            
+
             _config_cache = AppConfigRead(
                 id=config_model.id,
                 created_at=config_model.created_at.isoformat(),
