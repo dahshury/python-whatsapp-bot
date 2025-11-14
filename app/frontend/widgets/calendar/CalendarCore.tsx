@@ -18,13 +18,13 @@ import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import {
   getBusinessHours,
+  getHiddenDays,
+  getTimezone,
   SLOT_DURATION_HOURS,
-  TIMEZONE,
 } from "@shared/libs/calendar/calendar-config";
 import {
   CALENDAR_ASPECT_RATIO,
   CALENDAR_FIRST_DAY,
-  CALENDAR_HIDDEN_DAYS_DEFAULT,
 } from "@shared/libs/calendar/constants";
 // removed: dev-profiler count (legacy handlers removed)
 import { useMountReady } from "@shared/libs/dom/useMountReady";
@@ -44,6 +44,8 @@ import {
   createEventAllow,
   createSelectAllow,
 } from "@/entities/vacation";
+import { useAppConfigQuery } from "@/features/app-config";
+import { snapshotToLegacyConfig } from "@/features/app-config/model";
 import type { CalendarCoreProps, CalendarCoreRef } from "@/features/calendar";
 import {
   createDatesSet,
@@ -113,6 +115,19 @@ const CalendarCoreComponent = ({
     onEventLeave,
     navLinks: navLinksEnabled = true,
   } = props;
+
+  const { data: appConfig } = useAppConfigQuery();
+  const calendarConfig = useMemo(
+    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
+    [appConfig]
+  );
+  const timezone = useMemo(
+    () =>
+      getTimezone(
+        appConfig ? { timezone: appConfig.toSnapshot().timezone } : undefined
+      ),
+    [appConfig]
+  );
 
   // Optimize events with feature lib
   const optimizedEvents = useMemo(
@@ -215,7 +230,16 @@ const CalendarCoreComponent = ({
   );
 
   // Memoize business hours to prevent unnecessary recalculations
-  const businessHours = useMemo(() => getBusinessHours(freeRoam), [freeRoam]);
+  const businessHours = useMemo(
+    () => getBusinessHours(freeRoam, calendarConfig ?? undefined),
+    [freeRoam, calendarConfig]
+  );
+
+  // Calculate hidden days based on config
+  const hiddenDays = useMemo(
+    () => getHiddenDays(freeRoam, calendarConfig ?? undefined),
+    [freeRoam, calendarConfig]
+  );
 
   /**
    * Global validRange function for FullCalendar
@@ -417,7 +441,7 @@ const CalendarCoreComponent = ({
           weekNumbers={false}
           // Only enforce constraints in timeGrid views so month/week drags are not blocked
           {...constraintsProp}
-          hiddenDays={freeRoam ? [] : CALENDAR_HIDDEN_DAYS_DEFAULT}
+          hiddenDays={hiddenDays}
           selectAllow={handleSelectAllow}
           // Valid range for navigation
           {...validRangeProp}
@@ -454,7 +478,7 @@ const CalendarCoreComponent = ({
           showNonCurrentDates={false}
           slotMaxTime={slotTimes.slotMaxTime}
           slotMinTime={slotTimes.slotMinTime}
-          timeZone={TIMEZONE}
+          timeZone={timezone}
           views={viewsProp}
           // Interaction control
           // Block drag/resizes in vacation periods while allowing event clicks

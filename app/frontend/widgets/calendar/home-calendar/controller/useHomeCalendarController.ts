@@ -12,6 +12,8 @@ import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { useRouter } from "next/navigation";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAppConfigQuery } from "@/features/app-config";
+import { snapshotToLegacyConfig } from "@/features/app-config/model";
 import type { CalendarCoreRef } from "@/features/calendar";
 import {
   alignAndSortEventsForCalendar,
@@ -106,10 +108,17 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const { isLocalized } = useLanguageStore();
 
+  const { data: appConfig } = useAppConfigQuery();
+  const calendarConfig = useMemo(
+    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
+    [appConfig]
+  );
+
   const calendarState = useCalendarState({
     freeRoam,
     initialView: "timeGridWeek",
     storageKeyPrefix: "calendar:page",
+    ...(calendarConfig ? { calendarConfig } : {}),
   });
 
   const eventsState = useCalendarEvents({

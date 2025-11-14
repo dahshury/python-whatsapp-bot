@@ -128,6 +128,10 @@ def create_app() -> FastAPI:
     # Include HTTP routers
     app.include_router(webhook_router)
     app.include_router(auth_router)
+    # Include config router
+    from app.services.domain.config.config_router import router as config_router
+
+    app.include_router(config_router)
     # Include WebSocket router
     app.include_router(websocket_router)
 

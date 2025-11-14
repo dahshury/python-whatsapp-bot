@@ -1,6 +1,5 @@
 "use client";
 
-import { i18n } from "@shared/libs/i18n";
 import {
   SingleAsteriskBold,
   SingleTildeStrike,
@@ -21,12 +20,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { logger } from "@/shared/libs/logger";
 import { ButtonGroup } from "@/shared/ui/button-group";
-import {
-  EmojiPicker,
-  EmojiPickerContent,
-  EmojiPickerFooter,
-  EmojiPickerSearch,
-} from "@/shared/ui/emoji-picker";
+import { EmojiPicker } from "@/shared/ui/emoji-picker";
 import {
   InputGroup,
   InputGroupAddon,
@@ -288,14 +282,20 @@ export const BasicChatInput: React.FC<{
 
   const handleEmojiSelect = ({ emoji }: { emoji: string }) => {
     try {
+      if (!editor) {
+        return;
+      }
       // Check if adding emoji would exceed limit
-      const currentText = editor?.getText() || "";
+      const currentText = editor.getText() || "";
       const newText = currentText + emoji;
       if (countCharacters(newText) > WHATSAPP_TEXT_MAX_CHARS) {
         // Don't insert if it would exceed limit
         return;
       }
-      editor?.chain().focus().insertContent(emoji).run();
+      // Insert emoji at current cursor position
+      editor.chain().focus().insertContent(emoji).run();
+    } catch (error) {
+      logChatInputWarning("Inserting emoji failed", error);
     } finally {
       setEmojiOpen(false);
     }
@@ -543,16 +543,7 @@ export const BasicChatInput: React.FC<{
                 side="top"
                 sideOffset={8}
               >
-                <EmojiPicker
-                  className="h-[21.375rem] rounded-lg border"
-                  onEmojiSelect={handleEmojiSelect}
-                >
-                  <EmojiPickerSearch
-                    placeholder={i18n.getMessage("emoji_search", isLocalized)}
-                  />
-                  <EmojiPickerContent />
-                  <EmojiPickerFooter />
-                </EmojiPicker>
+                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
               </PopoverContent>
             </Popover>
             {/* Send (outline variant, fills with primary color as characters are added) */}

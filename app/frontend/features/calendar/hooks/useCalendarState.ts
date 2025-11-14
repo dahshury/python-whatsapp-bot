@@ -7,6 +7,7 @@
  */
 
 import { getSlotTimes } from "@shared/libs/calendar/calendar-config";
+import type { AppConfig as LegacyAppConfig } from "@shared/services/config-service";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type CalendarStateOptions = {
@@ -19,6 +20,8 @@ export type CalendarStateOptions = {
   viewStorageKey?: string;
   /** Optional explicit storage key for date; overrides storageKeyPrefix if provided */
   dateStorageKey?: string;
+  /** Optional legacy calendar config derived from app settings */
+  calendarConfig?: LegacyAppConfig | null;
 };
 
 export type CalendarViewState = {
@@ -57,6 +60,7 @@ export function useCalendarState(
     storageKeyPrefix,
     viewStorageKey,
     dateStorageKey,
+    calendarConfig,
   } = options;
   const [isHydrated, setIsHydrated] = useState(false);
   const [slotTimesKey, setSlotTimesKey] = useState(0);
@@ -141,8 +145,14 @@ export function useCalendarState(
 
   // Calculate slot times based on current date and view
   const slotTimes = useMemo(
-    () => getSlotTimes(slotFocusDate, freeRoam, currentView),
-    [slotFocusDate, freeRoam, currentView]
+    () =>
+      getSlotTimes(
+        slotFocusDate,
+        freeRoam,
+        currentView,
+        calendarConfig ?? undefined
+      ),
+    [slotFocusDate, freeRoam, currentView, calendarConfig]
   );
 
   /**

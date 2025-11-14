@@ -6,6 +6,8 @@ import { useCalendarResize } from "@shared/libs/calendar/calendar-view-utils";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useAppConfigQuery } from "@/features/app-config";
+import { snapshotToLegacyConfig } from "@/features/app-config/model";
 import type { CalendarCoreRef } from "@/features/calendar";
 import {
   alignAndSortEventsForCalendar,
@@ -63,6 +65,12 @@ export function useCalendarCore({
   const { state: _sidebarState, open: sidebarOpen } = useSidebar();
   const { openConversation } = useSidebarChatStore();
 
+  const { data: appConfig } = useAppConfigQuery();
+  const calendarConfig = useMemo(
+    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
+    [appConfig]
+  );
+
   // Ref for calendar component
   const calendarRef = useRef<CalendarCoreRef>(null);
 
@@ -74,6 +82,7 @@ export function useCalendarCore({
     ...(storageKeyPrefix ? { storageKeyPrefix } : {}),
     ...(viewStorageKey ? { viewStorageKey } : {}),
     ...(dateStorageKey ? { dateStorageKey } : {}),
+    ...(calendarConfig ? { calendarConfig } : {}),
   });
 
   // Get period-based data from TanStack Query cache (for hover cards and UI)
@@ -281,5 +290,6 @@ export function useCalendarCore({
     conversations: periodData.conversations, // Use period-based conversation events
     reservations: periodData.reservations, // Use period-based reservations (for hover cards)
     isLocalized,
+    calendarConfig,
   };
 }

@@ -249,6 +249,12 @@ def init_models() -> None:
     except Exception:
         # Auth module may not be present in some environments
         pass
+    # Ensure config models are imported
+    try:
+        from app.services.domain.config import config_models as _config_models  # noqa: F401
+    except Exception:
+        # Config module may not be present in some environments
+        pass
     Base.metadata.create_all(bind=engine)
 
     # Lightweight migration (PostgreSQL-safe): ensure optional columns exist

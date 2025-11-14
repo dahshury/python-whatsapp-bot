@@ -30,6 +30,8 @@ import { getTimezone } from "@shared/libs/calendar/calendar-config";
 import { useCalendarHeight } from "@shared/libs/calendar/useCalendarHeight";
 import { useVacation } from "@shared/libs/state/vacation-context";
 import type { CalendarEvent } from "@/entities/event";
+import { useAppConfigQuery } from "@/features/app-config";
+import { snapshotToLegacyConfig } from "@/features/app-config/model";
 import type { CalendarCoreRef } from "@/features/calendar";
 // Custom hooks
 import { useCalendarEvents, useCalendarState } from "@/features/calendar";
@@ -99,6 +101,12 @@ export const DualCalendarComponent = ({
   const resolvedInitialDate = (initialDate ??
     new Date().toISOString().split("T")[0]) as string;
 
+  const { data: appConfig } = useAppConfigQuery();
+  const calendarConfig = useMemo(
+    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
+    [appConfig]
+  );
+
   const leftCalendarState = useCalendarState({
     freeRoam,
     initialView: initialLeftView ?? "timeGridWeek",
@@ -106,6 +114,7 @@ export const DualCalendarComponent = ({
     // Use specific key so dual left persists independently of other calendars
     viewStorageKey: "dual-left-calendar-view",
     dateStorageKey: "dual-left-calendar-date",
+    ...(calendarConfig ? { calendarConfig } : {}),
   });
 
   const rightCalendarState = useCalendarState({
@@ -115,6 +124,7 @@ export const DualCalendarComponent = ({
     // Use specific key so dual right persists independently of other calendars
     viewStorageKey: "dual-right-calendar-view",
     dateStorageKey: "dual-right-calendar-date",
+    ...(calendarConfig ? { calendarConfig } : {}),
   });
 
   // Expose refs to parent - must be after state declaration but before any conditional returns

@@ -74,12 +74,13 @@ const nextConfig = {
             value: "strict-origin-when-cross-origin",
           },
           // Content Security Policy to prevent document.write issues
+          // Note: cdn.tldraw.com is required for tldraw icon sprites used in CSS mask properties
           {
             key: "Content-Security-Policy",
             value:
               process.env.NODE_ENV === "development"
                 ? "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: ws: wss: http: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; font-src 'self' data: blob: https:;"
-                : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://images.unsplash.com; font-src 'self' data: blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://offline.tawkit.net; connect-src 'self' ws: wss: http: https:;",
+                : "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https:; style-src-elem 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com https://images.unsplash.com https://cdn.tldraw.com; font-src 'self' data: blob: https:; frame-src https://www.youtube.com https://www.youtube-nocookie.com https://offline.tawkit.net; connect-src 'self' ws: wss: http: https:;",
           },
         ],
       },

@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import "./globals.css";
+import "../globals.css";
 
 export const metadata: Metadata = {
-  title: "Tldraw",
-  description: "Minimal tldraw canvas",
+  title: "App Configuration",
+  description: "Configure app settings",
 };
 
 export const viewport: Viewport = {
@@ -15,8 +15,8 @@ export const viewport: Viewport = {
 };
 
 /**
- * Minimal layout matching the official tldraw Next.js template.
- * Imports minimal CSS that only includes tldraw styles.
+ * Minimal layout for routes without sidebar/header.
+ * Uses full CSS for proper styling.
  */
 export default function MinimalLayout({ children }: { children: ReactNode }) {
   return <>{children}</>;

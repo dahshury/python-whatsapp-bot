@@ -1,4 +1,15 @@
-export const TIMEZONE = process.env.NEXT_PUBLIC_TIMEZONE || "Asia/Riyadh";
+import { runtimeConfig } from "@/shared/config";
+import {
+  ALL_DAYS_OF_WEEK,
+  FRIDAY,
+  MONDAY,
+  SATURDAY,
+  SUNDAY,
+  THURSDAY,
+  TUESDAY,
+  WEDNESDAY,
+} from "@/shared/constants/days-of-week";
+
 export const SLOT_DURATION_HOURS = 2; // Streamlit used 2-hour slot intervals
 
 type BusinessHoursRule = {
@@ -13,14 +24,123 @@ type ValidRange = {
   start: Date;
 };
 
-export function getTimezone(): string {
-  return TIMEZONE;
+type AppConfig = {
+  timezone?: string | null;
+  working_days?: number[]; // Top-level working days (from legacy config)
+  default_working_hours: {
+    days_of_week: number[];
+    start_time: string;
+    end_time: string;
+  };
+  day_specific_hours: Array<{
+    day_of_week: number;
+    start_time: string;
+    end_time: string;
+  }>;
+  slot_duration_hours: number;
+  day_specific_slot_durations: Array<{
+    day_of_week: number;
+    slot_duration_hours: number;
+  }>;
+  custom_calendar_ranges: Array<{
+    name: string;
+    start_date: string;
+    end_date: string;
+    working_days: number[];
+    start_time: string;
+    end_time: string;
+    slot_duration_hours?: number | null;
+  }>;
+};
+
+type MaybeHasTimezone =
+  | {
+      timezone?: string | null;
+    }
+  | null
+  | undefined;
+
+export function getTimezone(config?: MaybeHasTimezone): string {
+  if (config && typeof config === "object") {
+    const timezoneCandidate = config.timezone;
+    if (typeof timezoneCandidate === "string" && timezoneCandidate.trim()) {
+      return timezoneCandidate;
+    }
+  }
+  return runtimeConfig.timezone;
 }
 
-export function getBusinessHours(freeRoam: boolean): BusinessHoursRule[] {
+export function getBusinessHours(
+  freeRoam: boolean,
+  config?: AppConfig | null
+): BusinessHoursRule[] {
   if (freeRoam) {
     return [];
   }
+
+  // Use config if provided, otherwise use defaults
+  if (config) {
+    const customRanges = config.custom_calendar_ranges || [];
+    const customRules: BusinessHoursRule[] = customRanges.map((range) => ({
+      daysOfWeek: range.working_days,
+      startTime: range.start_time,
+      endTime: range.end_time,
+      startRecur: range.start_date,
+      endRecur: range.end_date,
+    }));
+
+    // Build normal rules: start with default, then apply day-specific overrides
+    const daySpecificHours = config.day_specific_hours || [];
+    const daySpecificMap = new Map<
+      number,
+      { start_time: string; end_time: string }
+    >();
+    for (const dayHours of daySpecificHours) {
+      daySpecificMap.set(dayHours.day_of_week, {
+        start_time: dayHours.start_time,
+        end_time: dayHours.end_time,
+      });
+    }
+
+    // Get default days, excluding days with specific hours
+    const defaultDays = config.default_working_hours.days_of_week.filter(
+      (day) => !daySpecificMap.has(day)
+    );
+
+    const normalRules: BusinessHoursRule[] = [];
+
+    // Add default hours for days without specific overrides
+    if (defaultDays.length > 0) {
+      normalRules.push({
+        daysOfWeek: defaultDays,
+        startTime: config.default_working_hours.start_time,
+        endTime: config.default_working_hours.end_time,
+        startRecur: "2022-01-01",
+        endRecur: "2031-12-31",
+      });
+    }
+
+    // Add day-specific hours
+    for (const dayHours of daySpecificHours) {
+      normalRules.push({
+        daysOfWeek: [dayHours.day_of_week],
+        startTime: dayHours.start_time,
+        endTime: dayHours.end_time,
+        startRecur: "2022-01-01",
+        endRecur: "2031-12-31",
+      });
+    }
+
+    // Subtract custom ranges from normal rules
+    const adjustedNormalRules = subtractCustomRangesFromNormal(
+      normalRules,
+      customRules
+    );
+
+    return [...customRules, ...adjustedNormalRules];
+  }
+
+  // Fallback to default behavior (backward compatibility)
   // Business hours:
   // - Sun-Thu: 11:00-17:00
   // - Sat: 16:00-22:00 (evening only)
@@ -31,14 +151,7 @@ export function getBusinessHours(freeRoam: boolean): BusinessHoursRule[] {
     [
       // Sun(0)-Thu(4): 11:00-17:00
       {
-        daysOfWeek: (() => {
-          const SUNDAY = 0;
-          const MONDAY = 1;
-          const TUESDAY = 2;
-          const WEDNESDAY = 3;
-          const THURSDAY = 4;
-          return [SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY];
-        })(),
+        daysOfWeek: [SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY],
         startTime: "11:00",
         endTime: "17:00",
         startRecur: "2022-01-01",
@@ -46,10 +159,7 @@ export function getBusinessHours(freeRoam: boolean): BusinessHoursRule[] {
       },
       // Saturday(6): 16:00-22:00
       {
-        daysOfWeek: (() => {
-          const SATURDAY = 6;
-          return [SATURDAY];
-        })(),
+        daysOfWeek: [SATURDAY],
         startTime: "16:00",
         endTime: "22:00",
         startRecur: "2022-01-01",
@@ -70,25 +180,141 @@ export function getValidRange(freeRoam: boolean): ValidRange | undefined {
   return { start: today };
 }
 
-export function getSlotTimes(date: Date, freeRoam: boolean, _view: string) {
+export function getSlotTimes(
+  date: Date,
+  freeRoam: boolean,
+  _view: string,
+  config?: AppConfig | null
+) {
   if (freeRoam) {
     return { slotMinTime: "00:00:00", slotMaxTime: "24:00:00" };
   }
+
+  // Use config if provided
+  if (config) {
+    // Check if date falls within any custom range
+    const customRange = config.custom_calendar_ranges?.find((range) => {
+      const start = new Date(range.start_date);
+      const end = new Date(range.end_date);
+      return date >= start && date <= end;
+    });
+
+    if (customRange) {
+      return {
+        slotMinTime: `${customRange.start_time}:00`,
+        slotMaxTime: `${customRange.end_time}:00`,
+      };
+    }
+
+    // Use default or day-specific hours based on day
+    const day = date.getDay();
+    const daySpecificHours = config.day_specific_hours || [];
+    const dayHours = daySpecificHours.find((dh) => dh.day_of_week === day);
+
+    if (dayHours) {
+      return {
+        slotMinTime: `${dayHours.start_time}:00`,
+        slotMaxTime: `${dayHours.end_time}:00`,
+      };
+    }
+
+    return {
+      slotMinTime: `${config.default_working_hours.start_time}:00`,
+      slotMaxTime: `${config.default_working_hours.end_time}:00`,
+    };
+  }
+
+  // Fallback to default behavior (backward compatibility)
   if (isRamadan(date)) {
     return { slotMinTime: "10:00:00", slotMaxTime: "16:00:00" };
   }
   const day = date.getDay(); // 0=Sun..6=Sat
-  const SUNDAY = 0;
-  const THURSDAY = 4;
   if (day >= SUNDAY && day <= THURSDAY) {
     return { slotMinTime: "11:00:00", slotMaxTime: "17:00:00" };
   }
-  const SATURDAY = 6;
   if (day === SATURDAY) {
     return { slotMinTime: "16:00:00", slotMaxTime: "22:00:00" };
   }
   // Friday hidden elsewhere
   return { slotMinTime: "11:00:00", slotMaxTime: "17:00:00" };
+}
+
+export function getSlotDuration(date: Date, config?: AppConfig | null): number {
+  if (config) {
+    // Check if date falls within any custom range with slot duration override
+    const customRange = config.custom_calendar_ranges?.find((range) => {
+      const start = new Date(range.start_date);
+      const end = new Date(range.end_date);
+      return date >= start && date <= end;
+    });
+
+    if (customRange?.slot_duration_hours) {
+      return customRange.slot_duration_hours;
+    }
+
+    // Check for day-specific slot duration
+    const day = date.getDay();
+    const daySpecificSlotDuration = config.day_specific_slot_durations?.find(
+      (dsd) => dsd.day_of_week === day
+    );
+
+    if (daySpecificSlotDuration) {
+      return daySpecificSlotDuration.slot_duration_hours;
+    }
+
+    // Use default slot duration
+    return config.slot_duration_hours || SLOT_DURATION_HOURS;
+  }
+
+  // Fallback to default
+  return SLOT_DURATION_HOURS;
+}
+
+/**
+ * Calculate which days should be hidden in the calendar based on config.
+ * Days that are NOT in the working days list should be hidden.
+ * @param freeRoam - If true, no days are hidden
+ * @param config - App config containing working days
+ * @returns Array of day indices to hide (0=Sunday, 6=Saturday)
+ */
+export function getHiddenDays(
+  freeRoam: boolean,
+  config?: AppConfig | null
+): number[] {
+  if (freeRoam) {
+    return [];
+  }
+
+  if (config) {
+    // Use top-level working_days if available (from legacy config)
+    // Otherwise, calculate from default_working_hours + day_specific_hours
+    let workingDaysSet: Set<number>;
+
+    if (config.working_days && config.working_days.length > 0) {
+      // Use top-level working_days field
+      workingDaysSet = new Set(config.working_days);
+    } else {
+      // Calculate from default_working_hours and day_specific_hours
+      workingDaysSet = new Set<number>();
+
+      // Add default working days
+      for (const day of config.default_working_hours.days_of_week) {
+        workingDaysSet.add(day);
+      }
+
+      // Add day-specific hours days
+      for (const dayHours of config.day_specific_hours) {
+        workingDaysSet.add(dayHours.day_of_week);
+      }
+    }
+
+    // All days are 0-6 (Sunday-Saturday)
+    // Hide days that are NOT in the working days set
+    return ALL_DAYS_OF_WEEK.filter((day) => !workingDaysSet.has(day));
+  }
+
+  // Fallback to default: hide Friday (5)
+  return [FRIDAY];
 }
 
 // Simple Ramadan check using approximate Hijri conversion boundaries is handled on backend.
@@ -158,12 +384,6 @@ function getRamadanBusinessHours() {
   } catch {
     // Date parsing failed; use empty ranges
   }
-  const SUNDAY = 0;
-  const MONDAY = 1;
-  const TUESDAY = 2;
-  const WEDNESDAY = 3;
-  const THURSDAY = 4;
-  const SATURDAY = 6;
   RAMADAN_RULES_CACHE = ranges.map((r) => ({
     daysOfWeek: [SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, SATURDAY],
     startTime: "10:00",
@@ -172,6 +392,17 @@ function getRamadanBusinessHours() {
     endRecur: r.end,
   }));
   return RAMADAN_RULES_CACHE;
+}
+
+function subtractCustomRangesFromNormal(
+  normal: BusinessHoursRule[],
+  custom: BusinessHoursRule[]
+): BusinessHoursRule[] {
+  if (!custom || custom.length === 0) {
+    return normal;
+  }
+  // Use the same logic as subtractRamadanFromNormal
+  return subtractRamadanFromNormal(normal, custom);
 }
 
 function subtractRamadanFromNormal(

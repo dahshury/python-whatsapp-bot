@@ -1,9 +1,60 @@
-/* Emoji Picker Customizations */
+/* Emoji Picker Element Customizations */
 
-/* Future emoji picker customizations can go here */
-/* Currently using default styling for smooth scrolling */
-
-/* Placeholder rule to satisfy linter - file intentionally minimal */
-.emoji-picker-container {
-  /* Styling will be added as needed */
+emoji-picker {
+  /* Use theme colors */
+  --background: hsl(var(--popover));
+  --border-color: hsl(var(--border));
+  --border-radius: var(--radius, 0.5rem);
+  --border-size: 1px;
+  --button-active-background: hsl(var(--accent));
+  --button-hover-background: hsl(var(--muted));
+  --category-font-color: hsl(var(--muted-foreground));
+  --input-border-color: hsl(var(--border));
+  --input-font-color: hsl(var(--popover-foreground));
+  --input-placeholder-color: hsl(var(--muted-foreground));
+  --outline-color: hsl(var(--ring));
+  --indicator-color: hsl(var(--primary));
+  
+  /* Size customization */
+  --num-columns: 8;
+  --emoji-size: 1.375rem;
+  --emoji-padding: 0.5rem;
+  
+  /* Ensure it respects dark mode */
+  width: 21.375rem;
+  height: 21.375rem;
+  
+  /* Ensure scroll events work properly */
+  display: block;
+  pointer-events: auto;
+  touch-action: pan-y;
+  
+  /* Ensure the picker can receive wheel events */
+  position: relative;
 }
+
+/* Dark mode support - emoji-picker-element automatically detects prefers-color-scheme */
+/* But we can also force it with the class */
+emoji-picker.dark {
+  --background: hsl(var(--popover));
+  --border-color: hsl(var(--border));
+  --button-active-background: hsl(var(--accent));
+  --button-hover-background: hsl(var(--muted));
+  --category-font-color: hsl(var(--muted-foreground));
+  --input-border-color: hsl(var(--border));
+  --input-font-color: hsl(var(--popover-foreground));
+  --input-placeholder-color: hsl(var(--muted-foreground));
+}
+
+/* Light mode */
+emoji-picker.light {
+  --background: hsl(var(--popover));
+  --border-color: hsl(var(--border));
+  --button-active-background: hsl(var(--accent));
+  --button-hover-background: hsl(var(--muted));
+  --category-font-color: hsl(var(--muted-foreground));
+  --input-border-color: hsl(var(--border));
+  --input-font-color: hsl(var(--popover-foreground));
+  --input-placeholder-color: hsl(var(--muted-foreground));
+}
+

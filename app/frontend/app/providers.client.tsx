@@ -39,7 +39,7 @@ export function AppProvidersClient({
   sidebarSlot,
 }: AppProvidersClientProps) {
   const pathname = usePathname();
-  const isMinimalRoute = pathname === "/tldraw";
+  const isMinimalRoute = pathname === "/tldraw" || pathname === "/config";
   const [showShell, setShowShell] = useState(!isMinimalRoute);
 
   useEffect(() => {
@@ -65,7 +65,8 @@ export function AppProvidersClient({
 
   // For minimal routes like /tldraw, skip ALL providers and return children directly
   // This prevents WebSocket connections, data fetching, and all app infrastructure
-  if (isMinimalRoute) {
+  // For /config, we need providers but no shell (sidebar/header)
+  if (pathname === "/tldraw") {
     return (
       <div
         className="h-screen w-screen"
@@ -75,6 +76,46 @@ export function AppProvidersClient({
       >
         {children}
       </div>
+    );
+  }
+
+  // Config page needs providers but no shell
+  if (pathname === "/config") {
+    return (
+      <>
+        <ErrorRecoveryInit />
+        <SuppressResizeObserverWarnings />
+        <AppServiceProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            disableTransitionOnChange
+            enableSystem
+          >
+            <UiThemeBridge>
+              <SpacemanThemeBridge>
+                <BackendConnectionProvider>
+                  <TanstackQueryProvider>
+                    <ThemeWrapper>
+                      <DvhInit />
+                      <PortalBootstrap />
+                      <ToastRouter />
+                      <div
+                        className="h-screen w-screen overflow-auto"
+                        style={{
+                          height: "var(--doc-dvh, 100dvh)",
+                        }}
+                      >
+                        {children}
+                      </div>
+                    </ThemeWrapper>
+                  </TanstackQueryProvider>
+                </BackendConnectionProvider>
+              </SpacemanThemeBridge>
+            </UiThemeBridge>
+          </ThemeProvider>
+        </AppServiceProvider>
+      </>
     );
   }
 

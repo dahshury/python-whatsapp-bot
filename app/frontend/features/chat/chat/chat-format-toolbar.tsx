@@ -43,20 +43,45 @@ export function ChatFormatToolbar({
   disabled: boolean;
   isLocalized?: boolean;
 }) {
-  const [, forceUpdate] = useState({});
+  const [activeMarks, setActiveMarks] = useState({
+    bold: false,
+    italic: false,
+    strike: false,
+    code: false,
+  });
 
-  // Force re-render when editor selection or transaction changes
+  // Update active marks when editor selection or content changes
   useEffect(() => {
     if (!editor) {
       return;
     }
-    const updateHandler = () => forceUpdate({});
-    editor.on("selectionUpdate", updateHandler);
-    editor.on("transaction", updateHandler);
+
+    const updateActiveMarks = () => {
+      setActiveMarks({
+        bold: editor.isActive("bold"),
+        italic: editor.isActive("italic"),
+        strike: editor.isActive("strike"),
+        code: editor.isActive("code"),
+      });
+    };
+
+    // Initial update
+    updateActiveMarks();
+
+    // Listen to all editor events that might change the selection or marks
+    editor.on("update", updateActiveMarks);
+    editor.on("selectionUpdate", updateActiveMarks);
+    editor.on("transaction", updateActiveMarks);
+    editor.on("focus", updateActiveMarks);
+    editor.on("blur", updateActiveMarks);
+
     return () => {
       try {
-        editor.off("selectionUpdate", updateHandler);
-        editor.off("transaction", updateHandler);
+        editor.off("update", updateActiveMarks);
+        editor.off("selectionUpdate", updateActiveMarks);
+        editor.off("transaction", updateActiveMarks);
+        editor.off("focus", updateActiveMarks);
+        editor.off("blur", updateActiveMarks);
       } catch {
         // Editor cleanup errors are non-critical
       }
@@ -83,7 +108,7 @@ export function ChatFormatToolbar({
   return (
     <div className="flex w-full items-center gap-1">
       {(() => {
-        const isActive = !!editor?.isActive("bold");
+        const isActive = activeMarks.bold;
         const canRun = !!editor?.can().chain().focus().toggleBold().run();
         return (
           <button
@@ -108,7 +133,7 @@ export function ChatFormatToolbar({
         );
       })()}
       {(() => {
-        const isActive = !!editor?.isActive("italic");
+        const isActive = activeMarks.italic;
         const canRun = !!editor?.can().chain().focus().toggleItalic().run();
         return (
           <button
@@ -133,7 +158,7 @@ export function ChatFormatToolbar({
         );
       })()}
       {(() => {
-        const isActive = !!editor?.isActive("strike");
+        const isActive = activeMarks.strike;
         const canRun = !!editor?.can().chain().focus().toggleStrike().run();
         return (
           <button
@@ -158,7 +183,7 @@ export function ChatFormatToolbar({
         );
       })()}
       {(() => {
-        const isActive = !!editor?.isActive("code");
+        const isActive = activeMarks.code;
         const canRun = !!editor?.can().chain().focus().toggleCode().run();
         return (
           <button

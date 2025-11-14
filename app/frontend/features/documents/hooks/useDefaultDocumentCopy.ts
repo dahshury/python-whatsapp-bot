@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DOCUMENT_QUERY_KEY } from "@/entities/document";
 import {
   DEFAULT_DOCUMENT_WA_ID,
@@ -42,7 +42,7 @@ export function useDefaultDocumentCopy({
   isError,
 }: UseDefaultDocumentCopyParams): UseDefaultDocumentCopyResult {
   const queryClient = useQueryClient();
-  const documentsService = createDocumentsService();
+  const documentsService = useMemo(() => createDocumentsService(), []);
   const copiedWaIdsRef = useRef<Set<string>>(new Set());
   const lastWaIdRef = useRef<string | null>(null);
   const [isCopying, setIsCopying] = useState(false);

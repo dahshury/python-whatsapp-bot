@@ -3,6 +3,7 @@
 
 /* Base pill styling for reservation events */
 .fc-event.reservation-event {
+  box-sizing: border-box;
   border-width: var(--fc-event-stroke-width); /* rem-based outline */
   border-radius: 6px;
   padding: 2px 6px; /* horizontal breathing room */

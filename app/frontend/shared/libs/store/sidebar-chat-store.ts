@@ -23,8 +23,18 @@ type SidebarChatState = {
   setConversation: (id?: string | null) => void;
 };
 
+type PersistedSidebarChatState = Pick<
+  SidebarChatState,
+  "activeTab" | "selectedConversationId"
+>;
+
+const defaultPersistedSidebarState: PersistedSidebarChatState = {
+  activeTab: "calendar",
+  selectedConversationId: null,
+};
+
 const useSidebarChatStore = create<SidebarChatState>()(
-  persist(
+  persist<SidebarChatState, [], [], PersistedSidebarChatState>(
     (set, _get) => ({
       isOpen: false,
       isChatSidebarOpen: false,
@@ -65,13 +75,34 @@ const useSidebarChatStore = create<SidebarChatState>()(
     }),
     {
       name: "sidebar-chat-store",
-      version: 2,
+      version: 3,
       storage: createJSONStorage(() => localStorage),
-      partialize: () => ({}),
-      migrate: (_persistedState, _version) => {
-        // We intentionally persist nothing for this store, so safely ignore
-        // any previously saved shapes and start from the initial state.
-        return {};
+      partialize: (state): PersistedSidebarChatState => ({
+        activeTab: state.activeTab,
+        selectedConversationId: state.selectedConversationId ?? null,
+      }),
+      migrate: (persistedState, version) => {
+        const MIN_SUPPORTED_VERSION = 3;
+        if (
+          !persistedState ||
+          typeof persistedState !== "object" ||
+          version < MIN_SUPPORTED_VERSION
+        ) {
+          return defaultPersistedSidebarState;
+        }
+
+        const candidate = persistedState as Partial<PersistedSidebarChatState>;
+        const activeTab = candidate.activeTab === "chat" ? "chat" : "calendar";
+
+        const selectedConversationId =
+          typeof candidate.selectedConversationId === "string"
+            ? candidate.selectedConversationId
+            : null;
+
+        return {
+          activeTab,
+          selectedConversationId,
+        };
       },
       onRehydrateStorage: () => () => {
         try {

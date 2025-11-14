@@ -4,6 +4,8 @@ import { i18n } from "@shared/libs/i18n";
 import { toastService } from "@shared/libs/toast";
 import { Label } from "@ui/label";
 import { Globe, Languages } from "lucide-react";
+import { useEffect } from "react";
+import { useAppConfigQuery } from "@/features/app-config";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { Button } from "@/shared/ui/button";
 import {
@@ -20,10 +22,32 @@ type GeneralSettingsProps = {
   isLocalized?: boolean;
 };
 
+const LANGUAGE_LABELS: Record<string, { label: string; icon: typeof Globe }> = {
+  en: { label: "English", icon: Globe },
+  ar: { label: "العربية", icon: Languages },
+};
+
 export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
   const { locale, setLocale } = useLanguageStore();
+  const { data: appConfig } = useAppConfigQuery();
+  const configSnapshot = appConfig?.toSnapshot();
+
+  const fallbackLanguages = ["en", "ar"];
+  const availableLanguages = configSnapshot
+    ? configSnapshot.availableLanguages
+    : fallbackLanguages;
+
+  const languageOptions = availableLanguages.filter(
+    (lang) => lang in LANGUAGE_LABELS
+  );
 
   const handleLanguageChange = (value: string) => {
+    // Only allow switching to available languages
+    if (!availableLanguages.includes(value)) {
+      toastService.error("This language is not available");
+      return;
+    }
+
     setLocale(value);
     toastService.success(
       value === "ar"
@@ -31,6 +55,25 @@ export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
         : "Switched to English"
     );
   };
+
+  // If current locale is not available, switch to first available language
+  useEffect(() => {
+    if (
+      locale &&
+      !availableLanguages.includes(locale) &&
+      languageOptions.length > 0
+    ) {
+      const firstAvailable = languageOptions[0];
+      if (firstAvailable) {
+        setLocale(firstAvailable);
+      }
+    }
+  }, [locale, availableLanguages, languageOptions, setLocale]);
+
+  // Don't render if no languages are available
+  if (configSnapshot && languageOptions.length === 0) {
+    return null;
+  }
 
   return (
     <div className="space-y-4">
@@ -58,20 +101,27 @@ export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {
             <DropdownMenuSeparator />
             <DropdownMenuRadioGroup
               onValueChange={handleLanguageChange}
-              value={locale}
+              value={
+                availableLanguages.includes(locale)
+                  ? locale
+                  : (languageOptions[0] ?? "")
+              }
             >
-              <DropdownMenuRadioItem value="en">
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4" />
-                  <span>English</span>
-                </div>
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="ar">
-                <div className="flex items-center gap-2">
-                  <Languages className="h-4 w-4" />
-                  <span>العربية</span>
-                </div>
-              </DropdownMenuRadioItem>
+              {languageOptions.map((lang) => {
+                const langInfo = LANGUAGE_LABELS[lang];
+                if (!langInfo) {
+                  return null;
+                }
+                const Icon = langInfo.icon;
+                return (
+                  <DropdownMenuRadioItem key={lang} value={lang}>
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span>{langInfo.label}</span>
+                    </div>
+                  </DropdownMenuRadioItem>
+                );
+              })}
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>

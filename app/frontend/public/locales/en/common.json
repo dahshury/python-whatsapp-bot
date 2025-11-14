@@ -155,6 +155,7 @@
   "new_message": "New message",
   "backend_connection_ensure_localhost": "Ensure the server is running on http://localhost:8000",
   "phone_country_search_placeholder": "Search countries...",
+  "phone_country_select_placeholder": "Select country",
   "phone_no_country_found": "No country found.",
   "phone_filter_country": "Country",
   "phone_filter_date_range": "Date Range",

@@ -291,6 +291,10 @@
 /* Ensure reservation pill fills row for left title / right time alignment */
 .fc-daygrid-event.reservation-event {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow: hidden;
 }
 
 /* ========================================

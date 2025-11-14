@@ -1,5 +1,7 @@
 import { i18n } from "@shared/libs/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAppConfigQuery } from "@/features/app-config";
+import { snapshotToLegacyConfig } from "@/features/app-config/model";
 import { getDataTableColumns } from "@/shared/libs/data-grid/components/core/column-presets/data-table-editor.columns";
 import { createDataSourceMapper } from "@/shared/libs/data-grid/components/services/DataSourceMapper";
 import type { CalendarEvent } from "@/widgets/data-table-editor/types";
@@ -82,6 +84,11 @@ export function useDataTableDataSource({
   const mapper = useMemo(() => createDataSourceMapper<CalendarEvent>(), []);
 
   const localized = isLocalized ?? false;
+  const { data: appConfig } = useAppConfigQuery();
+  const calendarConfig = useMemo(
+    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
+    [appConfig]
+  );
 
   const previousEventsRef = useRef<CalendarEvent[]>([]);
   const previousConfigRef = useRef<string>("");
@@ -94,7 +101,8 @@ export function useDataTableDataSource({
       const columns = getDataTableColumns(
         localized,
         currentSelectedDateRange,
-        freeRoam
+        freeRoam,
+        calendarConfig ?? undefined
       );
 
       if (!currentSelectedDateRange || currentEvents.length === 0) {
@@ -216,7 +224,7 @@ export function useDataTableDataSource({
 
       return newDataSource;
     },
-    [mapper, localized, freeRoam, slotDurationHours]
+    [mapper, localized, freeRoam, slotDurationHours, calendarConfig]
   );
 
   const [dataSource, setDataSource] = useState<
@@ -230,6 +238,7 @@ export function useDataTableDataSource({
       freeRoam,
       isLocalized: localized,
       eventsLength: events.length,
+      calendarConfig,
     });
 
     const eventsChanged = !areEventsEqual(previousEventsRef.current, events);
@@ -249,6 +258,7 @@ export function useDataTableDataSource({
     localized,
     open,
     buildDataSource,
+    calendarConfig,
   ]);
 
   useEffect(() => {

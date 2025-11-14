@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAppConfigQuery } from "@/features/app-config";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { InMemoryDataSource } from "@/shared/libs/data-grid/components/core/data-sources/InMemoryDataSource";
 import type {
@@ -9,6 +10,7 @@ import type {
 } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
 import { ColumnDataType } from "@/shared/libs/data-grid/components/core/interfaces/IDataSource";
 import type { DataProvider } from "@/shared/libs/data-grid/components/core/services/DataProvider";
+import { configColumnsToIColumnDefinitions } from "@/shared/libs/data-grid/utils/config-columns";
 import { i18n } from "@/shared/libs/i18n";
 import { logger } from "@/shared/libs/logger";
 import { createDocumentsService } from "../services/documents.service.factory";
@@ -54,8 +56,18 @@ export default function useDocumentCustomerRow(
     Array<{ row: number; col: number; message: string; fieldName?: string }>
   >([]);
 
-  const customerColumns = useMemo<IColumnDefinition[]>(
-    () => [
+  // Get app config for documents columns
+  const { data: appConfig } = useAppConfigQuery();
+  const documentsColumns = appConfig?.toSnapshot().documentsColumns;
+
+  const customerColumns = useMemo<IColumnDefinition[]>(() => {
+    // Use config columns if available
+    if (documentsColumns && documentsColumns.length > 0) {
+      return configColumnsToIColumnDefinitions(documentsColumns, localized);
+    }
+
+    // Fallback to default columns (backward compatibility)
+    return [
       {
         id: "name",
         name: "name",
@@ -88,9 +100,8 @@ export default function useDocumentCustomerRow(
         isRequired: true,
         width: 150,
       },
-    ],
-    [localized]
-  );
+    ];
+  }, [localized, documentsColumns]);
 
   const customerDataSource = useMemo<IDataSource>(() => {
     const initialRow: unknown[] = ["", null, ""];

@@ -32,6 +32,7 @@ type CountrySelectorProps = {
   className?: string;
   /** Optional: Only show countries that exist in this list */
   availableCountries?: Set<RPNInput.Country>;
+  showCountryLabel?: boolean;
 };
 
 export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
@@ -46,6 +47,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
   size = "default",
   className,
   availableCountries,
+  showCountryLabel = false,
 }) => {
   const { isLocalized } = useLanguageStore();
   const countryOptions = React.useMemo(() => {
@@ -58,6 +60,18 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
     }
     return allOptions;
   }, [isLocalized, availableCountries]);
+  const selectedOption = React.useMemo(() => {
+    if (!country) {
+      return;
+    }
+    return countryOptions.find((option) => option.value === country);
+  }, [countryOptions, country]);
+  const selectPlaceholder = React.useMemo(
+    () => i18n.getMessage("phone_country_select_placeholder", isLocalized),
+    [isLocalized]
+  );
+  const displayLabel = selectedOption?.label ?? country ?? selectPlaceholder;
+  const isPlaceholderLabel = !country;
 
   return (
     <Popover onOpenChange={setIsOpen} open={isOpen}>
@@ -65,6 +79,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
         <Button
           className={cn(
             "flex gap-1 rounded-s-lg rounded-e-none border-r-0 focus:z-10",
+            showCountryLabel && "w-full justify-between",
             getSizeClasses(size),
             className
           )}
@@ -77,6 +92,16 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
             <FlagComponent country={country} title={country} />
           ) : (
             <span className="text-muted-foreground">🌍</span>
+          )}
+          {showCountryLabel && (
+            <span
+              className={cn(
+                "ms-2 flex-1 truncate text-left text-sm",
+                isPlaceholderLabel && "text-muted-foreground"
+              )}
+            >
+              {displayLabel}
+            </span>
           )}
           <ChevronsUpDown className="-mr-2 size-4 opacity-50" />
         </Button>
@@ -97,7 +122,7 @@ export const PhoneCountrySelector: React.FC<CountrySelectorProps> = ({
             )}
             value={search}
           />
-          <CommandList dir="ltr">
+          <CommandList className="!overflow-visible" dir="ltr">
             <ThemedScrollbar className="h-72" rtl={false}>
               <CommandEmpty>
                 {i18n.getMessage("phone_no_country_found", isLocalized)}

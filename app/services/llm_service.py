@@ -35,7 +35,7 @@ class BaseLLMService(abc.ABC):
         self.gemini_model = "gemini-2.5-pro-preview-05-06"
 
         # OpenAI
-        self.openai_model = "gpt-5"
+        self.openai_model = "gpt-5.1"
         self.openai_reasoning_effort = "high"
         self.openai_reasoning_summary = "auto"
         self.openai_text_format = "text"
