@@ -1,4 +1,5 @@
 import { getValidRange } from "@shared/libs/calendar/calendar-config";
+import type { EventLoadingConfig } from "@/entities/app-config";
 
 export function getGlobalValidRange(
   freeRoam: boolean,
@@ -13,22 +14,29 @@ export function getGlobalValidRange(
   return getValidRange(freeRoam) as unknown as Record<string, unknown>;
 }
 
-export function getViewsProp() {
+export function getViewsProp(
+  eventLoading?: EventLoadingConfig | null
+): Record<string, unknown> {
+  // Use config values if provided, otherwise use defaults
+  const dayMaxEvents = eventLoading?.dayMaxEvents ?? true;
+  const dayMaxEventRows = eventLoading?.dayMaxEventRows ?? true;
+  const moreLinkClick = eventLoading?.moreLinkClick ?? "popover";
+
   return {
     multiMonthYear: {
-      dayMaxEvents: true,
-      dayMaxEventRows: true,
-      moreLinkClick: "popover" as const,
+      dayMaxEvents,
+      dayMaxEventRows,
+      moreLinkClick,
     },
     dayGridMonth: {
-      dayMaxEvents: true,
-      dayMaxEventRows: true,
-      moreLinkClick: "popover" as const,
+      dayMaxEvents,
+      dayMaxEventRows,
+      moreLinkClick,
     },
     dayGridWeek: {
-      dayMaxEvents: true,
-      dayMaxEventRows: true,
-      moreLinkClick: "popover" as const,
+      dayMaxEvents,
+      dayMaxEventRows,
+      moreLinkClick,
     },
     timeGridWeek: {
       allDaySlot: false,

@@ -1,7 +1,7 @@
 """Pydantic schemas for app configuration."""
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field, field_validator
@@ -9,6 +9,53 @@ from pydantic import BaseModel, Field, field_validator
 DEFAULT_TIMEZONE = "Asia/Riyadh"
 DEFAULT_LLM_PROVIDER = "openai"
 SUPPORTED_LLM_PROVIDERS = {"openai", "anthropic", "gemini"}
+
+DEFAULT_EVENT_TYPE_COLORS: dict[str, dict[str, str]] = {
+    "0": {"background": "#e2eee9", "border": "#12b981"},
+    "1": {"background": "#e2e8f4", "border": "#3c82f6"},
+    "2": {"background": "#edae49", "border": "#edae49"},
+}
+DEFAULT_DOCUMENT_STROKE_COLOR = "#facc15"
+
+
+class EventTypeColor(BaseModel):
+    """Background/border pair for a specific event type."""
+
+    background: str = Field(description="Hex color used for the event background")
+    border: str = Field(description="Hex color used for the event border/stroke")
+
+
+def _default_event_type_color_map() -> dict[str, EventTypeColor]:
+    return {
+        key: EventTypeColor(**value) for key, value in DEFAULT_EVENT_TYPE_COLORS.items()
+    }
+
+
+class EventColorsConfig(BaseModel):
+    """Color configuration for typed events inside FullCalendar."""
+
+    default_event_color: str = Field(
+        default=DEFAULT_EVENT_TYPE_COLORS["2"]["background"],
+        description="Fallback color for events without an explicit type",
+    )
+    event_color_by_type: dict[str, EventTypeColor | str] = Field(
+        default_factory=_default_event_type_color_map,
+        description="Mapping of reservation type -> colors. Supports legacy string values.",
+    )
+    use_event_colors: bool = Field(
+        default=True, description="Whether event type colors are enabled"
+    )
+    event_color_by_status: dict[str, str] | None = Field(
+        default=None, description="Optional overrides by event status"
+    )
+    event_color_by_priority: dict[str, str] | None = Field(
+        default=None, description="Optional overrides by event priority"
+    )
+    document_stroke_color: str = Field(
+        default=DEFAULT_DOCUMENT_STROKE_COLOR,
+        description="Stroke color applied to events that include uploaded documents",
+    )
+
 
 
 class WorkingHoursConfig(BaseModel):
@@ -139,6 +186,79 @@ class ColumnConfig(BaseModel):
     )
 
 
+class EventTimeFormatConfig(BaseModel):
+    """Time display options for calendar events."""
+
+    format: Literal["12h", "24h", "auto"] = Field(
+        default="auto", description="Clock format for event time display"
+    )
+    show_minutes: bool = Field(
+        default=True, description="Whether minutes are shown in event time"
+    )
+    show_meridiem: bool = Field(
+        default=True, description="Show AM/PM indicator when format allows"
+    )
+
+
+class EventLoadingConfig(BaseModel):
+    """FullCalendar event density controls."""
+
+    day_max_events: int | bool = Field(
+        default=True,
+        description="Max number of events per day (true for auto 'more' link)",
+    )
+    day_max_event_rows: int | bool = Field(
+        default=True,
+        description="Max rows of events per day (true for auto)",
+    )
+    more_link_click: Literal[
+        "popover", "week", "day", "timeGridWeek", "timeGridDay"
+    ] = Field(
+        default="popover",
+        description="Behavior when clicking the +X more link",
+    )
+
+
+class QuietHoursConfig(BaseModel):
+    """Quiet hours window that suppresses notifications."""
+
+    start: str | None = Field(
+        default=None,
+        description="Quiet hours start time in HH:MM (24h) format",
+    )
+    end: str | None = Field(
+        default=None,
+        description="Quiet hours end time in HH:MM (24h) format",
+    )
+
+
+class NotificationPreferencesConfig(BaseModel):
+    """Channel and trigger preferences for notifications."""
+
+    notify_on_event_create: bool = Field(
+        default=True, description="Notify when events are created"
+    )
+    notify_on_event_update: bool = Field(
+        default=True, description="Notify when events are updated"
+    )
+    notify_on_event_delete: bool = Field(
+        default=True, description="Notify when events are deleted"
+    )
+    notify_on_event_reminder: bool = Field(
+        default=False, description="Notify for upcoming event reminders"
+    )
+    notification_sound: bool = Field(
+        default=False, description="Play a sound for notifications"
+    )
+    notification_desktop: bool = Field(
+        default=False, description="Show desktop notifications"
+    )
+    quiet_hours: QuietHoursConfig | None = Field(
+        default=None,
+        description="Optional quiet hours window that suppresses notifications",
+    )
+
+
 class AppConfigBase(BaseModel):
     """Base configuration model."""
 
@@ -196,6 +316,38 @@ class AppConfigBase(BaseModel):
         default=DEFAULT_LLM_PROVIDER,
         description="LLM provider to use for AI features (openai, anthropic, gemini)",
     )
+    calendar_first_day: int | None = Field(
+        default=6,
+        ge=0,
+        le=6,
+        description="First day of week in calendar views (0=Sunday ... 6=Saturday)",
+    )
+    event_colors: EventColorsConfig = Field(
+        default_factory=EventColorsConfig,
+        description="Color configuration for calendar event types",
+    )
+    event_time_format: EventTimeFormatConfig = Field(
+        default_factory=EventTimeFormatConfig,
+        description="Clock display format for calendar events",
+    )
+    default_calendar_view: str | None = Field(
+        default="timeGridWeek", description="Initial FullCalendar view (e.g. timeGridWeek)"
+    )
+    calendar_locale: str | None = Field(
+        default=None,
+        description="Locale applied to FullCalendar (ISO code, e.g. 'en', 'ar-sa')",
+    )
+    calendar_direction: Literal["ltr", "rtl", "auto"] = Field(
+        default="auto", description="Text direction override for the calendar"
+    )
+    event_loading: EventLoadingConfig = Field(
+        default_factory=EventLoadingConfig,
+        description="Controls for FullCalendar event density limits",
+    )
+    notification_preferences: NotificationPreferencesConfig = Field(
+        default_factory=NotificationPreferencesConfig,
+        description="Notification triggers and channel preferences",
+    )
 
     @field_validator("timezone")
     @classmethod
@@ -237,6 +389,14 @@ class AppConfigUpdate(BaseModel):
     available_languages: list[str] | None = None
     timezone: str | None = None
     llm_provider: str | None = None
+    calendar_first_day: int | None = Field(default=None, ge=0, le=6)
+    event_time_format: EventTimeFormatConfig | None = None
+    default_calendar_view: str | None = None
+    calendar_locale: str | None = None
+    calendar_direction: Literal["ltr", "rtl", "auto"] | None = None
+    event_colors: EventColorsConfig | None = None
+    event_loading: EventLoadingConfig | None = None
+    notification_preferences: NotificationPreferencesConfig | None = None
 
 
 class AppConfigRead(AppConfigBase):

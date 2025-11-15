@@ -1,7 +1,6 @@
 import { useDropdownWidth } from "@shared/libs/hooks/use-dropdown-width";
 import { useScrollSelectedIntoView } from "@shared/libs/hooks/use-scroll-selected-into-view";
 import { useShrinkToFitText } from "@shared/libs/hooks/use-shrink-to-fit-text";
-import { DEFAULT_COUNTRY } from "@shared/libs/phone/config";
 import { getSizeClasses } from "@shared/libs/ui/size";
 import { cn } from "@shared/libs/utils";
 import { getCountryFromPhone } from "@shared/libs/utils/phone-utils";
@@ -17,6 +16,7 @@ import {
 import type * as RPNInput from "react-phone-number-input";
 import { getCountryCallingCode } from "react-phone-number-input";
 import type { PhoneOption } from "@/entities/phone";
+import { useDefaultCountryCode } from "@/features/phone-selector/hooks/useDefaultCountryCode";
 import { usePhoneComboboxCountry } from "@/features/phone-selector/hooks/usePhoneComboboxCountry";
 import { usePhoneComboboxSelection } from "@/features/phone-selector/hooks/usePhoneComboboxSelection";
 import { usePhoneComboboxState } from "@/features/phone-selector/hooks/usePhoneComboboxState";
@@ -79,6 +79,7 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
   rounded = true,
 }) => {
   const { isLocalized } = useLanguageStore();
+  const defaultCountry = useDefaultCountryCode();
   const [selectedPhone, setSelectedPhone] = useState<string>(value || "");
   const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -100,8 +101,14 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
   );
 
   const [country, setCountry] = useState<RPNInput.Country | undefined>(
-    DEFAULT_COUNTRY as RPNInput.Country
+    defaultCountry
   );
+
+  useEffect(() => {
+    if (!selectedPhone.trim()) {
+      setCountry(defaultCountry);
+    }
+  }, [defaultCountry, selectedPhone]);
 
   const [countrySearch, setCountrySearch] = useState("");
   const [phoneSearch, setPhoneSearch] = useState("");
@@ -111,15 +118,14 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
     if (!uncontrolled && value !== undefined) {
       setSelectedPhone(value);
     } else if ((value === undefined || value === "") && selectedPhone === "") {
-      // When uncontrolled/new usage, initialize to +<DEFAULT_COUNTRY CC> on first mount if empty
       try {
-        const cc = getCountryCallingCode(DEFAULT_COUNTRY as RPNInput.Country);
+        const cc = getCountryCallingCode(defaultCountry);
         setSelectedPhone(`+${cc} `);
       } catch {
         setSelectedPhone("+");
       }
     }
-  }, [value, uncontrolled, selectedPhone]);
+  }, [value, uncontrolled, selectedPhone, defaultCountry]);
 
   // Initialize country from the initial value ONCE (e.g., when editing an existing number)
   const hasInitializedCountryRef = useRef(false);
@@ -188,6 +194,7 @@ const PhoneCombobox: FC<PhoneComboboxProps> = ({
       setPhoneSearch,
       ...(country ? { selectedCountry: country } : {}),
       isLocalized,
+      defaultCountry,
       validatePhone,
     });
 

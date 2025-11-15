@@ -6,6 +6,7 @@ import { useVacation } from "@shared/libs/state/vacation-context";
 import { cn } from "@shared/libs/utils";
 import { useRouter } from "next/navigation";
 import React from "react";
+import { useAppConfigQuery } from "@/features/app-config";
 import type { CalendarCoreRef } from "@/features/calendar";
 import {
   alignAndSortEventsForCalendar,
@@ -55,7 +56,7 @@ export function CalendarDrawer({
   trigger,
   title = "Calendar",
   side = "right",
-  initialView = "listMonth",
+  initialView,
   disableDateClick = false,
   lockView,
   onOpenChange,
@@ -110,8 +111,13 @@ export function CalendarDrawer({
   // Calendar ref
   const calendarRef = React.useRef<CalendarCoreRef>(null);
 
-  // Use locked view if provided, otherwise use initialView
-  const effectiveInitialView = lockView || initialView;
+  const { data: appConfig } = useAppConfigQuery();
+  const snapshot = appConfig?.toSnapshot();
+  const configDefaultView = snapshot?.defaultCalendarView ?? "timeGridWeek";
+
+  // Use locked view if provided, otherwise follow props or config
+  const fallbackInitialView = initialView ?? configDefaultView;
+  const effectiveInitialView = lockView || fallbackInitialView;
 
   // Calendar core hook - enabled when prefetching or drawer is open
   const calendarCore = useCalendarCore({
@@ -142,6 +148,32 @@ export function CalendarDrawer({
     },
     [lockView, calendarCore.calendarState]
   );
+
+  const drawerCalendarState = calendarCore.calendarState;
+  const shouldSyncDefaultView = !(lockView || initialView);
+  const previousDefaultViewRef = React.useRef(effectiveInitialView);
+  const drawerIsHydrated = drawerCalendarState.isHydrated;
+  const setDrawerCurrentView = drawerCalendarState.setCurrentView;
+
+  React.useEffect(() => {
+    if (!shouldSyncDefaultView) {
+      previousDefaultViewRef.current = effectiveInitialView;
+      return;
+    }
+    if (!drawerIsHydrated) {
+      return;
+    }
+    if (previousDefaultViewRef.current === effectiveInitialView) {
+      return;
+    }
+    previousDefaultViewRef.current = effectiveInitialView;
+    setDrawerCurrentView(effectiveInitialView);
+  }, [
+    shouldSyncDefaultView,
+    effectiveInitialView,
+    drawerIsHydrated,
+    setDrawerCurrentView,
+  ]);
 
   // Reset view to locked view if it changes
   React.useEffect(() => {

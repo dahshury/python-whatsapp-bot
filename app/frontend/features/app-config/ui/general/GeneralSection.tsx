@@ -1,10 +1,9 @@
 "use client";
 
-import { Check, ChevronsUpDown, X } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { ChevronsUpDown, X } from "lucide-react";
+import { useRef, useState } from "react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 import type * as RPNInput from "react-phone-number-input";
-import { TIMEZONE_OPTIONS } from "@/shared/data/timezones";
 import { AVAILABLE_LANGUAGES, LANGUAGE_LABELS } from "@/shared/libs/i18n";
 import { cn } from "@/shared/libs/utils";
 import { Badge } from "@/shared/ui/badge";
@@ -29,8 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { ThemedScrollbar } from "@/shared/ui/themed-scrollbar";
 import type { AppConfigFormValues } from "../../model";
+import { TimezoneSelector } from "./TimezoneSelector";
 
 // Dynamically discover language options from i18n resources
 const LANGUAGE_OPTIONS = AVAILABLE_LANGUAGES.map((lang) => ({
@@ -52,18 +51,8 @@ type GeneralSectionProps = {
 export const GeneralSection = ({ form, className }: GeneralSectionProps) => {
   const [countrySearch, setCountrySearch] = useState("");
   const [isCountryOpen, setIsCountryOpen] = useState(false);
-  const [timezoneSearch, setTimezoneSearch] = useState("");
-  const [isTimezoneOpen, setIsTimezoneOpen] = useState(false);
   const [isLanguagesOpen, setIsLanguagesOpen] = useState(false);
   const selectedRef = useRef<HTMLDivElement | null>(null);
-
-  const filteredTimezones = useMemo(() => {
-    const query = timezoneSearch.trim().toLowerCase();
-    if (!query) {
-      return TIMEZONE_OPTIONS;
-    }
-    return TIMEZONE_OPTIONS.filter((tz) => tz.toLowerCase().includes(query));
-  }, [timezoneSearch]);
 
   return (
     <div className={cn("w-full space-y-4", className)}>
@@ -263,56 +252,10 @@ export const GeneralSection = ({ form, className }: GeneralSectionProps) => {
             render={({ field }) => (
               <div className="space-y-2">
                 <Label>Timezone</Label>
-                <Popover onOpenChange={setIsTimezoneOpen} open={isTimezoneOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      className={cn(
-                        "flex w-full items-center justify-between",
-                        !field.value && "text-muted-foreground"
-                      )}
-                      role="combobox"
-                      variant="outline"
-                    >
-                      <span className="truncate">
-                        {field.value || "Asia/Riyadh"}
-                      </span>
-                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[22rem] p-0">
-                    <Command>
-                      <CommandInput
-                        onValueChange={setTimezoneSearch}
-                        placeholder="Search timezones..."
-                        value={timezoneSearch}
-                      />
-                      <CommandList>
-                        <CommandEmpty>No timezone found.</CommandEmpty>
-                        <ThemedScrollbar className="max-h-64">
-                          <CommandGroup>
-                            {filteredTimezones.map((timezone) => (
-                              <CommandItem
-                                className="flex items-center justify-between"
-                                key={timezone}
-                                onSelect={(value) => {
-                                  field.onChange(value);
-                                  setTimezoneSearch("");
-                                  setIsTimezoneOpen(false);
-                                }}
-                                value={timezone}
-                              >
-                                <span className="truncate">{timezone}</span>
-                                {field.value === timezone && (
-                                  <Check className="h-4 w-4 text-primary" />
-                                )}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </ThemedScrollbar>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
+                <TimezoneSelector
+                  onValueChange={field.onChange}
+                  value={field.value}
+                />
                 <p className="text-muted-foreground text-xs">
                   Determines calendar slots, document timestamps, and AI time
                   responses.

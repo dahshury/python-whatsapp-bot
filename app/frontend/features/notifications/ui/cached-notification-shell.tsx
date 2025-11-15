@@ -8,7 +8,7 @@
  * updates dynamically without re-rendering the entire button structure.
  */
 
-"use cache";
+"use client";
 
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";

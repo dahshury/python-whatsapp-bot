@@ -18,6 +18,7 @@ from .logging_utils import log_http_response
 
 # WhatsApp hard limit for text body characters
 WHATSAPP_TEXT_MAX_CHARS = 4096
+TYPING_KEEPALIVE_INTERVAL_SECONDS = 15
 
 # In-memory LRU of recently processed WhatsApp message IDs to avoid duplicate processing
 _recent_message_ids_queue: deque[str] = deque(maxlen=1000)
@@ -91,6 +92,27 @@ async def send_typing_indicator_for_wa(wa_id: str, indicator_type: str = "text")
     except Exception as e:
         logging.error(f"Failed to send typing indicator for wa_id={wa_id}: {e}")
         return {"status": "error", "message": "Failed to send typing indicator"}, 500
+
+
+async def _typing_indicator_keepalive(
+    message_id: str, stop_event: asyncio.Event
+) -> None:
+    """
+    Periodically refresh WhatsApp typing indicator until stop_event is set.
+    """
+    if not message_id:
+        return
+
+    while not stop_event.is_set():
+        try:
+            await send_typing_indicator(message_id)
+        except Exception as exc:
+            logging.debug(f"typing indicator keepalive failed: {exc}")
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=TYPING_KEEPALIVE_INTERVAL_SECONDS)
+        except asyncio.TimeoutError:
+            continue
+        break
 
 
 async def send_whatsapp_message(wa_id, text):
@@ -442,6 +464,8 @@ async def process_whatsapp_message(body, run_llm_function):
             if run_llm_function is None:
                 logging.error("No LLM function provided for processing message")
                 return
+            typing_keepalive_stop: asyncio.Event | None = None
+            typing_keepalive_task: asyncio.Task | None = None
             # Display typing indicator while we prepare the response
             try:
                 lock = get_lock(wa_id)
@@ -453,11 +477,25 @@ async def process_whatsapp_message(body, run_llm_function):
                             affected_entities=[wa_id],
                             source="assistant",  # Typing indicator is always backend/LLM-initiated
                         )
-                    await send_typing_indicator(message_id)
+                    if message_id:
+                        typing_keepalive_stop = asyncio.Event()
+                        typing_keepalive_task = asyncio.create_task(
+                            _typing_indicator_keepalive(message_id, typing_keepalive_stop)
+                        )
+                    else:
+                        with contextlib.suppress(Exception):
+                            await send_typing_indicator_for_wa(wa_id)
             except Exception:
                 pass
 
-            response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
+            try:
+                response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
+            finally:
+                if typing_keepalive_stop:
+                    typing_keepalive_stop.set()
+                if typing_keepalive_task:
+                    with contextlib.suppress(Exception):
+                        await typing_keepalive_task
 
             # Only send a response if we got one back from the LLM
             if response_text:

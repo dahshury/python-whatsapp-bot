@@ -321,18 +321,15 @@ const ColumnList = ({
             // biome-ignore lint/a11y/noNoninteractiveElementInteractions: Drag and drop requires div element
             <div
               className={cn(
-                "cursor-move space-y-4 rounded-lg border p-4 shadow-sm transition-all",
+                "space-y-4 rounded-lg border p-4 shadow-sm transition-all",
                 validation.isValid
                   ? "border-border/50 bg-card/50"
                   : "border-destructive/50 bg-destructive/5",
                 isDragging && "scale-95 opacity-50",
                 isDragOver && "border-2 border-primary"
               )}
-              draggable
               key={column.id}
-              onDragEnd={handleDragEnd}
               onDragOver={(e) => handleDragOver(e, index)}
-              onDragStart={() => handleDragStart(index)}
               onDrop={(e) => handleDrop(e, index)}
             >
               <div className="flex items-center justify-between gap-4">
@@ -341,7 +338,18 @@ const ColumnList = ({
                     <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 font-medium text-primary text-xs">
                       {index + 1}
                     </div>
-                    <GripVertical className="h-5 w-5 cursor-grab text-muted-foreground active:cursor-grabbing" />
+                    <button
+                      aria-label={`Drag to reorder column ${index + 1}`}
+                      className="cursor-grab border-none bg-transparent p-0 active:cursor-grabbing"
+                      draggable
+                      onDragEnd={handleDragEnd}
+                      onDragStart={() => {
+                        handleDragStart(index);
+                      }}
+                      type="button"
+                    >
+                      <GripVertical className="h-5 w-5 text-muted-foreground" />
+                    </button>
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
                     <h4 className="truncate font-semibold text-sm">

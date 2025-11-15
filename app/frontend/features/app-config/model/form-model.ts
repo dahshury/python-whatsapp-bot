@@ -4,10 +4,22 @@ import type {
   AppConfigUpdateInput,
   ColumnConfig,
   CustomCalendarRangeConfig,
+  EventColorConfig,
+  EventLoadingConfig,
+  EventTimeFormatConfig,
+  EventTypeColorConfig,
+  NotificationPreferencesConfig,
 } from "@/entities/app-config";
 import { CountryCodeVO } from "@/entities/app-config/value-objects";
+import {
+  DOCUMENT_EVENT_STROKE_COLOR,
+  EVENT_TYPE_COLOR_DEFAULTS,
+} from "@/shared/constants/calendar-colors";
 import { DEFAULT_WORKING_DAYS } from "@/shared/constants/days-of-week";
 import type { AppConfig as LegacyAppConfig } from "@/shared/services/config-service";
+
+// Calendar configuration constants
+const DEFAULT_CALENDAR_FIRST_DAY = 6; // Saturday (0 = Sunday, 6 = Saturday)
 
 const createTempId = (() => {
   let counter = 0;
@@ -17,6 +29,83 @@ const createTempId = (() => {
     return id;
   };
 })();
+
+type EventTypeColorKey = keyof typeof EVENT_TYPE_COLOR_DEFAULTS;
+
+const CONVERSATION_TYPE_KEY: EventTypeColorKey = "2";
+
+const createDefaultEventColors = (): EventColorConfig => ({
+  defaultEventColor:
+    EVENT_TYPE_COLOR_DEFAULTS[CONVERSATION_TYPE_KEY].background,
+  eventColorByType: {
+    "0": EVENT_TYPE_COLOR_DEFAULTS["0"],
+    "1": EVENT_TYPE_COLOR_DEFAULTS["1"],
+    "2": EVENT_TYPE_COLOR_DEFAULTS["2"],
+  },
+  useEventColors: true,
+  eventColorByStatus: null,
+  eventColorByPriority: null,
+  documentStrokeColor: DOCUMENT_EVENT_STROKE_COLOR,
+});
+
+const normalizeEventColor = (
+  value: string | EventTypeColorConfig | undefined,
+  defaultColor: EventTypeColorConfig
+): EventTypeColorConfig => {
+  if (!value) {
+    return defaultColor;
+  }
+  if (typeof value === "string") {
+    // Legacy format: single string color, use as both background and border
+    return {
+      border: value,
+      background: value,
+    };
+  }
+  // Ensure both background and border are present
+  if (typeof value === "object") {
+    return {
+      background: value.background ?? defaultColor.background,
+      border: value.border ?? defaultColor.border,
+    };
+  }
+  return value;
+};
+
+const ensureEventColorsEnabled = (
+  config?: EventColorConfig | null
+): EventColorConfig => {
+  const defaults = createDefaultEventColors();
+  if (!config) {
+    return defaults;
+  }
+  // Preserve user's colors exactly as-is, normalize to new format
+  const userColors = config.eventColorByType ?? {};
+  const mergedByType: Record<string, EventTypeColorConfig> = {};
+
+  // Normalize all colors to the new format
+  for (const key of Object.keys(defaults.eventColorByType)) {
+    const defaultColor = defaults.eventColorByType[key] as EventTypeColorConfig;
+    mergedByType[key] = normalizeEventColor(userColors[key], defaultColor);
+  }
+
+  // Use user's defaultEventColor if provided, otherwise derive from conversation color
+  const conversationColorConfig =
+    mergedByType[CONVERSATION_TYPE_KEY] ??
+    (defaults.eventColorByType[CONVERSATION_TYPE_KEY] as EventTypeColorConfig);
+  const conversationColor =
+    config.defaultEventColor ?? conversationColorConfig.background;
+
+  return {
+    defaultEventColor: conversationColor,
+    eventColorByType: mergedByType,
+    useEventColors: true, // Always enabled
+    eventColorByStatus: config.eventColorByStatus ?? null,
+    eventColorByPriority: config.eventColorByPriority ?? null,
+    documentStrokeColor:
+      config.documentStrokeColor ?? defaults.documentStrokeColor ?? null,
+  };
+};
 
 export type WorkingHoursFormValue = {
   startTime: string;
@@ -57,6 +146,14 @@ export type AppConfigFormValues = {
   availableLanguages: string[];
   timezone: string;
   llmProvider: string;
+  calendarFirstDay: number | null;
+  eventTimeFormat: EventTimeFormatConfig | null;
+  defaultCalendarView: string | null;
+  calendarLocale: string | null;
+  calendarDirection: "ltr" | "rtl" | "auto" | null;
+  eventColors: EventColorConfig | null;
+  notificationPreferences: NotificationPreferencesConfig | null;
+  eventLoading: EventLoadingConfig | null;
 };
 
 const cloneRange = (
@@ -127,6 +224,30 @@ export const createDefaultAppConfigFormValues = (): AppConfigFormValues => ({
   availableLanguages: ["ar", "en"].sort(),
   timezone: "Asia/Riyadh",
   llmProvider: "openai",
+  calendarFirstDay: DEFAULT_CALENDAR_FIRST_DAY,
+  eventTimeFormat: {
+    format: "auto",
+    showMinutes: true,
+    showMeridiem: true,
+  },
+  defaultCalendarView: "timeGridWeek",
+  calendarLocale: null,
+  calendarDirection: "auto",
+  eventColors: ensureEventColorsEnabled(),
+  notificationPreferences: {
+    notifyOnEventCreate: true,
+    notifyOnEventUpdate: true,
+    notifyOnEventDelete: true,
+    notifyOnEventReminder: false,
+    notificationSound: false,
+    notificationDesktop: false,
+    quietHours: null,
+  },
+  eventLoading: {
+    dayMaxEvents: true,
+    dayMaxEventRows: true,
+    moreLinkClick: "popover",
+  },
 });
 
 export const createAppConfigFormValues = (
@@ -181,6 +302,30 @@ export const createAppConfigFormValues = (
     })(),
     timezone: snapshot.timezone,
     llmProvider: snapshot.llmProvider,
+    calendarFirstDay: snapshot.calendarFirstDay ?? DEFAULT_CALENDAR_FIRST_DAY,
+    eventTimeFormat: snapshot.eventTimeFormat ?? {
+      format: "auto",
+      showMinutes: true,
+      showMeridiem: true,
+    },
+    defaultCalendarView: snapshot.defaultCalendarView ?? "timeGridWeek",
+    calendarLocale: snapshot.calendarLocale ?? null,
+    calendarDirection: snapshot.calendarDirection ?? "auto",
+    eventColors: ensureEventColorsEnabled(snapshot.eventColors),
+    notificationPreferences: snapshot.notificationPreferences ?? {
+      notifyOnEventCreate: true,
+      notifyOnEventUpdate: true,
+      notifyOnEventDelete: true,
+      notifyOnEventReminder: false,
+      notificationSound: false,
+      notificationDesktop: false,
+      quietHours: null,
+    },
+    eventLoading: snapshot.eventLoading ?? {
+      dayMaxEvents: true,
+      dayMaxEventRows: true,
+      moreLinkClick: "popover",
+    },
   };
 };
 
@@ -233,6 +378,14 @@ export const mapFormValuesToUpdateInput = (
   })(),
   timezone: values.timezone,
   llmProvider: values.llmProvider,
+  calendarFirstDay: values.calendarFirstDay,
+  eventTimeFormat: values.eventTimeFormat,
+  defaultCalendarView: values.defaultCalendarView,
+  calendarLocale: values.calendarLocale,
+  calendarDirection: values.calendarDirection,
+  eventColors: ensureEventColorsEnabled(values.eventColors ?? undefined),
+  notificationPreferences: values.notificationPreferences,
+  eventLoading: values.eventLoading,
 });
 
 export const snapshotToLegacyConfig = (

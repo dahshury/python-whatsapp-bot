@@ -109,17 +109,35 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
   const { isLocalized } = useLanguageStore();
 
   const { data: appConfig } = useAppConfigQuery();
+  const snapshot = appConfig?.toSnapshot();
   const calendarConfig = useMemo(
-    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
-    [appConfig]
+    () => (snapshot ? snapshotToLegacyConfig(snapshot) : null),
+    [snapshot]
   );
+  const defaultCalendarView = snapshot?.defaultCalendarView ?? "timeGridWeek";
 
   const calendarState = useCalendarState({
     freeRoam,
-    initialView: "timeGridWeek",
+    initialView: defaultCalendarView,
     storageKeyPrefix: "calendar:page",
     ...(calendarConfig ? { calendarConfig } : {}),
   });
+
+  const previousDefaultViewRef = useRef<string | null>(defaultCalendarView);
+  const { setCurrentView } = calendarState;
+  useEffect(() => {
+    if (!calendarState.isHydrated) {
+      return;
+    }
+    if (!defaultCalendarView) {
+      return;
+    }
+    if (previousDefaultViewRef.current === defaultCalendarView) {
+      return;
+    }
+    previousDefaultViewRef.current = defaultCalendarView;
+    setCurrentView(defaultCalendarView);
+  }, [calendarState.isHydrated, defaultCalendarView, setCurrentView]);
 
   const eventsState = useCalendarEvents({
     freeRoam,

@@ -143,6 +143,12 @@ export function useCalendarState(
     initialViewFromStorage
   );
 
+  useEffect(() => {
+    if (initialViewFromStorage && initialViewFromStorage !== currentView) {
+      setCurrentViewState(initialViewFromStorage);
+    }
+  }, [initialViewFromStorage, currentView]);
+
   // Calculate slot times based on current date and view
   const slotTimes = useMemo(
     () =>

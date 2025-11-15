@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import { useCalendarColorVariables } from "@/features/app-config/hooks/useCalendarColorVariables";
 import { CalendarSkeleton } from "./CalendarSkeleton";
 
 type CalendarContainerProps = {
@@ -16,6 +17,9 @@ export function CalendarContainer({
   isRefreshing,
   children,
 }: CalendarContainerProps) {
+  // Apply color variables from config in real-time
+  useCalendarColorVariables();
+
   // Show loading state
   if (loading || !isHydrated) {
     return <CalendarSkeleton />;

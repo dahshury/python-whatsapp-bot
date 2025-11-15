@@ -12,12 +12,15 @@ import { convertZeroZeroToPlus } from "@/shared/libs/utils/phone-utils";
 export function createNewPhoneOption(
   phoneNumber: string,
   selectedCountry: RPNInput.Country | undefined,
-  isLocalized?: boolean
+  isLocalized?: boolean,
+  defaultCountry?: RPNInput.Country
 ): PhoneOption {
+  const fallbackCountry =
+    defaultCountry || (DEFAULT_COUNTRY as RPNInput.Country);
   let formattedNumber = convertZeroZeroToPlus((phoneNumber || "").trim());
   if (!formattedNumber.startsWith("+")) {
     try {
-      const selected = selectedCountry || (DEFAULT_COUNTRY as RPNInput.Country);
+      const selected = selectedCountry || fallbackCountry;
       const cc = getCountryCallingCode(selected);
       const digits = formattedNumber.replace(/\D/g, "");
       formattedNumber = cc ? `+${cc}${digits}` : `+${digits}`;
@@ -36,7 +39,7 @@ export function createNewPhoneOption(
     // Ignore parsing errors - use formattedNumber as-is
   }
 
-  const country = selectedCountry || (DEFAULT_COUNTRY as RPNInput.Country);
+  const country = selectedCountry || fallbackCountry;
   const label = getCountryLabel(country);
 
   return {

@@ -29,7 +29,7 @@ from app.services.assistant_functions import (
 )
 from app.services.domain.customer.customer_service import CustomerService
 from app.services.llm_service import get_llm_service
-from app.utils.realtime import enqueue_broadcast
+from app.utils.realtime import broadcast, enqueue_broadcast
 from app.utils.service_utils import (
     append_message,
     format_enhanced_vacation_message,
@@ -39,6 +39,7 @@ from app.utils.service_utils import (
 from app.utils.whatsapp_utils import (
     is_valid_whatsapp_message,
     mark_message_as_read,
+    send_typing_indicator_for_wa,
     send_whatsapp_location,
     send_whatsapp_message,
     send_whatsapp_template,
@@ -278,6 +279,55 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
     if isinstance(response, tuple):
         return JSONResponse(content=response[0], status_code=response[1])
     return JSONResponse(content=response.json())
+
+
+@router.post("/typing")
+async def api_secretary_typing_indicator(payload: dict = Body(...)):
+    """
+    Forward secretary typing indicators to WhatsApp and broadcast UI typing state.
+
+    Accepts {"wa_id": "...", "typing": true|false}.
+    When typing=true we best-effort call WhatsApp's typing indicator endpoint using the
+    most recent inbound message context for the wa_id.
+    """
+    wa_id = payload.get("wa_id")
+    typing_flag = bool(payload.get("typing"))
+    if not isinstance(wa_id, str) or not wa_id:
+        return JSONResponse(content={"success": False, "message": "Missing wa_id"}, status_code=400)
+
+    try:
+        await broadcast(
+            "conversation_typing",
+            {"wa_id": wa_id, "state": "start" if typing_flag else "stop"},
+            affected_entities=[wa_id],
+            source=payload.get("_call_source", "frontend"),
+        )
+    except Exception as e:
+        logging.error(f"Typing indicator broadcast failed: {e}")
+
+    if not typing_flag:
+        return JSONResponse(content={"success": True, "typing": False})
+
+    try:
+        result = await send_typing_indicator_for_wa(wa_id)
+    except Exception as e:
+        logging.error(f"Failed to send typing indicator for wa_id={wa_id}: {e}")
+        return JSONResponse(content={"success": False, "message": "Failed to send typing indicator"}, status_code=500)
+
+    if isinstance(result, tuple):
+        payload_obj, status_code = result
+        return JSONResponse(content=payload_obj, status_code=status_code)
+
+    if hasattr(result, "json"):
+        try:
+            return JSONResponse(content=result.json())
+        except Exception:
+            pass
+
+    if isinstance(result, dict):
+        return JSONResponse(content=result)
+
+    return JSONResponse(content={"success": True})
 
 
 @router.post("/whatsapp/location")

@@ -36,6 +36,7 @@ import React, {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from "react";
 import type { CalendarEvent } from "@/entities/event";
 import {
@@ -117,17 +118,138 @@ const CalendarCoreComponent = ({
   } = props;
 
   const { data: appConfig } = useAppConfigQuery();
+  const snapshot = appConfig?.toSnapshot();
   const calendarConfig = useMemo(
-    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
-    [appConfig]
+    () => (snapshot ? snapshotToLegacyConfig(snapshot) : null),
+    [snapshot]
   );
   const timezone = useMemo(
-    () =>
-      getTimezone(
-        appConfig ? { timezone: appConfig.toSnapshot().timezone } : undefined
-      ),
-    [appConfig]
+    () => getTimezone(snapshot ? { timezone: snapshot.timezone } : undefined),
+    [snapshot]
   );
+  const calendarFirstDay = snapshot?.calendarFirstDay ?? CALENDAR_FIRST_DAY;
+  const eventLoadingConfig = snapshot?.eventLoading ?? null;
+
+  // Get locale from config or fallback to isLocalized
+  const calendarLocale = useMemo(() => {
+    const configLocale = snapshot?.calendarLocale;
+    if (configLocale) {
+      // If config specifies a locale, use it (fallback to ar-sa for Arabic, en for others)
+      if (configLocale.toLowerCase().startsWith("ar")) {
+        return arLocale;
+      }
+      // For other locales, use the locale code string (FullCalendar will handle it)
+      return configLocale;
+    }
+    return isLocalized ? arLocale : "en";
+  }, [snapshot, isLocalized]);
+
+  // Get direction from config or fallback
+  const calendarDirection = useMemo(() => {
+    const configDirection = snapshot?.calendarDirection;
+    if (configDirection && configDirection !== "auto") {
+      return configDirection;
+    }
+    // Auto-detect from locale if direction is "auto"
+    if (configDirection === "auto" || !configDirection) {
+      const locale = snapshot?.calendarLocale;
+      if (locale?.toLowerCase().startsWith("ar")) {
+        return "rtl";
+      }
+      return "ltr";
+    }
+    return "ltr";
+  }, [snapshot]);
+
+  // Track screen size for responsive time format
+  const [isSmallScreen, setIsSmallScreen] = useState(() =>
+    typeof window !== "undefined"
+      ? window.innerWidth < SMALL_SCREEN_MAX_WIDTH
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handleResize = () => {
+      setIsSmallScreen(window.innerWidth < SMALL_SCREEN_MAX_WIDTH);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  const eventTimeFormatConfig = snapshot?.eventTimeFormat;
+  const eventTimeFormat = useMemo(() => {
+    const showMinutes = eventTimeFormatConfig?.showMinutes ?? true;
+    const showMeridiemPreference = eventTimeFormatConfig?.showMeridiem;
+
+    const buildFormat = (
+      hour12: boolean
+    ): {
+      hour: "numeric" | "2-digit";
+      minute?: "2-digit";
+      meridiem?: "short";
+      hour12: boolean;
+    } => {
+      const hourValue: "numeric" | "2-digit" = hour12 ? "numeric" : "2-digit";
+      const base = {
+        hour: hourValue,
+        hour12,
+      };
+      if (showMinutes) {
+        return {
+          ...base,
+          minute: "2-digit" as const,
+          ...(hour12 && (showMeridiemPreference ?? !isSmallScreen)
+            ? { meridiem: "short" as const }
+            : {}),
+        };
+      }
+      return {
+        ...base,
+        ...(hour12 && (showMeridiemPreference ?? !isSmallScreen)
+          ? { meridiem: "short" as const }
+          : {}),
+      };
+    };
+
+    if (!eventTimeFormatConfig || eventTimeFormatConfig.format === "auto") {
+      return isSmallScreen ? buildFormat(false) : buildFormat(true);
+    }
+
+    if (eventTimeFormatConfig.format === "24h") {
+      if (showMinutes) {
+        return {
+          hour: "2-digit" as const,
+          minute: "2-digit" as const,
+          hour12: false,
+        };
+      }
+      return {
+        hour: "2-digit" as const,
+        hour12: false,
+      };
+    }
+
+    // 12-hour format
+    if (showMinutes) {
+      return {
+        hour: "numeric" as const,
+        minute: "2-digit" as const,
+        hour12: true,
+        ...(showMeridiemPreference ? { meridiem: "short" as const } : {}),
+      };
+    }
+    return {
+      hour: "numeric" as const,
+      hour12: true,
+      ...(showMeridiemPreference ? { meridiem: "short" as const } : {}),
+    };
+  }, [eventTimeFormatConfig, isSmallScreen]);
 
   // Optimize events with feature lib
   const optimizedEvents = useMemo(
@@ -256,8 +378,18 @@ const CalendarCoreComponent = ({
       ? {}
       : { validRange: globalValidRangeFunction };
 
-  // View-specific overrides
-  const viewsProp = useMemo(() => getViewsProp(), []);
+  const viewsProp = useMemo(
+    () => getViewsProp(eventLoadingConfig),
+    [eventLoadingConfig]
+  );
+  const eventDisplayLimits = useMemo(
+    () => ({
+      dayMaxEvents: eventLoadingConfig?.dayMaxEvents ?? true,
+      dayMaxEventRows: eventLoadingConfig?.dayMaxEventRows ?? true,
+      moreLinkClick: eventLoadingConfig?.moreLinkClick ?? "popover",
+    }),
+    [eventLoadingConfig]
+  );
 
   // Conditionally apply constraints only for timeGrid views
   const constraintsProp = useMemo(
@@ -451,35 +583,25 @@ const CalendarCoreComponent = ({
             ? { aspectRatio: CALENDAR_ASPECT_RATIO }
             : {})}
           // Dynamic slot times
-          dayMaxEventRows={true}
-          dayMaxEvents={true}
+          dayMaxEventRows={eventDisplayLimits.dayMaxEventRows}
+          dayMaxEvents={eventDisplayLimits.dayMaxEvents}
           // Localization and Timezone (critical - matches Python implementation)
-          direction={"ltr"}
+          direction={calendarDirection}
           displayEventTime={true}
           eventDisplay="block"
-          eventTimeFormat={
-            typeof window !== "undefined" &&
-            window.innerWidth < SMALL_SCREEN_MAX_WIDTH
-              ? { hour: "2-digit", minute: "2-digit" }
-              : {
-                  hour: "numeric",
-                  minute: "2-digit",
-                  meridiem: "short",
-                  hour12: true,
-                }
-          } // Saturday as first day
-          firstDay={CALENDAR_FIRST_DAY}
+          eventTimeFormat={eventTimeFormat}
           // Multi-month specific options
+          firstDay={calendarFirstDay}
           fixedWeekCount={false}
-          locale={isLocalized ? arLocale : "en"}
-          moreLinkClick="popover"
+          locale={calendarLocale}
+          moreLinkClick={eventDisplayLimits.moreLinkClick}
           multiMonthMaxColumns={3}
           multiMonthMinWidth={280}
           showNonCurrentDates={false}
           slotMaxTime={slotTimes.slotMaxTime}
           slotMinTime={slotTimes.slotMinTime}
           timeZone={timezone}
-          views={viewsProp}
+          views={viewsProp as never}
           // Interaction control
           // Block drag/resizes in vacation periods while allowing event clicks
           {...(isVacationDate

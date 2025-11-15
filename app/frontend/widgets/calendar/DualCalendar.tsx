@@ -64,7 +64,7 @@ export type DualCalendarComponentProps = {
 
 export const DualCalendarComponent = ({
   freeRoam = false,
-  initialView: _initialView = "timeGridWeek",
+  initialView: _initialView,
   initialDate,
   initialLeftView,
   initialRightView,
@@ -102,14 +102,19 @@ export const DualCalendarComponent = ({
     new Date().toISOString().split("T")[0]) as string;
 
   const { data: appConfig } = useAppConfigQuery();
+  const snapshot = appConfig?.toSnapshot();
   const calendarConfig = useMemo(
-    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
-    [appConfig]
+    () => (snapshot ? snapshotToLegacyConfig(snapshot) : null),
+    [snapshot]
   );
+  const configDefaultView = snapshot?.defaultCalendarView ?? "timeGridWeek";
+  const sharedInitialView = _initialView ?? configDefaultView;
+  const leftInitialView = initialLeftView ?? sharedInitialView;
+  const rightInitialView = initialRightView ?? sharedInitialView;
 
   const leftCalendarState = useCalendarState({
     freeRoam,
-    initialView: initialLeftView ?? "timeGridWeek",
+    initialView: leftInitialView,
     ...(resolvedInitialDate ? { initialDate: resolvedInitialDate } : {}),
     // Use specific key so dual left persists independently of other calendars
     viewStorageKey: "dual-left-calendar-view",
@@ -119,7 +124,7 @@ export const DualCalendarComponent = ({
 
   const rightCalendarState = useCalendarState({
     freeRoam,
-    initialView: initialRightView ?? "timeGridWeek",
+    initialView: rightInitialView,
     ...(resolvedInitialDate ? { initialDate: resolvedInitialDate } : {}),
     // Use specific key so dual right persists independently of other calendars
     viewStorageKey: "dual-right-calendar-view",
@@ -138,6 +143,55 @@ export const DualCalendarComponent = ({
     }),
     [leftCalendarState.currentView, rightCalendarState.currentView]
   );
+
+  const shouldSyncLeftDefault = !(initialLeftView || _initialView);
+  const shouldSyncRightDefault = !(initialRightView || _initialView);
+  const previousLeftDefaultRef = useRef(leftInitialView);
+  const previousRightDefaultRef = useRef(rightInitialView);
+  const leftIsHydrated = leftCalendarState.isHydrated;
+  const rightIsHydrated = rightCalendarState.isHydrated;
+  const setLeftCurrentView = leftCalendarState.setCurrentView;
+  const setRightCurrentView = rightCalendarState.setCurrentView;
+
+  useEffect(() => {
+    if (!shouldSyncLeftDefault) {
+      previousLeftDefaultRef.current = leftInitialView;
+      return;
+    }
+    if (!leftIsHydrated) {
+      return;
+    }
+    if (previousLeftDefaultRef.current === leftInitialView) {
+      return;
+    }
+    previousLeftDefaultRef.current = leftInitialView;
+    setLeftCurrentView(leftInitialView);
+  }, [
+    shouldSyncLeftDefault,
+    leftInitialView,
+    leftIsHydrated,
+    setLeftCurrentView,
+  ]);
+
+  useEffect(() => {
+    if (!shouldSyncRightDefault) {
+      previousRightDefaultRef.current = rightInitialView;
+      return;
+    }
+    if (!rightIsHydrated) {
+      return;
+    }
+    if (previousRightDefaultRef.current === rightInitialView) {
+      return;
+    }
+    previousRightDefaultRef.current = rightInitialView;
+    setRightCurrentView(rightInitialView);
+  }, [
+    shouldSyncRightDefault,
+    rightInitialView,
+    rightIsHydrated,
+    setRightCurrentView,
+  ]);
 
   // Calendar events management - fix conditional hook usage
   const localEventsState = useCalendarEvents({

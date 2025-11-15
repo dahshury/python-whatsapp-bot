@@ -93,4 +93,5 @@
 .gdg-d19meir1 textarea {
   background-color: hsl(var(--card));
   color: hsl(var(--foreground));
+  caret-color: hsl(var(--primary));
 }

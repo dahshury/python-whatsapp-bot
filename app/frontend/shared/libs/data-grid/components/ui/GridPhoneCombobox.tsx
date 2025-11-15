@@ -2,7 +2,6 @@
 
 import { useDebouncedValue } from "@shared/libs/hooks/use-debounced-value";
 import { useScrollSelectedIntoView } from "@shared/libs/hooks/use-scroll-selected-into-view";
-import { DEFAULT_COUNTRY } from "@shared/libs/phone/config";
 import { CALLING_CODES_SORTED } from "@shared/libs/phone/countries";
 import { cn } from "@shared/libs/utils";
 import {
@@ -27,6 +26,7 @@ import {
 } from "react-phone-number-input";
 import PhoneNumberInput from "react-phone-number-input/input";
 import type { PhoneOption } from "@/entities/phone";
+import { useDefaultCountryCode } from "@/features/phone-selector/hooks/useDefaultCountryCode";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
 import type { IndexedPhoneOption } from "@/shared/libs/phone/indexed.types";
 import { buildPhoneGroups } from "@/shared/libs/phone/phone-groups";
@@ -76,6 +76,7 @@ const GridPhoneCombobox: FC<GridPhoneComboboxProps> = ({
   allowCreateNew = false,
 }) => {
   const { isLocalized } = useLanguageStore();
+  const defaultCountry = useDefaultCountryCode();
   // Convert any incoming string to E.164 (+digits) required by react-phone-number-input
   const toE164 = useCallback((input: string): string => {
     try {
@@ -120,8 +121,14 @@ const GridPhoneCombobox: FC<GridPhoneComboboxProps> = ({
 
   // Country handling
   const [country, setCountry] = useState<RPNInput.Country | undefined>(
-    DEFAULT_COUNTRY as RPNInput.Country
+    defaultCountry
   );
+
+  useEffect(() => {
+    if (!selectedPhone.trim()) {
+      setCountry(defaultCountry);
+    }
+  }, [defaultCountry, selectedPhone]);
 
   // Initialize country from the current value once
   const hasInitializedCountryRef = useRef(false);
@@ -326,7 +333,7 @@ const GridPhoneCombobox: FC<GridPhoneComboboxProps> = ({
     if (next && !next.startsWith("+")) {
       try {
         const cc = getCountryCallingCode(
-          (country || DEFAULT_COUNTRY) as RPNInput.Country
+          (country || defaultCountry) as RPNInput.Country
         );
         next = `+${cc}${next.replace(/\D/g, "")}`;
       } catch {

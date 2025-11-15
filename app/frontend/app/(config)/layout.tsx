@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "../globals.css";
+// Config routes still render phone/country selectors that rely on the themed scrollbar styles.
+import "../../styles/themed-scrollbar.css";
 
 export const metadata: Metadata = {
   title: "App Configuration",

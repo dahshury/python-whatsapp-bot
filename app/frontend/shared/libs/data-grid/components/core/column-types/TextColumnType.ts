@@ -11,6 +11,10 @@ import {
   type IColumnDefinition,
   type IColumnFormatting,
 } from "../interfaces/IDataSource";
+import {
+  coerceNameValueIfNeeded,
+  isNameColumnDefinition,
+} from "../utils/nameCoercion";
 
 const DIGIT_REGEX = /\d/;
 const NAME_VALID_CHARS_REGEX = /^[\p{L}\s-]+$/u;
@@ -36,7 +40,10 @@ export class TextColumnType implements IColumnType {
       isDarkTheme: _isDarkTheme,
       rowContext: _rowContext,
     } = options;
-    let text = this.formatValue(value, column.formatting);
+    let text = coerceNameValueIfNeeded(
+      this.formatValue(value, column.formatting),
+      column
+    );
 
     // Apply validateInput coercion if present
     if (column.validateInput && typeof column.validateInput === "function") {
@@ -45,7 +52,7 @@ export class TextColumnType implements IColumnType {
         // Invalid input - mark as error but keep original value
       } else if (typeof validateResult === "string") {
         // Coerced value - use the cleaned value
-        text = validateResult;
+        text = coerceNameValueIfNeeded(validateResult, column);
       }
       // If validateResult === true, keep original value
     }
@@ -79,7 +86,7 @@ export class TextColumnType implements IColumnType {
     value: unknown,
     column: IColumnDefinition
   ): { isValid: boolean; error?: string } {
-    let text = String(value || "");
+    let text = coerceNameValueIfNeeded(String(value || ""), column);
 
     if (column.isRequired && !text.trim()) {
       return {
@@ -97,15 +104,13 @@ export class TextColumnType implements IColumnType {
         validateInputInvalid = true;
       } else if (typeof validateResult === "string") {
         // Use coerced value for subsequent validations
-        text = validateResult;
+        text = coerceNameValueIfNeeded(validateResult, column);
       }
       // If true, text remains as is
     }
 
     // 2. Built-in name validation (gives detailed messages)
-    const isNameColumn =
-      column.id?.toLowerCase() === "name" ||
-      column.name?.toLowerCase() === "name";
+    const isNameColumn = isNameColumnDefinition(column);
     if (isNameColumn) {
       const nameValidation = this.validateNameWithDetails(text);
       if (!nameValidation.isValid) {
@@ -190,16 +195,17 @@ export class TextColumnType implements IColumnType {
   }
 
   parseValue(input: string, column: IColumnDefinition): unknown {
+    let parsedValue = input;
     // Apply validateInput coercion if present
     if (column.validateInput && typeof column.validateInput === "function") {
       const validateResult = column.validateInput(input);
       if (typeof validateResult === "string") {
         // Return coerced value
-        return validateResult;
+        parsedValue = validateResult;
       }
       // If validateResult is true or false, return original input
     }
-    return input;
+    return coerceNameValueIfNeeded(parsedValue, column);
   }
 
   getDefaultValue(column: IColumnDefinition): unknown {

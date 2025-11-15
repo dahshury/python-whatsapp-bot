@@ -24,6 +24,7 @@ export type UsePhoneComboboxSelectionOptions = {
   setPhoneSearch?: (search: string) => void;
   selectedCountry?: RPNInput.Country;
   isLocalized?: boolean;
+  defaultCountry?: RPNInput.Country;
   validatePhone?: (phone: string) => { isValid: boolean; error?: string };
 };
 
@@ -50,6 +51,7 @@ export function usePhoneComboboxSelection(
     setPhoneSearch,
     selectedCountry,
     isLocalized,
+    defaultCountry,
     validatePhone,
   } = options;
   // Always call useCallback unconditionally to follow React hooks rules
@@ -69,10 +71,11 @@ export function usePhoneComboboxSelection(
       return createNewPhoneOptionSvc(
         phoneNumber,
         selectedCountry,
-        isLocalized ?? false
+        isLocalized ?? false,
+        defaultCountry
       );
     },
-    [selectedCountry, isLocalized, validatePhoneFn]
+    [selectedCountry, isLocalized, defaultCountry, validatePhoneFn]
   );
 
   // Handle phone selection with different behavior for controlled vs uncontrolled

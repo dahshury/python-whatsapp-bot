@@ -4,6 +4,7 @@ import logging
 
 from app.config import config, get
 from app.services.anthropic_service import run_claude
+from app.services.domain.config.config_service import get_config
 from app.services.gemini_service import run_gemini
 from app.services.openai_service import run_openai
 
@@ -88,14 +89,26 @@ class OpenAIService(BaseLLMService):
         )
 
 
+def _resolve_llm_provider() -> str:
+    try:
+        config_obj = get_config()
+        provider = getattr(config_obj, "llm_provider", None)
+        if provider:
+            resolved = provider.lower()
+            logging.debug(f"LLM provider from app config: {resolved}")
+            return resolved
+    except Exception as exc:
+        logging.warning("Failed to read LLM provider from app config, falling back to env: %s", exc)
+    return get("LLM_PROVIDER", "anthropic").lower()
+
+
 def get_llm_service():
     """
     Factory function that returns an LLM service instance based on configuration.
     Supported values: 'anthropic', 'gemini', 'openai'.
     Defaults to 'anthropic'.
     """
-    provider = get("LLM_PROVIDER", "anthropic").lower()
-    logging.debug(f"LLM provider configured as: {provider}")
+    provider = _resolve_llm_provider()
     if provider == "anthropic":
         return AnthropicService()
     elif provider == "gemini":

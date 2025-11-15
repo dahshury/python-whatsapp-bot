@@ -54,7 +54,9 @@ export const DocumentLockOverlay: FC<DocumentLockOverlayProps> = ({
           )}
           focusable={false}
         />
-        {overlayMessage ? <span>{overlayMessage}</span> : null}
+        {overlayMessage ? (
+          <span suppressHydrationWarning>{overlayMessage}</span>
+        ) : null}
       </div>
     </div>
   );

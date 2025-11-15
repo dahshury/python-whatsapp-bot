@@ -22,6 +22,7 @@ import {
   useConfigLiveSync,
   useUpdateAppConfig,
 } from "@/features/app-config";
+import { useCalendarColorVariablesPreview } from "@/features/app-config/hooks/useCalendarColorVariablesPreview";
 import {
   type AppConfigFormValues,
   type ColumnFormValue,
@@ -29,9 +30,11 @@ import {
   createDefaultAppConfigFormValues,
   mapFormValuesToUpdateInput,
 } from "@/features/app-config/model";
+import { CalendarDisplaySection } from "@/features/app-config/ui/calendar-display";
 import { ColumnsSection } from "@/features/app-config/ui/columns";
 import { GeneralSection } from "@/features/app-config/ui/general";
 import { ConfigPageShell } from "@/features/app-config/ui/layout";
+import { NotificationPreferencesSection } from "@/features/app-config/ui/notifications";
 import { WorkingHoursSection } from "@/features/app-config/ui/working-hours";
 import { i18n } from "@/shared/libs/i18n";
 import { toastService } from "@/shared/libs/toast";
@@ -51,6 +54,10 @@ export const ConfigPage = () => {
     defaultValues: createDefaultAppConfigFormValues(),
     mode: "onChange",
   });
+
+  // Watch form values for real-time color preview
+  const eventColors = form.watch("eventColors");
+  useCalendarColorVariablesPreview(eventColors);
 
   useEffect(() => {
     if (data) {
@@ -259,6 +266,76 @@ export const ConfigPage = () => {
     if (dirtyFields.customCalendarRanges) {
       count += 1;
     }
+    if (dirtyFields.calendarFirstDay) {
+      count += 1;
+    }
+    if (dirtyFields.eventTimeFormat) {
+      const etf = dirtyFields.eventTimeFormat as
+        | Record<string, unknown>
+        | undefined;
+      if (etf) {
+        // Count each changed event time format field
+        if (etf.format) {
+          count += 1;
+        }
+        if (etf.showMinutes) {
+          count += 1;
+        }
+        if (etf.showMeridiem) {
+          count += 1;
+        }
+      }
+    }
+    if (dirtyFields.defaultCalendarView) {
+      count += 1;
+    }
+    if (dirtyFields.calendarLocale) {
+      count += 1;
+    }
+    if (dirtyFields.calendarDirection) {
+      count += 1;
+    }
+    if (dirtyFields.eventColors) {
+      const ec = dirtyFields.eventColors as Record<string, unknown> | undefined;
+      if (ec) {
+        // Count each changed event color field
+        if (ec.defaultEventColor) {
+          count += 1;
+        }
+        if (ec.eventColorByType) {
+          count += 1;
+        }
+        if (ec.useEventColors) {
+          count += 1;
+        }
+        if (ec.eventColorByStatus) {
+          count += 1;
+        }
+        if (ec.eventColorByPriority) {
+          count += 1;
+        }
+        if (ec.documentStrokeColor) {
+          count += 1;
+        }
+      }
+    }
+    if (dirtyFields.eventLoading) {
+      const el = dirtyFields.eventLoading as
+        | Record<string, unknown>
+        | undefined;
+      if (el) {
+        // Count each changed event loading field
+        if (el.dayMaxEvents) {
+          count += 1;
+        }
+        if (el.dayMaxEventRows) {
+          count += 1;
+        }
+        if (el.moreLinkClick) {
+          count += 1;
+        }
+      }
+    }
     return count;
   };
 
@@ -286,6 +363,36 @@ export const ConfigPage = () => {
     }
     if (dirtyFields.llmProvider) {
       count += 1;
+    }
+    // Count notification preference changes individually
+    if (dirtyFields.notificationPreferences) {
+      const np = dirtyFields.notificationPreferences as
+        | Record<string, unknown>
+        | undefined;
+      if (np) {
+        // Count each changed notification preference field
+        if (np.notifyOnEventCreate) {
+          count += 1;
+        }
+        if (np.notifyOnEventUpdate) {
+          count += 1;
+        }
+        if (np.notifyOnEventDelete) {
+          count += 1;
+        }
+        if (np.notifyOnEventReminder) {
+          count += 1;
+        }
+        if (np.notificationSound) {
+          count += 1;
+        }
+        if (np.notificationDesktop) {
+          count += 1;
+        }
+        if (np.quietHours) {
+          count += 1;
+        }
+      }
     }
     return count;
   };
@@ -468,7 +575,20 @@ export const ConfigPage = () => {
 
               <div className="flex-1">
                 <TabsContent className="mt-0" value="calendar">
-                  <WorkingHoursSection form={form} />
+                  <Tabs className="space-y-4" defaultValue="working-hours">
+                    <TabsList>
+                      <TabsTrigger value="working-hours">
+                        Working Hours
+                      </TabsTrigger>
+                      <TabsTrigger value="display">Display</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="working-hours">
+                      <WorkingHoursSection form={form} />
+                    </TabsContent>
+                    <TabsContent value="display">
+                      <CalendarDisplaySection form={form} />
+                    </TabsContent>
+                  </Tabs>
                 </TabsContent>
 
                 <TabsContent className="mt-0" value="columns">
@@ -501,7 +621,10 @@ export const ConfigPage = () => {
                 </TabsContent>
 
                 <TabsContent className="mt-0" value="general">
-                  <GeneralSection form={form} />
+                  <div className="space-y-6">
+                    <GeneralSection form={form} />
+                    <NotificationPreferencesSection form={form} />
+                  </div>
                 </TabsContent>
               </div>
             </Tabs>

@@ -18,12 +18,49 @@ from app.services.domain.config.config_schemas import (
     CustomCalendarRangeConfig,
     DaySpecificSlotDuration,
     DaySpecificWorkingHours,
+    EventColorsConfig,
+    NotificationPreferencesConfig,
 )
 
 logger = logging.getLogger(__name__)
 
 # Singleton instance cache
 _config_cache: AppConfigRead | None = None
+
+
+def _normalize_event_colors_payload(payload: object) -> dict[str, object]:
+    """Ensure event_colors payload matches EventColorsConfig structure."""
+    if not isinstance(payload, dict):
+        return EventColorsConfig().model_dump(mode="json")
+
+    normalized = dict(payload)
+
+    # Collapse legacy light/dark document stroke settings into a single value
+    if "document_stroke_color" not in normalized:
+        stroke_color = normalized.pop("document_stroke_color_light", None)
+        stroke_color = stroke_color or normalized.pop("document_stroke_color_dark", None)
+        if stroke_color:
+            normalized["document_stroke_color"] = stroke_color
+    else:
+        normalized.pop("document_stroke_color_light", None)
+        normalized.pop("document_stroke_color_dark", None)
+
+    try:
+        return EventColorsConfig(**normalized).model_dump(mode="json")
+    except Exception:
+        # Fallback to defaults if payload is invalid
+        return EventColorsConfig().model_dump(mode="json")
+
+
+def _normalize_notification_preferences_payload(payload: object) -> dict[str, object]:
+    """Ensure notification_preferences payload matches NotificationPreferencesConfig structure."""
+    if not isinstance(payload, dict):
+        return NotificationPreferencesConfig().model_dump(mode="json")
+
+    try:
+        return NotificationPreferencesConfig(**payload).model_dump(mode="json")
+    except Exception:
+        return NotificationPreferencesConfig().model_dump(mode="json")
 
 
 def _generate_ramadan_ranges() -> list[CustomCalendarRangeConfig]:
@@ -227,6 +264,22 @@ def get_config(session: Session | None = None) -> AppConfigRead:
         if config_model:
             # Parse JSON and create AppConfigRead
             config_dict = json.loads(config_model.config_data)
+
+            if "event_colors" in config_dict:
+                config_dict["event_colors"] = _normalize_event_colors_payload(
+                    config_dict["event_colors"]
+                )
+            else:
+                config_dict["event_colors"] = EventColorsConfig().model_dump(mode="json")
+
+            if "notification_preferences" in config_dict:
+                config_dict["notification_preferences"] = _normalize_notification_preferences_payload(
+                    config_dict["notification_preferences"]
+                )
+            else:
+                config_dict["notification_preferences"] = (
+                    NotificationPreferencesConfig().model_dump(mode="json")
+                )
 
             # Migration: Convert old saturday_working_hours to day_specific_hours
             needs_migration = False

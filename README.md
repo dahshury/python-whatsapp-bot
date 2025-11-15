@@ -13,15 +13,29 @@ For the original repository and setup tutorial (Flask version), please refer to 
 ## Features
 
 - **Multi-Provider AI Integration**: Flexibility to use OpenAI, Anthropic Claude, or Google Gemini for message generation
-- **Modern Frontend**: Next.js 14 application with TypeScript and Tailwind CSS for responsive UI
+- **Modern Frontend**: Next.js 16 application with TypeScript and Tailwind CSS for responsive UI
+- **TanStack Query**: Fully integrated data fetching and state management with React Query
+- **Interactive Documents**: TLDraw-powered document editor for customer notes and visual annotations
+- **Comprehensive Config Page**: Centralized configuration management for:
+  - Working hours and slot duration settings
+  - Calendar and document column customization
+  - Multi-language support configuration
+  - Timezone and business settings
+  - Import/export configuration functionality
+- **Reservation Management**: Advanced calendar interface with:
+  - Drag-and-drop reservation modification
+  - Undo/redo functionality for all reservation operations
+  - Multiple calendar views (week, month, list, multi-month)
+  - Vacation period management
 - **Docker Containerization**: Complete Docker setup for both development and production environments
 - **Monitoring & Metrics**: Prometheus integration with alerting capabilities and Discord notifications
 - **Advanced Analytics**: Comprehensive statistics dashboard for business insights
 - **Automated Scheduling**: Built-in job scheduler for reminders and database backups
-- **Internationalization**: Multi-language support with i18n capabilities
+- **Internationalization**: Multi-language support (English, Arabic) with i18n capabilities
 - **High Performance**: Optimized with uvloop for maximum throughput
 - **Secure Authentication**: JWT-based authentication system for frontend access control
 - **Domain-Driven Architecture**: Clean architecture with domain services for better maintainability
+- **Feature-Sliced Design**: Modern frontend architecture following FSD principles
 - **Comprehensive Testing**: Unit tests and integration tests for robust code quality
 - **Production-Ready**: Support for production deployment with robust error handling and logging
 
@@ -30,9 +44,34 @@ For the original repository and setup tutorial (Flask version), please refer to 
 - A Meta developer account. If you don't have one, [create a Meta developer account here](https://developers.facebook.com/).
 - A business app. If you don't have one, [learn to create a business app here](https://developers.facebook.com/docs/development/create-an-app/).
 - Docker and Docker Compose (for containerized deployment)
-- Node.js 18+ and pnpm (for frontend development)
+- Node.js 20+ and pnpm 8+ (for frontend development)
 - Python 3.9+ (for backend development)
 - API keys for your chosen AI provider(s): OpenAI, Anthropic, and/or Google Gemini
+
+## Key Technologies
+
+### Backend
+
+- **FastAPI**: Modern Python web framework for building APIs
+- **PostgreSQL/SQLite**: Database for data persistence
+- **uvloop**: High-performance event loop
+- **Prometheus**: Metrics collection and monitoring
+- **Pydantic**: Data validation and settings management
+
+### Frontend
+
+- **Next.js 16**: React framework with App Router
+- **TypeScript**: Type-safe JavaScript
+- **TanStack Query**: Data fetching and state management
+- **TLDraw**: Interactive drawing and annotation tool for documents
+- **FullCalendar**: Calendar component for reservation management
+- **Glide Data Grid**: High-performance data grid component
+- **Zustand**: Lightweight state management
+- **Tailwind CSS**: Utility-first CSS framework
+- **Radix UI**: Accessible component primitives
+- **React Hook Form**: Form state management
+- **Vitest**: Fast unit testing framework
+- **Biome**: Fast formatter and linter
 
 ## Project Structure
 
@@ -46,22 +85,43 @@ For the original repository and setup tutorial (Flask version), please refer to 
 │   │   └── schemas.py       # Pydantic schemas for auth
 │   ├── decorators/          # Decorator functions for security, safety, and metrics
 │   ├── frontend/            # Next.js frontend application
-│   │   ├── app/             # Next.js app directory structure
-│   │   │   ├── api/         # API routes for Next.js
-│   │   │   ├── dashboard/   # Dashboard pages
+│   │   ├── app/             # Next.js app directory structure (App Router)
+│   │   │   ├── (config)/    # Config page route group
+│   │   │   │   └── config/  # Configuration management page
+│   │   │   ├── (core)/      # Core application pages
+│   │   │   │   ├── dashboard/ # Dashboard page
+│   │   │   │   └── documents/ # Documents page
+│   │   │   ├── (documents)/ # Documents section route group
+│   │   │   ├── (minimal)/   # Minimal layout pages
+│   │   │   │   └── tldraw/  # TLDraw standalone page
+│   │   │   ├── api/         # Next.js API routes (proxy to FastAPI)
+│   │   │   │   ├── config/  # Configuration API endpoints
+│   │   │   │   ├── reservations/ # Reservation management endpoints
+│   │   │   │   ├── documents/ # Document management endpoints
+│   │   │   │   └── ...      # Other API endpoints
+│   │   │   ├── provider/    # Global providers (TanStack Query, etc.)
 │   │   │   ├── fonts/       # Custom fonts
 │   │   │   ├── globals.css  # Global CSS styles
 │   │   │   └── layout.tsx   # Root layout component
-│   │   ├── components/      # React components organized by feature
-│   │   │   ├── animate-ui/  # Animation components
-│   │   │   ├── dashboard/   # Dashboard-specific components
-│   │   │   ├── glide_custom_cells/ # Custom table components
-│   │   │   ├── ui/          # Reusable UI components (shadcn/ui)
-│   │   │   ├── hooks/       # Custom React hooks
-│   │   │   ├── lib/         # Utility libraries and configurations
-│   │   │   ├── types/       # TypeScript type definitions
-│   │   │   └── styles/      # CSS and styling files
+│   │   ├── features/        # Feature modules (Feature-Sliced Design)
+│   │   │   ├── app-config/  # Application configuration feature
+│   │   │   ├── calendar/    # Calendar and reservation features
+│   │   │   ├── documents/   # Document management feature
+│   │   │   ├── reservations/ # Reservation operations feature
+│   │   │   └── ...          # Other feature modules
+│   │   ├── entities/        # Business entities (FSD layer)
+│   │   ├── shared/          # Shared utilities and components
+│   │   │   ├── api/         # API client and query configuration
+│   │   │   ├── libs/        # Shared libraries (data-grid, calendar, etc.)
+│   │   │   └── ui/          # Reusable UI components
+│   │   ├── widgets/         # Complex UI widgets (FSD layer)
+│   │   │   ├── calendar/   # Calendar widget
+│   │   │   └── documents/  # Documents widget
+│   │   ├── compositions/    # Page compositions
+│   │   │   └── config/      # Config page composition
+│   │   ├── infrastructure/  # Infrastructure layer (store, providers)
 │   │   ├── public/          # Static assets
+│   │   ├── styles/          # Global styles and CSS modules
 │   │   ├── next.config.mjs  # Next.js configuration
 │   │   ├── package.json     # Frontend dependencies
 │   │   ├── tailwind.config.ts # Tailwind CSS configuration
@@ -113,54 +173,90 @@ For the original repository and setup tutorial (Flask version), please refer to 
 The application operates as follows:
 
 1. **Webhook Handling**:
+
    - The FastAPI application listens for incoming webhooks from WhatsApp at the `/webhook` endpoint.
    - Incoming requests are verified using signature verification to ensure authenticity.
 
 1. **Message Processing**:
+
    - When a message is received, it is processed by the appropriate LLM service (OpenAI, Anthropic, or Gemini).
    - The application uses a configurable LLM provider to generate intelligent responses based on message content.
 
 1. **Database Interactions**:
-   - The application uses SQLite to store conversation history, reservation details, and thread information.
+
+   - The application uses PostgreSQL (production) or SQLite (development) to store conversation history, reservation details, and thread information.
    - Multiple tables track different aspects of the business operations.
+   - Database backups are automated and can be stored locally or in S3-compatible storage.
 
 1. **Reservation Management**:
+
    - Users can interact with the bot via WhatsApp to make, modify, or cancel reservations.
    - Assistant functions handle these operations with natural language understanding.
 
 1. **Monitoring and Metrics**:
+
    - Prometheus collects and stores metrics on system performance and business operations.
    - Alerts are configured for critical conditions and sent to a Discord channel.
 
 1. **Frontend Dashboard**:
+
    - The Next.js application provides multiple views:
-     - Calendar view for reservation management
-     - Conversation history browser
-     - Statistics dashboard with business analytics
-     - WhatsApp message sending interface
+     - **Calendar View**: Interactive calendar for reservation management with drag-and-drop, multiple view modes (week, month, list, multi-month), and undo/redo support
+     - **Documents Page**: TLDraw-powered document editor for customer notes, visual annotations, and customer data management
+     - **Config Page**: Comprehensive configuration management for working hours, slot durations, column customization, and app settings
+     - **Conversation History**: Browser for WhatsApp conversation history
+     - **Statistics Dashboard**: Business analytics and metrics visualization
+     - **WhatsApp Interface**: Message sending interface with phone contact management
 
 1. **Automated Tasks**:
+
    - Background scheduler runs daily to send appointment reminders via WhatsApp.
    - Regular database backups are performed and can be uploaded to remote storage.
 
 ## Architecture Overview
 
-### Domain-Driven Design
+### Architecture
 
-The application follows Domain-Driven Design (DDD) principles with clear separation of concerns:
+The application follows modern architectural principles with clear separation of concerns:
+
+#### Backend Architecture (Domain-Driven Design)
 
 - **Domain Layer** (`app/services/domain/`): Contains business logic organized by domain entities
+
   - `conversation/`: Handles WhatsApp conversation management
   - `customer/`: Manages customer data and profiles
-  - `reservation/`: Core reservation business logic
+  - `reservation/`: Core reservation business logic with undo/redo support
   - `notification/`: Handles various notification types
   - `shared/`: Common domain utilities and base classes
 
 - **Service Layer**: AI providers and external integrations
 
-- **Infrastructure Layer**: Database, authentication, and external APIs
+- **Infrastructure Layer**: Database (PostgreSQL/SQLite), authentication, and external APIs
 
-- **Presentation Layer**: Next.js frontend with modern React patterns
+#### Frontend Architecture (Feature-Sliced Design)
+
+The frontend follows Feature-Sliced Design (FSD) methodology:
+
+- **app/**: Next.js App Router pages and API routes
+- **features/**: Feature modules with business logic
+  - `app-config/`: Application configuration management
+  - `calendar/`: Calendar and reservation features
+  - `documents/`: Document management with TLDraw integration
+  - `reservations/`: Reservation operations with undo/redo
+- **entities/**: Business entities and domain models
+- **shared/**: Shared utilities, API clients, and UI components
+  - `api/`: TanStack Query configuration and API client
+  - `libs/`: Shared libraries (data-grid, calendar utilities)
+- **widgets/**: Complex UI compositions (calendar, documents)
+- **infrastructure/**: Global state management (Zustand) and providers
+
+#### Data Fetching
+
+- **TanStack Query**: Fully integrated for all data fetching operations
+  - Automatic caching and background refetching
+  - Optimistic updates for better UX
+  - Query invalidation and cache management
+  - React Query DevTools for development
 
 ### Testing Strategy
 
@@ -273,10 +369,13 @@ python -m pytest tests/          # Run backend tests
 
 ```bash
 cd app/frontend
-pnpm run dev                    # Start development server
+pnpm run dev                    # Start development server (with Turbo)
+pnpm run dev:classic            # Start development server (classic mode)
 pnpm run build                  # Build for production
-pnpm run lint                   # Run ESLint
-pnpm run type-check             # Run TypeScript type checking
+pnpm run lint:biome             # Run Biome linter
+pnpm run typecheck              # Run TypeScript type checking
+pnpm run test                   # Run tests with Vitest
+pnpm run test:watch             # Run tests in watch mode
 ```
 
 **Docker:**
@@ -292,6 +391,8 @@ docker-compose -f docker-compose.prod.yml up -d  # Start production stack
 biome check .                   # Check code formatting and linting
 biome format .                  # Format code
 knip                            # Check for unused dependencies
+pnpm run check                  # Run all checks (typecheck + lint + format)
+pnpm run fix                    # Auto-fix linting and formatting issues
 ```
 
 ## Webhook Configuration

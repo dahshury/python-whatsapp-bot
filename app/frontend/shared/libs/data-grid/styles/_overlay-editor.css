@@ -53,6 +53,7 @@
   border: none;
   border-width: 0;
   outline: none;
+  caret-color: hsl(var(--primary));
 }
 
 /* Additional essential styles */

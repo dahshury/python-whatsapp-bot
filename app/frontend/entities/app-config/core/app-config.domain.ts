@@ -1,6 +1,10 @@
 import type {
   AppConfigSnapshot,
   CustomCalendarRangeConfig,
+  EventColorConfig,
+  EventLoadingConfig,
+  EventTimeFormatConfig,
+  NotificationPreferencesConfig,
 } from "../types/app-config.types";
 import type {
   ColumnConfigVO,
@@ -27,6 +31,14 @@ type AppConfigProps = {
   availableLanguages: LanguageListVO;
   timezone: TimezoneVO;
   llmProvider: LlmProviderVO;
+  calendarFirstDay: number | null;
+  eventTimeFormat: EventTimeFormatConfig | null;
+  defaultCalendarView: string | null;
+  calendarLocale: string | null;
+  calendarDirection: "ltr" | "rtl" | "auto" | null;
+  eventColors: EventColorConfig | null;
+  notificationPreferences: NotificationPreferencesConfig | null;
+  eventLoading: EventLoadingConfig | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -104,6 +116,58 @@ export class AppConfig {
     return this.props.updatedAt;
   }
 
+  get calendarFirstDay(): number | null {
+    return this.props.calendarFirstDay;
+  }
+
+  get eventTimeFormat(): EventTimeFormatConfig | null {
+    return this.props.eventTimeFormat
+      ? { ...this.props.eventTimeFormat }
+      : null;
+  }
+
+  get defaultCalendarView(): string | null {
+    return this.props.defaultCalendarView;
+  }
+
+  get calendarLocale(): string | null {
+    return this.props.calendarLocale;
+  }
+
+  get calendarDirection(): "ltr" | "rtl" | "auto" | null {
+    return this.props.calendarDirection;
+  }
+
+  get eventColors(): EventColorConfig | null {
+    return this.props.eventColors
+      ? {
+          ...this.props.eventColors,
+          eventColorByType: { ...this.props.eventColors.eventColorByType },
+          eventColorByStatus: this.props.eventColors.eventColorByStatus
+            ? { ...this.props.eventColors.eventColorByStatus }
+            : null,
+          eventColorByPriority: this.props.eventColors.eventColorByPriority
+            ? { ...this.props.eventColors.eventColorByPriority }
+            : null,
+        }
+      : null;
+  }
+
+  get notificationPreferences(): NotificationPreferencesConfig | null {
+    return this.props.notificationPreferences
+      ? {
+          ...this.props.notificationPreferences,
+          quietHours: this.props.notificationPreferences.quietHours
+            ? { ...this.props.notificationPreferences.quietHours }
+            : null,
+        }
+      : null;
+  }
+
+  get eventLoading(): EventLoadingConfig | null {
+    return this.props.eventLoading ? { ...this.props.eventLoading } : null;
+  }
+
   toSnapshot(): AppConfigSnapshot {
     return {
       id: this.props.id,
@@ -130,6 +194,14 @@ export class AppConfig {
       availableLanguages: this.props.availableLanguages.value,
       timezone: this.props.timezone.value,
       llmProvider: this.props.llmProvider.value,
+      calendarFirstDay: this.props.calendarFirstDay,
+      eventTimeFormat: this.eventTimeFormat,
+      defaultCalendarView: this.props.defaultCalendarView,
+      calendarLocale: this.props.calendarLocale,
+      calendarDirection: this.props.calendarDirection,
+      eventColors: this.eventColors,
+      notificationPreferences: this.notificationPreferences,
+      eventLoading: this.eventLoading,
       createdAt: this.props.createdAt,
       updatedAt: this.props.updatedAt,
     };

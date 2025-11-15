@@ -6,6 +6,7 @@ export {
   type DateRangeFilterType,
   useDateRangeFilter,
 } from "./useDateRangeFilter";
+export { useDefaultCountryCode } from "./useDefaultCountryCode";
 export { useDisplayState } from "./useDisplayState";
 export { usePhoneComboboxCountry } from "./usePhoneComboboxCountry";
 export { usePhoneComboboxSelection } from "./usePhoneComboboxSelection";

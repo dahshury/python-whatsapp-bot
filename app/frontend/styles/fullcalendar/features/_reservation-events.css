@@ -168,13 +168,10 @@
 .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .fc-timegrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .fc-daygrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
-.fc-multimonth .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
-  border-color: #facc15 !important;
-}
-
+.fc-multimonth .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .dark .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .dark .fc-timegrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .dark .fc-daygrid-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event),
 .dark .fc-multimonth .fc-event.reservation-event.has-document:is(.reservation-type-0, .reservation-type-1):not(.fc-list-event) {
-  border-color: #fde68a !important;
+  border-color: var(--fc-document-stroke-color, #facc15) !important;
 }
