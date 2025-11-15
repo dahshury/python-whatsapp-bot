@@ -46,8 +46,8 @@ export const ConfigPageShell = ({
   }
 
   return (
-    <div className={cn("min-h-screen w-full bg-background", className)}>
-      <div className="container mx-auto max-w-6xl space-y-6 p-6">
+    <div className={cn("w-full bg-background", className)}>
+      <div className="container mx-auto max-w-6xl space-y-6 p-6 pb-12">
         {children}
       </div>
     </div>

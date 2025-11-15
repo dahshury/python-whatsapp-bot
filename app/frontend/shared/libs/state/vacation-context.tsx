@@ -13,7 +13,10 @@ import {
 } from "react";
 import type { CalendarEvent } from "@/entities/event";
 import type { Vacation } from "@/entities/vacation";
+import { useAppConfigQuery } from "@/features/app-config";
+import { snapshotToLegacyConfig } from "@/features/app-config/model";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
+import { isWorkingDay } from "@/shared/libs/calendar/calendar-config";
 import { i18n } from "@/shared/libs/i18n";
 
 // Suppression window duration in milliseconds
@@ -74,6 +77,12 @@ export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
   const suppressSyncUntilRef = useRef<number>(0);
   // Sync with websocket-provided vacations
   const { vacations, sendVacationUpdate } = useVacationsData();
+  // Get app config for working days check
+  const { data: appConfig } = useAppConfigQuery();
+  const calendarConfig = useMemo(
+    () => (appConfig ? snapshotToLegacyConfig(appConfig.toSnapshot()) : null),
+    [appConfig]
+  );
   useEffect(() => {
     try {
       const now = Date.now();
@@ -134,25 +143,50 @@ export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
       const e = normalize(p.end).getTime();
       return dd >= s && dd <= e;
     };
-    const findNextFreeDate = (startDate: Date, periods: VacationPeriod[]) => {
+    const findNextFreeDate = (
+      startDate: Date,
+      periods: VacationPeriod[]
+    ): Date => {
       let candidate = normalize(startDate);
-      while (periods.some((p) => isInPeriod(candidate, p))) {
-        // Jump to the day after the latest overlapping period's end
-        let maxEnd = candidate;
-        for (const p of periods) {
-          if (isInPeriod(candidate, p)) {
-            const endN = normalize(p.end);
-            if (endN.getTime() > maxEnd.getTime()) {
-              maxEnd = endN;
+      const MAX_SEARCH_DAYS = 365; // Prevent infinite loops
+      let searchDays = 0;
+
+      while (
+        (periods.some((p) => isInPeriod(candidate, p)) ||
+          !isWorkingDay(candidate, calendarConfig)) &&
+        searchDays < MAX_SEARCH_DAYS
+      ) {
+        // If not a working day, skip to next day
+        if (!isWorkingDay(candidate, calendarConfig)) {
+          candidate = new Date(
+            candidate.getFullYear(),
+            candidate.getMonth(),
+            candidate.getDate() + 1
+          );
+          searchDays += 1;
+          continue;
+        }
+
+        // If in a vacation period, jump to the day after the latest overlapping period's end
+        if (periods.some((p) => isInPeriod(candidate, p))) {
+          let maxEnd = candidate;
+          for (const p of periods) {
+            if (isInPeriod(candidate, p)) {
+              const endN = normalize(p.end);
+              if (endN.getTime() > maxEnd.getTime()) {
+                maxEnd = endN;
+              }
             }
           }
+          candidate = new Date(
+            maxEnd.getFullYear(),
+            maxEnd.getMonth(),
+            maxEnd.getDate() + 1
+          );
+          searchDays += 1;
         }
-        candidate = new Date(
-          maxEnd.getFullYear(),
-          maxEnd.getMonth(),
-          maxEnd.getDate() + 1
-        );
       }
+
       return candidate;
     };
 
@@ -170,7 +204,7 @@ export const VacationProvider: FC<PropsWithChildren> = ({ children }) => {
       suppressSyncUntilRef.current = Date.now() + SUPPRESS_SYNC_MS;
       return next;
     });
-  }, [sendVacationUpdate]);
+  }, [sendVacationUpdate, calendarConfig]);
 
   const removeVacationPeriod = useCallback(
     (index: number) => {

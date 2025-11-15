@@ -26,10 +26,10 @@
   background-image: var(--gradient-muted);
 }
 
-/* Today highlight - accent based gradient */
-.fc-daygrid .fc-daygrid-day.fc-day-today:not(.fc-day-past):not(.fc-day-disabled)
+/* Today highlight - accent based gradient (exclude vacation days) */
+.fc-daygrid .fc-daygrid-day.fc-day-today:not(.fc-day-past):not(.fc-day-disabled):not(.vacation-day)
   .fc-daygrid-day-frame,
-.fc .fc-day-today .fc-timegrid-col-frame {
+.fc .fc-day-today:not(.vacation-day) .fc-timegrid-col-frame {
   background: linear-gradient(
     135deg,
     hsl(var(--accent) / 0.18) 0%,
@@ -39,8 +39,9 @@
   border-color: hsl(var(--accent) / 0.25);
 }
 
-/* Non-business background - soften with gradient */
-.fc .fc-non-business {
+/* Non-business background - soften with gradient (exclude vacation days) */
+.fc-timegrid-col:not(.vacation-day) .fc-non-business,
+.fc-daygrid-day:not(.vacation-day) .fc-non-business {
   background: linear-gradient(
     135deg,
     hsl(var(--muted) / 0.35) 0%,
@@ -48,8 +49,9 @@
   );
 }
 
-/* Background events - use chart-3 gradient for differentiation */
-.fc .fc-bg-event {
+/* Background events - use chart-3 gradient for differentiation (exclude vacation events) */
+.fc-timegrid-col:not(.vacation-day) .fc-bg-event:not(.vacation-background-event),
+.fc-daygrid-day:not(.vacation-day) .fc-bg-event:not(.vacation-background-event) {
   background-image: var(--gradient-chart-3);
   opacity: var(--fc-bg-event-opacity);
 }

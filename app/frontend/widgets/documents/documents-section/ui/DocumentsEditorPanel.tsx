@@ -7,7 +7,9 @@ import { DocumentAutosaveBridge } from "@/features/documents";
 import type { TldrawStoreState } from "@/features/documents/hooks";
 import type { SaveStatus } from "@/features/documents/types/save-state.types";
 import type { DocumentAutosaveBridgeProps } from "@/features/documents/ui/document-autosave-bridge";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { cn } from "@/lib/utils";
+import { i18n } from "@/shared/libs/i18n";
 import { DocumentLockOverlay } from "@/widgets/documents/DocumentLockOverlay";
 import { DocumentSavingIndicator } from "@/widgets/documents/DocumentSavingIndicator";
 import { DocumentEditorCanvas } from "@/widgets/documents/document-editor";
@@ -53,6 +55,7 @@ export function DocumentsEditorPanel({
   enterFullscreen,
   exitFullscreen,
 }: DocumentsEditorPanelProps) {
+  const { isLocalized } = useLanguageStore();
   const normalizedEditorPageId =
     typeof editorPageId === "string"
       ? (editorPageId as TLPageId)
@@ -90,7 +93,7 @@ export function DocumentsEditorPanel({
           loading={isCheckingLock}
           {...(isCanvasLocked
             ? {
-                message: "Please enter both name and phone, or load a customer",
+                message: i18n.getMessage("document_lock_message", isLocalized),
               }
             : {})}
         />

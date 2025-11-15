@@ -100,14 +100,7 @@ export function AppProvidersClient({
                       <DvhInit />
                       <PortalBootstrap />
                       <ToastRouter />
-                      <div
-                        className="h-screen w-screen overflow-auto"
-                        style={{
-                          height: "var(--doc-dvh, 100dvh)",
-                        }}
-                      >
-                        {children}
-                      </div>
+                      {children}
                     </ThemeWrapper>
                   </TanstackQueryProvider>
                 </BackendConnectionProvider>

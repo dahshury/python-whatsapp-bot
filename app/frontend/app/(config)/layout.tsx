@@ -20,4 +20,3 @@ export const viewport: Viewport = {
 export default function ConfigLayout({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
-

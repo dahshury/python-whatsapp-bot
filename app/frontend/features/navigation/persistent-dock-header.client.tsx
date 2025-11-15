@@ -8,8 +8,12 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { useSettingsStore } from "@/infrastructure/store/app-store";
+import {
+  useLanguageStore,
+  useSettingsStore,
+} from "@/infrastructure/store/app-store";
 import { TEMPLATE_USER_WA_ID } from "@/shared/libs/documents";
+import { i18n } from "@/shared/libs/i18n";
 import { ButtonGroup } from "@/shared/ui/button-group";
 import { SidebarTrigger } from "@/shared/ui/sidebar";
 import { CalendarDrawer, CalendarLegend } from "@/widgets/calendar";
@@ -28,6 +32,7 @@ const NotificationInboxPopover = dynamic(
 export function PersistentDockHeaderClient() {
   const { state } = useDockBridge();
   const { freeRoam, showDualCalendar } = useSettingsStore();
+  const { isLocalized } = useLanguageStore();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -94,7 +99,7 @@ export function PersistentDockHeaderClient() {
                 lockView="listMonth"
                 onOpenChange={setIsCalendarOpen}
                 side="right"
-                title="Documents Calendar"
+                title={i18n.getMessage("documents_calendar", isLocalized)}
                 trigger={
                   <Button
                     aria-label={"Open Calendar"}

@@ -58,13 +58,10 @@ export default function useDocumentCustomerRow(
 
   // Get app config for documents columns
   const { data: appConfig } = useAppConfigQuery();
-  // Use updatedAt as stable key to prevent unnecessary recalculations from toSnapshot()
-  // This prevents grid flicker caused by toSnapshot() creating new objects on every render
-  const configUpdatedAt = appConfig?.updatedAt;
   const documentsColumns = useMemo(
     () => appConfig?.toSnapshot().documentsColumns,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [configUpdatedAt]
+    [appConfig?.toSnapshot]
   );
 
   const customerColumns = useMemo<IColumnDefinition[]>(() => {

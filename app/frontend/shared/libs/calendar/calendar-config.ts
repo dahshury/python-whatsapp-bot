@@ -1,7 +1,6 @@
 import { runtimeConfig } from "@/shared/config";
 import {
   ALL_DAYS_OF_WEEK,
-  FRIDAY,
   MONDAY,
   SATURDAY,
   SUNDAY,
@@ -271,6 +270,55 @@ export function getSlotDuration(date: Date, config?: AppConfig | null): number {
 }
 
 /**
+ * Get the set of working days from config.
+ * @param config - App config containing working days
+ * @returns Set of working day indices (0=Sunday, 6=Saturday)
+ */
+function getWorkingDaysSet(config?: AppConfig | null): Set<number> {
+  if (config) {
+    // Use top-level working_days if available (from legacy config)
+    // Otherwise, calculate from default_working_hours + day_specific_hours
+    if (config.working_days && config.working_days.length > 0) {
+      return new Set(config.working_days);
+    }
+
+    // Calculate from default_working_hours and day_specific_hours
+    const workingDaysSet = new Set<number>();
+
+    // Add default working days
+    for (const day of config.default_working_hours.days_of_week) {
+      workingDaysSet.add(day);
+    }
+
+    // Add day-specific hours days
+    for (const dayHours of config.day_specific_hours) {
+      workingDaysSet.add(dayHours.day_of_week);
+    }
+
+    return workingDaysSet;
+  }
+
+  // Fallback to default: Sun-Thu working (hide Friday)
+  return new Set([SUNDAY, MONDAY, TUESDAY, WEDNESDAY, THURSDAY, SATURDAY]);
+}
+
+/**
+ * Check if a date is a working day based on app config.
+ * @param date - Date to check
+ * @param config - App config containing working days
+ * @returns True if the date falls on a working day
+ */
+export function isWorkingDay(date: Date, config?: AppConfig | null): boolean {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return false;
+  }
+
+  const dayOfWeek = date.getDay(); // 0=Sunday, 6=Saturday
+  const workingDaysSet = getWorkingDaysSet(config);
+  return workingDaysSet.has(dayOfWeek);
+}
+
+/**
  * Calculate which days should be hidden in the calendar based on config.
  * Days that are NOT in the working days list should be hidden.
  * @param freeRoam - If true, no days are hidden
@@ -285,36 +333,10 @@ export function getHiddenDays(
     return [];
   }
 
-  if (config) {
-    // Use top-level working_days if available (from legacy config)
-    // Otherwise, calculate from default_working_hours + day_specific_hours
-    let workingDaysSet: Set<number>;
-
-    if (config.working_days && config.working_days.length > 0) {
-      // Use top-level working_days field
-      workingDaysSet = new Set(config.working_days);
-    } else {
-      // Calculate from default_working_hours and day_specific_hours
-      workingDaysSet = new Set<number>();
-
-      // Add default working days
-      for (const day of config.default_working_hours.days_of_week) {
-        workingDaysSet.add(day);
-      }
-
-      // Add day-specific hours days
-      for (const dayHours of config.day_specific_hours) {
-        workingDaysSet.add(dayHours.day_of_week);
-      }
-    }
-
-    // All days are 0-6 (Sunday-Saturday)
-    // Hide days that are NOT in the working days set
-    return ALL_DAYS_OF_WEEK.filter((day) => !workingDaysSet.has(day));
-  }
-
-  // Fallback to default: hide Friday (5)
-  return [FRIDAY];
+  const workingDaysSet = getWorkingDaysSet(config);
+  // All days are 0-6 (Sunday-Saturday)
+  // Hide days that are NOT in the working days set
+  return ALL_DAYS_OF_WEEK.filter((day) => !workingDaysSet.has(day));
 }
 
 // Simple Ramadan check using approximate Hijri conversion boundaries is handled on backend.

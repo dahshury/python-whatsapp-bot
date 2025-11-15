@@ -2,6 +2,8 @@
 
 import { Lock } from "lucide-react";
 import type { FC } from "react";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
+import { i18n } from "@/shared/libs/i18n";
 import { cn } from "@/shared/libs/utils";
 import { Spinner } from "@/shared/ui/spinner";
 
@@ -16,10 +18,14 @@ export const DocumentLockOverlay: FC<DocumentLockOverlayProps> = ({
   loading = false,
   message,
 }) => {
+  const { isLocalized } = useLanguageStore();
   let overlayMessage: string;
   if (message === undefined) {
-    overlayMessage = loading ? "Loading document…" : "Locked";
+    overlayMessage = loading
+      ? i18n.getMessage("document_loading", isLocalized)
+      : i18n.getMessage("locked", isLocalized);
   } else {
+    // If message is provided, check if it's a translation key or use it as-is
     overlayMessage = message;
   }
   const IconComponent = loading ? Spinner : Lock;

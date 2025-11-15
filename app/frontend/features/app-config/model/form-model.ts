@@ -9,8 +9,6 @@ import { CountryCodeVO } from "@/entities/app-config/value-objects";
 import { DEFAULT_WORKING_DAYS } from "@/shared/constants/days-of-week";
 import type { AppConfig as LegacyAppConfig } from "@/shared/services/config-service";
 
-const DEFAULT_COLUMN_WIDTH = 150;
-
 const createTempId = (() => {
   let counter = 0;
   return (prefix: string) => {
@@ -87,13 +85,13 @@ export const createDefaultColumn = (
   overrides?: Partial<ColumnConfig>
 ): ColumnFormValue =>
   cloneColumn({
-    id: overrides?.id ?? createTempId("column"),
-    name: overrides?.name ?? "new_column",
-    title: overrides?.title ?? "New Column",
+    id: overrides?.id ?? "",
+    name: overrides?.name ?? "",
+    title: overrides?.title ?? "",
     dataType: overrides?.dataType ?? "text",
     isEditable: overrides?.isEditable ?? true,
     isRequired: overrides?.isRequired ?? false,
-    width: overrides?.width ?? DEFAULT_COLUMN_WIDTH,
+    width: overrides?.width ?? null,
     metadata: overrides?.metadata ?? null,
   });
 
@@ -126,7 +124,7 @@ export const createDefaultAppConfigFormValues = (): AppConfigFormValues => ({
   calendarColumns: [],
   documentsColumns: [],
   defaultCountryPrefix: "SA",
-  availableLanguages: ["en", "ar"],
+  availableLanguages: ["ar", "en"].sort(),
   timezone: "Asia/Riyadh",
   llmProvider: "openai",
 });
@@ -135,6 +133,14 @@ export const createAppConfigFormValues = (
   config: AppConfig
 ): AppConfigFormValues => {
   const snapshot = normalizeSnapshot(config.toSnapshot());
+  const slotDurationEntries = snapshot.daySpecificSlotDurations.map((slot) => ({
+    id: createTempId(`day-slot-${slot.dayOfWeek}`),
+    dayOfWeek: slot.dayOfWeek,
+    slotDurationHours: slot.slotDurationHours,
+  }));
+  const slotDurationDays = new Set(
+    slotDurationEntries.map((slot) => slot.dayOfWeek)
+  );
 
   return {
     workingDays: snapshot.workingDays,
@@ -142,25 +148,37 @@ export const createAppConfigFormValues = (
       startTime: snapshot.defaultWorkingHours.startTime,
       endTime: snapshot.defaultWorkingHours.endTime,
     },
-    daySpecificWorkingHours: snapshot.daySpecificWorkingHours.map((hours) => ({
-      id: createTempId(`day-hours-${hours.dayOfWeek}`),
-      dayOfWeek: hours.dayOfWeek,
-      startTime: hours.startTime,
-      endTime: hours.endTime,
-    })),
+    daySpecificWorkingHours: snapshot.daySpecificWorkingHours.map((hours) => {
+      if (!slotDurationDays.has(hours.dayOfWeek)) {
+        slotDurationEntries.push({
+          id: createTempId(`day-slot-${hours.dayOfWeek}`),
+          dayOfWeek: hours.dayOfWeek,
+          slotDurationHours: snapshot.slotDurationHours,
+        });
+        slotDurationDays.add(hours.dayOfWeek);
+      }
+      return {
+        id: createTempId(`day-hours-${hours.dayOfWeek}`),
+        dayOfWeek: hours.dayOfWeek,
+        startTime: hours.startTime,
+        endTime: hours.endTime,
+      };
+    }),
     slotDurationHours: snapshot.slotDurationHours,
-    daySpecificSlotDurations: snapshot.daySpecificSlotDurations.map((slot) => ({
-      id: createTempId(`day-slot-${slot.dayOfWeek}`),
-      dayOfWeek: slot.dayOfWeek,
-      slotDurationHours: slot.slotDurationHours,
-    })),
+    daySpecificSlotDurations: slotDurationEntries,
     customCalendarRanges: snapshot.customCalendarRanges,
     calendarColumns: snapshot.calendarColumns,
     documentsColumns: snapshot.documentsColumns,
     defaultCountryPrefix: CountryCodeVO.fromUnknown(
       snapshot.defaultCountryPrefix
     ).value,
-    availableLanguages: [...snapshot.availableLanguages],
+    availableLanguages: (() => {
+      const languages = [...snapshot.availableLanguages];
+      if (!languages.includes("en")) {
+        languages.push("en");
+      }
+      return languages.sort();
+    })(),
     timezone: snapshot.timezone,
     llmProvider: snapshot.llmProvider,
   };
@@ -206,7 +224,13 @@ export const mapFormValuesToUpdateInput = (
   })),
   defaultCountryPrefix: CountryCodeVO.fromUnknown(values.defaultCountryPrefix)
     .value,
-  availableLanguages: values.availableLanguages,
+  availableLanguages: (() => {
+    const languages = [...values.availableLanguages];
+    if (!languages.includes("en")) {
+      languages.push("en");
+    }
+    return languages.sort();
+  })(),
   timezone: values.timezone,
   llmProvider: values.llmProvider,
 });

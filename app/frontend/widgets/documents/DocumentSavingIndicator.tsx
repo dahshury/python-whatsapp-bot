@@ -61,7 +61,7 @@ export const DocumentSavingIndicator: FC<{
       return (
         <div className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-card/90 px-2 py-1 text-muted-foreground text-xs shadow-sm backdrop-blur">
           <div className="size-3 rounded-full border-2 border-current" />
-          <span>{i18n.getMessage("ready", isLocalized) || "Ready"}</span>
+          <span>{i18n.getMessage("ready", isLocalized)}</span>
         </div>
       );
     default:

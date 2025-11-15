@@ -127,7 +127,8 @@ export function appConfigToDomain(dto: AppConfigDto): AppConfig {
     defaultCountryPrefix: dto.default_country_prefix,
     availableLanguages: dto.available_languages ?? [],
     timezone: dto.timezone ?? "Asia/Riyadh",
-    llmProvider: dto.llm_provider ?? "openai",
+    llmProvider:
+      dto.llm_provider === "gemini" ? "google" : (dto.llm_provider ?? "openai"),
     createdAt: dto.created_at,
     updatedAt: dto.updated_at,
   };
@@ -153,7 +154,8 @@ export function appConfigToDto(config: AppConfig): AppConfigDto {
     default_country_prefix: snapshot.defaultCountryPrefix,
     available_languages: snapshot.availableLanguages,
     timezone: snapshot.timezone,
-    llm_provider: snapshot.llmProvider,
+    llm_provider:
+      snapshot.llmProvider === "google" ? "gemini" : snapshot.llmProvider,
     created_at: snapshot.createdAt,
     updated_at: snapshot.updatedAt,
   };
@@ -204,7 +206,8 @@ export function appConfigToUpdateDto(
     dto.timezone = input.timezone;
   }
   if (input.llmProvider) {
-    dto.llm_provider = input.llmProvider;
+    dto.llm_provider =
+      input.llmProvider === "google" ? "gemini" : input.llmProvider;
   }
   return dto;
 }

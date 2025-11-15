@@ -170,6 +170,25 @@
   z-index: var(--z-calendar-day-bg-highlight);
 }
 
+/* Ensure vacation background events extend to entire day in daygrid view */
+.fc-daygrid .fc-daygrid-day .fc-bg-event.vacation-background-event {
+  /* Position relative to the day frame, not just the day cell */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  /* Ensure it covers the entire frame including header area */
+  z-index: var(--z-calendar-day-bg-highlight);
+}
+
+/* Ensure daygrid day cells have positioning context for background events */
+.fc-daygrid .fc-daygrid-day {
+  position: relative;
+}
+
 /* Multimonth specific height enforcement */
 .fc-multimonth .fc-daygrid-day {
   position: relative; /* Ensure positioning context for absolute children */
@@ -277,6 +296,33 @@
  * Handles the unique layout and interaction patterns of day view
  */
 
+/* Apply vacation pattern to timegrid columns in day view to cover all time slots */
+.fc-timeGridDay-view .fc-timegrid-col.vacation-day .fc-timegrid-col-bg {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
+/* Override non-business backgrounds on vacation days in day view */
+.fc-timeGridDay-view .fc-timegrid-col.vacation-day .fc-timegrid-col-bg .fc-non-business {
+  background-image: var(--vacation-pattern);
+  background: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
+}
+
+.fc-timeGridDay-view .fc-timegrid-col.vacation-day .fc-timegrid-col-frame {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
 /* Disable vacation day hover effects in day view */
 .fc-timeGridDay-view .fc-day.vacation-day:hover {
   background-color: hsl(
@@ -289,6 +335,24 @@
   transform: none;
   filter: none;
   opacity: inherit;
+}
+
+.fc-timeGridDay-view .fc-day.vacation-day:hover .fc-timegrid-col-bg,
+.fc-timeGridDay-view .fc-day.vacation-day:hover .fc-timegrid-col-frame {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
+.fc-timeGridDay-view .fc-day.vacation-day:hover .fc-timegrid-col-bg .fc-non-business {
+  background-image: var(--vacation-pattern);
+  background: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
 }
 
 /* Dark mode vacation day hover overrides for day view */
@@ -305,6 +369,24 @@
   opacity: inherit;
 }
 
+.dark .fc-timeGridDay-view .fc-day.vacation-day:hover .fc-timegrid-col-bg,
+.dark .fc-timeGridDay-view .fc-day.vacation-day:hover .fc-timegrid-col-frame {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
+.dark .fc-timeGridDay-view .fc-day.vacation-day:hover .fc-timegrid-col-bg .fc-non-business {
+  background-image: var(--vacation-pattern);
+  background: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
+}
+
 /* =================================================================
    WEEK VIEW VACATION STYLING (timeGridWeek)
    ================================================================= */
@@ -312,6 +394,34 @@
 /* Show not-allowed cursor in vacation columns in week view (keep event clicks working) */
 .fc-timeGridWeek-view .fc-timegrid-col.vacation-day {
   cursor: not-allowed;
+}
+
+/* Apply vacation pattern to timegrid columns to cover all time slots */
+.fc-timegrid-col.vacation-day .fc-timegrid-col-bg {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
+/* Override non-business backgrounds on vacation days to show pattern */
+.fc-timegrid-col.vacation-day .fc-timegrid-col-bg .fc-non-business {
+  background-image: var(--vacation-pattern);
+  background: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
+}
+
+/* Ensure pattern extends to all time slots in the column */
+.fc-timegrid-col.vacation-day .fc-timegrid-col-frame {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
 }
 
 /* Disable hover effects for vacation columns in week view */
@@ -326,11 +436,47 @@
   filter: none;
 }
 
+.fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover .fc-timegrid-col-bg,
+.fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover .fc-timegrid-col-frame {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
+.fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover .fc-timegrid-col-bg .fc-non-business {
+  background-image: var(--vacation-pattern);
+  background: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
+}
+
 .dark .fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover {
   background-color: hsl(
     var(--vacation-bg, 25 95% 53%) /
     var(--vacation-bg-opacity, 0.12)
   );
+}
+
+.dark .fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover .fc-timegrid-col-bg,
+.dark .fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover .fc-timegrid-col-frame {
+  background-image: var(--vacation-pattern);
+  background-color: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+}
+
+.dark .fc-timeGridWeek-view .fc-timegrid-col.vacation-day:hover .fc-timegrid-col-bg .fc-non-business {
+  background-image: var(--vacation-pattern);
+  background: hsl(
+    var(--vacation-bg, 25 95% 53%) /
+    var(--vacation-bg-opacity, 0.12)
+  );
+  opacity: 1;
 }
 
 /* Hide selection highlight within vacation columns in week view */

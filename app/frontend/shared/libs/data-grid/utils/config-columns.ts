@@ -69,21 +69,43 @@ export function configColumnToIColumnDefinition(
       dataType = ColumnDataType.TEXT;
   }
 
-  // Translate title if it's an i18n key
-  const title =
+  // Translate title: prefer metadata translations, fallback to i18n system
+  let title = configColumn.title;
+
+  // First check if there are custom translations in metadata
+  const metadata = configColumn.metadata as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  const translations =
+    (metadata?.translations as Record<string, string> | undefined) || {};
+  const lang = isLocalized ? "ar" : "en";
+
+  if (translations[lang] && translations[lang].trim() !== "") {
+    // Use custom translation from metadata
+    title = translations[lang];
+  } else if (
     configColumn.title.startsWith("field_") ||
-    configColumn.title.startsWith("appt_")
-      ? i18n.getMessage(configColumn.title, isLocalized)
-      : configColumn.title;
+    configColumn.title.startsWith("appt_") ||
+    configColumn.title.startsWith("msg_")
+  ) {
+    // Fallback to i18n system for predefined keys
+    const i18nTranslation = i18n.getMessage(configColumn.title, isLocalized);
+    // Only use if translation exists (different from key)
+    if (i18nTranslation && i18nTranslation !== configColumn.title) {
+      title = i18nTranslation;
+    }
+  }
 
   // Handle dropdown options translation
-  let metadata = configColumn.metadata;
+  // Note: metadata is already defined above for translations check
+  let processedMetadata = metadata;
   if (
     dataType === ColumnDataType.DROPDOWN &&
-    metadata?.options &&
-    Array.isArray(metadata.options)
+    processedMetadata?.options &&
+    Array.isArray(processedMetadata.options)
   ) {
-    const translatedOptions = metadata.options.map((opt: unknown) => {
+    const translatedOptions = processedMetadata.options.map((opt: unknown) => {
       const optStr = String(opt);
       if (
         optStr.startsWith("appt_") ||
@@ -94,7 +116,7 @@ export function configColumnToIColumnDefinition(
       }
       return optStr;
     });
-    metadata = { ...metadata, options: translatedOptions };
+    processedMetadata = { ...processedMetadata, options: translatedOptions };
   }
 
   // Handle both snake_case and camelCase formats for boolean fields
@@ -122,8 +144,8 @@ export function configColumnToIColumnDefinition(
   }
 
   // Only include metadata if it's defined (exactOptionalPropertyTypes compatibility)
-  if (metadata !== null && metadata !== undefined) {
-    result.metadata = metadata;
+  if (processedMetadata !== null && processedMetadata !== undefined) {
+    result.metadata = processedMetadata;
   }
 
   return result;

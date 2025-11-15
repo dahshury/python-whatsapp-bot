@@ -1,7 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import type { ConversationMessage } from "@/entities/conversation";
+import { chatKeys } from "@/shared/api/query-keys";
 import { callPythonBackend } from "@/shared/libs/backend";
 
 type ConversationMessagesResponse = {
@@ -15,8 +17,10 @@ type ConversationMessagesResponse = {
  * Uses TanStack Query for caching and state management.
  */
 export function useConversationMessagesQuery(waId: string | null) {
-  return useQuery({
-    queryKey: ["conversation-messages", waId],
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: waId ? chatKeys.messages(waId) : ["conversation-messages", null],
     queryFn: async (): Promise<ConversationMessage[]> => {
       if (!waId) {
         return [];
@@ -46,4 +50,36 @@ export function useConversationMessagesQuery(waId: string | null) {
     refetchOnMount: false,
     retry: 1,
   });
+
+  // Invalidate query when realtime conversation_new_message events arrive
+  useEffect(() => {
+    if (!waId) {
+      return;
+    }
+
+    const handler = (ev: Event) => {
+      try {
+        const customEvent = ev as CustomEvent;
+        const detail = customEvent.detail || {};
+        if (
+          detail?.type === "conversation_new_message" &&
+          detail?.data?.wa_id === waId
+        ) {
+          // Invalidate the query to refetch and show the new message
+          queryClient.invalidateQueries({
+            queryKey: chatKeys.messages(waId),
+          });
+        }
+      } catch (_error) {
+        // Silently handle errors in event handler
+      }
+    };
+
+    window.addEventListener("realtime", handler as EventListener);
+    return () => {
+      window.removeEventListener("realtime", handler as EventListener);
+    };
+  }, [waId, queryClient]);
+
+  return query;
 }

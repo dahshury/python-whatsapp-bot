@@ -7,7 +7,9 @@ import type { Editor } from "tldraw";
 import { DocumentViewerCameraManager } from "@/features/documents";
 import type { TldrawStoreState } from "@/features/documents/hooks";
 import type { SaveStatus } from "@/features/documents/types/save-state.types";
+import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { cn } from "@/lib/utils";
+import { i18n } from "@/shared/libs/i18n";
 import { DocumentLockOverlay } from "@/widgets/documents/DocumentLockOverlay";
 import { DocumentSavingIndicator } from "@/widgets/documents/DocumentSavingIndicator";
 
@@ -54,6 +56,7 @@ export function DocumentsViewerPanel({
   onViewerMount,
   className,
 }: DocumentsViewerPanelProps) {
+  const { isLocalized } = useLanguageStore();
   return (
     <div
       className={cn(
@@ -84,7 +87,7 @@ export function DocumentsViewerPanel({
           loading={isCheckingLock}
           {...(isCanvasLocked
             ? {
-                message: "Please enter both name and phone, or load a customer",
+                message: i18n.getMessage("document_lock_message", isLocalized),
               }
             : {})}
         />

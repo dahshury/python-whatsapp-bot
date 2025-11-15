@@ -5,6 +5,7 @@ import {
   Columns,
   Download,
   Globe,
+  Save,
   Settings,
   Upload,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import {
 } from "@/features/app-config";
 import {
   type AppConfigFormValues,
+  type ColumnFormValue,
   createAppConfigFormValues,
   createDefaultAppConfigFormValues,
   mapFormValuesToUpdateInput,
@@ -31,8 +33,11 @@ import { ColumnsSection } from "@/features/app-config/ui/columns";
 import { GeneralSection } from "@/features/app-config/ui/general";
 import { ConfigPageShell } from "@/features/app-config/ui/layout";
 import { WorkingHoursSection } from "@/features/app-config/ui/working-hours";
+import { i18n } from "@/shared/libs/i18n";
 import { toastService } from "@/shared/libs/toast";
+import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { ButtonGroup } from "@/shared/ui/button-group";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 
 export const ConfigPage = () => {
@@ -105,6 +110,189 @@ export const ConfigPage = () => {
 
   const isSaving = updateConfig.isPending;
   const isDirty = form.formState.isDirty;
+  const dirtyFields = form.formState.dirtyFields;
+  const isValid = form.formState.isValid;
+
+  // Watch column values for reactive validation
+  const calendarColumns = form.watch("calendarColumns") || [];
+  const documentsColumns = form.watch("documentsColumns") || [];
+  const availableLanguages = form.watch("availableLanguages") || [];
+
+  // Custom validation function to check columns
+  const validateColumns = (): boolean => {
+    if (availableLanguages.length === 0) {
+      return true; // No languages enabled, skip translation validation
+    }
+
+    // Helper to check if translation exists (either in metadata or i18n system)
+    const hasTranslation = (column: ColumnFormValue, lang: string): boolean => {
+      const metadata = column.metadata as
+        | Record<string, unknown>
+        | null
+        | undefined;
+      const translations =
+        (metadata?.translations as Record<string, string> | undefined) || {};
+      const translationValue = translations[lang];
+
+      // If translation exists in metadata and is not empty, it's valid
+      if (translationValue && translationValue.trim() !== "") {
+        return true;
+      }
+
+      // Use the same logic as display: prefer title, fallback to id
+      const columnKey = column.title || column.id || "";
+
+      // For i18n keys, check if translation exists in i18n system
+      const isI18nKey =
+        columnKey.startsWith("field_") ||
+        columnKey.startsWith("appt_") ||
+        columnKey.startsWith("msg_");
+      if (isI18nKey && columnKey) {
+        const isLocalized = lang === "ar";
+        const i18nTranslation = i18n.getMessage(columnKey, isLocalized);
+        // Check translation exists, is different from key, and not empty
+        if (
+          i18nTranslation &&
+          i18nTranslation !== columnKey &&
+          i18nTranslation.trim() !== ""
+        ) {
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    // Validate calendar columns
+    for (const column of calendarColumns) {
+      // Check required fields
+      if (
+        !(column.id && column.dataType) ||
+        column.width === null ||
+        column.width === undefined
+      ) {
+        return false;
+      }
+
+      // Check translations for all available languages
+      for (const lang of availableLanguages) {
+        if (!hasTranslation(column, lang)) {
+          return false;
+        }
+      }
+    }
+
+    // Validate document columns
+    for (const column of documentsColumns) {
+      // Check required fields
+      if (
+        !(column.id && column.dataType) ||
+        column.width === null ||
+        column.width === undefined
+      ) {
+        return false;
+      }
+
+      // Check translations for all available languages
+      for (const lang of availableLanguages) {
+        if (!hasTranslation(column, lang)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
+  // Watch calendar values for reactive validation
+  const workingDays = form.watch("workingDays") || [];
+  const defaultWorkingHours = form.watch("defaultWorkingHours");
+  const slotDurationHours = form.watch("slotDurationHours");
+
+  // Custom validation function to check calendar fields
+  const validateCalendar = (): boolean => {
+    // Check at least one working day is selected
+    if (!workingDays || workingDays.length === 0) {
+      return false;
+    }
+
+    // Check start time and end time are provided
+    if (!(defaultWorkingHours?.startTime && defaultWorkingHours?.endTime)) {
+      return false;
+    }
+
+    // Check slot duration is provided
+    if (!slotDurationHours || slotDurationHours <= 0) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Check if columns are valid (reactive)
+  const columnsValid = validateColumns();
+  // Check if calendar is valid (reactive)
+  const calendarValid = validateCalendar();
+  const canSave = isDirty && isValid && columnsValid && calendarValid;
+
+  // Count changes per tab section
+  const getCalendarChanges = () => {
+    let count = 0;
+    if (dirtyFields.workingDays) {
+      count += 1;
+    }
+    if (dirtyFields.defaultWorkingHours) {
+      const hours = dirtyFields.defaultWorkingHours;
+      if (hours.startTime || hours.endTime) {
+        count += 1;
+      }
+    }
+    if (dirtyFields.daySpecificWorkingHours) {
+      count += 1;
+    }
+    if (dirtyFields.slotDurationHours) {
+      count += 1;
+    }
+    if (dirtyFields.daySpecificSlotDurations) {
+      count += 1;
+    }
+    if (dirtyFields.customCalendarRanges) {
+      count += 1;
+    }
+    return count;
+  };
+
+  const getColumnsChanges = () => {
+    let count = 0;
+    if (dirtyFields.calendarColumns) {
+      count += 1;
+    }
+    if (dirtyFields.documentsColumns) {
+      count += 1;
+    }
+    return count;
+  };
+
+  const getGeneralChanges = () => {
+    let count = 0;
+    if (dirtyFields.defaultCountryPrefix) {
+      count += 1;
+    }
+    if (dirtyFields.availableLanguages) {
+      count += 1;
+    }
+    if (dirtyFields.timezone) {
+      count += 1;
+    }
+    if (dirtyFields.llmProvider) {
+      count += 1;
+    }
+    return count;
+  };
+
+  const calendarChanges = getCalendarChanges();
+  const columnsChanges = getColumnsChanges();
+  const generalChanges = getGeneralChanges();
 
   const handleExport = () => {
     if (!data) {
@@ -187,7 +375,7 @@ export const ConfigPage = () => {
       onRetry={refetch}
     >
       {data ? (
-        <form className="space-y-6" onSubmit={onSubmit}>
+        <form className="w-full" onSubmit={onSubmit}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -196,11 +384,8 @@ export const ConfigPage = () => {
                   App Configuration
                 </h1>
               </div>
-              <p className="text-muted-foreground">
-                Manage working hours, columns, languages, and other defaults
-              </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <input
                 accept="application/json"
                 className="hidden"
@@ -208,77 +393,119 @@ export const ConfigPage = () => {
                 ref={fileInputRef}
                 type="file"
               />
-              <Button
-                disabled={!data}
-                onClick={handleExport}
-                type="button"
-                variant="outline"
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Export JSON
-              </Button>
-              <Button
-                disabled={isSaving}
-                onClick={handleImportTrigger}
-                type="button"
-                variant="outline"
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Import JSON
-              </Button>
-              <Button
-                className="shrink-0"
-                disabled={!isDirty || isSaving}
-                size="lg"
-                type="submit"
-              >
-                <Settings className="mr-2 h-4 w-4" />
-                {isSaving ? "Saving..." : "Save Changes"}
-              </Button>
+              <ButtonGroup>
+                <Button
+                  disabled={!data}
+                  onClick={handleExport}
+                  type="button"
+                  variant="outline"
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+                <Button
+                  disabled={isSaving}
+                  onClick={handleImportTrigger}
+                  type="button"
+                  variant="outline"
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import
+                </Button>
+                <Button
+                  disabled={!canSave || isSaving}
+                  type="submit"
+                  variant="outline"
+                >
+                  <Save className="mr-2 h-4 w-4" />
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </ButtonGroup>
             </div>
           </div>
 
-          <Tabs className="space-y-4" defaultValue="calendar">
-            <TabsList>
-              <TabsTrigger value="calendar">
-                <Calendar className="mr-2 h-4 w-4" />
-                Calendar
-              </TabsTrigger>
-              <TabsTrigger value="columns">
-                <Columns className="mr-2 h-4 w-4" />
-                Columns
-              </TabsTrigger>
-              <TabsTrigger value="general">
-                <Globe className="mr-2 h-4 w-4" />
-                General
-              </TabsTrigger>
-            </TabsList>
+          <div className="h-10" />
 
-            <TabsContent value="calendar">
-              <WorkingHoursSection form={form} />
-            </TabsContent>
-
-            <TabsContent value="columns">
-              <div className="space-y-4">
-                <ColumnsSection
-                  description="Columns shown on the calendar/data table page"
-                  fieldName="calendarColumns"
-                  form={form}
-                  title="Calendar Columns"
-                />
-                <ColumnsSection
-                  description="Columns shown on the documents page"
-                  fieldName="documentsColumns"
-                  form={form}
-                  title="Documents Columns"
-                />
+          <div>
+            <Tabs
+              className="flex w-full flex-row gap-3"
+              defaultValue="calendar"
+            >
+              <div className="sticky top-0 self-start">
+                <TabsList className="flex h-auto flex-col">
+                  <TabsTrigger
+                    className="w-full justify-start"
+                    value="calendar"
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Calendar
+                    {calendarChanges > 0 && (
+                      <Badge className="ml-2" variant="secondary">
+                        {calendarChanges}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger className="w-full justify-start" value="columns">
+                    <Columns className="mr-2 h-4 w-4" />
+                    Columns
+                    {columnsChanges > 0 && (
+                      <Badge className="ml-2" variant="secondary">
+                        {columnsChanges}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                  <TabsTrigger className="w-full justify-start" value="general">
+                    <Globe className="mr-2 h-4 w-4" />
+                    General
+                    {generalChanges > 0 && (
+                      <Badge className="ml-2" variant="secondary">
+                        {generalChanges}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                </TabsList>
               </div>
-            </TabsContent>
 
-            <TabsContent value="general">
-              <GeneralSection form={form} />
-            </TabsContent>
-          </Tabs>
+              <div className="flex-1">
+                <TabsContent className="mt-0" value="calendar">
+                  <WorkingHoursSection form={form} />
+                </TabsContent>
+
+                <TabsContent className="mt-0" value="columns">
+                  <Tabs className="space-y-4" defaultValue="calendar-columns">
+                    <TabsList>
+                      <TabsTrigger value="calendar-columns">
+                        Calendar
+                      </TabsTrigger>
+                      <TabsTrigger value="documents-columns">
+                        Documents
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="calendar-columns">
+                      <ColumnsSection
+                        description="Columns shown on the calendar/data table page"
+                        fieldName="calendarColumns"
+                        form={form}
+                        title="Calendar Columns"
+                      />
+                    </TabsContent>
+                    <TabsContent value="documents-columns">
+                      <ColumnsSection
+                        description="Columns shown on the documents page"
+                        fieldName="documentsColumns"
+                        form={form}
+                        title="Documents Columns"
+                      />
+                    </TabsContent>
+                  </Tabs>
+                </TabsContent>
+
+                <TabsContent className="mt-0" value="general">
+                  <GeneralSection form={form} />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
         </form>
       ) : null}
     </ConfigPageShell>

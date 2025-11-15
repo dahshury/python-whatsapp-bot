@@ -4,6 +4,8 @@ import {
   LOCAL_OPERATION_TIMEOUT_MS,
   SLOT_PREFIX_LEN,
 } from "@/features/calendar/lib/constants";
+import { reflowSlot } from "@/features/calendar/lib/reflow-slot";
+import { getWindowProperty } from "@/features/calendar/lib/window-utils";
 import { updateCustomerNamesCache } from "@/features/customers/hooks/utils/customer-names-cache";
 import { callPythonBackend } from "@/shared/libs/backend";
 import {
@@ -14,6 +16,9 @@ import { i18n } from "@/shared/libs/i18n";
 import { generateLocalOpKeys } from "@/shared/libs/realtime-utils";
 import { toastService } from "@/shared/libs/toast";
 import { markLocalOperation } from "@/shared/libs/utils/local-ops";
+
+// Delay to allow event update to complete before reflowing slots
+const EVENT_UPDATE_DELAY_MS = 50;
 
 const normalizeTime = (value?: string): string => {
   if (!value) {
@@ -363,12 +368,56 @@ export function useUndoReservation() {
 
         // Use calendar manipulation service to update the visual event
         try {
-          const handleEventModified = (
-            window as { __calendarHandleEventModified?: unknown }
-          ).__calendarHandleEventModified as
-            | ((eventId: string, event: unknown) => void)
+          const handleEventModified = getWindowProperty<
+            ((eventId: string, event: unknown) => void) | null | undefined
+          >("__calendarHandleEventModified", null);
+
+          // Get calendar API to access current event and reflow slots
+          const getCalendarApi = getWindowProperty<
+            | (() =>
+                | {
+                    getEventById?: (id: string) => {
+                      extendedProps?: Record<string, unknown>;
+                      startStr?: string;
+                    } | null;
+                    getEvents?: () => unknown[];
+                  }
+                | null
+                | undefined)
             | null
-            | undefined;
+            | undefined
+          >("__getCalendarApi", null);
+
+          let oldSlotDate: string | undefined;
+          let oldSlotTime: string | undefined;
+
+          // Get current event's slot information before updating
+          if (getCalendarApi) {
+            try {
+              const api = getCalendarApi();
+              if (api) {
+                const currentEvent = api.getEventById?.(String(reservationId));
+                if (currentEvent) {
+                  const extProps = currentEvent.extendedProps || {};
+                  oldSlotDate =
+                    String(extProps.slotDate || "").split("T")[0] ||
+                    (currentEvent.startStr
+                      ? currentEvent.startStr.split("T")[0]
+                      : undefined);
+                  oldSlotTime =
+                    String(extProps.slotTime || "").slice(0, SLOT_PREFIX_LEN) ||
+                    (currentEvent.startStr
+                      ? currentEvent.startStr
+                          .split("T")[1]
+                          ?.slice(0, SLOT_PREFIX_LEN)
+                      : undefined);
+                }
+              }
+            } catch {
+              // Ignore errors when getting current event info
+            }
+          }
+
           if (typeof handleEventModified === "function") {
             const baseTime = normalizeTime(originalData.time_slot);
             const startIso = `${originalData.date}T${baseTime}:00`;
@@ -393,6 +442,36 @@ export function useUndoReservation() {
                 customerName: displayName,
               },
             });
+
+            // Reflow both old and new slots to trigger sorting workflow
+            // Delay to allow handleEventModified to complete first
+            setTimeout(() => {
+              try {
+                if (getCalendarApi) {
+                  const api = getCalendarApi();
+                  if (api) {
+                    // Reflow the old slot (where the event was before undo)
+                    if (
+                      oldSlotDate &&
+                      oldSlotTime &&
+                      (oldSlotDate !== originalData.date ||
+                        oldSlotTime !== baseTime)
+                    ) {
+                      reflowSlot(api, oldSlotDate, oldSlotTime);
+                    }
+
+                    // Reflow the new slot (where the event is being moved to)
+                    // Note: handleEventModified already reflows the new slot, but we do it here
+                    // to ensure it happens after the event update is complete
+                    if (originalData.date && baseTime) {
+                      reflowSlot(api, originalData.date, baseTime);
+                    }
+                  }
+                }
+              } catch {
+                // Ignore errors when reflowing slots
+              }
+            }, EVENT_UPDATE_DELAY_MS);
           }
         } catch {
           // Calendar handler not available, rely on invalidation

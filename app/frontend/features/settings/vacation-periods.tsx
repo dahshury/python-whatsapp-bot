@@ -194,7 +194,7 @@ function VacationPeriodsComponent() {
     stopRecording,
   } = useVacation();
 
-  // Show only upcoming vacations (start date strictly after today)
+  // Show vacations that are active (including ending today) or upcoming
   const upcoming = useMemo(() => {
     const normalize = (d: Date) =>
       new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -202,7 +202,7 @@ function VacationPeriodsComponent() {
     return (vacationPeriods || [])
       .map((p, i) => ({ period: p, originalIndex: i }))
       .filter(
-        ({ period }) => normalize(period.start).getTime() > today.getTime()
+        ({ period }) => normalize(period.end).getTime() >= today.getTime()
       );
   }, [vacationPeriods]);
 

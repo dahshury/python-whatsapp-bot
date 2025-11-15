@@ -2,50 +2,16 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import React, { type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Reservation } from "@/entities/event";
+import type { CalendarEvent } from "@/entities/event";
 import { useCalendarEvents } from "../useCalendarEvents";
 
-// Mock all dependencies
-vi.mock("@shared/libs/backend", () => ({
-  callPythonBackend: vi.fn(),
+// Mock the new hooks
+vi.mock("../useCalendarEventsData", () => ({
+  useCalendarEventsData: vi.fn(),
 }));
 
-vi.mock("../useCalendarReservations", () => ({
-  useCalendarReservationsForPeriod: vi.fn(),
-}));
-
-vi.mock("../useCalendarConversationEvents", () => ({
-  useCalendarConversationEventsForPeriod: vi.fn(),
-}));
-
-vi.mock("../useCalendarVacations", () => ({
-  useCalendarVacations: vi.fn(),
-}));
-
-vi.mock("../useCalendarSlidingWindow", () => ({
-  useCalendarSlidingWindow: vi.fn(() => ({
-    currentPeriodKey: "2025-11",
-    prefetchPeriods: ["2025-11"],
-  })),
-}));
-
-vi.mock("../useCalendarWebSocketInvalidation", () => ({
-  useCalendarWebSocketInvalidation: vi.fn(),
-}));
-
-vi.mock("@/features/reservations", () => ({
-  getReservationEventProcessor: vi.fn(() => ({
-    generateCalendarEvents: vi.fn(
-      (
-        _reservations: Record<string, Reservation[]>,
-        _conversations: Record<string, unknown[]>,
-        _options: unknown
-      ) => {
-        // Mock event processor - return empty array for now
-        return [];
-      }
-    ),
-  })),
+vi.mock("../useCalendarEventStateMachine", () => ({
+  useCalendarEventStateMachine: vi.fn(),
 }));
 
 function createWrapper() {
@@ -69,46 +35,39 @@ describe("useCalendarEvents", () => {
   });
 
   it("should fetch and process events for current period", async () => {
-    const mockReservations: Record<string, Reservation[]> = {
-      "1234567890": [
-        {
-          customer_id: "1234567890",
-          date: "2025-11-15",
-          time_slot: "10:00",
-          customer_name: "Test Customer",
-          type: 0,
-        },
-      ],
-    };
+    const mockEvents: CalendarEvent[] = [
+      {
+        id: "event-1",
+        title: "Test Event",
+        start: new Date("2025-11-15T10:00:00"),
+        extendedProps: {},
+      },
+    ];
 
-    const { useCalendarReservationsForPeriod } = await import(
-      "../useCalendarReservations"
+    const { useCalendarEventsData } = await import("../useCalendarEventsData");
+    const { useCalendarEventStateMachine } = await import(
+      "../useCalendarEventStateMachine"
     );
-    const { useCalendarConversationEventsForPeriod } = await import(
-      "../useCalendarConversationEvents"
-    );
-    const { useCalendarVacations } = await import("../useCalendarVacations");
 
-    vi.mocked(useCalendarReservationsForPeriod).mockReturnValue({
-      data: mockReservations,
-      isLoading: false,
+    vi.mocked(useCalendarEventsData).mockReturnValue({
+      events: mockEvents,
+      loading: false,
       error: null,
-      refetch: vi.fn(),
-    } as any);
+      fingerprint: "test-fingerprint",
+    });
 
-    vi.mocked(useCalendarConversationEventsForPeriod).mockReturnValue({
-      data: {},
-      isLoading: false,
+    vi.mocked(useCalendarEventStateMachine).mockReturnValue({
+      events: mockEvents,
+      loading: false,
       error: null,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(useCalendarVacations).mockReturnValue({
-      data: [],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    } as any);
+      lastUpdated: new Date(),
+      refetchEvents: vi.fn(),
+      invalidateCache: vi.fn(),
+      refreshData: vi.fn(),
+      addEvent: vi.fn(),
+      updateEvent: vi.fn(),
+      removeEvent: vi.fn(),
+    });
 
     const { result } = renderHook(
       () =>
@@ -128,37 +87,34 @@ describe("useCalendarEvents", () => {
     });
 
     expect(result.current.error).toBeNull();
+    expect(result.current.events).toEqual(mockEvents);
   });
 
   it("should handle freeRoam mode correctly", async () => {
-    const { useCalendarReservationsForPeriod } = await import(
-      "../useCalendarReservations"
+    const { useCalendarEventsData } = await import("../useCalendarEventsData");
+    const { useCalendarEventStateMachine } = await import(
+      "../useCalendarEventStateMachine"
     );
-    const { useCalendarConversationEventsForPeriod } = await import(
-      "../useCalendarConversationEvents"
-    );
-    const { useCalendarVacations } = await import("../useCalendarVacations");
 
-    vi.mocked(useCalendarReservationsForPeriod).mockReturnValue({
-      data: {},
-      isLoading: false,
+    vi.mocked(useCalendarEventsData).mockReturnValue({
+      events: [],
+      loading: false,
       error: null,
-      refetch: vi.fn(),
-    } as any);
+      fingerprint: "test-fingerprint",
+    });
 
-    vi.mocked(useCalendarConversationEventsForPeriod).mockReturnValue({
-      data: {},
-      isLoading: false,
+    vi.mocked(useCalendarEventStateMachine).mockReturnValue({
+      events: [],
+      loading: false,
       error: null,
-      refetch: vi.fn(),
-    } as any);
-
-    vi.mocked(useCalendarVacations).mockReturnValue({
-      data: [],
-      isLoading: false,
-      error: null,
-      refetch: vi.fn(),
-    } as any);
+      lastUpdated: new Date(),
+      refetchEvents: vi.fn(),
+      invalidateCache: vi.fn(),
+      refreshData: vi.fn(),
+      addEvent: vi.fn(),
+      updateEvent: vi.fn(),
+      removeEvent: vi.fn(),
+    });
 
     const { result } = renderHook(
       () =>
@@ -177,12 +133,14 @@ describe("useCalendarEvents", () => {
       expect(result.current.loading).toBe(false);
     });
 
-    // Should call with freeRoam=true
-    expect(useCalendarReservationsForPeriod).toHaveBeenCalledWith({
-      periodKey: expect.any(String),
-      fromDate: expect.any(String),
-      toDate: expect.any(String),
+    // Should call useCalendarEventsData with freeRoam=true
+    expect(useCalendarEventsData).toHaveBeenCalledWith({
       freeRoam: true,
+      isLocalized: false,
+      currentView: "dayGridMonth",
+      currentDate: expect.any(Date),
+      excludeConversations: false,
+      enabled: true,
     });
   });
 });

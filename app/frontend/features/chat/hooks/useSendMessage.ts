@@ -10,8 +10,12 @@ export const createUseSendMessage =
       mutationFn: (content: string) =>
         chat.sendMessage(conversationId, content),
       onSuccess: async () => {
+        // Invalidate both conversation and messages queries to ensure UI updates
         await queryClient.invalidateQueries({
           queryKey: chatKeys.conversation(conversationId),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: chatKeys.messages(conversationId),
         });
       },
     });

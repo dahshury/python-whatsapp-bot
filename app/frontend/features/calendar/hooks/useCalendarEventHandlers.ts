@@ -533,6 +533,15 @@ export function useCalendarEventHandlers({
     };
   }, [handleEventModified]);
 
+  // Expose calendar API getter globally for use by undo operations
+  useEffect(() => {
+    const getCalendarApi = () => calendarRef?.current?.getApi?.();
+    setWindowProperty("__getCalendarApi", getCalendarApi);
+    return () => {
+      setWindowProperty("__getCalendarApi", null);
+    };
+  }, [calendarRef]);
+
   const handleEventCancelled = useCallback(
     (eventId: string) => {
       // Get slot info before removing the event so we can reflow

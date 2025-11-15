@@ -276,7 +276,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const [locationName, setLocationName] = useState<string | null>(null);
   const [isLocationDaytime, setIsLocationDaytime] = useState<boolean>(true);
   const [timezone, setTimezone] = useState<string | null>(null);
-  const locationLabel = locationName || "Local";
+  const locationLabel =
+    locationName || i18n.getMessage("local", safeIsLocalized);
   const widgetButtonClass = cn(
     "bg-background/40",
     "border-border/40",
@@ -333,16 +334,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   useEffect(() => {
     const updateDateAndTime = () => {
       const now = new Date();
+      // Use localized locale for date formatting
+      const dateLocale = safeIsLocalized ? "ar" : "en-US";
       setDateInfo({
-        day: now.toLocaleDateString("en-US", { weekday: "short" }),
+        day: now.toLocaleDateString(dateLocale, { weekday: "short" }),
         date: now.getDate(),
-        month: now.toLocaleDateString("en-US", { month: "short" }),
+        month: now.toLocaleDateString(dateLocale, { month: "short" }),
         year: now.getFullYear(),
       });
 
       // Location time based on user's timezone
       if (timezone) {
-        const locationTimeString = now.toLocaleTimeString("en-US", {
+        const locationTimeString = now.toLocaleTimeString(dateLocale, {
           timeZone: timezone,
           hour: "numeric",
           minute: "2-digit",
@@ -351,7 +354,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         setLocationTime(locationTimeString);
 
         // Get hour for day/night icon
-        const formatter = new Intl.DateTimeFormat("en-US", {
+        const formatter = new Intl.DateTimeFormat(dateLocale, {
           timeZone: timezone,
           hour: "2-digit",
           hour12: false,
@@ -366,7 +369,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         );
       } else if (latitude && longitude) {
         // Fallback: use browser's local time
-        const localTimeString = now.toLocaleTimeString("en-US", {
+        const localTimeString = now.toLocaleTimeString(dateLocale, {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
@@ -382,7 +385,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     updateDateAndTime();
     const interval = setInterval(updateDateAndTime, GEO_UPDATE_INTERVAL_MS); // Update every minute
     return () => clearInterval(interval);
-  }, [timezone, latitude, longitude]);
+  }, [timezone, latitude, longitude, safeIsLocalized]);
 
   // Dashboard page: hide sidebar entirely
   if (isDashboardPage) {

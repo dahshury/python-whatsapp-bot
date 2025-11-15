@@ -8,6 +8,17 @@ const resources = {
   ar: { common: arCommon as unknown as Record<string, string> },
 };
 
+// Available languages dynamically discovered from resources
+export const AVAILABLE_LANGUAGES = Object.keys(resources) as Array<
+  keyof typeof resources
+>;
+
+// Language labels for display
+export const LANGUAGE_LABELS: Record<string, string> = {
+  en: "English",
+  ar: "العربية (Arabic)",
+};
+
 let initialized = false;
 function ensureInitialized(): typeof i18next {
   if (initialized) {
