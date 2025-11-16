@@ -1,11 +1,12 @@
 "use client";
 
-import { useDashboardData } from "@shared/libs/data/websocket-data-provider";
+import { useQuery } from "@tanstack/react-query";
 import { differenceInDays, format, subDays } from "date-fns";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
 import { logger } from "@/shared/libs/logger";
 import type { DashboardData, DashboardFilters } from "../types";
+import { createDashboardService } from "./dashboard.service.factory";
 
 const DEFAULT_DATE_RANGE_DAYS = 30;
 const FILTER_DEBOUNCE_MS = 250;
@@ -27,7 +28,10 @@ export type EnhancedDashboardControllerResult = {
   setActiveTab: (value: string) => void;
   handleDateRangeChange: (dateRange: DateRange | undefined) => void;
   handleExport: () => void;
-  refreshDashboard: ReturnType<typeof useDashboardData>["refresh"];
+  refreshDashboard: (range?: {
+    fromDate?: string;
+    toDate?: string;
+  }) => Promise<void>;
 };
 
 const defaultStats: DashboardData["stats"] = {
@@ -41,6 +45,14 @@ const defaultStats: DashboardData["stats"] = {
   totalReservations: 0,
   uniqueCustomers: 0,
 };
+
+type UseEnhancedDashboardControllerOptions = {
+  locale?: string;
+};
+
+const SECONDS_PER_MINUTE = 60;
+const MILLISECONDS_PER_SECOND = 1000;
+const DASHBOARD_STALE_TIME_MS = SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND;
 
 const defaultConversationAnalysis: DashboardData["conversationAnalysis"] = {
   avgMessageLength: 0,
@@ -84,7 +96,21 @@ function formatYmd(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-export function useEnhancedDashboardController(): EnhancedDashboardControllerResult {
+const DEFAULT_YEAR = 2000;
+
+function parseYmd(value: string): Date {
+  const [year, month, day] = value
+    .split("-")
+    .map((segment) => Number.parseInt(segment, 10));
+  return new Date(year || DEFAULT_YEAR, (month || 1) - 1, day || 1);
+}
+
+export function useEnhancedDashboardController(
+  options: UseEnhancedDashboardControllerOptions = {}
+): EnhancedDashboardControllerResult {
+  const locale = options.locale || "en";
+  const dashboardService = useMemo(() => createDashboardService(), []);
+
   const defaultDateRange = useMemo(
     () => ({
       from: subDays(new Date(), DEFAULT_DATE_RANGE_DAYS),
@@ -93,55 +119,80 @@ export function useEnhancedDashboardController(): EnhancedDashboardControllerRes
     []
   );
 
-  const [filters, setFilters] = useState<DashboardFilters>({
-    dateRange: defaultDateRange,
-  });
+  const [filters, setFilters] = useState<DashboardFilters>(() => ({
+    dateRange: {
+      from: subDays(new Date(), DEFAULT_DATE_RANGE_DAYS),
+      to: new Date(),
+    },
+  }));
   const [activeTab, setActiveTab] = useState("overview");
-  const [isInitialized, setIsInitialized] = useState(false);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [pendingRange, setPendingRange] = useState<{
+    from?: string;
+    to?: string;
+  } | null>(null);
 
-  const {
-    dashboardData,
-    isLoading,
-    error,
-    refresh: refreshDashboard,
-  } = useDashboardData();
+  const formattedRange = useMemo(() => {
+    const from = filters.dateRange?.from;
+    const to = filters.dateRange?.to;
+    if (!(from && to)) {
+      return null;
+    }
+    return { from: formatYmd(from), to: formatYmd(to) };
+  }, [filters.dateRange]);
 
   useEffect(() => {
-    if (!isInitialized) {
-      const fromDate = formatYmd(defaultDateRange.from);
-      const toDate = formatYmd(defaultDateRange.to);
-      refreshDashboard({ fromDate, toDate })
-        .then(() => {
-          setIsInitialized(true);
-        })
-        .catch((caughtError) => {
-          logger.error(
-            "[EnhancedDashboardController] Failed to load initial dashboard data",
-            caughtError
-          );
-        });
+    if (!pendingRange) {
+      return;
     }
-  }, [defaultDateRange, isInitialized, refreshDashboard]);
-
-  useEffect(() => {
-    if (!(isInitialized && filters.dateRange?.from && filters.dateRange?.to)) {
-      return () => {
-        // no cleanup required
-      };
-    }
-    const fromDate = formatYmd(filters.dateRange.from);
-    const toDate = formatYmd(filters.dateRange.to);
     const timeoutId = setTimeout(() => {
-      refreshDashboard({ fromDate, toDate }).catch((caughtError) => {
-        logger.error(
-          "[EnhancedDashboardController] Failed to refresh dashboard data after filter change",
-          caughtError
-        );
-      });
+      setFilters((prev) => ({
+        ...prev,
+        dateRange: {
+          from: parseYmd(pendingRange.from || formatYmd(defaultDateRange.from)),
+          to: parseYmd(pendingRange.to || formatYmd(defaultDateRange.to)),
+        },
+      }));
+      setPendingRange(null);
     }, FILTER_DEBOUNCE_MS);
     return () => clearTimeout(timeoutId);
-  }, [filters, refreshDashboard, isInitialized]);
+  }, [pendingRange, defaultDateRange]);
+
+  const {
+    data: dashboardData,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: [
+      "dashboard",
+      "stats",
+      formattedRange?.from,
+      formattedRange?.to,
+      // Removed locale from query key to prevent refetch on language change
+    ],
+    queryFn: async () => {
+      const fromDate = formattedRange?.from;
+      const toDate = formattedRange?.to;
+      if (fromDate === undefined || toDate === undefined) {
+        throw new Error("Date range is required");
+      }
+      const stats = await dashboardService.getStats({
+        fromDate,
+        toDate,
+        locale,
+      });
+      return stats;
+    },
+    enabled: Boolean(formattedRange?.from && formattedRange?.to),
+    staleTime: DASHBOARD_STALE_TIME_MS,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    // Prevent duplicate queries
+    gcTime: DASHBOARD_STALE_TIME_MS,
+  });
 
   useEffect(() => {
     setIsUsingMockData(Boolean(dashboardData?._isMockData));
@@ -156,11 +207,76 @@ export function useEnhancedDashboardController(): EnhancedDashboardControllerRes
     return differenceInDays(to, from) + 1;
   }, [filters]);
 
+  // Transform monthlyTrends month labels based on current locale using Intl API
+  const transformedMonthlyTrends = useMemo(() => {
+    if (
+      !dashboardData?.monthlyTrends ||
+      dashboardData.monthlyTrends.length === 0
+    ) {
+      return [];
+    }
+    const targetLocale = locale?.toLowerCase().startsWith("ar") ? "ar" : "en";
+
+    const REFERENCE_YEAR = 2000;
+    const MONTHS_IN_YEAR = 12;
+
+    // Generate month labels using Intl API (browser's locale support)
+    const getMonthLabel = (monthIndex: number, localeCode: string): string => {
+      const date = new Date(REFERENCE_YEAR, monthIndex, 1); // Use reference year, month index (0-11)
+      return date.toLocaleString(localeCode, { month: "short" });
+    };
+
+    // Build month label maps for both locales using Intl API
+    const enMonthMap = new Map<string, number>();
+    const arMonthMap = new Map<string, number>();
+    for (let i = 0; i < MONTHS_IN_YEAR; i++) {
+      const enLabel = getMonthLabel(i, "en");
+      const arLabel = getMonthLabel(i, "ar");
+      enMonthMap.set(enLabel, i);
+      arMonthMap.set(arLabel, i);
+    }
+
+    // Detect source language by checking the first month label
+    const firstMonth = dashboardData.monthlyTrends[0]?.month;
+    if (!firstMonth) {
+      return dashboardData.monthlyTrends;
+    }
+
+    // Determine source locale by checking which map contains the first month
+    const isSourceArabic = arMonthMap.has(firstMonth);
+    const sourceLocale = isSourceArabic ? "ar" : "en";
+
+    // If source locale matches target locale, no transformation needed
+    if (sourceLocale === targetLocale) {
+      return dashboardData.monthlyTrends;
+    }
+
+    // Use the appropriate source map
+    const sourceMonthMap = isSourceArabic ? arMonthMap : enMonthMap;
+
+    return dashboardData.monthlyTrends.map((trend) => {
+      const sourceMonth = trend.month;
+      const monthIndex = sourceMonthMap.get(sourceMonth);
+
+      // If we can't find the month index, return as-is
+      if (monthIndex === undefined) {
+        return trend;
+      }
+
+      // Transform to target locale using Intl API
+      const transformedMonth = getMonthLabel(monthIndex, targetLocale);
+      return {
+        ...trend,
+        month: transformedMonth,
+      };
+    });
+  }, [dashboardData?.monthlyTrends, locale]);
+
   const safeDashboard = useMemo<SafeDashboardData>(() => {
     if (!dashboardData) {
       return emptySafeDashboard;
     }
-    return {
+    const result: SafeDashboardData = {
       _isMockData: dashboardData._isMockData ?? false,
       stats: dashboardData.stats ?? defaultStats,
       prometheusMetrics: dashboardData.prometheusMetrics ?? {},
@@ -173,11 +289,16 @@ export function useEnhancedDashboardController(): EnhancedDashboardControllerRes
         dashboardData.conversationAnalysis ?? defaultConversationAnalysis,
       wordFrequency: dashboardData.wordFrequency ?? [],
       dayOfWeekData: dashboardData.dayOfWeekData ?? [],
-      monthlyTrends: dashboardData.monthlyTrends ?? [],
+      monthlyTrends: transformedMonthlyTrends,
       funnelData: dashboardData.funnelData ?? [],
       customerSegments: dashboardData.customerSegments ?? [],
     };
-  }, [dashboardData]);
+    // Only include wordFrequencyByRole if it exists (optional property)
+    if (dashboardData.wordFrequencyByRole !== undefined) {
+      result.wordFrequencyByRole = dashboardData.wordFrequencyByRole;
+    }
+    return result;
+  }, [dashboardData, transformedMonthlyTrends]);
 
   const handleDateRangeChange = useCallback(
     (dateRange: DateRange | undefined) => {
@@ -221,17 +342,42 @@ export function useEnhancedDashboardController(): EnhancedDashboardControllerRes
     URL.revokeObjectURL(url);
   }, [dashboardData, filters.dateRange]);
 
+  const refreshDashboard = useCallback(
+    async (overrideRange?: { fromDate?: string; toDate?: string }) => {
+      if (overrideRange?.fromDate && overrideRange?.toDate) {
+        setPendingRange({
+          from: overrideRange.fromDate,
+          to: overrideRange.toDate,
+        });
+        return;
+      }
+      try {
+        await refetch();
+      } catch (caughtError) {
+        logger.error(
+          "[EnhancedDashboardController] Failed to refresh dashboard data",
+          caughtError
+        );
+      }
+    },
+    [refetch]
+  );
+
+  const isInitialLoading = isLoading && !dashboardData;
+  const queryError = error instanceof Error ? error.message : null;
+  const initialized = Boolean(dashboardData);
+
   return {
     filters,
     setFilters,
     daysCount,
     defaultDateRange,
-    dashboardData,
+    dashboardData: dashboardData ?? null,
     safeDashboard,
-    isLoading,
-    error,
+    isLoading: isInitialLoading || isFetching,
+    error: queryError,
     isUsingMockData,
-    isInitialized,
+    isInitialized: initialized,
     activeTab,
     setActiveTab,
     handleDateRangeChange,

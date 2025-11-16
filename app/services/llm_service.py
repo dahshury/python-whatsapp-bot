@@ -7,6 +7,7 @@ from app.services.anthropic_service import run_claude
 from app.services.domain.config.config_service import get_config
 from app.services.gemini_service import run_gemini
 from app.services.openai_service import run_openai
+from app.services.toolkit.registry import DEFAULT_TOOL_REGISTRY, ToolRegistry
 
 
 class BaseLLMService(abc.ABC):
@@ -16,9 +17,10 @@ class BaseLLMService(abc.ABC):
     Centralizes all default values for all LLM services.
     """
 
-    def __init__(self):
+    def __init__(self, *, toolkit: ToolRegistry | None = None, system_prompt: str | None = None):
         # Common configuration for all LLM services
-        self.system_prompt = config.get("SYSTEM_PROMPT")
+        self.toolkit = toolkit or DEFAULT_TOOL_REGISTRY
+        self.system_prompt = system_prompt or config.get("SYSTEM_PROMPT")
         self.max_tokens = 4096
         self.timezone = config.get("TIMEZONE", "UTC")
         self.stream = False
@@ -60,6 +62,7 @@ class AnthropicService(BaseLLMService):
             thinking=self.claude_thinking,
             stream=self.stream,
             timezone=self.timezone,
+            toolkit=self.toolkit,
         )
 
 
@@ -71,6 +74,7 @@ class GeminiService(BaseLLMService):
             system_prompt=self.system_prompt,
             max_tokens=self.max_tokens,
             timezone=self.timezone,
+            toolkit=self.toolkit,
         )
 
 
@@ -86,6 +90,7 @@ class OpenAIService(BaseLLMService):
             text_format=self.openai_text_format,
             store=self.openai_store,
             timezone=self.timezone,
+            toolkit=self.toolkit,
         )
 
 
@@ -102,7 +107,7 @@ def _resolve_llm_provider() -> str:
     return get("LLM_PROVIDER", "anthropic").lower()
 
 
-def get_llm_service():
+def get_llm_service(*, toolkit: ToolRegistry | None = None, system_prompt: str | None = None):
     """
     Factory function that returns an LLM service instance based on configuration.
     Supported values: 'anthropic', 'gemini', 'openai'.
@@ -110,10 +115,10 @@ def get_llm_service():
     """
     provider = _resolve_llm_provider()
     if provider == "anthropic":
-        return AnthropicService()
+        return AnthropicService(toolkit=toolkit, system_prompt=system_prompt)
     elif provider == "gemini":
-        return GeminiService()
+        return GeminiService(toolkit=toolkit, system_prompt=system_prompt)
     elif provider == "openai":
-        return OpenAIService()
+        return OpenAIService(toolkit=toolkit, system_prompt=system_prompt)
     else:
         raise ValueError(f"Unknown LLM_PROVIDER: {provider}")

@@ -19,6 +19,24 @@ const METRIC_ANIMATION_DURATION = 0.4;
 const METRIC_ANIMATION_OFFSET = 20;
 const METRIC_ANIMATION_DELAY_STEP = 0.1;
 
+// Format response time: show seconds if less than 60 seconds, otherwise show minutes
+function formatResponseTime(
+  minutes: number,
+  isLocalized: boolean
+): { value: number; unit: string } {
+  const seconds = minutes * 60;
+  if (seconds < 60) {
+    return {
+      value: seconds,
+      unit: i18n.getMessage("msg_seconds", isLocalized) || "s",
+    };
+  }
+  return {
+    value: minutes,
+    unit: i18n.getMessage("msg_minutes", isLocalized),
+  };
+}
+
 type ResponseTimeAnalysisProps = {
   conversationAnalysis: ConversationAnalysis;
   isLocalized: boolean;
@@ -114,27 +132,34 @@ export function ResponseTimeAnalysis({
     return "danger";
   };
 
+  const avgFormatted = formatResponseTime(responseTimeStats.avg, isLocalized);
+  const medianFormatted = formatResponseTime(
+    responseTimeStats.median,
+    isLocalized
+  );
+  const maxFormatted = formatResponseTime(responseTimeStats.max, isLocalized);
+
   const responseTimeMetrics = [
     {
       title: i18n.getMessage("response_time_average", isLocalized),
-      value: responseTimeStats.avg,
-      unit: i18n.getMessage("msg_minutes", isLocalized),
+      value: avgFormatted.value,
+      unit: avgFormatted.unit,
       icon: <Clock className="h-4 w-4 text-muted-foreground" />,
       variant: getPerformanceVariant(responseTimeStats.avg),
       description: i18n.getMessage("response_time_avg_desc", isLocalized),
     },
     {
       title: i18n.getMessage("response_time_median", isLocalized),
-      value: responseTimeStats.median,
-      unit: i18n.getMessage("msg_minutes", isLocalized),
+      value: medianFormatted.value,
+      unit: medianFormatted.unit,
       icon: <Minus className="h-4 w-4 text-muted-foreground" />,
       variant: getPerformanceVariant(responseTimeStats.median),
       description: i18n.getMessage("response_time_median_desc", isLocalized),
     },
     {
       title: i18n.getMessage("response_time_maximum", isLocalized),
-      value: responseTimeStats.max,
-      unit: i18n.getMessage("msg_minutes", isLocalized),
+      value: maxFormatted.value,
+      unit: maxFormatted.unit,
       icon: <TrendingUp className="h-4 w-4 text-muted-foreground" />,
       variant: getPerformanceVariant(responseTimeStats.max),
       description: i18n.getMessage("response_time_max_desc", isLocalized),

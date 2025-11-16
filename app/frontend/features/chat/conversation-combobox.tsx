@@ -18,6 +18,7 @@ import {
 } from "@/shared/ui/hover-card";
 import { PhoneCombobox } from "@/shared/ui/phone-combobox";
 import { useCustomerNames } from "./hooks/useCustomerNames";
+import { SYSTEM_AGENT } from "@/shared/config";
 
 type ConversationComboboxProps = {
   selectedConversationId: string | null;
@@ -180,6 +181,9 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
       const key = String(waId ?? "");
       const normalizedKey = key.startsWith("+") ? key.slice(1) : key;
       const plusKey = key.startsWith("+") ? key : `+${normalizedKey}`;
+      const resolvedName =
+        customer.customer_name ||
+        (key === SYSTEM_AGENT.waId ? SYSTEM_AGENT.displayName : null);
 
       const messageTimestamps = [
         recentMessageLookup.get(key) ?? 0,
@@ -204,10 +208,8 @@ export const ConversationCombobox: React.FC<ConversationComboboxProps> = ({
 
       return {
         waId: key,
-        label: customer.customer_name
-          ? `${customer.customer_name} (${key})`
-          : key,
-        customerName: customer.customer_name || null,
+        label: resolvedName ? `${resolvedName} (${key})` : key,
+        customerName: resolvedName || null,
         lastMessageAt,
         lastReservationTime,
       };

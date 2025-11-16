@@ -53,6 +53,20 @@ export function SettingsPopover({
   const isControlled = typeof controlledOpen === "boolean";
   const open = isControlled ? (controlledOpen as boolean) : internalOpen;
 
+  // Stabilize recordingState values to prevent unnecessary callback recreation
+  const recordingPeriodIndex = React.useMemo(
+    () => recordingState?.periodIndex ?? null,
+    [recordingState?.periodIndex]
+  );
+  const recordingField = React.useMemo(
+    () => recordingState?.field ?? null,
+    [recordingState?.field]
+  );
+  const isRecording = React.useMemo(
+    () => recordingPeriodIndex !== null && recordingField !== null,
+    [recordingPeriodIndex, recordingField]
+  );
+
   const handleOpenChange = React.useCallback(
     (next: boolean) => {
       if (isControlled) {
@@ -63,10 +77,7 @@ export function SettingsPopover({
       if (!next) {
         // If closing while recording, stop and reset recording
         try {
-          if (
-            recordingState?.periodIndex !== null &&
-            recordingState?.field !== null
-          ) {
+          if (isRecording) {
             stopRecording();
           }
         } catch {
@@ -81,13 +92,38 @@ export function SettingsPopover({
         );
       }
     },
-    [
-      isControlled,
-      onOpenChange,
-      recordingState?.periodIndex,
-      recordingState?.field,
-      stopRecording,
-    ]
+    [isControlled, onOpenChange, isRecording, stopRecording]
+  );
+
+  // Memoize handlers passed to SettingsTabs to prevent re-renders
+  // Use useCallback to create stable function references
+  const handleCalendarViewChange = React.useCallback(
+    (view: string) => {
+      onCalendarViewChange?.(view);
+    },
+    [onCalendarViewChange]
+  );
+
+  const handleTabChange = React.useCallback(
+    (value: string) => {
+      onTabChange?.(value);
+    },
+    [onTabChange]
+  );
+
+  // Memoize onInteractOutside handler
+  const handleInteractOutside = React.useCallback(
+    (e: { preventDefault: () => void }) => {
+      try {
+        // While actively recording, do not close the popover on any outside interaction
+        if (isRecording) {
+          e.preventDefault();
+        }
+      } catch {
+        // Silently ignore errors when handling outside interaction (non-critical)
+      }
+    },
+    [isRecording]
   );
 
   // Button animation is tied to open state (rotate 90deg when open)
@@ -95,12 +131,7 @@ export function SettingsPopover({
   return (
     <DockIcon>
       <Popover
-        modal={
-          !(
-            recordingState?.periodIndex !== null &&
-            recordingState?.field !== null
-          )
-        }
+        modal={!isRecording}
         onOpenChange={handleOpenChange}
         open={open}
       >
@@ -129,19 +160,7 @@ export function SettingsPopover({
         <PopoverContent
           align="center"
           className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
-          onInteractOutside={(e) => {
-            try {
-              // While actively recording, do not close the popover on any outside interaction
-              const isRecording =
-                recordingState?.periodIndex !== null &&
-                recordingState?.field !== null;
-              if (isRecording) {
-                e.preventDefault();
-              }
-            } catch {
-              // Silently ignore errors when handling outside interaction (non-critical)
-            }
-          }}
+          onInteractOutside={handleInteractOutside}
         >
           <SettingsTabs
             activeTab={activeTab ?? "view"}
@@ -150,18 +169,8 @@ export function SettingsPopover({
             isCalendarPage={isCalendarPage}
             isDocumentsPage={isDocumentsPage}
             isLocalized={isLocalized}
-            onCalendarViewChange={
-              onCalendarViewChange ??
-              (() => {
-                // Default no-op handler
-              })
-            }
-            onTabChange={
-              onTabChange ??
-              (() => {
-                // Default no-op handler
-              })
-            }
+            onCalendarViewChange={handleCalendarViewChange}
+            onTabChange={handleTabChange}
             {...(allowedTabs ? { allowedTabs } : {})}
             {...(customViewSelector ? { customViewSelector } : {})}
             {...(typeof hideViewModeToolbar === "boolean"

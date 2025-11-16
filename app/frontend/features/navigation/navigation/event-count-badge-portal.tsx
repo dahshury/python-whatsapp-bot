@@ -34,6 +34,13 @@ export function EventCountBadgePortal({
   } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => {
+    // Initialize based on actual window width if available
+    if (typeof window !== "undefined") {
+      return window.innerWidth < 1280;
+    }
+    return true; // Default to mobile for SSR
+  });
 
   // Watch for dialog/modal backdrops to hide badge when they're open
   useEffect(() => {
@@ -89,9 +96,49 @@ export function EventCountBadgePortal({
     }
   }, [anchorRef]);
 
-  // Observe anchor size/position changes
+  // Check if mobile/low width device and observe anchor size/position changes
   useEffect(() => {
     setMounted(true);
+    const checkMobile = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 1280); // xl breakpoint - need space for dock + sidebar trigger + notifications + legend
+    };
+    // Check immediately on mount
+    checkMobile();
+
+    // Listen to window resize
+    window.addEventListener("resize", checkMobile);
+    window.addEventListener("orientationchange", checkMobile);
+
+    // Also listen to visualViewport resize for mobile devices
+    try {
+      const visualViewport = (
+        window as unknown as { visualViewport?: VisualViewport }
+      ).visualViewport;
+      if (visualViewport) {
+        visualViewport.addEventListener("resize", checkMobile as EventListener);
+      }
+    } catch {
+      // Visual viewport not supported, continue without it
+    }
+
+    return () => {
+      window.removeEventListener("resize", checkMobile);
+      window.removeEventListener("orientationchange", checkMobile);
+      try {
+        const visualViewport = (
+          window as unknown as { visualViewport?: VisualViewport }
+        ).visualViewport;
+        if (visualViewport) {
+          visualViewport.removeEventListener(
+            "resize",
+            checkMobile as EventListener
+          );
+        }
+      } catch {
+        // Visual viewport cleanup failed, continue cleanup
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -161,8 +208,8 @@ export function EventCountBadgePortal({
     }
   }, [count, updatePosition]);
 
-  // Hide badge when dialog/modal is open or when no count
-  if (!(mounted && count) || count <= 0 || isDialogOpen) {
+  // Hide badge when dialog/modal is open, when no count, or on mobile/low width devices
+  if (!(mounted && count) || count <= 0 || isDialogOpen || isMobile) {
     return null;
   }
 

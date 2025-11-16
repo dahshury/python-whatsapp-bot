@@ -12,6 +12,8 @@ from prometheus_client import generate_latest
 
 from app.config import config
 
+NOTIFICATION_HISTORY_LIMIT = 100
+
 
 def _utc_iso_now() -> str:
     dt = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
@@ -196,7 +198,7 @@ class RealtimeManager:
 
         logging.debug(f"📤 Sent {event_type} to {sent_count}/{len(targets)} clients")
 
-        # Persist qualifying notification events and prune to last 2000
+        # Persist qualifying notification events and prune to last NOTIFICATION_HISTORY_LIMIT
         try:
             # Only persist types that are shown in notifications panel
             notif_types = {
@@ -223,14 +225,14 @@ class RealtimeManager:
                         )
                     )
                     session.commit()
-                    # Prune to last 2000 rows by created_at DESC
+                    # Prune to last N rows by created_at DESC
                     try:
                         # SQLite compatible pruning using subquery by id ordering
-                        # Keep the latest 2000 ids and delete the rest
+                        # Keep the latest N ids and delete the rest
                         keep_ids = [
                             r[0]
                             for r in session.execute(
-                                "SELECT id FROM notification_events ORDER BY id DESC LIMIT 2000"
+                                f"SELECT id FROM notification_events ORDER BY id DESC LIMIT {NOTIFICATION_HISTORY_LIMIT}"
                             ).all()
                         ]
                         if keep_ids:
@@ -592,7 +594,7 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
 
                             now_local = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
                             date_str = now_local.strftime("%Y-%m-%d")
-                            time_str = now_local.strftime("%H:%M")
+                            time_str = now_local.strftime("%H:%M:%S")
                             append_message(wa_id, "secretary", message, date_str, time_str)
                         except Exception as persist_err:
                             logging.error(f"append_message failed after WS send: {persist_err}")
@@ -694,6 +696,58 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                         }
                     )
 
+            elif msg_type == "get_notifications":
+                try:
+                    limit_raw = (
+                        (payload.get("data") or {}).get("limit")
+                        or payload.get("limit")
+                    )
+                    requested_limit = int(limit_raw)
+                except Exception:
+                    requested_limit = NOTIFICATION_HISTORY_LIMIT
+                limit = max(1, min(requested_limit, NOTIFICATION_HISTORY_LIMIT))
+                try:
+                    from app.db import NotificationEventModel, get_session
+
+                    with get_session() as session:
+                        rows = (
+                            session.query(NotificationEventModel)
+                            .order_by(NotificationEventModel.id.desc())
+                            .limit(limit)
+                            .all()
+                        )
+                        events: list[dict[str, Any]] = []
+                        for r in rows:
+                            try:
+                                events.append(
+                                    {
+                                        "id": r.id,
+                                        "type": r.event_type,
+                                        "timestamp": r.ts_iso,
+                                        "data": json.loads(r.data)
+                                        if isinstance(r.data, str)
+                                        else r.data,
+                                    }
+                                )
+                            except Exception:
+                                continue
+                    await conn.send_json(
+                        {
+                            "type": "notifications_history",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"items": events},
+                        }
+                    )
+                except Exception as e:
+                    logging.error(f"WS get_notifications failed: {e}")
+                    await conn.send_json(
+                        {
+                            "type": "notifications_history",
+                            "timestamp": _utc_iso_now(),
+                            "data": {"items": []},
+                            "error": "failed_to_load",
+                        }
+                    )
             elif msg_type == "vacation_update":
                 # Accept websocket writes to update vacation periods and persist to DB (+config)
                 try:

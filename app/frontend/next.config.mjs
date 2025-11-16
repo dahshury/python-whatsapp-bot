@@ -16,6 +16,14 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_TIMEZONE:
       process.env.NEXT_PUBLIC_TIMEZONE || process.env.TIMEZONE || "Asia/Riyadh",
+    NEXT_PUBLIC_SYSTEM_AGENT_WA_ID:
+      process.env.NEXT_PUBLIC_SYSTEM_AGENT_WA_ID ||
+      process.env.SYSTEM_AGENT_WA_ID ||
+      "12125550123",
+    NEXT_PUBLIC_SYSTEM_AGENT_NAME:
+      process.env.NEXT_PUBLIC_SYSTEM_AGENT_NAME ||
+      process.env.SYSTEM_AGENT_NAME ||
+      "Calendar AI Assistant",
   },
 
   // Allow remote images from YouTube thumbnail hosts and curated Unsplash assets

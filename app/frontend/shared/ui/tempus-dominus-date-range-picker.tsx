@@ -67,6 +67,7 @@ type TempusDominusDateRangePickerProps = {
   value?: DateRange;
   onRangeChangeAction?: (range: DateRange | undefined) => void;
   className?: string;
+  children?: React.ReactNode;
 };
 
 const RANGE_DISPLAY_FORMAT = "LLL dd, y";
@@ -239,6 +240,7 @@ export function TempusDominusDateRangePicker({
   value,
   onRangeChangeAction,
   className,
+  children,
 }: TempusDominusDateRangePickerProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const runtimeRef = useRef<TempusRuntime>({ ...INITIAL_RUNTIME });
@@ -595,21 +597,26 @@ export function TempusDominusDateRangePicker({
   );
 
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <input
-        aria-hidden="true"
-        className="pointer-events-none absolute h-0 w-0 opacity-0"
-        ref={inputRef}
-        tabIndex={-1}
-        type="text"
-      />
+    <>
       <Button
         aria-label="Open date range picker"
-        className={cn("w-[17.5rem] justify-start text-left font-normal")}
+        className={cn(
+          "relative w-[17.5rem] justify-start text-left font-normal",
+          className
+        )}
         onClick={handleToggle}
+        size="sm"
         type="button"
         variant="outline"
       >
+        <input
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 h-full w-full opacity-0"
+          ref={inputRef}
+          tabIndex={-1}
+          type="text"
+        />
+        {children}
         <CalendarIcon className="mr-2 h-4 w-4" />
         <span>{rangeLabel}</span>
       </Button>
@@ -617,7 +624,7 @@ export function TempusDominusDateRangePicker({
         <DropdownMenuTrigger asChild>
           <Button
             aria-label="Open date range presets"
-            size="icon"
+            size="sm"
             type="button"
             variant="outline"
           >
@@ -647,6 +654,6 @@ export function TempusDominusDateRangePicker({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </>
   );
 }

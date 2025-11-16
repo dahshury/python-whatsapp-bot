@@ -23,7 +23,7 @@ export const ChatService = (): ChatUseCase => ({
     // Use the existing /whatsapp/message endpoint with wa_id and text
     const response = await api.post<WhatsAppMessageResponse>(
       "/whatsapp/message",
-      { wa_id: conversationId, text: content }
+      { wa_id: conversationId, text: content, _call_source: "frontend" }
     );
 
     // Check if request was successful

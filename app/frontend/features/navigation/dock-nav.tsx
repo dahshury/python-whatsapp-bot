@@ -3,7 +3,8 @@
 import { getValidRange } from "@shared/libs/calendar/calendar-config";
 import { useDockBridge } from "@shared/libs/dock-bridge-context";
 import { cn } from "@shared/libs/utils";
-import { type RefObject, useCallback, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalendarCoreRef } from "@/features/calendar";
 import { getCalendarViewOptions } from "@/features/calendar";
 import {
@@ -43,16 +44,18 @@ export function DockNav({
   layout = "centered",
   dualModeTopDock = false,
 }: DockNavProps) {
+  // Create stable default handler
+  const defaultCalendarViewChange = useCallback(() => {
+    // Default no-op handler
+  }, []);
+
   // Call ALL hooks unconditionally, BEFORE any conditional logic
   const nav = useDockNavigation({
     calendarRef: (calendarRef || null) as RefObject<CalendarCoreRef> | null,
     currentCalendarView,
-    onCalendarViewChange:
-      onCalendarViewChange ||
-      (() => {
-        // Default no-op handler
-      }),
+    onCalendarViewChange: onCalendarViewChange || defaultCalendarViewChange,
   }) as ExtendedNavigationContextValue;
+  const pathname = usePathname();
   const { isLocalized } = useLanguageStore();
   const { state: dockBridgeState } = useDockBridge();
   const { freeRoam } = useSettingsStore();
@@ -64,6 +67,18 @@ export function DockNav({
   const settingsOpen = isControlled
     ? (controlledOpen as boolean)
     : internalOpen;
+
+  // Memoize settings open change handler to prevent infinite re-renders
+  const handleSettingsOpenChange = useCallback(
+    (open: boolean) => {
+      if (isControlled) {
+        onSettingsOpenChange?.(open);
+      } else {
+        setInternalOpen(open);
+      }
+    },
+    [isControlled, onSettingsOpenChange]
+  );
 
   // Right calendar view change handler must be defined before any early returns
   const handleRightCalendarViewChange = useCallback(
@@ -178,12 +193,38 @@ export function DockNav({
     }
   }, [nav.navigation?.activeView, setView]);
 
+  // Extract handlers before early return to ensure hooks are called in consistent order
+  const { navigation, handlers } = nav;
+
+  // Use refs to store latest handlers to prevent re-renders while always calling latest version
+  const handlersRef = useRef(handlers);
+  useEffect(() => {
+    handlersRef.current = handlers;
+  }, [handlers]);
+
+  // Create stable callbacks that always call the latest handler
+  const stableHandleCalendarViewChange = useCallback((view: string) => {
+    handlersRef.current.handleCalendarViewChange(view);
+  }, []);
+
+  const stableSetActiveTab = useCallback((value: string) => {
+    handlersRef.current.setActiveTab(value);
+  }, []);
+
+  // Stabilize activeView to prevent infinite re-renders
+  // Only update when it actually changes, not on every render
+  const stableActiveView = useMemo(() => {
+    return navigation.activeView || currentCalendarView;
+  }, [navigation.activeView, currentCalendarView]);
+
+  const stableCurrentCalendarView = useMemo(() => {
+    return currentCalendarView || "timeGridWeek";
+  }, [currentCalendarView]);
+
   // NOW we can do the early return after all hooks are called
   if (!nav.state.mounted) {
     return null;
   }
-
-  const { navigation } = nav;
 
   const customViewSelector =
     navigationOnly && dockBridgeState?.rightCalendarRef ? (
@@ -194,7 +235,7 @@ export function DockNav({
             null) as RefObject<CalendarCoreRef | null>
         }
         leftCalendarView={currentCalendarView}
-        onLeftCalendarViewChange={nav.handlers.handleCalendarViewChange}
+        onLeftCalendarViewChange={stableHandleCalendarViewChange}
         onRightCalendarViewChange={handleRightCalendarViewChange}
         rightCalendarRef={
           (dockBridgeState.rightCalendarRef ||
@@ -215,20 +256,13 @@ export function DockNav({
           />
           <SettingsPopover
             activeTab={nav.state.activeTab}
-            activeView={navigation.activeView}
-            currentCalendarView={currentCalendarView}
+            activeView={stableActiveView}
+            currentCalendarView={stableCurrentCalendarView}
             isCalendarPage={navigation.isCalendarPage}
             isLocalized={navigation.isLocalized}
-            onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-            onOpenChange={
-              isControlled
-                ? onSettingsOpenChange ||
-                  (() => {
-                    // Default no-op handler for controlled mode
-                  })
-                : setInternalOpen
-            }
-            onTabChange={nav.handlers.setActiveTab}
+            onCalendarViewChange={stableHandleCalendarViewChange}
+            onOpenChange={handleSettingsOpenChange}
+            onTabChange={stableSetActiveTab}
             open={settingsOpen}
             {...(customViewSelector ? { customViewSelector } : {})}
             hideViewModeToolbar={false}
@@ -263,16 +297,9 @@ export function DockNav({
             currentCalendarView={currentCalendarView}
             isCalendarPage={navigation.isCalendarPage}
             isLocalized={navigation.isLocalized}
-            onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-            onOpenChange={
-              isControlled
-                ? onSettingsOpenChange ||
-                  (() => {
-                    // Default no-op handler for controlled mode
-                  })
-                : setInternalOpen
-            }
-            onTabChange={nav.handlers.setActiveTab}
+            onCalendarViewChange={stableHandleCalendarViewChange}
+            onOpenChange={handleSettingsOpenChange}
+            onTabChange={stableSetActiveTab}
             open={settingsOpen}
             {...(customViewSelector ? { customViewSelector } : {})}
             hideViewModeToolbar={true}
@@ -306,20 +333,13 @@ export function DockNav({
           />
           <SettingsPopover
             activeTab={nav.state.activeTab}
-            activeView={navigation.activeView}
-            currentCalendarView={currentCalendarView}
+            activeView={stableActiveView}
+            currentCalendarView={stableCurrentCalendarView}
             isCalendarPage={navigation.isCalendarPage}
             isLocalized={navigation.isLocalized}
-            onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-            onOpenChange={
-              isControlled
-                ? onSettingsOpenChange ||
-                  (() => {
-                    // Default no-op handler for controlled mode
-                  })
-                : setInternalOpen
-            }
-            onTabChange={nav.handlers.setActiveTab}
+            onCalendarViewChange={stableHandleCalendarViewChange}
+            onOpenChange={handleSettingsOpenChange}
+            onTabChange={stableSetActiveTab}
             open={settingsOpen}
             {...(customViewSelector ? { customViewSelector } : {})}
           />
@@ -344,22 +364,41 @@ export function DockNav({
             isCalendarPage={false}
             isDocumentsPage={true}
             isLocalized={navigation.isLocalized}
-            onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-            onOpenChange={
-              isControlled
-                ? onSettingsOpenChange ||
-                  (() => {
-                    // Default no-op handler for controlled mode
-                  })
-                : setInternalOpen
-            }
-            onTabChange={nav.handlers.setActiveTab}
+            onCalendarViewChange={stableHandleCalendarViewChange}
+            onOpenChange={handleSettingsOpenChange}
+            onTabChange={stableSetActiveTab}
             open={settingsOpen}
           />
         </>
       );
     }
-    // Dashboard page: show all page links only
+    const isDashboardPage = pathname?.startsWith("/dashboard") ?? false;
+    if (isDashboardPage) {
+      // Dashboard page: show all page links + settings button with general tab only
+      return (
+        <>
+          <CalendarLink isLocalized={navigation.isLocalized} />
+          <NavigationLinks
+            isActive={nav.computed.isActive}
+            isLocalized={navigation.isLocalized}
+          />
+          <SettingsPopover
+            activeTab={nav.state.activeTab}
+            activeView={navigation.activeView}
+            allowedTabs={["general"] as const}
+            currentCalendarView={currentCalendarView}
+            hideViewModeToolbar={true}
+            isCalendarPage={false}
+            isLocalized={navigation.isLocalized}
+            onCalendarViewChange={stableHandleCalendarViewChange}
+            onOpenChange={handleSettingsOpenChange}
+            onTabChange={stableSetActiveTab}
+            open={settingsOpen}
+          />
+        </>
+      );
+    }
+    // Default: show all page links only
     return (
       <>
         <CalendarLink isLocalized={navigation.isLocalized} />
@@ -438,14 +477,7 @@ export function DockNav({
                 isCalendarPage={navigation.isCalendarPage}
                 isLocalized={navigation.isLocalized}
                 onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-                onOpenChange={
-                  isControlled
-                    ? onSettingsOpenChange ||
-                      (() => {
-                        // Default no-op handler for controlled mode
-                      })
-                    : setInternalOpen
-                }
+                onOpenChange={handleSettingsOpenChange}
                 // In drawer, force only "view" tab and hide view mode toolbar (always default)
                 onTabChange={nav.handlers.setActiveTab}
                 open={settingsOpen}
@@ -480,14 +512,7 @@ export function DockNav({
                   isCalendarPage={navigation.isCalendarPage}
                   isLocalized={navigation.isLocalized}
                   onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-                  onOpenChange={
-                    isControlled
-                      ? onSettingsOpenChange ||
-                        (() => {
-                          // Default no-op handler for controlled mode
-                        })
-                      : setInternalOpen
-                  }
+                  onOpenChange={handleSettingsOpenChange}
                   onTabChange={nav.handlers.setActiveTab}
                   open={settingsOpen}
                   {...(customViewSelector ? { customViewSelector } : {})}
@@ -536,14 +561,7 @@ export function DockNav({
                     isCalendarPage={navigation.isCalendarPage}
                     isLocalized={navigation.isLocalized}
                     onCalendarViewChange={nav.handlers.handleCalendarViewChange}
-                    onOpenChange={
-                      isControlled
-                        ? onSettingsOpenChange ||
-                          (() => {
-                            // Default no-op handler for controlled mode
-                          })
-                        : setInternalOpen
-                    }
+                    onOpenChange={handleSettingsOpenChange}
                     onTabChange={nav.handlers.setActiveTab}
                     open={settingsOpen}
                     {...(customViewSelector ? { customViewSelector } : {})}

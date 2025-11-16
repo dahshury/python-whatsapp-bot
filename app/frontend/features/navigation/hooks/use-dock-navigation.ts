@@ -116,6 +116,16 @@ export function useDockNavigation({
 
   const handleCalendarViewChange = useCallback(
     (view: string) => {
+      const desiredView = view || currentCalendarView || "timeGridWeek";
+      if (!desiredView) {
+        return;
+      }
+      const normalizedDesiredView = desiredView.toString();
+      if (normalizedDesiredView === currentCalendarView) {
+        // No-op if the requested view is already active
+        onCalendarViewChange?.(normalizedDesiredView);
+        return;
+      }
       count("dockNav:viewChange");
       if (isCalendarPage && calendarRef?.current) {
         const api = calendarRef.current.getApi?.();
@@ -127,9 +137,9 @@ export function useDockNavigation({
             api.setOption("eventConstraint", undefined);
             api.setOption("selectConstraint", undefined);
             // Change view first
-            api.changeView(view);
+            api.changeView(normalizedDesiredView);
             // Reapply constraints only for non-multimonth views
-            const lower = (view || "").toLowerCase();
+            const lower = normalizedDesiredView.toLowerCase();
             const isMultiMonth = lower === "multimonthyear";
             if (!isMultiMonth) {
               api.setOption(
@@ -154,7 +164,8 @@ export function useDockNavigation({
           try {
             const opts = getCalendarViewOptions(isLocalized);
             const label = (
-              opts.find((o) => o.value === view)?.label ?? view
+              opts.find((o) => o.value === normalizedDesiredView)?.label ??
+              normalizedDesiredView
             ).toString();
             toastService.info(
               i18n.getMessage("view_changed", isLocalized),
@@ -166,9 +177,16 @@ export function useDockNavigation({
           }
         }
       }
-      onCalendarViewChange?.(view);
+      onCalendarViewChange?.(normalizedDesiredView);
     },
-    [isCalendarPage, calendarRef, onCalendarViewChange, isLocalized, freeRoam]
+    [
+      isCalendarPage,
+      calendarRef,
+      onCalendarViewChange,
+      isLocalized,
+      freeRoam,
+      currentCalendarView,
+    ]
   );
 
   const isActive = useCallback(

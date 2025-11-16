@@ -253,7 +253,3 @@
   cursor: text;
 }
 
-/* 5) Prevent scroll anchoring/jumps when focusing the input below the messages */
-.calendar-chat .message-list {
-  overflow-anchor: none;
-}

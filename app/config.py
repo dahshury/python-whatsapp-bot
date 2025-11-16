@@ -32,6 +32,9 @@ config: dict[str, str | None] = {
     "OPENAI_ASSISTANT_ID": os.getenv("OPENAI_ASSISTANT_ID"),
     "VEC_STORE_ID": os.getenv("VEC_STORE_ID"),
     "SYSTEM_PROMPT": os.getenv("SYSTEM_PROMPT"),
+    "SYSTEM_AGENT_WA_ID": os.getenv("SYSTEM_AGENT_WA_ID", "12125550123"),
+    "SYSTEM_AGENT_NAME": os.getenv("SYSTEM_AGENT_NAME", "Calendar AI Assistant"),
+    "SYSTEM_AGENT_PROMPT": os.getenv("SYSTEM_AGENT_PROMPT"),
     "TIMEZONE": os.getenv("TIMEZONE", "Asia/Riyadh"),
     "UNSUPPORTED_MEDIA_MESSAGE": os.getenv("UNSUPPORTED_MEDIA_MESSAGE"),
     "VACATION_MESSAGE": os.getenv("VACATION_MESSAGE"),
@@ -105,10 +108,7 @@ def update_vacation_settings(start_date: str | None, end_date: str | None, messa
     return True, "Vacation message updated"
 
 
-from typing import Any
-
-
-def get(key: str | list[str], default: Any = None) -> Any:
+def get(key: str | list[str], default: str | None = None) -> str | None:
     """
     Get a configuration value by key, with an optional default value.
 

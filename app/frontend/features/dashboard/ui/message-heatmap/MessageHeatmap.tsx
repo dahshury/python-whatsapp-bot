@@ -3,22 +3,20 @@
 import { i18n } from "@shared/libs/i18n";
 import { motion } from "framer-motion";
 import { MessageSquare } from "lucide-react";
-import React from "react";
+import React, { useMemo, useState } from "react";
 import type { MessageHeatmapData } from "@/features/dashboard/types";
+import { cn } from "@/shared/libs/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import {
   AFTERNOON_PERIOD_START_HOUR,
   AVERAGE_MESSAGES_DECIMAL_PLACES,
   DAY_ABBREVIATION_LENGTH,
   EVENING_PERIOD_START_HOUR,
-  HEATMAP_QUARTILE_ONE_RATIO,
-  HEATMAP_QUARTILE_THREE_RATIO,
-  HEATMAP_QUARTILE_TWO_RATIO,
   HOURS_PER_WEEK,
   MAX_HEATMAP_CELL_DISPLAY,
   MORNING_PERIOD_START_HOUR,
 } from "../../dashboard/constants";
-import { getIntensity, getIntensityLabel } from "../../utils/heatmap-intensity";
+import { getIntensityLabel } from "../../utils/heatmap-intensity";
 
 type MessageHeatmapProps = {
   messageHeatmap: MessageHeatmapData[];
@@ -29,6 +27,8 @@ export function MessageHeatmap({
   messageHeatmap,
   isLocalized,
 }: MessageHeatmapProps) {
+  const [hovered, setHovered] = useState(false);
+
   // Helper function to translate day names
   const translateDayName = React.useCallback(
     (dayName: string) => {
@@ -62,7 +62,7 @@ export function MessageHeatmap({
   const maxCount = Math.max(...messageHeatmap.map((d) => d.count), 1);
 
   // Precompute heatmap lookup to avoid repeated array scans per cell
-  const heatmapMap = React.useMemo(() => {
+  const heatmapMap = useMemo(() => {
     const map = new Map<string, number>();
     for (const d of messageHeatmap) {
       map.set(`${d.weekday}-${d.hour}`, d.count);
@@ -72,6 +72,12 @@ export function MessageHeatmap({
 
   const getHeatmapValue = (day: string, hour: number) =>
     heatmapMap.get(`${day}-${hour}`) || 0;
+
+  // Normalize count to 0-1 range for opacity calculation
+  const getNormalizedValue = (count: number) => {
+    if (maxCount === 0) return 0;
+    return count / maxCount;
+  };
 
   // Precomputed labels to avoid JSX inline IIFEs and multiline parentheses
   const peakHourLabel = React.useMemo(() => {
@@ -106,6 +112,7 @@ export function MessageHeatmap({
   return (
     <motion.div
       animate={{ opacity: 1, y: 0 }}
+      className="mt-6"
       initial={{ opacity: 0, y: 20 }}
       transition={{ delay: 0.5 }}
     >
@@ -162,76 +169,73 @@ export function MessageHeatmap({
               </div>
             </div>
 
-            {/* Heatmap grid without per-cell animations */}
-            <div className="space-y-1">
-              {daysOrder.map((day) => (
+            {/* Heatmap grid with AnomalyHeatmap style */}
+            <motion.div
+              className="space-y-1"
+              onHoverEnd={() => setHovered(false)}
+              onHoverStart={() => setHovered(true)}
+            >
+              {daysOrder.map((day, dayIndex) => (
                 <div className="group flex items-center" key={day}>
                   <div className="w-16 flex-shrink-0 pr-3 text-right font-medium text-foreground text-sm">
                     <div className="rounded-md border bg-accent/20 px-2 py-1">
                       {translateDayName(day).slice(0, DAY_ABBREVIATION_LENGTH)}
                     </div>
                   </div>
-                  <div className="flex flex-1 gap-[0.0625rem]">
-                    {hours.map((hour) => {
+                  <div className="flex flex-1 gap-[2px]">
+                    {hours.map((hour, hourIndex) => {
                       const count = getHeatmapValue(day, hour);
+                      const normalizedValue = getNormalizedValue(count);
+                      const cellIndex = dayIndex * 24 + hourIndex;
+                      // Calculate opacity based on normalized value (0.15 to 0.85 range)
+                      const opacity = 0.15 + normalizedValue * 0.7;
+
                       return (
-                        <div
-                          className={`relative aspect-square flex-1 ${getIntensity(count, maxCount)} min-h-[1.5rem] min-w-[1.5rem] rounded border-2`}
+                        <motion.div
+                          animate={{
+                            opacity: 1,
+                            scale: hovered ? 1.05 : 1,
+                            ...(count > 0 && {
+                              backgroundColor: `hsl(var(--chart-1) / ${opacity})`,
+                            }),
+                            ...(hovered &&
+                              count > 0 && {
+                                boxShadow:
+                                  "inset 0 0 12px hsl(var(--chart-1) / 0.3)",
+                              }),
+                          }}
+                          className={cn(
+                            "relative m-[2px] aspect-square min-h-[1.5rem] min-w-[1.5rem] flex-1 rounded-md",
+                            count === 0 && "bg-muted/20"
+                          )}
+                          initial={{ opacity: 0, scale: 0.9 }}
                           key={`${day}-${hour}`}
                           title={`${translateDayName(day)} ${hour.toString().padStart(2, "0")}:00\n${count} ${i18n.getMessage("msg_messages", isLocalized)}\n${getIntensityLabel(count, maxCount, isLocalized)} ${i18n.getMessage("msg_activity", isLocalized)}`}
+                          transition={{
+                            duration: 0.4,
+                            delay: (cellIndex % 24) * 0.01,
+                          }}
                         >
                           {count > 0 && (
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="select-none font-bold text-xs">
+                              <span className="select-none font-bold text-white text-xs drop-shadow-sm">
                                 {count > MAX_HEATMAP_CELL_DISPLAY
                                   ? `${MAX_HEATMAP_CELL_DISPLAY}+`
                                   : count}
                               </span>
                             </div>
                           )}
-                          {count === maxCount && (
-                            <div className="-top-1 -right-1 absolute h-3 w-3 rounded-full border-2 border-background bg-chart-3 shadow-sm" />
-                          )}
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
                 </div>
               ))}
-            </div>
+            </motion.div>
 
-            {/* Legend */}
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                  <span>{i18n.getMessage("msg_less", isLocalized)}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                  <span>{i18n.getMessage("msg_more", isLocalized)}</span>
-                </div>
-              </div>
-
-              <div className="relative">
-                <div className="h-4 overflow-hidden rounded-full border border-border/50 shadow-inner">
-                  <div className="h-full bg-gradient-to-r from-muted/20 via-chart-1/30 via-chart-1/60 to-chart-1" />
-                </div>
-                <div className="mt-2 flex justify-between text-muted-foreground text-xs">
-                  <span>0</span>
-                  <span>
-                    {Math.floor(maxCount * HEATMAP_QUARTILE_ONE_RATIO)}
-                  </span>
-                  <span>
-                    {Math.floor(maxCount * HEATMAP_QUARTILE_TWO_RATIO)}
-                  </span>
-                  <span>
-                    {Math.floor(maxCount * HEATMAP_QUARTILE_THREE_RATIO)}
-                  </span>
-                  <span>{maxCount}</span>
-                </div>
-              </div>
-
-              {/* Activity insights */}
-              <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {/* Activity insights */}
+            <div className="mt-6">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <div className="rounded-lg border border-accent/20 bg-accent/10 p-3">
                   <div className="text-muted-foreground text-xs">
                     {i18n.getMessage("msg_peak_hour", isLocalized)}

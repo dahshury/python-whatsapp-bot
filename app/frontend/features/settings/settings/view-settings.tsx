@@ -4,6 +4,7 @@ import { i18n } from "@shared/libs/i18n";
 import { toastService } from "@shared/libs/toast";
 import { Label } from "@ui/label";
 import { Eye, MessageCircle, Minus, Plus, Wrench } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import { getCalendarViewOptions } from "@/features/calendar";
 import { useSettingsStore } from "@/infrastructure/store/app-store";
 import { Button } from "@/shared/ui/button";
@@ -44,7 +45,28 @@ export function ViewSettings({
     setSendTypingIndicator,
   } = useSettingsStore();
 
-  const viewOptions = getCalendarViewOptions(isLocalized);
+  const viewOptions = useMemo(
+    () => getCalendarViewOptions(isLocalized),
+    [isLocalized]
+  );
+
+  // Stabilize the selected view to prevent unnecessary re-renders
+  const selectedView = useMemo(
+    () => activeView || currentCalendarView,
+    [activeView, currentCalendarView]
+  );
+
+  // Memoize the view change handler to prevent recreating on every render
+  const handleViewChange = useCallback(
+    (view: string) => {
+      // Guard: don't trigger change if already selected
+      if (view === selectedView) {
+        return;
+      }
+      onCalendarViewChange?.(view);
+    },
+    [onCalendarViewChange, selectedView]
+  );
 
   const handleToolCallsToggle = (checked: boolean) => {
     setShowToolCalls(checked);
@@ -123,14 +145,13 @@ export function ViewSettings({
         <div className="flex justify-center">
           <ButtonGroup className="justify-center">
             {viewOptions.map((option) => {
-              const isSelected =
-                (activeView || currentCalendarView) === option.value;
+              const isSelected = selectedView === option.value;
               return (
                 <Button
                   className="h-7 gap-2"
                   key={option.value}
                   onClick={() => {
-                    onCalendarViewChange?.(option.value);
+                    handleViewChange(option.value);
                   }}
                   size="sm"
                   variant={isSelected ? "default" : "outline"}

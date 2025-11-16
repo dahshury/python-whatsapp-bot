@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import NextLink, { type LinkProps } from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   type AnchorHTMLAttributes,
   forwardRef,
@@ -51,7 +51,23 @@ import { preloadPathModules } from "@/shared/libs/prefetch/registry";
  * ```
  */
 
-type PrefetchLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & LinkProps;
+type PrefetchMode = "viewport" | "intent";
+
+type PrefetchLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> &
+  LinkProps & {
+    /**
+     * Controls when automatic prefetching should happen.
+     * - `intent` (default): Prefetch only when the user expresses intent
+     *   (hover/focus/mouse enter).
+     * - `viewport`: Prefetch as soon as the link is near the viewport.
+     */
+    prefetchMode?: PrefetchMode;
+    /**
+     * Whether to call `router.prefetch` in addition to module/data preloading.
+     * Defaults to `false` to avoid duplicate full-page requests in development.
+     */
+    enablePagePrefetch?: boolean;
+  };
 
 type PrefetchResult = {
   success: boolean;
@@ -61,6 +77,10 @@ type PrefetchResult = {
 };
 
 const prefetchedPaths = new Map<string, Promise<void>>();
+
+// Track ongoing prefetch operations to prevent rapid duplicate calls
+const pendingPrefetches = new Map<string, number>();
+const PREFETCH_DEBOUNCE_MS = 100;
 
 function toURL(href: LinkProps["href"]): URL {
   if (typeof window === "undefined") {
@@ -104,56 +124,79 @@ function cacheKeyFromUrl(url: URL): string {
   return `${url.pathname}${url.search}`;
 }
 
+type ExecutePrefetchOptions = {
+  router: ReturnType<typeof useRouter>;
+  queryClient: ReturnType<typeof useQueryClient>;
+  enablePagePrefetch: boolean;
+};
+
 function executePrefetch(
   url: URL,
-  router: ReturnType<typeof useRouter>,
-  queryClient: ReturnType<typeof useQueryClient>
+  { router, queryClient, enablePagePrefetch }: ExecutePrefetchOptions
 ): Promise<void> {
   const key = cacheKeyFromUrl(url);
-  if (!prefetchedPaths.has(key)) {
-    const promise = (async () => {
-      try {
-        await preloadPathModules(url.pathname);
-      } catch (_error) {
-        // Silently ignore module preload errors
-      }
+  const existing = prefetchedPaths.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  // Check if a prefetch was recently initiated for this URL
+  const lastPrefetchTime = pendingPrefetches.get(key);
+  if (
+    lastPrefetchTime &&
+    Date.now() - lastPrefetchTime < PREFETCH_DEBOUNCE_MS
+  ) {
+    // Return a resolved promise to avoid blocking, actual prefetch is in progress
+    return Promise.resolve();
+  }
+
+  pendingPrefetches.set(key, Date.now());
+
+  const promise = (async () => {
+    try {
+      await preloadPathModules(url.pathname);
+    } catch (_error) {
+      // Silently ignore module preload errors
+    }
+    if (enablePagePrefetch) {
       try {
         await router.prefetch(`${url.pathname}${url.search}`);
       } catch (_error) {
         // Silently ignore router prefetch errors
       }
-      try {
-        const apiPath =
-          url.pathname === "/"
-            ? "/api/prefetch"
-            : `/api/prefetch${url.pathname}`;
-        const response = await fetch(`${apiPath}${url.search}`, {
-          method: "GET",
-          credentials: "same-origin",
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          return;
-        }
-        const json = (await response.json()) as PrefetchResult;
-        if (!json?.success) {
-          return;
-        }
-        const queries = json.payload?.queries;
-        if (Array.isArray(queries)) {
-          for (const query of queries) {
-            if (Array.isArray(query.key)) {
-              queryClient.setQueryData(query.key, query.data);
-            }
+    }
+    try {
+      const apiPath =
+        url.pathname === "/" ? "/api/prefetch" : `/api/prefetch${url.pathname}`;
+      const response = await fetch(`${apiPath}${url.search}`, {
+        method: "GET",
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        return;
+      }
+      const json = (await response.json()) as PrefetchResult;
+      if (!json?.success) {
+        return;
+      }
+      const queries = json.payload?.queries;
+      if (Array.isArray(queries)) {
+        for (const query of queries) {
+          if (Array.isArray(query.key)) {
+            queryClient.setQueryData(query.key, query.data);
           }
         }
-      } catch (_error) {
-        // Silently ignore API prefetch errors
       }
-    })();
-    prefetchedPaths.set(key, promise);
-  }
-  return prefetchedPaths.get(key) as Promise<void>;
+    } catch (_error) {
+      // Silently ignore API prefetch errors
+    } finally {
+      // Clean up pending prefetch tracking after a short delay
+      setTimeout(() => pendingPrefetches.delete(key), PREFETCH_DEBOUNCE_MS * 2);
+    }
+  })();
+  prefetchedPaths.set(key, promise);
+  return promise;
 }
 
 function assignRef<T>(ref: React.Ref<T> | undefined, value: T): void {
@@ -168,9 +211,21 @@ function assignRef<T>(ref: React.Ref<T> | undefined, value: T): void {
 }
 
 const PrefetchLink = forwardRef<HTMLAnchorElement, PrefetchLinkProps>(
-  ({ prefetch, href, onMouseEnter, onFocus, ...rest }, forwardedRef) => {
+  (
+    {
+      prefetch,
+      href,
+      onMouseEnter,
+      onFocus,
+      prefetchMode = "viewport",
+      enablePagePrefetch = false,
+      ...rest
+    },
+    forwardedRef
+  ) => {
     const router = useRouter();
     const queryClient = useQueryClient();
+    const pathname = usePathname();
     const internalRef = useRef<HTMLAnchorElement | null>(null);
 
     const runPrefetch = useCallback(() => {
@@ -181,29 +236,53 @@ const PrefetchLink = forwardRef<HTMLAnchorElement, PrefetchLinkProps>(
       if (url.origin !== window.location.origin) {
         return;
       }
-      executePrefetch(url, router, queryClient).catch((_error) => {
+      if (typeof window !== "undefined") {
+        const currentPath = window.location.pathname;
+        const currentSearch = window.location.search;
+        if (url.pathname === currentPath && url.search === currentSearch) {
+          return;
+        }
+      }
+      if (url.pathname === pathname) {
+        return;
+      }
+      executePrefetch(url, {
+        router,
+        queryClient,
+        enablePagePrefetch,
+      }).catch((_error) => {
         // Silently ignore prefetch errors
       });
-    }, [prefetch, href, router, queryClient]);
+    }, [prefetch, href, router, queryClient, enablePagePrefetch, pathname]);
 
     useEffect(() => {
-      if (prefetch === false) {
+      if (prefetch === false || prefetchMode !== "viewport") {
         return;
       }
       const element = internalRef.current;
       if (!element) {
         return;
       }
-      const observer = new IntersectionObserver((entries) => {
-        const entry = entries[0];
-        if (entry?.isIntersecting) {
-          runPrefetch();
-          observer.disconnect();
+      // Use IntersectionObserver with rootMargin to prefetch slightly before viewport
+      // This balances preloading with avoiding unnecessary requests
+      const observer = new IntersectionObserver(
+        (entries) => {
+          const entry = entries[0];
+          if (entry?.isIntersecting) {
+            runPrefetch();
+            observer.disconnect();
+          }
+        },
+        {
+          // Only trigger when element is about to enter viewport (200px before)
+          rootMargin: "200px",
+          // Require at least 10% of element to be visible to reduce false triggers
+          threshold: 0.1,
         }
-      });
+      );
       observer.observe(element);
       return () => observer.disconnect();
-    }, [prefetch, runPrefetch]);
+    }, [prefetch, prefetchMode, runPrefetch]);
 
     const handleMouseEnter: React.MouseEventHandler<HTMLAnchorElement> = (
       event
@@ -223,7 +302,9 @@ const PrefetchLink = forwardRef<HTMLAnchorElement, PrefetchLinkProps>(
         href={href}
         onFocus={handleFocus}
         onMouseEnter={handleMouseEnter}
-        {...(prefetch !== undefined ? { prefetch } : {})}
+        // Disable Next.js built-in prefetch since we handle it manually
+        // This prevents duplicate prefetch requests
+        prefetch={false}
         ref={(node) => {
           internalRef.current = node;
           assignRef(forwardedRef, node);

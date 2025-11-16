@@ -81,15 +81,45 @@ export function MessageAnalysisStats({
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="font-bold text-2xl">
-              {conversationAnalysis.responseTimeStats.avg.toFixed(1)}
-              {i18n.getMessage("msg_minutes", isLocalized)}
-            </div>
-            <p className="text-muted-foreground text-xs">
-              {i18n.getMessage("msg_median", isLocalized)}{" "}
-              {conversationAnalysis.responseTimeStats.median.toFixed(1)}
-              {i18n.getMessage("msg_minutes", isLocalized)}
-            </p>
+            {(() => {
+              const avgSeconds =
+                conversationAnalysis.responseTimeStats.avg * 60;
+              const medianSeconds =
+                conversationAnalysis.responseTimeStats.median * 60;
+              const avgFormatted =
+                avgSeconds < 60
+                  ? {
+                      value: avgSeconds,
+                      unit: i18n.getMessage("msg_seconds", isLocalized) || "s",
+                    }
+                  : {
+                      value: conversationAnalysis.responseTimeStats.avg,
+                      unit: i18n.getMessage("msg_minutes", isLocalized),
+                    };
+              const medianFormatted =
+                medianSeconds < 60
+                  ? {
+                      value: medianSeconds,
+                      unit: i18n.getMessage("msg_seconds", isLocalized) || "s",
+                    }
+                  : {
+                      value: conversationAnalysis.responseTimeStats.median,
+                      unit: i18n.getMessage("msg_minutes", isLocalized),
+                    };
+              return (
+                <>
+                  <div className="font-bold text-2xl">
+                    {avgFormatted.value.toFixed(1)}
+                    {avgFormatted.unit}
+                  </div>
+                  <p className="text-muted-foreground text-xs">
+                    {i18n.getMessage("msg_median", isLocalized)}{" "}
+                    {medianFormatted.value.toFixed(1)}
+                    {medianFormatted.unit}
+                  </p>
+                </>
+              );
+            })()}
           </CardContent>
         </Card>
       </motion.div>

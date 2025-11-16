@@ -13,10 +13,10 @@ export const AVAILABLE_LANGUAGES = Object.keys(resources) as Array<
   keyof typeof resources
 >;
 
-// Language labels for display
+// Language labels for display - using direct resource access to avoid initialization order issues
 export const LANGUAGE_LABELS: Record<string, string> = {
-  en: "English",
-  ar: "العربية (Arabic)",
+  en: (enCommon as Record<string, string>).language_english || "English",
+  ar: (arCommon as Record<string, string>).language_arabic || "العربية",
 };
 
 let initialized = false;

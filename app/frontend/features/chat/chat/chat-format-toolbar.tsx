@@ -38,10 +38,12 @@ export function ChatFormatToolbar({
   editor,
   disabled,
   isLocalized,
+  className,
 }: {
   editor: EditorLike | null | undefined;
   disabled: boolean;
   isLocalized?: boolean;
+  className?: string;
 }) {
   const [activeMarks, setActiveMarks] = useState({
     bold: false,
@@ -106,7 +108,7 @@ export function ChatFormatToolbar({
   const isDisabled = (canRun: boolean) => disabled || !canRun;
 
   return (
-    <div className="flex w-full items-center gap-1">
+    <div className={cn("flex items-center gap-1", className)}>
       {(() => {
         const isActive = activeMarks.bold;
         const canRun = !!editor?.can().chain().focus().toggleBold().run();

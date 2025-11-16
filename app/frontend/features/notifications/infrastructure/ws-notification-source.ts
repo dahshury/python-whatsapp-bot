@@ -45,26 +45,50 @@ export function createWindowNotificationSource(): NotificationSourcePort {
     try {
       const windowNotif = window as unknown as {
         __notif_history_requested__?: boolean;
+        __notif_history_request_time__?: number;
       };
-      const already = windowNotif.__notif_history_requested__;
-      if (!already) {
-        const wsRef = (
-          globalThis as unknown as {
-            __wsConnection?: { current?: WebSocket };
-          }
-        ).__wsConnection;
-        if (wsRef?.current?.readyState === WebSocket.OPEN) {
-          wsRef.current.send(
-            JSON.stringify({
-              type: "get_notifications",
-              data: { limit },
-            })
-          );
-        }
-        (
-          window as unknown as { __notif_history_requested__?: boolean }
-        ).__notif_history_requested__ = true;
+
+      // Prevent duplicate requests within 5 seconds
+      const now = Date.now();
+      const lastRequest = windowNotif.__notif_history_request_time__ || 0;
+      const REQUEST_COOLDOWN_MS = 5000;
+
+      if (
+        windowNotif.__notif_history_requested__ &&
+        now - lastRequest < REQUEST_COOLDOWN_MS
+      ) {
+        return;
       }
+
+      let attempts = 0;
+      const sendRequest = () => {
+        attempts += 1;
+        try {
+          const wsRef = (
+            globalThis as unknown as {
+              __wsConnection?: { current?: WebSocket };
+            }
+          ).__wsConnection;
+          if (wsRef?.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(
+              JSON.stringify({
+                type: "get_notifications",
+                data: { limit },
+              })
+            );
+            windowNotif.__notif_history_requested__ = true;
+            windowNotif.__notif_history_request_time__ = now;
+            return;
+          }
+        } catch {
+          // Ignore and retry while under attempt threshold
+        }
+        if (attempts < 10) {
+          window.setTimeout(sendRequest, 250);
+        }
+      };
+
+      sendRequest();
     } catch {
       // Silently ignore errors in notification history request (e.g., WebSocket unavailable)
     }

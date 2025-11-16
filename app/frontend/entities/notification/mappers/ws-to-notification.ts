@@ -10,6 +10,30 @@ import {
   toTimestampMs,
 } from "../value-objects";
 
+const SUPPRESSED_NOTIFICATION_TYPES = new Set(["notifications_history"]);
+
+const normalizeTypeForComparison = (type?: string): string => {
+  if (typeof type !== "string") {
+    return "";
+  }
+  return type.trim().toLowerCase();
+};
+
+const sanitizeNotificationType = (type?: string): string => {
+  if (typeof type !== "string") {
+    return "";
+  }
+  return type.trim();
+};
+
+const shouldRenderNotificationType = (type?: string): boolean => {
+  const normalized = normalizeTypeForComparison(type);
+  if (!normalized) {
+    return true;
+  }
+  return !SUPPRESSED_NOTIFICATION_TYPES.has(normalized);
+};
+
 export type GetMessage = (key: string) => string;
 export type ResolveCustomerName = (
   waId?: string,
@@ -78,21 +102,23 @@ export const mapHistoryItems = (
 ): NotificationItem[] => {
   const list = Array.isArray(records) ? records : [];
   const mapped: NotificationItem[] = list
+    .filter((record) => shouldRenderNotificationType(record.type))
     .map((r) => {
       const ts = toTimestampMs(r.timestamp);
       const d = (r.data || {}) as ReservationData;
-      const compositeKey = buildCompositeKey(String(r.type || ""), r.data);
+      const type = sanitizeNotificationType(r.type);
+      const compositeKey = buildCompositeKey(type, r.data);
       return {
         id: buildNotificationId(ts, compositeKey),
         text: composeNotificationText(
-          String(r.type || ""),
+          type,
           d,
           options.getMessage,
           options.resolveCustomerName
         ),
         timestamp: ts,
         unread: false,
-        type: String(r.type || "") as NotificationType,
+        type: type as NotificationType,
         data: r.data || {},
       };
     })
@@ -114,24 +140,25 @@ export const mapLiveEvent = (
     getMessage: GetMessage;
     resolveCustomerName?: ResolveCustomerName;
   }
-): NotificationItem => {
+): NotificationItem | null => {
+  if (!shouldRenderNotificationType(detail.type)) {
+    return null;
+  }
   const ts = toTimestampMs(detail.ts as unknown as string | number | undefined);
-  const compositeKey = buildCompositeKey(
-    String(detail.type || ""),
-    detail.data
-  );
+  const type = sanitizeNotificationType(detail.type);
+  const compositeKey = buildCompositeKey(type, detail.data);
   const d = (detail.data || {}) as ReservationData;
   return {
     id: buildNotificationId(ts, compositeKey),
     text: composeNotificationText(
-      String(detail.type || ""),
+      type,
       d,
       options.getMessage,
       options.resolveCustomerName
     ),
     timestamp: ts,
     unread: true, // caller can override based on UI state
-    type: String(detail.type || "") as NotificationType,
+    type: type as NotificationType,
     data: detail.data || {},
   };
 };

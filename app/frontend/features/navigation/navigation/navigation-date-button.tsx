@@ -201,113 +201,109 @@ export const NavigationDateButton = memo(
       : "text-[1.05rem] sm:text-xl md:text-2xl";
     // removed loader sizing; spinner is no longer used
 
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
+    const button = (
+      <Button
+        className={cn(
+          "group relative h-9 max-w-full overflow-visible rounded-full",
+          "hover:bg-accent hover:text-accent-foreground",
+          "transition-all duration-200",
+          !isTodayDisabled && "cursor-pointer",
+          width,
+          className,
+          // In navigation mode, allow shrinking but ensure it can expand
+          navigationOnly ? "min-w-0" : undefined
+        )}
+        disabled={isTodayDisabled}
+        onClick={onToday}
+        onMouseEnter={() => setIsHoveringDate(true)}
+        onMouseLeave={() => setIsHoveringDate(false)}
+        size="sm"
+        style={{
+          minWidth:
+            (_isCalendarPage || !navigationOnly) && minWidthPx
+              ? `${minWidthPx}px`
+              : undefined,
+        }}
+        variant="ghost"
+      >
+        <span
+          className="pointer-events-none absolute top-0 right-0 h-0 w-0"
+          ref={anchorRef}
+        />
+        <span
+          className={cn(
+            "absolute inset-0 z-10 flex items-center justify-center transition-all duration-200",
+            isHoveringDate && !isTodayDisabled
+              ? "scale-75 opacity-0"
+              : "scale-100 opacity-100"
+          )}
+        >
+          <div
             className={cn(
-              "group relative h-9 max-w-full overflow-visible rounded-full",
-              "hover:bg-accent hover:text-accent-foreground",
-              "transition-all duration-200",
-              !isTodayDisabled && "cursor-pointer",
-              width,
-              className,
-              // In navigation mode, allow shrinking but ensure it can expand
-              navigationOnly ? "min-w-0" : undefined
+              "w-full min-w-0 max-w-full overflow-hidden text-center",
+              navigationOnly ? "px-4 sm:px-6" : "px-6"
             )}
-            disabled={isTodayDisabled}
-            onClick={onToday}
-            onMouseEnter={() => setIsHoveringDate(true)}
-            onMouseLeave={() => setIsHoveringDate(false)}
-            size="sm"
+            ref={containerRef}
             style={{
-              minWidth:
-                (_isCalendarPage || !navigationOnly) && minWidthPx
-                  ? `${minWidthPx}px`
+              // Override right padding to ensure badge overlay area is text-free
+              paddingRight:
+                reservedBadgePaddingPx > 0
+                  ? `${PADDING_RIGHT_BASE_PX + reservedBadgePaddingPx}px`
                   : undefined,
             }}
-            variant="ghost"
           >
             <span
-              className="pointer-events-none absolute top-0 right-0 h-0 w-0"
-              ref={anchorRef}
-            />
-            <span
               className={cn(
-                "absolute inset-0 z-10 flex items-center justify-center transition-all duration-200",
-                isHoveringDate && !isTodayDisabled
-                  ? "scale-75 opacity-0"
-                  : "scale-100 opacity-100"
+                textSize,
+                "inline-block whitespace-nowrap font-medium"
               )}
+              ref={contentRef}
+              style={{
+                fontSize: fontSizePx ? `${fontSizePx}px` : undefined,
+                // Only adjust line-height in drawer to help vertical centering
+                lineHeight: navigationOnly
+                  ? LINE_HEIGHT_NAVIGATION_ONLY
+                  : undefined,
+              }}
             >
-              <div
-                className={cn(
-                  "w-full min-w-0 max-w-full overflow-hidden text-center",
-                  navigationOnly ? "px-4 sm:px-6" : "px-6"
-                )}
-                ref={containerRef}
-                style={{
-                  // Override right padding to ensure badge overlay area is text-free
-                  paddingRight:
-                    reservedBadgePaddingPx > 0
-                      ? `${PADDING_RIGHT_BASE_PX + reservedBadgePaddingPx}px`
-                      : undefined,
-                }}
-              >
-                <span
-                  className={cn(
-                    textSize,
-                    "inline-block whitespace-nowrap font-medium"
-                  )}
-                  ref={contentRef}
-                  style={{
-                    fontSize: fontSizePx ? `${fontSizePx}px` : undefined,
-                    // Only adjust line-height in drawer to help vertical centering
-                    lineHeight: navigationOnly
-                      ? LINE_HEIGHT_NAVIGATION_ONLY
-                      : undefined,
-                  }}
-                >
-                  {title}
-                </span>
-              </div>
+              {title}
             </span>
+          </div>
+        </span>
 
-            <span
-              className={cn(
-                "absolute inset-0 z-20 flex items-center justify-center transition-all duration-200",
-                isHoveringDate && !isTodayDisabled
-                  ? "scale-100 opacity-100"
-                  : "scale-75 opacity-0"
-              )}
-            >
-              <CalendarDays className="size-4 sm:size-5" />
-            </span>
-            {showBadge && (
-              <EventCountBadgePortal
-                anchorRef={anchorRef}
-                count={visibleEventCount}
-                isLocalized={isLocalized}
-              />
-            )}
-          </Button>
-        </TooltipTrigger>
+        <span
+          className={cn(
+            "absolute inset-0 z-20 flex items-center justify-center transition-all duration-200",
+            isHoveringDate && !isTodayDisabled
+              ? "scale-100 opacity-100"
+              : "scale-75 opacity-0"
+          )}
+        >
+          <CalendarDays className="size-4 sm:size-5" />
+        </span>
+        {showBadge && (
+          <EventCountBadgePortal
+            anchorRef={anchorRef}
+            count={visibleEventCount}
+            isLocalized={isLocalized}
+          />
+        )}
+      </Button>
+    );
+
+    // Only show tooltip if today is not already shown
+    if (isTodayDisabled) {
+      return button;
+    }
+
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
         <TooltipContent>
           <p className="flex items-center gap-1.5">
-            {isTodayDisabled ? (
-              <>
-                {title}
-                <span className="text-muted-foreground text-xs">
-                  ({i18n.getMessage("already_showing_today", isLocalized)})
-                </span>
-              </>
-            ) : (
-              <>
-                <CalendarDays className="h-3.5 w-3.5" />
-                {i18n.getMessage("go_to_today", isLocalized)}
-                <span className="text-muted-foreground text-xs">({title})</span>
-              </>
-            )}
+            <CalendarDays className="h-3.5 w-3.5" />
+            {i18n.getMessage("go_to_today", isLocalized)}
+            <span className="text-muted-foreground text-xs">({title})</span>
           </p>
         </TooltipContent>
       </Tooltip>

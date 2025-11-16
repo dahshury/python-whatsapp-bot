@@ -91,3 +91,5 @@ export const PREFETCH = {
    */
   PREFETCH_COMPLETE_DELAY_MS: 100,
 } as const;
+
+export { SYSTEM_AGENT } from "./system-agent";

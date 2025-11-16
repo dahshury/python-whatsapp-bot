@@ -21,7 +21,8 @@ import {
 import { NotificationTabsHeader } from "@/features/notifications/ui/notification-tabs";
 import { useLanguageStore } from "@/infrastructure/store/app-store";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Tabs } from "@/shared/ui/tabs";
+import { Tabs, TabsContent } from "@/shared/ui/tabs";
+import { ThemedScrollbar } from "@/shared/ui/themed-scrollbar";
 
 const MAX_UNREAD_COUNT_DISPLAY = 99;
 
@@ -29,6 +30,11 @@ function NotificationInboxPopover() {
   const { isLocalized } = useLanguageStore();
   const { data: customerNames } = useCustomerNames();
   const [tab, setTab] = useState("all");
+
+  const getMessage = useCallback(
+    (key: string) => i18n.getMessage(key, isLocalized),
+    [isLocalized]
+  );
 
   const resolveCustomerNameCallback = useCallback(
     (waId?: string, fallbackName?: string): string | undefined => {
@@ -58,33 +64,37 @@ function NotificationInboxPopover() {
     markItemAsRead,
     markGroupAsRead,
   } = useNotifications({
-    getMessage: (key: string) => i18n.getMessage(key, isLocalized),
+    getMessage,
     resolveCustomerName: resolveCustomerNameCallback,
   });
 
-  const filteredEntries = useMemo(
-    () =>
-      tab === "unread"
-        ? renderEntries.filter((e) =>
-            e.kind === "item" ? e.item.unread : e.unreadCount > 0
-          )
-        : renderEntries,
-    [renderEntries, tab]
+  const mapEntriesToUI = useCallback(
+    (entries: typeof renderEntries) =>
+      entries.map((entry) => {
+        if (entry.kind === "item") {
+          return mapNotificationItemToUIEntry(
+            entry.item,
+            isLocalized,
+            resolveCustomerNameCallback
+          );
+        }
+        // group entry
+        return mapNotificationGroupToUIEntry(entry, isLocalized);
+      }),
+    [isLocalized, resolveCustomerNameCallback]
   );
 
-  const uiEntries = useMemo(() => {
-    return filteredEntries.map((entry) => {
-      if (entry.kind === "item") {
-        return mapNotificationItemToUIEntry(
-          entry.item,
-          isLocalized,
-          resolveCustomerNameCallback
-        );
-      }
-      // group entry
-      return mapNotificationGroupToUIEntry(entry, isLocalized);
-    });
-  }, [filteredEntries, isLocalized, resolveCustomerNameCallback]);
+  const allUiEntries = useMemo(
+    () => mapEntriesToUI(renderEntries),
+    [mapEntriesToUI, renderEntries]
+  );
+
+  const unreadUiEntries = useMemo(() => {
+    const unreadOnly = renderEntries.filter((entry) =>
+      entry.kind === "item" ? entry.item.unread : entry.unreadCount > 0
+    );
+    return mapEntriesToUI(unreadOnly);
+  }, [mapEntriesToUI, renderEntries]);
 
   const onItemClick = useCallback(
     (n: NotificationItem) => {
@@ -110,6 +120,35 @@ function NotificationInboxPopover() {
       markGroupAsRead(waId, date);
     },
     [markGroupAsRead]
+  );
+
+  const renderTabPane = useCallback(
+    (entries: typeof allUiEntries) => {
+      if (entries.length === 0) {
+        return (
+          <div className="flex min-h-[12rem] items-center justify-center p-6">
+            <NotificationEmptyState isLocalized={isLocalized} />
+          </div>
+        );
+      }
+      return (
+        <ThemedScrollbar
+          className="max-h-80"
+          noScrollX
+          removeTrackXWhenNotUsed
+          style={{ maxHeight: "20rem", minHeight: "12rem" }}
+        >
+          <NotificationList
+            entries={entries}
+            items={items}
+            onClose={() => setOpen(false)}
+            onGroupClick={onGroupClick}
+            onItemClick={onItemClick}
+          />
+        </ThemedScrollbar>
+      );
+    },
+    [isLocalized, items, onGroupClick, onItemClick, setOpen]
   );
 
   return (
@@ -139,20 +178,12 @@ function NotificationInboxPopover() {
             unreadCount={computedUnreadCount}
           />
 
-          {/* Notifications List */}
-          <div className="max-h-80 overflow-y-auto">
-            {uiEntries.length === 0 ? (
-              <NotificationEmptyState isLocalized={isLocalized} />
-            ) : (
-              <NotificationList
-                entries={uiEntries}
-                items={items}
-                onClose={() => setOpen(false)}
-                onGroupClick={onGroupClick}
-                onItemClick={onItemClick}
-              />
-            )}
-          </div>
+          <TabsContent className="min-h-[12rem]" value="all">
+            {renderTabPane(allUiEntries)}
+          </TabsContent>
+          <TabsContent className="min-h-[12rem]" value="unread">
+            {renderTabPane(unreadUiEntries)}
+          </TabsContent>
         </Tabs>
       </PopoverContent>
     </Popover>

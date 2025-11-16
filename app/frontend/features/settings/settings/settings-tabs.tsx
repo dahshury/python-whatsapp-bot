@@ -75,16 +75,20 @@ export function SettingsTabs({
     : true;
 
   // Ensure active tab is valid when some tabs are hidden (e.g., dashboard page)
-  let defaultTab: string;
-  if (showViewTab) {
-    defaultTab = "view";
-  } else if (showGeneralTab) {
-    defaultTab = "general";
-  } else if (showVacationTab) {
-    defaultTab = "vacation";
-  } else {
-    defaultTab = "view";
-  }
+  // Memoize defaultTab to prevent unnecessary re-renders
+  const defaultTab = useMemo(() => {
+    if (showViewTab) {
+      return "view";
+    }
+    if (showGeneralTab) {
+      return "general";
+    }
+    if (showVacationTab) {
+      return "vacation";
+    }
+    return "view";
+  }, [showViewTab, showGeneralTab, showVacationTab]);
+
   const computedActiveTab = useMemo(() => {
     const allowed = [] as string[];
     if (showGeneralTab) {
@@ -102,10 +106,10 @@ export function SettingsTabs({
   const [tabsValue, setTabsValue] = useState(computedActiveTab);
 
   useEffect(() => {
-    if (!isDocumentsPage) {
+    if (!isDocumentsPage && computedActiveTab !== tabsValue) {
       setTabsValue(computedActiveTab);
     }
-  }, [computedActiveTab, isDocumentsPage]);
+  }, [computedActiveTab, isDocumentsPage, tabsValue]);
 
   const handleTabChange = useCallback(
     (value: string) => {

@@ -478,6 +478,7 @@ export function DockNavSimple({
                   isActive("/dashboard") && "shadow-lg"
                 )}
                 href="/dashboard"
+                prefetchMode="intent"
               >
                 <BarChart3 className="size-4" />
               </PrefetchLink>

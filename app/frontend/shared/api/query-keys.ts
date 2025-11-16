@@ -111,6 +111,16 @@ export const dashboardKeys = {
 } as const;
 
 /**
+ * Notification Query Keys
+ */
+export const notificationKeys = {
+  all: ["notifications"] as const,
+
+  history: (limit = 100) =>
+    [...notificationKeys.all, "history", limit] as const,
+} as const;
+
+/**
  * Reservation Query Keys (mutations)
  */
 export const reservationKeys = {

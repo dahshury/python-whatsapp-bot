@@ -36,6 +36,7 @@ export const NavigationLinks = memo(
                 data-active={isDocumentsActive}
                 data-slot="sidebar-menu-button"
                 href="/documents"
+                prefetchMode="intent"
               >
                 <FileText className="size-4 sm:size-5" />
               </PrefetchLink>
@@ -63,6 +64,7 @@ export const NavigationLinks = memo(
                 data-active={isDashboardActive}
                 data-slot="sidebar-menu-button"
                 href="/dashboard"
+                prefetchMode="intent"
               >
                 <BarChart3 className="size-4 sm:size-5" />
               </PrefetchLink>

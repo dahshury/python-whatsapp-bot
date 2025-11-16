@@ -1,3 +1,5 @@
+# ruff: noqa: I001
+
 import asyncio
 import contextlib
 import datetime
@@ -5,47 +7,50 @@ import json
 import logging
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Query, Request
+from fastapi import (APIRouter, BackgroundTasks, Body, Depends, HTTPException,
+                     Query, Request)
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.config import config
 from app.decorators.security import verify_signature
 from app.i18n import get_message
-from app.metrics import (
-    CONCURRENT_TASK_LIMIT_REACHED,
-    CONCURRENT_TASK_LIMIT_REACHED_BY_REASON,
-    INVALID_HTTP_REQUESTS,
-    INVALID_HTTP_REQUESTS_BY_REASON,
-    WHATSAPP_MESSAGE_FAILURES,
-    WHATSAPP_MESSAGE_FAILURES_BY_REASON,
-)
-from app.services.assistant_functions import (
-    cancel_reservation,
-    modify_id,
-    modify_reservation,
-    reserve_time_slot,
-    undo_cancel_reservation,
-)
+from app.metrics import (CONCURRENT_TASK_LIMIT_REACHED,
+                         CONCURRENT_TASK_LIMIT_REACHED_BY_REASON,
+                         INVALID_HTTP_REQUESTS,
+                         INVALID_HTTP_REQUESTS_BY_REASON,
+                         WHATSAPP_MESSAGE_FAILURES,
+                         WHATSAPP_MESSAGE_FAILURES_BY_REASON)
+from app.services.assistant_functions import (cancel_reservation, modify_id,
+                                              modify_reservation,
+                                              reserve_time_slot,
+                                              undo_cancel_reservation)
 from app.services.domain.customer.customer_service import CustomerService
+from app.services.domain.dashboard import DashboardAnalyticsService
 from app.services.llm_service import get_llm_service
-from app.utils.realtime import broadcast, enqueue_broadcast
-from app.utils.service_utils import (
-    append_message,
-    format_enhanced_vacation_message,
-    get_all_conversations,
-    get_all_reservations,
-)
+from app.services.system_tool_schemas import SYSTEM_TOOL_REGISTRY
+from app.utils.realtime import (NOTIFICATION_HISTORY_LIMIT, broadcast,
+                                enqueue_broadcast)
+from app.utils.service_utils import (append_message,
+                                     clear_conversation_messages,
+                                     format_enhanced_vacation_message,
+                                     get_all_conversations,
+                                     get_all_reservations, is_customer_blocked,
+                                     set_customer_block_status,
+                                     set_customer_favorite_status)
 from app.utils.whatsapp_utils import (
     is_valid_whatsapp_message,
     mark_message_as_read,
+    process_whatsapp_message as process_whatsapp_message_util,
     send_typing_indicator_for_wa,
     send_whatsapp_location,
     send_whatsapp_message,
     send_whatsapp_template,
     test_whatsapp_api_config,
 )
-from app.utils.whatsapp_utils import process_whatsapp_message as process_whatsapp_message_util
+
+SYSTEM_AGENT_WA_ID = str(config.get("SYSTEM_AGENT_WA_ID", "12125550123"))
+SYSTEM_AGENT_PROMPT = config.get("SYSTEM_AGENT_PROMPT") or config.get("SYSTEM_PROMPT")
 
 router = APIRouter()
 security = HTTPBasic()
@@ -162,6 +167,10 @@ async def webhook_post(request: Request, background_tasks: BackgroundTasks, _=De
             if msg_id:
                 # Fire-and-forget: schedule without awaiting so webhook responds quickly
                 background_tasks.add_task(mark_message_as_read, msg_id)
+            sender_wa = msg.get("from")
+            if sender_wa and is_customer_blocked(str(sender_wa)):
+                logging.info("Ignoring incoming message from blocked contact %s", sender_wa)
+                return JSONResponse(content={"status": "ok", "ignored": True})
         except Exception:
             pass
         # Try to acquire semaphore without blocking the response
@@ -247,6 +256,74 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
             return JSONResponse(content={"status": "error", "message": "Message too long (max 4096)"}, status_code=400)
     except Exception:
         return JSONResponse(content={"status": "error", "message": "Invalid text"}, status_code=400)
+    if not isinstance(wa_id, str) or not wa_id.strip():
+        return JSONResponse(
+            content={"status": "error", "message": get_message("wa_id_not_found", False)},
+            status_code  =400,
+        )
+    wa_id = wa_id.strip()
+    is_system_agent = wa_id == SYSTEM_AGENT_WA_ID
+    if not is_system_agent and is_customer_blocked(wa_id):
+        return JSONResponse(
+            content={"status": "error", "message": "Contact is blocked."},
+            status_code=403,
+        )
+    if is_system_agent:
+        try:
+            now_local = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
+        except Exception:
+            now_local = datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        date_str = now_local.strftime("%Y-%m-%d")
+        time_str = now_local.strftime("%H:%M:%S")
+
+        # Persist operator message as secretary for UI alignment
+        append_message(wa_id, "secretary", text, date_str, time_str)
+        try:
+            enqueue_broadcast(
+                "conversation_new_message",
+                {"wa_id": wa_id, "role": "secretary", "message": text, "date": date_str, "time": time_str},
+                affected_entities=[wa_id],
+                source=payload.get("_call_source", "frontend"),
+            )
+        except Exception:
+            pass
+
+        try:
+            llm_service = get_llm_service(toolkit=SYSTEM_TOOL_REGISTRY, system_prompt=SYSTEM_AGENT_PROMPT)
+            response_text, response_date, response_time = llm_service.run(wa_id)
+        except Exception as exc:
+            logging.error("System agent LLM call failed: %s", exc, exc_info=True)
+            return JSONResponse(content={"status": "error", "message": "System agent failed to respond."}, status_code=500)
+
+        if response_text:
+            append_message(wa_id, "assistant", response_text, response_date, response_time)
+            try:
+                enqueue_broadcast(
+                    "conversation_new_message",
+                    {
+                        "wa_id": wa_id,
+                        "role": "assistant",
+                        "message": response_text,
+                        "date": response_date,
+                        "time": response_time,
+                    },
+                    affected_entities=[wa_id],
+                    source="system_agent",
+                )
+            except Exception:
+                pass
+
+        return JSONResponse(
+            content={
+                "status": "ok",
+                "data": {
+                    "request_timestamp": f"{date_str} {time_str}",
+                    "response": response_text or "",
+                    "response_timestamp": f"{response_date} {response_time}" if response_text else None,
+                },
+            }
+        )
+
     response = await send_whatsapp_message(wa_id, text)
 
     # On success, persist the message and broadcast (only messages sent via WhatsApp should broadcast)
@@ -261,7 +338,7 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
             try:
                 now_local = datetime.datetime.now(ZoneInfo(config["TIMEZONE"]))
                 date_str = now_local.strftime("%Y-%m-%d")
-                time_str = now_local.strftime("%H:%M")
+                time_str = now_local.strftime("%H:%M:%S")
                 # Save to database (no broadcast)
                 append_message(wa_id, "secretary", text, date_str, time_str)
                 # Broadcast notification (only for messages sent via WhatsApp)
@@ -400,6 +477,26 @@ async def api_get_customer_names():
     return JSONResponse(content=names)
 
 
+@router.post("/customers/{wa_id}/favorite")
+async def api_set_customer_favorite(wa_id: str, payload: dict = Body(...)):
+    favorite = bool(payload.get("favorite", True))
+    result = set_customer_favorite_status(wa_id, favorite)
+    return JSONResponse(content=result)
+
+
+@router.post("/customers/{wa_id}/block")
+async def api_set_customer_block(wa_id: str, payload: dict = Body(...)):
+    blocked = bool(payload.get("blocked", True))
+    result = set_customer_block_status(wa_id, blocked)
+    return JSONResponse(content=result)
+
+
+@router.delete("/conversations/{wa_id}")
+async def api_clear_conversation(wa_id: str):
+    result = clear_conversation_messages(wa_id)
+    return JSONResponse(content=result)
+
+
 @router.get("/customers/{wa_id}/stats")
 async def api_get_customer_stats(wa_id: str):
     """Return aggregated statistics for a specific customer."""
@@ -409,6 +506,25 @@ async def api_get_customer_stats(wa_id: str):
         payload, status_code = result
         return JSONResponse(content=payload, status_code=status_code)
     return JSONResponse(content=result)
+
+
+@router.get("/stats")
+async def api_get_dashboard_stats(
+    from_date: str | None = Query(None, alias="from_date"),
+    to_date: str | None = Query(None, alias="to_date"),
+    locale: str = Query("en"),
+):
+    """Compute aggregated dashboard metrics without streaming entire datasets."""
+    try:
+        service = DashboardAnalyticsService()
+        data = service.get_dashboard_data(from_date=from_date, to_date=to_date, locale=locale)
+        return JSONResponse(content={"success": True, "data": data})
+    except Exception as exc:  # noqa: BLE001
+        logging.exception("Failed to compute dashboard stats: %s", exc)
+        return JSONResponse(
+            content={"success": False, "message": "failed_to_compute_dashboard_stats"},
+            status_code=500,
+        )
 
 
 @router.post("/conversations/{wa_id}")
@@ -1064,12 +1180,12 @@ async def api_undo_cancel_reservation(payload: dict = Body(...)):
 
 
 @router.get("/notifications")
-async def api_get_notifications(limit: int = 2000):
-    """Return the most recent notification events (default 2000)."""
+async def api_get_notifications(limit: int = NOTIFICATION_HISTORY_LIMIT):
+    """Return the most recent notification events (default 100)."""
     try:
         from app.db import NotificationEventModel, get_session
 
-        limit = max(1, min(int(limit), 2000))
+        limit = max(1, min(int(limit), NOTIFICATION_HISTORY_LIMIT))
         with get_session() as session:
             rows = session.query(NotificationEventModel).order_by(NotificationEventModel.id.desc()).limit(limit).all()
             events = []

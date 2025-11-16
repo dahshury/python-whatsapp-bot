@@ -35,6 +35,12 @@ export function ConversionFunnelChart({
   const tooltipStyle = getTooltipStyle(themeColors);
   const transformedFunnelData = transformFunnelData(funnelData, isLocalized);
 
+  // Debug: Log data to console in development
+  if (process.env.NODE_ENV === "development") {
+    console.log("Funnel Data:", funnelData);
+    console.log("Transformed Funnel Data:", transformedFunnelData);
+  }
+
   return (
     <motion.div initial={false}>
       <Card className="h-full">
@@ -46,34 +52,32 @@ export function ConversionFunnelChart({
             {i18n.getMessage("chart_conversion_funnel_desc", isLocalized)}
           </p>
         </CardHeader>
-        <CardContent>
-          <div className="h-[21.875rem]">
-            <ResponsiveContainer height="100%" width="100%">
-              <FunnelChart>
-                <FunnelComp
-                  data={transformedFunnelData}
-                  dataKey="count"
-                  fill={themeColors.primary}
-                  isAnimationActive={false}
-                  nameKey="stage"
-                >
-                  <LabelList
-                    fill={themeColors.background}
-                    fontSize={10}
-                    position="center"
+        <CardContent className="p-6 pt-0">
+          <ResponsiveContainer height={350} width="100%">
+            <FunnelChart>
+              <FunnelComp
+                data={transformedFunnelData}
+                dataKey="count"
+                fill={themeColors.primary}
+                isAnimationActive={false}
+                nameKey="stage"
+              >
+                <LabelList
+                  dataKey="stage"
+                  fill={themeColors.background}
+                  fontSize={12}
+                  position="center"
+                />
+                {transformedFunnelData.map((_entry, index) => (
+                  <Cell
+                    fill={chartColors[index % chartColors.length]}
+                    key={`funnel-cell-${index}`}
                   />
-                  {/* Chart cells use index as key since data order is stable */}
-                  {transformedFunnelData.map((entry, index) => (
-                    <Cell
-                      fill={chartColors[index % chartColors.length]}
-                      key={`funnel-cell-${entry.stage}`}
-                    />
-                  ))}
-                </FunnelComp>
-                <Tooltip contentStyle={tooltipStyle} />
-              </FunnelChart>
-            </ResponsiveContainer>
-          </div>
+                ))}
+              </FunnelComp>
+              <Tooltip contentStyle={tooltipStyle} />
+            </FunnelChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </motion.div>

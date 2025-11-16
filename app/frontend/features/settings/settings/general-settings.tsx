@@ -23,8 +23,8 @@ type GeneralSettingsProps = {
 };
 
 const LANGUAGE_LABELS: Record<string, { label: string; icon: typeof Globe }> = {
-  en: { label: "English", icon: Globe },
-  ar: { label: "العربية", icon: Languages },
+  en: { label: i18n.getMessage("language_english", false), icon: Globe },
+  ar: { label: i18n.getMessage("language_arabic", true), icon: Languages },
 };
 
 export function GeneralSettings({ isLocalized = false }: GeneralSettingsProps) {

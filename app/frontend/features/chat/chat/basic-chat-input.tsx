@@ -56,6 +56,8 @@ export const BasicChatInput: React.FC<{
   isInactive?: boolean;
   inactiveText?: string;
   isLocalized?: boolean;
+  maxCharacters?: number | null;
+  actionSlot?: React.ReactNode;
 }> = ({
   onSend,
   disabled = false,
@@ -64,12 +66,18 @@ export const BasicChatInput: React.FC<{
   isInactive = false,
   inactiveText,
   isLocalized = false,
+  maxCharacters = WHATSAPP_TEXT_MAX_CHARS,
+  actionSlot = null,
 }) => {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const { sendTypingIndicator } = useSettingsStore();
   const editorWrapperRef = useRef<HTMLDivElement>(null);
   const [maxHeightPx, setMaxHeightPx] = useState(0);
   const [charCount, setCharCount] = useState(0);
+  const characterLimit =
+    typeof maxCharacters === "number" ? maxCharacters : WHATSAPP_TEXT_MAX_CHARS;
+  const limitEnabled =
+    Number.isFinite(characterLimit) && characterLimit > 0;
 
   const dispatchTypingUpdate = () => {
     if (!sendTypingIndicator) {
@@ -137,7 +145,7 @@ export const BasicChatInput: React.FC<{
         const currentText = view.state.doc.textContent;
         const newText =
           currentText.slice(0, from) + text + currentText.slice(to);
-        if (countCharacters(newText) > WHATSAPP_TEXT_MAX_CHARS) {
+        if (limitEnabled && countCharacters(newText) > characterLimit) {
           return true; // Block the input
         }
         // Notify typing listeners if enabled
@@ -160,10 +168,10 @@ export const BasicChatInput: React.FC<{
         const { from, to } = view.state.selection;
         const newText =
           currentText.slice(0, from) + pastedText + currentText.slice(to);
-        if (countCharacters(newText) > WHATSAPP_TEXT_MAX_CHARS) {
+        if (limitEnabled && countCharacters(newText) > characterLimit) {
           // Try to paste truncated version if possible
           const availableSpace =
-            WHATSAPP_TEXT_MAX_CHARS -
+            characterLimit -
             countCharacters(currentText.slice(0, from) + currentText.slice(to));
           if (availableSpace > 0) {
             // Truncate to fit
@@ -195,14 +203,14 @@ export const BasicChatInput: React.FC<{
         setCharCount(count);
 
         // Enforce limit by truncating if exceeded
-        if (count > WHATSAPP_TEXT_MAX_CHARS) {
+        if (limitEnabled && count > characterLimit) {
           // Truncate to fit within limit (simple string truncation)
-          const truncated = text.slice(0, WHATSAPP_TEXT_MAX_CHARS);
+          const truncated = text.slice(0, characterLimit);
           // Set truncated content
           editor.commands.setContent(truncated);
           // Move cursor to end
           editor.commands.focus("end");
-          setCharCount(WHATSAPP_TEXT_MAX_CHARS);
+          setCharCount(characterLimit);
         }
       } catch (error) {
         logChatInputWarning("Updating character count failed", error);
@@ -217,9 +225,7 @@ export const BasicChatInput: React.FC<{
         logChatInputWarning("Removing update listener failed", error);
       }
     };
-    // countCharacters is a stable function that does not change between renders
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editor]);
+  }, [editor, characterLimit, limitEnabled]);
 
   // Compute max height (40vh) and keep it updated
   useEffect(() => {
@@ -244,13 +250,20 @@ export const BasicChatInput: React.FC<{
         if (!(wrapper && pm)) {
           return;
         }
+        // Store current height to prevent layout shift
+        const currentHeight = wrapper.offsetHeight;
         wrapper.style.height = "auto";
         const desired = Math.max(BASE_MIN_HEIGHT_PX, pm.scrollHeight);
         const capped = Math.min(
           desired,
           Math.max(maxHeightPx, BASE_MIN_HEIGHT_PX)
         );
-        wrapper.style.height = `${capped}px`;
+        // Only update if height actually changed to prevent unnecessary reflows
+        if (Math.abs(capped - currentHeight) > 1) {
+          wrapper.style.height = `${capped}px`;
+        } else {
+          wrapper.style.height = `${currentHeight}px`;
+        }
         // ThemedScrollbar handles overflow
         pm.style.overflowY = "hidden";
       } catch (error) {
@@ -258,14 +271,11 @@ export const BasicChatInput: React.FC<{
       }
     };
     setTimeout(adjust, 0);
+    // Only adjust on actual content updates, not selection/focus changes
     editor.on("update", adjust);
-    editor.on("selectionUpdate", adjust);
-    editor.on("transaction", adjust);
     return () => {
       try {
         editor.off("update", adjust);
-        editor.off("selectionUpdate", adjust);
-        editor.off("transaction", adjust);
       } catch (error) {
         logChatInputWarning("Removing adjust listeners failed", error);
       }
@@ -288,7 +298,7 @@ export const BasicChatInput: React.FC<{
       // Check if adding emoji would exceed limit
       const currentText = editor.getText() || "";
       const newText = currentText + emoji;
-      if (countCharacters(newText) > WHATSAPP_TEXT_MAX_CHARS) {
+      if (limitEnabled && countCharacters(newText) > characterLimit) {
         // Don't insert if it would exceed limit
         return;
       }
@@ -358,23 +368,27 @@ export const BasicChatInput: React.FC<{
             </div>
           </InputGroupAddon>
         )}
-        {/* Toolbar */}
-        {!effectiveDisabled && (
-          <InputGroupAddon
-            align="block-start"
-            className="flex-shrink-0"
-            style={{
-              backgroundColor: "hsl(var(--card))",
-              background: "hsl(var(--card))",
-            }}
-          >
+        {/* Toolbar & actions */}
+        <InputGroupAddon
+          align="block-start"
+          className="flex-shrink-0"
+          style={{
+            backgroundColor: "hsl(var(--card))",
+            background: "hsl(var(--card))",
+          }}
+        >
+          <div className="flex w-full items-center justify-between gap-2">
             <ChatFormatToolbar
+              className="flex items-center gap-1"
               disabled={effectiveDisabled}
               editor={editor as unknown as EditorLike}
               isLocalized={isLocalized}
             />
-          </InputGroupAddon>
-        )}
+            {actionSlot ? (
+              <div className="flex flex-shrink-0 items-center">{actionSlot}</div>
+            ) : null}
+          </div>
+        </InputGroupAddon>
         {/* biome-ignore lint/a11y/useSemanticElements: custom rich text editor wrapper */}
         <div
           className={cn(
@@ -509,86 +523,93 @@ export const BasicChatInput: React.FC<{
             background: "hsl(var(--card))",
           }}
         >
-          {/* Character counter */}
-          <InputGroupText
-            className={cn(
-              "ml-auto",
-              charCount > WHATSAPP_TEXT_MAX_CHARS
-                ? "text-destructive"
-                : "text-muted-foreground"
-            )}
-          >
-            {charCount}/{WHATSAPP_TEXT_MAX_CHARS}
-          </InputGroupText>
-          <Separator className="!h-4" orientation="vertical" />
-          {/* Emoji and Send buttons in a ButtonGroup */}
-          <ButtonGroup>
-            {/* Emoji (outline, rounded-full, icon-xs) */}
-            <Popover onOpenChange={setEmojiOpen} open={emojiOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  className="h-8 w-8 rounded-full p-0"
-                  disabled={effectiveDisabled || emojiOpen}
-                  size="icon"
-                  type="button"
-                  variant="outline"
+          <div className="ml-auto flex items-center gap-2">
+            {/* Character counter */}
+            {limitEnabled && (
+              <>
+                <InputGroupText
+                  className={cn(
+                    charCount > characterLimit
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  )}
                 >
-                  <Smile className="h-3.5 w-3.5" />
-                  <span className="sr-only">Emoji</span>
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent
-                align="start"
-                className="w-fit p-0"
-                side="top"
-                sideOffset={8}
-              >
-                <EmojiPicker onEmojiSelect={handleEmojiSelect} />
-              </PopoverContent>
-            </Popover>
-            {/* Send (outline variant, fills with primary color as characters are added) */}
-            <Button
-              className="relative h-8 w-8 overflow-hidden rounded-full p-0 transition-all duration-200"
-              disabled={
-                charCount === 0 ||
-                charCount > WHATSAPP_TEXT_MAX_CHARS ||
-                effectiveDisabled ||
-                isSending
-              }
-              onClick={(e) => {
-                e.preventDefault();
-                const html = (editor?.getHTML() || "").trim();
-                const textOut = serializeHtmlToMarkers(html);
-                if (textOut && !effectiveDisabled && !isSending) {
-                  onSend(textOut);
-                  editor?.commands.clearContent(true);
+                  {charCount}/{characterLimit}
+                </InputGroupText>
+                <Separator className="!h-4" orientation="vertical" />
+              </>
+            )}
+            {/* Emoji and Send buttons in a ButtonGroup */}
+            <ButtonGroup>
+              {/* Emoji (outline, rounded-full, icon-xs) */}
+              <Popover onOpenChange={setEmojiOpen} open={emojiOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    className="h-8 w-8 rounded-full p-0"
+                    disabled={effectiveDisabled || emojiOpen}
+                    size="icon"
+                    type="button"
+                    variant="outline"
+                  >
+                    <Smile className="h-3.5 w-3.5" />
+                    <span className="sr-only">Emoji</span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  className="w-fit p-0"
+                  side="top"
+                  sideOffset={8}
+                >
+                  <EmojiPicker onEmojiSelect={handleEmojiSelect} />
+                </PopoverContent>
+              </Popover>
+              {/* Send (outline variant, fills with primary color as characters are added) */}
+              <Button
+                className="relative h-8 w-8 overflow-hidden rounded-full p-0 transition-all duration-200"
+                disabled={
+                  charCount === 0 ||
+                  (limitEnabled && charCount > characterLimit) ||
+                  effectiveDisabled ||
+                  isSending
                 }
-              }}
-              size="icon"
-              type="button"
-              variant="outline"
-            >
-              {/* Fill overlay that grows from bottom with primary color */}
-              {charCount > 0 && charCount <= WHATSAPP_TEXT_MAX_CHARS && (
-                <span
-                  className="absolute right-0 bottom-0 left-0 transition-all duration-200"
-                  style={{
-                    height: `${(charCount / WHATSAPP_TEXT_MAX_CHARS) * PERCENTAGE_MULTIPLIER}%`,
-                    backgroundColor: "hsl(var(--primary))",
-                  }}
-                />
-              )}
-              {/* Content layer - icons should be above the fill */}
-              <span className="relative z-10 flex items-center justify-center">
-                {isSending ? (
-                  <Spinner className="size-3" />
-                ) : (
-                  <ArrowUp className="h-3 w-3 transition-transform duration-200" />
-                )}
-              </span>
-              <span className="sr-only">Send</span>
-            </Button>
-          </ButtonGroup>
+                onClick={(e) => {
+                  e.preventDefault();
+                  const html = (editor?.getHTML() || "").trim();
+                  const textOut = serializeHtmlToMarkers(html);
+                  if (textOut && !effectiveDisabled && !isSending) {
+                    onSend(textOut);
+                    editor?.commands.clearContent(true);
+                  }
+                }}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                {/* Fill overlay that grows from bottom with primary color */}
+                {limitEnabled &&
+                  charCount > 0 &&
+                  charCount <= characterLimit && (
+                    <span
+                      className="absolute right-0 bottom-0 left-0 transition-all duration-200"
+                      style={{
+                        height: `${(charCount / characterLimit) * PERCENTAGE_MULTIPLIER}%`,
+                        backgroundColor: "hsl(var(--primary))",
+                      }}
+                    />
+                  )}
+                {/* Content layer - icons should be above the fill */}
+                <span className="relative z-10 flex items-center justify-center">
+                  {isSending ? (
+                    <Spinner className="size-3" />
+                  ) : (
+                    <ArrowUp className="h-3 w-3 transition-transform duration-200" />
+                  )}
+                </span>
+                <span className="sr-only">Send</span>
+              </Button>
+            </ButtonGroup>
+          </div>
         </InputGroupAddon>
       </InputGroup>
     </div>

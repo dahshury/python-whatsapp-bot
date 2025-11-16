@@ -1,11 +1,19 @@
 "use client";
 // Replaced Textarea with TipTap's EditorContent for live formatting
+import { useQueryClient } from "@tanstack/react-query";
 import { i18n } from "@shared/libs/i18n";
 import { useSidebarChatStore } from "@shared/libs/store/sidebar-chat-store";
 import { toastService } from "@shared/libs/toast";
 import { cn } from "@shared/libs/utils";
 import { Button } from "@ui/button";
-import { ChevronUp, MessageSquare } from "lucide-react";
+import {
+  Ban,
+  ChevronUp,
+  MessageSquare,
+  MoreHorizontal,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 // Reservation type no longer needed here after switching to provider hooks
 import type { ConversationMessage } from "@/entities/conversation";
@@ -21,12 +29,24 @@ import {
   useSettingsStore,
 } from "@/infrastructure/store/app-store";
 import { logger } from "@/shared/libs/logger";
+import { SYSTEM_AGENT } from "@/shared/config";
+import { callPythonBackend } from "@/shared/libs/backend";
 import { Spinner } from "@/shared/ui/spinner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
+import { chatKeys, customerKeys } from "@/shared/api/query-keys";
 import {
   useConversationMessagesQuery,
   useCustomerNames,
   useTypingIndicator,
 } from "./hooks";
+import type { CustomerName } from "./hooks/useCustomerNames";
 
 type ChatSidebarContentProps = {
   selectedConversationId: string | null;
@@ -38,10 +58,18 @@ type ChatSidebarContentProps = {
 const TIME_FORMAT_REGEX = /^\d{2}:\d{2}(?::\d{2})?$/;
 const TIME_WITHOUT_SECONDS_LENGTH = 5;
 const LOAD_MORE_RESET_DELAY_MS = 100;
-const TYPING_THROTTLE_MS = 8000;
+const WHATSAPP_TYPING_WINDOW_MS = 15000;
+const TYPING_THROTTLE_MS = WHATSAPP_TYPING_WINDOW_MS - 1000; // refresh ~1s before expiry
+const TYPING_STOP_DEBOUNCE_MS = 4000;
 
 const logSidebarWarning = (context: string, error: unknown) => {
   logger.warn(`[ChatSidebar] ${context}`, error);
+};
+
+type MutationResponse<T> = {
+  success: boolean;
+  data?: T;
+  message?: string;
 };
 
 // message bubble moved to components/chat/message-bubble
@@ -56,6 +84,7 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
     useSettingsStore();
   const { isLoadingConversation, setLoadingConversation } =
     useSidebarChatStore();
+  const queryClient = useQueryClient();
 
   // Fetch conversation messages on-demand using TanStack Query
   const {
@@ -87,6 +116,9 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isAtTop, setIsAtTop] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isBlocking, setIsBlocking] = useState(false);
+  const [isFavoriting, setIsFavoriting] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   // scrolling refs managed by useChatScroll below
 
   // Local state for additional messages (not optimistic - only added on success)
@@ -137,6 +169,16 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
   );
 
   const hasMoreMessages = sortedMessages.length > limitedMessages.length;
+  const conversationHasMessages = sortedMessages.length > 0;
+
+  // Customer metadata for the active conversation (favorites / blocked)
+  const { data: customerNames } = useCustomerNames();
+  const shouldShowCombobox = Boolean(customerNames);
+  const currentCustomer: CustomerName | undefined = selectedConversationId
+    ? customerNames?.[selectedConversationId]
+    : undefined;
+  const conversationBlocked = Boolean(currentCustomer?.is_blocked);
+  const conversationFavorited = Boolean(currentCustomer?.is_favorite);
 
   const handleLoadMore = useCallback(() => {
     setIsLoadingMore(true);
@@ -215,6 +257,13 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
       return;
     }
 
+    if (conversationBlocked) {
+      toastService.error(
+        i18n.getMessage("chat_blocked_notice", isLocalized)
+      );
+      return;
+    }
+
     setIsSending(true);
 
     try {
@@ -241,63 +290,370 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
 
   // Simple input state - no complex calculations
   const hasConversationSelected = !!selectedConversationId;
-  // Inactivity: last USER message > 24 hours ago
-  const isInactive = useConversationActivity(limitedMessages);
+  const isSystemAgentConversation =
+    hasConversationSelected && selectedConversationId === SYSTEM_AGENT.waId;
+  // Inactivity: last USER message > 24 hours ago (skip for system agent)
+  const hasConversationTimedOut = useConversationActivity(limitedMessages);
+  const defaultInactivityMessage =
+    limitedMessages.length === 0
+      ? i18n.getMessage("chat_cannot_message_no_conversation", isLocalized)
+      : i18n.getMessage("chat_messaging_unavailable", isLocalized);
+  const restrictionMessage = conversationBlocked
+    ? i18n.getMessage("chat_blocked_notice", isLocalized)
+    : !isSystemAgentConversation && hasConversationTimedOut
+      ? defaultInactivityMessage
+      : undefined;
   const inputPlaceholder = hasConversationSelected
     ? i18n.getMessage("chat_type_message", isLocalized)
     : i18n.getMessage("chat_no_conversation", isLocalized);
+  const composerDisabled =
+    !hasConversationSelected || conversationBlocked || isSending;
+  const favoriteItemDisabled =
+    !hasConversationSelected || isFavoriting;
+  const blockItemDisabled =
+    !hasConversationSelected || isBlocking;
+  const clearItemDisabled =
+    !hasConversationSelected || !conversationHasMessages || isClearing;
+  const conversationActions = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label={i18n.getMessage(
+            "chat_actions_trigger_label",
+            isLocalized,
+          )}
+          className="h-7 w-7 rounded-full"
+          disabled={!hasConversationSelected}
+          size="icon"
+          variant="ghost"
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuLabel>
+          {i18n.getMessage("chat_actions_label", isLocalized)}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={favoriteItemDisabled}
+          onSelect={(event) => {
+            event.preventDefault();
+            handleToggleFavorite();
+          }}
+        >
+          <Star className="mr-2 h-4 w-4" />
+          <span>
+            {i18n.getMessage(
+              conversationFavorited
+                ? "chat_action_remove_favorite"
+                : "chat_action_add_favorite",
+              isLocalized,
+            )}
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={blockItemDisabled}
+          onSelect={(event) => {
+            event.preventDefault();
+            handleToggleBlock();
+          }}
+        >
+          <Ban className="mr-2 h-4 w-4" />
+          <span>
+            {i18n.getMessage(
+              conversationBlocked
+                ? "chat_action_unblock"
+                : "chat_action_block",
+              isLocalized,
+            )}
+          </span>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          disabled={clearItemDisabled}
+          onSelect={(event) => {
+            event.preventDefault();
+            handleClearConversation();
+          }}
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          <span>{i18n.getMessage("chat_action_clear", isLocalized)}</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 
   // Emit typing indicator via TanStack Query mutation (throttled) when enabled
-  const typingMutation = useTypingIndicator();
+  const { mutate: sendTypingMutation } = useTypingIndicator();
   useEffect(() => {
-    if (!(sendTypingIndicator && selectedConversationId)) {
+    if (
+      !(sendTypingIndicator && selectedConversationId) ||
+      conversationBlocked
+    ) {
       return;
     }
-    // Throttled typing indicator via HTTP endpoint using TanStack Query
+
     let lastSent = 0;
-    const dispatchTyping = (value: boolean) => {
+    let typingActive = false;
+    let stopTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    const clearStopTimer = () => {
+      if (stopTimeout) {
+        window.clearTimeout(stopTimeout);
+        stopTimeout = undefined;
+      }
+    };
+
+    const emitTyping = (typingState: boolean) => {
       try {
-        const now = Date.now();
-        if (now - lastSent >= TYPING_THROTTLE_MS) {
-          typingMutation.mutate(
-            {
-              wa_id: selectedConversationId,
-              typing: value,
-            },
-            {
-              onError: (error) =>
-                logSidebarWarning("Failed to dispatch typing indicator", error),
-            }
-          );
-          lastSent = now;
-        }
+        sendTypingMutation(
+          {
+            wa_id: selectedConversationId,
+            typing: typingState,
+          },
+          {
+            onError: (error) =>
+              logSidebarWarning("Failed to dispatch typing indicator", error),
+          }
+        );
+        typingActive = typingState;
+        lastSent = Date.now();
       } catch (error) {
         logSidebarWarning("Editor typing throttler failed", error);
       }
     };
-    const onEditorTyping = () => {
-      dispatchTyping(true);
+
+    const flushStop = () => {
+      if (!typingActive) {
+        return;
+      }
+      emitTyping(false);
     };
+
+    const scheduleStop = () => {
+      clearStopTimer();
+      stopTimeout = window.setTimeout(() => {
+        flushStop();
+      }, TYPING_STOP_DEBOUNCE_MS);
+    };
+
+    const handleTypingStart = () => {
+      const now = Date.now();
+      if (!typingActive || now - lastSent >= TYPING_THROTTLE_MS) {
+        emitTyping(true);
+      }
+      scheduleStop();
+    };
+
     const handler = (e: Event) => {
       try {
         const eventType = (e as CustomEvent).detail?.type;
         if (eventType === "chat:editor_update") {
-          onEditorTyping();
+          handleTypingStart();
         }
       } catch (error) {
         logSidebarWarning("Editor event listener failed", error);
       }
     };
-    window.addEventListener("chat:editor_event", handler as EventListener);
-    return () => {
-      dispatchTyping(false);
-      window.removeEventListener("chat:editor_event", handler as EventListener);
-    };
-  }, [sendTypingIndicator, selectedConversationId, typingMutation]);
 
-  // Show combobox - always show it since we're loading customer names
-  const { data: customerNames } = useCustomerNames();
-  const shouldShowCombobox = Boolean(customerNames);
+    window.addEventListener("chat:editor_event", handler as EventListener);
+
+    return () => {
+      window.removeEventListener("chat:editor_event", handler as EventListener);
+      clearStopTimer();
+      flushStop();
+    };
+  }, [
+    conversationBlocked,
+    sendTypingIndicator,
+    selectedConversationId,
+    sendTypingMutation,
+  ]);
+
+  const updateCustomerCache = useCallback(
+    (
+      waId: string,
+      updater: (existing: CustomerName | undefined) => CustomerName,
+    ) => {
+      let updated = false;
+      queryClient.setQueryData<Record<string, CustomerName> | undefined>(
+        customerKeys.names(),
+        (previous) => {
+          if (!previous) {
+            return previous;
+          }
+          updated = true;
+          const next = { ...previous };
+          next[waId] = updater(next[waId]);
+          return next;
+        },
+      );
+      if (!updated) {
+        void queryClient.invalidateQueries({
+          queryKey: customerKeys.names(),
+          exact: true,
+        });
+      }
+    },
+    [queryClient],
+  );
+
+  const handleToggleFavorite = useCallback(async () => {
+    if (!selectedConversationId || isSystemAgentConversation) {
+      return;
+    }
+    const waId = selectedConversationId;
+    const nextValue = !conversationFavorited;
+    setIsFavoriting(true);
+    try {
+      const response = await callPythonBackend<
+        MutationResponse<{ wa_id: string; is_favorite: boolean }>
+      >(`/customers/${encodeURIComponent(waId)}/favorite`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ favorite: nextValue }),
+      });
+      if (!response?.success) {
+        throw new Error(
+          response?.message ||
+            i18n.getMessage("chat_action_error", isLocalized),
+        );
+      }
+      updateCustomerCache(waId, (existing) => ({
+        ...(existing ?? {
+          wa_id: waId,
+          customer_name: currentCustomer?.customer_name ?? null,
+        }),
+        is_favorite: nextValue,
+      }));
+      toastService.success(
+        i18n.getMessage(
+          nextValue
+            ? "chat_action_favorited"
+            : "chat_action_unfavorited",
+          isLocalized,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : i18n.getMessage("chat_action_error", isLocalized);
+      toastService.error(message);
+    } finally {
+      setIsFavoriting(false);
+    }
+  }, [
+    conversationFavorited,
+    currentCustomer,
+    isLocalized,
+    isSystemAgentConversation,
+    selectedConversationId,
+    updateCustomerCache,
+  ]);
+
+  const handleToggleBlock = useCallback(async () => {
+    if (!selectedConversationId || isSystemAgentConversation) {
+      return;
+    }
+    const waId = selectedConversationId;
+    const nextValue = !conversationBlocked;
+    setIsBlocking(true);
+    try {
+      const response = await callPythonBackend<
+        MutationResponse<{ wa_id: string; is_blocked: boolean }>
+      >(`/customers/${encodeURIComponent(waId)}/block`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blocked: nextValue }),
+      });
+      if (!response?.success) {
+        throw new Error(
+          response?.message ||
+            i18n.getMessage("chat_action_error", isLocalized),
+        );
+      }
+      updateCustomerCache(waId, (existing) => ({
+        ...(existing ?? {
+          wa_id: waId,
+          customer_name: currentCustomer?.customer_name ?? null,
+        }),
+        is_blocked: nextValue,
+      }));
+      toastService.success(
+        i18n.getMessage(
+          nextValue ? "chat_action_blocked" : "chat_action_unblocked",
+          isLocalized,
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : i18n.getMessage("chat_action_error", isLocalized);
+      toastService.error(message);
+    } finally {
+      setIsBlocking(false);
+    }
+  }, [
+    conversationBlocked,
+    currentCustomer,
+    isLocalized,
+    isSystemAgentConversation,
+    selectedConversationId,
+    updateCustomerCache,
+  ]);
+
+  const handleClearConversation = useCallback(async () => {
+    if (!selectedConversationId) {
+      return;
+    }
+    const waId = selectedConversationId;
+    setIsClearing(true);
+    try {
+      const response = await callPythonBackend<
+        MutationResponse<{ deleted: number }>
+      >(`/conversations/${encodeURIComponent(waId)}`, {
+        method: "DELETE",
+      });
+      if (!response?.success) {
+        throw new Error(
+          response?.message ||
+            i18n.getMessage("chat_action_error", isLocalized),
+        );
+      }
+      queryClient.setQueryData<ConversationMessage[]>(
+        chatKeys.messages(waId),
+        () => [],
+      );
+      setAdditionalMessages((previous) => {
+        if (!previous[waId]) {
+          return previous;
+        }
+        return { ...previous, [waId]: [] };
+      });
+      setLoadedMessageCount(chatMessageLimit);
+      toastService.success(
+        i18n.getMessage("chat_action_cleared", isLocalized),
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : i18n.getMessage("chat_action_error", isLocalized);
+      toastService.error(message);
+    } finally {
+      setIsClearing(false);
+    }
+  }, [
+    chatMessageLimit,
+    isLocalized,
+    queryClient,
+    selectedConversationId,
+    setAdditionalMessages,
+  ]);
 
   if (!selectedConversationId) {
     return (
@@ -388,18 +744,13 @@ export const ChatSidebarContent: React.FC<ChatSidebarContentProps> = ({
         }}
       >
         <BasicChatInput
-          disabled={!hasConversationSelected || isSending}
-          inactiveText={
-            limitedMessages.length === 0
-              ? i18n.getMessage(
-                  "chat_cannot_message_no_conversation",
-                  isLocalized
-                )
-              : i18n.getMessage("chat_messaging_unavailable", isLocalized)
-          }
-          isInactive={isInactive}
+          actionSlot={conversationActions}
+          disabled={composerDisabled}
+          inactiveText={restrictionMessage}
+          isInactive={Boolean(restrictionMessage)}
           isLocalized={isLocalized}
           isSending={isSending}
+          maxCharacters={isSystemAgentConversation ? Infinity : undefined}
           onSend={handleSendMessage}
           placeholder={inputPlaceholder}
         />

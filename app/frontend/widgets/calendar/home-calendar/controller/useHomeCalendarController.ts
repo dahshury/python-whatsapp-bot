@@ -124,7 +124,7 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
   });
 
   const previousDefaultViewRef = useRef<string | null>(defaultCalendarView);
-  const { setCurrentView } = calendarState;
+  const { setCurrentView, currentView } = calendarState;
   useEffect(() => {
     if (!calendarState.isHydrated) {
       return;
@@ -132,12 +132,18 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
     if (!defaultCalendarView) {
       return;
     }
-    if (previousDefaultViewRef.current === defaultCalendarView) {
+    // Guard: don't update if already at the default view or if default hasn't changed
+    if (
+      previousDefaultViewRef.current === defaultCalendarView ||
+      currentView === defaultCalendarView
+    ) {
       return;
     }
+    // Only update if the current view doesn't match the default
+    // This prevents infinite loops when user manually changes view
     previousDefaultViewRef.current = defaultCalendarView;
     setCurrentView(defaultCalendarView);
-  }, [calendarState.isHydrated, defaultCalendarView, setCurrentView]);
+  }, [calendarState.isHydrated, defaultCalendarView, setCurrentView, currentView]);
 
   const eventsState = useCalendarEvents({
     freeRoam,
@@ -386,13 +392,26 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
   );
 
   const { setState: setDockBridgeState } = useDockBridge();
+  
+  // Use ref to store latest setCurrentView to prevent infinite loops
+  // setCurrentView changes when currentView changes, causing dock bridge to update
+  const setCurrentViewRef = useRef(calendarState.setCurrentView);
+  useEffect(() => {
+    setCurrentViewRef.current = calendarState.setCurrentView;
+  }, [calendarState.setCurrentView]);
+
+  // Create stable callback that always calls latest setCurrentView
+  const stableSetCurrentView = useCallback((view: string) => {
+    setCurrentViewRef.current(view);
+  }, []);
+
   useEffect(() => {
     setDockBridgeState({
       calendarRef: (showDualCalendar
         ? leftCalendarRef || null
         : calendarRef) as RefObject<CalendarCoreRef | null>,
       currentCalendarView: calendarState.currentView,
-      onCalendarViewChange: calendarState.setCurrentView,
+      onCalendarViewChange: stableSetCurrentView,
       ...(showDualCalendar
         ? {
             rightCalendarRef: rightCalendarRefState || null,
@@ -407,7 +426,7 @@ export function useHomeCalendarController(): HomeCalendarControllerResult {
     rightCalendarRefState,
     rightCalendarView,
     calendarState.currentView,
-    calendarState.setCurrentView,
+    stableSetCurrentView,
     setDockBridgeState,
   ]);
 

@@ -8,7 +8,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/shared/ui/card";
@@ -67,21 +66,6 @@ export function DailyTrendsOverview({
         modifications: Number(d.modifications || 0),
       };
     });
-  }, [dailyTrends, isLocalized]);
-
-  const dateRangeLabel = React.useMemo(() => {
-    if (!dailyTrends || dailyTrends.length === 0) {
-      return i18n.getMessage("chart_no_data", isLocalized);
-    }
-    const first = new Date(dailyTrends[0]?.date || "");
-    const last = new Date(dailyTrends.at(-1)?.date || "");
-    const fmt = (d: Date) =>
-      d.toLocaleDateString(isLocalized ? "ar" : "en", {
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      });
-    return `${fmt(first)} - ${fmt(last)}`;
   }, [dailyTrends, isLocalized]);
 
   const chartConfig: ChartConfig = React.useMemo(
@@ -171,11 +155,10 @@ export function DailyTrendsOverview({
               fillOpacity={0.4}
               isAnimationActive={false}
               name={i18n.getMessage("operation_modifications", isLocalized)}
-              stackId="a"
               stroke="var(--color-modifications)"
               strokeDasharray="3 3"
               strokeWidth={0.8}
-              type="natural"
+              type="monotone"
             />
             <Area
               dataKey="cancellations"
@@ -183,11 +166,10 @@ export function DailyTrendsOverview({
               fillOpacity={0.4}
               isAnimationActive={false}
               name={i18n.getMessage("kpi_cancellations", isLocalized)}
-              stackId="a"
               stroke="var(--color-cancellations)"
               strokeDasharray="3 3"
               strokeWidth={0.8}
-              type="natural"
+              type="monotone"
             />
             <Area
               dataKey="reservations"
@@ -195,27 +177,14 @@ export function DailyTrendsOverview({
               fillOpacity={0.4}
               isAnimationActive={false}
               name={i18n.getMessage("dashboard_reservations", isLocalized)}
-              stackId="a"
               stroke="var(--color-reservations)"
               strokeDasharray="3 3"
               strokeWidth={0.8}
-              type="natural"
+              type="monotone"
             />
           </AreaChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter>
-        <div className="flex w-full items-start gap-2 text-sm">
-          <div className="grid gap-1">
-            <div className="font-medium leading-none">
-              {i18n.getMessage("dashboard_trends", isLocalized)}
-            </div>
-            <div className="text-muted-foreground leading-none">
-              {dateRangeLabel}
-            </div>
-          </div>
-        </div>
-      </CardFooter>
     </Card>
   );
 }

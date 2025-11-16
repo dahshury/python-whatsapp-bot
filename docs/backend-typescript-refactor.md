@@ -103,3 +103,4 @@
 - [ ] Authentication flow verified end-to-end (login, refresh, role-guarded routes) with existing Next.js frontend.
 - [ ] Realtime broadcasts validated using `uWebSockets.js` multi-client simulation.
 - [ ] Prometheus endpoint scrapes metrics identical to prior implementation.
+

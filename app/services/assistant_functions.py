@@ -382,12 +382,18 @@ def search_available_appointments(
     Search for available appointment slots across a range of dates.
 
     Parameters:
-        start_date (str or datetime.date, optional): The date to start searching from
-        time_slot (str, optional): The time slot to search for (12-hour or 24-hour format)
-        days_forward (int, optional): Number of days to search ahead
-        days_backward (int, optional): Number of days to search in the past
-        max_reservations (int, optional): Maximum allowed reservations per time slot
-        hijri (bool, optional): If True, treats input start_date as Hijri format (for parsing only)
+        start_date (str or datetime.date, optional): The date to start searching from.
+            Defaults to None, which will use today's date (in Gregorian or Hijri, depending on 'hijri' flag).
+        time_slot (str, optional): The time slot to search for (12-hour or 24-hour format).
+            Defaults to None, which searches across all time slots.
+        days_forward (int, optional): Number of days to search ahead in the future.
+            Defaults to 3, searching appointments up to 3 days forward from start_date.
+        days_backward (int, optional): Number of days to search backward in the past.
+            Defaults to 0, meaning only today and future dates are searched unless set otherwise.
+        max_reservations (int, optional): Maximum allowed reservations per time slot.
+            Defaults to 5.
+        hijri (bool, optional): If True, treats input start_date as Hijri format (for parsing only).
+            Defaults to False (Gregorian date parsing).
 
     Returns:
         dict: Result with available appointments and vacation information when applicable.

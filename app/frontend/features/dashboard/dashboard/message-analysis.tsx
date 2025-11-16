@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type {
   ConversationAnalysis,
   CustomerActivity,
@@ -12,13 +11,13 @@ import { CustomerActivityList } from "../ui/customer-activity-list";
 import { MessageAnalysisStats } from "../ui/message-analysis-stats";
 import { MessageHeatmap } from "../ui/message-heatmap";
 import { WordFrequencyChart } from "../ui/word-frequency-chart";
-import { enhanceWordFrequency } from "../utils/word-frequency";
 
 type MessageAnalysisProps = {
   messageHeatmap: MessageHeatmapData[];
   topCustomers: CustomerActivity[];
   conversationAnalysis: ConversationAnalysis;
   wordFrequency: WordFrequency[];
+  wordFrequencyByRole?: { user: WordFrequency[]; assistant: WordFrequency[] };
   isLocalized: boolean;
 };
 
@@ -26,7 +25,7 @@ export function MessageAnalysis({
   messageHeatmap,
   topCustomers,
   conversationAnalysis,
-  wordFrequency,
+  wordFrequencyByRole,
   isLocalized,
 }: MessageAnalysisProps) {
   const customersPerPage = 10;
@@ -45,25 +44,21 @@ export function MessageAnalysis({
     (pagination.currentPage + 1) * customersPerPage
   );
 
-  // Prefer backend-provided word frequency to avoid heavy client processing
-  const enhancedWordFrequency = React.useMemo(
-    () => enhanceWordFrequency(wordFrequency),
-    [wordFrequency]
-  );
-
   return (
     <div className="space-y-6">
-      <MessageAnalysisStats
-        conversationAnalysis={conversationAnalysis}
-        isLocalized={isLocalized}
-      />
+      <div className="mb-8">
+        <MessageAnalysisStats
+          conversationAnalysis={conversationAnalysis}
+          isLocalized={isLocalized}
+        />
+      </div>
 
       <MessageHeatmap
         isLocalized={isLocalized}
         messageHeatmap={messageHeatmap}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <CustomerActivityList
           customers={limitedCustomers}
           customersPerPage={customersPerPage}
@@ -74,7 +69,7 @@ export function MessageAnalysis({
         />
 
         <WordFrequencyChart
-          enhancedWordFrequency={enhancedWordFrequency}
+          {...(wordFrequencyByRole ? { wordFrequencyByRole } : {})}
           isLocalized={isLocalized}
         />
       </div>

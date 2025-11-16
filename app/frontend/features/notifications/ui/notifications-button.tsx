@@ -84,6 +84,11 @@ export function NotificationsButton({
   const { isLocalized } = useLanguageStore();
   const { data: customerNames } = useCustomerNames();
 
+  const getMessage = React.useCallback(
+    (key: string) => i18n.getMessage(key, isLocalized),
+    [isLocalized]
+  );
+
   const resolveCustomerName = React.useCallback(
     (waId?: string, fallbackName?: string): string | undefined => {
       try {
@@ -116,7 +121,7 @@ export function NotificationsButton({
     markItemAsRead,
     markGroupAsRead,
   } = useNotifications({
-    getMessage: (key) => i18n.getMessage(key, isLocalized),
+    getMessage,
     resolveCustomerName,
   });
 

@@ -5,7 +5,9 @@ import urllib.parse
 from collections.abc import AsyncGenerator
 from datetime import date, datetime
 
+from sqlalchemy import JSON as JSON_TYPE
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Date,
     DateTime,
@@ -19,15 +21,8 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.engine import Engine
-from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, scoped_session, sessionmaker
-
-try:
-    from sqlalchemy.dialects.postgresql import JSONB as _JSON_TYPE
-except Exception:  # pragma: no cover
-    from sqlalchemy import JSON as _JSON_TYPE
-JSON_TYPE = _JSON_TYPE
 
 
 def _default_database_url() -> str:
@@ -106,7 +101,11 @@ SessionLocal = scoped_session(sessionmaker(bind=engine, autoflush=False, expire_
 
 # Async engine/session for libraries that require AsyncSession (e.g., fastapi-users)
 async_engine: AsyncEngine = create_async_engine(_derive_async_url(DATABASE_URL), echo=False, future=True)
-AsyncSessionLocal = sessionmaker(bind=async_engine, class_=_AsyncSession, autoflush=False, expire_on_commit=False)
+AsyncSessionLocal = async_sessionmaker(
+    async_engine,
+    autoflush=False,
+    expire_on_commit=False,
+)
 
 
 class Base(DeclarativeBase):
@@ -124,6 +123,8 @@ class CustomerModel(Base):
     age_recorded_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     # JSON/JSONB document data
     document: Mapped[object | None] = mapped_column(JSON_TYPE, nullable=True)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    is_favorite: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
     __table_args__ = (Index("idx_customers_wa_id", "wa_id"),)
 
@@ -255,7 +256,7 @@ def init_models() -> None:
     except Exception:
         # Config module may not be present in some environments
         pass
-    Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)  # type: ignore
 
     # Lightweight migration (PostgreSQL-safe): ensure optional columns exist
     try:
@@ -276,6 +277,12 @@ def init_models() -> None:
                 )
             conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age INTEGER;")
             conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS age_recorded_at DATE;")
+            conn.exec_driver_sql(
+                "ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN NOT NULL DEFAULT FALSE;"
+            )
+            conn.exec_driver_sql(
+                "ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN NOT NULL DEFAULT FALSE;"
+            )
             # Try JSONB first (Postgres), fallback to JSON for other engines
             try:
                 conn.exec_driver_sql("ALTER TABLE IF EXISTS customers ADD COLUMN IF NOT EXISTS document JSONB;")
@@ -330,7 +337,7 @@ def get_session() -> Session:
     return SessionLocal()
 
 
-async def get_async_session() -> AsyncGenerator[_AsyncSession, None]:
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
     """Yield an AsyncSession for async database operations.
 
     Usage:

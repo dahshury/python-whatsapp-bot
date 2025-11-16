@@ -26,6 +26,19 @@ IGNORED_DIR_NAMES = {
 
 ALLOWED_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx"}
 
+# Test file patterns to exclude (files containing demo/test data)
+TEST_FILE_PATTERNS = [
+    "__tests__",
+    ".test.",
+    ".spec.",
+]
+
+
+def is_test_file(file_path: Path) -> bool:
+    """Check if a file is a test file that should be excluded."""
+    path_str = file_path.as_posix()
+    return any(pattern in path_str for pattern in TEST_FILE_PATTERNS)
+
 
 def iter_source_files(root: Path) -> Iterable[Path]:
     root = root.resolve()
@@ -34,7 +47,10 @@ def iter_source_files(root: Path) -> Iterable[Path]:
         for filename in filenames:
             suffix = Path(filename).suffix.lower()
             if suffix in ALLOWED_EXTENSIONS:
-                yield Path(dirpath) / filename
+                file_path = Path(dirpath) / filename
+                # Skip test files that contain demo names
+                if not is_test_file(file_path):
+                    yield file_path
 
 
 def load_translation_values(common_json: Path) -> dict[str, list[str]]:

@@ -4,6 +4,7 @@ import { cn } from "@shared/libs/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import {
   type MotionProps,
+  type MotionStyle,
   type MotionValue,
   motion,
   useMotionValue,
@@ -26,6 +27,7 @@ export interface DockProps extends VariantProps<typeof dockVariants> {
   iconDistance?: number;
   direction?: "top" | "middle" | "bottom";
   children: ReactNode;
+  style?: React.CSSProperties;
 }
 
 const DEFAULT_SIZE = 26; // smaller base for mobile; per-icon can override
@@ -33,7 +35,7 @@ const DEFAULT_MAGNIFICATION = 40;
 const DEFAULT_DISTANCE = 120;
 
 const dockVariants = cva(
-  "mx-auto flex h-9 items-center justify-center gap-1.5 rounded-2xl border px-2 py-1 backdrop-blur-md supports-backdrop-blur:bg-white/10 sm:h-10 sm:gap-2 md:h-12 supports-backdrop-blur:dark:bg-black/10"
+  "mx-auto flex h-9 items-center justify-center gap-1.5 overflow-hidden rounded-2xl border px-2 py-1 backdrop-blur-md supports-backdrop-blur:bg-white/10 sm:h-10 sm:gap-2 md:h-12 supports-backdrop-blur:dark:bg-black/10"
 );
 
 const Dock = ({
@@ -43,6 +45,7 @@ const Dock = ({
   iconMagnification = DEFAULT_MAGNIFICATION,
   iconDistance = DEFAULT_DISTANCE,
   direction = "middle",
+  style,
   ref,
   ...props
 }: DockProps & { ref?: RefObject<HTMLDivElement | null> }) => {
@@ -154,6 +157,13 @@ const Dock = ({
         "items-center": direction === "middle",
         "items-end": direction === "bottom",
       })}
+      style={
+        {
+          ...(style as MotionStyle | undefined),
+          // Ensure content doesn't wrap and stays contained
+          flexWrap: "nowrap",
+        } as MotionStyle
+      }
       // Do not apply layout containment globally; we scope behaviors in drawer-specific layouts
     >
       {renderChildren()}
@@ -229,10 +239,18 @@ const DockIcon = ({
       className={cn(
         "relative flex cursor-pointer items-center justify-center rounded-full",
         widthScale === 1 ? "aspect-square" : "",
+        "shrink-0", // Prevent icons from shrinking below their size
         className
       )}
       ref={ref}
-      style={{ width: scaleWidth, height: scaleSize, padding }}
+      style={{
+        width: scaleWidth,
+        height: scaleSize,
+        padding,
+        flexShrink: 0, // Ensure icons don't shrink
+        minWidth: 0, // Allow flex to work properly
+        minHeight: 0,
+      }}
       {...props}
     >
       {children}

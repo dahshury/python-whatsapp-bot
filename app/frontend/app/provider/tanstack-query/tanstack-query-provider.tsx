@@ -114,6 +114,15 @@ export const TanstackQueryProvider = ({
       refetchOnMount: false,
     });
 
+    // Dashboard stats - prevent duplicate queries
+    client.setQueryDefaults(["dashboard", "stats"], {
+      staleTime: STALE_TIME_MS,
+      gcTime: GC_TIME_MINUTES * MS_PER_MINUTE,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      refetchOnReconnect: false,
+    });
+
     // Documents - always fetch fresh (frequently edited)
     client.setQueryDefaults(["document"], {
       staleTime: 0,

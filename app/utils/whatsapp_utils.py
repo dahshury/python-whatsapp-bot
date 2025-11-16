@@ -466,10 +466,10 @@ async def process_whatsapp_message(body, run_llm_function):
                 return
             typing_keepalive_stop: asyncio.Event | None = None
             typing_keepalive_task: asyncio.Task | None = None
-            # Display typing indicator while we prepare the response
-            try:
-                lock = get_lock(wa_id)
-                if not lock.locked():
+            lock = get_lock(wa_id)
+            async with lock:
+                # Display typing indicator while we prepare the response
+                try:
                     with contextlib.suppress(Exception):
                         enqueue_broadcast(
                             "conversation_typing",
@@ -485,17 +485,17 @@ async def process_whatsapp_message(body, run_llm_function):
                     else:
                         with contextlib.suppress(Exception):
                             await send_typing_indicator_for_wa(wa_id)
-            except Exception:
-                pass
+                except Exception:
+                    pass
 
-            try:
-                response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
-            finally:
-                if typing_keepalive_stop:
-                    typing_keepalive_stop.set()
-                if typing_keepalive_task:
-                    with contextlib.suppress(Exception):
-                        await typing_keepalive_task
+                try:
+                    response_text = await generate_response(message_body, wa_id, timestamp, run_llm_function)
+                finally:
+                    if typing_keepalive_stop:
+                        typing_keepalive_stop.set()
+                    if typing_keepalive_task:
+                        with contextlib.suppress(Exception):
+                            await typing_keepalive_task
 
             # Only send a response if we got one back from the LLM
             if response_text:
@@ -626,8 +626,6 @@ def is_valid_whatsapp_message(body):
 async def generate_response(message_body, wa_id, timestamp, run_llm_function):
     """
     Generate a response from Claude and update the conversation.
-    Uses a per-user lock to ensure that concurrent calls for the same user
-    do not run simultaneously.
 
     Args:
         message_body (str): The message text from the user.
@@ -638,43 +636,41 @@ async def generate_response(message_body, wa_id, timestamp, run_llm_function):
     Returns:
         str or None: The generated response text, or None if no valid response was generated.
     """
-    lock = get_lock(wa_id)
-    async with lock:
-        date_str, time_str = parse_unix_timestamp(timestamp)
+    date_str, time_str = parse_unix_timestamp(timestamp)
 
-        # Check for messages that might already be processed
-        # Get last 5 messages to check for duplicates
-        response = get_all_conversations(wa_id=wa_id, limit=5)
-        if response.get("success", False):
-            messages = response.get("data", {}).get(wa_id) or response.get("data", {}).get(str(wa_id), [])
+    # Check for messages that might already be processed
+    # Get last 5 messages to check for duplicates
+    response = get_all_conversations(wa_id=wa_id, limit=5)
+    if response.get("success", False):
+        messages = response.get("data", {}).get(wa_id) or response.get("data", {}).get(str(wa_id), [])
 
-            # Check if this message is already in the conversation history
-            for msg in messages:
-                if msg["role"] == "user" and msg["message"] == message_body and msg["time"] == time_str:
-                    logging.warning(
-                        f"Duplicate message detected for wa_id={wa_id}: '{message_body}'. Skipping processing."
-                    )
-                    return None
-
-        # Save the user message BEFORE running LLM
-        append_message(wa_id, "user", message_body, date_str=date_str, time_str=time_str)
-
-        # Call LLM function: async -> get coroutine, sync -> run in thread
-        try:
-            if inspect.iscoroutinefunction(run_llm_function):
-                call = run_llm_function(wa_id)
-            else:
-                call = asyncio.to_thread(run_llm_function, wa_id)
-            new_message, assistant_date_str, assistant_time_str = await call
-
-            if new_message:
-                append_message(
-                    wa_id, "assistant", new_message, date_str=assistant_date_str, time_str=assistant_time_str
+        # Check if this message is already in the conversation history
+        for msg in messages:
+            if msg["role"] == "user" and msg["message"] == message_body and msg["time"] == time_str:
+                logging.warning(
+                    f"Duplicate message detected for wa_id={wa_id}: '{message_body}'. Skipping processing."
                 )
-                return new_message
-            else:
-                logging.warning(f"Empty or None response received from LLM for wa_id={wa_id}")
                 return None
-        except Exception as e:
-            logging.error(f"Error generating response: {e}")
+
+    # Save the user message BEFORE running LLM
+    append_message(wa_id, "user", message_body, date_str=date_str, time_str=time_str)
+
+    # Call LLM function: async -> get coroutine, sync -> run in thread
+    try:
+        if inspect.iscoroutinefunction(run_llm_function):
+            call = run_llm_function(wa_id)
+        else:
+            call = asyncio.to_thread(run_llm_function, wa_id)
+        new_message, assistant_date_str, assistant_time_str = await call
+
+        if new_message:
+            append_message(
+                wa_id, "assistant", new_message, date_str=assistant_date_str, time_str=assistant_time_str
+            )
+            return new_message
+        else:
+            logging.warning(f"Empty or None response received from LLM for wa_id={wa_id}")
             return None
+    except Exception as e:
+        logging.error(f"Error generating response: {e}")
+        return None

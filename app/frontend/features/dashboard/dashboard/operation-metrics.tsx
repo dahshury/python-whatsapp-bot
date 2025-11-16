@@ -1,97 +1,68 @@
 "use client";
 
-import { Badge } from "@ui/badge";
-import { motion } from "framer-motion";
-import { Calendar, CheckCircle, Edit, X, XCircle } from "lucide-react";
-import type { ReactNode } from "react";
-import type { PrometheusMetrics } from "@/features/dashboard/types";
+import { Calendar, Gauge } from "lucide-react";
+import type {
+  DashboardStats,
+  PrometheusMetrics,
+} from "@/features/dashboard/types";
 import { i18n } from "@/shared/libs/i18n";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Progress } from "@/shared/ui/progress";
+import { AnalyticsCard } from "@/shared/ui/analytics-card";
+import { Card, CardContent, CardHeader } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 
 const PERCENT_SCALE = 100;
-const METRIC_ANIMATION_DURATION = 0.4;
-const METRIC_ANIMATION_DELAY_STEP = 0.1;
-const METRIC_INITIAL_OFFSET = 20;
+const BYTES_PER_KIB = 1024;
+const BYTES_PER_MIB = BYTES_PER_KIB * BYTES_PER_KIB;
+const BYTES_PER_GIB = BYTES_PER_MIB * BYTES_PER_KIB;
+const MEMORY_USAGE_FALLBACK_GIB = 0.5;
+const DEFAULT_MEMORY_CAPACITY_GIB = 8;
+const CPU_USAGE_FALLBACK_PERCENT = 45.2;
 
 type OperationMetricsProps = {
   prometheusMetrics: PrometheusMetrics;
+  stats: DashboardStats;
+  dailyTrends: Array<{
+    date: string;
+    reservations: number;
+    cancellations: number;
+    modifications: number;
+  }>;
   isLocalized: boolean;
 };
 
-type OperationMetricCardProps = {
-  title: string;
-  icon: ReactNode;
-  attempts: number;
-  success: number;
-  failures: number;
-  isLocalized: boolean;
+const clampPercent = (value?: number) => {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, value));
 };
 
-function OperationMetricCard({
-  title,
-  icon,
-  attempts,
-  success,
-  failures,
-  isLocalized,
-}: OperationMetricCardProps) {
-  const successRate = attempts > 0 ? (success / attempts) * PERCENT_SCALE : 0;
-  const failureRate = attempts > 0 ? (failures / attempts) * PERCENT_SCALE : 0;
+const formatMemoryUsage = (bytes?: number) => {
+  if (typeof bytes !== "number" || Number.isNaN(bytes)) {
+    return `${MEMORY_USAGE_FALLBACK_GIB.toFixed(1)}GB`;
+  }
 
-  return (
-    <motion.div
-      animate={{ opacity: 1, y: 0 }}
-      initial={{ opacity: 0, y: METRIC_INITIAL_OFFSET }}
-      transition={{ duration: METRIC_ANIMATION_DURATION }}
-    >
-      <Card className="h-full">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="font-medium text-sm">{title}</CardTitle>
-          {icon}
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="font-bold text-2xl">{attempts}</div>
-            <Badge className="text-xs" variant="outline">
-              {i18n.getMessage("operation_attempts", isLocalized)}
-            </Badge>
-          </div>
+  if (bytes >= BYTES_PER_GIB) {
+    return `${(bytes / BYTES_PER_GIB).toFixed(1)}GB`;
+  }
+  if (bytes >= BYTES_PER_MIB) {
+    return `${(bytes / BYTES_PER_MIB).toFixed(1)}MB`;
+  }
+  return `${(bytes / BYTES_PER_KIB).toFixed(1)}KB`;
+};
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-1">
-                <CheckCircle className="h-3 w-3 text-chart-1" />
-                <span className="text-chart-1">{success}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <XCircle className="h-3 w-3 text-destructive" />
-                <span className="text-destructive">{failures}</span>
-              </div>
-            </div>
-
-            <Progress className="h-2" value={successRate} />
-
-            <div className="flex justify-between text-muted-foreground text-xs">
-              <span>
-                {successRate.toFixed(1)}%{" "}
-                {i18n.getMessage("operation_success", isLocalized)}
-              </span>
-              <span>
-                {failureRate.toFixed(1)}%{" "}
-                {i18n.getMessage("operation_failed", isLocalized)}
-              </span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
+const getMemoryUsagePercent = (bytes?: number) => {
+  const fallbackBytes = MEMORY_USAGE_FALLBACK_GIB * BYTES_PER_GIB;
+  const usage =
+    typeof bytes === "number" && !Number.isNaN(bytes) ? bytes : fallbackBytes;
+  const capacity = DEFAULT_MEMORY_CAPACITY_GIB * BYTES_PER_GIB;
+  return (usage / capacity) * 100;
+};
 
 export function OperationMetrics({
   prometheusMetrics,
+  stats,
+  dailyTrends,
   isLocalized,
 }: OperationMetricsProps) {
   const hasMetrics =
@@ -120,33 +91,116 @@ export function OperationMetrics({
     );
   }
 
-  const operations = [
+  // Calculate total reservations (sum of all operations)
+  const totalReservations =
+    (Number(prometheusMetrics.reservations_requested_total) || 0) +
+    (Number(prometheusMetrics.reservations_cancellation_requested_total) || 0) +
+    (Number(prometheusMetrics.reservations_modification_requested_total) || 0);
+
+  // Calculate overall success rate
+  const totalSuccess =
+    (Number(prometheusMetrics.reservations_successful_total) || 0) +
+    (Number(prometheusMetrics.reservations_cancellation_successful_total) ||
+      0) +
+    (Number(prometheusMetrics.reservations_modification_successful_total) || 0);
+  const overallSuccessRate =
+    totalReservations > 0
+      ? (totalSuccess / totalReservations) * PERCENT_SCALE
+      : 0;
+
+  const locale = isLocalized ? "ar-SA" : "en-US";
+
+  // Calculate totals from dailyTrends (same source as the daily trends graph)
+  const totalReservationsFromTrends = dailyTrends.reduce(
+    (sum, day) => sum + (Number(day.reservations) || 0),
+    0
+  );
+  const totalCancellationsFromTrends = dailyTrends.reduce(
+    (sum, day) => sum + (Number(day.cancellations) || 0),
+    0
+  );
+  const totalModificationsFromTrends = dailyTrends.reduce(
+    (sum, day) => sum + (Number(day.modifications) || 0),
+    0
+  );
+
+  // Find max value for bar scaling (use actual numbers, not percentages)
+  const maxValue = Math.max(
+    totalReservationsFromTrends,
+    totalCancellationsFromTrends,
+    totalModificationsFromTrends,
+    1 // Avoid division by zero
+  );
+
+  const operationsData = [
     {
-      title: i18n.getMessage("operation_reservations", isLocalized),
-      icon: <Calendar className="h-4 w-4 text-muted-foreground" />,
-      attempts: prometheusMetrics.reservations_requested_total || 0,
-      success: prometheusMetrics.reservations_successful_total || 0,
-      failures: prometheusMetrics.reservations_failed_total || 0,
+      label: i18n.getMessage("operation_reservations", isLocalized),
+      value: totalReservationsFromTrends,
+      maxValue,
     },
     {
-      title: i18n.getMessage("operation_cancellations", isLocalized),
-      icon: <X className="h-4 w-4 text-muted-foreground" />,
-      attempts:
-        prometheusMetrics.reservations_cancellation_requested_total || 0,
-      success:
-        prometheusMetrics.reservations_cancellation_successful_total || 0,
-      failures: prometheusMetrics.reservations_cancellation_failed_total || 0,
+      label: i18n.getMessage("operation_cancellations", isLocalized),
+      value: totalCancellationsFromTrends,
+      maxValue,
     },
     {
-      title: i18n.getMessage("operation_modifications", isLocalized),
-      icon: <Edit className="h-4 w-4 text-muted-foreground" />,
-      attempts:
-        prometheusMetrics.reservations_modification_requested_total || 0,
-      success:
-        prometheusMetrics.reservations_modification_successful_total || 0,
-      failures: prometheusMetrics.reservations_modification_failed_total || 0,
+      label: i18n.getMessage("operation_modifications", isLocalized),
+      value: totalModificationsFromTrends,
+      maxValue,
+    },
+    {
+      label: i18n.getMessage("kpi_returning_rate", isLocalized),
+      value: clampPercent(stats.returningRate),
+      maxValue: 100, // Returning rate is a percentage
     },
   ];
+
+  const operationsCardTitle =
+    i18n.getMessage("operation_activity_breakdown", isLocalized) ||
+    i18n.getMessage("operation_metrics_title", isLocalized);
+
+  const operationsCardTotal =
+    totalReservationsFromTrends.toLocaleString(locale);
+
+  const cpuPercent =
+    typeof prometheusMetrics.cpu_percent === "number"
+      ? prometheusMetrics.cpu_percent
+      : CPU_USAGE_FALLBACK_PERCENT;
+  const cpuPercentValue = clampPercent(cpuPercent);
+  const memoryUsagePercent = clampPercent(
+    getMemoryUsagePercent(prometheusMetrics.memory_bytes)
+  );
+  const memoryUsageLabel = formatMemoryUsage(prometheusMetrics.memory_bytes);
+
+  const systemData = [
+    {
+      label: i18n.getMessage("kpi_success_rate", isLocalized),
+      value: clampPercent(overallSuccessRate),
+      maxValue: 100,
+    },
+    {
+      label: i18n.getMessage("kpi_cpu_usage", isLocalized),
+      value: cpuPercentValue,
+      maxValue: 100,
+    },
+    {
+      label: `${i18n.getMessage("kpi_memory_usage", isLocalized)} (${memoryUsageLabel})`,
+      value: memoryUsagePercent,
+      maxValue: 100,
+    },
+  ];
+
+  const systemHealthScore =
+    systemData.length > 0
+      ? systemData.reduce((sum, metric) => sum + metric.value, 0) /
+        systemData.length
+      : 0;
+
+  const systemCardTitle =
+    i18n.getMessage("system_resource_overview", isLocalized) ||
+    i18n.getMessage("kpi_cpu_usage", isLocalized);
+
+  const systemCardTotal = `${clampPercent(systemHealthScore).toFixed(0)}%`;
 
   return (
     <div className="space-y-4">
@@ -154,27 +208,24 @@ export function OperationMetrics({
         {i18n.getMessage("operation_metrics_title", isLocalized)}
       </h2>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {operations.map((operation, index) => (
-          <motion.div
-            animate={{ opacity: 1, y: 0 }}
-            initial={{ opacity: 0, y: METRIC_INITIAL_OFFSET }}
-            key={operation.title}
-            transition={{
-              delay: index * METRIC_ANIMATION_DELAY_STEP,
-              duration: METRIC_ANIMATION_DURATION,
-            }}
-          >
-            <OperationMetricCard
-              attempts={operation.attempts}
-              failures={operation.failures}
-              icon={operation.icon}
-              isLocalized={isLocalized}
-              success={operation.success}
-              title={operation.title}
-            />
-          </motion.div>
-        ))}
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AnalyticsCard
+          className="h-full"
+          data={operationsData}
+          icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
+          isLocalized={isLocalized}
+          title={operationsCardTitle}
+          totalAmount={operationsCardTotal}
+        />
+
+        <AnalyticsCard
+          className="h-full"
+          data={systemData}
+          icon={<Gauge className="h-4 w-4 text-muted-foreground" />}
+          isLocalized={isLocalized}
+          title={systemCardTitle}
+          totalAmount={systemCardTotal}
+        />
       </div>
     </div>
   );

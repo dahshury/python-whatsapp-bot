@@ -27,7 +27,7 @@ from app.metrics import (
     LLM_RETRY_ATTEMPTS,
     LLM_TOOL_EXECUTION_ERRORS,
 )
-from app.services.tool_schemas import FUNCTION_MAPPING, TOOL_DEFINITIONS
+from app.services.toolkit.registry import DEFAULT_TOOL_REGISTRY, ToolRegistry
 from app.utils import append_message, parse_unix_timestamp
 from app.utils.http_client import sync_client
 from app.utils.service_utils import retrieve_messages
@@ -37,11 +37,26 @@ OPENAI_API_KEY = config["OPENAI_API_KEY"]
 VEC_STORE_ID = config["VEC_STORE_ID"]
 client = OpenAI(api_key=OPENAI_API_KEY, http_client=sync_client)
 
-# Define available functions as tools for Responses API from central definitions
-FUNCTION_DEFINITIONS = [
-    {"type": "function", "name": t["name"], "description": t["description"], "parameters": t["schema"], "strict": False}
-    for t in TOOL_DEFINITIONS
-]
+_FUNCTION_DEFINITION_CACHE: dict[str, list[dict[str, object]]] = {}
+
+
+def get_function_definitions(toolkit: ToolRegistry) -> list[dict[str, object]]:
+    cache_key = toolkit.name or "default"
+    if cache_key in _FUNCTION_DEFINITION_CACHE:
+        return _FUNCTION_DEFINITION_CACHE[cache_key]
+
+    definitions = [
+        {
+            "type": "function",
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["schema"],
+            "strict": False,
+        }
+        for t in toolkit.definitions
+    ]
+    _FUNCTION_DEFINITION_CACHE[cache_key] = definitions
+    return definitions
 
 # Control OpenAI SDK log verbosity via config (default WARNING)
 _openai_log_level_name = str(config.get("OPENAI_LOG_LEVEL", "WARNING")).upper()
@@ -121,6 +136,7 @@ def run_responses(
     text_format="text",
     store=True,
     verbosity="low",
+    toolkit: ToolRegistry = DEFAULT_TOOL_REGISTRY,
 ):
     """Call the Responses API, handle function calls, and return final message, response id, and timestamp.
 
@@ -136,13 +152,16 @@ def run_responses(
         store (bool): Whether to store the response in OpenAI's system.
     """
     # Set up base kwargs with function tools
+    function_definitions = get_function_definitions(toolkit)
+    function_map = toolkit.functions
+
     kwargs = {
         "model": model,
         "input": input_chat,
         "instructions": system_prompt,
         "text": {"format": {"type": text_format}, "verbosity": verbosity},
         "reasoning": {"effort": reasoning_effort, "summary": reasoning_summary},
-        "tools": FUNCTION_DEFINITIONS,
+        "tools": function_definitions,
         "store": store,
     }
 
@@ -150,7 +169,7 @@ def run_responses(
     # Add vector store and file_search tool if configured
     if vec_id:
         # Add file_search tool with vector_store_ids
-        kwargs["tools"] = FUNCTION_DEFINITIONS + [{"type": "file_search", "vector_store_ids": [vec_id]}]
+        kwargs["tools"] = [*function_definitions, {"type": "file_search", "vector_store_ids": [vec_id]}]
 
     # Log request payload
     try:
@@ -194,7 +213,7 @@ def run_responses(
         input_items = []
         for fc in fc_items:
             args = json.loads(getattr(fc, "arguments", "{}"))
-            func = FUNCTION_MAPPING.get(fc.name)
+            func = function_map.get(fc.name)
 
             # Log function call name and arguments
             logging.debug(f"Tool call: {fc.name} with arguments: {args}")
@@ -261,7 +280,7 @@ def run_responses(
             else:
                 result = {}
                 LLM_TOOL_EXECUTION_ERRORS.labels(tool_name=fc.name, provider="openai").inc()
-                logging.warning(f"Function {fc.name} not found in FUNCTION_MAPPING")
+                logging.warning(f"Function {fc.name} not found in tool registry")
 
             input_items.append(
                 {"type": "function_call", "call_id": fc.call_id, "name": fc.name, "arguments": fc.arguments}
@@ -272,7 +291,7 @@ def run_responses(
         kwargs = {
             "model": model,
             "input": input_items,
-            "tools": FUNCTION_DEFINITIONS,
+            "tools": function_definitions,
             "store": store,
             "previous_response_id": response.id,  # Link to previous response
         }
@@ -329,6 +348,7 @@ def run_openai(
     store=True,
     timezone=None,
     verbosity="low",
+    toolkit: ToolRegistry = DEFAULT_TOOL_REGISTRY,
 ):
     """
     Run the OpenAI Responses API with existing conversation context.
@@ -368,6 +388,7 @@ def run_openai(
             text_format,
             store,
             verbosity,
+            toolkit,
         )
     except Exception as e:
         error_type = map_openai_error(e)

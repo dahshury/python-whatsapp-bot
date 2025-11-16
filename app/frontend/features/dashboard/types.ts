@@ -105,6 +105,11 @@ export type WordFrequency = {
   count: number;
 };
 
+export type WordFrequencyByRole = {
+  user: WordFrequency[];
+  assistant: WordFrequency[];
+};
+
 export type DayOfWeekData = {
   day: string;
   reservations: number;
@@ -144,6 +149,7 @@ export type DashboardData = {
   topCustomers: CustomerActivity[];
   conversationAnalysis: ConversationAnalysis;
   wordFrequency: WordFrequency[];
+  wordFrequencyByRole?: WordFrequencyByRole;
   dayOfWeekData: DayOfWeekData[];
   monthlyTrends: MonthlyTrend[];
   funnelData: FunnelData[];

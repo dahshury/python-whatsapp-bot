@@ -151,8 +151,8 @@ export function InsightsTab({ isLocalized, safeDashboard }: InsightsTabProps) {
                 </h4>
                 <p className="mt-1 text-chart-3/80 text-sm">
                   {isLocalized
-                    ? `متوسط زمن الاستجابة هو ${safeDashboard.stats.avgResponseTime.toFixed(1)} دقيقة. فكر في تطبيق ردود تلقائية للاستفسارات الشائعة.`
-                    : `Average response time is ${safeDashboard.stats.avgResponseTime.toFixed(1)} minutes. Consider implementing automated responses for common queries.`}
+                    ? `متوسط زمن الاستجابة هو ${(safeDashboard.stats.avgResponseTime * 60).toFixed(1)} ثانية. فكر في تطبيق ردود تلقائية للاستفسارات الشائعة.`
+                    : `Average response time is ${(safeDashboard.stats.avgResponseTime * 60).toFixed(1)} seconds. Consider implementing automated responses for common queries.`}
                 </p>
                 <span className="mt-2 inline-block rounded-full bg-chart-3/20 px-2 py-1 text-chart-3 text-xs">
                   {i18n.getMessage("real_data_available", isLocalized)}

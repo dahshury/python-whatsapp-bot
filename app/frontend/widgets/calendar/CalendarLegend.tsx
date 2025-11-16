@@ -59,8 +59,55 @@ export function CalendarLegend({
   const [mounted, setMounted] = useState(false);
   const effectiveIsLocalized = mounted ? isLocalized : false;
 
+  // Track if we should show the legend based on window width
+  // Always initialize to false to ensure SSR and client match
+  const [shouldShow, setShouldShow] = useState(false);
+
   useEffect(() => {
     setMounted(true);
+
+    // Check window width after mount to prevent hydration mismatch
+    const checkWidth = () => {
+      const width = window.innerWidth;
+      setShouldShow(width >= 1280); // xl breakpoint
+    };
+
+    // Check immediately on mount
+    checkWidth();
+
+    // Listen to window resize
+    window.addEventListener("resize", checkWidth);
+    window.addEventListener("orientationchange", checkWidth);
+
+    // Also listen to visualViewport resize for mobile devices
+    try {
+      const visualViewport = (
+        window as unknown as { visualViewport?: VisualViewport }
+      ).visualViewport;
+      if (visualViewport) {
+        visualViewport.addEventListener("resize", checkWidth as EventListener);
+      }
+    } catch {
+      // Visual viewport not supported, continue without it
+    }
+
+    return () => {
+      window.removeEventListener("resize", checkWidth);
+      window.removeEventListener("orientationchange", checkWidth);
+      try {
+        const visualViewport = (
+          window as unknown as { visualViewport?: VisualViewport }
+        ).visualViewport;
+        if (visualViewport) {
+          visualViewport.removeEventListener(
+            "resize",
+            checkWidth as EventListener
+          );
+        }
+      } catch {
+        // Visual viewport cleanup failed, continue cleanup
+      }
+    };
   }, []);
 
   // Only consider upcoming vacations (start strictly after today)
@@ -178,6 +225,11 @@ export function CalendarLegend({
       (freeRoam && item.key === "conversation") ||
       (item.showWhenVacationExists && mounted && hasUpcomingVacations)
   );
+
+  // Hide legend on mobile/low width devices
+  if (!shouldShow) {
+    return null;
+  }
 
   return (
     <HoverCard closeDelay={100} openDelay={200}>

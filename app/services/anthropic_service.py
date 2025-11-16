@@ -19,7 +19,7 @@ from anthropic import (
 from app.config import config
 from app.decorators import retry_decorator
 from app.metrics import LLM_API_ERRORS, LLM_EMPTY_RESPONSES, LLM_RETRY_ATTEMPTS, LLM_TOOL_EXECUTION_ERRORS
-from app.services.tool_schemas import FUNCTION_MAPPING, TOOL_DEFINITIONS
+from app.services.toolkit.registry import DEFAULT_TOOL_REGISTRY, ToolRegistry
 from app.utils import append_message, parse_unix_timestamp, retrieve_messages
 from app.utils.http_client import sync_client
 
@@ -27,17 +27,6 @@ ANTHROPIC_API_KEY = config.get("ANTHROPIC_API_KEY")
 
 # Create Anthropic client
 client = Anthropic(api_key=ANTHROPIC_API_KEY, http_client=sync_client)
-
-# Build Anthropic-compatible tools list from central definitions
-tools = [
-    {
-        "name": t["name"],
-        "description": t["description"],
-        "input_schema": t["schema"],
-        **({"cache_control": t["cache_control"]} if t.get("cache_control") else {}),
-    }
-    for t in TOOL_DEFINITIONS
-]
 
 
 def map_anthropic_error(e):
@@ -81,7 +70,16 @@ def _is_retryable_anthropic_exception(e: Exception) -> bool:
 
 
 @retry_decorator
-def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None, stream=False, timezone=None):
+def run_claude(
+    wa_id,
+    model,
+    system_prompt=None,
+    max_tokens=None,
+    thinking=None,
+    stream=False,
+    timezone=None,
+    toolkit: ToolRegistry = DEFAULT_TOOL_REGISTRY,
+):
     """
     Run Claude with the conversation history and handle tool calls.
     Returns the generated message along with date and time.
@@ -115,13 +113,24 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
     # Get conversation history
     input_chat = retrieve_messages(wa_id)
 
+    function_map = toolkit.functions
+    tool_specs = [
+        {
+            "name": t["name"],
+            "description": t["description"],
+            "input_schema": t["schema"],
+            **({"cache_control": t["cache_control"]} if t.get("cache_control") else {}),
+        }
+        for t in toolkit.definitions
+    ]
+
     # Prepare API request arguments, with optional thinking inclusion
     def prepare_request_args(enable_thinking=False):
         req_kwargs = {
             "model": model,
             "system": system_prompt_obj,
             "messages": input_chat,
-            "tools": tools,
+            "tools": tool_specs,
             "max_tokens": max_tokens,
             "stream": stream,
             "betas": ["token-efficient-tools-2025-02-19"],
@@ -184,8 +193,8 @@ def run_claude(wa_id, model, system_prompt=None, max_tokens=None, thinking=None,
             assistant_content.append(tool_use_block)
 
             # Execute tool if available
-            if tool_name in FUNCTION_MAPPING:
-                function = FUNCTION_MAPPING[tool_name]
+            function = function_map.get(tool_name)
+            if function:
                 sig = inspect.signature(function)
 
                 # If the function takes a 'wa_id' parameter, add it

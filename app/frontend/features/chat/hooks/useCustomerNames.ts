@@ -2,12 +2,15 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { customerKeys } from "@/shared/api/query-keys";
+import { SYSTEM_AGENT } from "@/shared/config";
 import { callPythonBackend } from "@/shared/libs/backend";
 import { useBackendReconnectRefetch } from "@/shared/libs/hooks/useBackendReconnectRefetch";
 
-type CustomerName = {
+export type CustomerName = {
   wa_id: string;
   customer_name: string | null;
+  is_blocked?: boolean;
+  is_favorite?: boolean;
 };
 
 type CustomerNamesResponse = {
@@ -31,7 +34,22 @@ export function useCustomerNames() {
         return {};
       }
 
-      return response.data;
+      const customers = { ...response.data };
+      const systemEntry = customers[SYSTEM_AGENT.waId];
+      if (!systemEntry) {
+        customers[SYSTEM_AGENT.waId] = {
+          wa_id: SYSTEM_AGENT.waId,
+          customer_name: SYSTEM_AGENT.displayName,
+          is_blocked: false,
+          is_favorite: false,
+        };
+      } else if (!systemEntry.customer_name) {
+        systemEntry.customer_name = SYSTEM_AGENT.displayName;
+        systemEntry.is_blocked = systemEntry.is_blocked ?? false;
+        systemEntry.is_favorite = systemEntry.is_favorite ?? false;
+      }
+
+      return customers;
     },
     staleTime: 300_000, // Cache for 5 minutes
     gcTime: 600_000, // Keep in cache for 10 minutes

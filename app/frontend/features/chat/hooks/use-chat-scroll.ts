@@ -11,7 +11,7 @@ type ScrollTarget = {
   message?: string;
 };
 
-const CHAT_TIME_STRING_LENGTH = 5;
+const CHAT_TIME_STRING_LENGTH = 8;
 const SCROLL_EVENT_DEBOUNCE_MS = 30;
 const DOM_UPDATE_SETTLE_DELAY_MS = 50;
 

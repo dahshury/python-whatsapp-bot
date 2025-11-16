@@ -3,7 +3,6 @@
 
 import asyncio
 import datetime
-import functools
 import inspect
 import json
 import logging
@@ -29,7 +28,7 @@ from app.metrics import (
     LLM_RETRY_ATTEMPTS,
     LLM_TOOL_EXECUTION_ERRORS,
 )
-from app.services.tool_schemas import FUNCTION_MAPPING, TOOL_DEFINITIONS
+from app.services.toolkit.registry import DEFAULT_TOOL_REGISTRY, ToolRegistry
 from app.utils import append_message, parse_unix_timestamp, retrieve_messages
 
 load_config()
@@ -81,8 +80,14 @@ def _is_retryable_gemini_exception(e: Exception) -> bool:
 
 
 # Create function declarations dynamically from assistant_functions
-@functools.lru_cache(maxsize=1)
-def create_function_declarations():
+_FUNCTION_DECLARATION_CACHE: dict[str, list[types.FunctionDeclaration]] = {}
+
+
+def create_function_declarations(toolkit: ToolRegistry):
+    cache_key = toolkit.name or "default"
+    if cache_key in _FUNCTION_DECLARATION_CACHE:
+        return _FUNCTION_DECLARATION_CACHE[cache_key]
+
     declarations = []
 
     # Define schema type mapping for conversions
@@ -96,7 +101,7 @@ def create_function_declarations():
     }
 
     # Use central schemas
-    schema_map = {t["name"]: t["schema"] for t in TOOL_DEFINITIONS}
+    schema_map = {t["name"]: t["schema"] for t in toolkit.definitions}
 
     # Helper function to convert JSON schema to Gemini schema
     def convert_schema(json_schema):
@@ -125,7 +130,7 @@ def create_function_declarations():
         return converted
 
     # Create declarations for each function in assistant_functions with schema
-    for func_name, func in FUNCTION_MAPPING.items():
+    for func_name, func in toolkit.functions.items():
         # Skip internal functions (starting with _)
         if func_name.startswith("_"):
             continue
@@ -213,11 +218,12 @@ def create_function_declarations():
             )
         )
 
+    _FUNCTION_DECLARATION_CACHE[cache_key] = declarations
     return declarations
 
 
 @retry_decorator
-def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
+def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None, toolkit: ToolRegistry = DEFAULT_TOOL_REGISTRY):
     """
     Run Gemini with the conversation history and handle tool calls.
     Returns the generated message along with date and time.
@@ -235,6 +241,7 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
 
     # Retrieve conversation history
     messages_history = retrieve_messages(wa_id)
+    function_map = toolkit.functions
 
     # Convert messages to Gemini format
     contents = []
@@ -309,7 +316,7 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
 
     try:
         # Create function declarations
-        function_declarations = create_function_declarations()
+        function_declarations = create_function_declarations(toolkit)
 
         # Set up model parameters
         generation_config = {
@@ -376,8 +383,8 @@ def run_gemini(wa_id, model, system_prompt, max_tokens=None, timezone=None):
                     logging.error(f"Persist tool args failed for {function_name}: {_persist_args_err}")
 
                 # Execute the function if it exists
-                if function_name in FUNCTION_MAPPING:
-                    function = FUNCTION_MAPPING[function_name]
+                function = function_map.get(function_name)
+                if function:
                     sig = inspect.signature(function)
 
                     # Add wa_id if the function expects it

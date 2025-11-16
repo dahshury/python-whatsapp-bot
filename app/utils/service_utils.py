@@ -17,6 +17,8 @@ from app.i18n import get_message
 
 # Global in-memory dictionary to store asyncio locks per user (wa_id)
 global_locks = {}
+SYSTEM_AGENT_WA_ID = str(config.get("SYSTEM_AGENT_WA_ID", "12125550123"))
+SYSTEM_AGENT_DISPLAY_NAME = config.get("SYSTEM_AGENT_NAME") or "Calendar AI Assistant"
 
 
 # Helper to standardize API responses across services
@@ -36,6 +38,60 @@ def format_response(success: bool, data=None, message: str = None, status_code: 
     if status_code is not None:
         return resp, status_code
     return resp
+
+
+def set_customer_block_status(wa_id: str, blocked: bool) -> dict[str, object]:
+    try:
+        with get_session() as session:
+            customer = session.get(CustomerModel, wa_id)
+            if customer is None:
+                return format_response(False, message=get_message("wa_id_not_found", False))
+            customer.is_blocked = bool(blocked)
+            session.commit()
+            return format_response(True, data={"wa_id": wa_id, "is_blocked": customer.is_blocked})
+    except Exception as exc:  # pragma: no cover - defensive
+        logging.error("Failed to update block status for %s: %s", wa_id, exc, exc_info=True)
+        return format_response(False, message=get_message("system_error_try_later", False))
+
+
+def set_customer_favorite_status(wa_id: str, favorite: bool) -> dict[str, object]:
+    try:
+        with get_session() as session:
+            customer = session.get(CustomerModel, wa_id)
+            if customer is None:
+                return format_response(False, message=get_message("wa_id_not_found", False))
+            customer.is_favorite = bool(favorite)
+            session.commit()
+            return format_response(True, data={"wa_id": wa_id, "is_favorite": customer.is_favorite})
+    except Exception as exc:  # pragma: no cover - defensive
+        logging.error("Failed to update favorite status for %s: %s", wa_id, exc, exc_info=True)
+        return format_response(False, message=get_message("system_error_try_later", False))
+
+
+def is_customer_blocked(wa_id: str) -> bool:
+    try:
+        with get_session() as session:
+            customer = session.get(CustomerModel, wa_id)
+            return bool(customer and getattr(customer, "is_blocked", False))
+    except Exception:
+        return False
+
+
+def clear_conversation_messages(wa_id: str) -> dict[str, object]:
+    if not wa_id:
+        return format_response(False, message=get_message("wa_id_not_found", False))
+    try:
+        with get_session() as session:
+            deleted = (
+                session.query(ConversationModel)
+                .filter(ConversationModel.wa_id == wa_id)
+                .delete(synchronize_session=False)
+            )
+            session.commit()
+        return format_response(True, data={"deleted": int(deleted)})
+    except Exception as exc:
+        logging.error("Failed to clear conversation for %s: %s", wa_id, exc, exc_info=True)
+        return format_response(False, message=get_message("system_error_try_later", False))
 
 
 def fix_unicode_sequence(customer_name):
@@ -522,6 +578,8 @@ def get_all_customer_names():
             stmt = select(
                 CustomerModel.wa_id,
                 CustomerModel.customer_name,
+                CustomerModel.is_blocked,
+                CustomerModel.is_favorite,
             ).order_by(CustomerModel.wa_id)
 
             rows = session.execute(stmt).all()
@@ -532,7 +590,22 @@ def get_all_customer_names():
                 customers[r.wa_id] = {
                     "wa_id": r.wa_id,
                     "customer_name": r.customer_name,
+                    "is_blocked": bool(getattr(r, "is_blocked", False)),
+                    "is_favorite": bool(getattr(r, "is_favorite", False)),
                 }
+
+            system_entry = customers.get(SYSTEM_AGENT_WA_ID)
+            if system_entry is None:
+                customers[SYSTEM_AGENT_WA_ID] = {
+                    "wa_id": SYSTEM_AGENT_WA_ID,
+                    "customer_name": SYSTEM_AGENT_DISPLAY_NAME,
+                    "is_blocked": False,
+                    "is_favorite": False,
+                }
+            elif not system_entry.get("customer_name"):
+                system_entry["customer_name"] = SYSTEM_AGENT_DISPLAY_NAME
+                system_entry.setdefault("is_blocked", False)
+                system_entry.setdefault("is_favorite", False)
 
             return format_response(True, data=customers)
     except Exception as e:
@@ -564,7 +637,8 @@ def append_message(wa_id, role, message, date_str, time_str):
         with get_session() as session:
             existing = session.get(CustomerModel, wa_id)
             if existing is None:
-                session.add(CustomerModel(wa_id=wa_id, customer_name=None))
+                default_name = SYSTEM_AGENT_DISPLAY_NAME if wa_id == SYSTEM_AGENT_WA_ID else None
+                session.add(CustomerModel(wa_id=wa_id, customer_name=default_name))
                 session.flush()
             session.add(
                 ConversationModel(
@@ -634,8 +708,9 @@ def retrieve_messages(wa_id):
         if not response.get("success", False):
             return []
         data = response.get("data", {})
+        normalized_wa_id = str(wa_id)
         # Extract messages list for this user
-        messages = data.get(wa_id) or data.get(str(wa_id), [])
+        messages = data.get(wa_id) or data.get(normalized_wa_id, [])
         # Ensure chronological order (ascending) when a limited, descending list is returned
         try:
             messages = sorted(messages, key=lambda m: (str(m.get("date", "")), str(m.get("time", ""))))
@@ -647,10 +722,14 @@ def retrieve_messages(wa_id):
                 role = str(msg.get("role") or "")
             except Exception:
                 role = ""
+            normalized_role = role.strip().lower()
             # Skip tool-call records from LLM prompt context
-            if role.strip().lower() == "tool":
+            if normalized_role == "tool":
                 continue
-            input_chat.append({"role": "assistant" if role != "user" else "user", "content": msg["message"]})
+            llm_role = "assistant" if normalized_role != "user" else "user"
+            if normalized_wa_id == SYSTEM_AGENT_WA_ID and normalized_role in {"secretary", "admin"}:
+                llm_role = "user"
+            input_chat.append({"role": llm_role, "content": msg["message"]})
         return input_chat
     except Exception as e:
         logging.error(f"Error retrieving messages from database: {e}")
@@ -669,15 +748,19 @@ def make_thread(wa_id, customer_name=None):
     Returns:
         None
     """
+    normalized_name = customer_name
+    if wa_id == SYSTEM_AGENT_WA_ID and (normalized_name is None or str(normalized_name).strip() == ""):
+        normalized_name = SYSTEM_AGENT_DISPLAY_NAME
+
     with get_session() as session:
         existing = session.get(CustomerModel, wa_id)
         if existing is None:
-            session.add(CustomerModel(wa_id=wa_id, customer_name=customer_name))
+            session.add(CustomerModel(wa_id=wa_id, customer_name=normalized_name))
         else:
-            if customer_name is not None and (
+            if normalized_name is not None and (
                 existing.customer_name is None or str(existing.customer_name).strip() == ""
             ):
-                existing.customer_name = customer_name
+                existing.customer_name = normalized_name
         session.commit()
 
 

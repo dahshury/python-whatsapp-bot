@@ -1,3 +1,9 @@
+import type { DashboardData } from "../types";
+
 export type DashboardUseCase = {
-  getStats: () => Promise<{ reservations: number; cancellations: number }>;
+  getStats: (params?: {
+    fromDate?: string;
+    toDate?: string;
+    locale?: string;
+  }) => Promise<DashboardData>;
 };
