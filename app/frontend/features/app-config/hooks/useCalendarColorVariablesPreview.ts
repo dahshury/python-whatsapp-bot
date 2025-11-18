@@ -73,3 +73,5 @@ export function useCalendarColorVariablesPreview(
 		root.style.setProperty('--fc-document-stroke-color', documentStroke)
 	}, [eventColors])
 }
+
+

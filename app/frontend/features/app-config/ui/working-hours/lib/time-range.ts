@@ -43,3 +43,5 @@ export function computeSlotDurationOptions(
 export function formatTimeRange(startTime: string, endTime: string): string {
   return `${startTime} - ${endTime}`;
 }
+
+

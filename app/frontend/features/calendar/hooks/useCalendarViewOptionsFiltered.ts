@@ -36,3 +36,5 @@ export const useCalendarViewOptionsFiltered = (isLocalized: boolean) => {
 		allowedValues,
 	}
 }
+
+
