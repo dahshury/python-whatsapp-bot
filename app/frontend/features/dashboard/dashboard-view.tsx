@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import { EnhancedDashboardView } from "@/features/dashboard/dashboard/enhanced-dashboard-view";
+import { EnhancedDashboardView } from '@/features/dashboard/dashboard/enhanced-dashboard-view'
 
 export function DashboardView() {
-  return <EnhancedDashboardView />;
+	return <EnhancedDashboardView />
 }

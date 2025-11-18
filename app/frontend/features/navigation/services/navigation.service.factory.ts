@@ -1,3 +1,3 @@
-import { NavigationService } from "./navigation.service";
+import { NavigationService } from './navigation.service'
 
-export const createNavigationService = () => NavigationService();
+export const createNavigationService = () => NavigationService()

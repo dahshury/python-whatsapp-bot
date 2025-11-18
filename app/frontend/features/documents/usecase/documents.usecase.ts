@@ -1,24 +1,24 @@
-import type { DocumentDto } from "@/entities/document";
+import type { DocumentDto } from '@/entities/document'
 
 export type EnsureInitializedResult = {
-  success: boolean;
-  modified: boolean;
-  document?: DocumentDto | null;
-};
+	success: boolean
+	modified: boolean
+	document?: DocumentDto | null
+}
 
 export type DocumentsUseCase = {
-  getByWaId: (waId: string) => Promise<{
-    name?: string | null;
-    age?: number | null;
-    document?: unknown;
-  }>;
-  save: (
-    waId: string,
-    snapshot: Partial<{
-      name?: string | null;
-      age?: number | null;
-      document?: unknown;
-    }>
-  ) => Promise<boolean>;
-  ensureInitialized: (waId: string) => Promise<EnsureInitializedResult>;
-};
+	getByWaId: (waId: string) => Promise<{
+		name?: string | null
+		age?: number | null
+		document?: unknown
+	}>
+	save: (
+		waId: string,
+		snapshot: Partial<{
+			name?: string | null
+			age?: number | null
+			document?: unknown
+		}>
+	) => Promise<boolean>
+	ensureInitialized: (waId: string) => Promise<EnsureInitializedResult>
+}

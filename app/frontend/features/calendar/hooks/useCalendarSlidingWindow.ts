@@ -6,274 +6,274 @@
  * when navigating to maintain a fixed window size.
  */
 
-import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
-import { calendarKeys } from "@/shared/api/query-keys";
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
+import { calendarKeys } from '@/shared/api/query-keys'
 import {
-  fetchCalendarConversationEvents,
-  fetchCalendarReservations,
-} from "../lib/query-functions";
-import type { ViewType } from "./useCalendarDateRange";
+	fetchCalendarConversationEvents,
+	fetchCalendarReservations,
+} from '../lib/query-functions'
+import type { ViewType } from './useCalendarDateRange'
 import {
-  getNewestPeriod,
-  getOldestPeriod,
-  getPeriodDateRange,
-  getPeriodKey,
-  getPrefetchPeriods,
-  parsePeriodKey,
-} from "./useCalendarDateRange";
+	getNewestPeriod,
+	getOldestPeriod,
+	getPeriodDateRange,
+	getPeriodKey,
+	getPrefetchPeriods,
+	parsePeriodKey,
+} from './useCalendarDateRange'
 
 type UseCalendarSlidingWindowOptions = {
-  viewType: ViewType;
-  currentDate: Date;
-  freeRoam: boolean;
-  excludeConversations?: boolean;
-  windowSize?: number; // Number of periods to prefetch on each side (default: 5)
-  enabled?: boolean; // Whether prefetching should be enabled (default: true)
-};
+	viewType: ViewType
+	currentDate: Date
+	freeRoam: boolean
+	excludeConversations?: boolean
+	windowSize?: number // Number of periods to prefetch on each side (default: 5)
+	enabled?: boolean // Whether prefetching should be enabled (default: true)
+}
 
 /**
  * Hook for managing sliding window prefetch of calendar data
  */
 export function useCalendarSlidingWindow(
-  options: UseCalendarSlidingWindowOptions
+	options: UseCalendarSlidingWindowOptions
 ) {
-  const {
-    viewType,
-    currentDate,
-    freeRoam,
-    excludeConversations = false,
-    windowSize = 5,
-    enabled = true,
-  } = options;
+	const {
+		viewType,
+		currentDate,
+		freeRoam,
+		excludeConversations = false,
+		windowSize = 5,
+		enabled = true,
+	} = options
 
-  const queryClient = useQueryClient();
-  const currentPeriodRef = useRef<string>("");
-  const previousViewTypeRef = useRef<ViewType | null>(null);
-  const cachedPeriodsRef = useRef<Set<string>>(new Set());
+	const queryClient = useQueryClient()
+	const currentPeriodRef = useRef<string>('')
+	const previousViewTypeRef = useRef<ViewType | null>(null)
+	const cachedPeriodsRef = useRef<Set<string>>(new Set())
 
-  // Get current period key
-  const currentPeriodKey = getPeriodKey(viewType, currentDate);
-  // Pass freeRoam to getPrefetchPeriods to skip past periods when freeRoam is false
-  const prefetchPeriods = getPrefetchPeriods(
-    viewType,
-    currentDate,
-    windowSize,
-    freeRoam
-  );
+	// Get current period key
+	const currentPeriodKey = getPeriodKey(viewType, currentDate)
+	// Pass freeRoam to getPrefetchPeriods to skip past periods when freeRoam is false
+	const prefetchPeriods = getPrefetchPeriods(
+		viewType,
+		currentDate,
+		windowSize,
+		freeRoam
+	)
 
-  // Track cached periods and handle cache eviction
-  useEffect(() => {
-    const currentPeriod = getPeriodKey(viewType, currentDate);
-    const previousPeriod = currentPeriodRef.current;
-    const previousViewType = previousViewTypeRef.current;
+	// Track cached periods and handle cache eviction
+	useEffect(() => {
+		const currentPeriod = getPeriodKey(viewType, currentDate)
+		const previousPeriod = currentPeriodRef.current
+		const previousViewType = previousViewTypeRef.current
 
-    // If view type changed, invalidate ALL cached queries (date ranges change drastically)
-    if (previousViewType && previousViewType !== viewType) {
-      // Clear all cached periods when view changes
-      cachedPeriodsRef.current.clear();
-      // Invalidate all calendar queries (date ranges change drastically)
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-          return (
-            key[0] === "calendar-reservations" ||
-            key[0] === "calendar-conversation-events"
-          );
-        },
-      });
-      // Update view type tracking
-      previousViewTypeRef.current = viewType;
-    } else if (!previousViewType) {
-      // Initialize view type tracking
-      previousViewTypeRef.current = viewType;
-    }
+		// If view type changed, invalidate ALL cached queries (date ranges change drastically)
+		if (previousViewType && previousViewType !== viewType) {
+			// Clear all cached periods when view changes
+			cachedPeriodsRef.current.clear()
+			// Invalidate all calendar queries (date ranges change drastically)
+			queryClient.invalidateQueries({
+				predicate: (query) => {
+					const key = query.queryKey
+					return (
+						key[0] === 'calendar-reservations' ||
+						key[0] === 'calendar-conversation-events'
+					)
+				},
+			})
+			// Update view type tracking
+			previousViewTypeRef.current = viewType
+		} else if (!previousViewType) {
+			// Initialize view type tracking
+			previousViewTypeRef.current = viewType
+		}
 
-    // If period changed, update cache tracking
-    if (currentPeriod !== currentPeriodRef.current) {
-      currentPeriodRef.current = currentPeriod;
+		// If period changed, update cache tracking
+		if (currentPeriod !== currentPeriodRef.current) {
+			currentPeriodRef.current = currentPeriod
 
-      // Detect navigation direction by parsing period keys (only if view type didn't change)
-      let wasGoingForward = false;
-      let wasGoingBackward = false;
+			// Detect navigation direction by parsing period keys (only if view type didn't change)
+			let wasGoingForward = false
+			let wasGoingBackward = false
 
-      if (previousPeriod && currentPeriod && previousViewType === viewType) {
-        // Parse period keys to determine chronological order
-        const prevDate = parsePeriodKey(previousPeriod);
-        const currDate = parsePeriodKey(currentPeriod);
+			if (previousPeriod && currentPeriod && previousViewType === viewType) {
+				// Parse period keys to determine chronological order
+				const prevDate = parsePeriodKey(previousPeriod)
+				const currDate = parsePeriodKey(currentPeriod)
 
-        if (prevDate && currDate) {
-          wasGoingForward = currDate > prevDate;
-          wasGoingBackward = currDate < prevDate;
-        }
-      }
+				if (prevDate && currDate) {
+					wasGoingForward = currDate > prevDate
+					wasGoingBackward = currDate < prevDate
+				}
+			}
 
-      // Update cached periods set
-      for (const period of prefetchPeriods) {
-        cachedPeriodsRef.current.add(period);
-      }
+			// Update cached periods set
+			for (const period of prefetchPeriods) {
+				cachedPeriodsRef.current.add(period)
+			}
 
-      // Evict cached periods when cache exceeds limit
-      const maxCacheSize = windowSize * 2 + 1 + 2; // current + 5 forward + 5 backward + buffer
-      if (cachedPeriodsRef.current.size > maxCacheSize) {
-        const allCachedPeriods = Array.from(cachedPeriodsRef.current);
+			// Evict cached periods when cache exceeds limit
+			const maxCacheSize = windowSize * 2 + 1 + 2 // current + 5 forward + 5 backward + buffer
+			if (cachedPeriodsRef.current.size > maxCacheSize) {
+				const allCachedPeriods = Array.from(cachedPeriodsRef.current)
 
-        // When going forward, invalidate oldest periods
-        // When going backward, invalidate newest periods
-        if (wasGoingForward) {
-          const oldest = getOldestPeriod(allCachedPeriods);
-          if (oldest && oldest !== currentPeriod) {
-            cachedPeriodsRef.current.delete(oldest);
-            // Invalidate queries for the oldest period
-            queryClient.invalidateQueries({
-              queryKey: calendarKeys.reservationsByPeriod(oldest, freeRoam),
-            });
-            queryClient.invalidateQueries({
-              queryKey: calendarKeys.conversationsByPeriod(oldest, freeRoam),
-            });
-          }
-        } else if (wasGoingBackward) {
-          const newest = getNewestPeriod(allCachedPeriods);
-          if (newest && newest !== currentPeriod) {
-            cachedPeriodsRef.current.delete(newest);
-            // Invalidate queries for the newest period
-            queryClient.invalidateQueries({
-              queryKey: calendarKeys.reservationsByPeriod(newest, freeRoam),
-            });
-            queryClient.invalidateQueries({
-              queryKey: calendarKeys.conversationsByPeriod(newest, freeRoam),
-            });
-          }
-        } else {
-          // Fallback: invalidate oldest if we can't determine direction
-          const oldest = getOldestPeriod(allCachedPeriods);
-          if (oldest && oldest !== currentPeriod) {
-            cachedPeriodsRef.current.delete(oldest);
-            queryClient.invalidateQueries({
-              queryKey: calendarKeys.reservationsByPeriod(oldest, freeRoam),
-            });
-            queryClient.invalidateQueries({
-              queryKey: calendarKeys.conversationsByPeriod(oldest, freeRoam),
-            });
-          }
-        }
-      }
-    }
-  }, [
-    viewType,
-    currentDate,
-    prefetchPeriods,
-    windowSize,
-    queryClient,
-    freeRoam,
-  ]);
+				// When going forward, invalidate oldest periods
+				// When going backward, invalidate newest periods
+				if (wasGoingForward) {
+					const oldest = getOldestPeriod(allCachedPeriods)
+					if (oldest && oldest !== currentPeriod) {
+						cachedPeriodsRef.current.delete(oldest)
+						// Invalidate queries for the oldest period
+						queryClient.invalidateQueries({
+							queryKey: calendarKeys.reservationsByPeriod(oldest, freeRoam),
+						})
+						queryClient.invalidateQueries({
+							queryKey: calendarKeys.conversationsByPeriod(oldest, freeRoam),
+						})
+					}
+				} else if (wasGoingBackward) {
+					const newest = getNewestPeriod(allCachedPeriods)
+					if (newest && newest !== currentPeriod) {
+						cachedPeriodsRef.current.delete(newest)
+						// Invalidate queries for the newest period
+						queryClient.invalidateQueries({
+							queryKey: calendarKeys.reservationsByPeriod(newest, freeRoam),
+						})
+						queryClient.invalidateQueries({
+							queryKey: calendarKeys.conversationsByPeriod(newest, freeRoam),
+						})
+					}
+				} else {
+					// Fallback: invalidate oldest if we can't determine direction
+					const oldest = getOldestPeriod(allCachedPeriods)
+					if (oldest && oldest !== currentPeriod) {
+						cachedPeriodsRef.current.delete(oldest)
+						queryClient.invalidateQueries({
+							queryKey: calendarKeys.reservationsByPeriod(oldest, freeRoam),
+						})
+						queryClient.invalidateQueries({
+							queryKey: calendarKeys.conversationsByPeriod(oldest, freeRoam),
+						})
+					}
+				}
+			}
+		}
+	}, [
+		viewType,
+		currentDate,
+		prefetchPeriods,
+		windowSize,
+		queryClient,
+		freeRoam,
+	])
 
-  // Prefetch all periods in the window asynchronously
-  // This runs in a separate effect to ensure prefetching happens immediately
-  useEffect(() => {
-    // Skip prefetching if disabled
-    if (!enabled) {
-      return;
-    }
+	// Prefetch all periods in the window asynchronously
+	// This runs in a separate effect to ensure prefetching happens immediately
+	useEffect(() => {
+		// Skip prefetching if disabled
+		if (!enabled) {
+			return
+		}
 
-    // Prefetch all periods in parallel (fire and forget)
-    const prefetchPromises: Promise<unknown>[] = [];
+		// Prefetch all periods in parallel (fire and forget)
+		const prefetchPromises: Promise<unknown>[] = []
 
-    for (const periodKey of prefetchPeriods) {
-      const { start, end } = getPeriodDateRange(viewType, periodKey);
-      const fromDate = start.toISOString().split("T")[0] || "";
-      const toDate = end.toISOString().split("T")[0] || "";
+		for (const periodKey of prefetchPeriods) {
+			const { start, end } = getPeriodDateRange(viewType, periodKey)
+			const fromDate = start.toISOString().split('T')[0] || ''
+			const toDate = end.toISOString().split('T')[0] || ''
 
-      // Skip if dates are invalid
-      if (fromDate === "" || toDate === "") {
-        // eslint-disable-next-line no-continue
-        continue;
-      }
+			// Skip if dates are invalid
+			if (fromDate === '' || toDate === '') {
+				// eslint-disable-next-line no-continue
+				continue
+			}
 
-      // Prefetch reservations (only if not already cached)
-      const reservationsKey = calendarKeys.reservationsByPeriod(
-        periodKey,
-        freeRoam
-      );
-      const reservationsCache = queryClient.getQueryData(reservationsKey);
-      if (!reservationsCache) {
-        prefetchPromises.push(
-          queryClient
-            .prefetchQuery({
-              queryKey: reservationsKey,
-              queryFn: () =>
-                fetchCalendarReservations({ fromDate, toDate, freeRoam }),
-              staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
-            })
-            .then(() => undefined as undefined)
-        );
-      }
+			// Prefetch reservations (only if not already cached)
+			const reservationsKey = calendarKeys.reservationsByPeriod(
+				periodKey,
+				freeRoam
+			)
+			const reservationsCache = queryClient.getQueryData(reservationsKey)
+			if (!reservationsCache) {
+				prefetchPromises.push(
+					queryClient
+						.prefetchQuery({
+							queryKey: reservationsKey,
+							queryFn: () =>
+								fetchCalendarReservations({ fromDate, toDate, freeRoam }),
+							staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
+						})
+						.then(() => undefined as undefined)
+				)
+			}
 
-      // Prefetch conversation events if not excluded (only if not already cached)
-      if (!excludeConversations) {
-        const conversationsKey = calendarKeys.conversationsByPeriod(
-          periodKey,
-          freeRoam
-        );
-        const conversationsCache = queryClient.getQueryData(conversationsKey);
-        if (!conversationsCache) {
-          prefetchPromises.push(
-            queryClient
-              .prefetchQuery({
-                queryKey: conversationsKey,
-                queryFn: () =>
-                  fetchCalendarConversationEvents({ fromDate, toDate }),
-                staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
-              })
-              .then(() => undefined as undefined)
-          );
-        }
-      }
-    }
+			// Prefetch conversation events if not excluded (only if not already cached)
+			if (!excludeConversations) {
+				const conversationsKey = calendarKeys.conversationsByPeriod(
+					periodKey,
+					freeRoam
+				)
+				const conversationsCache = queryClient.getQueryData(conversationsKey)
+				if (!conversationsCache) {
+					prefetchPromises.push(
+						queryClient
+							.prefetchQuery({
+								queryKey: conversationsKey,
+								queryFn: () =>
+									fetchCalendarConversationEvents({ fromDate, toDate }),
+								staleTime: Number.POSITIVE_INFINITY, // Never consider data stale - only WebSocket invalidates cache
+							})
+							.then(() => undefined as undefined)
+					)
+				}
+			}
+		}
 
-    // Execute all prefetch queries in parallel (fire and forget)
-    // Don't await - let them run asynchronously
-    if (prefetchPromises.length > 0) {
-      Promise.all(prefetchPromises).catch(() => {
-        // Silently handle errors - prefetch failures shouldn't block navigation
-        // Errors are logged by TanStack Query internally
-      });
-    }
-  }, [
-    prefetchPeriods,
-    viewType,
-    freeRoam,
-    excludeConversations,
-    queryClient,
-    enabled,
-  ]);
+		// Execute all prefetch queries in parallel (fire and forget)
+		// Don't await - let them run asynchronously
+		if (prefetchPromises.length > 0) {
+			Promise.all(prefetchPromises).catch(() => {
+				// Silently handle errors - prefetch failures shouldn't block navigation
+				// Errors are logged by TanStack Query internally
+			})
+		}
+	}, [
+		prefetchPeriods,
+		viewType,
+		freeRoam,
+		excludeConversations,
+		queryClient,
+		enabled,
+	])
 
-  return {
-    currentPeriodKey,
-    prefetchPeriods,
-  };
+	return {
+		currentPeriodKey,
+		prefetchPeriods,
+	}
 }
 
 /**
  * Hook to invalidate all cached calendar data for a specific view type
  */
 export function useCalendarCacheInvalidation() {
-  const queryClient = useQueryClient();
+	const queryClient = useQueryClient()
 
-  const invalidateView = (_viewType: ViewType) => {
-    // Invalidate all queries for reservations and conversations for this view type
-    // View type parameter is kept for API consistency but not used in predicate
-    queryClient.invalidateQueries({
-      predicate: (query) => {
-        const key = query.queryKey;
-        return (
-          (key[0] === "calendar-reservations" ||
-            key[0] === "calendar-conversation-events") &&
-          key.length > 1
-        );
-      },
-    });
-  };
+	const invalidateView = (_viewType: ViewType) => {
+		// Invalidate all queries for reservations and conversations for this view type
+		// View type parameter is kept for API consistency but not used in predicate
+		queryClient.invalidateQueries({
+			predicate: (query) => {
+				const key = query.queryKey
+				return (
+					(key[0] === 'calendar-reservations' ||
+						key[0] === 'calendar-conversation-events') &&
+					key.length > 1
+				)
+			},
+		})
+	}
 
-  return { invalidateView };
+	return { invalidateView }
 }

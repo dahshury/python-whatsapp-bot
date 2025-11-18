@@ -1,1 +1,1 @@
-export * from "./CustomCalendarRangesSection";
+export * from './CustomCalendarRangesSection'

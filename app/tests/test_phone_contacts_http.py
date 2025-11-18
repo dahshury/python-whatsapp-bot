@@ -110,9 +110,9 @@ def test_all_contacts_filters():
     print("Testing GET /phone/all - Filters")
     print("=" * 60)
 
-    # Test registration filter - registered
-    print("\nTesting registration filter (registered)...")
-    response = requests.get(f"{BASE_URL}/phone/all?page=1&page_size=100&registration=registered")
+    # Test status filter - registered
+    print("\nTesting status filter (registered)...")
+    response = requests.get(f"{BASE_URL}/phone/all?page=1&page_size=100&status=registered")
     data = response.json()
 
     if data["success"]:
@@ -126,14 +126,25 @@ def test_all_contacts_filters():
             assert contact["customer_name"] != contact["wa_id"], "Should not be same as wa_id"
         print("✓ All results have custom names")
 
-    # Test registration filter - unknown
-    print("\nTesting registration filter (unknown)...")
-    response = requests.get(f"{BASE_URL}/phone/all?page=1&page_size=100&registration=unknown")
+    # Test status filter - unknown
+    print("\nTesting status filter (unknown)...")
+    response = requests.get(f"{BASE_URL}/phone/all?page=1&page_size=100&status=unknown")
     data = response.json()
 
     if data["success"]:
         unknown_contacts = data["data"]
         print(f"✓ Found {data['pagination']['total']} unknown contacts")
+
+    # Test status filter - blocked
+    print("\nTesting status filter (blocked)...")
+    response = requests.get(f"{BASE_URL}/phone/all?page=1&page_size=100&status=blocked")
+    data = response.json()
+
+    if data["success"]:
+        blocked_contacts = data["data"]
+        print(f"✓ Found {data['pagination']['total']} blocked contacts")
+        for contact in blocked_contacts[:5]:
+            assert contact.get("is_blocked") is True, "Contact should be blocked"
 
         # Verify none have custom names
         for contact in unknown_contacts[:5]:

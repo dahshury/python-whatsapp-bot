@@ -1,2 +1,2 @@
-export { useNotifications } from "./use-notifications";
-export { useNotificationPreferences } from "./useNotificationPreferences";
+export { useNotifications } from './use-notifications'
+export { useNotificationPreferences } from './useNotificationPreferences'

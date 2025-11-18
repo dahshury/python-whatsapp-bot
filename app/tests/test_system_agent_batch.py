@@ -94,3 +94,4 @@ def test_batch_cancel_invokes_underlying_service():
     assert result["success"] is True
     assert reservation_stub.calls[0][0] == "cancel"
 
+

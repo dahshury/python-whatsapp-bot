@@ -1,142 +1,140 @@
-import { useCallback, useRef } from "react";
-import type { BaseColumnProps } from "../core/types";
+import { useCallback, useRef } from 'react'
+import type { BaseColumnProps } from '../core/types'
 
-const ESTIMATED_CHAR_WIDTH = 8;
+const ESTIMATED_CHAR_WIDTH = 8
 
 export type ColumnAutosizeOptions = {
-  minWidth?: number;
-  maxWidth?: number;
-  padding?: number;
-  headerPadding?: number;
-  sampleSize?: number;
-};
+	minWidth?: number
+	maxWidth?: number
+	padding?: number
+	headerPadding?: number
+	sampleSize?: number
+}
 
 export function useColumnAutosize(options: ColumnAutosizeOptions = {}) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
+	const canvasRef = useRef<HTMLCanvasElement | null>(null)
+	const contextRef = useRef<CanvasRenderingContext2D | null>(null)
 
-  const {
-    minWidth = 50,
-    maxWidth = 400,
-    padding = 16,
-    headerPadding = 20,
-    sampleSize = 100,
-  } = options;
+	const {
+		minWidth = 50,
+		maxWidth = 400,
+		padding = 16,
+		headerPadding = 20,
+		sampleSize = 100,
+	} = options
 
-  const getTextWidth = useCallback(
-    (text: string, font = "14px Arial"): number => {
-      if (!canvasRef.current) {
-        canvasRef.current = document.createElement("canvas");
-        contextRef.current = canvasRef.current.getContext("2d");
-      }
+	const getTextWidth = useCallback(
+		(text: string, font = '14px Arial'): number => {
+			if (!canvasRef.current) {
+				canvasRef.current = document.createElement('canvas')
+				contextRef.current = canvasRef.current.getContext('2d')
+			}
 
-      if (!contextRef.current) {
-        return text.length * ESTIMATED_CHAR_WIDTH;
-      }
+			if (!contextRef.current) {
+				return text.length * ESTIMATED_CHAR_WIDTH
+			}
 
-      contextRef.current.font = font;
-      return contextRef.current.measureText(text).width;
-    },
-    []
-  );
+			contextRef.current.font = font
+			return contextRef.current.measureText(text).width
+		},
+		[]
+	)
 
-  const calculateColumnWidth = useCallback(
-    (
-      column: BaseColumnProps,
-      data: unknown[],
-      headerFont = "14px Arial",
-      cellFont = "14px Arial"
-    ): number => {
-      // Calculate header width
-      const headerWidth = getTextWidth(column.name, headerFont) + headerPadding;
+	const calculateColumnWidth = useCallback(
+		(
+			column: BaseColumnProps,
+			data: unknown[],
+			headerFont = '14px Arial',
+			cellFont = '14px Arial'
+		): number => {
+			// Calculate header width
+			const headerWidth = getTextWidth(column.name, headerFont) + headerPadding
 
-      // Get sample data for the column
-      const sampleData = data.slice(0, sampleSize);
-      const columnData = sampleData.map(
-        (row) => (row as Record<string, unknown>)[column.id]
-      );
+			// Get sample data for the column
+			const sampleData = data.slice(0, sampleSize)
+			const columnData = sampleData.map(
+				(row) => (row as Record<string, unknown>)[column.id]
+			)
 
-      // Calculate max content width
-      let maxContentWidth = 0;
-      for (const cellValue of columnData) {
-        if (cellValue != null) {
-          const cellText = String(cellValue);
-          const cellWidth = getTextWidth(cellText, cellFont);
-          maxContentWidth = Math.max(maxContentWidth, cellWidth);
-        }
-      }
+			// Calculate max content width
+			let maxContentWidth = 0
+			for (const cellValue of columnData) {
+				if (cellValue != null) {
+					const cellText = String(cellValue)
+					const cellWidth = getTextWidth(cellText, cellFont)
+					maxContentWidth = Math.max(maxContentWidth, cellWidth)
+				}
+			}
 
-      const contentWidth = maxContentWidth + padding;
-      const finalWidth = Math.max(headerWidth, contentWidth);
+			const contentWidth = maxContentWidth + padding
+			const finalWidth = Math.max(headerWidth, contentWidth)
 
-      return Math.min(Math.max(finalWidth, minWidth), maxWidth);
-    },
-    [getTextWidth, headerPadding, padding, sampleSize, minWidth, maxWidth]
-  );
+			return Math.min(Math.max(finalWidth, minWidth), maxWidth)
+		},
+		[getTextWidth, headerPadding, padding, sampleSize, minWidth, maxWidth]
+	)
 
-  const autosizeColumn = useCallback(
-    (
-      column: BaseColumnProps,
-      data: unknown[],
-      onWidthChange: (columnId: string, width: number) => void
-    ) => {
-      const newWidth = calculateColumnWidth(column, data);
-      onWidthChange(column.id, newWidth);
-    },
-    [calculateColumnWidth]
-  );
+	const autosizeColumn = useCallback(
+		(
+			column: BaseColumnProps,
+			data: unknown[],
+			onWidthChange: (columnId: string, width: number) => void
+		) => {
+			const newWidth = calculateColumnWidth(column, data)
+			onWidthChange(column.id, newWidth)
+		},
+		[calculateColumnWidth]
+	)
 
-  const autosizeColumns = useCallback(
-    (
-      columns: BaseColumnProps[],
-      data: unknown[],
-      onWidthChange: (columnId: string, width: number) => void
-    ) => {
-      for (const column of columns) {
-        autosizeColumn(column, data, onWidthChange);
-      }
-    },
-    [autosizeColumn]
-  );
+	const autosizeColumns = useCallback(
+		(
+			columns: BaseColumnProps[],
+			data: unknown[],
+			onWidthChange: (columnId: string, width: number) => void
+		) => {
+			for (const column of columns) {
+				autosizeColumn(column, data, onWidthChange)
+			}
+		},
+		[autosizeColumn]
+	)
 
-  const autosizeVisibleColumns = useCallback(
-    (
-      columns: BaseColumnProps[],
-      data: unknown[],
-      hiddenColumns: Set<string>,
-      onWidthChange: (columnId: string, width: number) => void
-    ) => {
-      const visibleColumns = columns.filter(
-        (col) => !hiddenColumns.has(col.id)
-      );
-      autosizeColumns(visibleColumns, data, onWidthChange);
-    },
-    [autosizeColumns]
-  );
+	const autosizeVisibleColumns = useCallback(
+		(
+			columns: BaseColumnProps[],
+			data: unknown[],
+			hiddenColumns: Set<string>,
+			onWidthChange: (columnId: string, width: number) => void
+		) => {
+			const visibleColumns = columns.filter((col) => !hiddenColumns.has(col.id))
+			autosizeColumns(visibleColumns, data, onWidthChange)
+		},
+		[autosizeColumns]
+	)
 
-  const getOptimalWidth = useCallback(
-    (column: BaseColumnProps, data: unknown[]): number =>
-      calculateColumnWidth(column, data),
-    [calculateColumnWidth]
-  );
+	const getOptimalWidth = useCallback(
+		(column: BaseColumnProps, data: unknown[]): number =>
+			calculateColumnWidth(column, data),
+		[calculateColumnWidth]
+	)
 
-  const getOptimalWidths = useCallback(
-    (columns: BaseColumnProps[], data: unknown[]): Record<string, number> => {
-      const widths: Record<string, number> = {};
-      for (const column of columns) {
-        widths[column.id] = calculateColumnWidth(column, data);
-      }
-      return widths;
-    },
-    [calculateColumnWidth]
-  );
+	const getOptimalWidths = useCallback(
+		(columns: BaseColumnProps[], data: unknown[]): Record<string, number> => {
+			const widths: Record<string, number> = {}
+			for (const column of columns) {
+				widths[column.id] = calculateColumnWidth(column, data)
+			}
+			return widths
+		},
+		[calculateColumnWidth]
+	)
 
-  return {
-    autosizeColumn,
-    autosizeColumns,
-    autosizeVisibleColumns,
-    getOptimalWidth,
-    getOptimalWidths,
-    calculateColumnWidth,
-  };
+	return {
+		autosizeColumn,
+		autosizeColumns,
+		autosizeVisibleColumns,
+		getOptimalWidth,
+		getOptimalWidths,
+		calculateColumnWidth,
+	}
 }

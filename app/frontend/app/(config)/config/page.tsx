@@ -1,1 +1,1 @@
-export { ConfigPage as default } from "@/compositions/config";
+export { ConfigPage as default } from '@/compositions/config'

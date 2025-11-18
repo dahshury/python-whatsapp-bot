@@ -1,2 +1,2 @@
-export { CountryCode } from "./country-code.vo";
-export { PhoneNumber } from "./phone-number.vo";
+export { CountryCode } from './country-code.vo'
+export { PhoneNumber } from './phone-number.vo'

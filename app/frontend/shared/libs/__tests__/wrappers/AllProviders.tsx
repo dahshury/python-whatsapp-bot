@@ -1,19 +1,19 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React from "react";
-import { StoreProvider } from "@/infrastructure/providers/store-provider";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
+import { StoreProvider } from '@/infrastructure/providers/store-provider'
 
 const AllProviders: React.FC<React.PropsWithChildren> = ({ children }) => {
-  const clientRef = React.useRef<QueryClient>();
-  if (!clientRef.current) {
-    clientRef.current = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-  }
-  return (
-    <QueryClientProvider client={clientRef.current}>
-      <StoreProvider>{children}</StoreProvider>
-    </QueryClientProvider>
-  );
-};
+	const clientRef = React.useRef<QueryClient>()
+	if (!clientRef.current) {
+		clientRef.current = new QueryClient({
+			defaultOptions: { queries: { retry: false } },
+		})
+	}
+	return (
+		<QueryClientProvider client={clientRef.current}>
+			<StoreProvider>{children}</StoreProvider>
+		</QueryClientProvider>
+	)
+}
 
-export default AllProviders;
+export default AllProviders

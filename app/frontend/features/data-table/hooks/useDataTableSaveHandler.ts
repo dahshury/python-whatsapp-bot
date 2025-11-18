@@ -1,1 +1,1 @@
-export { useDataTableSaveHandler as default } from "./use-data-table-save-handler";
+export { useDataTableSaveHandler as default } from './use-data-table-save-handler'

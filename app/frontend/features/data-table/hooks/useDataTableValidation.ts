@@ -1,1 +1,1 @@
-export { useDataTableValidation as default } from "./use-data-table-validation";
+export { useDataTableValidation as default } from './use-data-table-validation'

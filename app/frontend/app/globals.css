@@ -4,6 +4,9 @@
 /* FontAwesome - used across the app */
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
+/* Streamdown styles */
+@source "../node_modules/streamdown/dist/index.js";
+
 /* Tailwind */
 @tailwind base;
 @tailwind components;

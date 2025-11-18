@@ -16,12 +16,16 @@ class PhoneSearchResult:
         last_message_at: datetime | None = None,
         last_reservation_at: datetime | None = None,
         similarity: float = 0.0,
+        is_favorite: bool = False,
+        is_blocked: bool = False,
     ):
         self.wa_id = wa_id
         self.customer_name = customer_name
         self.last_message_at = last_message_at
         self.last_reservation_at = last_reservation_at
         self.similarity = similarity
+        self.is_favorite = is_favorite
+        self.is_blocked = is_blocked
 
     def to_dict(self) -> dict[str, any]:
         """Convert to dictionary for API response."""
@@ -31,6 +35,8 @@ class PhoneSearchResult:
             "last_message_at": self.last_message_at.isoformat() if self.last_message_at else None,
             "last_reservation_at": self.last_reservation_at.isoformat() if self.last_reservation_at else None,
             "similarity": self.similarity,
+            "is_favorite": self.is_favorite,
+            "is_blocked": self.is_blocked,
         }
 
 
@@ -78,6 +84,8 @@ class PhoneSearchService(BaseService):
                     SELECT
                         c.wa_id,
                         c.customer_name,
+                        COALESCE(c.is_blocked, false) as is_blocked,
+                        COALESCE(c.is_favorite, false) as is_favorite,
                         GREATEST(
                             similarity(COALESCE(c.wa_id, ''), :phone_query),
                             -- Use word_similarity for names (better for short queries like "jo" matching "Joanah")
@@ -125,7 +133,9 @@ class PhoneSearchService(BaseService):
                     cs.customer_name,
                     cs.sim_score,
                     lm.last_user_message_at AS last_message_at,
-                    lr.last_reservation_at
+                    lr.last_reservation_at,
+                    cs.is_favorite,
+                    cs.is_blocked
                 FROM customer_similarity cs
                 LEFT JOIN latest_user_messages lm ON cs.wa_id = lm.wa_id
                 LEFT JOIN latest_reservations lr ON cs.wa_id = lr.wa_id
@@ -162,6 +172,8 @@ class PhoneSearchService(BaseService):
                         last_message_at=last_msg_at,
                         last_reservation_at=row.last_reservation_at,
                         similarity=float(row.sim_score),
+                        is_favorite=bool(row.is_favorite) if hasattr(row, "is_favorite") else False,
+                        is_blocked=bool(row.is_blocked) if hasattr(row, "is_blocked") else False,
                     )
                 )
 
@@ -201,7 +213,9 @@ class PhoneSearchService(BaseService):
                     c.wa_id,
                     c.customer_name,
                     lum.last_message_at,
-                    lr.last_reservation_at
+                    lr.last_reservation_at,
+                    COALESCE(c.is_favorite, false) as is_favorite,
+                    COALESCE(c.is_blocked, false) as is_blocked
                 FROM customers c
                 INNER JOIN latest_user_messages lum ON c.wa_id = lum.wa_id
                 LEFT JOIN latest_reservations lr ON c.wa_id = lr.wa_id
@@ -228,6 +242,8 @@ class PhoneSearchService(BaseService):
                         last_message_at=last_msg_at,
                         last_reservation_at=row.last_reservation_at,
                         similarity=1.0,  # All recent contacts have similarity 1.0
+                        is_favorite=bool(row.is_favorite) if hasattr(row, "is_favorite") else False,
+                        is_blocked=bool(row.is_blocked) if hasattr(row, "is_blocked") else False,
                     )
                 )
 
@@ -248,7 +264,7 @@ class PhoneSearchService(BaseService):
             page_size: Number of contacts per page (default 100)
             filters: Optional filters dict with keys:
                 - country: Filter by country code
-                - registration: 'registered' or 'unknown'
+                - status: 'registered', 'unknown', or 'blocked' (alias: 'registration')
                 - date_range: Dict with 'type' ('messages' or 'reservations') and 'range' (DateRange)
             exclude_phone_numbers: Optional list of phone numbers to exclude from results
 
@@ -276,21 +292,24 @@ class PhoneSearchService(BaseService):
                     # For better performance, we could add a country_code column to customers table
                     pass  # Will filter in Python after fetching
 
-                # Registration filter
-                if filters.get("registration") == "registered":
+                # Status filter (registered/unregistered/blocked)
+                status_filter = filters.get("status") or filters.get("registration")
+                if status_filter == "registered":
                     where_conditions.append(
                         "c.customer_name IS NOT NULL "
                         "AND c.customer_name != '' "
                         "AND c.customer_name != c.wa_id "
                         "AND c.customer_name != REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', '')"
                     )
-                elif filters.get("registration") == "unknown":
+                elif status_filter == "unknown":
                     where_conditions.append(
                         "(c.customer_name IS NULL "
                         "OR c.customer_name = '' "
                         "OR c.customer_name = c.wa_id "
                         "OR c.customer_name = REPLACE(REPLACE(REPLACE(c.wa_id, ' ', ''), '-', ''), '+', ''))"
                     )
+                elif status_filter == "blocked":
+                    where_conditions.append("c.is_blocked = TRUE")
 
                 # Date range filter
                 date_range = filters.get("date_range")
@@ -382,7 +401,9 @@ class PhoneSearchService(BaseService):
                     c.wa_id,
                     c.customer_name,
                     lm.last_user_message_at AS last_message_at,
-                    lr.last_reservation_at
+                    lr.last_reservation_at,
+                    COALESCE(c.is_favorite, false) as is_favorite,
+                    COALESCE(c.is_blocked, false) as is_blocked
                 FROM customers c
                 LEFT JOIN latest_user_messages lm ON c.wa_id = lm.wa_id
                 LEFT JOIN latest_reservations lr ON c.wa_id = lr.wa_id
@@ -431,6 +452,8 @@ class PhoneSearchService(BaseService):
                         last_message_at=last_msg_at,
                         last_reservation_at=row.last_reservation_at,
                         similarity=1.0,
+                        is_favorite=bool(row.is_favorite) if hasattr(row, "is_favorite") else False,
+                        is_blocked=bool(row.is_blocked) if hasattr(row, "is_blocked") else False,
                     )
                 )
 
@@ -465,7 +488,9 @@ class PhoneSearchService(BaseService):
                         c.wa_id,
                         c.customer_name,
                         lm.last_user_message_at AS last_message_at,
-                        lr.last_reservation_at
+                        lr.last_reservation_at,
+                        COALESCE(c.is_favorite, false) as is_favorite,
+                        COALESCE(c.is_blocked, false) as is_blocked
                     FROM customers c
                     LEFT JOIN latest_user_messages lm ON c.wa_id = lm.wa_id
                     LEFT JOIN latest_reservations lr ON c.wa_id = lr.wa_id
@@ -513,6 +538,8 @@ class PhoneSearchService(BaseService):
                                     last_message_at=last_msg_at,
                                     last_reservation_at=row.last_reservation_at,
                                     similarity=1.0,
+                                    is_favorite=bool(row.is_favorite) if hasattr(row, "is_favorite") else False,
+                                    is_blocked=bool(row.is_blocked) if hasattr(row, "is_blocked") else False,
                                 )
                             )
                     except Exception:

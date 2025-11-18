@@ -48,7 +48,21 @@ def set_customer_block_status(wa_id: str, blocked: bool) -> dict[str, object]:
                 return format_response(False, message=get_message("wa_id_not_found", False))
             customer.is_blocked = bool(blocked)
             session.commit()
-            return format_response(True, data={"wa_id": wa_id, "is_blocked": customer.is_blocked})
+            result_data = {"wa_id": wa_id, "is_blocked": customer.is_blocked}
+
+            # Broadcast the block status change to update all connected clients
+            try:
+                from app.utils.realtime import enqueue_broadcast
+                enqueue_broadcast(
+                    "customer_block_updated",
+                    result_data,
+                    affected_entities=[wa_id],
+                    source="backend"
+                )
+            except Exception as broadcast_err:
+                logging.debug(f"Failed to broadcast block status change: {broadcast_err}")
+
+            return format_response(True, data=result_data)
     except Exception as exc:  # pragma: no cover - defensive
         logging.error("Failed to update block status for %s: %s", wa_id, exc, exc_info=True)
         return format_response(False, message=get_message("system_error_try_later", False))
@@ -62,7 +76,21 @@ def set_customer_favorite_status(wa_id: str, favorite: bool) -> dict[str, object
                 return format_response(False, message=get_message("wa_id_not_found", False))
             customer.is_favorite = bool(favorite)
             session.commit()
-            return format_response(True, data={"wa_id": wa_id, "is_favorite": customer.is_favorite})
+            result_data = {"wa_id": wa_id, "is_favorite": customer.is_favorite}
+
+            # Broadcast the favorite status change to update all connected clients
+            try:
+                from app.utils.realtime import enqueue_broadcast
+                enqueue_broadcast(
+                    "customer_favorite_updated",
+                    result_data,
+                    affected_entities=[wa_id],
+                    source="backend"
+                )
+            except Exception as broadcast_err:
+                logging.debug(f"Failed to broadcast favorite status change: {broadcast_err}")
+
+            return format_response(True, data=result_data)
     except Exception as exc:  # pragma: no cover - defensive
         logging.error("Failed to update favorite status for %s: %s", wa_id, exc, exc_info=True)
         return format_response(False, message=get_message("system_error_try_later", False))

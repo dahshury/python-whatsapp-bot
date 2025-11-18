@@ -1,6 +1,6 @@
 // FSD Pages Layer (renamed to 'compositions' to avoid Next.js Pages Router conflict)
 
-export { ConfigPage } from "./config";
-export { DashboardPage } from "./dashboard";
-export { DocumentsPage } from "./documents";
-export { HomePage } from "./home";
+export { ConfigPage } from './config'
+export { DashboardPage } from './dashboard'
+export { DocumentsPage } from './documents'
+export { HomePage } from './home'

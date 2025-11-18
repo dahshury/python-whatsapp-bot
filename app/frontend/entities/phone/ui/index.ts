@@ -1,1 +1,1 @@
-export { PhoneLabel } from "./PhoneLabel";
+export { PhoneLabel } from './PhoneLabel'

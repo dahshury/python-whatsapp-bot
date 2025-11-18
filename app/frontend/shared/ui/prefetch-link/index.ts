@@ -1,1 +1,1 @@
-export { PrefetchLink } from "./PrefetchLink";
+export { PrefetchLink } from './PrefetchLink'

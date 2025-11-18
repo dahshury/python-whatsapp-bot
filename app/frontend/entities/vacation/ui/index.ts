@@ -1,1 +1,1 @@
-export { VacationBadge } from "./VacationBadge";
+export { VacationBadge } from './VacationBadge'

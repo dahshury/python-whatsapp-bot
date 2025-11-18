@@ -8,7 +8,8 @@ from app.services.domain.shared.base_service import BaseService
 class PhoneStatsService(BaseService):
     """
     Service for getting phone/customer statistics efficiently.
-    Returns country counts and registration status counts from all customers.
+    Returns country counts and status counts (registered/unregistered/blocked)
+    from all customers.
     """
 
     def get_service_name(self) -> str:
@@ -42,10 +43,13 @@ class PhoneStatsService(BaseService):
 
             return country_counts
 
-    def get_registration_stats(self) -> dict[str, int]:
+    def get_status_stats(self) -> dict[str, int]:
         """
-        Get count of registered vs unknown customers.
-        Returns dict with 'registered' (has custom name) and 'unknown' (no name) counts.
+        Get count of registered, unknown (unregistered), and blocked customers.
+        Returns dict with keys:
+            - registered: has custom name
+            - unknown: no custom name / matches wa_id
+            - blocked: explicitly blocked by the user
         """
         with get_session() as session:
             # Use SQL to efficiently count customers with and without names
@@ -59,7 +63,8 @@ class PhoneStatsService(BaseService):
                         COUNT(*) FILTER (WHERE customer_name IS NULL
                                          OR customer_name = ''
                                          OR customer_name = wa_id
-                                         OR customer_name = REPLACE(REPLACE(REPLACE(wa_id, ' ', ''), '-', ''), '+', '')) as unknown_count
+                                         OR customer_name = REPLACE(REPLACE(REPLACE(wa_id, ' ', ''), '-', ''), '+', '')) as unknown_count,
+                        COUNT(*) FILTER (WHERE is_blocked = TRUE) as blocked_count
                     FROM customers
                 """)
             )
@@ -68,14 +73,18 @@ class PhoneStatsService(BaseService):
             return {
                 "registered": int(row.registered_count) if row else 0,
                 "unknown": int(row.unknown_count) if row else 0,
+                "blocked": int(row.blocked_count) if row else 0,
             }
 
     def get_all_stats(self) -> dict:
         """
         Get all phone statistics in one call.
-        Returns country counts and registration status counts.
+        Returns country counts and status counts.
         """
+        status_stats = self.get_status_stats()
         return {
             "countries": self.get_country_stats(),
-            "registration": self.get_registration_stats(),
+            "status": status_stats,
+            # Backwards compatibility: keep "registration" for older clients.
+            "registration": status_stats,
         }

@@ -1,1 +1,1 @@
-export * from "./DaySpecificHoursSection";
+export * from './DaySpecificHoursSection'

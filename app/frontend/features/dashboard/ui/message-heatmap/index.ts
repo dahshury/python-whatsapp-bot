@@ -1,1 +1,1 @@
-export { MessageHeatmap } from "./MessageHeatmap";
+export { MessageHeatmap } from './MessageHeatmap'

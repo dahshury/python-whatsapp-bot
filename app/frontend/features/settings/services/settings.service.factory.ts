@@ -1,3 +1,3 @@
-import { SettingsService } from "./settings.service";
+import { SettingsService } from './settings.service'
 
-export const createSettingsService = () => SettingsService();
+export const createSettingsService = () => SettingsService()

@@ -245,7 +245,7 @@ async def redirect_to_app(request: Request):
 
 
 @router.post("/whatsapp/message")
-async def api_send_whatsapp_message(payload: dict = Body(...)):
+async def api_send_whatsapp_message(background_tasks: BackgroundTasks, payload: dict = Body(...)):
     wa_id = payload.get("wa_id")
     text = payload.get("text")
     # Enforce WhatsApp max length on server side as a defense-in-depth measure
@@ -278,48 +278,54 @@ async def api_send_whatsapp_message(payload: dict = Body(...)):
 
         # Persist operator message as secretary for UI alignment
         append_message(wa_id, "secretary", text, date_str, time_str)
-        try:
-            enqueue_broadcast(
-                "conversation_new_message",
-                {"wa_id": wa_id, "role": "secretary", "message": text, "date": date_str, "time": time_str},
-                affected_entities=[wa_id],
-                source=payload.get("_call_source", "frontend"),
-            )
-        except Exception:
-            pass
+        # Don't broadcast secretary message here - let frontend add it optimistically after 200
+        # The message is already persisted in DB and will be fetched on next query invalidation
 
-        try:
-            llm_service = get_llm_service(toolkit=SYSTEM_TOOL_REGISTRY, system_prompt=SYSTEM_AGENT_PROMPT)
-            response_text, response_date, response_time = llm_service.run(wa_id)
-        except Exception as exc:
-            logging.error("System agent LLM call failed: %s", exc, exc_info=True)
-            return JSONResponse(content={"status": "error", "message": "System agent failed to respond."}, status_code=500)
-
-        if response_text:
-            append_message(wa_id, "assistant", response_text, response_date, response_time)
+        # Process LLM response in background task
+        async def process_system_agent_response():
             try:
-                enqueue_broadcast(
-                    "conversation_new_message",
-                    {
-                        "wa_id": wa_id,
-                        "role": "assistant",
-                        "message": response_text,
-                        "date": response_date,
-                        "time": response_time,
-                    },
-                    affected_entities=[wa_id],
-                    source="system_agent",
-                )
-            except Exception:
-                pass
+                llm_service = get_llm_service(toolkit=SYSTEM_TOOL_REGISTRY, system_prompt=SYSTEM_AGENT_PROMPT)
+                response_text, response_date, response_time = llm_service.run(wa_id)
+                
+                if response_text:
+                    append_message(wa_id, "assistant", response_text, response_date, response_time)
+                    try:
+                        enqueue_broadcast(
+                            "conversation_new_message",
+                            {
+                                "wa_id": wa_id,
+                                "role": "assistant",
+                                "message": response_text,
+                                "date": response_date,
+                                "time": response_time,
+                            },
+                            affected_entities=[wa_id],
+                            source="system_agent",
+                        )
+                    except Exception:
+                        pass
+            except Exception as exc:
+                logging.error("System agent LLM call failed: %s", exc, exc_info=True)
+                # Optionally broadcast an error message to the frontend
+                try:
+                    enqueue_broadcast(
+                        "system_agent_error",
+                        {"wa_id": wa_id, "error": "System agent failed to respond."},
+                        affected_entities=[wa_id],
+                        source="system_agent",
+                    )
+                except Exception:
+                    pass
 
+        # Schedule background task
+        background_tasks.add_task(process_system_agent_response)
+
+        # Return immediately after persisting the secretary message
         return JSONResponse(
             content={
                 "status": "ok",
                 "data": {
                     "request_timestamp": f"{date_str} {time_str}",
-                    "response": response_text or "",
-                    "response_timestamp": f"{response_date} {response_time}" if response_text else None,
                 },
             }
         )
@@ -574,7 +580,7 @@ async def api_reserve_time_slot(payload: dict = Body(...)):
         payload.get("time") or payload.get("time_slot"),  # Support both formats
         _rtype,  # 0 or 1
         hijri=payload.get("hijri", False),
-        max_reservations=payload.get("max_reservations", 5),
+        max_reservations=payload.get("max_reservations"),
         ar=payload.get("ar", False),
         _call_source=payload.get("_call_source", "assistant"),  # Use provided source or default to assistant
     )
@@ -656,7 +662,8 @@ async def api_phone_all(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     country: str | None = Query(None),
-    registration: str | None = Query(None),
+    status: str | None = Query(None),
+    registration: str | None = Query(None),  # Deprecated alias - keep for backward compatibility
     date_range_type: str | None = Query(None),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
@@ -664,7 +671,7 @@ async def api_phone_all(
 ):
     """
     Get all contacts with pagination.
-    Supports filtering by country, registration status, and date range.
+    Supports filtering by country, status (registered/unregistered/blocked), and date range.
     Can exclude specific phone numbers (comma-separated).
     """
     try:
@@ -678,8 +685,9 @@ async def api_phone_all(
         filters = {}
         if country:
             filters["country"] = country
-        if registration:
-            filters["registration"] = registration
+        status_filter = status or registration
+        if status_filter:
+            filters["status"] = status_filter
         if date_range_type and (date_from or date_to):
             try:
                 from_date = None
@@ -800,25 +808,14 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
         if has_document and not has_name and not has_age:
             # Document-only save - optimized fast path
             try:
-                from app.db import DATABASE_URL, CustomerModel, get_session
+                from app.db import CustomerModel, get_session
+                from sqlalchemy import select, update
 
-                # Log DB connection info once for diagnosis
-                with contextlib.suppress(Exception):
-                    logging.info(
-                        f"🔗 DB: {DATABASE_URL.split('@')[1].split('/')[0] if '@' in DATABASE_URL else 'unknown'}"
-                    )
-
-                db_start = time.perf_counter()
                 with get_session() as session:
                     # Optimized: use execute with RETURNING to avoid extra SELECT
-                    from sqlalchemy import select, update
-
-                    select_start = time.perf_counter()
                     # Check if customer exists
                     row = session.execute(select(CustomerModel.wa_id).where(CustomerModel.wa_id == wa_id)).first()
-                    select_time = (time.perf_counter() - select_start) * 1000
 
-                    update_start = time.perf_counter()
                     if row:
                         # Update existing
                         session.execute(
@@ -828,19 +825,10 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
                         # Insert new
                         row = CustomerModel(wa_id=wa_id, document=document)
                         session.add(row)
-                    update_time = (time.perf_counter() - update_start) * 1000
 
-                    commit_start = time.perf_counter()
                     session.commit()
-                    commit_time = (time.perf_counter() - commit_start) * 1000
-
-                db_time = (time.perf_counter() - db_start) * 1000
-                logging.info(
-                    f"📊 DB breakdown: select={select_time:.1f}ms, update={update_time:.1f}ms, commit={commit_time:.1f}ms"
-                )
 
                 # Broadcast lightweight notification (no document payload)
-                broadcast_start = time.perf_counter()
                 try:
                     enqueue_broadcast(
                         "customer_document_updated",
@@ -850,12 +838,6 @@ async def api_put_customer(wa_id: str, payload: dict = Body(...)):
                     )
                 except Exception as be:
                     logging.debug(f"Broadcast document update failed (non-fatal): {be}")
-                broadcast_time = (time.perf_counter() - broadcast_start) * 1000
-
-                total_time = (time.perf_counter() - start_time) * 1000
-                logging.info(
-                    f"⚡ Document save: total={total_time:.1f}ms (db={db_time:.1f}ms, broadcast={broadcast_time:.1f}ms)"
-                )
 
                 return JSONResponse(content={"success": True, "document": document})
             except Exception as e:
@@ -930,7 +912,7 @@ async def api_modify_reservation(wa_id: str, payload: dict = Body(...)):
         payload.get("new_time_slot"),
         payload.get("new_name"),
         payload.get("new_type"),
-        max_reservations=payload.get("max_reservations", 5),
+        max_reservations=payload.get("max_reservations"),
         approximate=payload.get("approximate", False),
         hijri=payload.get("hijri", False),
         ar=payload.get("ar", False),
@@ -1174,7 +1156,7 @@ async def api_undo_cancel_reservation(payload: dict = Body(...)):
     Undo a reservation cancellation by reinstating the reservation.
     """
     resp = undo_cancel_reservation(
-        payload.get("reservation_id"), ar=payload.get("ar", False), max_reservations=payload.get("max_reservations", 5)
+        payload.get("reservation_id"), ar=payload.get("ar", False), max_reservations=payload.get("max_reservations")
     )
     return JSONResponse(content=resp)
 

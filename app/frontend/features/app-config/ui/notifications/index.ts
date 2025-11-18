@@ -1,1 +1,1 @@
-export { NotificationPreferencesSection } from "./NotificationPreferencesSection";
+export { NotificationPreferencesSection } from './NotificationPreferencesSection'

@@ -1,8 +1,8 @@
-"use client";
+'use client'
 
-import { type ReactNode, useEffect } from "react";
-import { i18n } from "@/shared/libs/i18n";
-import { useLanguageStore, useSettingsStore } from "../store/app-store";
+import { type ReactNode, useEffect } from 'react'
+import { i18n } from '@/shared/libs/i18n'
+import { useLanguageStore, useSettingsStore } from '../store/app-store'
 
 /**
  * Store Provider - Initializes Zustand stores with persisted state
@@ -11,11 +11,11 @@ import { useLanguageStore, useSettingsStore } from "../store/app-store";
  * to prevent hydration mismatches in Next.js.
  */
 export function StoreProvider({ children }: { children: ReactNode }) {
-  useEffect(() => {
-    initializeStores();
-  }, []);
+	useEffect(() => {
+		initializeStores()
+	}, [])
 
-  return children;
+	return children
 }
 
 /**
@@ -24,24 +24,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
  * but we ensure language store properly initializes i18n
  */
 function initializeStores() {
-  if (typeof window === "undefined") {
-    return;
-  }
+	if (typeof window === 'undefined') {
+		return
+	}
 
-  // The persist middleware automatically rehydrates from localStorage
-  // Access stores to trigger rehydration
-  useSettingsStore.getState();
-  const languageState = useLanguageStore.getState();
+	// The persist middleware automatically rehydrates from localStorage
+	// Access stores to trigger rehydration
+	useSettingsStore.getState()
+	const languageState = useLanguageStore.getState()
 
-  // Ensure i18n is initialized with the current locale
-  // This handles cases where the store was created before i18n was ready
-  try {
-    i18n.changeLanguage(languageState.locale === "ar" ? "ar" : "en");
-    document.documentElement.setAttribute(
-      "lang",
-      languageState.locale === "ar" ? "ar" : "en"
-    );
-  } catch {
-    // i18n may not be initialized yet, will be handled by store actions
-  }
+	// Ensure i18n is initialized with the current locale
+	// This handles cases where the store was created before i18n was ready
+	try {
+		i18n.changeLanguage(languageState.locale === 'ar' ? 'ar' : 'en')
+		document.documentElement.setAttribute(
+			'lang',
+			languageState.locale === 'ar' ? 'ar' : 'en'
+		)
+	} catch {
+		// i18n may not be initialized yet, will be handled by store actions
+	}
 }

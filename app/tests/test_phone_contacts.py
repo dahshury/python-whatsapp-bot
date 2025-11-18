@@ -237,10 +237,10 @@ class TestAllContacts:
         assert total_count >= len(results)
         assert total_count > 0
 
-    def test_get_all_contacts_registration_filter_registered(self):
+    def test_get_all_contacts_status_filter_registered(self):
         """Test filtering by registered status."""
         service = PhoneSearchService()
-        filters = {"registration": "registered"}
+        filters = {"status": "registered"}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should only include contacts with custom names
@@ -249,10 +249,10 @@ class TestAllContacts:
             assert result.customer_name != ""
             assert result.customer_name != result.wa_id
 
-    def test_get_all_contacts_registration_filter_unknown(self):
-        """Test filtering by unknown status."""
+    def test_get_all_contacts_status_filter_unknown(self):
+        """Test filtering by unknown/unregistered status."""
         service = PhoneSearchService()
-        filters = {"registration": "unknown"}
+        filters = {"status": "unknown"}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should only include contacts without custom names
@@ -261,6 +261,16 @@ class TestAllContacts:
                 result.customer_name is not None and result.customer_name != "" and result.customer_name != result.wa_id
             )
             assert not has_custom_name
+
+    def test_get_all_contacts_status_filter_blocked(self):
+        """Test filtering by blocked status."""
+        service = PhoneSearchService()
+        filters = {"status": "blocked"}
+        results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
+
+        # Should only include contacts that are flagged as blocked
+        for result in results:
+            assert getattr(result, "is_blocked", False) is True
 
     def test_get_all_contacts_country_filter(self):
         """Test filtering by country."""
@@ -299,7 +309,7 @@ class TestAllContacts:
     def test_get_all_contacts_multiple_filters(self):
         """Test filtering with multiple filters."""
         service = PhoneSearchService()
-        filters = {"registration": "registered", "country": "SA"}
+        filters = {"status": "registered", "country": "SA"}
         results, total_count = service.get_all_contacts(page=1, page_size=100, filters=filters)
 
         # Should match both filters

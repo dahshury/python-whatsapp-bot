@@ -1,160 +1,120 @@
-"use client";
+'use client'
 
-import { ChevronDownIcon, FileInput, FileOutput, Wrench } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo } from 'react'
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/shared/ui/animate-ui/components/radix/accordion";
-import { CodeBlock } from "@/shared/ui/code-block";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/shared/ui/collapsible";
+	Tool,
+	ToolContent,
+	ToolHeader,
+	ToolInput,
+	ToolOutput,
+	type ToolState,
+} from '@/components/ai-elements/tool'
 
 export type ToolCallGroupProps = {
-  valueKey: string;
-  toolName: string;
-  argsText: string;
-  resultText: string;
-};
+	valueKey: string
+	toolName: string
+	argsText: string
+	resultText: string
+}
 
 // Decode HTML entities
 function decodeHtml(html: string): string {
-  try {
-    const txt = document.createElement("textarea");
-    txt.innerHTML = html;
-    return txt.value;
-  } catch {
-    return html;
-  }
+	if (typeof window === 'undefined') {
+		return html
+	}
+	try {
+		const txt = document.createElement('textarea')
+		txt.innerHTML = html
+		return txt.value
+	} catch {
+		return html
+	}
 }
 
-// Pretty-print JSON if possible
-function formatCode(text: string): string {
-  try {
-    const parsed = JSON.parse(text);
-    return JSON.stringify(parsed, null, 2);
-  } catch {
-    return text;
-  }
-}
-
-// Detect language from content
-function detectLanguage(text: string): string {
-  try {
-    JSON.parse(text);
-    return "json";
-  } catch {
-    return "javascript";
-  }
+// Parse JSON if possible, otherwise return as-is
+function parseJson(text: string): unknown {
+	try {
+		return JSON.parse(text)
+	} catch {
+		return text
+	}
 }
 
 export function ToolCallGroup({
-  valueKey,
-  toolName,
-  argsText,
-  resultText,
+	valueKey,
+	toolName,
+	argsText,
+	resultText,
 }: ToolCallGroupProps) {
-  const decodedArgs = useMemo(
-    () => (argsText?.trim() ? formatCode(decodeHtml(argsText)) : ""),
-    [argsText]
-  );
-  const decodedResult = useMemo(
-    () => (resultText?.trim() ? formatCode(decodeHtml(resultText)) : ""),
-    [resultText]
-  );
+	const decodedArgs = useMemo(
+		() => (argsText?.trim() ? decodeHtml(argsText) : ''),
+		[argsText]
+	)
+	const decodedResult = useMemo(
+		() => (resultText?.trim() ? decodeHtml(resultText) : ''),
+		[resultText]
+	)
 
-  const argsLanguage = useMemo(
-    () => (decodedArgs ? detectLanguage(decodedArgs) : "json"),
-    [decodedArgs]
-  );
-  const resultLanguage = useMemo(
-    () => (decodedResult ? detectLanguage(decodedResult) : "json"),
-    [decodedResult]
-  );
+	const parsedArgs = useMemo(
+		() => (decodedArgs ? parseJson(decodedArgs) : null),
+		[decodedArgs]
+	)
+	const parsedResult = useMemo(
+		() => (decodedResult ? parseJson(decodedResult) : null),
+		[decodedResult]
+	)
 
-  return (
-    <div className="w-full">
-      <Accordion className="w-full" collapsible type="single">
-        <AccordionItem className="border-0" value={valueKey}>
-          <AccordionTrigger
-            className="[&>svg]:-order-1 justify-start gap-2 py-1.5 text-[13px] leading-5 outline-none hover:no-underline"
-            showArrow={true}
-          >
-            <span className="flex items-center gap-2">
-              <Wrench
-                aria-hidden="true"
-                className="shrink-0 opacity-60"
-                size={14}
-              />
-              <span className="font-medium">{`Tool: ${toolName}`}</span>
-            </span>
-          </AccordionTrigger>
-          <AccordionContent className="p-0 pb-0">
-            {decodedArgs?.trim() && (
-              <Collapsible
-                className="border-t py-2 ps-4 pe-3"
-                defaultOpen={true}
-              >
-                <CollapsibleTrigger className="flex gap-2 font-medium text-[13px] leading-5 [&[data-state=open]>svg]:rotate-180">
-                  <ChevronDownIcon
-                    aria-hidden="true"
-                    className="shrink-0 opacity-60 transition-transform duration-200"
-                    size={14}
-                  />
-                  <span className="flex items-center gap-2">
-                    <FileInput
-                      aria-hidden="true"
-                      className="shrink-0 opacity-60"
-                      size={14}
-                    />
-                    <span>Arguments</span>
-                  </span>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-1.5 overflow-hidden ps-4 text-muted-foreground text-xs transition-all data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                  <CodeBlock
-                    code={decodedArgs}
-                    language={argsLanguage}
-                    showLineNumbers={false}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-            <Collapsible className="border-t py-2 ps-4 pe-3" defaultOpen={true}>
-              <CollapsibleTrigger className="flex gap-2 font-medium text-[13px] leading-5 [&[data-state=open]>svg]:rotate-180">
-                <ChevronDownIcon
-                  aria-hidden="true"
-                  className="shrink-0 opacity-60 transition-transform duration-200"
-                  size={14}
-                />
-                <span className="flex items-center gap-2">
-                  <FileOutput
-                    aria-hidden="true"
-                    className="shrink-0 opacity-60"
-                    size={14}
-                  />
-                  <span>Result</span>
-                </span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-1.5 overflow-hidden ps-4 text-muted-foreground text-xs transition-all data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                {decodedResult?.trim() ? (
-                  <CodeBlock
-                    code={decodedResult}
-                    language={resultLanguage}
-                    showLineNumbers={false}
-                  />
-                ) : (
-                  <div className="text-[11px] opacity-60">No result</div>
-                )}
-              </CollapsibleContent>
-            </Collapsible>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    </div>
-  );
+	// Determine tool state based on available data
+	const toolState: ToolState = useMemo(() => {
+		if (decodedResult) {
+			// Check if result looks like an error
+			if (
+				typeof decodedResult === 'string' &&
+				(decodedResult.toLowerCase().includes('error') ||
+					decodedResult.toLowerCase().includes('failed') ||
+					decodedResult.toLowerCase().includes('exception'))
+			) {
+				return 'output-error'
+			}
+			return 'output-available'
+		}
+		if (decodedArgs) {
+			return 'input-available'
+		}
+		return 'input-streaming'
+	}, [decodedArgs, decodedResult])
+
+	// Extract error text if state is error
+	const errorText = useMemo(() => {
+		if (toolState === 'output-error' && decodedResult) {
+			return typeof decodedResult === 'string'
+				? decodedResult
+				: JSON.stringify(decodedResult, null, 2)
+		}
+		return null
+	}, [toolState, decodedResult])
+
+	// Convert result to ReactNode for output display
+	const outputNode = useMemo<React.ReactNode>(() => {
+		if (toolState === 'output-available' && parsedResult) {
+			if (typeof parsedResult === 'string') {
+				return parsedResult
+			}
+			return JSON.stringify(parsedResult, null, 2)
+		}
+		return
+	}, [toolState, parsedResult])
+
+	// Only show ToolInput if parsedArgs is not null or undefined
+	const showToolInput = parsedArgs !== null && parsedArgs !== undefined
+
+	return (
+		<Tool defaultOpen={false} key={valueKey}>
+			<ToolHeader state={toolState} type={toolName} />
+			<ToolContent>
+				{showToolInput && <ToolInput input={parsedArgs} />}
+				<ToolOutput errorText={errorText} output={outputNode} />
+			</ToolContent>
+		</Tool>
+	)
 }

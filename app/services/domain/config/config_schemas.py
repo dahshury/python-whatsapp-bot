@@ -1,10 +1,10 @@
 """Pydantic schemas for app configuration."""
 
 from datetime import date
-from typing import Any, Literal
+from typing import Literal, cast
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 DEFAULT_TIMEZONE = "Asia/Riyadh"
 DEFAULT_LLM_PROVIDER = "openai"
@@ -17,6 +17,40 @@ DEFAULT_EVENT_TYPE_COLORS: dict[str, dict[str, str]] = {
 }
 DEFAULT_DOCUMENT_STROKE_COLOR = "#facc15"
 
+DEFAULT_AVAILABLE_THEMES = [
+    "theme-default",
+    "theme-clerk",
+    "theme-amethyst-haze",
+    "theme-claude",
+    "theme-art-deco",
+    "theme-neo-brutalism",
+    "theme-perpetuity",
+    "theme-retro-arcade",
+    "theme-soft-pop",
+    "theme-ghibli-studio",
+    "theme-valorant",
+    "theme-t3chat",
+    "theme-perplexity",
+    "theme-neomorphism",
+    "theme-inline",
+]
+
+DEFAULT_CALENDAR_VIEWS = [
+    "timeGridWeek",
+    "dayGridMonth",
+    "dayGridWeek",
+    "listMonth",
+    "multiMonthYear",
+]
+
+ALLOWED_EVENT_TYPE_IDS: tuple[str, ...] = ("0", "1", "2")
+DEFAULT_EVENT_DURATION_MINUTES = 20
+MIN_EVENT_DURATION_MINUTES = 5
+MAX_EVENT_DURATION_MINUTES = 8 * 60  # Up to 8 hours
+DEFAULT_AGENT_SLOT_CAPACITY = 5
+DEFAULT_SECRETARY_SLOT_CAPACITY = 6
+MAX_SLOT_CAPACITY_PER_TYPE = 50
+
 
 class EventTypeColor(BaseModel):
     """Background/border pair for a specific event type."""
@@ -25,10 +59,11 @@ class EventTypeColor(BaseModel):
     border: str = Field(description="Hex color used for the event border/stroke")
 
 
-def _default_event_type_color_map() -> dict[str, EventTypeColor]:
-    return {
-        key: EventTypeColor(**value) for key, value in DEFAULT_EVENT_TYPE_COLORS.items()
-    }
+def _default_event_type_color_map() -> dict[str, EventTypeColor | str]:
+    return cast(
+        dict[str, EventTypeColor | str],
+        {key: EventTypeColor(**value) for key, value in DEFAULT_EVENT_TYPE_COLORS.items()},
+    )
 
 
 class EventColorsConfig(BaseModel):
@@ -159,13 +194,12 @@ class CustomCalendarRangeConfig(BaseModel):
             raise ValueError("Invalid time values")
         return v
 
-    @field_validator("end_date")
-    @classmethod
-    def validate_date_range(cls, v: date, info: Any) -> date:
+    @model_validator(mode="after")
+    def validate_date_range(self) -> "CustomCalendarRangeConfig":
         """Validate that end_date is after start_date."""
-        if "start_date" in info.data and v < info.data["start_date"]:
+        if self.end_date < self.start_date:
             raise ValueError("end_date must be after start_date")
-        return v
+        return self
 
 
 class ColumnConfig(BaseModel):
@@ -180,7 +214,7 @@ class ColumnConfig(BaseModel):
     is_editable: bool = Field(default=True, description="Whether column is editable")
     is_required: bool = Field(default=False, description="Whether column is required")
     width: int | None = Field(default=None, description="Column width in pixels")
-    metadata: dict[str, Any] | None = Field(
+    metadata: dict[str, object] | None = Field(
         default=None,
         description="Additional metadata (e.g., dropdown options, validation rules)",
     )
@@ -216,6 +250,97 @@ class EventLoadingConfig(BaseModel):
     ] = Field(
         default="popover",
         description="Behavior when clicking the +X more link",
+    )
+
+
+class EventDurationSettings(BaseModel):
+    """Controls how individual reservation events are laid out in the calendar."""
+
+    strategy: Literal["auto", "manual"] = Field(
+        default="auto",
+        description="Auto derives duration from slot duration & capacity; manual uses fixed durations.",
+    )
+    default_minutes: int = Field(
+        default=DEFAULT_EVENT_DURATION_MINUTES,
+        ge=MIN_EVENT_DURATION_MINUTES,
+        le=MAX_EVENT_DURATION_MINUTES,
+        description="Fallback duration (minutes) when no per-type override exists.",
+    )
+    per_type_minutes: dict[str, int] = Field(
+        default_factory=dict,
+        description="Optional mapping of reservation type -> duration in minutes.",
+    )
+
+    @field_validator("per_type_minutes", mode="before")
+    @classmethod
+    def validate_per_type_minutes(cls, value: object) -> dict[str, int]:
+        if not value:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("per_type_minutes must be a mapping of type -> minutes")
+        normalized: dict[str, int] = {}
+        for key, raw in value.items():
+            key_str = str(key)
+            if key_str not in ALLOWED_EVENT_TYPE_IDS:
+                continue
+            try:
+                minutes = int(raw)
+            except (TypeError, ValueError):
+                continue
+            minutes = max(
+                MIN_EVENT_DURATION_MINUTES, min(MAX_EVENT_DURATION_MINUTES, minutes)
+            )
+            normalized[key_str] = minutes
+        return normalized
+
+
+class SlotCapacityRoleConfig(BaseModel):
+    """Capacity guardrails for a specific persona (agent, secretary, etc.)."""
+
+    total_max: int = Field(
+        default=DEFAULT_AGENT_SLOT_CAPACITY,
+        ge=1,
+        le=MAX_SLOT_CAPACITY_PER_TYPE,
+        description="Maximum number of reservations of any type allowed per slot.",
+    )
+    per_type_max: dict[str, int] = Field(
+        default_factory=dict,
+        description="Optional mapping of reservation type -> max reservations per slot.",
+    )
+
+    @field_validator("per_type_max", mode="before")
+    @classmethod
+    def validate_per_type_max(cls, value: object) -> dict[str, int]:
+        if not value:
+            return {}
+        if not isinstance(value, dict):
+            raise ValueError("per_type_max must be a mapping of type -> capacity")
+        normalized: dict[str, int] = {}
+        for key, raw in value.items():
+            key_str = str(key)
+            if key_str not in ALLOWED_EVENT_TYPE_IDS:
+                continue
+            try:
+                limit = int(raw)
+            except (TypeError, ValueError):
+                continue
+            limit = max(0, min(MAX_SLOT_CAPACITY_PER_TYPE, limit))
+            normalized[key_str] = limit
+        return normalized
+
+
+class SlotCapacityConfig(BaseModel):
+    """Persona-based slot capacity controls."""
+
+    agent: SlotCapacityRoleConfig = Field(
+        default_factory=SlotCapacityRoleConfig,
+        description="Capacity limits enforced for automated agent actions.",
+    )
+    secretary: SlotCapacityRoleConfig = Field(
+        default_factory=lambda: SlotCapacityRoleConfig(
+            total_max=DEFAULT_SECRETARY_SLOT_CAPACITY
+        ),
+        description="Capacity limits enforced for human/secretary actions.",
     )
 
 
@@ -308,6 +433,14 @@ class AppConfigBase(BaseModel):
         default=["en", "ar"],
         description="Available language codes (from implemented languages)",
     )
+    available_themes: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_AVAILABLE_THEMES),
+        description="Available UI themes that users can pick from settings",
+    )
+    available_calendar_views: list[str] = Field(
+        default_factory=lambda: list(DEFAULT_CALENDAR_VIEWS),
+        description="FullCalendar view identifiers exposed to end users",
+    )
     timezone: str = Field(
         default=DEFAULT_TIMEZONE,
         description="Default timezone (IANA identifier) used for reservations and calendars",
@@ -343,6 +476,14 @@ class AppConfigBase(BaseModel):
     event_loading: EventLoadingConfig = Field(
         default_factory=EventLoadingConfig,
         description="Controls for FullCalendar event density limits",
+    )
+    event_duration_settings: EventDurationSettings = Field(
+        default_factory=EventDurationSettings,
+        description="Controls how long events appear based on slot duration or manual overrides.",
+    )
+    slot_capacity_settings: SlotCapacityConfig = Field(
+        default_factory=SlotCapacityConfig,
+        description="Maximum reservations allowed per slot for each persona and event type.",
     )
     notification_preferences: NotificationPreferencesConfig = Field(
         default_factory=NotificationPreferencesConfig,
@@ -387,6 +528,8 @@ class AppConfigUpdate(BaseModel):
     documents_columns: list[ColumnConfig] | None = None
     default_country_prefix: str | None = None
     available_languages: list[str] | None = None
+    available_themes: list[str] | None = None
+    available_calendar_views: list[str] | None = None
     timezone: str | None = None
     llm_provider: str | None = None
     calendar_first_day: int | None = Field(default=None, ge=0, le=6)
@@ -396,6 +539,8 @@ class AppConfigUpdate(BaseModel):
     calendar_direction: Literal["ltr", "rtl", "auto"] | None = None
     event_colors: EventColorsConfig | None = None
     event_loading: EventLoadingConfig | None = None
+    event_duration_settings: EventDurationSettings | None = None
+    slot_capacity_settings: SlotCapacityConfig | None = None
     notification_preferences: NotificationPreferencesConfig | None = None
 
 

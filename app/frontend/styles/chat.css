@@ -110,6 +110,75 @@
 .message-row :where(.rounded-lg, .rounded-md) {
   border: 1px solid hsl(var(--border) / 0.4);
 }
+.chat-textarea {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  resize: none;
+  color: inherit;
+  overflow: hidden;
+}
+.chat-textarea::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+/* Tiptap Editor Styles */
+.chat-editor-content .ProseMirror {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0.5rem 0;
+  margin: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: inherit;
+  outline: none;
+  min-height: 70px;
+  overflow-y: hidden;
+  overflow-x: hidden;
+}
+
+.chat-editor-content .ProseMirror p {
+  margin: 0;
+}
+
+.chat-editor-content .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+}
+
+.chat-editor-content .ProseMirror:focus {
+  outline: none;
+}
+
+.chat-editor-content .ProseMirror strong {
+  font-weight: 600;
+}
+
+.chat-editor-content .ProseMirror em {
+  font-style: italic;
+}
+
+.chat-editor-content .ProseMirror s {
+  text-decoration: line-through;
+}
+
+.chat-editor-content .ProseMirror code {
+  background-color: hsl(var(--muted));
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: monospace;
+  font-size: 0.875em;
+}
 .icon-neon {
   position: relative;
   isolation: isolate;
@@ -247,9 +316,7 @@
 .calendar-chat [data-slot="input-group-control"],
 .calendar-chat [data-slot="input-group-control"] .ScrollbarsCustom-Content,
 .calendar-chat [data-slot="input-group-control"] .ScrollbarsCustom-Scroller,
-.calendar-chat .tiptap,
-.calendar-chat .ProseMirror,
-.calendar-chat .tiptap .ProseMirror {
+.calendar-chat .chat-textarea {
   cursor: text;
 }
 

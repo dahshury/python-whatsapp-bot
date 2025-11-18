@@ -1,63 +1,63 @@
-"use client";
+'use client'
 
-import { Lock } from "lucide-react";
-import type { FC } from "react";
-import { useLanguageStore } from "@/infrastructure/store/app-store";
-import { i18n } from "@/shared/libs/i18n";
-import { cn } from "@/shared/libs/utils";
-import { Spinner } from "@/shared/ui/spinner";
+import { Lock } from 'lucide-react'
+import type { FC } from 'react'
+import { useLanguageStore } from '@/infrastructure/store/app-store'
+import { i18n } from '@/shared/libs/i18n'
+import { cn } from '@/shared/libs/utils'
+import { Spinner } from '@/shared/ui/spinner'
 
 type DocumentLockOverlayProps = {
-  active: boolean;
-  loading?: boolean;
-  message?: string;
-};
+	active: boolean
+	loading?: boolean
+	message?: string
+}
 
 export const DocumentLockOverlay: FC<DocumentLockOverlayProps> = ({
-  active,
-  loading = false,
-  message,
+	active,
+	loading = false,
+	message,
 }) => {
-  const { isLocalized } = useLanguageStore();
-  let overlayMessage: string;
-  if (message === undefined) {
-    overlayMessage = loading
-      ? i18n.getMessage("document_loading", isLocalized)
-      : i18n.getMessage("locked", isLocalized);
-  } else {
-    // If message is provided, check if it's a translation key or use it as-is
-    overlayMessage = message;
-  }
-  const IconComponent = loading ? Spinner : Lock;
+	const { isLocalized } = useLanguageStore()
+	let overlayMessage: string
+	if (message === undefined) {
+		overlayMessage = loading
+			? i18n.getMessage('document_loading', isLocalized)
+			: i18n.getMessage('locked', isLocalized)
+	} else {
+		// If message is provided, check if it's a translation key or use it as-is
+		overlayMessage = message
+	}
+	const IconComponent = loading ? Spinner : Lock
 
-  return (
-    <div
-      aria-hidden={!active}
-      className={cn(
-        "absolute inset-0 flex items-center justify-center bg-background/85 backdrop-blur-sm transition-opacity",
-        active
-          ? "pointer-events-auto opacity-100 duration-100"
-          : "pointer-events-none opacity-0 duration-300"
-      )}
-      style={{ zIndex: "var(--z-document-overlay)" }}
-    >
-      <div
-        className={cn(
-          "inline-flex items-center gap-2 rounded-md border border-border/40 bg-card/95 px-3 py-2 text-muted-foreground text-sm shadow transition-all",
-          active ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"
-        )}
-      >
-        <IconComponent
-          className={cn(
-            "size-4 opacity-80",
-            loading ? "text-muted-foreground" : ""
-          )}
-          focusable={false}
-        />
-        {overlayMessage ? (
-          <span suppressHydrationWarning>{overlayMessage}</span>
-        ) : null}
-      </div>
-    </div>
-  );
-};
+	return (
+		<div
+			aria-hidden={!active}
+			className={cn(
+				'absolute inset-0 flex items-center justify-center bg-background/85 backdrop-blur-sm transition-opacity',
+				active
+					? 'pointer-events-auto opacity-100 duration-100'
+					: 'pointer-events-none opacity-0 duration-300'
+			)}
+			style={{ zIndex: 'var(--z-document-overlay)' }}
+		>
+			<div
+				className={cn(
+					'inline-flex items-center gap-2 rounded-md border border-border/40 bg-card/95 px-3 py-2 text-muted-foreground text-sm shadow transition-all',
+					active ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'
+				)}
+			>
+				<IconComponent
+					className={cn(
+						'size-4 opacity-80',
+						loading ? 'text-muted-foreground' : ''
+					)}
+					focusable={false}
+				/>
+				{overlayMessage ? (
+					<span suppressHydrationWarning>{overlayMessage}</span>
+				) : null}
+			</div>
+		</div>
+	)
+}

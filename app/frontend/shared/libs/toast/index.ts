@@ -7,5 +7,5 @@
 //
 // All exports maintain backward compatibility with existing code.
 
-export { ToastRouter } from "./toast-router";
-export * from "./toast-service";
+export { ToastRouter } from './toast-router'
+export * from './toast-service'

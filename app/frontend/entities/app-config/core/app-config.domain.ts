@@ -1,209 +1,254 @@
 import type {
-  AppConfigSnapshot,
-  CustomCalendarRangeConfig,
-  EventColorConfig,
-  EventLoadingConfig,
-  EventTimeFormatConfig,
-  NotificationPreferencesConfig,
-} from "../types/app-config.types";
+	AppConfigSnapshot,
+	CustomCalendarRangeConfig,
+	EventColorConfig,
+	EventDurationSettings,
+	EventLoadingConfig,
+	EventTimeFormatConfig,
+	NotificationPreferencesConfig,
+	SlotCapacitySettings,
+} from '../types/app-config.types'
 import type {
-  ColumnConfigVO,
-  CountryCodeVO,
-  LanguageListVO,
-  LlmProviderVO,
-  SlotDurationVO,
-  TimezoneVO,
-  WorkingHoursVO,
-} from "../value-objects";
+	ColumnConfigVO,
+	CountryCodeVO,
+	LanguageListVO,
+	LlmProviderVO,
+	SlotDurationVO,
+	TimezoneVO,
+	WorkingHoursVO,
+} from '../value-objects'
 
 type AppConfigProps = {
-  id: number;
-  workingDays: number[];
-  defaultWorkingHours: WorkingHoursVO;
-  daySpecificWorkingHours: WorkingHoursVO[];
-  slotDuration: SlotDurationVO;
-  daySpecificSlotDurations: SlotDurationVO[];
-  customCalendarRanges: CustomCalendarRangeConfig[];
-  expiredCustomRanges: CustomCalendarRangeConfig[];
-  calendarColumns: ColumnConfigVO[];
-  documentsColumns: ColumnConfigVO[];
-  defaultCountry: CountryCodeVO;
-  availableLanguages: LanguageListVO;
-  timezone: TimezoneVO;
-  llmProvider: LlmProviderVO;
-  calendarFirstDay: number | null;
-  eventTimeFormat: EventTimeFormatConfig | null;
-  defaultCalendarView: string | null;
-  calendarLocale: string | null;
-  calendarDirection: "ltr" | "rtl" | "auto" | null;
-  eventColors: EventColorConfig | null;
-  notificationPreferences: NotificationPreferencesConfig | null;
-  eventLoading: EventLoadingConfig | null;
-  createdAt: string;
-  updatedAt: string;
-};
+	id: number
+	workingDays: number[]
+	defaultWorkingHours: WorkingHoursVO
+	daySpecificWorkingHours: WorkingHoursVO[]
+	slotDuration: SlotDurationVO
+	daySpecificSlotDurations: SlotDurationVO[]
+	customCalendarRanges: CustomCalendarRangeConfig[]
+	expiredCustomRanges: CustomCalendarRangeConfig[]
+	calendarColumns: ColumnConfigVO[]
+	documentsColumns: ColumnConfigVO[]
+	defaultCountry: CountryCodeVO
+	availableLanguages: LanguageListVO
+	availableThemes: string[]
+	availableCalendarViews: string[]
+	timezone: TimezoneVO
+	llmProvider: LlmProviderVO
+	calendarFirstDay: number | null
+	eventTimeFormat: EventTimeFormatConfig | null
+	defaultCalendarView: string | null
+	calendarLocale: string | null
+	calendarDirection: 'ltr' | 'rtl' | 'auto' | null
+	eventColors: EventColorConfig | null
+	notificationPreferences: NotificationPreferencesConfig | null
+	eventLoading: EventLoadingConfig | null
+	eventDurationSettings: EventDurationSettings | null
+	slotCapacitySettings: SlotCapacitySettings | null
+	createdAt: string
+	updatedAt: string
+}
 
-const cloneDays = (days: number[]) => [...new Set(days)].sort((a, b) => a - b);
+const cloneDays = (days: number[]) => [...new Set(days)].sort((a, b) => a - b)
 
 export class AppConfig {
-  private readonly props: AppConfigProps;
+	private readonly props: AppConfigProps
 
-  constructor(props: AppConfigProps) {
-    this.props = props;
-  }
+	constructor(props: AppConfigProps) {
+		this.props = props
+	}
 
-  get id(): number {
-    return this.props.id;
-  }
+	get id(): number {
+		return this.props.id
+	}
 
-  get workingDays(): number[] {
-    return cloneDays(this.props.workingDays);
-  }
+	get workingDays(): number[] {
+		return cloneDays(this.props.workingDays)
+	}
 
-  get defaultWorkingHours(): WorkingHoursVO {
-    return this.props.defaultWorkingHours;
-  }
+	get defaultWorkingHours(): WorkingHoursVO {
+		return this.props.defaultWorkingHours
+	}
 
-  get daySpecificWorkingHours(): WorkingHoursVO[] {
-    return [...this.props.daySpecificWorkingHours];
-  }
+	get daySpecificWorkingHours(): WorkingHoursVO[] {
+		return [...this.props.daySpecificWorkingHours]
+	}
 
-  get slotDuration(): SlotDurationVO {
-    return this.props.slotDuration;
-  }
+	get slotDuration(): SlotDurationVO {
+		return this.props.slotDuration
+	}
 
-  get daySpecificSlotDurations(): SlotDurationVO[] {
-    return [...this.props.daySpecificSlotDurations];
-  }
+	get daySpecificSlotDurations(): SlotDurationVO[] {
+		return [...this.props.daySpecificSlotDurations]
+	}
 
-  get customCalendarRanges(): CustomCalendarRangeConfig[] {
-    return this.props.customCalendarRanges.map((range) => ({ ...range }));
-  }
+	get customCalendarRanges(): CustomCalendarRangeConfig[] {
+		return this.props.customCalendarRanges.map((range) => ({ ...range }))
+	}
 
-  get expiredCustomRanges(): CustomCalendarRangeConfig[] {
-    return this.props.expiredCustomRanges.map((range) => ({ ...range }));
-  }
+	get expiredCustomRanges(): CustomCalendarRangeConfig[] {
+		return this.props.expiredCustomRanges.map((range) => ({ ...range }))
+	}
 
-  get calendarColumns(): ColumnConfigVO[] {
-    return [...this.props.calendarColumns];
-  }
+	get calendarColumns(): ColumnConfigVO[] {
+		return [...this.props.calendarColumns]
+	}
 
-  get documentsColumns(): ColumnConfigVO[] {
-    return [...this.props.documentsColumns];
-  }
+	get documentsColumns(): ColumnConfigVO[] {
+		return [...this.props.documentsColumns]
+	}
 
-  get defaultCountry(): CountryCodeVO {
-    return this.props.defaultCountry;
-  }
+	get defaultCountry(): CountryCodeVO {
+		return this.props.defaultCountry
+	}
 
-  get availableLanguages(): LanguageListVO {
-    return this.props.availableLanguages;
-  }
+	get availableLanguages(): LanguageListVO {
+		return this.props.availableLanguages
+	}
 
-  get timezone(): TimezoneVO {
-    return this.props.timezone;
-  }
+	get availableThemes(): string[] {
+		return [...new Set(this.props.availableThemes)]
+	}
 
-  get llmProvider(): LlmProviderVO {
-    return this.props.llmProvider;
-  }
+	get availableCalendarViews(): string[] {
+		return [...new Set(this.props.availableCalendarViews)]
+	}
 
-  get createdAt(): string {
-    return this.props.createdAt;
-  }
+	get timezone(): TimezoneVO {
+		return this.props.timezone
+	}
 
-  get updatedAt(): string {
-    return this.props.updatedAt;
-  }
+	get llmProvider(): LlmProviderVO {
+		return this.props.llmProvider
+	}
 
-  get calendarFirstDay(): number | null {
-    return this.props.calendarFirstDay;
-  }
+	get createdAt(): string {
+		return this.props.createdAt
+	}
 
-  get eventTimeFormat(): EventTimeFormatConfig | null {
-    return this.props.eventTimeFormat
-      ? { ...this.props.eventTimeFormat }
-      : null;
-  }
+	get updatedAt(): string {
+		return this.props.updatedAt
+	}
 
-  get defaultCalendarView(): string | null {
-    return this.props.defaultCalendarView;
-  }
+	get calendarFirstDay(): number | null {
+		return this.props.calendarFirstDay
+	}
 
-  get calendarLocale(): string | null {
-    return this.props.calendarLocale;
-  }
+	get eventTimeFormat(): EventTimeFormatConfig | null {
+		return this.props.eventTimeFormat ? { ...this.props.eventTimeFormat } : null
+	}
 
-  get calendarDirection(): "ltr" | "rtl" | "auto" | null {
-    return this.props.calendarDirection;
-  }
+	get defaultCalendarView(): string | null {
+		return this.props.defaultCalendarView
+	}
 
-  get eventColors(): EventColorConfig | null {
-    return this.props.eventColors
-      ? {
-          ...this.props.eventColors,
-          eventColorByType: { ...this.props.eventColors.eventColorByType },
-          eventColorByStatus: this.props.eventColors.eventColorByStatus
-            ? { ...this.props.eventColors.eventColorByStatus }
-            : null,
-          eventColorByPriority: this.props.eventColors.eventColorByPriority
-            ? { ...this.props.eventColors.eventColorByPriority }
-            : null,
-        }
-      : null;
-  }
+	get calendarLocale(): string | null {
+		return this.props.calendarLocale
+	}
 
-  get notificationPreferences(): NotificationPreferencesConfig | null {
-    return this.props.notificationPreferences
-      ? {
-          ...this.props.notificationPreferences,
-          quietHours: this.props.notificationPreferences.quietHours
-            ? { ...this.props.notificationPreferences.quietHours }
-            : null,
-        }
-      : null;
-  }
+	get calendarDirection(): 'ltr' | 'rtl' | 'auto' | null {
+		return this.props.calendarDirection
+	}
 
-  get eventLoading(): EventLoadingConfig | null {
-    return this.props.eventLoading ? { ...this.props.eventLoading } : null;
-  }
+	get eventColors(): EventColorConfig | null {
+		return this.props.eventColors
+			? {
+					...this.props.eventColors,
+					eventColorByType: { ...this.props.eventColors.eventColorByType },
+					eventColorByStatus: this.props.eventColors.eventColorByStatus
+						? { ...this.props.eventColors.eventColorByStatus }
+						: null,
+					eventColorByPriority: this.props.eventColors.eventColorByPriority
+						? { ...this.props.eventColors.eventColorByPriority }
+						: null,
+				}
+			: null
+	}
 
-  toSnapshot(): AppConfigSnapshot {
-    return {
-      id: this.props.id,
-      workingDays: this.workingDays,
-      defaultWorkingHours: this.props.defaultWorkingHours.value,
-      daySpecificWorkingHours: this.props.daySpecificWorkingHours.map(
-        (hours) => ({
-          dayOfWeek: hours.value.daysOfWeek[0] ?? 0,
-          startTime: hours.value.startTime,
-          endTime: hours.value.endTime,
-        })
-      ),
-      slotDurationHours: this.props.slotDuration.value.hours,
-      daySpecificSlotDurations: this.props.daySpecificSlotDurations.map(
-        (slot) => ({
-          dayOfWeek: slot.value.dayOfWeek ?? 0,
-          slotDurationHours: slot.value.hours,
-        })
-      ),
-      customCalendarRanges: this.customCalendarRanges,
-      calendarColumns: this.props.calendarColumns.map((col) => col.value),
-      documentsColumns: this.props.documentsColumns.map((col) => col.value),
-      defaultCountryPrefix: this.props.defaultCountry.value,
-      availableLanguages: this.props.availableLanguages.value,
-      timezone: this.props.timezone.value,
-      llmProvider: this.props.llmProvider.value,
-      calendarFirstDay: this.props.calendarFirstDay,
-      eventTimeFormat: this.eventTimeFormat,
-      defaultCalendarView: this.props.defaultCalendarView,
-      calendarLocale: this.props.calendarLocale,
-      calendarDirection: this.props.calendarDirection,
-      eventColors: this.eventColors,
-      notificationPreferences: this.notificationPreferences,
-      eventLoading: this.eventLoading,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
-    };
-  }
+	get notificationPreferences(): NotificationPreferencesConfig | null {
+		return this.props.notificationPreferences
+			? {
+					...this.props.notificationPreferences,
+					quietHours: this.props.notificationPreferences.quietHours
+						? { ...this.props.notificationPreferences.quietHours }
+						: null,
+				}
+			: null
+	}
+
+	get eventLoading(): EventLoadingConfig | null {
+		return this.props.eventLoading ? { ...this.props.eventLoading } : null
+	}
+
+	get eventDurationSettings(): EventDurationSettings | null {
+		return this.props.eventDurationSettings
+			? {
+					strategy: this.props.eventDurationSettings.strategy,
+					defaultMinutes: this.props.eventDurationSettings.defaultMinutes,
+					perTypeMinutes: {
+						...this.props.eventDurationSettings.perTypeMinutes,
+					},
+				}
+			: null
+	}
+
+	get slotCapacitySettings(): SlotCapacitySettings | null {
+		if (!this.props.slotCapacitySettings) {
+			return null
+		}
+		const { agent, secretary } = this.props.slotCapacitySettings
+		return {
+			agent: {
+				totalMax: agent.totalMax,
+				perTypeMax: { ...agent.perTypeMax },
+			},
+			secretary: {
+				totalMax: secretary.totalMax,
+				perTypeMax: { ...secretary.perTypeMax },
+			},
+		}
+	}
+
+	toSnapshot(): AppConfigSnapshot {
+		return {
+			id: this.props.id,
+			workingDays: this.workingDays,
+			defaultWorkingHours: this.props.defaultWorkingHours.value,
+			daySpecificWorkingHours: this.props.daySpecificWorkingHours.map(
+				(hours) => ({
+					dayOfWeek: hours.value.daysOfWeek[0] ?? 0,
+					startTime: hours.value.startTime,
+					endTime: hours.value.endTime,
+				})
+			),
+			slotDurationHours: this.props.slotDuration.value.hours,
+			daySpecificSlotDurations: this.props.daySpecificSlotDurations.map(
+				(slot) => ({
+					dayOfWeek: slot.value.dayOfWeek ?? 0,
+					slotDurationHours: slot.value.hours,
+				})
+			),
+			customCalendarRanges: this.customCalendarRanges,
+			calendarColumns: this.props.calendarColumns.map((col) => col.value),
+			documentsColumns: this.props.documentsColumns.map((col) => col.value),
+			defaultCountryPrefix: this.props.defaultCountry.value,
+			availableLanguages: this.props.availableLanguages.value,
+			availableThemes: this.availableThemes,
+			availableCalendarViews: this.availableCalendarViews,
+			timezone: this.props.timezone.value,
+			llmProvider: this.props.llmProvider.value,
+			calendarFirstDay: this.props.calendarFirstDay,
+			eventTimeFormat: this.eventTimeFormat,
+			defaultCalendarView: this.props.defaultCalendarView,
+			calendarLocale: this.props.calendarLocale,
+			calendarDirection: this.props.calendarDirection,
+			eventColors: this.eventColors,
+			notificationPreferences: this.notificationPreferences,
+			eventLoading: this.eventLoading,
+			eventDurationSettings: this.eventDurationSettings,
+			slotCapacitySettings: this.slotCapacitySettings,
+			createdAt: this.props.createdAt,
+			updatedAt: this.props.updatedAt,
+		}
+	}
 }

@@ -1,1 +1,1 @@
-export { DocumentEditorCanvas } from "./DocumentEditorCanvas";
+export { DocumentEditorCanvas } from './DocumentEditorCanvas'

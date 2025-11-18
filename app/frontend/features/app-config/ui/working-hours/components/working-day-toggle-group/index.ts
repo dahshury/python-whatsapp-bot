@@ -1,1 +1,1 @@
-export * from "./WorkingDayToggleGroup";
+export * from './WorkingDayToggleGroup'

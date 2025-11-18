@@ -371,4 +371,3 @@ ______________________________________________________________________
 - Each log includes: operation_id, step name, input parameters, state, result, timing, errors
 - Logs formatted as flat key-value pairs on single lines
 - Operation identifier (`request_id` or `operation_id`) passed through entire call chain
-

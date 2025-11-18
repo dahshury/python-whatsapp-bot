@@ -1,184 +1,180 @@
-"use client";
+'use client'
 
-import { i18n } from "@shared/libs/i18n";
-import { useVacation } from "@shared/libs/state/vacation-context";
-import { cn } from "@shared/libs/utils";
-import { Settings } from "lucide-react";
-import React from "react";
-import { DockIcon } from "@/shared/ui/dock";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { StablePopoverButton } from "@/shared/ui/stable-popover-button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip";
-import { SettingsTabs } from "./settings-tabs";
+import { i18n } from '@shared/libs/i18n'
+import { useVacation } from '@shared/libs/state/vacation-context'
+import { cn } from '@shared/libs/utils'
+import { Settings } from 'lucide-react'
+import React from 'react'
+import { DockIcon } from '@/shared/ui/dock'
+import { Popover, PopoverContent, PopoverTrigger } from '@/shared/ui/popover'
+import { StablePopoverButton } from '@/shared/ui/stable-popover-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/ui/tooltip'
+import { SettingsTabs } from './settings-tabs'
 
 type SettingsPopoverProps = {
-  isLocalized?: boolean;
-  activeTab?: string;
-  onTabChange?: (value: string) => void;
-  currentCalendarView?: string;
-  activeView?: string;
-  onCalendarViewChange?: (view: string) => void;
-  isCalendarPage?: boolean;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  customViewSelector?: React.ReactElement;
-  allowedTabs?: ReadonlyArray<"view" | "general" | "vacation">;
-  /** Hide free roam / dual calendar / default selector toolbar */
-  hideViewModeToolbar?: boolean;
-  /** Whether this is the documents page */
-  isDocumentsPage?: boolean;
-};
+	isLocalized?: boolean
+	activeTab?: string
+	onTabChange?: (value: string) => void
+	currentCalendarView?: string
+	activeView?: string
+	onCalendarViewChange?: (view: string) => void
+	isCalendarPage?: boolean
+	open?: boolean
+	onOpenChange?: (open: boolean) => void
+	customViewSelector?: React.ReactElement
+	allowedTabs?: ReadonlyArray<'view' | 'general' | 'vacation'>
+	/** Hide free roam / dual calendar / default selector toolbar */
+	hideViewModeToolbar?: boolean
+	/** Whether this is the documents page */
+	isDocumentsPage?: boolean
+}
 
 export function SettingsPopover({
-  isLocalized = false,
-  activeTab,
-  onTabChange,
-  currentCalendarView,
-  activeView,
-  onCalendarViewChange,
-  isCalendarPage = true,
-  open: controlledOpen,
-  onOpenChange,
-  customViewSelector,
-  allowedTabs,
-  hideViewModeToolbar,
-  isDocumentsPage = false,
+	isLocalized = false,
+	activeTab,
+	onTabChange,
+	currentCalendarView,
+	activeView,
+	onCalendarViewChange,
+	isCalendarPage = true,
+	open: controlledOpen,
+	onOpenChange,
+	customViewSelector,
+	allowedTabs,
+	hideViewModeToolbar,
+	isDocumentsPage = false,
 }: SettingsPopoverProps) {
-  const { recordingState, stopRecording } = useVacation();
+	const { recordingState, stopRecording } = useVacation()
 
-  // Manage popover and tooltip state to avoid tooltip showing on outside close
-  const [internalOpen, setInternalOpen] = React.useState(false);
-  const [suppressTooltip, setSuppressTooltip] = React.useState(false);
+	// Manage popover and tooltip state to avoid tooltip showing on outside close
+	const [internalOpen, setInternalOpen] = React.useState(false)
+	const [suppressTooltip, setSuppressTooltip] = React.useState(false)
 
-  const isControlled = typeof controlledOpen === "boolean";
-  const open = isControlled ? (controlledOpen as boolean) : internalOpen;
+	const isControlled = typeof controlledOpen === 'boolean'
+	const open = isControlled ? (controlledOpen as boolean) : internalOpen
 
-  // Stabilize recordingState values to prevent unnecessary callback recreation
-  const recordingPeriodIndex = React.useMemo(
-    () => recordingState?.periodIndex ?? null,
-    [recordingState?.periodIndex]
-  );
-  const recordingField = React.useMemo(
-    () => recordingState?.field ?? null,
-    [recordingState?.field]
-  );
-  const isRecording = React.useMemo(
-    () => recordingPeriodIndex !== null && recordingField !== null,
-    [recordingPeriodIndex, recordingField]
-  );
+	// Stabilize recordingState values to prevent unnecessary callback recreation
+	const recordingPeriodIndex = React.useMemo(
+		() => recordingState?.periodIndex ?? null,
+		[recordingState?.periodIndex]
+	)
+	const recordingField = React.useMemo(
+		() => recordingState?.field ?? null,
+		[recordingState?.field]
+	)
+	const isRecording = React.useMemo(
+		() => recordingPeriodIndex !== null && recordingField !== null,
+		[recordingPeriodIndex, recordingField]
+	)
 
-  const handleOpenChange = React.useCallback(
-    (next: boolean) => {
-      if (isControlled) {
-        onOpenChange?.(next);
-      } else {
-        setInternalOpen(next);
-      }
-      if (!next) {
-        // If closing while recording, stop and reset recording
-        try {
-          if (isRecording) {
-            stopRecording();
-          }
-        } catch {
-          // Silently ignore errors when stopping recording (may already be stopped)
-        }
-        setSuppressTooltip(true);
-        // Tooltip suppression timeout (300ms)
-        const TOOLTIP_SUPPRESSION_TIMEOUT_MS = 300;
-        window.setTimeout(
-          () => setSuppressTooltip(false),
-          TOOLTIP_SUPPRESSION_TIMEOUT_MS
-        );
-      }
-    },
-    [isControlled, onOpenChange, isRecording, stopRecording]
-  );
+	const handleOpenChange = React.useCallback(
+		(next: boolean) => {
+			if (isControlled) {
+				onOpenChange?.(next)
+			} else {
+				setInternalOpen(next)
+			}
+			if (!next) {
+				// If closing while recording, stop and reset recording
+				try {
+					if (isRecording) {
+						stopRecording()
+					}
+				} catch {
+					// Silently ignore errors when stopping recording (may already be stopped)
+				}
+				setSuppressTooltip(true)
+				// Tooltip suppression timeout (300ms)
+				const TOOLTIP_SUPPRESSION_TIMEOUT_MS = 300
+				window.setTimeout(
+					() => setSuppressTooltip(false),
+					TOOLTIP_SUPPRESSION_TIMEOUT_MS
+				)
+			}
+		},
+		[isControlled, onOpenChange, isRecording, stopRecording]
+	)
 
-  // Memoize handlers passed to SettingsTabs to prevent re-renders
-  // Use useCallback to create stable function references
-  const handleCalendarViewChange = React.useCallback(
-    (view: string) => {
-      onCalendarViewChange?.(view);
-    },
-    [onCalendarViewChange]
-  );
+	// Memoize handlers passed to SettingsTabs to prevent re-renders
+	// Use useCallback to create stable function references
+	const handleCalendarViewChange = React.useCallback(
+		(view: string) => {
+			onCalendarViewChange?.(view)
+		},
+		[onCalendarViewChange]
+	)
 
-  const handleTabChange = React.useCallback(
-    (value: string) => {
-      onTabChange?.(value);
-    },
-    [onTabChange]
-  );
+	const handleTabChange = React.useCallback(
+		(value: string) => {
+			onTabChange?.(value)
+		},
+		[onTabChange]
+	)
 
-  // Memoize onInteractOutside handler
-  const handleInteractOutside = React.useCallback(
-    (e: { preventDefault: () => void }) => {
-      try {
-        // While actively recording, do not close the popover on any outside interaction
-        if (isRecording) {
-          e.preventDefault();
-        }
-      } catch {
-        // Silently ignore errors when handling outside interaction (non-critical)
-      }
-    },
-    [isRecording]
-  );
+	// Memoize onInteractOutside handler
+	const handleInteractOutside = React.useCallback(
+		(e: { preventDefault: () => void }) => {
+			try {
+				// While actively recording, do not close the popover on any outside interaction
+				if (isRecording) {
+					e.preventDefault()
+				}
+			} catch {
+				// Silently ignore errors when handling outside interaction (non-critical)
+			}
+		},
+		[isRecording]
+	)
 
-  // Button animation is tied to open state (rotate 90deg when open)
+	// Button animation is tied to open state (rotate 90deg when open)
 
-  return (
-    <DockIcon>
-      <Popover
-        modal={!isRecording}
-        onOpenChange={handleOpenChange}
-        open={open}
-      >
-        <Tooltip {...(open || suppressTooltip ? { open: false } : {})}>
-          <TooltipTrigger asChild>
-            <PopoverTrigger asChild>
-              <StablePopoverButton
-                aria-label={i18n.getMessage("settings", isLocalized)}
-                className="size-9 rounded-full transition-colors duration-300 ease-out"
-                variant={open ? "default" : "ghost"}
-              >
-                <Settings
-                  className={cn(
-                    "size-4 transform transition-transform duration-300 ease-out",
-                    open ? "rotate-90" : "rotate-0"
-                  )}
-                />
-              </StablePopoverButton>
-            </PopoverTrigger>
-          </TooltipTrigger>
-          <TooltipContent>
-            <p>{i18n.getMessage("settings", isLocalized)}</p>
-          </TooltipContent>
-        </Tooltip>
+	return (
+		<DockIcon>
+			<Popover modal={!isRecording} onOpenChange={handleOpenChange} open={open}>
+				<Tooltip {...(open || suppressTooltip ? { open: false } : {})}>
+					<TooltipTrigger asChild>
+						<PopoverTrigger asChild>
+							<StablePopoverButton
+								aria-label={i18n.getMessage('settings', isLocalized)}
+								className="size-9 rounded-full transition-colors duration-300 ease-out"
+								variant={open ? 'default' : 'ghost'}
+							>
+								<Settings
+									className={cn(
+										'size-4 transform transition-transform duration-300 ease-out',
+										open ? 'rotate-90' : 'rotate-0'
+									)}
+								/>
+							</StablePopoverButton>
+						</PopoverTrigger>
+					</TooltipTrigger>
+					<TooltipContent>
+						<p>{i18n.getMessage('settings', isLocalized)}</p>
+					</TooltipContent>
+				</Tooltip>
 
-        <PopoverContent
-          align="center"
-          className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
-          onInteractOutside={handleInteractOutside}
-        >
-          <SettingsTabs
-            activeTab={activeTab ?? "view"}
-            activeView={activeView ?? currentCalendarView ?? "timeGridWeek"}
-            currentCalendarView={currentCalendarView ?? "timeGridWeek"}
-            isCalendarPage={isCalendarPage}
-            isDocumentsPage={isDocumentsPage}
-            isLocalized={isLocalized}
-            onCalendarViewChange={handleCalendarViewChange}
-            onTabChange={handleTabChange}
-            {...(allowedTabs ? { allowedTabs } : {})}
-            {...(customViewSelector ? { customViewSelector } : {})}
-            {...(typeof hideViewModeToolbar === "boolean"
-              ? { hideViewModeToolbar }
-              : {})}
-          />
-        </PopoverContent>
-      </Popover>
-    </DockIcon>
-  );
+				<PopoverContent
+					align="center"
+					className="w-auto max-w-[31.25rem] border-border/40 bg-background/70 backdrop-blur-md"
+					onInteractOutside={handleInteractOutside}
+				>
+					<SettingsTabs
+						activeTab={activeTab ?? 'view'}
+						activeView={activeView ?? currentCalendarView ?? 'timeGridWeek'}
+						currentCalendarView={currentCalendarView ?? 'timeGridWeek'}
+						isCalendarPage={isCalendarPage}
+						isDocumentsPage={isDocumentsPage}
+						isLocalized={isLocalized}
+						onCalendarViewChange={handleCalendarViewChange}
+						onTabChange={handleTabChange}
+						{...(allowedTabs ? { allowedTabs } : {})}
+						{...(customViewSelector ? { customViewSelector } : {})}
+						{...(typeof hideViewModeToolbar === 'boolean'
+							? { hideViewModeToolbar }
+							: {})}
+					/>
+				</PopoverContent>
+			</Popover>
+		</DockIcon>
+	)
 }

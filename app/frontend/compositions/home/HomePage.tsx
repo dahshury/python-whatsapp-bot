@@ -1,40 +1,40 @@
-"use cache";
+'use cache'
 
-import { registerPrefetchModules } from "@/shared/libs/prefetch/registry";
-import { HomeCalendar } from "@/widgets/calendar";
+import { registerPrefetchModules } from '@/shared/libs/prefetch/registry'
+import { HomeCalendar } from '@/widgets/calendar'
 
 export const preloadHomeCalendar = async () =>
-  import("@/widgets/calendar/home-calendar/HomeCalendar").then(
-    (mod) => mod.HomeCalendar
-  );
+	import('@/widgets/calendar/home-calendar/HomeCalendar').then(
+		(mod) => mod.HomeCalendar
+	)
 
 export const preloadCalendarContainer = async () =>
-  import("@/widgets/calendar/CalendarContainer").then(
-    (mod) => mod.CalendarContainer
-  );
+	import('@/widgets/calendar/CalendarContainer').then(
+		(mod) => mod.CalendarContainer
+	)
 
 export const preloadCalendarMainContent = async () =>
-  import("@/widgets/calendar/CalendarMainContent").then(
-    (mod) => mod.CalendarMainContent
-  );
+	import('@/widgets/calendar/CalendarMainContent').then(
+		(mod) => mod.CalendarMainContent
+	)
 
 export const preloadDualCalendar = async () =>
-  import("@/widgets/calendar/DualCalendar").then(
-    (mod) => mod.DualCalendarComponent
-  );
+	import('@/widgets/calendar/DualCalendar').then(
+		(mod) => mod.DualCalendarComponent
+	)
 
 export const preloadCalendarLegend = async () =>
-  import("@/widgets/calendar/CalendarLegend").then((mod) => mod.CalendarLegend);
+	import('@/widgets/calendar/CalendarLegend').then((mod) => mod.CalendarLegend)
 
-registerPrefetchModules("/", preloadHomeCalendar);
-registerPrefetchModules("/", preloadCalendarContainer);
-registerPrefetchModules("/", preloadCalendarMainContent);
-registerPrefetchModules("/", preloadDualCalendar);
-registerPrefetchModules("/", preloadCalendarLegend);
+registerPrefetchModules('/', preloadHomeCalendar)
+registerPrefetchModules('/', preloadCalendarContainer)
+registerPrefetchModules('/', preloadCalendarMainContent)
+registerPrefetchModules('/', preloadDualCalendar)
+registerPrefetchModules('/', preloadCalendarLegend)
 
-const ensureCacheBoundary = () => Promise.resolve();
+const ensureCacheBoundary = () => Promise.resolve()
 
 export async function HomePage() {
-  await ensureCacheBoundary();
-  return <HomeCalendar />;
+	await ensureCacheBoundary()
+	return <HomeCalendar />
 }

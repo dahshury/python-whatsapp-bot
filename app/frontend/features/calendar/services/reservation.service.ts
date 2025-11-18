@@ -1,21 +1,21 @@
-import type { ReservationRepository } from "@/entities/reservation/core/reservation.repository";
+import type { ReservationRepository } from '@/entities/reservation/core/reservation.repository'
 import type {
-  CancelReservationCommand,
-  ModifyReservationCommand,
-} from "@/entities/reservation/types";
+	CancelReservationCommand,
+	ModifyReservationCommand,
+} from '@/entities/reservation/types'
 
 export class ReservationService {
-  private readonly repo: ReservationRepository;
+	private readonly repo: ReservationRepository
 
-  constructor(repo: ReservationRepository) {
-    this.repo = repo;
-  }
+	constructor(repo: ReservationRepository) {
+		this.repo = repo
+	}
 
-  modify(cmd: ModifyReservationCommand) {
-    return this.repo.modify(cmd);
-  }
+	modify(cmd: ModifyReservationCommand) {
+		return this.repo.modify(cmd)
+	}
 
-  cancel(cmd: CancelReservationCommand) {
-    return this.repo.cancel(cmd);
-  }
+	cancel(cmd: CancelReservationCommand) {
+		return this.repo.cancel(cmd)
+	}
 }

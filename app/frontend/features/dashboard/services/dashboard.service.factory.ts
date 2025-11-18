@@ -1,3 +1,3 @@
-import { DashboardService } from "./dashboard.service";
+import { DashboardService } from './dashboard.service'
 
-export const createDashboardService = () => DashboardService();
+export const createDashboardService = () => DashboardService()

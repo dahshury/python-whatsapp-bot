@@ -1,1 +1,1 @@
-export * from "./ColumnsSection";
+export * from './ColumnsSection'

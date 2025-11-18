@@ -1,1 +1,1 @@
-export * from "./DayOfWeekSelect";
+export * from './DayOfWeekSelect'

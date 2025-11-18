@@ -1,8 +1,8 @@
-import type { CalendarApi } from "@/entities/event";
-import { ReservationsService } from "./reservations.service";
+import type { CalendarApi } from '@/entities/event'
+import { ReservationsService } from './reservations.service'
 
 export const createReservationsService = (
-  calendarApi: CalendarApi,
-  isLocalized: boolean,
-  refreshCustomerData?: () => Promise<void>
-) => ReservationsService(calendarApi, isLocalized, refreshCustomerData);
+	calendarApi: CalendarApi,
+	isLocalized: boolean,
+	refreshCustomerData?: () => Promise<void>
+) => ReservationsService(calendarApi, isLocalized, refreshCustomerData)

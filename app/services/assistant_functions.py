@@ -85,7 +85,7 @@ class AssistantFunctionService:
         time_slot: str,
         reservation_type: int,
         hijri: bool = False,
-        max_reservations: int = 5,
+        max_reservations: int | None = None,
         ar: bool = False,
         _call_source: str = "assistant",
     ) -> dict[str, Any]:
@@ -101,7 +101,7 @@ class AssistantFunctionService:
         new_time_slot: str | None = None,
         new_name: str | None = None,
         new_type: int | None = None,
-        max_reservations: int = 5,
+        max_reservations: int | None = None,
         approximate: bool = False,
         hijri: bool = False,
         ar: bool = False,
@@ -140,7 +140,9 @@ class AssistantFunctionService:
 
     # Availability operations
 
-    def get_available_time_slots(self, date_str: str, max_reservations: int = 5, hijri: bool = False) -> dict[str, Any]:
+    def get_available_time_slots(
+        self, date_str: str, max_reservations: int | None = None, hijri: bool = False
+    ) -> dict[str, Any]:
         """Get available time slots for a date."""
         return self.availability_service.get_available_time_slots(date_str, max_reservations, hijri)
 
@@ -150,7 +152,7 @@ class AssistantFunctionService:
         time_slot: str | None = None,
         days_forward: int = 3,
         days_backward: int = 0,
-        max_reservations: int = 5,
+        max_reservations: int | None = None,
         hijri: bool = False,
     ) -> dict[str, Any]:
         """Search for available appointment slots."""
@@ -170,7 +172,7 @@ class AssistantFunctionService:
     # Frontend should call cancel_reservation directly instead.
 
     def undo_cancel_reservation(
-        self, reservation_id: int, ar: bool = False, max_reservations: int = 5
+        self, reservation_id: int, ar: bool = False, max_reservations: int | None = None
     ) -> dict[str, Any]:
         """Undo a reservation cancellation (reinstate it)."""
         return self.reservation_service.undo_cancel_reservation_by_id(reservation_id, ar, max_reservations)
@@ -241,7 +243,7 @@ def modify_reservation(
     new_time_slot: str | None = None,
     new_name: str | None = None,
     new_type: int | None = None,
-    max_reservations: int = 5,
+    max_reservations: int | None = None,
     approximate: bool = False,
     hijri: bool = False,
     ar: bool = False,
@@ -303,7 +305,7 @@ def reserve_time_slot(
     time_slot: str,
     reservation_type: int,
     hijri: bool = False,
-    max_reservations: int = 5,
+    max_reservations: int | None = None,
     ar: bool = False,
     _call_source: str = "assistant",
 ) -> dict[str, Any]:
@@ -354,7 +356,9 @@ def cancel_reservation(
     return _service.cancel_reservation(wa_id, date_str, hijri, ar, reservation_id_to_cancel, _call_source)
 
 
-def get_available_time_slots(date_str: str, max_reservations: int = 5, hijri: bool = False) -> dict[str, Any]:
+def get_available_time_slots(
+    date_str: str, max_reservations: int | None = None, hijri: bool = False
+) -> dict[str, Any]:
     """
     Get the available time slots for a given date.
 
@@ -375,7 +379,7 @@ def search_available_appointments(
     time_slot: str | None = None,
     days_forward: int = 3,
     days_backward: int = 0,
-    max_reservations: int = 5,
+    max_reservations: int | None = None,
     hijri: bool = False,
 ) -> dict[str, Any]:
     """
@@ -414,7 +418,9 @@ def search_available_appointments(
     )
 
 
-def undo_cancel_reservation(reservation_id: int, ar: bool = False, max_reservations: int = 5) -> dict[str, Any]:
+def undo_cancel_reservation(
+    reservation_id: int, ar: bool = False, max_reservations: int | None = None
+) -> dict[str, Any]:
     """
     Reinstates a previously cancelled reservation by its ID.
 

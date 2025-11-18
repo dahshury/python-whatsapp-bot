@@ -1,45 +1,45 @@
-"use client";
+'use client'
 
 import {
-  createContext,
-  type Dispatch,
-  type ReactNode,
-  type SetStateAction,
-  useContext,
-} from "react";
+	createContext,
+	type Dispatch,
+	type ReactNode,
+	type SetStateAction,
+	useContext,
+} from 'react'
 
 type AppShellVisibilityContextValue = {
-  showShell: boolean;
-  setShowShell: Dispatch<SetStateAction<boolean>>;
-};
+	showShell: boolean
+	setShowShell: Dispatch<SetStateAction<boolean>>
+}
 
 export const AppShellVisibilityContext =
-  createContext<AppShellVisibilityContextValue | null>(null);
+	createContext<AppShellVisibilityContextValue | null>(null)
 
 type AppShellVisibilityProviderProps = {
-  value: AppShellVisibilityContextValue;
-  children: ReactNode;
-};
+	value: AppShellVisibilityContextValue
+	children: ReactNode
+}
 
 export function AppShellVisibilityProvider({
-  value,
-  children,
+	value,
+	children,
 }: AppShellVisibilityProviderProps) {
-  return (
-    <AppShellVisibilityContext.Provider value={value}>
-      {children}
-    </AppShellVisibilityContext.Provider>
-  );
+	return (
+		<AppShellVisibilityContext.Provider value={value}>
+			{children}
+		</AppShellVisibilityContext.Provider>
+	)
 }
 
 const defaultContextValue: AppShellVisibilityContextValue = {
-  showShell: true,
-  setShowShell: () => {
-    // Default no-op function
-  },
-};
+	showShell: true,
+	setShowShell: () => {
+		// Default no-op function
+	},
+}
 
 export function useAppShellVisibility(): AppShellVisibilityContextValue {
-  const context = useContext(AppShellVisibilityContext);
-  return context ?? defaultContextValue;
+	const context = useContext(AppShellVisibilityContext)
+	return context ?? defaultContextValue
 }

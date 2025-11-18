@@ -1,1 +1,1 @@
-export * from "./WorkingDaysCard";
+export * from './WorkingDaysCard'

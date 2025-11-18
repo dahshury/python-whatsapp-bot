@@ -1,203 +1,214 @@
-"use client";
+'use client'
 
-import { cn } from "@shared/libs/utils";
-import { useTheme } from "next-themes";
-import type * as React from "react";
-import { useEffect, useRef, useState } from "react";
-import { logger } from "@/shared/libs/logger";
+import { cn } from '@shared/libs/utils'
+import { useTheme } from 'next-themes'
+import type * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { logger } from '@/shared/libs/logger'
 
 // Type declarations for emoji-picker-element
 declare global {
-  // biome-ignore lint: Required for JSX type augmentation with web components
-  namespace JSX {
-    // biome-ignore lint: Required for JSX.IntrinsicElements
-    interface IntrinsicElements {
-      "emoji-picker": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement> & {
-          class?: string;
-          "data-slot"?: string;
-        },
-        HTMLElement
-      >;
-    }
-  }
+	// biome-ignore lint: Required for JSX type augmentation with web components
+	namespace JSX {
+		// biome-ignore lint: Required for JSX.IntrinsicElements
+		interface IntrinsicElements {
+			'emoji-picker': React.DetailedHTMLProps<
+				React.HTMLAttributes<HTMLElement> & {
+					class?: string
+					'data-slot'?: string
+				},
+				HTMLElement
+			>
+		}
+	}
 }
 
 interface EmojiClickEvent extends CustomEvent {
-  detail: {
-    emoji: {
-      annotation: string;
-      group: number;
-      order: number;
-      shortcodes: string[];
-      tags: string[];
-      unicode: string;
-      version: number;
-    };
-    skinTone: number;
-    unicode: string;
-  };
+	detail: {
+		emoji: {
+			annotation: string
+			group: number
+			order: number
+			shortcodes: string[]
+			tags: string[]
+			unicode: string
+			version: number
+		}
+		skinTone: number
+		unicode: string
+	}
 }
 
 export interface EmojiPickerProps
-  extends Omit<React.HTMLAttributes<HTMLElement>, "onEmojiSelect"> {
-  className?: string;
-  onEmojiSelect?: (params: { emoji: string }) => void;
+	extends Omit<React.HTMLAttributes<HTMLElement>, 'onEmojiSelect'> {
+	className?: string
+	onEmojiSelect?: (params: { emoji: string }) => void
 }
 
 /**
  * EmojiPicker component wrapper around emoji-picker-element
  */
 export function EmojiPicker({
-  className,
-  onEmojiSelect,
-  ...props
+	className,
+	onEmojiSelect,
+	...props
 }: EmojiPickerProps) {
-  const pickerRef = useRef<HTMLElement>(null);
-  const { resolvedTheme } = useTheme();
-  const [isLoaded, setIsLoaded] = useState(false);
+	const pickerRef = useRef<HTMLElement>(null)
+	const { resolvedTheme } = useTheme()
+	const [isLoaded, setIsLoaded] = useState(false)
+	const [pickerElement, setPickerElement] = useState<HTMLElement | null>(null)
 
-  // Dynamically import emoji-picker-element only on client side
-  // to avoid requestAnimationFrame error during SSR
-  useEffect(() => {
-    // Only import on client side
-    if (typeof window !== "undefined" && !isLoaded) {
-      import("emoji-picker-element")
-        .then(() => {
-          setIsLoaded(true);
-        })
-        .catch((error) => {
-          logger.error("Failed to load emoji-picker-element", error);
-        });
-    }
-  }, [isLoaded]);
+	// Callback ref must be defined before any conditional returns
+	const setPickerRef = useCallback((node: HTMLElement | null) => {
+		pickerRef.current = node
+		setPickerElement(node) // Trigger re-render so useEffect can access the ref
+	}, [])
 
-  // Handle emoji selection - wait for picker to be ready
-  useEffect(() => {
-    const picker = pickerRef.current;
-    if (!picker) {
-      return;
-    }
-    if (!onEmojiSelect) {
-      return;
-    }
+	// Dynamically import emoji-picker-element only on client side
+	// to avoid requestAnimationFrame error during SSR
+	useEffect(() => {
+		// Only import on client side
+		if (typeof window !== 'undefined' && !isLoaded) {
+			import('emoji-picker-element')
+				.then(() => {
+					setIsLoaded(true)
+				})
+				.catch((error) => {
+					logger.error('Failed to load emoji-picker-element', error)
+				})
+		}
+	}, [isLoaded])
 
-    const INIT_RETRY_DELAY_MS = 50;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let cleanup: (() => void) | null = null;
+	// Handle emoji selection - wait for picker to be ready
+	useEffect(() => {
+		const picker = pickerElement
 
-    const setupEmojiClickHandler = () => {
-      // Wait for the picker to be fully initialized
-      if (!picker.shadowRoot) {
-        timeoutId = setTimeout(setupEmojiClickHandler, INIT_RETRY_DELAY_MS);
-        return;
-      }
+		if (!(picker && onEmojiSelect)) {
+			return
+		}
 
-      const handleEmojiClick = (event: Event) => {
-        const customEvent = event as EmojiClickEvent;
-        if (customEvent.detail?.unicode) {
-          onEmojiSelect({ emoji: customEvent.detail.unicode });
-        }
-      };
+		const INIT_RETRY_DELAY_MS = 50
+		const MAX_RETRIES = 100 // 5 seconds max
+		let retryCount = 0
+		let timeoutId: ReturnType<typeof setTimeout> | null = null
+		let cleanup: (() => void) | null = null
 
-      picker.addEventListener("emoji-click", handleEmojiClick);
+		const setupEmojiClickHandler = () => {
+			retryCount += 1
 
-      cleanup = () => {
-        picker.removeEventListener("emoji-click", handleEmojiClick);
-      };
-    };
+			// Wait for the picker to be fully initialized
+			if (!picker.shadowRoot) {
+				if (retryCount < MAX_RETRIES) {
+					timeoutId = setTimeout(setupEmojiClickHandler, INIT_RETRY_DELAY_MS)
+				}
+				return
+			}
 
-    setupEmojiClickHandler();
+			const handleEmojiClick = (event: Event) => {
+				const customEvent = event as EmojiClickEvent
+				if (customEvent.detail?.unicode) {
+					onEmojiSelect({ emoji: customEvent.detail.unicode })
+				}
+			}
 
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      if (cleanup) {
-        cleanup();
-      }
-    };
-  }, [onEmojiSelect]);
+			picker.addEventListener('emoji-click', handleEmojiClick)
 
-  // Sync dark mode with app theme
-  useEffect(() => {
-    const picker = pickerRef.current;
-    if (!picker) {
-      return;
-    }
+			cleanup = () => {
+				picker.removeEventListener('emoji-click', handleEmojiClick)
+			}
+		}
 
-    // Remove existing theme classes
-    picker.classList.remove("dark", "light");
+		setupEmojiClickHandler()
 
-    // Add appropriate theme class based on resolved theme
-    if (resolvedTheme === "dark") {
-      picker.classList.add("dark");
-    } else if (resolvedTheme === "light") {
-      picker.classList.add("light");
-    }
-    // If resolvedTheme is undefined or "system", emoji-picker-element will use prefers-color-scheme
-  }, [resolvedTheme]);
+		return () => {
+			if (timeoutId) {
+				clearTimeout(timeoutId)
+			}
+			if (cleanup) {
+				cleanup()
+			}
+		}
+	}, [pickerElement, onEmojiSelect])
 
-  // Inject custom scrollbar styles and handle wheel events
-  useEffect(() => {
-    const picker = pickerRef.current;
-    if (!picker) {
-      return;
-    }
+	// Sync dark mode with app theme
+	useEffect(() => {
+		const picker = pickerRef.current
+		if (!picker) {
+			return
+		}
 
-    const SHADOW_ROOT_RETRY_DELAY_MS = 50;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let cleanup: (() => void) | null = null;
+		// Remove existing theme classes
+		picker.classList.remove('dark', 'light')
 
-    // Wait for shadow root to be ready
-    const setupShadowDOM = () => {
-      const shadowRoot = picker.shadowRoot;
-      if (!shadowRoot) {
-        // Shadow root not ready yet, try again
-        timeoutId = setTimeout(setupShadowDOM, SHADOW_ROOT_RETRY_DELAY_MS);
-        return;
-      }
+		// Add appropriate theme class based on resolved theme
+		if (resolvedTheme === 'dark') {
+			picker.classList.add('dark')
+		} else if (resolvedTheme === 'light') {
+			picker.classList.add('light')
+		}
+		// If resolvedTheme is undefined or "system", emoji-picker-element will use prefers-color-scheme
+	}, [resolvedTheme])
 
-      // Inject custom scrollbar styles into Shadow DOM
-      const styleId = "emoji-picker-scrollbar-styles";
-      // Remove existing style if it exists (for theme updates)
-      const existingStyle = shadowRoot.getElementById(styleId);
-      if (existingStyle) {
-        existingStyle.remove();
-      }
+	// Inject custom scrollbar styles and handle wheel events
+	useEffect(() => {
+		const picker = pickerRef.current
+		if (!picker) {
+			return
+		}
 
-      // Get computed CSS variable values from the host element
-      const root = document.documentElement;
-      const computedStyle = getComputedStyle(root);
-      const isDark = resolvedTheme === "dark";
-      const muted =
-        computedStyle.getPropertyValue("--muted").trim() || "0 0% 14.9%";
-      const mutedForeground =
-        computedStyle.getPropertyValue("--muted-foreground").trim() ||
-        "0 0% 63.9%";
-      const primary =
-        computedStyle.getPropertyValue("--primary").trim() || "0 0% 98%";
-      const radiusValue =
-        computedStyle.getPropertyValue("--radius").trim() || "0.5rem";
+		const SHADOW_ROOT_RETRY_DELAY_MS = 50
+		let timeoutId: ReturnType<typeof setTimeout> | null = null
+		let cleanup: (() => void) | null = null
 
-      // Convert radius to a numeric value for calculations (assuming rem or px)
-      const THUMB_RADIUS_REDUCTION = 0.1;
-      const radiusNum = Number.parseFloat(radiusValue);
-      const radiusUnit = radiusValue.replace(/[0-9.]/g, "");
-      // Thumb radius should be slightly smaller to account for the border spacing
-      const thumbRadius = `${Math.max(0, radiusNum - THUMB_RADIUS_REDUCTION)}${radiusUnit}`;
+		// Wait for shadow root to be ready
+		const setupShadowDOM = () => {
+			const shadowRoot = picker.shadowRoot
+			if (!shadowRoot) {
+				// Shadow root not ready yet, try again
+				timeoutId = setTimeout(setupShadowDOM, SHADOW_ROOT_RETRY_DELAY_MS)
+				return
+			}
 
-      // Match phone-dropdown-scrollbar colors exactly (from themed-scrollbar.css)
-      // Base (light): track 0.3/0.5, thumb 0.5/0.7
-      // Dark: track 0.2/0.3, thumb 0.3/0.5
-      const trackBg = isDark ? "0.2" : "0.3";
-      const trackHoverBg = isDark ? "0.3" : "0.5";
-      const thumbBg = isDark ? "0.3" : "0.5";
-      const thumbHoverBg = isDark ? "0.5" : "0.7";
+			// Inject custom scrollbar styles into Shadow DOM
+			const styleId = 'emoji-picker-scrollbar-styles'
+			// Remove existing style if it exists (for theme updates)
+			const existingStyle = shadowRoot.getElementById(styleId)
+			if (existingStyle) {
+				existingStyle.remove()
+			}
 
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.textContent = `
+			// Get computed CSS variable values from the host element
+			const root = document.documentElement
+			const computedStyle = getComputedStyle(root)
+			const isDark = resolvedTheme === 'dark'
+			const muted =
+				computedStyle.getPropertyValue('--muted').trim() || '0 0% 14.9%'
+			const mutedForeground =
+				computedStyle.getPropertyValue('--muted-foreground').trim() ||
+				'0 0% 63.9%'
+			const primary =
+				computedStyle.getPropertyValue('--primary').trim() || '0 0% 98%'
+			const radiusValue =
+				computedStyle.getPropertyValue('--radius').trim() || '0.5rem'
+
+			// Convert radius to a numeric value for calculations (assuming rem or px)
+			const THUMB_RADIUS_REDUCTION = 0.1
+			const radiusNum = Number.parseFloat(radiusValue)
+			const radiusUnit = radiusValue.replace(/[0-9.]/g, '')
+			// Thumb radius should be slightly smaller to account for the border spacing
+			const thumbRadius = `${Math.max(0, radiusNum - THUMB_RADIUS_REDUCTION)}${radiusUnit}`
+
+			// Match phone-dropdown-scrollbar colors exactly (from themed-scrollbar.css)
+			// Base (light): track 0.3/0.5, thumb 0.5/0.7
+			// Dark: track 0.2/0.3, thumb 0.3/0.5
+			const trackBg = isDark ? '0.2' : '0.3'
+			const trackHoverBg = isDark ? '0.3' : '0.5'
+			const thumbBg = isDark ? '0.3' : '0.5'
+			const thumbHoverBg = isDark ? '0.5' : '0.7'
+
+			const style = document.createElement('style')
+			style.id = styleId
+			style.textContent = `
 					/* Custom scrollbar styles matching phone-dropdown-scrollbar exactly */
 					/* Track width: 18px (15px * 1.2), Thumb: 14.4px with 1.8px margins */
 					::-webkit-scrollbar {
@@ -234,96 +245,96 @@ export function EmojiPicker({
 						scrollbar-width: auto;
 						scrollbar-color: hsl(${mutedForeground} / ${thumbBg}) hsl(${muted} / ${trackBg});
 					}
-				`;
-      shadowRoot.appendChild(style);
+				`
+			shadowRoot.appendChild(style)
 
-      const handleWheel = (event: WheelEvent) => {
-        // Try to find the scrollable viewport element
-        let viewport: HTMLElement | null = null;
+			const handleWheel = (event: WheelEvent) => {
+				// Try to find the scrollable viewport element
+				let viewport: HTMLElement | null = null
 
-        // Find any element with overflow-y: auto or scroll
-        const allDivs = shadowRoot.querySelectorAll("div");
-        for (const div of allDivs) {
-          const htmlDiv = div as HTMLElement;
-          const divStyle = window.getComputedStyle(htmlDiv);
-          if (
-            (divStyle.overflowY === "auto" ||
-              divStyle.overflowY === "scroll") &&
-            htmlDiv.scrollHeight > htmlDiv.clientHeight
-          ) {
-            viewport = htmlDiv;
-            break;
-          }
-        }
+				// Find any element with overflow-y: auto or scroll
+				const allDivs = shadowRoot.querySelectorAll('div')
+				for (const div of allDivs) {
+					const htmlDiv = div as HTMLElement
+					const divStyle = window.getComputedStyle(htmlDiv)
+					if (
+						(divStyle.overflowY === 'auto' ||
+							divStyle.overflowY === 'scroll') &&
+						htmlDiv.scrollHeight > htmlDiv.clientHeight
+					) {
+						viewport = htmlDiv
+						break
+					}
+				}
 
-        if (viewport) {
-          // Forward the wheel event to the scrollable area
-          viewport.scrollTop += event.deltaY;
-          event.preventDefault();
-          event.stopPropagation();
-        }
-      };
+				if (viewport) {
+					// Forward the wheel event to the scrollable area
+					viewport.scrollTop += event.deltaY
+					event.preventDefault()
+					event.stopPropagation()
+				}
+			}
 
-      picker.addEventListener("wheel", handleWheel, { passive: false });
+			picker.addEventListener('wheel', handleWheel, { passive: false })
 
-      cleanup = () => {
-        picker.removeEventListener("wheel", handleWheel);
-      };
-    };
+			cleanup = () => {
+				picker.removeEventListener('wheel', handleWheel)
+			}
+		}
 
-    setupShadowDOM();
+		setupShadowDOM()
 
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      if (cleanup) {
-        cleanup();
-      }
-    };
-    // Note: resolvedTheme dependency is intentional to update scrollbar colors when theme changes
-  }, [resolvedTheme]);
+		return () => {
+			if (timeoutId) {
+				clearTimeout(timeoutId)
+			}
+			if (cleanup) {
+				cleanup()
+			}
+		}
+		// Note: resolvedTheme dependency is intentional to update scrollbar colors when theme changes
+	}, [resolvedTheme])
 
-  // Don't render until the library is loaded to avoid SSR errors
-  if (!isLoaded) {
-    return (
-      <div
-        className={cn(
-          "flex h-[21.375rem] w-[21.375rem] items-center justify-center rounded-lg border",
-          className
-        )}
-      >
-        <div className="text-muted-foreground text-sm">
-          Loading emoji picker...
-        </div>
-      </div>
-    );
-  }
+	// Don't render until the library is loaded to avoid SSR errors
+	if (!isLoaded) {
+		return (
+			<div
+				className={cn(
+					'flex h-[21.375rem] w-[21.375rem] items-center justify-center rounded-lg border',
+					className
+				)}
+			>
+				<div className="text-muted-foreground text-sm">
+					Loading emoji picker...
+				</div>
+			</div>
+		)
+	}
 
-  return (
-    // @ts-expect-error - emoji-picker-element is a web component, TypeScript doesn't recognize it
-    <emoji-picker
-      className={cn("h-[21.375rem] w-[21.375rem] rounded-lg border", className)}
-      data-slot="emoji-picker"
-      ref={pickerRef}
-      {...props}
-    />
-  );
+	return (
+		// @ts-expect-error - emoji-picker-element is a web component, TypeScript doesn't recognize it
+		<emoji-picker
+			className={cn('h-[21.375rem] w-[21.375rem] rounded-lg border', className)}
+			data-slot="emoji-picker"
+			ref={setPickerRef}
+			{...props}
+		/>
+	)
 }
 
 // Legacy exports for backwards compatibility
 // These are no longer needed but kept for compatibility
 export function EmojiPickerSearch() {
-  // emoji-picker-element has built-in search, so this is a no-op
-  return null;
+	// emoji-picker-element has built-in search, so this is a no-op
+	return null
 }
 
 export function EmojiPickerContent() {
-  // emoji-picker-element has built-in content, so this is a no-op
-  return null;
+	// emoji-picker-element has built-in content, so this is a no-op
+	return null
 }
 
 export function EmojiPickerFooter() {
-  // emoji-picker-element has built-in footer, so this is a no-op
-  return null;
+	// emoji-picker-element has built-in footer, so this is a no-op
+	return null
 }

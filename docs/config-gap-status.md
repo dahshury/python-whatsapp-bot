@@ -10,4 +10,3 @@
 | 6   | LLM provider respected                     | ✅ Done | `app/services/llm_service.py` now resolves the provider from `AppConfig` before falling back to `LLM_PROVIDER`, so the backend follows the UI setting.                                                                                            |
 | 7   | Notification preferences & quiet hours     | ✅ Done | Preferences are part of the FastAPI schema, normalized in the service, and consumed by `useNotificationPreferences` + `ToastRouter`, which handle quiet hours, delays, channels (sound/desktop/email placeholder), and toggle-specific filtering. |
 | 8   | Verification plan                          | ✅ Done | Manual test workflow documented in this status file: save each setting, confirm API responses echo the new values, and observe live calendar/notification behaviour across tabs.                                                                  |
-

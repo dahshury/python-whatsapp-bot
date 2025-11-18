@@ -85,10 +85,10 @@ def test_all_contacts_filters():
 
     service = PhoneSearchService()
 
-    # Test registration filter - registered
-    print("\nTesting registration filter (registered)...")
+    # Test status filter - registered
+    print("\nTesting status filter (registered)...")
     registered_results, registered_count = service.get_all_contacts(
-        page=1, page_size=100, filters={"registration": "registered"}
+        page=1, page_size=100, filters={"status": "registered"}
     )
     print(f"✓ Found {registered_count} registered contacts")
 
@@ -99,12 +99,23 @@ def test_all_contacts_filters():
         assert result.customer_name != result.wa_id
     print("✓ All results have custom names")
 
-    # Test registration filter - unknown
-    print("\nTesting registration filter (unknown)...")
+    # Test status filter - unknown
+    print("\nTesting status filter (unknown)...")
     unknown_results, unknown_count = service.get_all_contacts(
-        page=1, page_size=100, filters={"registration": "unknown"}
+        page=1, page_size=100, filters={"status": "unknown"}
     )
     print(f"✓ Found {unknown_count} unknown contacts")
+    # Test status filter - blocked
+    print("\nTesting status filter (blocked)...")
+    blocked_results, blocked_count = service.get_all_contacts(
+        page=1, page_size=100, filters={"status": "blocked"}
+    )
+    print(f"✓ Found {blocked_count} blocked contacts")
+    if blocked_results:
+        for result in blocked_results[:5]:
+            assert getattr(result, "is_blocked", False) is True
+        print("✓ All sampled results are blocked")
+
 
     # Verify none have custom names
     for result in unknown_results[:5]:  # Check first 5
@@ -137,7 +148,7 @@ def test_all_contacts_filters():
     # Test multiple filters
     print("\nTesting multiple filters...")
     multi_results, multi_count = service.get_all_contacts(
-        page=1, page_size=100, filters={"registration": "registered", "country": "SA"}
+        page=1, page_size=100, filters={"status": "registered", "country": "SA"}
     )
     print(f"✓ Found {multi_count} registered contacts from Saudi Arabia")
 

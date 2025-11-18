@@ -1,1 +1,1 @@
-export * from "./ConfigPageShell";
+export * from './ConfigPageShell'

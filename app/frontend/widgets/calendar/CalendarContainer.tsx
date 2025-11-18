@@ -1,43 +1,43 @@
-"use client";
+'use client'
 
-import type React from "react";
-import { useCalendarColorVariables } from "@/features/app-config/hooks/useCalendarColorVariables";
-import { CalendarSkeleton } from "./CalendarSkeleton";
+import type React from 'react'
+import { useCalendarColorVariables } from '@/features/app-config/hooks/useCalendarColorVariables'
+import { CalendarSkeleton } from './CalendarSkeleton'
 
 type CalendarContainerProps = {
-  loading: boolean;
-  isHydrated: boolean;
-  isRefreshing: boolean;
-  children: React.ReactNode;
-};
+	loading: boolean
+	isHydrated: boolean
+	isRefreshing: boolean
+	children: React.ReactNode
+}
 
 export function CalendarContainer({
-  loading,
-  isHydrated,
-  isRefreshing,
-  children,
+	loading,
+	isHydrated,
+	isRefreshing,
+	children,
 }: CalendarContainerProps) {
-  // Apply color variables from config in real-time
-  useCalendarColorVariables();
+	// Apply color variables from config in real-time
+	useCalendarColorVariables()
 
-  // Show loading state
-  if (loading || !isHydrated) {
-    return <CalendarSkeleton />;
-  }
+	// Show loading state
+	if (loading || !isHydrated) {
+		return <CalendarSkeleton />
+	}
 
-  const content = (
-    <div
-      className="calendar-bg-wrap relative flex h-full w-full max-w-full overflow-hidden"
-      style={{
-        // Make FC internal sticky backgrounds use transparency so glow shows through
-        // @ts-expect-error -- CSS variable custom property
-        "--fc-page-bg-color": "transparent",
-      }}
-    >
-      <div className="relative z-10 flex h-full w-full max-w-full flex-1 overflow-hidden">
-        {children}
-      </div>
-      <style jsx>{`
+	const content = (
+		<div
+			className="calendar-bg-wrap relative flex h-full w-full max-w-full overflow-hidden"
+			style={{
+				// Make FC internal sticky backgrounds use transparency so glow shows through
+				// @ts-expect-error -- CSS variable custom property
+				'--fc-page-bg-color': 'transparent',
+			}}
+		>
+			<div className="relative z-10 flex h-full w-full max-w-full flex-1 overflow-hidden">
+				{children}
+			</div>
+			<style jsx>{`
 				/* Ensure the radial glow is visible through FullCalendar */
 				.calendar-bg-wrap :global(.fc) {
 					background-color: transparent;
@@ -109,13 +109,13 @@ export function CalendarContainer({
 					background-size: 100% 100%;
 				}
 			`}</style>
-    </div>
-  );
+		</div>
+	)
 
-  // Show blurred calendar when refreshing
-  if (isRefreshing) {
-    return <CalendarSkeleton isBlurred={true}>{content}</CalendarSkeleton>;
-  }
+	// Show blurred calendar when refreshing
+	if (isRefreshing) {
+		return <CalendarSkeleton isBlurred={true}>{content}</CalendarSkeleton>
+	}
 
-  return content;
+	return content
 }

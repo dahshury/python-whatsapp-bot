@@ -24,6 +24,7 @@ from app.utils.realtime import enqueue_broadcast
 from ..customer.customer_service import CustomerService
 from ..shared.base_service import BaseService
 from .availability_service import AvailabilityService
+from .capacity_policies import compute_capacity_limits, resolve_role_from_source
 from .reservation_models import Reservation, ReservationType
 from .reservation_repository import ReservationRepository
 
@@ -71,6 +72,20 @@ class ReservationService(BaseService):
 
     def get_service_name(self) -> str:
         return "ReservationService"
+
+    @staticmethod
+    def _reservation_type_value(value: object) -> int | None:
+        """
+        Normalize reservation type representation to an integer when possible.
+        """
+        try:
+            if hasattr(value, "value"):
+                return int(getattr(value, "value"))
+            if value is None:
+                return None
+            return int(value)
+        except (TypeError, ValueError):
+            return None
 
     def get_customer_reservations(self, wa_id: str, include_past: bool = False) -> dict[str, Any]:
         """
@@ -121,7 +136,7 @@ class ReservationService(BaseService):
         time_slot: str,
         reservation_type: int,
         hijri: bool = False,
-        max_reservations: int = 5,
+        max_reservations: int | None = None,
         ar: bool = False,
         _call_source: str = "assistant",
     ) -> dict[str, Any]:
@@ -135,7 +150,7 @@ class ReservationService(BaseService):
             time_slot: Desired time slot (in either 12-hour or 24-hour format)
             reservation_type: Type of reservation (0 for Check-Up, 1 for Follow-Up)
             hijri: If True, treats the input date as Hijri
-            max_reservations: Maximum allowed reservations per time slot
+            max_reservations: Optional override for maximum reservations per time slot
             ar: If True, returns error messages in Arabic
 
         Returns:
@@ -172,7 +187,17 @@ class ReservationService(BaseService):
             display_time_slot = normalize_time_format(parsed_time_str, to_24h=False)
 
             # Check availability for the requested slot
-            result = self.availability_service.get_available_time_slots(parsed_date_str, max_reservations, hijri=False)
+            role = resolve_role_from_source(_call_source)
+            total_capacity, type_capacity = compute_capacity_limits(
+                reservation_type, role=role, override_total=max_reservations
+            )
+            if type_capacity <= 0:
+                self._record_failure_metric("reserve", "type_capacity_reached")
+                return format_response(False, message=get_message("slot_fully_booked", ar))
+
+            result = self.availability_service.get_available_time_slots(
+                parsed_date_str, total_capacity, hijri=False
+            )
             if not result.get("success", False):
                 return result
 
@@ -283,7 +308,14 @@ class ReservationService(BaseService):
 
             # Check capacity one more time before creating new reservation
             active_reservations = self.reservation_repository.find_active_by_slot(parsed_date_str, parsed_time_str)
-            if len(active_reservations) >= max_reservations:
+            if len(active_reservations) >= total_capacity:
+                return format_response(False, message=get_message("slot_fully_booked", ar))
+            type_count = sum(
+                1
+                for res in active_reservations
+                if self._reservation_type_value(getattr(res, "type", None)) == reservation_type
+            )
+            if type_count >= type_capacity:
                 return format_response(False, message=get_message("slot_fully_booked", ar))
 
             # Create new reservation
@@ -361,7 +393,7 @@ class ReservationService(BaseService):
         new_time_slot: str | None = None,
         new_name: str | None = None,
         new_type: int | None = None,
-        max_reservations: int = 5,
+        max_reservations: int | None = None,
         approximate: bool = False,
         hijri: bool = False,
         ar: bool = False,
@@ -378,7 +410,7 @@ class ReservationService(BaseService):
             new_time_slot: New time slot (either 12-hour or 24-hour format)
             new_name: New customer name
             new_type: Reservation type (0 for Check-Up, 1 for Follow-Up)
-            max_reservations: Maximum allowed reservations per time slot
+            max_reservations: Optional override for maximum allowed reservations per time slot
             approximate: If True, reserves the nearest available slot if the requested slot is not available
             hijri: Flag indicating if the provided date is in Hijri format
             ar: If True, returns error messages in Arabic
@@ -452,6 +484,9 @@ class ReservationService(BaseService):
 
             # --- Apply modifications ---
             changes_made = False
+            slot_changed = False
+            type_changed = False
+            role = resolve_role_from_source(_call_source)
 
             # Update name if provided
             if new_name and new_name != reservation_to_modify.customer_name:
@@ -469,6 +504,7 @@ class ReservationService(BaseService):
                 if parsed_new_type != reservation_to_modify.type.value:
                     reservation_to_modify.type = ReservationType(parsed_new_type)
                     changes_made = True
+                    type_changed = True
 
             # Handle date and time changes
             parsed_new_date_str = reservation_to_modify.date
@@ -541,23 +577,56 @@ class ReservationService(BaseService):
                 current_reservations_in_new_slot = self.reservation_repository.find_active_by_slot(
                     parsed_new_date_str, parsed_new_time_str
                 )
-                # Filter out the reservation being modified if it happens to be in the same slot (e.g., only type change)
-                count_other_reservations = len(
-                    [res for res in current_reservations_in_new_slot if res.id != reservation_to_modify.id]
+                filtered_reservations = [
+                    res for res in current_reservations_in_new_slot if res.id != reservation_to_modify.id
+                ]
+                total_capacity, type_capacity = compute_capacity_limits(
+                    reservation_to_modify.type.value, role=role, override_total=max_reservations
                 )
+                if type_capacity <= 0:
+                    self._record_failure_metric("modify", "type_capacity_reached")
+                    return format_response(False, message=get_message("slot_fully_booked", ar))
 
-                if count_other_reservations >= max_reservations:
+                if len(filtered_reservations) >= total_capacity:
                     if approximate:
-                        # Attempt to find nearest available slot (simplified example)
-                        # This needs more robust implementation in AvailabilityService
                         self._record_failure_metric("modify", "slot_unavailable_approx_not_impl")
                         return format_response(False, message=get_message("slot_unavailable_approx_not_impl", ar))
-                    else:
-                        self._record_failure_metric("modify", "slot_fully_booked")
-                        return format_response(False, message=get_message("slot_fully_booked", ar))
+                    self._record_failure_metric("modify", "slot_fully_booked")
+                    return format_response(False, message=get_message("slot_fully_booked", ar))
+
+                type_count = sum(
+                    1
+                    for res in filtered_reservations
+                    if self._reservation_type_value(getattr(res, "type", None)) == reservation_to_modify.type.value
+                )
+                if type_count >= type_capacity:
+                    self._record_failure_metric("modify", "type_capacity_reached")
+                    return format_response(False, message=get_message("slot_fully_booked", ar))
 
                 reservation_to_modify.date = parsed_new_date_str
                 reservation_to_modify.time_slot = parsed_new_time_str
+
+            if type_changed and not slot_changed:
+                total_capacity, type_capacity = compute_capacity_limits(
+                    reservation_to_modify.type.value, role=role, override_total=max_reservations
+                )
+                if type_capacity <= 0:
+                    self._record_failure_metric("modify", "type_capacity_reached")
+                    return format_response(False, message=get_message("slot_fully_booked", ar))
+                active_reservations = self.reservation_repository.find_active_by_slot(
+                    reservation_to_modify.date, reservation_to_modify.time_slot
+                )
+                filtered_reservations = [
+                    res for res in active_reservations if res.id != reservation_to_modify.id
+                ]
+                type_count = sum(
+                    1
+                    for res in filtered_reservations
+                    if self._reservation_type_value(getattr(res, "type", None)) == reservation_to_modify.type.value
+                )
+                if type_count >= type_capacity:
+                    self._record_failure_metric("modify", "type_capacity_reached")
+                    return format_response(False, message=get_message("slot_fully_booked", ar))
 
             # Persist changes
             # The reservation_to_modify object has all the updated fields now.
@@ -810,7 +879,7 @@ class ReservationService(BaseService):
     # --- New Undo Specific Service Methods ---
 
     def undo_cancel_reservation_by_id(
-        self, reservation_id: int, ar: bool = False, max_reservations: int = 5
+        self, reservation_id: int, ar: bool = False, max_reservations: int | None = None
     ) -> dict[str, Any]:
         """
         Reinstates a previously cancelled reservation by its ID. (Undo for cancellation)
@@ -850,10 +919,22 @@ class ReservationService(BaseService):
                 )
 
             # Enforce capacity for the stored reservation slot
+            total_capacity, type_capacity = compute_capacity_limits(
+                reservation.type.value, role="secretary", override_total=max_reservations
+            )
+            if type_capacity <= 0:
+                return format_response(False, message=get_message("slot_fully_booked", ar))
             active_reservations = self.reservation_repository.find_active_by_slot(
                 reservation.date, reservation.time_slot
             )
-            if len(active_reservations) >= max_reservations:
+            if len(active_reservations) >= total_capacity:
+                return format_response(False, message=get_message("slot_fully_booked", ar))
+            type_count = sum(
+                1
+                for res in active_reservations
+                if self._reservation_type_value(getattr(res, "type", None)) == reservation.type.value
+            )
+            if type_count >= type_capacity:
                 return format_response(False, message=get_message("slot_fully_booked", ar))
 
             success = self.reservation_repository.reinstate_by_id(reservation_id)

@@ -1,3 +1,3 @@
-import { ChatService } from "./chat.service";
+import { ChatService } from './chat.service'
 
-export const createChatService = () => ChatService();
+export const createChatService = () => ChatService()

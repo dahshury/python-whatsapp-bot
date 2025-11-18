@@ -7,6 +7,7 @@ import logging
 from hijri_converter import convert
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing import Any, cast
 
 from app.db import get_session
 from app.services.domain.config.config_models import AppConfigModel
@@ -18,8 +19,12 @@ from app.services.domain.config.config_schemas import (
     CustomCalendarRangeConfig,
     DaySpecificSlotDuration,
     DaySpecificWorkingHours,
+    DEFAULT_AVAILABLE_THEMES,
+    DEFAULT_CALENDAR_VIEWS,
     EventColorsConfig,
+    EventDurationSettings,
     NotificationPreferencesConfig,
+    SlotCapacityConfig,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,13 +32,15 @@ logger = logging.getLogger(__name__)
 # Singleton instance cache
 _config_cache: AppConfigRead | None = None
 
+ConfigDict = dict[str, object]
 
-def _normalize_event_colors_payload(payload: object) -> dict[str, object]:
+
+def _normalize_event_colors_payload(payload: object) -> ConfigDict:
     """Ensure event_colors payload matches EventColorsConfig structure."""
     if not isinstance(payload, dict):
         return EventColorsConfig().model_dump(mode="json")
 
-    normalized = dict(payload)
+    normalized = cast(ConfigDict, dict(payload))
 
     # Collapse legacy light/dark document stroke settings into a single value
     if "document_stroke_color" not in normalized:
@@ -52,7 +59,7 @@ def _normalize_event_colors_payload(payload: object) -> dict[str, object]:
         return EventColorsConfig().model_dump(mode="json")
 
 
-def _normalize_notification_preferences_payload(payload: object) -> dict[str, object]:
+def _normalize_notification_preferences_payload(payload: object) -> ConfigDict:
     """Ensure notification_preferences payload matches NotificationPreferencesConfig structure."""
     if not isinstance(payload, dict):
         return NotificationPreferencesConfig().model_dump(mode="json")
@@ -61,6 +68,28 @@ def _normalize_notification_preferences_payload(payload: object) -> dict[str, ob
         return NotificationPreferencesConfig(**payload).model_dump(mode="json")
     except Exception:
         return NotificationPreferencesConfig().model_dump(mode="json")
+
+
+def _normalize_event_duration_settings(payload: object) -> ConfigDict:
+    """Ensure event_duration_settings payload matches EventDurationSettings structure."""
+    if not isinstance(payload, dict):
+        return EventDurationSettings().model_dump(mode="json")
+
+    try:
+        return EventDurationSettings(**payload).model_dump(mode="json")
+    except Exception:
+        return EventDurationSettings().model_dump(mode="json")
+
+
+def _normalize_slot_capacity_settings(payload: object) -> ConfigDict:
+    """Ensure slot_capacity_settings payload matches SlotCapacityConfig structure."""
+    if not isinstance(payload, dict):
+        return SlotCapacityConfig().model_dump(mode="json")
+
+    try:
+        return SlotCapacityConfig(**payload).model_dump(mode="json")
+    except Exception:
+        return SlotCapacityConfig().model_dump(mode="json")
 
 
 def _generate_ramadan_ranges() -> list[CustomCalendarRangeConfig]:
@@ -239,6 +268,10 @@ def get_default_config() -> AppConfigBase:
         documents_columns=documents_columns,
         default_country_prefix="SA",
         available_languages=["en", "ar"],
+        available_themes=list(DEFAULT_AVAILABLE_THEMES),
+        available_calendar_views=list(DEFAULT_CALENDAR_VIEWS),
+        event_duration_settings=EventDurationSettings(),
+        slot_capacity_settings=SlotCapacityConfig(),
     )
 
 
@@ -263,7 +296,7 @@ def get_config(session: Session | None = None) -> AppConfigRead:
 
         if config_model:
             # Parse JSON and create AppConfigRead
-            config_dict = json.loads(config_model.config_data)
+            config_dict = cast(ConfigDict, json.loads(config_model.config_data))
 
             if "event_colors" in config_dict:
                 config_dict["event_colors"] = _normalize_event_colors_payload(
@@ -279,6 +312,24 @@ def get_config(session: Session | None = None) -> AppConfigRead:
             else:
                 config_dict["notification_preferences"] = (
                     NotificationPreferencesConfig().model_dump(mode="json")
+                )
+
+            if "event_duration_settings" in config_dict:
+                config_dict["event_duration_settings"] = _normalize_event_duration_settings(
+                    config_dict["event_duration_settings"]
+                )
+            else:
+                config_dict["event_duration_settings"] = EventDurationSettings().model_dump(
+                    mode="json"
+                )
+
+            if "slot_capacity_settings" in config_dict:
+                config_dict["slot_capacity_settings"] = _normalize_slot_capacity_settings(
+                    config_dict["slot_capacity_settings"]
+                )
+            else:
+                config_dict["slot_capacity_settings"] = SlotCapacityConfig().model_dump(
+                    mode="json"
                 )
 
             # Migration: Convert old saturday_working_hours to day_specific_hours
@@ -297,6 +348,14 @@ def get_config(session: Session | None = None) -> AppConfigRead:
                     else:
                         config_dict["day_specific_hours"] = []
                     needs_migration = True
+
+            if not config_dict.get("available_themes"):
+                config_dict["available_themes"] = list(DEFAULT_AVAILABLE_THEMES)
+                needs_migration = True
+
+            if not config_dict.get("available_calendar_views"):
+                config_dict["available_calendar_views"] = list(DEFAULT_CALENDAR_VIEWS)
+                needs_migration = True
 
             config_base = AppConfigBase(**config_dict)
 
@@ -325,7 +384,7 @@ def get_config(session: Session | None = None) -> AppConfigRead:
         else:
             # Create default config
             default_config = get_default_config()
-            config_dict = default_config.model_dump(mode="json")
+            config_dict = cast(ConfigDict, default_config.model_dump(mode="json"))
             config_json = json.dumps(config_dict, default=str)
 
             config_model = AppConfigModel(config_data=config_json)
@@ -413,7 +472,7 @@ def create_config(config_data: AppConfigCreate, session: Session | None = None) 
             session.delete(existing_config)
 
         # Create new config
-        config_dict = config_data.model_dump(mode="json")
+        config_dict = cast(ConfigDict, config_data.model_dump(mode="json"))
         config_json = json.dumps(config_dict, default=str)
 
         config_model = AppConfigModel(config_data=config_json)

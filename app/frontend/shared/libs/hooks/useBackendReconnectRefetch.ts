@@ -1,16 +1,16 @@
-import { useEffect, useRef } from "react";
-import type { BackendConnectionStatus } from "@/shared/libs/backend-connection-store";
-import { backendConnectionStore } from "@/shared/libs/backend-connection-store";
+import { useEffect, useRef } from 'react'
+import type { BackendConnectionStatus } from '@/shared/libs/backend-connection-store'
+import { backendConnectionStore } from '@/shared/libs/backend-connection-store'
 
-type Awaitable<voidReturn> = voidReturn | Promise<voidReturn>;
+type Awaitable<voidReturn> = voidReturn | Promise<voidReturn>
 
 type UseBackendReconnectRefetchOptions = {
-  /**
-   * When false, the hook does nothing.
-   * Useful for skipping refetch logic while a query is already running.
-   */
-  enabled?: boolean;
-};
+	/**
+	 * When false, the hook does nothing.
+	 * Useful for skipping refetch logic while a query is already running.
+	 */
+	enabled?: boolean
+}
 
 /**
  * Subscribes to backend connection status changes and triggers refetch callbacks
@@ -42,57 +42,57 @@ type UseBackendReconnectRefetchOptions = {
  * See: `backend-connection-store.ts` for the connection tracking implementation.
  */
 export function useBackendReconnectRefetch(
-  refetch: () => Awaitable<unknown>,
-  options?: UseBackendReconnectRefetchOptions
+	refetch: () => Awaitable<unknown>,
+	options?: UseBackendReconnectRefetchOptions
 ): void {
-  const enabled = options?.enabled ?? true;
-  const refetchRef = useRef(refetch);
-  const enabledRef = useRef(enabled);
+	const enabled = options?.enabled ?? true
+	const refetchRef = useRef(refetch)
+	const enabledRef = useRef(enabled)
 
-  useEffect(() => {
-    refetchRef.current = refetch;
-  }, [refetch]);
+	useEffect(() => {
+		refetchRef.current = refetch
+	}, [refetch])
 
-  useEffect(() => {
-    enabledRef.current = enabled;
-  }, [enabled]);
+	useEffect(() => {
+		enabledRef.current = enabled
+	}, [enabled])
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+	useEffect(() => {
+		if (typeof window === 'undefined') {
+			return
+		}
 
-    let previousStatus: BackendConnectionStatus =
-      backendConnectionStore.getSnapshot().status;
+		let previousStatus: BackendConnectionStatus =
+			backendConnectionStore.getSnapshot().status
 
-    const unsubscribe = backendConnectionStore.subscribe(() => {
-      const snapshot = backendConnectionStore.getSnapshot();
-      const nextStatus = snapshot.status;
+		const unsubscribe = backendConnectionStore.subscribe(() => {
+			const snapshot = backendConnectionStore.getSnapshot()
+			const nextStatus = snapshot.status
 
-      const transitionedToConnected =
-        previousStatus !== "connected" && nextStatus === "connected";
+			const transitionedToConnected =
+				previousStatus !== 'connected' && nextStatus === 'connected'
 
-      if (transitionedToConnected && enabledRef.current) {
-        try {
-          const result = refetchRef.current();
-          if (
-            result &&
-            typeof (result as Promise<unknown>).then === "function"
-          ) {
-            (result as Promise<unknown>).catch(() => {
-              // Swallow refetch errors - the owning query will surface them
-            });
-          }
-        } catch {
-          // Swallow synchronous refetch errors - query handles reporting
-        }
-      }
+			if (transitionedToConnected && enabledRef.current) {
+				try {
+					const result = refetchRef.current()
+					if (
+						result &&
+						typeof (result as Promise<unknown>).then === 'function'
+					) {
+						;(result as Promise<unknown>).catch(() => {
+							// Swallow refetch errors - the owning query will surface them
+						})
+					}
+				} catch {
+					// Swallow synchronous refetch errors - query handles reporting
+				}
+			}
 
-      previousStatus = nextStatus;
-    });
+			previousStatus = nextStatus
+		})
 
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+		return () => {
+			unsubscribe()
+		}
+	}, [])
 }

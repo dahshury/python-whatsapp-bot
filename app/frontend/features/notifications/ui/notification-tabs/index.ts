@@ -1,1 +1,1 @@
-export { NotificationTabsHeader } from "./NotificationTabsHeader";
+export { NotificationTabsHeader } from './NotificationTabsHeader'

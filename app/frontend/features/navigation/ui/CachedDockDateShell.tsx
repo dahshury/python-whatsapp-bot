@@ -5,15 +5,15 @@
  * static structure while allowing dynamic date content to be injected.
  */
 
-"use cache";
+'use cache'
 
-import type { ReactNode } from "react";
-import { cn } from "@/shared/libs/utils";
+import type { ReactNode } from 'react'
+import { cn } from '@/shared/libs/utils'
 
 type CachedDockDateShellProps = {
-  children: ReactNode;
-  className?: string;
-};
+	children: ReactNode
+	className?: string
+}
 
 /**
  * Cached Dock Date Shell
@@ -23,12 +23,12 @@ type CachedDockDateShellProps = {
  * update without triggering re-render of the shell.
  */
 export function CachedDockDateShell({
-  children,
-  className,
+	children,
+	className,
 }: CachedDockDateShellProps) {
-  return (
-    <div className={cn("flex min-w-0 items-center justify-center", className)}>
-      {children}
-    </div>
-  );
+	return (
+		<div className={cn('flex min-w-0 items-center justify-center', className)}>
+			{children}
+		</div>
+	)
 }

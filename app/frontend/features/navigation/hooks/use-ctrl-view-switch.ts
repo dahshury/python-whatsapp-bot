@@ -1,77 +1,77 @@
-"use client";
+'use client'
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react'
 
 type UseCtrlViewSwitchOptions = {
-  onUp: () => void;
-  onDown: () => void;
-};
+	onUp: () => void
+	onDown: () => void
+}
 
 function isEditableElement(element: Element | null): boolean {
-  if (!element) {
-    return false;
-  }
-  const tag = element.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") {
-    return true;
-  }
-  const contentEditable = (element as HTMLElement).isContentEditable;
-  if (contentEditable) {
-    return true;
-  }
-  const role = (element as HTMLElement).getAttribute("role");
-  return role === "textbox" || role === "combobox";
+	if (!element) {
+		return false
+	}
+	const tag = element.tagName
+	if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+		return true
+	}
+	const contentEditable = (element as HTMLElement).isContentEditable
+	if (contentEditable) {
+		return true
+	}
+	const role = (element as HTMLElement).getAttribute('role')
+	return role === 'textbox' || role === 'combobox'
 }
 
 function isInSidebar(element: Element | null): boolean {
-  try {
-    return !!(
-      element && (element as HTMLElement).closest('[data-sidebar="sidebar"]')
-    );
-  } catch {
-    return false;
-  }
+	try {
+		return !!(
+			element && (element as HTMLElement).closest('[data-sidebar="sidebar"]')
+		)
+	} catch {
+		return false
+	}
 }
 
 export function useCtrlViewSwitch({ onUp, onDown }: UseCtrlViewSwitchOptions) {
-  const upRef = useRef(onUp);
-  const downRef = useRef(onDown);
+	const upRef = useRef(onUp)
+	const downRef = useRef(onDown)
 
-  useEffect(() => {
-    upRef.current = onUp;
-  }, [onUp]);
-  useEffect(() => {
-    downRef.current = onDown;
-  }, [onDown]);
+	useEffect(() => {
+		upRef.current = onUp
+	}, [onUp])
+	useEffect(() => {
+		downRef.current = onDown
+	}, [onDown])
 
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) {
-        return;
-      }
-      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") {
-        return;
-      }
-      if (isEditableElement(document.activeElement)) {
-        return;
-      }
-      if (isInSidebar(document.activeElement)) {
-        return;
-      }
-      if (e.repeat) {
-        return;
-      }
-      e.preventDefault();
-      if (e.key === "ArrowUp") {
-        upRef.current();
-      } else {
-        downRef.current();
-      }
-    };
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (!(e.ctrlKey || e.metaKey)) {
+				return
+			}
+			if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') {
+				return
+			}
+			if (isEditableElement(document.activeElement)) {
+				return
+			}
+			if (isInSidebar(document.activeElement)) {
+				return
+			}
+			if (e.repeat) {
+				return
+			}
+			e.preventDefault()
+			if (e.key === 'ArrowUp') {
+				upRef.current()
+			} else {
+				downRef.current()
+			}
+		}
 
-    window.addEventListener("keydown", onKeyDown, { passive: false });
-    return () => {
-      window.removeEventListener("keydown", onKeyDown as EventListener);
-    };
-  }, []);
+		window.addEventListener('keydown', onKeyDown, { passive: false })
+		return () => {
+			window.removeEventListener('keydown', onKeyDown as EventListener)
+		}
+	}, [])
 }

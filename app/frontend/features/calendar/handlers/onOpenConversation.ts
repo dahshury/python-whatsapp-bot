@@ -1,7 +1,7 @@
 export function handleOpenConversation(args: {
-  eventId: string;
-  openConversation: (id: string) => void;
+	eventId: string
+	openConversation: (id: string) => void
 }): Promise<void> {
-  args.openConversation(args.eventId);
-  return Promise.resolve();
+	args.openConversation(args.eventId)
+	return Promise.resolve()
 }

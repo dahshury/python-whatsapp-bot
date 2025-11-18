@@ -1,11 +1,11 @@
-import { i18n } from "@shared/libs/i18n";
-import type { PhoneOption } from "@/entities/phone";
+import { i18n } from '@shared/libs/i18n'
+import type { PhoneOption } from '@/entities/phone'
 
 /**
  * Normalizes phone number for comparison by removing spaces, dashes, and plus signs
  */
 function normalizePhone(phone: string): string {
-  return phone.replace(/[\s\-+]/g, "").trim();
+	return phone.replace(/[\s\-+]/g, '').trim()
 }
 
 /**
@@ -16,16 +16,16 @@ function normalizePhone(phone: string): string {
  * @returns The display name or localized "Unknown Customer" message
  */
 export function getPhoneDisplayName(
-  selectedPhone: string,
-  phoneOptions: PhoneOption[],
-  isLocalized: boolean
+	selectedPhone: string,
+	phoneOptions: PhoneOption[],
+	isLocalized: boolean
 ): string {
-  // Normalize phone numbers for comparison
-  const normalizedSelected = normalizePhone(selectedPhone);
-  const selectedOption = phoneOptions.find(
-    (option) => normalizePhone(option.number) === normalizedSelected
-  );
-  return (
-    selectedOption?.name || i18n.getMessage("phone_unknown_label", isLocalized)
-  );
+	// Normalize phone numbers for comparison
+	const normalizedSelected = normalizePhone(selectedPhone)
+	const selectedOption = phoneOptions.find(
+		(option) => normalizePhone(option.number) === normalizedSelected
+	)
+	return (
+		selectedOption?.name || i18n.getMessage('phone_unknown_label', isLocalized)
+	)
 }

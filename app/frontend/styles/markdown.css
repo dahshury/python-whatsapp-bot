@@ -68,24 +68,23 @@
 }
 
 /* TipTap editor: ensure list markers follow theme colors as well */
-.tiptap .ProseMirror ul li::marker {
+[data-ai-element="message-response"] :where(ul > li)::marker {
   color: hsl(var(--primary));
 }
 
-.tiptap .ProseMirror ol li::marker {
+[data-ai-element="message-response"] :where(ol > li)::marker {
   color: hsl(var(--primary));
 }
 
 /* Chat-only stronger override to guarantee theme color in the sidebar */
 .message-row .prose :where(ul > li)::marker,
 .message-row .prose :where(ol > li)::marker,
-.message-row .tiptap .ProseMirror ul li::marker,
-.message-row .tiptap .ProseMirror ol li::marker {
+.message-row [data-ai-element="message-response"] :where(ul > li)::marker,
+.message-row [data-ai-element="message-response"] :where(ol > li)::marker {
   color: hsl(var(--primary));
 }
 
 /* Details UI inside chat messages */
-.tiptap details.details,
 .prose details.details {
   margin: 0.75rem 0;
   border: 1px solid hsl(var(--border));
@@ -93,30 +92,24 @@
   padding: 0.5rem 0.6rem;
   background: hsl(var(--card));
 }
-.tiptap details.details > summary,
 .prose details.details > summary {
   font-weight: 700;
   cursor: pointer;
 }
-.tiptap details.details > summary::before,
 .prose details.details > summary::before {
   content: "▸";
   display: inline-block;
   margin-right: 0.4rem;
   transition: transform 150ms ease;
 }
-.tiptap details.details[open] > summary::before,
 .prose details.details[open] > summary::before {
   transform: rotate(90deg);
 }
-.tiptap details.details pre,
-.tiptap details.details code,
 .prose details.details pre {
   margin: 0.5rem 0 0 0;
   background: hsl(var(--muted));
   color: hsl(var(--foreground));
 }
-.tiptap details.details[open],
 .prose details.details[open] {
   box-shadow: 0 0 0 1px hsl(var(--accent) / 0.3) inset;
 }

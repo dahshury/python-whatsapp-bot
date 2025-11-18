@@ -1,1 +1,1 @@
-export * from "./WorkingDayMultiSelect";
+export * from './WorkingDayMultiSelect'

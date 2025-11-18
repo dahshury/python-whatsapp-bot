@@ -17,6 +17,7 @@ from app.utils import (
 )
 
 from ..shared.base_service import BaseService
+from .capacity_policies import compute_capacity_limits
 from .reservation_repository import ReservationRepository
 
 
@@ -108,13 +109,15 @@ class AvailabilityService(BaseService):
             self.logger.error(f"Error checking vacation info: {e}")
             return None
 
-    def get_available_time_slots(self, date_str: str, max_reservations: int = 5, hijri: bool = False) -> dict[str, Any]:
+    def get_available_time_slots(
+        self, date_str: str, max_reservations: int | None = None, hijri: bool = False
+    ) -> dict[str, Any]:
         """
         Get available time slots for a given date.
 
         Args:
             date_str: Date string to check availability for
-            max_reservations: Maximum reservations allowed per slot
+            max_reservations: Optional override for maximum reservations allowed per slot
             hijri: Whether input date is in Hijri format (for parsing only)
 
         Returns:
@@ -151,6 +154,10 @@ class AvailabilityService(BaseService):
             # Reverse mapping (24-hour to 12-hour) for results
             {v: k for k, v in time_format_map.items()}
 
+            total_capacity = compute_capacity_limits(
+                reservation_type=None, role="agent", override_total=max_reservations
+            )[0]
+
             # Check current reservations for each time slot
             for slot_12h, slot_24h in time_format_map.items():
                 try:
@@ -161,7 +168,7 @@ class AvailabilityService(BaseService):
                     continue
 
             # Return only slots with availability (in 12-hour format for display)
-            available_slots = [ts for ts, count in all_slots.items() if count < max_reservations]
+            available_slots = [ts for ts, count in all_slots.items() if count < total_capacity]
             if not available_slots:
                 return format_response(False, message=get_message("all_slots_fully_booked"))
 
@@ -183,7 +190,7 @@ class AvailabilityService(BaseService):
         time_slot: str | None = None,
         days_forward: int = 3,
         days_backward: int = 0,
-        max_reservations: int = 5,
+        max_reservations: int | None = None,
         hijri: bool = False,
     ) -> dict[str, Any]:
         """
@@ -194,7 +201,7 @@ class AvailabilityService(BaseService):
             time_slot: Specific time slot to search for
             days_forward: Number of days to search forward
             days_backward: Number of days to search backward
-            max_reservations: Maximum reservations per slot
+            max_reservations: Optional override for reservations per slot
             hijri: Whether the input start_date is in Hijri format (for parsing only)
 
         Returns:
@@ -210,6 +217,10 @@ class AvailabilityService(BaseService):
                 parsed_time_str = normalize_time_format(time_slot, to_24h=True)
                 requested_time = datetime.datetime.strptime(parsed_time_str, "%H:%M")
                 requested_minutes = requested_time.hour * 60 + requested_time.minute
+
+            total_capacity = compute_capacity_limits(
+                reservation_type=None, role="agent", override_total=max_reservations
+            )[0]
 
             available_dates = []
             date_slots_map = {}  # For grouping slots by date when no time_slot is provided
@@ -276,7 +287,7 @@ class AvailabilityService(BaseService):
 
                 # If no specific time slot is requested, get all available time slots for this date
                 if time_slot is None:
-                    result = self.get_available_time_slots(gregorian_date_str, max_reservations, hijri=False)
+                    result = self.get_available_time_slots(gregorian_date_str, total_capacity, hijri=False)
                     # Skip if error response
                     if isinstance(result, dict) and result.get("success") is False:
                         continue
@@ -371,7 +382,7 @@ class AvailabilityService(BaseService):
                     count = len(active_reservations)
 
                     # Add date if the slot has availability
-                    if count < max_reservations:
+                    if count < total_capacity:
                         date_entry = {
                             "gregorian_date": gregorian_date_str,
                             "hijri_date": hijri_date_str,

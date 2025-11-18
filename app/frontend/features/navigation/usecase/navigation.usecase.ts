@@ -1,4 +1,4 @@
 export type NavigationUseCase = {
-  setView: (view: string) => void;
-  getView: () => string;
-};
+	setView: (view: string) => void
+	getView: () => string
+}

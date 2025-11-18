@@ -8,15 +8,15 @@
  * This component is optimized for Next.js 16 performance patterns.
  */
 
-"use cache";
+'use cache'
 
-import { cn } from "@shared/libs/utils";
-import type { ReactNode } from "react";
+import { cn } from '@shared/libs/utils'
+import type { ReactNode } from 'react'
 
 type CachedSidebarFrameProps = {
-  children: ReactNode;
-  className?: string;
-};
+	children: ReactNode
+	className?: string
+}
 
 /**
  * Memoized Sidebar Frame
@@ -25,12 +25,12 @@ type CachedSidebarFrameProps = {
  * className changes. Children updates don't trigger frame re-render.
  */
 export function CachedSidebarFrame({
-  children,
-  className,
+	children,
+	className,
 }: CachedSidebarFrameProps) {
-  return (
-    <aside className={cn("sidebar-frame", className)}>
-      <div className="sidebar-content">{children}</div>
-    </aside>
-  );
+	return (
+		<aside className={cn('sidebar-frame', className)}>
+			<div className="sidebar-content">{children}</div>
+		</aside>
+	)
 }

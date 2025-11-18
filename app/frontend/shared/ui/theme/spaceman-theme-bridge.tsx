@@ -1,14 +1,15 @@
-"use client";
+'use client'
 
 import {
-  SpacemanThemeProvider,
-  ThemeAnimationType,
-} from "@space-man/react-theme-animation";
-import { useTheme as useNextThemes } from "next-themes";
-import type React from "react";
-import { useEffect, useMemo, useState } from "react";
-import { THEME_OPTIONS } from "@/features/settings/settings/theme-data";
-import { useSettingsStore } from "@/infrastructure/store/app-store";
+	SpacemanThemeProvider,
+	ThemeAnimationType,
+} from '@space-man/react-theme-animation'
+import { useTheme as useNextThemes } from 'next-themes'
+import type React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useAppConfigQuery } from '@/features/app-config'
+import { filterThemeOptions } from '@/features/settings/settings/theme-data'
+import { useSettingsStore } from '@/infrastructure/store/app-store'
 
 /**
  * SpacemanThemeBridge
@@ -18,52 +19,71 @@ import { useSettingsStore } from "@/infrastructure/store/app-store";
  * - Fixes persistence by syncing Spaceman state with existing providers instead of fighting them
  */
 export function SpacemanThemeBridge({
-  children,
+	children,
 }: {
-  children: React.ReactNode;
+	children: React.ReactNode
 }) {
-  const { resolvedTheme, theme: nextTheme } = useNextThemes();
-  const { theme: styleTheme } = useSettingsStore();
+	const { resolvedTheme, theme: nextTheme } = useNextThemes()
+	const { theme: styleTheme } = useSettingsStore()
+	const { data: appConfig } = useAppConfigQuery()
 
-  // Track mounted state to avoid hydration issues
-  const [mounted, setMounted] = useState(false);
+	// Ensure we always have a valid config (fallback to all themes if query hasn't loaded)
+	const availableThemes = appConfig?.availableThemes ?? null
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+	// Track mounted state to avoid hydration issues
+	const [mounted, setMounted] = useState(false)
 
-  // Sync current state from our existing providers
-  const currentTheme = useMemo(() => {
-    if (!mounted) {
-      return "system";
-    }
-    // Use resolvedTheme when available (actual computed theme), fall back to nextTheme
-    return (resolvedTheme || nextTheme || "system") as
-      | "light"
-      | "dark"
-      | "system";
-  }, [mounted, resolvedTheme, nextTheme]);
+	useEffect(() => {
+		setMounted(true)
+	}, [])
 
-  const currentColorTheme = useMemo(
-    () => styleTheme || "theme-default",
-    [styleTheme]
-  );
+	// Sync current state from our existing providers
+	const currentTheme = useMemo(() => {
+		if (!mounted) {
+			return 'system'
+		}
+		// Use resolvedTheme when available (actual computed theme), fall back to nextTheme
+		return (resolvedTheme || nextTheme || 'system') as
+			| 'light'
+			| 'dark'
+			| 'system'
+	}, [mounted, resolvedTheme, nextTheme])
 
-  // Don't render until mounted to avoid hydration mismatch
-  if (!mounted) {
-    return <>{children}</>;
-  }
+	const currentColorTheme = useMemo(
+		() => styleTheme || 'theme-default',
+		[styleTheme]
+	)
 
-  return (
-    <SpacemanThemeProvider
-      animationType={ThemeAnimationType.CIRCLE}
-      colorThemes={THEME_OPTIONS.map((t) => t.value)}
-      defaultColorTheme={currentColorTheme}
-      defaultTheme={currentTheme}
-      duration={600}
-      themes={["light", "dark", "system"]}
-    >
-      {children}
-    </SpacemanThemeProvider>
-  );
+	const colorThemes = useMemo(() => {
+		const filtered = filterThemeOptions(availableThemes)
+		return filtered.map((t) => t.value)
+	}, [availableThemes])
+
+	const resolvedColorTheme = useMemo(() => {
+		if (!colorThemes.length) {
+			return 'theme-default'
+		}
+		if (colorThemes.includes(currentColorTheme)) {
+			return currentColorTheme
+		}
+		return colorThemes[0] ?? 'theme-default'
+	}, [colorThemes, currentColorTheme])
+
+	// Don't render until mounted to avoid hydration mismatch
+	if (!mounted) {
+		return <>{children}</>
+	}
+
+	return (
+		<SpacemanThemeProvider
+			animationType={ThemeAnimationType.CIRCLE}
+			colorThemes={colorThemes}
+			defaultColorTheme={resolvedColorTheme}
+			defaultTheme={currentTheme}
+			duration={600}
+			themes={['light', 'dark', 'system']}
+		>
+			{children}
+		</SpacemanThemeProvider>
+	)
 }

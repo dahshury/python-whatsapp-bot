@@ -1,1 +1,1 @@
-export * from "./useSlotDurationManager";
+export * from './useSlotDurationManager'

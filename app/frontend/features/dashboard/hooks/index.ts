@@ -1,5 +1,5 @@
 export type {
-  UsePaginationOptions,
-  UsePaginationReturn,
-} from "./usePagination";
-export { usePagination } from "./usePagination";
+	UsePaginationOptions,
+	UsePaginationReturn,
+} from './usePagination'
+export { usePagination } from './usePagination'
