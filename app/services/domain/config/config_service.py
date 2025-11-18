@@ -3,15 +3,17 @@
 import datetime
 import json
 import logging
+from typing import cast
 
 from hijri_converter import convert
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from typing import Any, cast
 
 from app.db import get_session
 from app.services.domain.config.config_models import AppConfigModel
 from app.services.domain.config.config_schemas import (
+    DEFAULT_AVAILABLE_THEMES,
+    DEFAULT_CALENDAR_VIEWS,
     AppConfigBase,
     AppConfigCreate,
     AppConfigRead,
@@ -19,8 +21,6 @@ from app.services.domain.config.config_schemas import (
     CustomCalendarRangeConfig,
     DaySpecificSlotDuration,
     DaySpecificWorkingHours,
-    DEFAULT_AVAILABLE_THEMES,
-    DEFAULT_CALENDAR_VIEWS,
     EventColorsConfig,
     EventDurationSettings,
     NotificationPreferencesConfig,

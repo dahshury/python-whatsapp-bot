@@ -14,7 +14,22 @@ run_step() {
 
 # Check if there are staged frontend files
 if git diff --cached --name-only --diff-filter=ACMR | grep -q '^app/frontend/'; then
+	# Store originally staged frontend files
+	ORIGINALLY_STAGED_FRONTEND=$(git diff --cached --name-only --diff-filter=ACMR | grep '^app/frontend/' || true)
 	run_step "Running Biome (fix) on staged files" pnpm --filter ./app/frontend biome check --fix --unsafe --staged
+	# Re-stage any originally staged frontend files that were modified by Biome
+	if [ -n "$ORIGINALLY_STAGED_FRONTEND" ]; then
+		FRONTEND_MODIFIED=$(git diff --name-only | grep '^app/frontend/' || true)
+		if [ -n "$FRONTEND_MODIFIED" ]; then
+			# Only re-stage files that were originally staged
+			for file in $FRONTEND_MODIFIED; do
+				if echo "$ORIGINALLY_STAGED_FRONTEND" | grep -q "^$file$"; then
+					echo "[pre-commit] Re-staging Biome-modified file: $file"
+					git add "$file"
+				fi
+			done
+		fi
+	fi
 	run_step "Running Biome (strict) on staged files" pnpm --filter ./app/frontend biome check --staged
 fi
 
@@ -28,6 +43,21 @@ if git diff --cached --name-only --diff-filter=ACMR | grep -q '\.md$'; then
 	run_step "Re-staging formatted Markdown files" sh -c "git diff --cached --name-only --diff-filter=ACMR | grep '\.md$' | xargs git add"
 fi
 
+# Store originally staged Python files
+ORIGINALLY_STAGED_PYTHON=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(py|pyi)$' || true)
 run_step "Running Ruff (Python lint with fixes)" uv run ruff check --fix --unsafe-fixes
+# Re-stage any originally staged Python files that were modified by Ruff
+if [ -n "$ORIGINALLY_STAGED_PYTHON" ]; then
+	PYTHON_MODIFIED=$(git diff --name-only | grep -E '\.(py|pyi)$' || true)
+	if [ -n "$PYTHON_MODIFIED" ]; then
+		# Only re-stage files that were originally staged
+		for file in $PYTHON_MODIFIED; do
+			if echo "$ORIGINALLY_STAGED_PYTHON" | grep -q "^$file$"; then
+				echo "[pre-commit] Re-staging Ruff-modified file: $file"
+				git add "$file"
+			fi
+		done
+	fi
+fi
 
 echo "[pre-commit] All checks passed."

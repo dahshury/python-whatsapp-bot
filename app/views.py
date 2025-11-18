@@ -286,7 +286,7 @@ async def api_send_whatsapp_message(background_tasks: BackgroundTasks, payload: 
             try:
                 llm_service = get_llm_service(toolkit=SYSTEM_TOOL_REGISTRY, system_prompt=SYSTEM_AGENT_PROMPT)
                 response_text, response_date, response_time = llm_service.run(wa_id)
-                
+
                 if response_text:
                     append_message(wa_id, "assistant", response_text, response_date, response_time)
                     try:

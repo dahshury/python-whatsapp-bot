@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Tuple
+from typing import Literal
 
 from app.services.domain.config.config_schemas import (
     DEFAULT_AGENT_SLOT_CAPACITY,
@@ -63,7 +63,7 @@ def compute_capacity_limits(
     *,
     role: Role,
     override_total: int | None = None,
-) -> Tuple[int, int]:
+) -> tuple[int, int]:
     """
     Resolve total/per-type slot capacity limits for the given persona.
 

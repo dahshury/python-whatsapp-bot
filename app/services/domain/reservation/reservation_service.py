@@ -80,7 +80,7 @@ class ReservationService(BaseService):
         """
         try:
             if hasattr(value, "value"):
-                return int(getattr(value, "value"))
+                return int(value.value)
             if value is None:
                 return None
             return int(value)

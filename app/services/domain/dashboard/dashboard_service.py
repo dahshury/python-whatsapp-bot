@@ -537,7 +537,7 @@ class DashboardAnalyticsService:
             monthly[key]["conversations"] += 1
 
         trends = []
-        for (year, month), values in sorted(monthly.items()):
+        for (_year, month), values in sorted(monthly.items()):
             idx = max(1, min(12, month)) - 1
             label = month_labels[idx]
             trends.append(
