@@ -96,14 +96,28 @@ function buildBrowserCandidates(): string[] {
 
 function buildEnvCandidates(): string[] {
 	const candidates: string[] = []
-	const explicitWs =
-		process.env.NEXT_PUBLIC_BACKEND_WS_URL || process.env.NEXT_PUBLIC_WS_URL
-	if (explicitWs) {
-		candidates.push(explicitWs)
+	const isHttpsPage = (() => {
+		if (typeof window === 'undefined') return false
+		try {
+			return window.location.protocol === 'https:'
+		} catch {
+			return false
+		}
+	})()
+
+	const addIfSecure = (url: string | undefined | null) => {
+		if (!url) return
+		if (isHttpsPage && (url.startsWith('http://') || url.startsWith('ws://'))) {
+			// Avoid insecure WS/HTTP on HTTPS pages
+			return
+		}
+		candidates.push(url)
 	}
-	if (process.env.NEXT_PUBLIC_BACKEND_URL) {
-		candidates.push(process.env.NEXT_PUBLIC_BACKEND_URL)
-	}
+
+	const env =
+		(globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env
+	addIfSecure(env?.NEXT_PUBLIC_BACKEND_WS_URL || env?.NEXT_PUBLIC_WS_URL)
+	addIfSecure(env?.NEXT_PUBLIC_BACKEND_URL)
 	return candidates
 }
 
