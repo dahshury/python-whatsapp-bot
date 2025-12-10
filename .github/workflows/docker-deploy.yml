@@ -50,14 +50,13 @@ jobs:
 
       - name: Build and push frontend image
         env:
-          NEXT_PUBLIC_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_BACKEND_URL }}
-          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
-          NEXT_PUBLIC_BACKEND_WS_URL: ${{ secrets.NEXT_PUBLIC_BACKEND_WS_URL }}
+          PUBLIC_ORIGIN: ${{ secrets.PUBLIC_ORIGIN }}
         run: |
+          WS_ORIGIN=${PUBLIC_ORIGIN/https:/wss:}
           docker build \
-            --build-arg NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL} \
-            --build-arg NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
-            --build-arg NEXT_PUBLIC_BACKEND_WS_URL=${NEXT_PUBLIC_BACKEND_WS_URL} \
+            --build-arg NEXT_PUBLIC_BACKEND_URL=${PUBLIC_ORIGIN}/api \
+            --build-arg NEXT_PUBLIC_APP_URL=${PUBLIC_ORIGIN} \
+            --build-arg NEXT_PUBLIC_BACKEND_WS_URL=${WS_ORIGIN}/ws \
             -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest \
             -f app/frontend/Dockerfile app/frontend
           docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest
@@ -89,19 +88,18 @@ jobs:
               echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
             fi
 
-            # Ensure .env exists and contains NEXT_PUBLIC_BACKEND_URL from secrets
+            # Ensure .env exists and contains consolidated public origin-derived URLs
             ENV_TARGET=/home/ubuntu/python-whatsapp-bot/.env
-            SECRET_BACKEND_URL='${{ secrets.NEXT_PUBLIC_BACKEND_URL }}'
-            if [ -n "$SECRET_BACKEND_URL" ]; then
-              if [ -f "$ENV_TARGET" ]; then
-                if grep -q '^NEXT_PUBLIC_BACKEND_URL=' "$ENV_TARGET"; then
-                  sed -i "s|^NEXT_PUBLIC_BACKEND_URL=.*|NEXT_PUBLIC_BACKEND_URL=$SECRET_BACKEND_URL|" "$ENV_TARGET"
-                else
-                  echo "NEXT_PUBLIC_BACKEND_URL=$SECRET_BACKEND_URL" >> "$ENV_TARGET"
-                fi
-              else
-                echo "NEXT_PUBLIC_BACKEND_URL=$SECRET_BACKEND_URL" > "$ENV_TARGET"
-              fi
+            SECRET_PUBLIC_ORIGIN='${{ secrets.PUBLIC_ORIGIN }}'
+            if [ -n "$SECRET_PUBLIC_ORIGIN" ]; then
+              WS_ORIGIN=${SECRET_PUBLIC_ORIGIN/https:/wss:}
+              {
+                echo "APP_URL=$SECRET_PUBLIC_ORIGIN"
+                echo "NEXT_PUBLIC_APP_URL=$SECRET_PUBLIC_ORIGIN"
+                echo "BACKEND_URL=${SECRET_PUBLIC_ORIGIN}/api"
+                echo "NEXT_PUBLIC_BACKEND_URL=${SECRET_PUBLIC_ORIGIN}/api"
+                echo "NEXT_PUBLIC_BACKEND_WS_URL=${WS_ORIGIN}/ws"
+              } > "$ENV_TARGET"
             fi
 
       - name: Copy deployment files to EC2
