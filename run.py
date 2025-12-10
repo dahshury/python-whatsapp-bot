@@ -17,4 +17,11 @@ app = create_app()
 
 if __name__ == "__main__":
     logging.info("FastAPI app started")
-    uvicorn.run("run:app", host="0.0.0.0", port=8000, loop="uvloop")
+    uvicorn.run(
+        "run:app",
+        host="0.0.0.0",
+        port=8000,
+        loop="uvloop",
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+    )
