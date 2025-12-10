@@ -52,10 +52,12 @@ jobs:
         env:
           NEXT_PUBLIC_BACKEND_URL: ${{ secrets.NEXT_PUBLIC_BACKEND_URL }}
           NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+          NEXT_PUBLIC_BACKEND_WS_URL: ${{ secrets.NEXT_PUBLIC_BACKEND_WS_URL }}
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL} \
             --build-arg NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL} \
+            --build-arg NEXT_PUBLIC_BACKEND_WS_URL=${NEXT_PUBLIC_BACKEND_WS_URL} \
             -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest \
             -f app/frontend/Dockerfile app/frontend
           docker push ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest
