@@ -109,10 +109,19 @@ function buildEnvCandidates(): string[] {
 
 function resolveWebSocketUrl(): string {
 	const tab = getOrCreateTabId()
+	// Prefer explicit env values, then current origin; avoid hardcoded http fallback on HTTPS pages
+	const windowOrigin = (() => {
+		if (typeof window === 'undefined') return null
+		try {
+			return window.location.origin
+		} catch {
+			return null
+		}
+	})()
 	const candidates = [
 		...buildEnvCandidates(),
 		...buildBrowserCandidates(),
-		'http://localhost:8000',
+		windowOrigin || 'http://localhost:8000',
 	]
 	for (const candidate of candidates) {
 		const resolved = normalizeWebSocketCandidate(candidate, tab)
