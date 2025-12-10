@@ -88,18 +88,26 @@ jobs:
               echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
             fi
 
-            # Ensure .env exists and contains consolidated public origin-derived URLs
+            # Ensure .env exists and contains consolidated public origin-derived URLs (preserve other keys)
             ENV_TARGET=/home/ubuntu/python-whatsapp-bot/.env
             SECRET_PUBLIC_ORIGIN='${{ secrets.PUBLIC_ORIGIN }}'
             if [ -n "$SECRET_PUBLIC_ORIGIN" ]; then
               WS_ORIGIN=${SECRET_PUBLIC_ORIGIN/https:/wss:}
-              {
-                echo "APP_URL=$SECRET_PUBLIC_ORIGIN"
-                echo "NEXT_PUBLIC_APP_URL=$SECRET_PUBLIC_ORIGIN"
-                echo "BACKEND_URL=${SECRET_PUBLIC_ORIGIN}/api"
-                echo "NEXT_PUBLIC_BACKEND_URL=${SECRET_PUBLIC_ORIGIN}/api"
-                echo "NEXT_PUBLIC_BACKEND_WS_URL=${WS_ORIGIN}/ws"
-              } > "$ENV_TARGET"
+              touch "$ENV_TARGET"
+              ensure_kv() {
+                key="$1"
+                val="$2"
+                if grep -q "^${key}=" "$ENV_TARGET"; then
+                  sed -i "s|^${key}=.*|${key}=${val}|" "$ENV_TARGET"
+                else
+                  echo "${key}=${val}" >> "$ENV_TARGET"
+                fi
+              }
+              ensure_kv "APP_URL" "$SECRET_PUBLIC_ORIGIN"
+              ensure_kv "NEXT_PUBLIC_APP_URL" "$SECRET_PUBLIC_ORIGIN"
+              ensure_kv "BACKEND_URL" "${SECRET_PUBLIC_ORIGIN}/api"
+              ensure_kv "NEXT_PUBLIC_BACKEND_URL" "${SECRET_PUBLIC_ORIGIN}/api"
+              ensure_kv "NEXT_PUBLIC_BACKEND_WS_URL" "${WS_ORIGIN}/ws"
             fi
 
       - name: Copy deployment files to EC2
