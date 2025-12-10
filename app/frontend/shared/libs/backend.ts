@@ -59,13 +59,15 @@ function resolveBackendBaseUrlCandidates(): string[] {
 
 	try {
 		const hostname = window.location.hostname
+		const protocol = window.location.protocol
+		const isHttps = protocol === 'https:'
 		if (isLocalhostHostname(hostname)) {
 			// On localhost, try direct connection to backend
-			candidates.push('http://localhost:8000')
+			candidates.push(isHttps ? 'https://localhost:8000' : 'http://localhost:8000')
 		} else {
 			// On network (e.g., 192.168.x.x), construct backend URL using same hostname
 			// This allows mobile/other devices on same network to access backend
-			candidates.push(`http://${hostname}:8000`)
+			candidates.push(isHttps ? `https://${hostname}:8000` : `http://${hostname}:8000`)
 		}
 	} catch {
 		// Accessing window location failed - ignore and continue with defaults

@@ -76,13 +76,17 @@ function buildBrowserCandidates(): string[] {
 	const candidates: string[] = []
 	try {
 		const { origin, protocol, hostname } = window.location
-		if (isLocalHostname(hostname)) {
-			const localProto = protocol === 'https:' ? 'https' : 'http'
+		const isHttps = protocol === 'https:'
+
+		if (isLocalHostname(hostname) && !isHttps) {
+			const localProto = 'http'
 			candidates.push(`${localProto}://localhost:8000`)
 			if (hostname !== 'localhost') {
 				candidates.push(`${localProto}://${hostname}:8000`)
 			}
 		}
+
+		// Always prefer current origin; normalizeWebSocketCandidate will convert scheme to ws/wss
 		candidates.push(origin)
 	} catch {
 		// Ignore window access errors
