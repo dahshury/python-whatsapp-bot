@@ -232,18 +232,6 @@ def check_auth(credentials: HTTPBasicCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
-@router.get("/app")
-async def redirect_to_app(request: Request):
-    """
-    Redirect to the main application URL, preserving query parameters.
-    """
-    query_params = request.query_params
-    redirect_url = config["APP_URL"]
-    if query_params:
-        redirect_url = f"{redirect_url}?{query_params}"
-    return RedirectResponse(url=redirect_url)
-
-
 @router.post("/whatsapp/message")
 async def api_send_whatsapp_message(background_tasks: BackgroundTasks, payload: dict = Body(...)):
     wa_id = payload.get("wa_id")
