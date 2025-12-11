@@ -54,7 +54,7 @@ jobs:
         run: |
           WS_ORIGIN=${PUBLIC_ORIGIN/https:/wss:}
           docker build \
-            --build-arg NEXT_PUBLIC_BACKEND_URL=${PUBLIC_ORIGIN}/api \
+            --build-arg NEXT_PUBLIC_BACKEND_URL=${PUBLIC_ORIGIN} \
             --build-arg NEXT_PUBLIC_APP_URL=${PUBLIC_ORIGIN} \
             --build-arg NEXT_PUBLIC_BACKEND_WS_URL=${WS_ORIGIN}/ws \
             -t ${{ env.DOCKER_HUB_USERNAME }}/${{ env.FRONTEND_REPO }}:latest \
@@ -105,8 +105,8 @@ jobs:
               }
               ensure_kv "APP_URL" "$SECRET_PUBLIC_ORIGIN"
               ensure_kv "NEXT_PUBLIC_APP_URL" "$SECRET_PUBLIC_ORIGIN"
-              ensure_kv "BACKEND_URL" "${SECRET_PUBLIC_ORIGIN}/api"
-              ensure_kv "NEXT_PUBLIC_BACKEND_URL" "${SECRET_PUBLIC_ORIGIN}/api"
+              ensure_kv "BACKEND_URL" "$SECRET_PUBLIC_ORIGIN"
+              ensure_kv "NEXT_PUBLIC_BACKEND_URL" "$SECRET_PUBLIC_ORIGIN"
               ensure_kv "NEXT_PUBLIC_BACKEND_WS_URL" "${WS_ORIGIN}/ws"
             fi
 
